@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from conftest import TEST_KEYWORD_CONFIG, build_fetcher, make_graph
 
@@ -14,6 +16,7 @@ from medlang_circuits.feature_tagger import annotate_graph
 def _tagged_pair():
     top, bottom = make_graph(), make_graph()
     bottom["metadata"]["prompt"] = "patient wording variant"
+    bottom["metadata"]["prompt_tokens"] = ["the", " swift", " brown", " fox"]  # token 1 altered
     for g in (top, bottom):
         annotate_graph(g, fetcher=build_fetcher(), keyword_config=TEST_KEYWORD_CONFIG)
     return top, bottom
@@ -32,6 +35,19 @@ def test_render_stacked_html_standalone_interactive(tmp_path):
     assert 'data-p="1"' in html and 'data-i="0"' in html
     # full autointerp description flows into the tooltip payload
     assert "references to alpha and beta term contexts" in html
+    # tooltip readout is labeled: probability for logits, attribution mass otherwise
+    assert '"wl":"Probability","w":"0.81"' in html  # fixture logit clerp "jumps (p=0.81)"
+    assert '"wl":"Mass"' in html
+    # proportional node sizing: radii vary across nodes instead of a uniform value
+    radii = {m for m in re.findall(r' r="([\d.]+)"', html)}
+    assert len(radii) > 2
+    assert all(3.0 <= float(r) <= 14.0 for r in radii)
+    # bezier endpoints are trimmed to node rims (curves exist and start offset from centers)
+    assert html.count("<path d=\"M") == len(top["links"]) + len(bottom["links"])
+    # altered baseline tokens are emphasized in the panel accent colors
+    assert f'style="fill:{CATEGORY_COLORS["clinical"]};font-weight:600"> quick<' in html
+    assert f'style="fill:{CATEGORY_COLORS["off_target"]};font-weight:600"> swift<' in html
+    assert html.count("font-weight:600\">") == 2  # only the altered token in each panel
     # inline category labels instead of a detached legend
     assert ">Clinical</text>" in html and ">Off-target</text>" in html
     assert "<legend" not in html
