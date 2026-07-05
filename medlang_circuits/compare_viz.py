@@ -364,10 +364,10 @@ def _panel_svg(
     parts = [f'<g transform="translate({x_offset:.0f},{y_offset:.0f})">']
     parts.append(f'<text x="{MARGIN["left"]}" y="22" class="t">{html.escape(panel["label"])}</text>')
     if headline:
-        # Top center: the panel title owns the left, the logit label owns the right.
+        # Second line under the title: long titles can reach the panel center, and the
+        # logit spread owns the right - the title's own left column is always free.
         parts.append(
-            f'<text x="{PANEL_WIDTH / 2:.0f}" y="28" class="pp" text-anchor="middle">'
-            f"{html.escape(headline)}</text>"
+            f'<text x="{MARGIN["left"]}" y="48" class="pp">{html.escape(headline)}</text>'
         )
 
     positions, radius = prep["positions"], prep["radius"]
@@ -438,9 +438,8 @@ def _panel_svg(
         parts.append(f'<text x="{prep["x_of"](i):.1f}" y="{token_y}" class="tk"{style}>{html.escape(token)}</text>')
 
     if prep["dropped_edges"]:
-        note_y = 44 if headline else 22
         parts.append(
-            f'<text x="{PANEL_WIDTH - MARGIN["right"]}" y="{note_y}" class="lk" text-anchor="end">'
+            f'<text x="{PANEL_WIDTH - MARGIN["right"]}" y="22" class="lk" text-anchor="end">'
             f"{prep['dropped_edges']} weakest edges omitted</text>"
         )
     parts.append("</g>")
@@ -742,7 +741,7 @@ def _paint_panel_ax(ax, prep: dict[str, Any], panel: dict[str, Any]) -> None:
         )
 
     if panel.get("headline"):
-        ax.text(PANEL_WIDTH / 2, panel_h - 24, panel["headline"], ha="center",
+        ax.text(MARGIN["left"], panel_h - 44, panel["headline"], ha="left",
                 fontsize=13, fontweight="bold", color=INK, family="monospace")
 
     ax.set_title(panel["label"], fontsize=11, loc="left", color=INK)
