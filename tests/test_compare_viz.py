@@ -16,7 +16,9 @@ from medlang_circuits.feature_tagger import annotate_graph
 def _tagged_pair():
     top, bottom = make_graph(), make_graph()
     bottom["metadata"]["prompt"] = "patient wording variant"
-    bottom["metadata"]["prompt_tokens"] = ["the", " swift", " brown", " fox"]  # token 1 altered
+    # multi-token diff: tokens 1-2 altered, but only the compared word (" swift",
+    # the longest content token) should be emphasized; " very" must stay muted
+    bottom["metadata"]["prompt_tokens"] = ["the", " very", " swift", " brown", " fox"]
     for g in (top, bottom):
         annotate_graph(g, fetcher=build_fetcher(), keyword_config=TEST_KEYWORD_CONFIG)
     return top, bottom
@@ -38,16 +40,24 @@ def test_render_stacked_html_standalone_interactive(tmp_path):
     # tooltip readout is labeled: probability for logits, attribution mass otherwise
     assert '"wl":"Probability","w":"0.81"' in html  # fixture logit clerp "jumps (p=0.81)"
     assert '"wl":"Mass"' in html
+    # threshold value layer: only the top panel's clinical node (norm mass 0.60 >= 0.50)
+    # carries an on-chart number; the identical bottom-panel node does not
+    assert html.count('class="nv"') == 1
+    assert '>0.60</text>' in html
+    # ...and the tooltip carries the exact same normalized number alongside absolute mass
+    assert '"w":"6.000 (norm 0.60)"' in html
     # proportional node sizing: radii vary across nodes instead of a uniform value
     radii = {m for m in re.findall(r' r="([\d.]+)"', html)}
     assert len(radii) > 2
     assert all(3.0 <= float(r) <= 14.0 for r in radii)
     # bezier endpoints are trimmed to node rims (curves exist and start offset from centers)
     assert html.count("<path d=\"M") == len(top["links"]) + len(bottom["links"])
-    # altered baseline tokens are emphasized in the panel accent colors
+    # only the single compared word is emphasized per panel, in the panel accent color;
+    # surrounding differenced tokens (" very") stay muted like static tokens
     assert f'style="fill:{CATEGORY_COLORS["clinical"]};font-weight:600"> quick<' in html
     assert f'style="fill:{CATEGORY_COLORS["off_target"]};font-weight:600"> swift<' in html
-    assert html.count("font-weight:600\">") == 2  # only the altered token in each panel
+    assert 'font-weight:600"> very<' not in html
+    assert html.count("font-weight:600\">") == 2  # exactly one emphasized token per panel
     # inline category labels instead of a detached legend
     assert ">Clinical</text>" in html and ">Off-target</text>" in html
     assert "<legend" not in html

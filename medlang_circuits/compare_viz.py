@@ -17,9 +17,13 @@ Tufte-styled rendering (maximize data-ink, minimize chartjunk):
 - the layer axis is dynamic: only layers that contain active nodes get a row,
   and runs of empty layers are compressed to a small elision gap (marked by a
   faint tick), so deep models stay compact
-- the token baseline is a micro/macro read: tokens that differ between the
-  two phrasings are emphasized (bold, panel accent color) so the linguistic
-  intervention is visible before tracing paths upward
+- the token baseline is a micro/macro read: of the tokens that differ between
+  the two phrasings, only the single compared content word is emphasized
+  (bold, panel accent color: "depression" in blue vs "blues" in orange);
+  surrounding differenced function words stay muted like static tokens
+- top (clinical) panel only: clinical nodes whose normalized attribution mass
+  meets NODE_VALUE_THRESHOLD get their value printed beside the node, showing
+  at a glance which intermediate concepts drive the high-confidence prediction
 
 Outputs:
     render_stacked_html - one standalone, responsive index.html for static
@@ -70,6 +74,10 @@ FEATURE_RADIUS_SPAN = 6.0  # feature nodes span 4..10px by sqrt(mass fraction)
 STRUCTURAL_RADIUS_SPAN = 2.0  # structural marks span 3..5px
 JITTER = 9.0
 
+# Clinical nodes at or above this normalized attribution mass get an on-chart
+# value label (top/clinical panel only).
+NODE_VALUE_THRESHOLD = 0.5
+
 _LOGIT_PROB_RE = re.compile(r"\(p=([0-9.]+)\)")
 
 
@@ -115,6 +123,29 @@ def _altered_token_indices(tokens_a: list[str], tokens_b: list[str]) -> tuple[se
         keep_a.update(range(block.a, block.a + block.size))
         keep_b.update(range(block.b, block.b + block.size))
     return set(range(len(tokens_a))) - keep_a, set(range(len(tokens_b))) - keep_b
+
+
+def _focus_token_index(tokens: list[str], altered: set[int], focus_token: str | None = None) -> set[int]:
+    """Narrow the altered-token set to the single compared content word.
+
+    In "I've got the blues" vs "I have depression" the whole phrase differs, but
+    only blues/depression is the lexical substitution worth emphasizing - the
+    surrounding function words stay muted. Heuristic: the altered token with the
+    longest alphabetic core (ties -> the later token). ``focus_token`` overrides
+    the heuristic with an explicit token match (case-insensitive, whitespace-
+    insensitive)."""
+    if focus_token is not None:
+        target = focus_token.strip().lower()
+        for i in sorted(altered):
+            if tokens[i].strip().lower() == target:
+                return {i}
+    best: int | None = None
+    best_len = 0
+    for i in sorted(altered):
+        core = re.sub(r"[^A-Za-z]", "", tokens[i])
+        if core and len(core) >= best_len:
+            best, best_len = i, len(core)
+    return {best} if best is not None else set()
 
 
 def _prepare(graph: dict[str, Any], max_edges: int) -> dict[str, Any]:
@@ -168,9 +199,8 @@ def _prepare(graph: dict[str, Any], max_edges: int) -> dict[str, Any]:
         node_weight[link.get("source")] += w
         node_weight[link.get("target")] += w
     max_mass = max(node_weight.values(), default=1.0) or 1.0
-    radius = {
-        n["node_id"]: _node_radius(n, node_weight[n["node_id"]] / max_mass) for n in nodes
-    }
+    mass_frac = {n["node_id"]: node_weight[n["node_id"]] / max_mass for n in nodes}
+    radius = {n["node_id"]: _node_radius(n, mass_frac[n["node_id"]]) for n in nodes}
 
     links = sorted(graph.get("links", []), key=lambda link: -abs(link.get("weight", 0.0)))
     dropped = max(0, len(links) - max_edges)
@@ -189,6 +219,7 @@ def _prepare(graph: dict[str, Any], max_edges: int) -> dict[str, Any]:
         "links": links,
         "positions": positions,
         "radius": radius,
+        "mass_frac": mass_frac,
         "tokens": tokens,
         "x_of": x_of,
         "max_weight": max_weight,
@@ -236,18 +267,20 @@ def _bezier_d(src: tuple[float, float], tgt: tuple[float, float], r_src: float, 
     return f"M{x1:.1f},{y1:.1f} C{x1:.1f},{y1 + mid:.1f} {x2:.1f},{y2 - mid:.1f} {x2:.1f},{y2:.1f}"
 
 
-def _node_tooltip_data(node: dict[str, Any], mass: float) -> dict[str, str]:
+def _node_tooltip_data(node: dict[str, Any], mass: float, mass_frac: float) -> dict[str, str]:
     """Pre-escaped strings for the JS tooltip.
 
     ``wl``/``w`` carry the labeled numeric readout: next-token probability for
-    logit nodes, attribution mass for everything else."""
+    logit nodes, attribution mass (absolute + normalized) for everything else.
+    The normalized value is the same number printed on high-confidence clinical
+    nodes, so on-chart labels and tooltips always agree."""
     med = node.get("medlang") or {}
     description = med.get("description") or node.get("clerp") or "(no description)"
     prob = _logit_prob(node)
     if node.get("feature_type") == "logit" and prob is not None:
         weight_label, weight_value = "Probability", f"{prob:.2f}"
     else:
-        weight_label, weight_value = "Mass", f"{mass:.3f}"
+        weight_label, weight_value = "Mass", f"{mass:.3f} (norm {mass_frac:.2f})"
     return {
         "id": html.escape(f"{node.get('node_id')} · {node.get('feature_type')}"),
         "cat": html.escape(f"{med.get('category', 'structural')} ({med.get('method', '-')})"),
@@ -264,6 +297,7 @@ def _panel_svg(
     panel_index: int,
     emphasized_tokens: set[int],
     emphasis_color: str,
+    value_labels: bool,
 ) -> tuple[list[str], list[dict]]:
     parts = [f'<g transform="translate(0,{y_offset:.0f})">']
     parts.append(f'<text x="{MARGIN["left"]}" y="22" class="t">{html.escape(title)}</text>')
@@ -299,8 +333,9 @@ def _panel_svg(
         category = _category(node)
         color = CATEGORY_COLORS[category]
         r = radius[node_id]
+        frac = prep["mass_frac"][node_id]
         idx = len(tooltip_data)
-        tooltip_data.append(_node_tooltip_data(node, prep["node_weight"][node_id]))
+        tooltip_data.append(_node_tooltip_data(node, prep["node_weight"][node_id], frac))
         hook = f'class="n" data-p="{panel_index}" data-i="{idx}"'
         if node.get("feature_type") == "embedding":
             parts.append(
@@ -313,6 +348,9 @@ def _panel_svg(
             parts.append(
                 f'<text x="{pos[0]:.1f}" y="{pos[1] - r - 5:.1f}" class="ll">{html.escape(node["clerp"][:24])}</text>'
             )
+        # Threshold-based value layer: high-confidence clinical intermediates only.
+        if value_labels and category == "clinical" and frac >= NODE_VALUE_THRESHOLD:
+            parts.append(f'<text x="{pos[0]:.1f}" y="{pos[1] + r + 10:.1f}" class="nv">{frac:.2f}</text>')
 
     # Inline category labels beside each category's most prominent node (no detached legend).
     for category, node_id in prep["prominent"].items():
@@ -351,6 +389,7 @@ _CSS = (
     ".tk{font-size:10.5px;text-anchor:middle;fill:" + TOKEN_INK + ";font-family:ui-monospace,'SF Mono',Menlo,monospace}"
     ".ll{font-size:9.5px;text-anchor:middle;fill:#374151;font-family:ui-monospace,Menlo,monospace}"
     ".lk{font-size:9px;text-anchor:end;fill:" + FAINT_INK + "}"
+    ".nv{font-size:9px;text-anchor:middle;fill:#6b7280;font-family:ui-monospace,Menlo,monospace}"
     ".cl{font-size:11px;font-weight:600}"
     ".n{cursor:pointer}.n:hover{stroke:" + INK + ";stroke-width:1.6}"
     "#tt{position:absolute;display:none;max-width:340px;background:#fff;border:1px solid #d1d5db;"
@@ -382,25 +421,31 @@ def render_stacked_html(
     top_title: str | None = None,
     bottom_title: str | None = None,
     max_edges: int = DEFAULT_MAX_EDGES,
+    top_focus_token: str | None = None,
+    bottom_focus_token: str | None = None,
 ) -> str:
-    """Write a standalone, responsive comparison page (GitHub Pages ready); returns out_path."""
-    altered_top, altered_bottom = _altered_token_indices(
-        top_graph.get("metadata", {}).get("prompt_tokens", []),
-        bottom_graph.get("metadata", {}).get("prompt_tokens", []),
-    )
+    """Write a standalone, responsive comparison page (GitHub Pages ready); returns out_path.
+
+    ``top_focus_token``/``bottom_focus_token`` override the heuristic pick of the
+    single emphasized baseline word per panel."""
+    top_tokens = top_graph.get("metadata", {}).get("prompt_tokens", [])
+    bottom_tokens = bottom_graph.get("metadata", {}).get("prompt_tokens", [])
+    altered_top, altered_bottom = _altered_token_indices(top_tokens, bottom_tokens)
+    focus_top = _focus_token_index(top_tokens, altered_top, top_focus_token)
+    focus_bottom = _focus_token_index(bottom_tokens, altered_bottom, bottom_focus_token)
     panels = (
-        (top_graph, "Clinical wording", top_title, altered_top, CATEGORY_COLORS["clinical"]),
-        (bottom_graph, "Patient wording", bottom_title, altered_bottom, CATEGORY_COLORS["off_target"]),
+        (top_graph, "Clinical wording", top_title, focus_top, CATEGORY_COLORS["clinical"], True),
+        (bottom_graph, "Patient wording", bottom_title, focus_bottom, CATEGORY_COLORS["off_target"], False),
     )
 
     svg_parts: list[str] = []
     data: list[list[dict]] = []
     y_offset = 0.0
-    for panel_index, (graph, default_label, title, emphasized, accent) in enumerate(panels):
+    for panel_index, (graph, default_label, title, emphasized, accent, value_labels) in enumerate(panels):
         prep = _prepare(graph, max_edges)
         prompt = graph.get("metadata", {}).get("prompt", "")
         label = title or f"{default_label}: “{prompt}”"
-        parts, tooltip_data = _panel_svg(label, prep, y_offset, panel_index, emphasized, accent)
+        parts, tooltip_data = _panel_svg(label, prep, y_offset, panel_index, emphasized, accent, value_labels)
         svg_parts.extend(parts)
         data.append(tooltip_data)
         y_offset += prep["panel_height"] + 14
@@ -417,8 +462,9 @@ def render_stacked_html(
         "<p class=\"sub\">Hover a node for its feature id, category, probability/attribution mass, and "
         "autointerp description. Node size scales with attribution mass (logits: next-token "
         "probability); curve width and opacity scale with |attribution weight|; "
-        f"<span style=\"color:{NEGATIVE_EDGE_COLOR}\">red</span> curves are negative. Emphasized "
-        "baseline tokens mark where the two phrasings differ.</p>"
+        f"<span style=\"color:{NEGATIVE_EDGE_COLOR}\">red</span> curves are negative. The emphasized "
+        "baseline token in each panel marks the compared word; numbers beside clinical nodes (top "
+        f"panel) show normalized attribution mass &#8805; {NODE_VALUE_THRESHOLD:.2f}.</p>"
         f'<svg viewBox="0 0 {PANEL_WIDTH} {total_height}" xmlns="http://www.w3.org/2000/svg">'
         f"{''.join(svg_parts)}</svg></main>"
         '<div id="tt"></div>'
@@ -438,6 +484,8 @@ def render_stacked_png(
     bottom_title: str | None = None,
     max_edges: int = DEFAULT_MAX_EDGES,
     dpi: int = 160,
+    top_focus_token: str | None = None,
+    bottom_focus_token: str | None = None,
 ) -> str:
     """Write a static stacked-comparison PNG (networkx + matplotlib), same styling; returns out_path."""
     import matplotlib
@@ -448,10 +496,11 @@ def render_stacked_png(
     from matplotlib.patches import PathPatch
     from matplotlib.path import Path as MplPath
 
-    altered_top, altered_bottom = _altered_token_indices(
-        top_graph.get("metadata", {}).get("prompt_tokens", []),
-        bottom_graph.get("metadata", {}).get("prompt_tokens", []),
-    )
+    top_tokens = top_graph.get("metadata", {}).get("prompt_tokens", [])
+    bottom_tokens = bottom_graph.get("metadata", {}).get("prompt_tokens", [])
+    altered_top, altered_bottom = _altered_token_indices(top_tokens, bottom_tokens)
+    focus_top = _focus_token_index(top_tokens, altered_top, top_focus_token)
+    focus_bottom = _focus_token_index(bottom_tokens, altered_bottom, bottom_focus_token)
     preps = [_prepare(g, max_edges) for g in (top_graph, bottom_graph)]
     heights = [p["panel_height"] for p in preps]
     fig_height = sum(heights) / 90.0
@@ -459,9 +508,11 @@ def render_stacked_png(
         2, 1, figsize=(13, max(fig_height, 6)), height_ratios=heights, facecolor="white"
     )
 
-    for ax, prep, graph, default_label, title, emphasized, accent in (
-        (axes[0], preps[0], top_graph, "Clinical wording", top_title, altered_top, CATEGORY_COLORS["clinical"]),
-        (axes[1], preps[1], bottom_graph, "Patient wording", bottom_title, altered_bottom, CATEGORY_COLORS["off_target"]),
+    for ax, prep, graph, default_label, title, emphasized, accent, value_labels in (
+        (axes[0], preps[0], top_graph, "Clinical wording", top_title, focus_top,
+         CATEGORY_COLORS["clinical"], True),
+        (axes[1], preps[1], bottom_graph, "Patient wording", bottom_title, focus_bottom,
+         CATEGORY_COLORS["off_target"], False),
     ):
         panel_h = prep["panel_height"]
         positions = {nid: (x, panel_h - y) for nid, (x, y) in prep["positions"].items()}  # flip y
@@ -493,6 +544,10 @@ def render_stacked_png(
             if node.get("feature_type") == "logit" and node.get("clerp"):
                 ax.text(x, y + r + 5, node["clerp"][:24], ha="center", fontsize=7,
                         color="#374151", family="monospace")
+            frac = prep["mass_frac"][node_id]
+            if value_labels and _category(node) == "clinical" and frac >= NODE_VALUE_THRESHOLD:
+                ax.text(x, y - r - 11, f"{frac:.2f}", ha="center", fontsize=7,
+                        color="#6b7280", family="monospace")
 
         for category, node_id in prep["prominent"].items():
             x, y = positions[node_id]
