@@ -1,23 +1,33 @@
 """Task 2: stacked two-panel comparison visualization of tagged graphs.
 
-Renders two attribution graphs stacked vertically (clinical wording on top,
-patient wording below) so each prompt's token string lays out horizontally.
+Tufte-styled rendering (maximize data-ink, minimize chartjunk):
 
-Layout per panel: x = token position (ctx_idx), y = layer (embeddings at the
-bottom, logits on top). Node color comes from the Task 1 ``medlang`` metadata:
-clinical = blue, off_target = orange, structural = gray. Edge width and opacity
-scale with |attribution weight|; negative-weight edges are dashed red.
+- pure white background; no bounding boxes, grids, or panel fills
+- no detached legend: category names are written inline next to each
+  category's most prominent node, in that category's color
+- structural/embedding/logit nodes and structural-to-structural edges are a
+  muted light gray so they recede; saturated blue (clinical) and orange
+  (off_target) are reserved for transcoder features
+- edges are cubic bezier curves whose stroke width and opacity scale with
+  |attribution weight| - near-zero weights are nearly invisible
+- the layer axis is dynamic: only layers that contain active nodes get a row,
+  and runs of empty layers are compressed to a small elision gap (marked by a
+  faint tick), so deep models stay compact
 
 Outputs:
-    render_stacked_html - one self-contained .html (inline SVG, hover tooltips
-        via <title>, no external assets)
-    render_stacked_png  - matplotlib/networkx static figure for papers/slides
+    render_stacked_html - one standalone, responsive index.html for static
+        hosting (GitHub Pages): minified inline CSS/JS, interactive hover
+        tooltips showing feature id, category, attribution weight, and the
+        full autointerp description fetched during tagging
+    render_stacked_png  - matplotlib/networkx static figure, same styling
 """
 
 from __future__ import annotations
 
 import html
+import json
 import logging
+from collections import defaultdict
 from typing import Any
 
 from medlang_circuits.schema_utils import max_numeric_layer, node_display_layer
@@ -25,54 +35,101 @@ from medlang_circuits.schema_utils import max_numeric_layer, node_display_layer
 logger = logging.getLogger(__name__)
 
 CATEGORY_COLORS = {
-    "clinical": "#2563eb",  # blue
-    "off_target": "#f97316",  # orange
-    "structural": "#9ca3af",  # gray
+    "clinical": "#2563eb",
+    "off_target": "#f97316",
+    "structural": "#c3c9d2",  # muted light gray - recedes behind feature nodes
 }
-POSITIVE_EDGE_COLOR = "#64748b"
-NEGATIVE_EDGE_COLOR = "#ef4444"
-DEFAULT_MAX_EDGES = 400
+CATEGORY_LABELS = {"clinical": "Clinical", "off_target": "Off-target", "structural": "Structural"}
+POSITIVE_EDGE_COLOR = "#5b6b7f"
+NEGATIVE_EDGE_COLOR = "#d1584d"
+MUTED_EDGE_COLOR = "#dfe3e8"
+INK = "#111827"
+FAINT_INK = "#9aa3af"
 
-PANEL_WIDTH = 1200
-PANEL_HEIGHT = 460
-MARGIN = {"left": 60, "right": 30, "top": 44, "bottom": 58}
-NODE_RADIUS = 5.5
+DEFAULT_MAX_EDGES = 400
+PANEL_WIDTH = 1180
+ROW_HEIGHT = 34
+ELIDED_GAP_ROWS = 1.45  # vertical space for a run of >=1 empty layers
+MARGIN = {"left": 66, "right": 34, "top": 40, "bottom": 56}
+FEATURE_RADIUS = 5.0
+STRUCTURAL_RADIUS = 3.0
+
+
+def _category(node: dict[str, Any]) -> str:
+    return (node.get("medlang") or {}).get("category") or "structural"
+
+
+def _layer_label(layer: int, top_layer: int) -> str:
+    if layer == -1:
+        return "emb"
+    if layer == top_layer + 1:
+        return "logit"
+    return f"L{layer}"
 
 
 def _prepare(graph: dict[str, Any], max_edges: int) -> dict[str, Any]:
-    """Compute node positions and the pruned edge list for one panel."""
+    """Layout one panel: positions, pruned edges, dynamic layer rows, node stats."""
     nodes = graph.get("nodes", [])
-    top_layer = max_numeric_layer(nodes)
     tokens = graph.get("metadata", {}).get("prompt_tokens", [])
-    n_cols = max([len(tokens)] + [n.get("ctx_idx", 0) + 1 for n in nodes])
-    layer_span = top_layer + 3  # -1 (embeddings) .. top_layer + 1 (logits)
+    top_layer = max_numeric_layer(nodes)
+
+    layer_of = {n["node_id"]: node_display_layer(n, top_layer) for n in nodes}
+
+    # Dynamic y-axis: only occupied layers get a row; empty runs compress to a small gap.
+    occupied = sorted(set(layer_of.values()))
+    row_of: dict[int, float] = {}
+    cursor = 0.0
+    elisions: list[float] = []  # row positions of compressed gaps (for faint tick marks)
+    for i, layer in enumerate(occupied):
+        if i > 0:
+            step = 1.0 if layer - occupied[i - 1] == 1 else ELIDED_GAP_ROWS
+            if step != 1.0:
+                elisions.append(cursor + step / 2)
+            cursor += step
+        row_of[layer] = cursor
+    total_rows = max(cursor, 1.0)
 
     inner_w = PANEL_WIDTH - MARGIN["left"] - MARGIN["right"]
-    inner_h = PANEL_HEIGHT - MARGIN["top"] - MARGIN["bottom"]
+    panel_height = int(MARGIN["top"] + MARGIN["bottom"] + total_rows * ROW_HEIGHT)
+    n_cols = max([len(tokens)] + [n.get("ctx_idx", 0) + 1 for n in nodes])
 
-    def x_of(ctx_idx: int) -> float:
+    def x_of(ctx_idx: float) -> float:
         return MARGIN["left"] + (ctx_idx + 0.5) / n_cols * inner_w
 
-    def y_of(layer: int) -> float:
-        return MARGIN["top"] + (1 - (layer + 1.5) / layer_span) * inner_h
+    def y_of_row(row: float) -> float:
+        return MARGIN["top"] + (total_rows - row) * ROW_HEIGHT
 
     positions: dict[str, tuple[float, float]] = {}
-    # spread nodes sharing a (ctx, layer) cell slightly so they don't overlap
-    cell_counts: dict[tuple[int, int], int] = {}
+    cell_counts: dict[tuple[int, int], int] = defaultdict(int)
     for node in nodes:
-        layer = node_display_layer(node, top_layer)
+        layer = layer_of[node["node_id"]]
         ctx = node.get("ctx_idx", 0)
-        offset_slot = cell_counts.get((ctx, layer), 0)
-        cell_counts[(ctx, layer)] = offset_slot + 1
-        dx = ((offset_slot % 3) - 1) * NODE_RADIUS * 1.6
-        dy = (offset_slot // 3) * NODE_RADIUS * 1.8
-        positions[node["node_id"]] = (x_of(ctx) + dx, y_of(layer) - dy)
+        slot = cell_counts[(ctx, layer)]
+        cell_counts[(ctx, layer)] += 1
+        dx = ((slot % 3) - 1) * FEATURE_RADIUS * 1.8
+        dy = (slot // 3) * FEATURE_RADIUS * 2.0
+        positions[node["node_id"]] = (x_of(ctx) + dx, y_of_row(row_of[layer]) - dy)
+
+    # Total |incident weight| per node = the node's attribution mass (shown in tooltips,
+    # and used to pick the most prominent node per category for inline labels).
+    node_weight: dict[str, float] = defaultdict(float)
+    for link in graph.get("links", []):
+        w = abs(link.get("weight", 0.0))
+        node_weight[link.get("source")] += w
+        node_weight[link.get("target")] += w
 
     links = sorted(graph.get("links", []), key=lambda link: -abs(link.get("weight", 0.0)))
     dropped = max(0, len(links) - max_edges)
     links = links[:max_edges]
     max_weight = max((abs(link.get("weight", 0.0)) for link in links), default=1.0) or 1.0
 
+    prominent: dict[str, str] = {}
+    for category in CATEGORY_COLORS:
+        candidates = [n for n in nodes if _category(n) == category]
+        if candidates:
+            prominent[category] = max(candidates, key=lambda n: node_weight[n["node_id"]])["node_id"]
+
+    layer_ticks = [(_layer_label(layer, top_layer), y_of_row(row)) for layer, row in row_of.items()]
     return {
         "nodes": nodes,
         "links": links,
@@ -81,91 +138,147 @@ def _prepare(graph: dict[str, Any], max_edges: int) -> dict[str, Any]:
         "x_of": x_of,
         "max_weight": max_weight,
         "dropped_edges": dropped,
-        "top_layer": top_layer,
+        "node_weight": node_weight,
+        "prominent": prominent,
+        "layer_ticks": layer_ticks,
+        "elision_ys": [y_of_row(row) for row in elisions],
+        "panel_height": panel_height,
+        "category_of": {n["node_id"]: _category(n) for n in nodes},
     }
 
 
-def _node_color(node: dict[str, Any]) -> str:
-    category = (node.get("medlang") or {}).get("category")
-    return CATEGORY_COLORS.get(category, CATEGORY_COLORS["structural"])
+def _edge_style(weight: float, max_weight: float, muted: bool) -> tuple[str, float, float]:
+    """(color, stroke_width, opacity). Low weights fade to near-invisible."""
+    frac = abs(weight) / max_weight if max_weight else 0.0
+    width = 0.3 + 2.3 * frac**1.2
+    opacity = 0.03 + 0.55 * frac**1.6
+    if muted:
+        return MUTED_EDGE_COLOR, min(width, 1.0), min(opacity, 0.35)
+    return (POSITIVE_EDGE_COLOR if weight >= 0 else NEGATIVE_EDGE_COLOR), width, opacity
 
 
-def _node_tooltip(node: dict[str, Any]) -> str:
+def _bezier_d(src: tuple[float, float], tgt: tuple[float, float]) -> str:
+    """Vertical-tangent cubic bezier from source up to target."""
+    (x1, y1), (x2, y2) = src, tgt
+    mid = (y2 - y1) * 0.55
+    return f"M{x1:.1f},{y1:.1f} C{x1:.1f},{y1 + mid:.1f} {x2:.1f},{y2 - mid:.1f} {x2:.1f},{y2:.1f}"
+
+
+def _node_tooltip_data(node: dict[str, Any], weight: float) -> dict[str, str]:
+    """Pre-escaped strings for the JS tooltip (feature id, category, weight, description)."""
     med = node.get("medlang") or {}
-    parts = [
-        f"{node.get('node_id')} [{node.get('feature_type')}]",
-        f"category: {med.get('category', '?')} ({med.get('method', '?')})",
-    ]
-    if node.get("clerp"):
-        parts.append(node["clerp"])
-    if med.get("matched_terms"):
-        parts.append("matched: " + ", ".join(med["matched_terms"]))
-    return "\n".join(parts)
+    description = med.get("description") or node.get("clerp") or "(no description)"
+    return {
+        "id": html.escape(f"{node.get('node_id')} · {node.get('feature_type')}"),
+        "cat": html.escape(f"{med.get('category', 'structural')} ({med.get('method', '-')})"),
+        "w": f"{weight:.3f}",
+        "desc": html.escape(str(description)),
+    }
 
 
-def _panel_svg(title: str, prep: dict[str, Any], y_offset: int) -> list[str]:
-    parts = [f'<g transform="translate(0,{y_offset})">']
-    parts.append(
-        f'<text x="{MARGIN["left"]}" y="24" class="panel-title">{html.escape(title)}</text>'
-    )
+def _panel_svg(title: str, prep: dict[str, Any], y_offset: float, panel_index: int) -> tuple[list[str], list[dict]]:
+    parts = [f'<g transform="translate(0,{y_offset:.0f})">']
+    parts.append(f'<text x="{MARGIN["left"]}" y="22" class="t">{html.escape(title)}</text>')
 
-    positions, max_weight = prep["positions"], prep["max_weight"]
+    positions, max_weight, category_of = prep["positions"], prep["max_weight"], prep["category_of"]
+
+    for label, y in prep["layer_ticks"]:
+        parts.append(f'<text x="{MARGIN["left"] - 12}" y="{y + 3:.1f}" class="lk">{label}</text>')
+    for y in prep["elision_ys"]:
+        parts.append(f'<text x="{MARGIN["left"] - 12}" y="{y + 3:.1f}" class="lk">&#8942;</text>')
+
     for link in prep["links"]:
         src, tgt = positions.get(link.get("source")), positions.get(link.get("target"))
         if src is None or tgt is None:
             continue
         weight = link.get("weight", 0.0)
-        frac = abs(weight) / max_weight
-        width = 0.4 + 2.6 * frac
-        opacity = 0.12 + 0.55 * frac
-        color = POSITIVE_EDGE_COLOR if weight >= 0 else NEGATIVE_EDGE_COLOR
-        dash = "" if weight >= 0 else ' stroke-dasharray="4 3"'
+        muted = category_of.get(link.get("source")) == "structural" and category_of.get(link.get("target")) == "structural"
+        color, width, opacity = _edge_style(weight, max_weight, muted)
         parts.append(
-            f'<line x1="{src[0]:.1f}" y1="{src[1]:.1f}" x2="{tgt[0]:.1f}" y2="{tgt[1]:.1f}" '
-            f'stroke="{color}" stroke-width="{width:.2f}" stroke-opacity="{opacity:.2f}"{dash}>'
-            f"<title>{html.escape(link.get('source', ''))} -&gt; {html.escape(link.get('target', ''))} "
-            f"(w={weight:.3f})</title></line>"
+            f'<path d="{_bezier_d(src, tgt)}" fill="none" stroke="{color}" '
+            f'stroke-width="{width:.2f}" stroke-opacity="{opacity:.3f}"/>'
         )
 
+    tooltip_data: list[dict] = []
     for node in prep["nodes"]:
         pos = positions.get(node["node_id"])
         if pos is None:
             continue
-        feature_type = node.get("feature_type")
-        color = _node_color(node)
-        tooltip = f"<title>{html.escape(_node_tooltip(node))}</title>"
-        if feature_type == "embedding":
-            parts.append(
-                f'<rect x="{pos[0] - 5:.1f}" y="{pos[1] - 5:.1f}" width="10" height="10" '
-                f'fill="{color}" class="node">{tooltip}</rect>'
-            )
-        elif feature_type == "logit":
-            label = html.escape((node.get("clerp") or "")[:24])
-            parts.append(
-                f'<g class="node"><circle cx="{pos[0]:.1f}" cy="{pos[1]:.1f}" r="{NODE_RADIUS}" '
-                f'fill="{color}" stroke="#334155" stroke-width="1.2">{tooltip}</circle>'
-                f'<text x="{pos[0]:.1f}" y="{pos[1] - 9:.1f}" class="logit-label">{label}</text></g>'
-            )
+        category = _category(node)
+        color = CATEGORY_COLORS[category]
+        idx = len(tooltip_data)
+        tooltip_data.append(_node_tooltip_data(node, prep["node_weight"][node["node_id"]]))
+        hook = f'class="n" data-p="{panel_index}" data-i="{idx}"'
+        if category == "structural":
+            if node.get("feature_type") == "embedding":
+                parts.append(
+                    f'<rect {hook} x="{pos[0] - 3:.1f}" y="{pos[1] - 3:.1f}" width="6" height="6" fill="{color}"/>'
+                )
+            else:
+                parts.append(f'<circle {hook} cx="{pos[0]:.1f}" cy="{pos[1]:.1f}" r="{STRUCTURAL_RADIUS}" fill="{color}"/>')
+            if node.get("feature_type") == "logit" and node.get("clerp"):
+                parts.append(
+                    f'<text x="{pos[0]:.1f}" y="{pos[1] - 8:.1f}" class="ll">{html.escape(node["clerp"][:24])}</text>'
+                )
         else:
-            parts.append(
-                f'<circle cx="{pos[0]:.1f}" cy="{pos[1]:.1f}" r="{NODE_RADIUS}" fill="{color}" '
-                f'class="node">{tooltip}</circle>'
-            )
+            parts.append(f'<circle {hook} cx="{pos[0]:.1f}" cy="{pos[1]:.1f}" r="{FEATURE_RADIUS}" fill="{color}"/>')
 
-    token_y = PANEL_HEIGHT - MARGIN["bottom"] + 24
-    for i, token in enumerate(prep["tokens"]):
+    # Inline category labels beside each category's most prominent node (no detached legend).
+    for category, node_id in prep["prominent"].items():
+        pos = positions.get(node_id)
+        if pos is None:
+            continue
         parts.append(
-            f'<text x="{prep["x_of"](i):.1f}" y="{token_y}" class="token">{html.escape(token)}</text>'
+            f'<text x="{pos[0] + 10:.1f}" y="{pos[1] + 4:.1f}" class="cl" fill="{CATEGORY_COLORS[category]}">'
+            f"{CATEGORY_LABELS[category]}</text>"
         )
+
+    token_y = prep["panel_height"] - MARGIN["bottom"] + 26
+    for i, token in enumerate(prep["tokens"]):
+        parts.append(f'<text x="{prep["x_of"](i):.1f}" y="{token_y}" class="tk">{html.escape(token)}</text>')
 
     if prep["dropped_edges"]:
         parts.append(
-            f'<text x="{PANEL_WIDTH - MARGIN["right"]}" y="24" class="note" text-anchor="end">'
-            f"{prep['dropped_edges']} weakest edges hidden</text>"
+            f'<text x="{PANEL_WIDTH - MARGIN["right"]}" y="22" class="lk" text-anchor="end">'
+            f"{prep['dropped_edges']} weakest edges omitted</text>"
         )
-    parts.append(f'<text x="14" y="{MARGIN["top"] + 8}" class="axis">layer &#8593;</text>')
     parts.append("</g>")
-    return parts
+    return parts, tooltip_data
+
+
+# Minified inline assets for the standalone export.
+_CSS = (
+    "html,body{background:#fff;margin:0;padding:0}"
+    "body{font-family:-apple-system,'Helvetica Neue',Helvetica,Arial,sans-serif;color:" + INK + "}"
+    "main{max-width:1240px;margin:0 auto;padding:20px 16px}"
+    "h1{font-size:17px;font-weight:600;margin:0 0 2px}"
+    "p.sub{font-size:12px;color:" + FAINT_INK + ";margin:0 0 14px}"
+    "svg{width:100%;height:auto;display:block}"
+    ".t{font-size:13px;font-weight:600;fill:" + INK + "}"
+    ".tk{font-size:10.5px;text-anchor:middle;fill:#475569;font-family:ui-monospace,'SF Mono',Menlo,monospace}"
+    ".ll{font-size:9.5px;text-anchor:middle;fill:#374151;font-family:ui-monospace,Menlo,monospace}"
+    ".lk{font-size:9px;text-anchor:end;fill:" + FAINT_INK + "}"
+    ".cl{font-size:11px;font-weight:600}"
+    ".n{cursor:pointer}.n:hover{stroke:" + INK + ";stroke-width:1.6}"
+    "#tt{position:absolute;display:none;max-width:340px;background:#fff;border:1px solid #d1d5db;"
+    "border-radius:4px;padding:8px 10px;font-size:12px;line-height:1.45;box-shadow:0 2px 8px rgba(0,0,0,.09);"
+    "pointer-events:none;z-index:9}"
+    "#tt .h{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#334155}"
+    "#tt .c{font-weight:600}#tt .d{color:#374151;margin-top:3px}"
+)
+
+_JS = (
+    "var tt=document.getElementById('tt');"
+    "document.querySelectorAll('.n').forEach(function(e){"
+    "e.addEventListener('mousemove',function(ev){"
+    "var d=DATA[+e.dataset.p][+e.dataset.i];"
+    "tt.innerHTML='<div class=h>'+d.id+'</div><div class=c>'+d.cat+' &middot; attribution '+d.w+'</div><div class=d>'+d.desc+'</div>';"
+    "tt.style.display='block';"
+    "var x=ev.pageX+14,y=ev.pageY+12;"
+    "if(x+360>document.documentElement.clientWidth)x=ev.pageX-354;"
+    "tt.style.left=x+'px';tt.style.top=y+'px';});"
+    "e.addEventListener('mouseleave',function(){tt.style.display='none';});});"
+)
 
 
 def render_stacked_html(
@@ -176,47 +289,41 @@ def render_stacked_html(
     bottom_title: str | None = None,
     max_edges: int = DEFAULT_MAX_EDGES,
 ) -> str:
-    """Write a self-contained stacked-comparison HTML file; returns out_path."""
-    panels = []
-    for graph, default_label, offset, title in (
-        (top_graph, "Clinical wording", 0, top_title),
-        (bottom_graph, "Patient wording", PANEL_HEIGHT + 16, bottom_title),
+    """Write a standalone, responsive comparison page (GitHub Pages ready); returns out_path."""
+    svg_parts: list[str] = []
+    data: list[list[dict]] = []
+    y_offset = 0.0
+    for panel_index, (graph, default_label, title) in enumerate(
+        ((top_graph, "Clinical wording", top_title), (bottom_graph, "Patient wording", bottom_title))
     ):
+        prep = _prepare(graph, max_edges)
         prompt = graph.get("metadata", {}).get("prompt", "")
         label = title or f"{default_label}: “{prompt}”"
-        panels.extend(_panel_svg(label, _prepare(graph, max_edges), offset))
+        parts, tooltip_data = _panel_svg(label, prep, y_offset, panel_index)
+        svg_parts.extend(parts)
+        data.append(tooltip_data)
+        y_offset += prep["panel_height"] + 14
 
-    total_height = PANEL_HEIGHT * 2 + 16
-    legend = "".join(
-        f'<span class="key"><span class="swatch" style="background:{color}"></span>{name}</span>'
-        for name, color in CATEGORY_COLORS.items()
+    total_height = int(y_offset)
+    # JSON payload is embedded in a script tag: escape "</" so descriptions can't close it.
+    payload = json.dumps(data, separators=(",", ":")).replace("</", "<\\/")
+    document = (
+        "<!doctype html><html><head><meta charset=\"utf-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+        "<title>Attribution graph comparison</title>"
+        f"<style>{_CSS}</style></head><body><main>"
+        "<h1>Attribution graph comparison</h1>"
+        "<p class=\"sub\">Hover a node for its feature id, category, attribution mass, and autointerp "
+        "description. Curve width and opacity scale with |attribution weight|; "
+        f"<span style=\"color:{NEGATIVE_EDGE_COLOR}\">red</span> curves are negative.</p>"
+        f'<svg viewBox="0 0 {PANEL_WIDTH} {total_height}" xmlns="http://www.w3.org/2000/svg">'
+        f"{''.join(svg_parts)}</svg></main>"
+        '<div id="tt"></div>'
+        f"<script>var DATA={payload};{_JS}</script></body></html>"
     )
-    document = f"""<!doctype html>
-<html><head><meta charset="utf-8"><title>Attribution graph comparison</title>
-<style>
-  body {{ font-family: system-ui, sans-serif; margin: 16px; color: #1e293b; }}
-  .panel-title {{ font-size: 14px; font-weight: 600; fill: #0f172a; }}
-  .token {{ font-size: 11px; text-anchor: middle; fill: #334155; font-family: ui-monospace, monospace; }}
-  .logit-label {{ font-size: 10px; text-anchor: middle; fill: #0f172a; font-family: ui-monospace, monospace; }}
-  .note, .axis {{ font-size: 10px; fill: #64748b; }}
-  .node:hover {{ stroke: #0f172a; stroke-width: 2px; cursor: default; }}
-  .legend {{ margin: 8px 0 12px; font-size: 12px; }}
-  .key {{ margin-right: 16px; }}
-  .swatch {{ display: inline-block; width: 10px; height: 10px; border-radius: 5px; margin-right: 4px; }}
-</style></head><body>
-<h2 style="font-size:16px">Attribution graph comparison</h2>
-<div class="legend">{legend}
-  <span class="key" style="color:{POSITIVE_EDGE_COLOR}">&#9472; positive edge</span>
-  <span class="key" style="color:{NEGATIVE_EDGE_COLOR}">&#9476; negative edge</span>
-  <span class="key">edge width &#8733; |attribution weight|</span>
-</div>
-<svg width="{PANEL_WIDTH}" height="{total_height}" viewBox="0 0 {PANEL_WIDTH} {total_height}">
-{chr(10).join(panels)}
-</svg>
-</body></html>"""
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(document)
-    logger.info("Wrote stacked HTML to %s", out_path)
+    logger.info("Wrote standalone comparison page to %s", out_path)
     return out_path
 
 
@@ -229,63 +336,75 @@ def render_stacked_png(
     max_edges: int = DEFAULT_MAX_EDGES,
     dpi: int = 160,
 ) -> str:
-    """Write a static stacked-comparison PNG via networkx + matplotlib; returns out_path."""
+    """Write a static stacked-comparison PNG (networkx + matplotlib), same styling; returns out_path."""
     import matplotlib
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import networkx as nx
+    from matplotlib.patches import PathPatch
+    from matplotlib.path import Path as MplPath
 
-    fig, axes = plt.subplots(2, 1, figsize=(14, 11))
-    for ax, graph, default_label, title in (
-        (axes[0], top_graph, "Clinical wording", top_title),
-        (axes[1], bottom_graph, "Patient wording", bottom_title),
+    preps = [_prepare(g, max_edges) for g in (top_graph, bottom_graph)]
+    heights = [p["panel_height"] for p in preps]
+    fig_height = sum(heights) / 90.0
+    fig, axes = plt.subplots(
+        2, 1, figsize=(13, max(fig_height, 6)), height_ratios=heights, facecolor="white"
+    )
+
+    for ax, prep, graph, default_label, title in (
+        (axes[0], preps[0], top_graph, "Clinical wording", top_title),
+        (axes[1], preps[1], bottom_graph, "Patient wording", bottom_title),
     ):
-        prep = _prepare(graph, max_edges)
-        g = nx.DiGraph()
-        # flip y for matplotlib (SVG y grows downward)
-        pos = {nid: (x, PANEL_HEIGHT - y) for nid, (x, y) in prep["positions"].items()}
-        for node in prep["nodes"]:
-            g.add_node(node["node_id"])
-        for link in prep["links"]:
-            if link.get("source") in pos and link.get("target") in pos:
-                g.add_edge(link["source"], link["target"], weight=link.get("weight", 0.0))
+        panel_h = prep["panel_height"]
+        positions = {nid: (x, panel_h - y) for nid, (x, y) in prep["positions"].items()}  # flip y
+        category_of = prep["category_of"]
 
-        edge_weights = [g.edges[e]["weight"] for e in g.edges]
-        max_weight = prep["max_weight"]
-        nx.draw_networkx_edges(
-            g,
-            pos,
-            ax=ax,
-            width=[0.4 + 2.6 * abs(w) / max_weight for w in edge_weights],
-            edge_color=[POSITIVE_EDGE_COLOR if w >= 0 else NEGATIVE_EDGE_COLOR for w in edge_weights],
-            alpha=0.45,
-            arrows=False,
-        )
-        nx.draw_networkx_nodes(
-            g,
-            pos,
-            ax=ax,
-            node_size=55,
-            node_color=[_node_color(n) for n in prep["nodes"]],
-            edgecolors="#334155",
-            linewidths=0.4,
-        )
+        g = nx.DiGraph()
+        g.add_nodes_from(positions)
+        for link in prep["links"]:
+            src, tgt = link.get("source"), link.get("target")
+            if src in positions and tgt in positions:
+                weight = link.get("weight", 0.0)
+                muted = category_of.get(src) == "structural" and category_of.get(tgt) == "structural"
+                color, width, opacity = _edge_style(weight, prep["max_weight"], muted)
+                (x1, y1), (x2, y2) = positions[src], positions[tgt]
+                mid = (y2 - y1) * 0.55
+                path = MplPath(
+                    [(x1, y1), (x1, y1 + mid), (x2, y2 - mid), (x2, y2)],
+                    [MplPath.MOVETO, MplPath.CURVE4, MplPath.CURVE4, MplPath.CURVE4],
+                )
+                ax.add_patch(PathPatch(path, fill=False, edgecolor=color, linewidth=width, alpha=opacity))
+
+        for node in prep["nodes"]:
+            x, y = positions[node["node_id"]]
+            category = _category(node)
+            size = FEATURE_RADIUS if category != "structural" else STRUCTURAL_RADIUS
+            marker = "s" if node.get("feature_type") == "embedding" else "o"
+            ax.scatter([x], [y], s=size**2 * 3.4, c=CATEGORY_COLORS[category], marker=marker, zorder=3)
+            if node.get("feature_type") == "logit" and node.get("clerp"):
+                ax.text(x, y + 9, node["clerp"][:24], ha="center", fontsize=7, color="#374151", family="monospace")
+
+        for category, node_id in prep["prominent"].items():
+            x, y = positions[node_id]
+            ax.text(x + 10, y - 3, CATEGORY_LABELS[category], fontsize=9, fontweight="bold",
+                    color=CATEGORY_COLORS[category])
+
+        for label, y in prep["layer_ticks"]:
+            ax.text(MARGIN["left"] - 12, panel_h - y - 3, label, ha="right", fontsize=7, color=FAINT_INK)
         for i, token in enumerate(prep["tokens"]):
-            ax.text(prep["x_of"](i), 8, token, ha="center", fontsize=8, family="monospace")
+            ax.text(prep["x_of"](i), MARGIN["bottom"] - 30, token, ha="center", fontsize=8,
+                    color="#475569", family="monospace")
+
         prompt = graph.get("metadata", {}).get("prompt", "")
-        ax.set_title(title or f"{default_label}: “{prompt}”", fontsize=11, loc="left")
+        ax.set_title(title or f"{default_label}: “{prompt}”", fontsize=11, loc="left", color=INK)
         ax.set_xlim(0, PANEL_WIDTH)
-        ax.set_ylim(0, PANEL_HEIGHT)
+        ax.set_ylim(0, panel_h)
+        ax.set_facecolor("white")
         ax.axis("off")
 
-    handles = [
-        plt.Line2D([], [], marker="o", linestyle="", color=color, label=name)
-        for name, color in CATEGORY_COLORS.items()
-    ]
-    axes[0].legend(handles=handles, loc="upper right", fontsize=9, frameon=False)
     fig.tight_layout()
-    fig.savefig(out_path, dpi=dpi)
+    fig.savefig(out_path, dpi=dpi, facecolor="white")
     plt.close(fig)
     logger.info("Wrote stacked PNG to %s", out_path)
     return out_path

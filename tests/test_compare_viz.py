@@ -1,6 +1,13 @@
+import pytest
 from conftest import TEST_KEYWORD_CONFIG, build_fetcher, make_graph
 
-from medlang_circuits.compare_viz import CATEGORY_COLORS, render_stacked_html, render_stacked_png
+from medlang_circuits.compare_viz import (
+    CATEGORY_COLORS,
+    ELIDED_GAP_ROWS,
+    _prepare,
+    render_stacked_html,
+    render_stacked_png,
+)
 from medlang_circuits.feature_tagger import annotate_graph
 
 
@@ -12,15 +19,43 @@ def _tagged_pair():
     return top, bottom
 
 
-def test_render_stacked_html(tmp_path):
+def test_render_stacked_html_standalone_interactive(tmp_path):
     top, bottom = _tagged_pair()
-    out = tmp_path / "cmp.html"
+    out = tmp_path / "index.html"
     render_stacked_html(top, bottom, str(out))
     html = out.read_text(encoding="utf-8")
+
+    # feature category colors present; interactive tooltip machinery inlined
     assert CATEGORY_COLORS["clinical"] in html
     assert CATEGORY_COLORS["off_target"] in html
+    assert 'id="tt"' in html and "var DATA=" in html
+    assert 'data-p="1"' in html and 'data-i="0"' in html
+    # full autointerp description flows into the tooltip payload
+    assert "references to alpha and beta term contexts" in html
+    # inline category labels instead of a detached legend
+    assert ">Clinical</text>" in html and ">Off-target</text>" in html
+    assert "<legend" not in html
+    # standalone + responsive: no external refs, viewport meta, fluid svg
+    body = html.split("</style>")[1]
+    assert "http://" not in body.replace("http://www.w3.org/2000/svg", "") and "https://" not in body
+    assert 'name="viewport"' in html
+    assert "viewBox=" in html
     assert "patient wording variant" in html
-    assert "<svg" in html and "http" not in html.split("</style>")[1]  # self-contained: no external refs in body
+
+
+def test_dynamic_layer_compression(graph):
+    # fixture occupies layers {-1, 3, 5, 7, 9, 27}; empty runs must be elided
+    prep = _prepare(graph, max_edges=100)
+    ys = dict(prep["layer_ticks"])
+    assert set(ys) == {"emb", "L3", "L5", "L7", "L9", "logit"}
+    row_step = abs(ys["L5"] - ys["L7"])  # adjacent occupied layers (gap of 1 empty layer -> elided)
+    # emb (-1) to L3 skips 3 empty layers, but only costs the fixed elision gap
+    assert abs(ys["emb"] - ys["L3"]) == pytest.approx(row_step)
+    # elision markers rendered for each compressed run
+    assert len(prep["elision_ys"]) == 5
+    # total height is compact: 6 occupied layers, not 29 rows
+    assert prep["panel_height"] < 500
+    assert row_step / 34 == pytest.approx(ELIDED_GAP_ROWS)
 
 
 def test_render_stacked_png(tmp_path):

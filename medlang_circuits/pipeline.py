@@ -62,7 +62,7 @@ def run_comparison(
     paths = {
         "clinical_graph": out / "clinical_graph.tagged.json",
         "patient_graph": out / "patient_graph.tagged.json",
-        "html": out / "comparison.html",
+        "html": out / "index.html",  # standalone page, ready for GitHub Pages
         "summary": out / "summary.json",
     }
     for key, graph in (("clinical_graph", clinical_graph), ("patient_graph", patient_graph)):
