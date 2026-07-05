@@ -35,14 +35,24 @@ circuit-tracer server.
    native forcing on the graph server), and `retarget_graph` prunes the
    generated graph's logit set down to the named targets.
 5. **Batch evaluation harness** — `batch_eval.run_batch` consumes a JSON array
-   of `{top_prompt, bottom_prompt, target_clinical_token?, force_target_tokens?}`
-   pairs, traces/tags/retargets each pair sequentially, computes the
-   **Language Penalty** delta (Δ = p_patient − p_clinical for the target
-   medical token, rendered as a badge between the panels), and writes numbered
-   `index_01.html` / `index_01.png` outputs plus `batch_summary.json`. With
-   `--show-mitigation` it adds the LLM translation step and renders a 3-panel
-   view (clinical / patient / translated patient) with a **Mitigation
-   Recovery** badge showing the restored probability.
+   of pair objects, traces/tags/retargets each sequentially, and writes
+   numbered `index_01.html` / `index_01.png` outputs plus `batch_summary.json`.
+   Three isolated visualization modes via `--mode`:
+   - **`2panel`** (default) — direct lexical swap: the polished two-panel
+     stack with the **Language Penalty** badge (Δ = p_patient − p_clinical
+     for the target medical token). `--show-mitigation` appends the legacy
+     third translated panel.
+   - **`4quadrant`** — the syntax-vs-terminology matrix: a 2×2 grid crossing
+     core medical keyword (clinical/patient term) with surrounding frame
+     syntax (physician/patient style). Target probability printed prominently
+     in each box; **Vocabulary Δ** badges (term swap: A→B, C→D) in the column
+     gutters and **Syntax Δ** badges (frame swap: A→C, B→D) in the row gutter.
+     Box C (patient frame + clinical term) isolates syntactic-framing bias.
+   - **`translation`** — organic downstream mitigation: the patient prompt is
+     translated by the Anthropic API and the *raw* LLM output is traced
+     natively (no template). Renders patient prompt → [LLM translation
+     interstitial] → natively traced translation, with per-panel target-
+     probability headlines and a **Recovered target probability** badge.
 
 ## Setup
 
@@ -84,21 +94,28 @@ medlang-compare \
 # Tag an existing graph JSON in place (no generation)
 medlang-compare tag path/to/graph.json
 
-# Batch evaluation over paired prompts, with the 3-panel mitigation view
-medlang-batch-eval pairs.json --out batch_out --show-mitigation
+# Batch evaluation over paired prompts (three modes)
+medlang-batch-eval pairs.json --mode 2panel --out batch_out
+medlang-batch-eval matrix.json --mode 4quadrant --out batch_out
+medlang-batch-eval patient.json --mode translation --out batch_out
 ```
 
-`pairs.json` format:
+Pair formats (`target_clinical_token` / `force_target_tokens` optional on all):
 
 ```json
-[
-  {
-    "top_prompt": "Clinical framing statement...",
-    "bottom_prompt": "Patient framing statement...",
-    "target_clinical_token": " therapist",
-    "force_target_tokens": [" therapist", " hospital"]
-  }
-]
+// --mode 2panel
+[{"top_prompt": "Clinical framing...", "bottom_prompt": "Patient framing...",
+  "target_clinical_token": " therapist", "force_target_tokens": [" therapist"]}]
+
+// --mode 4quadrant (or explicit "quadrants": {"A": ..., "B": ..., "C": ..., "D": ...})
+[{"frames": {"clinical": "I have{term}, so I need to talk to a",
+             "patient":  "I've got{term}, so I need to talk to a"},
+  "terms":  {"clinical": " depression", "patient": " the blues"},
+  "target_clinical_token": " therapist"}]
+
+// --mode translation
+[{"patient_prompt": "I've got the blues, so I need to talk to a",
+  "target_clinical_token": " therapist"}]
 ```
 
 Outputs land in `medlang_out/`: `clinical_graph.tagged.json`,

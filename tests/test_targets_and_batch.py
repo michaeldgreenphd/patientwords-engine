@@ -116,3 +116,108 @@ def test_run_batch_offline_with_mitigation(tmp_path, monkeypatch):
     assert "Mitigation Recovery: +41% probability (0.40 → 0.81)" in html
     # retargeting removed the article logit from every panel
     assert "a (p=0.9)" not in html
+
+
+def test_run_batch_quadrant_offline(tmp_path, monkeypatch):
+    def fake_generate(prompt, slug=None, backend="hosted", **params):
+        g = _two_logit_graph()
+        p = 0.86
+        if "blues" in prompt:
+            p -= 0.40  # vocabulary effect
+        if "'ve got" in prompt:
+            p -= 0.08  # syntax effect
+        for node in g["nodes"]:
+            if node["node_id"] == "L_999_3":
+                node["clerp"] = f"jumps (p={p:.2f})"
+        g["metadata"]["prompt"] = prompt
+        return g
+
+    monkeypatch.setattr(batch_eval, "generate_graph", fake_generate)
+    pairs = tmp_path / "pairs.json"
+    pairs.write_text(
+        json.dumps([{
+            "frames": {"clinical": "I have{term}, so the fox", "patient": "I've got{term}, so the fox"},
+            "terms": {"clinical": " depression", "patient": " the blues"},
+            "target_clinical_token": " jumps",
+        }]),
+        encoding="utf-8",
+    )
+
+    results = batch_eval.run_batch(
+        str(pairs), out_dir=str(tmp_path / "out"), mode="4quadrant", dpi=50, fetcher=build_fetcher()
+    )
+    r = results[0]
+    assert r["mode"] == "4quadrant"
+    assert r["prompts"]["C"] == "I've got depression, so the fox"  # patient frame + clinical term
+    assert r["probabilities"] == {"A": 0.86, "B": 0.46, "C": 0.78, "D": 0.38}
+    assert r["vocabulary_deltas"]["clinical_frame"] == pytest.approx(-0.40)
+    assert r["vocabulary_deltas"]["patient_frame"] == pytest.approx(-0.40)
+    assert r["syntax_deltas"]["clinical_term"] == pytest.approx(-0.08)
+    assert r["syntax_deltas"]["patient_term"] == pytest.approx(-0.08)
+
+    out = tmp_path / "out"
+    assert (out / "index_01.png").stat().st_size > 1000
+    assert (out / "pair_01_quad_c.tagged.json").is_file()
+    html = (out / "index_01.html").read_text(encoding="utf-8")
+    # four quadrant panels on one canvas, labeled A-D
+    assert html.count('<g transform="translate(') == 4
+    assert "A · Clinical frame + clinical term" in html
+    assert "D · Patient frame + patient term" in html
+    # prominent per-box target probabilities
+    for value in ("0.86", "0.46", "0.78", "0.38"):
+        assert f"p(jumps) = {value}" in html
+    # cross-panel deltas: vocabulary rotated in the column gutters, syntax in the row gutter
+    assert html.count("Vocabulary Δ: -40% probability (0.86 → 0.46)") == 1
+    assert "Vocabulary Δ: -40% probability (0.78 → 0.38)" in html
+    assert html.count("Syntax Δ: -8% probability") == 2
+    assert 'transform="rotate(-90' in html
+
+
+def test_run_batch_translation_offline(tmp_path, monkeypatch):
+    config = tmp_path / "keyword_config.json"
+    config.write_text(
+        json.dumps({**TEST_KEYWORD_CONFIG, "translations": {"patient phrasing": "clinical phrasing"}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MEDLANG_KEYWORD_CONFIG", str(config))
+
+    def fake_generate(prompt, slug=None, backend="hosted", **params):
+        g = _two_logit_graph()
+        p = 0.81 if "clinical" in prompt else 0.4
+        for node in g["nodes"]:
+            if node["node_id"] == "L_999_3":
+                node["clerp"] = f"jumps (p={p})"
+        g["metadata"]["prompt"] = prompt
+        return g
+
+    monkeypatch.setattr(batch_eval, "generate_graph", fake_generate)
+    pairs = tmp_path / "pairs.json"
+    pairs.write_text(
+        json.dumps([{"patient_prompt": "patient phrasing about the fox", "target_clinical_token": " jumps"}]),
+        encoding="utf-8",
+    )
+
+    results = batch_eval.run_batch(
+        str(pairs), out_dir=str(tmp_path / "out"), mode="translation",
+        use_llm_translation=False, dpi=50, fetcher=build_fetcher(),
+    )
+    r = results[0]
+    assert r["mode"] == "translation"
+    # the raw translation output is traced natively - no template applied
+    assert r["prompts"]["translated"] == "clinical phrasing about the fox"
+    assert r["translation_method"] == "phrase_table"
+    assert r["probabilities"] == {"patient": 0.4, "translated": 0.81}
+    assert r["recovered_probability"] == pytest.approx(0.41)
+
+    out = tmp_path / "out"
+    assert (out / "pair_01_patient.tagged.json").is_file()
+    assert (out / "pair_01_translated.tagged.json").is_file()
+    html = (out / "index_01.html").read_text(encoding="utf-8")
+    # two-panel vertical chain with the translation interstitial in the gap
+    assert html.count('<g transform="translate(') == 2
+    assert "Patient wording (original)" in html
+    assert "natively traced" in html
+    assert "LLM Translation (phrase_table): “clinical phrasing about the fox”" in html
+    assert "Recovered target probability: +41% probability (0.40 → 0.81)" in html
+    # recovered target probabilities as per-panel headlines
+    assert "p(jumps) = 0.40" in html and "p(jumps) = 0.81" in html
