@@ -1,4 +1,4 @@
-"""Task 2: stacked two-panel comparison visualization of tagged graphs.
+"""Task 2: stacked multi-panel comparison visualization of tagged graphs.
 
 Tufte-styled rendering (maximize data-ink, minimize chartjunk):
 
@@ -18,19 +18,25 @@ Tufte-styled rendering (maximize data-ink, minimize chartjunk):
   and runs of empty layers are compressed to a small elision gap (marked by a
   faint tick), so deep models stay compact
 - the token baseline is a micro/macro read: of the tokens that differ between
-  the two phrasings, only the single compared content word is emphasized
+  neighboring phrasings, only the single compared content word is emphasized
   (bold, panel accent color: "depression" in blue vs "blues" in orange);
   surrounding differenced function words stay muted like static tokens
-- top (clinical) panel only: clinical nodes whose normalized attribution mass
+- clinical-role panels only: clinical nodes whose normalized attribution mass
   meets NODE_VALUE_THRESHOLD get their value printed beside the node, showing
   at a glance which intermediate concepts drive the high-confidence prediction
+- optional badges (e.g. the Language Penalty delta metric) render centered in
+  the gap between panels
 
-Outputs:
-    render_stacked_html - one standalone, responsive index.html for static
-        hosting (GitHub Pages): minified inline CSS/JS, interactive hover
-        tooltips showing feature id, category, probability/attribution mass,
-        and the full autointerp description fetched during tagging
-    render_stacked_png  - matplotlib/networkx static figure, same styling
+Panels generalize from the classic 2-panel (clinical / patient) comparison to
+the 3-panel mitigation view (clinical / patient / LLM-translated patient) via
+``build_panels()`` + ``render_panels_html()`` / ``render_panels_png()``.
+``render_stacked_html()`` / ``render_stacked_png()`` remain the 2-panel
+wrappers.
+
+Outputs are a standalone, responsive index.html for static hosting (GitHub
+Pages): minified inline CSS/JS, interactive hover tooltips showing feature id,
+category, probability/attribution mass, and the full autointerp description
+fetched during tagging - plus a matplotlib/networkx static PNG, same styling.
 """
 
 from __future__ import annotations
@@ -66,6 +72,8 @@ PANEL_WIDTH = 1180
 ROW_HEIGHT = 34
 ELIDED_GAP_ROWS = 1.45  # vertical space for a run of >=1 empty layers
 MARGIN = {"left": 66, "right": 34, "top": 40, "bottom": 56}
+PANEL_GAP = 14
+BADGE_GAP = 46  # panel gap when a badge renders in it
 
 MIN_RADIUS = 3.0  # muted structural/embedding floor
 MAX_RADIUS = 14.0  # cap (a probability-1.0 logit)
@@ -75,8 +83,11 @@ STRUCTURAL_RADIUS_SPAN = 2.0  # structural marks span 3..5px
 JITTER = 9.0
 
 # Clinical nodes at or above this normalized attribution mass get an on-chart
-# value label (top/clinical panel only).
+# value label (clinical-role panels only).
 NODE_VALUE_THRESHOLD = 0.5
+
+# Default per-panel roles for 2- and 3-panel layouts (index 1 = patient wording).
+DEFAULT_PANEL_ROLES = ("Clinical wording", "Patient wording", "Translated wording")
 
 _LOGIT_PROB_RE = re.compile(r"\(p=([0-9.]+)\)")
 
@@ -362,7 +373,7 @@ def _panel_svg(
             f'fill="{CATEGORY_COLORS[category]}">{CATEGORY_LABELS[category]}</text>'
         )
 
-    # Token baseline: emphasize the altered words so the intervention reads at a glance.
+    # Token baseline: emphasize the compared word so the intervention reads at a glance.
     token_y = prep["panel_height"] - MARGIN["bottom"] + 26
     for i, token in enumerate(prep["tokens"]):
         style = f' style="fill:{emphasis_color};font-weight:600"' if i in emphasized_tokens else ""
@@ -390,6 +401,7 @@ _CSS = (
     ".ll{font-size:9.5px;text-anchor:middle;fill:#374151;font-family:ui-monospace,Menlo,monospace}"
     ".lk{font-size:9px;text-anchor:end;fill:" + FAINT_INK + "}"
     ".nv{font-size:9px;text-anchor:middle;fill:#6b7280;font-family:ui-monospace,Menlo,monospace}"
+    ".bd{font-size:13px;font-weight:600;text-anchor:middle}"
     ".cl{font-size:11px;font-weight:600}"
     ".n{cursor:pointer}.n:hover{stroke:" + INK + ";stroke-width:1.6}"
     "#tt{position:absolute;display:none;max-width:340px;background:#fff;border:1px solid #d1d5db;"
@@ -414,41 +426,88 @@ _JS = (
 )
 
 
-def render_stacked_html(
-    top_graph: dict[str, Any],
-    bottom_graph: dict[str, Any],
+def build_panels(
+    graphs: list[dict[str, Any]],
+    labels: list[str | None] | None = None,
+    focus_tokens: list[str | None] | None = None,
+    accents: list[str] | None = None,
+    value_label_flags: list[bool] | None = None,
+) -> list[dict[str, Any]]:
+    """Build panel specs for render_panels_html/png.
+
+    Defaults follow the clinical/patient/translated convention: panel 1 is the
+    patient wording (orange accent, no value labels); every other panel is a
+    clinical-role panel (blue accent, value labels on). Baseline emphasis
+    diffs each panel against its comparison partner: panel 0 vs panel 1, and
+    every later panel vs the panel above it - so the translated panel's
+    restored word is emphasized against the patient wording.
+    """
+    token_lists = [g.get("metadata", {}).get("prompt_tokens", []) for g in graphs]
+    panels: list[dict[str, Any]] = []
+    for i, graph in enumerate(graphs):
+        role = DEFAULT_PANEL_ROLES[i] if i < len(DEFAULT_PANEL_ROLES) else f"Panel {i + 1}"
+        prompt = graph.get("metadata", {}).get("prompt", "")
+        label = (labels[i] if labels and labels[i] else None) or f"{role}: “{prompt}”"
+        accent = accents[i] if accents else (
+            CATEGORY_COLORS["off_target"] if i == 1 else CATEGORY_COLORS["clinical"]
+        )
+        value_labels = value_label_flags[i] if value_label_flags else (i != 1)
+        if len(graphs) > 1:
+            ref = 1 if i == 0 else i - 1
+            altered, _ = _altered_token_indices(token_lists[i], token_lists[ref])
+            focus = _focus_token_index(
+                token_lists[i], altered, focus_tokens[i] if focus_tokens else None
+            )
+        else:
+            focus = set()
+        panels.append(
+            {"graph": graph, "label": label, "accent": accent, "emphasized": focus, "value_labels": value_labels}
+        )
+    return panels
+
+
+def _badge_parts(badge: Any) -> tuple[str, str]:
+    """(text, color) from a badge spec: a plain string or {'text', 'color'}."""
+    if isinstance(badge, dict):
+        return str(badge.get("text", "")), str(badge.get("color", INK))
+    return str(badge), INK
+
+
+def render_panels_html(
+    panels: list[dict[str, Any]],
     out_path: str,
-    top_title: str | None = None,
-    bottom_title: str | None = None,
+    badges: list[Any] | None = None,
     max_edges: int = DEFAULT_MAX_EDGES,
-    top_focus_token: str | None = None,
-    bottom_focus_token: str | None = None,
 ) -> str:
-    """Write a standalone, responsive comparison page (GitHub Pages ready); returns out_path.
+    """Write a standalone, responsive N-panel comparison page; returns out_path.
 
-    ``top_focus_token``/``bottom_focus_token`` override the heuristic pick of the
-    single emphasized baseline word per panel."""
-    top_tokens = top_graph.get("metadata", {}).get("prompt_tokens", [])
-    bottom_tokens = bottom_graph.get("metadata", {}).get("prompt_tokens", [])
-    altered_top, altered_bottom = _altered_token_indices(top_tokens, bottom_tokens)
-    focus_top = _focus_token_index(top_tokens, altered_top, top_focus_token)
-    focus_bottom = _focus_token_index(bottom_tokens, altered_bottom, bottom_focus_token)
-    panels = (
-        (top_graph, "Clinical wording", top_title, focus_top, CATEGORY_COLORS["clinical"], True),
-        (bottom_graph, "Patient wording", bottom_title, focus_bottom, CATEGORY_COLORS["off_target"], False),
-    )
-
+    ``badges`` holds one optional entry per gap between panels (len(panels)-1);
+    each is a string or {"text", "color"} rendered centered in that gap - used
+    for the Language Penalty / Mitigation Recovery delta metrics."""
+    badges = badges or []
     svg_parts: list[str] = []
     data: list[list[dict]] = []
     y_offset = 0.0
-    for panel_index, (graph, default_label, title, emphasized, accent, value_labels) in enumerate(panels):
-        prep = _prepare(graph, max_edges)
-        prompt = graph.get("metadata", {}).get("prompt", "")
-        label = title or f"{default_label}: “{prompt}”"
-        parts, tooltip_data = _panel_svg(label, prep, y_offset, panel_index, emphasized, accent, value_labels)
+    for panel_index, panel in enumerate(panels):
+        prep = _prepare(panel["graph"], max_edges)
+        parts, tooltip_data = _panel_svg(
+            panel["label"], prep, y_offset, panel_index,
+            panel["emphasized"], panel["accent"], panel["value_labels"],
+        )
         svg_parts.extend(parts)
         data.append(tooltip_data)
-        y_offset += prep["panel_height"] + 14
+        y_offset += prep["panel_height"]
+        if panel_index < len(panels) - 1:
+            badge = badges[panel_index] if panel_index < len(badges) else None
+            if badge:
+                text, color = _badge_parts(badge)
+                svg_parts.append(
+                    f'<text x="{PANEL_WIDTH / 2:.0f}" y="{y_offset + 28:.0f}" class="bd" '
+                    f'fill="{color}">{html.escape(text)}</text>'
+                )
+                y_offset += BADGE_GAP
+            else:
+                y_offset += PANEL_GAP
 
     total_height = int(y_offset)
     # JSON payload is embedded in a script tag: escape "</" so descriptions can't close it.
@@ -463,8 +522,8 @@ def render_stacked_html(
         "autointerp description. Node size scales with attribution mass (logits: next-token "
         "probability); curve width and opacity scale with |attribution weight|; "
         f"<span style=\"color:{NEGATIVE_EDGE_COLOR}\">red</span> curves are negative. The emphasized "
-        "baseline token in each panel marks the compared word; numbers beside clinical nodes (top "
-        f"panel) show normalized attribution mass &#8805; {NODE_VALUE_THRESHOLD:.2f}.</p>"
+        "baseline token in each panel marks the compared word; numbers beside clinical nodes "
+        f"(clinical-role panels) show normalized attribution mass &#8805; {NODE_VALUE_THRESHOLD:.2f}.</p>"
         f'<svg viewBox="0 0 {PANEL_WIDTH} {total_height}" xmlns="http://www.w3.org/2000/svg">'
         f"{''.join(svg_parts)}</svg></main>"
         '<div id="tt"></div>'
@@ -476,18 +535,14 @@ def render_stacked_html(
     return out_path
 
 
-def render_stacked_png(
-    top_graph: dict[str, Any],
-    bottom_graph: dict[str, Any],
+def render_panels_png(
+    panels: list[dict[str, Any]],
     out_path: str,
-    top_title: str | None = None,
-    bottom_title: str | None = None,
+    badges: list[Any] | None = None,
     max_edges: int = DEFAULT_MAX_EDGES,
     dpi: int = 160,
-    top_focus_token: str | None = None,
-    bottom_focus_token: str | None = None,
 ) -> str:
-    """Write a static stacked-comparison PNG (networkx + matplotlib), same styling; returns out_path."""
+    """Write a static N-panel comparison PNG (networkx + matplotlib), same styling; returns out_path."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -496,24 +551,17 @@ def render_stacked_png(
     from matplotlib.patches import PathPatch
     from matplotlib.path import Path as MplPath
 
-    top_tokens = top_graph.get("metadata", {}).get("prompt_tokens", [])
-    bottom_tokens = bottom_graph.get("metadata", {}).get("prompt_tokens", [])
-    altered_top, altered_bottom = _altered_token_indices(top_tokens, bottom_tokens)
-    focus_top = _focus_token_index(top_tokens, altered_top, top_focus_token)
-    focus_bottom = _focus_token_index(bottom_tokens, altered_bottom, bottom_focus_token)
-    preps = [_prepare(g, max_edges) for g in (top_graph, bottom_graph)]
+    badges = badges or []
+    preps = [_prepare(p["graph"], max_edges) for p in panels]
     heights = [p["panel_height"] for p in preps]
     fig_height = sum(heights) / 90.0
     fig, axes = plt.subplots(
-        2, 1, figsize=(13, max(fig_height, 6)), height_ratios=heights, facecolor="white"
+        len(panels), 1, figsize=(13, max(fig_height, 6)), height_ratios=heights,
+        facecolor="white", squeeze=False,
     )
+    axes = axes[:, 0]
 
-    for ax, prep, graph, default_label, title, emphasized, accent, value_labels in (
-        (axes[0], preps[0], top_graph, "Clinical wording", top_title, focus_top,
-         CATEGORY_COLORS["clinical"], True),
-        (axes[1], preps[1], bottom_graph, "Patient wording", bottom_title, focus_bottom,
-         CATEGORY_COLORS["off_target"], False),
-    ):
+    for panel_index, (ax, prep, panel) in enumerate(zip(axes, preps, panels)):
         panel_h = prep["panel_height"]
         positions = {nid: (x, panel_h - y) for nid, (x, y) in prep["positions"].items()}  # flip y
         radius, category_of = prep["radius"], prep["category_of"]
@@ -545,7 +593,7 @@ def render_stacked_png(
                 ax.text(x, y + r + 5, node["clerp"][:24], ha="center", fontsize=7,
                         color="#374151", family="monospace")
             frac = prep["mass_frac"][node_id]
-            if value_labels and _category(node) == "clinical" and frac >= NODE_VALUE_THRESHOLD:
+            if panel["value_labels"] and _category(node) == "clinical" and frac >= NODE_VALUE_THRESHOLD:
                 ax.text(x, y - r - 11, f"{frac:.2f}", ha="center", fontsize=7,
                         color="#6b7280", family="monospace")
 
@@ -556,21 +604,25 @@ def render_stacked_png(
 
         for label, y in prep["layer_ticks"]:
             ax.text(MARGIN["left"] - 12, panel_h - y - 3, label, ha="right", fontsize=7, color=FAINT_INK)
-        for i, token in enumerate(prep["tokens"]):
-            emphasized_token = i in emphasized
+        for token_index, token in enumerate(prep["tokens"]):
+            emphasized_token = token_index in panel["emphasized"]
             ax.text(
-                prep["x_of"](i),
+                prep["x_of"](token_index),
                 MARGIN["bottom"] - 30,
                 token,
                 ha="center",
                 fontsize=8,
-                color=accent if emphasized_token else TOKEN_INK,
+                color=panel["accent"] if emphasized_token else TOKEN_INK,
                 fontweight="bold" if emphasized_token else "normal",
                 family="monospace",
             )
 
-        prompt = graph.get("metadata", {}).get("prompt", "")
-        ax.set_title(title or f"{default_label}: “{prompt}”", fontsize=11, loc="left", color=INK)
+        ax.set_title(panel["label"], fontsize=11, loc="left", color=INK)
+        # Delta-metric badge centered above this panel (i.e. in the gap below the previous one).
+        if panel_index > 0 and panel_index - 1 < len(badges) and badges[panel_index - 1]:
+            text, color = _badge_parts(badges[panel_index - 1])
+            ax.text(0.5, 1.055, text, transform=ax.transAxes, ha="center",
+                    fontsize=11, fontweight="bold", color=color)
         ax.set_xlim(0, PANEL_WIDTH)
         ax.set_ylim(0, panel_h)
         ax.set_facecolor("white")
@@ -581,3 +633,44 @@ def render_stacked_png(
     plt.close(fig)
     logger.info("Wrote stacked PNG to %s", out_path)
     return out_path
+
+
+def render_stacked_html(
+    top_graph: dict[str, Any],
+    bottom_graph: dict[str, Any],
+    out_path: str,
+    top_title: str | None = None,
+    bottom_title: str | None = None,
+    max_edges: int = DEFAULT_MAX_EDGES,
+    top_focus_token: str | None = None,
+    bottom_focus_token: str | None = None,
+    badges: list[Any] | None = None,
+) -> str:
+    """Two-panel wrapper around render_panels_html (clinical top, patient bottom)."""
+    panels = build_panels(
+        [top_graph, bottom_graph],
+        labels=[top_title, bottom_title],
+        focus_tokens=[top_focus_token, bottom_focus_token],
+    )
+    return render_panels_html(panels, out_path, badges=badges, max_edges=max_edges)
+
+
+def render_stacked_png(
+    top_graph: dict[str, Any],
+    bottom_graph: dict[str, Any],
+    out_path: str,
+    top_title: str | None = None,
+    bottom_title: str | None = None,
+    max_edges: int = DEFAULT_MAX_EDGES,
+    dpi: int = 160,
+    top_focus_token: str | None = None,
+    bottom_focus_token: str | None = None,
+    badges: list[Any] | None = None,
+) -> str:
+    """Two-panel wrapper around render_panels_png (clinical top, patient bottom)."""
+    panels = build_panels(
+        [top_graph, bottom_graph],
+        labels=[top_title, bottom_title],
+        focus_tokens=[top_focus_token, bottom_focus_token],
+    )
+    return render_panels_png(panels, out_path, badges=badges, max_edges=max_edges, dpi=dpi)

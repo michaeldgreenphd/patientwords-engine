@@ -104,19 +104,24 @@ def _generate_local(prompt: str, slug: str, timeout: float, **params: Any) -> di
         raise RuntimeError("GRAPH_SERVER_SECRET is required for the local backend")
 
     logger.info("Requesting local graph generation at %s: slug=%s", LOCAL_SERVER_URL, slug)
+    body = {
+        "prompt": prompt,
+        "model_id": LOCAL_TLENS_MODEL_ID,
+        "slug_identifier": slug,
+        "max_n_logits": params["max_n_logits"],
+        "desired_logit_prob": params["desired_logit_prob"],
+        "node_threshold": params["node_threshold"],
+        "edge_threshold": params["edge_threshold"],
+        # no signed_url -> the server returns the graph JSON in the response body
+    }
+    if params.get("force_target_tokens"):
+        # Native target forcing for circuit-tracer forks whose server accepts it;
+        # the stock apps/graph server ignores unknown fields, so this is harmless.
+        body["force_target_tokens"] = list(params["force_target_tokens"])
     resp = requests.post(
         f"{LOCAL_SERVER_URL}/generate-graph",
         headers={"x-secret-key": secret},
-        json={
-            "prompt": prompt,
-            "model_id": LOCAL_TLENS_MODEL_ID,
-            "slug_identifier": slug,
-            "max_n_logits": params["max_n_logits"],
-            "desired_logit_prob": params["desired_logit_prob"],
-            "node_threshold": params["node_threshold"],
-            "edge_threshold": params["edge_threshold"],
-            # no signed_url -> the server returns the graph JSON in the response body
-        },
+        json=body,
         timeout=timeout,
     )
     resp.raise_for_status()

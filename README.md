@@ -28,6 +28,21 @@ circuit-tracer server.
    tags both graphs, renders the stacked comparison, and writes a divergence
    summary (per-category node counts, attribution-mass shares, and clinical
    feature overlap between the two traces).
+4. **Target-token forcing** — `targets.AttributionTargets` names substantive
+   next tokens (e.g. `[" therapist"]`) so attribution isn't read off a
+   grammatical article: generation widens the salient-logit set (with a
+   `force_target_tokens` passthrough for circuit-tracer forks that support
+   native forcing on the graph server), and `retarget_graph` prunes the
+   generated graph's logit set down to the named targets.
+5. **Batch evaluation harness** — `batch_eval.run_batch` consumes a JSON array
+   of `{top_prompt, bottom_prompt, target_clinical_token?, force_target_tokens?}`
+   pairs, traces/tags/retargets each pair sequentially, computes the
+   **Language Penalty** delta (Δ = p_patient − p_clinical for the target
+   medical token, rendered as a badge between the panels), and writes numbered
+   `index_01.html` / `index_01.png` outputs plus `batch_summary.json`. With
+   `--show-mitigation` it adds the LLM translation step and renders a 3-panel
+   view (clinical / patient / translated patient) with a **Mitigation
+   Recovery** badge showing the restored probability.
 
 ## Setup
 
@@ -68,6 +83,22 @@ medlang-compare \
 
 # Tag an existing graph JSON in place (no generation)
 medlang-compare tag path/to/graph.json
+
+# Batch evaluation over paired prompts, with the 3-panel mitigation view
+medlang-batch-eval pairs.json --out batch_out --show-mitigation
+```
+
+`pairs.json` format:
+
+```json
+[
+  {
+    "top_prompt": "Clinical framing statement...",
+    "bottom_prompt": "Patient framing statement...",
+    "target_clinical_token": " therapist",
+    "force_target_tokens": [" therapist", " hospital"]
+  }
+]
 ```
 
 Outputs land in `medlang_out/`: `clinical_graph.tagged.json`,
