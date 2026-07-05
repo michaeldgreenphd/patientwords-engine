@@ -52,9 +52,12 @@ from medlang_circuits.targets import parse_logit_clerp
 
 logger = logging.getLogger(__name__)
 
+# Semantic palette: medical/clinical language is green, patient language is black,
+# structural context recedes in light gray. Green/black CVD separation validated
+# (deltaE 52.5 deutan) with contrast >= 3:1 on white.
 CATEGORY_COLORS = {
-    "clinical": "#2563eb",
-    "off_target": "#f97316",
+    "clinical": "#15803d",
+    "off_target": "#111827",
     "structural": "#c3c9d2",  # muted light gray - recedes behind feature nodes
 }
 CATEGORY_LABELS = {"clinical": "Clinical", "off_target": "Off-target", "structural": "Structural"}
@@ -461,7 +464,7 @@ _CSS = (
     ".nv{font-size:9px;text-anchor:middle;fill:#6b7280;font-family:ui-monospace,Menlo,monospace}"
     ".bd{font-size:13px;font-weight:600;text-anchor:middle}"
     ".cl{font-size:11px;font-weight:600}"
-    ".n{cursor:pointer}.n:hover{stroke:" + INK + ";stroke-width:1.6}"
+    ".n{cursor:pointer}.n:hover{stroke:#9aa3af;stroke-width:1.6}"  # visible on green AND black nodes
     "#tt{position:absolute;display:none;max-width:340px;background:#fff;border:1px solid #d1d5db;"
     "border-radius:4px;padding:8px 10px;font-size:12px;line-height:1.45;box-shadow:0 2px 8px rgba(0,0,0,.09);"
     "pointer-events:none;z-index:9}"

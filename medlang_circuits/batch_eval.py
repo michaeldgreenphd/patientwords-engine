@@ -66,7 +66,7 @@ from medlang_circuits.translate import translate_to_clinical
 logger = logging.getLogger(__name__)
 
 MODES = ("2panel", "4quadrant", "translation")
-RECOVERY_COLOR = "#2f7d52"  # muted green for positive deltas
+RECOVERY_COLOR = "#15803d"  # positive deltas share the clinical green
 DEFAULT_PNG_DPI = 220  # high-resolution static export
 
 QUAD_KEYS = ("A", "B", "C", "D")
