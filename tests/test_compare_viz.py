@@ -37,9 +37,10 @@ def test_render_stacked_html_standalone_interactive(tmp_path):
     assert 'data-p="1"' in html and 'data-i="0"' in html
     # full autointerp description flows into the tooltip payload
     assert "references to alpha and beta term contexts" in html
-    # tooltip readout is labeled: probability for logits, attribution mass otherwise
-    assert '"wl":"Probability","w":"0.81"' in html  # fixture logit clerp "jumps (p=0.81)"
-    assert '"wl":"Mass"' in html
+    # tooltip readout uses explicit prob()/mass notation (no "p(...)" / "Probability")
+    assert '"wl":"prob(jumps)","w":"0.81"' in html  # fixture logit clerp "jumps (p=0.81)"
+    assert '"wl":"mass"' in html
+    assert '"wl":"Probability"' not in html and '"wl":"Mass"' not in html
     # threshold value layer: only the top panel's clinical node (norm mass 0.60 >= 0.50)
     # carries an on-chart number; the identical bottom-panel node does not
     assert html.count('class="nv"') == 1
@@ -89,3 +90,28 @@ def test_render_stacked_png(tmp_path):
     out = tmp_path / "cmp.png"
     render_stacked_png(top, bottom, str(out), dpi=60)
     assert out.stat().st_size > 1000
+
+
+def test_logit_spread_stacks_without_collisions(graph):
+    # three logits share the final token column -> they must stack vertically,
+    # best probability on top, spaced rim-to-rim so labels can't overlap
+    graph["nodes"].append({"node_id": "L_mid", "feature": None, "layer": "26", "ctx_idx": 3,
+                           "feature_type": "logit", "jsNodeId": "L_mid", "clerp": "leaps (p=0.9)"})
+    graph["nodes"].append({"node_id": "L_low", "feature": None, "layer": "26", "ctx_idx": 3,
+                           "feature_type": "logit", "jsNodeId": "L_low", "clerp": "runs (p=0.2)"})
+    graph["links"].append({"source": "9_00001_3", "target": "L_mid", "weight": 2.0})
+    graph["links"].append({"source": "9_00001_3", "target": "L_low", "weight": 1.0})
+
+    prep = _prepare(graph, max_edges=100)
+    pos, radius = prep["positions"], prep["radius"]
+    ys = {nid: pos[nid][1] for nid in ("L_mid", "L_999_3", "L_low")}
+    # ordered by probability: 0.9 on top, then 0.81, then 0.2
+    assert ys["L_mid"] < ys["L_999_3"] < ys["L_low"]
+    # same x (a clean vertical stack), rim-to-rim spacing >= the label gap
+    assert pos["L_mid"][0] == pos["L_999_3"][0] == pos["L_low"][0]
+    for upper, lower in (("L_mid", "L_999_3"), ("L_999_3", "L_low")):
+        gap = (ys[lower] - ys[upper]) - radius[upper] - radius[lower]
+        assert gap >= 17.9
+    # the panel grew to make room for the stack (vs. the unstacked fixture)
+    single = _prepare(make_graph(), max_edges=100)
+    assert prep["panel_height"] > single["panel_height"]

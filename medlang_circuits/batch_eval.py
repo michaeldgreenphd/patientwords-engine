@@ -54,7 +54,13 @@ from medlang_circuits.compare_viz import (
 )
 from medlang_circuits.feature_tagger import annotate_graph
 from medlang_circuits.graph_client import generate_graph, slugify
-from medlang_circuits.targets import AttributionTargets, retarget_graph, target_probability
+from medlang_circuits.targets import (
+    TOP_K_SPREAD_DEFAULT,
+    AttributionTargets,
+    logit_spread,
+    select_logits,
+    target_probability,
+)
 from medlang_circuits.translate import translate_to_clinical
 
 logger = logging.getLogger(__name__)
@@ -90,7 +96,7 @@ def _delta_badge(kind: str, p_from: float | None, p_to: float | None) -> dict[st
 
 
 def _headline(token: str | None, prob: float | None) -> str | None:
-    return f"p({token}) = {prob:.2f}" if token is not None and prob is not None else None
+    return f"prob({token}) = {prob:.2f}" if token is not None and prob is not None else None
 
 
 def _generation_params(targets: AttributionTargets | None, generation_params: dict | None) -> dict:
@@ -112,10 +118,12 @@ def _trace(
     targets: AttributionTargets | None,
     fetcher: Any,
 ) -> dict[str, Any]:
-    """Generate + retarget + tag one graph, persisting the tagged JSON."""
+    """Generate + select the predictive spread + tag one graph, persisting the tagged JSON.
+
+    Logits are pruned to the top-K spread (union any forced targets) instead of
+    hard-retargeting, so the cluster of competing predictions stays visible."""
     graph = generate_graph(prompt, slug=slugify(prompt, f"medlang-{role}"), backend=backend, **params)
-    if targets:
-        retarget_graph(graph, targets)  # before tagging, so summary stats reflect the retargeted graph
+    select_logits(graph, targets=targets, keep_top_k=TOP_K_SPREAD_DEFAULT)  # before tagging
     annotate_graph(graph, fetcher=fetcher)
     with open(out_dir / f"pair_{index:02d}_{role}.tagged.json", "w", encoding="utf-8") as f:
         json.dump(graph, f)
@@ -205,6 +213,7 @@ def evaluate_pair(
         ),
         "translation_method": translation_method,
         "forced_targets": list(force_tokens),
+        "predictive_spread": {role: logit_spread(g) for role, g in zip(roles, graphs)},
         "outputs": {"html": str(html_path), "png": str(png_path)},
     }
 
@@ -300,6 +309,7 @@ def evaluate_quadrant(
         "vocabulary_deltas": {"clinical_frame": _delta("A", "B"), "patient_frame": _delta("C", "D")},
         "syntax_deltas": {"clinical_term": _delta("A", "C"), "patient_term": _delta("B", "D")},
         "forced_targets": list(force_tokens),
+        "predictive_spread": {key: logit_spread(g) for key, g in zip(QUAD_KEYS, graphs)},
         "outputs": {"html": str(html_path), "png": str(png_path)},
     }
 
@@ -374,6 +384,10 @@ def evaluate_translation(
             (p_translated - p_patient) if p_patient is not None and p_translated is not None else None
         ),
         "forced_targets": list(force_tokens),
+        "predictive_spread": {
+            "patient": logit_spread(patient_graph),
+            "translated": logit_spread(translated_graph),
+        },
         "outputs": {"html": str(html_path), "png": str(png_path)},
     }
 

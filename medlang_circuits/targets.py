@@ -33,6 +33,9 @@ logger = logging.getLogger(__name__)
 # rank below the article still get attribution nodes.
 FORCED_TARGET_MAX_N_LOGITS = 15
 
+# How many top logits the predictive spread keeps for display by default.
+TOP_K_SPREAD_DEFAULT = 5
+
 _CLERP_PROB_RE = re.compile(r"^(.*?)\s*\(p=([0-9.]+)\)\s*$")
 
 
@@ -114,6 +117,61 @@ def retarget_graph(graph: dict[str, Any], targets: AttributionTargets) -> dict[s
             if link.get("source") not in dropped_ids and link.get("target") not in dropped_ids
         ]
     graph.setdefault("metadata", {})["attribution_targets"] = info
+    return info
+
+
+def logit_spread(graph: dict[str, Any], k: int = TOP_K_SPREAD_DEFAULT) -> list[tuple[str, float]]:
+    """Top-k (token, probability) pairs at the final logit layer, best first."""
+    scored = []
+    for node in _logit_nodes(graph):
+        token, prob = parse_logit_clerp(node.get("clerp"))
+        if prob is not None:
+            scored.append((token, prob))
+    return sorted(scored, key=lambda pair: -pair[1])[:k]
+
+
+def select_logits(
+    graph: dict[str, Any],
+    targets: AttributionTargets | None = None,
+    keep_top_k: int | None = TOP_K_SPREAD_DEFAULT,
+) -> dict[str, Any]:
+    """Prune the graph's logit set to the predictive spread, in place.
+
+    Keeps the union of: the top ``keep_top_k`` logits by probability (the
+    predictive spread), any logits matching ``targets``, and logits whose
+    probability can't be parsed (unrankable). Everything else - and any links
+    touching it - is removed. Unlike ``retarget_graph`` this preserves the
+    surrounding distribution so the spread of competing predictions stays
+    visible. Records ``metadata["logit_selection"]`` and returns the info dict.
+    """
+    logits = _logit_nodes(graph)
+    parsed = {n["node_id"]: parse_logit_clerp(n.get("clerp")) for n in logits}
+    keep_ids = {nid for nid, (_, prob) in parsed.items() if prob is None}
+    if targets:
+        keep_ids |= {nid for nid, (token, _) in parsed.items() if targets.matches(token)}
+    if keep_top_k:
+        ranked = sorted(
+            (nid for nid, (_, prob) in parsed.items() if prob is not None),
+            key=lambda nid: -parsed[nid][1],
+        )
+        keep_ids |= set(ranked[:keep_top_k])
+
+    dropped = [n for n in logits if n["node_id"] not in keep_ids]
+    info: dict[str, Any] = {
+        "keep_top_k": keep_top_k,
+        "requested_targets": list(targets.tokens) if targets else [],
+        "kept": [n.get("clerp") for n in logits if n["node_id"] in keep_ids],
+        "dropped": [n.get("clerp") for n in dropped],
+    }
+    if dropped:
+        dropped_ids = {n["node_id"] for n in dropped}
+        graph["nodes"] = [n for n in graph.get("nodes", []) if n["node_id"] not in dropped_ids]
+        graph["links"] = [
+            link
+            for link in graph.get("links", [])
+            if link.get("source") not in dropped_ids and link.get("target") not in dropped_ids
+        ]
+    graph.setdefault("metadata", {})["logit_selection"] = info
     return info
 
 

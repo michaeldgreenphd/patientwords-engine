@@ -48,6 +48,7 @@ from collections import defaultdict
 from typing import Any
 
 from medlang_circuits.schema_utils import max_numeric_layer, node_display_layer
+from medlang_circuits.targets import parse_logit_clerp
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,12 @@ PANEL_GAP = 14
 BADGE_GAP = 46  # panel gap when a single-line badge renders in it
 BADGE_LINE_HEIGHT = 22
 QUAD_GUTTER_X = 64
-QUAD_GUTTER_Y = 64
+QUAD_GUTTER_Y = 100  # row gutter hosts syntax deltas and the lower vocabulary delta
+QUAD_VOCAB_STRIP = 36  # header strip above the top row for the upper vocabulary delta
+
+# Vertical rim-to-rim spacing between stacked logit nodes (the predictive
+# spread) - leaves room for each node's token/prob label without collisions.
+LOGIT_STACK_GAP = 18
 
 MIN_RADIUS = 3.0  # muted structural/embedding floor
 MAX_RADIUS = 14.0  # cap (a probability-1.0 logit)
@@ -166,8 +172,42 @@ def _prepare(graph: dict[str, Any], max_edges: int) -> dict[str, Any]:
     top_layer = max_numeric_layer(nodes)
 
     layer_of = {n["node_id"]: node_display_layer(n, top_layer) for n in nodes}
+    logit_layer = top_layer + 1
+
+    # Total |incident weight| per node = the node's attribution mass. Drives tooltip values,
+    # proportional radii, and the pick of each category's most prominent node. Computed
+    # before layout because the logit-spread stacking needs the radii.
+    node_weight: dict[str, float] = defaultdict(float)
+    for link in graph.get("links", []):
+        w = abs(link.get("weight", 0.0))
+        node_weight[link.get("source")] += w
+        node_weight[link.get("target")] += w
+    max_mass = max(node_weight.values(), default=1.0) or 1.0
+    mass_frac = {n["node_id"]: node_weight[n["node_id"]] / max_mass for n in nodes}
+    radius = {n["node_id"]: _node_radius(n, mass_frac[n["node_id"]]) for n in nodes}
+
+    # Predictive spread: logit nodes sharing a token column stack vertically,
+    # best probability on top, spaced rim-to-rim so every label stays readable.
+    logit_groups: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for node in nodes:
+        if layer_of[node["node_id"]] == logit_layer:
+            logit_groups[node.get("ctx_idx", 0)].append(node)
+    logit_offset: dict[str, float] = {}
+    max_stack = 0.0
+    for group in logit_groups.values():
+        group.sort(key=lambda n: -(_logit_prob(n) or 0.0))
+        cursor_px = 0.0
+        prev_r: float | None = None
+        for node in group:
+            r = radius[node["node_id"]]
+            if prev_r is not None:
+                cursor_px += prev_r + LOGIT_STACK_GAP + r
+            logit_offset[node["node_id"]] = cursor_px
+            prev_r = r
+        max_stack = max(max_stack, cursor_px)
 
     # Dynamic y-axis: only occupied layers get a row; empty runs compress to a small gap.
+    # The step into the logit row grows by the spread's stack height.
     occupied = sorted(set(layer_of.values()))
     row_of: dict[int, float] = {}
     cursor = 0.0
@@ -177,6 +217,8 @@ def _prepare(graph: dict[str, Any], max_edges: int) -> dict[str, Any]:
             step = 1.0 if layer - occupied[i - 1] == 1 else ELIDED_GAP_ROWS
             if step != 1.0:
                 elisions.append(cursor + step / 2)
+            if layer == logit_layer:
+                step += max_stack / ROW_HEIGHT
             cursor += step
         row_of[layer] = cursor
     total_rows = max(cursor, 1.0)
@@ -194,24 +236,18 @@ def _prepare(graph: dict[str, Any], max_edges: int) -> dict[str, Any]:
     positions: dict[str, tuple[float, float]] = {}
     cell_counts: dict[tuple[int, int], int] = defaultdict(int)
     for node in nodes:
-        layer = layer_of[node["node_id"]]
+        node_id = node["node_id"]
+        layer = layer_of[node_id]
         ctx = node.get("ctx_idx", 0)
+        if node_id in logit_offset:
+            # spread stack: no jitter; offsets grow downward from the logit row
+            positions[node_id] = (x_of(ctx), y_of_row(row_of[layer]) + logit_offset[node_id])
+            continue
         slot = cell_counts[(ctx, layer)]
         cell_counts[(ctx, layer)] += 1
         dx = ((slot % 3) - 1) * JITTER
         dy = (slot // 3) * JITTER
-        positions[node["node_id"]] = (x_of(ctx) + dx, y_of_row(row_of[layer]) - dy)
-
-    # Total |incident weight| per node = the node's attribution mass. Drives tooltip values,
-    # proportional radii, and the pick of each category's most prominent node.
-    node_weight: dict[str, float] = defaultdict(float)
-    for link in graph.get("links", []):
-        w = abs(link.get("weight", 0.0))
-        node_weight[link.get("source")] += w
-        node_weight[link.get("target")] += w
-    max_mass = max(node_weight.values(), default=1.0) or 1.0
-    mass_frac = {n["node_id"]: node_weight[n["node_id"]] / max_mass for n in nodes}
-    radius = {n["node_id"]: _node_radius(n, mass_frac[n["node_id"]]) for n in nodes}
+        positions[node_id] = (x_of(ctx) + dx, y_of_row(row_of[layer]) - dy)
 
     links = sorted(graph.get("links", []), key=lambda link: -abs(link.get("weight", 0.0)))
     dropped = max(0, len(links) - max_edges)
@@ -278,6 +314,14 @@ def _bezier_d(src: tuple[float, float], tgt: tuple[float, float], r_src: float, 
     return f"M{x1:.1f},{y1:.1f} C{x1:.1f},{y1 + mid:.1f} {x2:.1f},{y2 - mid:.1f} {x2:.1f},{y2:.1f}"
 
 
+def _logit_label(node: dict[str, Any]) -> str:
+    """Display label for a logit node: 'therapist · prob 0.86' (no p= syntax)."""
+    token, prob = parse_logit_clerp(node.get("clerp"))
+    if prob is None:
+        return (node.get("clerp") or "")[:24]
+    return f"{token[:16]} · prob {prob:.2f}"
+
+
 def _node_tooltip_data(node: dict[str, Any], mass: float, mass_frac: float) -> dict[str, str]:
     """Pre-escaped strings for the JS tooltip.
 
@@ -287,11 +331,11 @@ def _node_tooltip_data(node: dict[str, Any], mass: float, mass_frac: float) -> d
     nodes, so on-chart labels and tooltips always agree."""
     med = node.get("medlang") or {}
     description = med.get("description") or node.get("clerp") or "(no description)"
-    prob = _logit_prob(node)
+    token, prob = parse_logit_clerp(node.get("clerp")) if node.get("feature_type") == "logit" else ("", None)
     if node.get("feature_type") == "logit" and prob is not None:
-        weight_label, weight_value = "Probability", f"{prob:.2f}"
+        weight_label, weight_value = f"prob({token})", f"{prob:.2f}"
     else:
-        weight_label, weight_value = "Mass", f"{mass:.3f} (norm {mass_frac:.2f})"
+        weight_label, weight_value = "mass", f"{mass:.3f} (norm {mass_frac:.2f})"
     return {
         "id": html.escape(f"{node.get('node_id')} · {node.get('feature_type')}"),
         "cat": html.escape(f"{med.get('category', 'structural')} ({med.get('method', '-')})"),
@@ -367,7 +411,8 @@ def _panel_svg(
             parts.append(f'<circle {hook} cx="{pos[0]:.1f}" cy="{pos[1]:.1f}" r="{r:.1f}" fill="{color}"/>')
         if node.get("feature_type") == "logit" and node.get("clerp"):
             parts.append(
-                f'<text x="{pos[0]:.1f}" y="{pos[1] - r - 5:.1f}" class="ll">{html.escape(node["clerp"][:24])}</text>'
+                f'<text x="{pos[0]:.1f}" y="{pos[1] - r - 5:.1f}" class="ll">'
+                f"{html.escape(_logit_label(node))}</text>"
             )
         # Threshold-based value layer: high-confidence clinical intermediates only.
         if value_labels and category == "clinical" and frac >= NODE_VALUE_THRESHOLD:
@@ -580,10 +625,11 @@ def render_quadrant_html(
 ) -> str:
     """Write the 2x2 matrix page: panels = [A (top-left), B (top-right), C, D].
 
-    ``badges`` keys: ``vocab_top`` / ``vocab_bottom`` render rotated in the
-    column gutter of each row (term swap within a frame); ``syntax_left`` /
-    ``syntax_right`` render horizontally in the row gutter under each column
-    (frame swap for a fixed term)."""
+    ``badges`` keys: ``vocab_top`` / ``vocab_bottom`` render horizontally,
+    centered on the column gutter between the compared boxes of each row (term
+    swap within a frame) - vocab_top in a header strip above the top row,
+    vocab_bottom in the row gutter; ``syntax_left`` / ``syntax_right`` render
+    in the row gutter under each column (frame swap for a fixed term)."""
     if len(panels) != 4:
         raise ValueError(f"4-quadrant layout requires exactly 4 panels, got {len(panels)}")
     badges = badges or {}
@@ -591,9 +637,9 @@ def render_quadrant_html(
     row_top = max(preps[0]["panel_height"], preps[1]["panel_height"])
     row_bottom = max(preps[2]["panel_height"], preps[3]["panel_height"])
     col_x = (0.0, PANEL_WIDTH + QUAD_GUTTER_X)
-    row_y = (0.0, row_top + QUAD_GUTTER_Y)
+    row_y = (float(QUAD_VOCAB_STRIP), QUAD_VOCAB_STRIP + row_top + QUAD_GUTTER_Y)
     width = int(PANEL_WIDTH * 2 + QUAD_GUTTER_X)
-    height = int(row_top + QUAD_GUTTER_Y + row_bottom)
+    height = int(row_y[1] + row_bottom)
 
     svg_parts: list[str] = []
     data: list[list[dict]] = []
@@ -603,15 +649,17 @@ def render_quadrant_html(
         svg_parts.extend(parts)
         data.append(tooltip_data)
 
+    # Horizontal vocabulary deltas, centered on the gutter between the compared boxes:
+    # the top one in the header strip, the bottom one in the row gutter above C/D.
     gutter_cx = PANEL_WIDTH + QUAD_GUTTER_X / 2
-    for key, cy in (("vocab_top", row_top / 2), ("vocab_bottom", row_y[1] + row_bottom / 2)):
+    for key, cy in (("vocab_top", QUAD_VOCAB_STRIP - 12), ("vocab_bottom", row_y[1] - 16)):
         if badges.get(key):
             text, color = _badge_lines(badges[key])[0]
             svg_parts.append(
-                f'<text x="{gutter_cx:.0f}" y="{cy:.0f}" class="bd" fill="{color}" '
-                f'transform="rotate(-90,{gutter_cx:.0f},{cy:.0f})">{html.escape(text)}</text>'
+                f'<text x="{gutter_cx:.0f}" y="{cy:.0f}" class="bd" fill="{color}">{html.escape(text)}</text>'
             )
-    gutter_cy = row_top + QUAD_GUTTER_Y / 2 + 5
+    # Syntax deltas in the row gutter, centered under each column.
+    gutter_cy = QUAD_VOCAB_STRIP + row_top + 36
     for key, cx in (("syntax_left", PANEL_WIDTH / 2), ("syntax_right", col_x[1] + PANEL_WIDTH / 2)):
         if badges.get(key):
             text, color = _badge_lines(badges[key])[0]
@@ -665,7 +713,7 @@ def _paint_panel_ax(ax, prep: dict[str, Any], panel: dict[str, Any]) -> None:
         marker = "s" if node.get("feature_type") == "embedding" else "o"
         ax.scatter([x], [y], s=r**2 * 3.4, c=CATEGORY_COLORS[_category(node)], marker=marker, zorder=3)
         if node.get("feature_type") == "logit" and node.get("clerp"):
-            ax.text(x, y + r + 5, node["clerp"][:24], ha="center", fontsize=7,
+            ax.text(x, y + r + 5, _logit_label(node), ha="center", fontsize=7,
                     color="#374151", family="monospace")
         frac = prep["mass_frac"][node_id]
         if panel.get("value_labels") and _category(node) == "clinical" and frac >= NODE_VALUE_THRESHOLD:
@@ -773,17 +821,17 @@ def render_quadrant_png(
     def _one(badge: Any) -> tuple[str, str]:
         return _badge_lines(badge)[0]
 
-    # Vocabulary deltas rotated in the column gutter of each row.
+    # Vocabulary deltas horizontal, centered on the gutter between the compared boxes.
     for key, ax in (("vocab_top", axes[0][0]), ("vocab_bottom", axes[1][0])):
         if badges.get(key):
             text, color = _one(badges[key])
-            ax.text(1.025, 0.5, text, transform=ax.transAxes, ha="center", va="center",
-                    rotation=-90, fontsize=11, fontweight="bold", color=color)
-    # Syntax deltas horizontal in the row gutter under each column.
+            ax.text(1.03, 1.045, text, transform=ax.transAxes, ha="center",
+                    fontsize=11, fontweight="bold", color=color)
+    # Syntax deltas horizontal in the row gutter, centered under each column.
     for key, ax in (("syntax_left", axes[1][0]), ("syntax_right", axes[1][1])):
         if badges.get(key):
             text, color = _one(badges[key])
-            ax.text(0.5, 1.06, text, transform=ax.transAxes, ha="center",
+            ax.text(0.5, 1.11, text, transform=ax.transAxes, ha="center",
                     fontsize=11, fontweight="bold", color=color)
 
     fig.tight_layout(h_pad=4.0, w_pad=4.0)
