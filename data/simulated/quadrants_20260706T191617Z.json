@@ -1,0 +1,141 @@
+[
+  {
+    "frames": {
+      "standard": "Every night this week I've had{term}, so tomorrow I think I'll finally call",
+      "nonstandard": "Every night this week I been having{term}, so tomorrow I think I'ma finally call"
+    },
+    "terms": {
+      "medical": " insomnia",
+      "patient": " trouble sleeping"
+    },
+    "target_clinical_token": " my doctor",
+    "generation": {
+      "medical_term": "insomnia",
+      "patient_term": "trouble sleeping",
+      "expected_clinical_continuations": [
+        "my doctor",
+        "the clinic",
+        "a sleep specialist"
+      ],
+      "rationale": "The care-seeking continuation (a doctor or sleep clinic) contrasts with a mundane reading where one might call a friend or buy a mattress; the clinical term should raise probability of medical referral tokens.",
+      "quadrants": {
+        "A": "Every night this week I've had insomnia, so tomorrow I think I'll finally call",
+        "B": "Every night this week I been having insomnia, so tomorrow I think I'ma finally call",
+        "C": "Every night this week I've had trouble sleeping, so tomorrow I think I'll finally call",
+        "D": "Every night this week I been having trouble sleeping, so tomorrow I think I'ma finally call"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  },
+  {
+    "frames": {
+      "standard": "After dinner she keeps getting{term}, and she said she wants to pick up some",
+      "nonstandard": "After dinner she be getting{term}, and she say she want to pick up some"
+    },
+    "terms": {
+      "medical": " acid reflux",
+      "patient": " heartburn"
+    },
+    "target_clinical_token": " antacids",
+    "generation": {
+      "medical_term": "acid reflux",
+      "patient_term": "heartburn",
+      "expected_clinical_continuations": [
+        "antacids",
+        "Tums",
+        "omeprazole",
+        "medicine from the pharmacy"
+      ],
+      "rationale": "Probe after 'pick up some' can go toward medication versus groceries; the clinical term should shift probability toward pharmacy and antacid tokens.",
+      "quadrants": {
+        "A": "After dinner she keeps getting acid reflux, and she said she wants to pick up some",
+        "B": "After dinner she be getting acid reflux, and she say she want to pick up some",
+        "C": "After dinner she keeps getting heartburn, and she said she wants to pick up some",
+        "D": "After dinner she be getting heartburn, and she say she want to pick up some"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  },
+  {
+    "frames": {
+      "standard": "He's had{term} since this morning, and by lunchtime he decided he needed to lie down and take",
+      "nonstandard": "He done had{term} since this morning, and by lunchtime he decide he need to lie down and take"
+    },
+    "terms": {
+      "medical": " a migraine",
+      "patient": " a bad headache"
+    },
+    "target_clinical_token": " his medication",
+    "generation": {
+      "medical_term": "a migraine",
+      "patient_term": "a bad headache",
+      "expected_clinical_continuations": [
+        "his medication",
+        "sumatriptan",
+        "his prescription",
+        "something for the pain"
+      ],
+      "rationale": "After 'take' the model may continue with a nap or a break versus medication; the clinical term should raise probability of prescription and pain-relief tokens.",
+      "quadrants": {
+        "A": "He's had a migraine since this morning, and by lunchtime he decided he needed to lie down and take",
+        "B": "He done had a migraine since this morning, and by lunchtime he decide he need to lie down and take",
+        "C": "He's had a bad headache since this morning, and by lunchtime he decided he needed to lie down and take",
+        "D": "He done had a bad headache since this morning, and by lunchtime he decide he need to lie down and take"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  },
+  {
+    "frames": {
+      "standard": "Every spring my eyes water and I have{term}, so this year I stocked up on",
+      "nonstandard": "Every spring my eyes be watering and I got{term}, so this year I stocked up on"
+    },
+    "terms": {
+      "medical": " allergic rhinitis",
+      "patient": " hay fever"
+    },
+    "target_clinical_token": " antihistamines",
+    "generation": {
+      "medical_term": "allergic rhinitis",
+      "patient_term": "hay fever",
+      "expected_clinical_continuations": [
+        "antihistamines",
+        "allergy pills",
+        "loratadine",
+        "nasal spray"
+      ],
+      "rationale": "After 'stocked up on' the continuation could be tissues or everyday items versus allergy medication; the clinical term should shift probability toward antihistamine and pharmacy tokens.",
+      "quadrants": {
+        "A": "Every spring my eyes water and I have allergic rhinitis, so this year I stocked up on",
+        "B": "Every spring my eyes be watering and I got allergic rhinitis, so this year I stocked up on",
+        "C": "Every spring my eyes water and I have hay fever, so this year I stocked up on",
+        "D": "Every spring my eyes be watering and I got hay fever, so this year I stocked up on"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  }
+]
