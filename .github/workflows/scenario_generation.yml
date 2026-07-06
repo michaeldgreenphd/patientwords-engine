@@ -43,17 +43,27 @@ on:
         type: string
         default: ""
       anthropic_model:
-        description: "Anthropic model for generation (empty = MEDLANG_ANTHROPIC_MODEL or claude-opus-4-8)"
-        type: string
-        default: ""
+        description: "Anthropic model for generation"
+        type: choice
+        default: claude-sonnet-5
+        options:
+          - claude-sonnet-5
+          - claude-opus-4-8
+          - claude-haiku-4-5
       max_spend:
         description: "Hard USD ceiling for generation"
         type: string
         default: "2"
       graph_models:
-        description: "Neuronpedia models to trace, space-separated, or 'all' (gemma-2-2b gemma-3-4b-it qwen3-4b qwen3-1.7b)"
-        type: string
-        default: "gemma-2-2b"
+        description: "Neuronpedia model to trace ('all' sweeps every registry model; non-gemma models warn-and-skip until their source sets are registered)"
+        type: choice
+        default: gemma-2-2b
+        options:
+          - gemma-2-2b
+          - gemma-3-4b-it
+          - qwen3-4b
+          - qwen3-1.7b
+          - all
       trace_sample_size:
         description: "Generated items to trace per model ('0' = archive only, skip tracing)"
         type: string

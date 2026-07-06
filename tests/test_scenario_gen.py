@@ -172,6 +172,14 @@ def test_generate_stress_pairs_seeds_few_shot_and_dedupe(monkeypatch):
     assert VALID_CANDIDATE["patient_prompt"] in calls[0]["prompt"]
 
 
+def test_generate_stress_pairs_remaps_legacy_model_names(monkeypatch):
+    fake_call, calls = _fake_call_returning([json.dumps([VALID_CANDIDATE])])
+    monkeypatch.setattr(scenario_gen, "_call", fake_call)
+    result = generate_stress_pairs(1, model="claude-3-5-sonnet", client=object())
+    assert calls[0]["model"] == "claude-sonnet-5"  # retired name remapped, not 404ing at the API
+    assert result["model"] == "claude-sonnet-5"
+
+
 def test_generate_stress_pairs_budget_ceiling(monkeypatch):
     fake_call, calls = _fake_call_returning([json.dumps([VALID_CANDIDATE])])
     monkeypatch.setattr(scenario_gen, "_call", fake_call)

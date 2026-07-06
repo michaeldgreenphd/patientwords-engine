@@ -35,7 +35,7 @@ import sys
 from pathlib import Path
 from typing import Any, Iterable, Iterator
 
-from medlang_circuits.evaluate_models import CostTracker, _call
+from medlang_circuits.evaluate_models import CostTracker, _call, resolve_models
 from medlang_circuits.llm_client import DEFAULT_MODEL, _get_client
 
 logger = logging.getLogger(__name__)
@@ -228,6 +228,12 @@ def _require_client(client: Any) -> Any:
     return client
 
 
+def _resolve_model(model: str | None) -> str:
+    """Argument -> MEDLANG_ANTHROPIC_MODEL -> default, with legacy names remapped."""
+    resolved, _ = resolve_models([model or DEFAULT_MODEL])
+    return resolved[0]
+
+
 # ---------------------------------------------------------------------------
 # 1. Stress-pair generation
 # ---------------------------------------------------------------------------
@@ -267,7 +273,7 @@ def generate_stress_pairs(
     target_clinical_token from the first expected continuation) so the output
     file feeds medlang-batch-eval directly.
     """
-    model = model or DEFAULT_MODEL
+    model = _resolve_model(model)
     client = _require_client(client)
     tracker = CostTracker(max_spend=max_spend)
     seen: set[tuple[str, str]] = set()
@@ -345,7 +351,7 @@ def generate_dialect_variants(
         raise ValueError(f"held_fixed must be 'clinical' or 'patient'; got {held_fixed!r}")
     if term not in phrase:
         raise ValueError("the fixed term must appear verbatim in the baseline phrase")
-    model = model or DEFAULT_MODEL
+    model = _resolve_model(model)
     client = _require_client(client)
     tracker = CostTracker(max_spend=max_spend)
     requested = list(dialects) if dialects else list(DEFAULT_DIALECTS)
