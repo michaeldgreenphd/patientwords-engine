@@ -55,6 +55,22 @@ def test_target_probability_selection():
     assert target_probability(g, anchor=" zebra") is None
 
 
+def test_target_probability_hosted_labels_and_wordpieces():
+    # Hosted logit labels arrive wrapped ('Output " anti"') and tokenizers
+    # split intended targets into leading wordpieces - anchoring must see
+    # through both, with a short-token guard.
+    g = _two_logit_graph()
+    for node in g["nodes"]:
+        if node["node_id"] == "L_999_3":
+            node["clerp"] = 'Output " anti" (p=0.30)'
+        if node["node_id"] == "L_a":
+            node["clerp"] = 'Output " tissues" (p=0.13)'
+    assert target_probability(g, anchor=" antihistamines") == ('Output " anti"', 0.30)
+    assert target_probability(g, anchor=" tissue") == ('Output " tissues"', 0.13)
+    assert target_probability(g, anchor=" an") is None  # stub tokens can't match everything
+    assert target_probability(g, anchor=" zebra") is None
+
+
 def test_logit_spread_and_select_logits():
     g = _two_logit_graph()
     assert logit_spread(g) == [("a", 0.9), ("jumps", 0.81)]

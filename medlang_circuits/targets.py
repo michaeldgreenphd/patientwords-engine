@@ -43,6 +43,34 @@ def _norm(token: str) -> str:
     return token.strip().lower()
 
 
+_HOSTED_OUTPUT_RE = re.compile(r'^Output\s+"(.*)"$', re.S)
+
+
+def bare_token(label: str) -> str:
+    """Bare lowercase next-token text: hosted logit labels arrive wrapped as
+    'Output " word"'; local/test labels are the plain token."""
+    match = _HOSTED_OUTPUT_RE.match(label.strip())
+    return _norm(match.group(1) if match else label)
+
+
+def anchor_matches(label: str, anchor: str) -> bool:
+    """Wordpiece-tolerant anchor match.
+
+    Tokenizers split intended targets: the trace shows ' anti' for
+    ' antihistamines', ' ant' for ' antacid'. A traced token that is a
+    leading piece of the anchor (or vice versa) counts as the anchor,
+    with a >=3-character guard so stub tokens can't match everything;
+    exact matches work at any length.
+    """
+    token_text, anchor_text = bare_token(label), bare_token(anchor)
+    if not token_text or not anchor_text:
+        return False
+    if token_text == anchor_text:
+        return True
+    return (min(len(token_text), len(anchor_text)) >= 3
+            and (anchor_text.startswith(token_text) or token_text.startswith(anchor_text)))
+
+
 def parse_logit_clerp(clerp: str | None) -> tuple[str, float | None]:
     """Split a logit node label like 'therapist (p=0.62)' into (token, probability)."""
     if not clerp:
@@ -185,7 +213,9 @@ def target_probability(
     Selection order: the explicit ``anchor`` token if present among the traced
     logits, else the best-probability match from ``targets``, else the graph's
     top logit. Returns None when an anchor/targets filter was given but nothing
-    matches (the caller decides how to report a missing target).
+    matches (the caller decides how to report a missing target). Anchor
+    matching is wordpiece-tolerant and understands hosted 'Output "..."'
+    labels - see ``anchor_matches``.
     """
     candidates: list[tuple[str, float]] = []
     for node in _logit_nodes(graph):
@@ -195,7 +225,7 @@ def target_probability(
     if not candidates:
         return None
     if anchor is not None:
-        matches = [c for c in candidates if _norm(c[0]) == _norm(anchor)]
+        matches = [c for c in candidates if anchor_matches(c[0], anchor)]
         return max(matches, key=lambda c: c[1]) if matches else None
     if targets is not None:
         matches = [c for c in candidates if targets.matches(c[0])]
