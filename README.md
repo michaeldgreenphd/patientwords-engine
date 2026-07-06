@@ -427,6 +427,39 @@ Set `trace_sample_size: 0` to archive without tracing (generation needs only
 Trace Evaluation* workflow's `mode` input now also includes `dialect`, with a
 committed sample at `medlang_circuits/data/ci_pairs_dialect.json`.
 
+## Auto-interp backfill (feature explanations on demand)
+
+Node colors and the site's medical-circuit metrics all flow from feature
+TAGGING, and tagging reads each feature's **auto-interp explanation** from
+Neuronpedia. Most Gemma Scope features already have one; for the gaps, the
+pipeline can ask Neuronpedia to generate explanations on demand:
+
+- **When it triggers:** only during a trace run with
+  `--generate-missing-explanations CAP` (CLI) or
+  `"generate_explanations": "CAP"` (trace trigger file), and only when a
+  feature comes back with an empty explanation. At most CAP requests per
+  chunk; results are cached in `.medlang_cache/` so a feature is never paid
+  for twice.
+- **Whose account pays:** generation runs on Neuronpedia's servers using the
+  provider key saved in your **Neuronpedia account settings** (Auto-Interp
+  Keys). An Anthropic key bills your Anthropic API credits (~$0.001-0.003
+  per explanation at the haiku-class default); an OpenRouter key with a
+  prepaid balance gives a hard ceiling. No key is stored in this repo, in
+  GitHub secrets, or in any Claude environment - the engine only needs its
+  existing `NEURONPEDIA_API_KEY` to make the request.
+- **How it reaches the dashboard:** the fresh explanation is refetched,
+  cached, keyword-tagged (clinical/off-target/structural), and from there
+  drives the node's green accent, its tooltip text, the per-phrasing
+  `clinical_mass` metric ("Med circuit" bars on the Simulated Scenarios
+  table), and the shared/unique counts in the circuit-diff views. In run
+  logs look for `Auto-interp generated for <model> <layer>-<set>/<index>`.
+- **Status: EXPERIMENTAL.** The endpoint schema was written from the
+  Neuronpedia webapp's shape but not verified end-to-end; on a 4xx the run
+  logs the server's reason and continues untagged (nothing breaks).
+  Override `NEURONPEDIA_EXPLAIN_ENDPOINT` / `_MODEL` / `_TYPE` if their API
+  differs. Test with `"generate_explanations": "5"` on a 1-pair trace
+  before relying on it for a large run.
+
 ## Model evaluation
 
 `evaluate_models.py` benchmarks the two Anthropic-backed pipeline steps —
