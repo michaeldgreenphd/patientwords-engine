@@ -326,6 +326,29 @@ Each `batch_summary.json` carries the traced model/source set and, for
 imported pairs, the original observed tokens/probs — so fresh traces line up
 row-by-row against the manual dataset.
 
+**The same loop runs from GitHub Actions**
+(`.github/workflows/scenario_generation.yml`, *Scenario Generation* in the
+Actions tab). Pick the task (`pairs` or `dialects`) and its parameters from
+the `workflow_dispatch` form; the job then:
+
+1. runs `medlang-generate` with `ANTHROPIC_API_KEY` from repository secrets
+   under the `max_spend` ceiling;
+2. **commits the validated output to `data/simulated/`** (timestamped, e.g.
+   `pairs_20260706T120000Z.json`) — the simulated-data archive, preserved
+   even when tracing fails or is skipped;
+3. traces a `trace_sample_size` slice on the selected Neuronpedia models
+   (`graph_models` takes a space-separated list or `all`; per-model failures
+   warn instead of aborting the sweep, since non-gemma models need a
+   registered source set) and appends a per-model next-token probability
+   comparison to the run page — clinical vs. patient probability and the
+   Language Penalty for pairs, baseline vs. per-dialect deltas for variants;
+4. uploads the generated JSON and all trace outputs as a run artifact.
+
+Set `trace_sample_size: 0` to archive without tracing (generation needs only
+`ANTHROPIC_API_KEY`; tracing also needs `NEURONPEDIA_API_KEY`). The *Circuit
+Trace Evaluation* workflow's `mode` input now also includes `dialect`, with a
+committed sample at `medlang_circuits/data/ci_pairs_dialect.json`.
+
 ## Model evaluation
 
 `evaluate_models.py` benchmarks the two Anthropic-backed pipeline steps —

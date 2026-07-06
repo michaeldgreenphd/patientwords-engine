@@ -1,0 +1,223 @@
+name: Scenario Generation (medlang-circuits)
+
+# Generate -> archive -> trace -> compare, from the Actions tab:
+#   1. Claude generates new stress pairs (patient vs. clinical wording) or
+#      dialect/register variants around a fixed term (medlang-generate).
+#   2. The validated output is committed to data/simulated/ as simulated data,
+#      so every batch is archived even if tracing fails or is skipped.
+#   3. A slice of the batch is traced on one or more Neuronpedia models
+#      (hosted backend) and the per-model next-token probabilities are
+#      compared on the run page.
+# Secrets: ANTHROPIC_API_KEY (generation), NEURONPEDIA_API_KEY (tracing).
+# Caveat: non-gemma models fail at the feature-tagging step until their
+# autointerp source sets are registered (see MODEL_SOURCE_SETS).
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "What to generate"
+        type: choice
+        default: pairs
+        options:
+          - pairs
+          - dialects
+      num:
+        description: "Pairs (task=pairs) or variants (task=dialects) to accept"
+        type: string
+        default: "6"
+      topics:
+        description: "(pairs) Optional space-separated topics to steer coverage"
+        type: string
+        default: ""
+      phrase:
+        description: "(dialects) Baseline phrase - the standard phrasing, ending at the probe boundary"
+        type: string
+        default: ""
+      term:
+        description: "(dialects) Swapped term to hold verbatim and fixed (clinical direction)"
+        type: string
+        default: ""
+      target_token:
+        description: "(dialects) Optional target token for the batch item, e.g. ' therapist'"
+        type: string
+        default: ""
+      anthropic_model:
+        description: "Anthropic model for generation (empty = MEDLANG_ANTHROPIC_MODEL or claude-opus-4-8)"
+        type: string
+        default: ""
+      max_spend:
+        description: "Hard USD ceiling for generation"
+        type: string
+        default: "2"
+      graph_models:
+        description: "Neuronpedia models to trace, space-separated, or 'all' (gemma-2-2b gemma-3-4b-it qwen3-4b qwen3-1.7b)"
+        type: string
+        default: "gemma-2-2b"
+      trace_sample_size:
+        description: "Generated items to trace per model ('0' = archive only, skip tracing)"
+        type: string
+        default: "2"
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package with LLM extras
+        run: pip install ".[llm]"
+
+      - name: Generate scenarios
+        id: gen
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TASK: ${{ inputs.task }}
+          NUM: ${{ inputs.num }}
+          TOPICS: ${{ inputs.topics }}
+          PHRASE: ${{ inputs.phrase }}
+          TERM: ${{ inputs.term }}
+          TARGET_TOKEN: ${{ inputs.target_token }}
+          GEN_MODEL: ${{ inputs.anthropic_model }}
+          MAX_SPEND: ${{ inputs.max_spend }}
+        run: |
+          set -euo pipefail
+          STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+          mkdir -p data/simulated
+          if [ "$TASK" = "pairs" ]; then
+            OUT="data/simulated/pairs_${STAMP}.json"
+            MODE="2panel"
+            ARGS=(pairs -n "$NUM" --max-spend "$MAX_SPEND" --out "$OUT"
+                  --seed-pairs medlang_circuits/data/ci_pairs_2panel.json)
+            if [ -n "$TOPICS" ]; then
+              # shellcheck disable=SC2086
+              ARGS+=(--topics $TOPICS)
+            fi
+          else
+            if [ -z "$PHRASE" ] || [ -z "$TERM" ]; then
+              echo "::error::task=dialects requires the 'phrase' and 'term' inputs"
+              exit 1
+            fi
+            OUT="data/simulated/dialects_${STAMP}.json"
+            MODE="dialect"
+            ARGS=(dialects --phrase "$PHRASE" --term "$TERM" -n "$NUM"
+                  --held-fixed clinical --max-spend "$MAX_SPEND" --out "$OUT")
+            if [ -n "$TARGET_TOKEN" ]; then
+              ARGS+=(--target-token "$TARGET_TOKEN")
+            fi
+          fi
+          if [ -n "$GEN_MODEL" ]; then
+            ARGS+=(--model "$GEN_MODEL")
+          fi
+          medlang-generate "${ARGS[@]}" | tee generation_report.json
+          COUNT=$(python -c "import json; d=json.load(open('$OUT')); \
+            print(sum(len(i.get('variants',[1])) if 'variants' in i else 1 for i in d) if d else 0)")
+          echo "out=$OUT" >> "$GITHUB_OUTPUT"
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Generation (${TASK})"
+            echo '```json'
+            cat generation_report.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit to the simulated-data archive
+        if: ${{ steps.gen.outputs.count != '0' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${{ steps.gen.outputs.out }}"
+          git commit -m "Archive simulated ${{ inputs.task }} scenarios: $(basename '${{ steps.gen.outputs.out }}')"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          echo "Archived ${{ steps.gen.outputs.out }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Trace on the selected Neuronpedia models
+        if: ${{ inputs.trace_sample_size != '0' && steps.gen.outputs.count != '0' }}
+        env:
+          NEURONPEDIA_API_KEY: ${{ secrets.NEURONPEDIA_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OUT: ${{ steps.gen.outputs.out }}
+          MODE: ${{ steps.gen.outputs.mode }}
+          N: ${{ inputs.trace_sample_size }}
+          MODELS: ${{ inputs.graph_models }}
+        run: |
+          set -uo pipefail
+          python - <<'EOF'
+          import json, os
+          items = json.load(open(os.environ["OUT"], encoding="utf-8"))
+          n = int(os.environ["N"])
+          with open("trace_slice.json", "w", encoding="utf-8") as f:
+              json.dump(items[:n], f, indent=2)
+          print(f"Tracing {len(items[:n])} of {len(items)} generated items")
+          EOF
+          if [ "$MODELS" = "all" ]; then
+            MODELS="gemma-2-2b gemma-3-4b-it qwen3-4b qwen3-1.7b"
+          fi
+          FAILED=""
+          for M in $MODELS; do
+            echo "::group::Tracing on $M"
+            if ! medlang-batch-eval trace_slice.json --mode "$MODE" --backend hosted \
+                --graph-model "$M" --out "trace_out/$M"; then
+              echo "::warning::tracing failed for $M (non-gemma models need a registered source set)"
+              FAILED="$FAILED $M"
+            fi
+            echo "::endgroup::"
+          done
+          if [ -n "$FAILED" ]; then
+            echo "Tracing failed for:$FAILED" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Publish cross-model probability comparison
+        if: ${{ always() && inputs.trace_sample_size != '0' }}
+        run: |
+          python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          def fmt(p):
+              return f"{p:.2f}" if isinstance(p, (int, float)) else "—"
+
+          summaries = sorted(Path("trace_out").glob("*/batch_summary.json"))
+          if not summaries:
+              print("\nNo trace summaries produced.")
+              raise SystemExit(0)
+          print("\n## Next-token probabilities across traced models\n")
+          for path in summaries:
+              s = json.loads(path.read_text(encoding="utf-8"))
+              print(f"### {s['graph_model']} (mode: {s['mode']})\n")
+              for r in s["results"]:
+                  if s["mode"] == "dialect":
+                      print(f"- pair {r['index']} · target `{r.get('target_token')}` · "
+                            f"baseline {fmt(r.get('baseline_probability'))}")
+                      for v in r["variants"]:
+                          print(f"  - {v['dialect']}: {fmt(v.get('probability'))} "
+                                f"(Δ {fmt(v.get('delta_vs_baseline'))})")
+                  else:
+                      probs = r.get("probabilities", {})
+                      print(f"- pair {r['index']} · target `{r.get('target_token')}` · "
+                            f"clinical {fmt(probs.get('clinical'))} / patient {fmt(probs.get('patient'))} "
+                            f"(penalty {fmt(r.get('language_penalty'))})")
+              print()
+          EOF
+
+      - name: Upload generated data + trace outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenario-generation-${{ inputs.task }}-${{ github.run_number }}
+          path: |
+            data/simulated/
+            trace_out/
+            generation_report.json
+          if-no-files-found: warn
