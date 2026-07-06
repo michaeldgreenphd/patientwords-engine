@@ -14,8 +14,9 @@ These are **simulated data**: LLM-authored phrasings that passed the
 programmatic validators in `medlang_circuits/scenario_gen.py` (single
 contiguous term swap, probe-boundary endings, term-verbatim checks, dedupe).
 They are not patient statements and contain no real personal or clinical
-data. The hand-built measured dataset stays outside the repository; its
-imported form can be traced locally via `medlang-generate import-sheet`.
+data. The hand-built measured dataset (imported from the spreadsheet via
+`medlang-generate import-sheet`, manual measurements under `provenance`)
+lives separately in `data/measured/imported_pairs.json`.
 
 Trace any archived file directly:
 
