@@ -28,6 +28,29 @@ DEFAULT_SOURCE_SET = "gemmascope-transcoder-16k"
 DEFAULT_CACHE_DIR = ".medlang_cache/features"
 MAX_TOP_TOKENS = 12
 
+# Per-model default autointerp source sets for feature-description fetching.
+# None is a PLACEHOLDER: the model is traceable but its autointerp source name
+# hasn't been confirmed yet - replace None with the right source name from
+# neuronpedia.org; until then callers must pass --source-set explicitly.
+MODEL_SOURCE_SETS: dict[str, str | None] = {
+    "gemma-2-2b": DEFAULT_SOURCE_SET,
+    "gemma-3-4b-it": None,  # PLACEHOLDER
+    "qwen3-4b": None,  # PLACEHOLDER
+    "qwen3-1.7b": None,  # PLACEHOLDER
+}
+
+
+def default_source_set(model_id: str) -> str:
+    """Default autointerp source set for ``model_id``; raises until one is registered."""
+    source_set = MODEL_SOURCE_SETS.get(model_id)
+    if source_set is None:
+        raise ValueError(
+            f"No default feature source set is registered for model {model_id!r}; "
+            "set --source-set explicitly (FeatureFetcher(source_set=...)) with the model's "
+            "autointerp source name from neuronpedia.org"
+        )
+    return source_set
+
 
 class FeatureDetails(dict):
     """Plain dict with keys: description (str), top_tokens (list[str])."""
@@ -37,14 +60,14 @@ class FeatureFetcher:
     def __init__(
         self,
         model_id: str = "gemma-2-2b",
-        source_set: str = DEFAULT_SOURCE_SET,
+        source_set: str | None = None,
         base_url: str = DEFAULT_BASE_URL,
         cache_dir: str | os.PathLike | None = None,
         api_key: str | None = None,
         timeout: float = 20.0,
     ):
         self.model_id = model_id
-        self.source_set = source_set
+        self.source_set = source_set or default_source_set(model_id)
         self.base_url = base_url.rstrip("/")
         self.cache_dir = Path(cache_dir or DEFAULT_CACHE_DIR)
         self.api_key = api_key or os.environ.get("NEURONPEDIA_API_KEY")
