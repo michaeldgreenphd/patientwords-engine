@@ -234,6 +234,98 @@ output directory (HTML/PNG/tagged JSON) as an artifact even on failure. This
 workflow benchmarks the *traced* model; the Model Evaluation workflow below
 benchmarks the Anthropic *translation* models.
 
+## Generating stress-test scenarios
+
+`medlang-generate` (module `scenario_gen`) expands the hand-built dataset with
+Claude-authored items and imports the original spreadsheet. Model selection
+follows the usual rule (`--model`, else `MEDLANG_ANTHROPIC_MODEL`, else
+`claude-opus-4-8`); every generating command enforces a hard spend ceiling via
+`--max-spend` (the `evaluate_models.CostTracker` seam). No vocabulary lives in
+Python source — generated and imported phrases are JSON data files.
+
+**Stress pairs** — `medlang-generate pairs` has Claude produce new
+patient-vs-clinical next-token pairs in the dataset's exact format. The
+generation prompt enforces: one identical syntactic frame with a single
+contiguous term swap (colloquial/patient expression ↔ precise clinical
+equivalent), both phrases ending mid-sentence at a next-token probe boundary
+(no terminal punctuation — the next token is the measurement), frames that
+make the next token diagnostic (mundane vs. care-seeking continuation), and
+varied person/tense/probe-word/setting. Every candidate is then
+**programmatically validated** before acceptance:
+
+- token-level diff of the two prompts must be a **single contiguous span**
+  (multi-span edits rejected — the same single-swap property as the
+  hand-built set);
+- both prompts must end without terminal punctuation;
+- both declared terms must actually appear in their prompts;
+- duplicates of seed pairs and already-accepted pairs are rejected.
+
+Accepted pairs are written batch-ready (`top_prompt` / `bottom_prompt` /
+`target_clinical_token` from the first expected continuation), so the output
+feeds `medlang-batch-eval` directly. `--seed-pairs existing.json` few-shots
+the generator with your dataset and seeds the dedupe set; `--topics` steers
+coverage.
+
+**Dialect syntax variants** — `medlang-generate dialects` holds the swapped
+term verbatim and fixed while Claude rewrites only the surrounding syntax as
+different English dialects/registers would frame the same clinical situation
+(regional US varieties, British/Irish/Caribbean English, ESL-influenced
+phrasing, texting/informal, terse vs. elaborated — override with
+`--dialects`). The prompt requires authentic, respectful renderings (no
+caricature — these simulate real patients), the fixed term unchanged, and a
+comparable probe boundary; each variant is labeled with its dialect/register.
+Both directions are supported via `--held-fixed`: `clinical` (default and
+priority — isolates the pure syntax/dialect effect) or `patient` (compound
+effect). Validation: term present verbatim, no terminal punctuation, no
+duplicates. The output is a `--mode dialect` batch item:
+
+```bash
+medlang-batch-eval dialect_pairs.json --mode dialect --out dialect_out
+```
+
+renders the baseline (standard phrasing) as panel 1 and one stacked panel per
+variant, each carrying its dialect label and a **Dialect Δ vs. baseline**
+badge of target-token probability; without a target token the baseline's top
+logit anchors the comparison via the predictive-spread path.
+
+**Spreadsheet importer** — `medlang-generate import-sheet <file.xlsx|csv>`
+converts the hand-built dataset (columns: Phrase 1 | Next token | Prob | Link
+to Circuit Tracer | Phrase 2 | (next token) | (prob) | Link | Notes |
+sourcing) to the batch pair schema. It is deliberately forgiving: tokens are
+whitespace-stripped, fully-empty rows and the trailing model/transcoder
+metadata row are skipped, any cell containing a neuronpedia.org URL counts as
+a circuit link regardless of column, probs/links/tokens may be missing (a
+missing clinical next token leaves the pair unanchored → top-logit fallback),
+and phrase text is preserved verbatim — intentional misspellings included,
+they are part of the stress test. Manual measurements (observed next tokens,
+probs, circuit links, Notes, sourcing) ride along under each pair's
+`provenance` field for later comparison against fresh traces. `.xlsx` needs
+the optional extra (`pip install ".[sheets]"`, i.e. openpyxl); plain CSV
+works with the stdlib.
+
+**The generate → trace → compare loop:**
+
+```bash
+# 1. Import the hand-built sheet (manual measurements ride along as provenance)
+medlang-generate import-sheet Dialect_Testing_Phrases.xlsx --out imported_pairs.json
+
+# 2. Expand it: 10 new validated pairs, few-shot on the originals
+medlang-generate pairs -n 10 --seed-pairs imported_pairs.json --max-spend 2 --out generated_pairs.json
+
+# 3. Dialect variants around one fixed clinical term (pure syntax effect)
+medlang-generate dialects --phrase "I have <TERM>, so I need to talk to a" \
+  --term "<TERM>" -n 6 --held-fixed clinical --target-token " <continuation>" --out dialect_pairs.json
+
+# 4. Trace everything and compare against the recorded measurements
+medlang-batch-eval imported_pairs.json  --mode 2panel  --out sheet_out
+medlang-batch-eval generated_pairs.json --mode 2panel  --out generated_out
+medlang-batch-eval dialect_pairs.json   --mode dialect --out dialect_out
+```
+
+Each `batch_summary.json` carries the traced model/source set and, for
+imported pairs, the original observed tokens/probs — so fresh traces line up
+row-by-row against the manual dataset.
+
 ## Model evaluation
 
 `evaluate_models.py` benchmarks the two Anthropic-backed pipeline steps —
