@@ -93,7 +93,9 @@ STRESS_PAIR_SYSTEM = (
     "that word (for example 'taking an' before a vowel-initial remedy).\n"
     "Output STRICT JSON only - a JSON array of objects, each with exactly these keys: "
     '{"patient_prompt": str, "clinical_prompt": str, "patient_term": str, "clinical_term": str, '
-    '"expected_clinical_continuations": [str, ...], "rationale": str}. No text outside the JSON.'
+    '"expected_clinical_continuations": [str, ...], "topic": str, "rationale": str} - '
+    '"topic" names the single condition area this item covers (one of the steered topics '
+    "when topics are given). No text outside the JSON."
 )
 
 QUADRANT_SYSTEM = (
@@ -221,6 +223,7 @@ def validate_stress_pair(candidate: Any, seen: set[tuple[str, str]]) -> tuple[di
             "clinical_term": str(candidate["clinical_term"]).strip(),
             "expected_clinical_continuations": [str(c).strip() for c in continuations if str(c).strip()],
             "rationale": str(candidate.get("rationale") or "").strip(),
+            "topic": str(candidate.get("topic") or "").strip() or None,
             "swap_spans": spans,
         },
     }, None

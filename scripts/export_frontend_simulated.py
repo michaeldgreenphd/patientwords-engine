@@ -130,6 +130,7 @@ for stamp in [s.strip() for s in args.stamps.split(",") if s.strip()]:
             "rationale": gen.get("rationale"),
             "patient_term": gen.get("patient_term"),
             "clinical_term": gen.get("clinical_term"),
+            "topic": gen.get("topic"),
             "topics": gen.get("topics", []),
             "screening": r.get("screening"),
             "circuit_diff": r.get("circuit_diff"),

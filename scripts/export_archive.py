@@ -28,7 +28,7 @@ ENGINE = Path(args.engine)
 
 COLUMNS = [
     "batch", "batch_index", "generated_model", "generated_at", "generation_cost_usd",
-    "topics", "clinical_prompt", "patient_prompt", "patient_term", "clinical_term",
+    "topic", "topics", "clinical_prompt", "patient_prompt", "patient_term", "clinical_term",
     "intended_target", "rationale", "status", "screening_reason", "probe_extension",
     "measured_target", "prob_clinical", "prob_patient", "language_penalty",
     "top_clinical", "top_patient", "flipped",
@@ -71,6 +71,7 @@ for batch_path in sorted(ENGINE.glob("data/simulated/pairs_*.json")):
             "generated_model": report.get("model"),
             "generated_at": report.get("run_timestamp"),
             "generation_cost_usd": report.get("cost_usd"),
+            "topic": gen.get("topic"),
             "topics": " | ".join(report.get("topics", [])),
             "clinical_prompt": pair.get("top_prompt"),
             "patient_prompt": pair.get("bottom_prompt"),
