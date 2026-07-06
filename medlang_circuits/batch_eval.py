@@ -161,6 +161,7 @@ def evaluate_pair(
     backend: str = "hosted",
     show_mitigation: bool = False,
     use_llm_translation: bool = True,
+    llm_model: str | None = None,
     dpi: int = DEFAULT_PNG_DPI,
     fetcher: Any = None,
     generation_params: dict[str, Any] | None = None,
@@ -175,7 +176,7 @@ def evaluate_pair(
     roles = ["clinical", "patient"]
     translation_method = None
     if show_mitigation:
-        translation = translate_to_clinical(pair["bottom_prompt"], use_llm=use_llm_translation)
+        translation = translate_to_clinical(pair["bottom_prompt"], use_llm=use_llm_translation, model=llm_model)
         prompts.append(translation["text"])
         roles.append("translated")
         translation_method = translation["method"]
@@ -325,6 +326,7 @@ def evaluate_translation(
     out_dir: Path,
     backend: str = "hosted",
     use_llm_translation: bool = True,
+    llm_model: str | None = None,
     dpi: int = DEFAULT_PNG_DPI,
     fetcher: Any = None,
     generation_params: dict[str, Any] | None = None,
@@ -338,7 +340,7 @@ def evaluate_translation(
     targets = AttributionTargets.of(force_tokens) if force_tokens else None
     params = _generation_params(targets, generation_params)
 
-    translation = translate_to_clinical(patient_prompt, use_llm=use_llm_translation)
+    translation = translate_to_clinical(patient_prompt, use_llm=use_llm_translation, model=llm_model)
     translated_prompt = translation["text"]  # raw LLM output, traced natively below
 
     patient_graph = _trace(patient_prompt, "patient", index, out_dir, backend, params, targets, fetcher)
@@ -404,6 +406,7 @@ def run_batch(
     backend: str = "hosted",
     show_mitigation: bool = False,
     use_llm_translation: bool = True,
+    llm_model: str | None = None,
     dpi: int = DEFAULT_PNG_DPI,
     fetcher: Any = None,
     generation_params: dict[str, Any] | None = None,
@@ -427,13 +430,13 @@ def run_batch(
         elif mode == "translation":
             result = evaluate_translation(
                 pair, i, out, backend=backend, use_llm_translation=use_llm_translation,
-                dpi=dpi, fetcher=fetcher, generation_params=generation_params,
+                llm_model=llm_model, dpi=dpi, fetcher=fetcher, generation_params=generation_params,
             )
         else:
             result = evaluate_pair(
                 pair, i, out, backend=backend, show_mitigation=show_mitigation,
-                use_llm_translation=use_llm_translation, dpi=dpi, fetcher=fetcher,
-                generation_params=generation_params,
+                use_llm_translation=use_llm_translation, llm_model=llm_model,
+                dpi=dpi, fetcher=fetcher, generation_params=generation_params,
             )
         results.append(result)
     summary_path = out / "batch_summary.json"
@@ -458,6 +461,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--show-mitigation", action="store_true",
                         help="(2panel mode) append the legacy third translated panel")
     parser.add_argument("--no-llm-translation", action="store_true", help="Phrase-table translation only")
+    parser.add_argument("--llm-model", default=None,
+                        help="Anthropic model for translation (default: MEDLANG_ANTHROPIC_MODEL or claude-opus-4-8)")
     parser.add_argument("--dpi", type=int, default=DEFAULT_PNG_DPI, help="PNG export resolution")
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
 
@@ -468,6 +473,7 @@ def main(argv: list[str] | None = None) -> int:
         backend=args.backend,
         show_mitigation=args.show_mitigation,
         use_llm_translation=not args.no_llm_translation,
+        llm_model=args.llm_model,
         dpi=args.dpi,
     )
     print(json.dumps(results, indent=2))

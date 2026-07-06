@@ -26,6 +26,7 @@ def run_comparison(
     out_dir: str = "medlang_out",
     use_llm_translation: bool = True,
     use_llm_classifier: bool = False,
+    llm_model: str | None = None,
     render_png: bool = True,
     generation_params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -42,7 +43,7 @@ def run_comparison(
 
     translation_method = "provided"
     if clinical_prompt is None:
-        translation = translate_to_clinical(patient_prompt, use_llm=use_llm_translation)
+        translation = translate_to_clinical(patient_prompt, use_llm=use_llm_translation, model=llm_model)
         clinical_prompt, translation_method = translation["text"], translation["method"]
         logger.info("Translated patient prompt via %s: %r", translation_method, clinical_prompt)
 
@@ -54,7 +55,8 @@ def run_comparison(
     if use_llm_classifier:
         from medlang_circuits.llm_client import classify_feature_with_llm
 
-        llm_classifier = classify_feature_with_llm
+        def llm_classifier(description, top_tokens):
+            return classify_feature_with_llm(description, top_tokens, model=llm_model)
 
     for graph in (clinical_graph, patient_graph):
         annotate_graph(graph, llm_classifier=llm_classifier)

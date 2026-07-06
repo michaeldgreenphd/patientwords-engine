@@ -1,0 +1,84 @@
+name: Model Evaluation (medlang-circuits)
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_selection:
+        description: "Model to evaluate (legacy names like claude-3-5-sonnet are auto-remapped by the script)"
+        type: choice
+        default: claude-haiku-4-5
+        options:
+          - all
+          - claude-opus-4-8
+          - claude-sonnet-5
+          - claude-haiku-4-5
+          - claude-3-5-sonnet
+          - claude-3-haiku
+      max_spend:
+        description: "Hard USD ceiling for the whole run"
+        type: string
+        default: "5"
+      sample_size:
+        description: "Items per scenario (5-10 recommended)"
+        type: string
+        default: "8"
+      scenario:
+        description: "Which pipeline step to evaluate"
+        type: choice
+        default: both
+        options:
+          - both
+          - translation
+          - classification
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/experiments/medlang-circuits
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package with LLM extras
+        run: pip install ".[llm]"
+
+      - name: Resolve model selection
+        id: models
+        run: |
+          if [ "${{ inputs.model_selection }}" = "all" ]; then
+            echo "list=claude-opus-4-8 claude-sonnet-5 claude-haiku-4-5" >> "$GITHUB_OUTPUT"
+          else
+            echo "list=${{ inputs.model_selection }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run evaluation
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python -m medlang_circuits.evaluate_models \
+            --models ${{ steps.models.outputs.list }} \
+            --scenario "${{ inputs.scenario }}" \
+            --sample-size "${{ inputs.sample_size }}" \
+            --max-spend "${{ inputs.max_spend }}" \
+            --out eval_out
+
+      - name: Publish summary to run page
+        if: always()
+        run: |
+          if [ -f eval_out/summary.md ]; then
+            cat eval_out/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload performance log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-evaluation-${{ github.run_number }}
+          path: apps/experiments/medlang-circuits/eval_out/
+          if-no-files-found: warn

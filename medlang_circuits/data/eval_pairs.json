@@ -1,0 +1,26 @@
+{
+  "_comment": "Evaluation items for evaluate_models.py. Translation: patient phrasing plus acceptable clinical terms (hit = any term appears in the model output, case-insensitive). Classification: feature-style descriptions with expected category labels.",
+  "translation": [
+    { "patient": "I've got the blues and nothing helps", "expected": ["depression", "depressed", "depressive"] },
+    { "patient": "My heart is racing all the time", "expected": ["palpitations", "tachycardia"] },
+    { "patient": "I just can't sleep at night anymore", "expected": ["insomnia"] },
+    { "patient": "I feel like throwing up every morning", "expected": ["nausea", "nauseous", "nauseated", "emesis"] },
+    { "patient": "I'm worn out no matter how much I rest", "expected": ["fatigue"] },
+    { "patient": "My head is pounding again", "expected": ["headache", "cephalgia", "migraine"] },
+    { "patient": "I can't catch my breath climbing the stairs", "expected": ["dyspnea", "shortness of breath"] },
+    { "patient": "My joints ache all the time", "expected": ["arthralgia", "joint pain"] },
+    { "patient": "I keep getting the shakes in my hands", "expected": ["tremor", "tremors"] },
+    { "patient": "The room spins whenever I stand up", "expected": ["vertigo", "dizziness", "orthostatic"] }
+  ],
+  "classification": [
+    { "text": "references to medical symptoms, diagnoses, and treatment plans", "label": "clinical" },
+    { "text": "mentions of hospitals, physicians, and prescribed medication", "label": "clinical" },
+    { "text": "terminology describing disease progression and patient outcomes", "label": "clinical" },
+    { "text": "the color blue in descriptions of sky, water, and clothing", "label": "off_target" },
+    { "text": "music genres such as blues, jazz, and rock in reviews", "label": "off_target" },
+    { "text": "competitive racing events and sports commentary", "label": "off_target" },
+    { "text": "sentence-final punctuation marks and quotation delimiters", "label": "structural" },
+    { "text": "the definite article at the start of a noun phrase", "label": "structural" },
+    { "text": "newline and indentation tokens in formatted text", "label": "structural" }
+  ]
+}

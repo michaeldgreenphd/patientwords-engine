@@ -134,6 +134,34 @@ result = run_comparison(
 print(result["summary"]["clinical_feature_overlap"])
 ```
 
+## Model evaluation
+
+`evaluate_models.py` benchmarks the two Anthropic-backed pipeline steps —
+patient→clinical translation and feature-description classification — across
+multiple Claude models, with per-model accuracy, token consumption, and cost
+tracking under a hard spend ceiling:
+
+```bash
+export ANTHROPIC_API_KEY=...
+medlang-evaluate --models claude-opus-4-8 claude-sonnet-5 claude-haiku-4-5 \
+  --scenario both --sample-size 8 --max-spend 5 --out eval_out
+```
+
+Writes `eval_out/results.json` (full per-item log) and `eval_out/summary.md`
+(accuracy/cost table). Evaluation items live in
+`medlang_circuits/data/eval_pairs.json`; pass `--pairs` to use your own set.
+Retired model names (e.g. `claude-3-5-sonnet`, `claude-3-haiku`) are remapped
+to their current equivalents with a warning. Every Anthropic-calling entry
+point (`run_comparison`, `medlang-batch-eval --llm-model`, `medlang-evaluate`)
+also honors the `MEDLANG_ANTHROPIC_MODEL` environment variable.
+
+The same evaluation runs on demand from GitHub Actions
+(`.github/workflows/model_evaluation.yml`, *Model Evaluation* in the Actions
+tab): pick the model, spend ceiling, sample size, and scenario from the
+`workflow_dispatch` form. The job reads `ANTHROPIC_API_KEY` from repository
+secrets, prints the summary to the run page, and uploads `eval_out/` as an
+artifact.
+
 ## Tests
 
 ```bash
