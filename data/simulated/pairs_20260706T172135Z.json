@@ -1,0 +1,41 @@
+[
+  {
+    "top_prompt": "My arrhythmia has been acting up all week, so I should probably call my",
+    "bottom_prompt": "My ticker's been acting up all week, so I should probably call my",
+    "target_clinical_token": " cardiologist",
+    "generation": {
+      "patient_term": "ticker's been acting up",
+      "clinical_term": "arrhythmia has been acting up",
+      "expected_clinical_continuations": [
+        "cardiologist",
+        "doctor"
+      ],
+      "rationale": "The colloquial 'ticker acting up' can plausibly refer to a car or clock as well as the heart, keeping the everyday reading available, while 'arrhythmia' unambiguously signals a cardiac condition, biasing the next token toward a medical specialist rather than a mechanic or generic contact.",
+      "swap_spans": {
+        "patient_span": "ticker's",
+        "clinical_span": "arrhythmia has"
+      },
+      "model": "claude-sonnet-5"
+    }
+  },
+  {
+    "top_prompt": "My dad's been showing signs of dementia, so we think he should visit a",
+    "bottom_prompt": "My dad's been forgetting where he puts his keys all the time, so we think he should visit a",
+    "target_clinical_token": " neurologist",
+    "generation": {
+      "patient_term": "forgetting where he puts his keys all the time",
+      "clinical_term": "showing signs of dementia",
+      "expected_clinical_continuations": [
+        "neurologist",
+        "doctor",
+        "specialist"
+      ],
+      "rationale": "The colloquial description of memory lapses could plausibly continue with a mundane suggestion (like a therapist for stress or simply 'organizer'), while the clinical term 'dementia' strongly cues a medical specialist referral, testing whether the model shifts its next-token preference toward a care-seeking continuation.",
+      "swap_spans": {
+        "patient_span": "forgetting where he puts his keys all the time,",
+        "clinical_span": "showing signs of dementia,"
+      },
+      "model": "claude-sonnet-5"
+    }
+  }
+]
