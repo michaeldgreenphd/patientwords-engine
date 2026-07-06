@@ -30,6 +30,14 @@ medlang_circuits.targets). Mode-specific fields:
     translated prompt, with recovered target probabilities as headlines and
     a recovery badge.
 
+--mode dialect - dialect/register syntax variants around a fixed term:
+    {"baseline_prompt": "...", "variants": [{"dialect": "...", "prompt": "..."}, ...]}
+    (the shape medlang-generate dialects emits). Panel 1 is the baseline
+    (standard phrasing); one panel per variant carries its dialect label and
+    a delta badge of target-token probability vs. the baseline panel. With
+    no target_clinical_token the comparison falls back to the baseline's top
+    logit via the usual predictive-spread path.
+
 Every pair writes numbered outputs (index_01.html / index_01.png, ...), the
 per-panel tagged graph JSONs, and a batch_summary.json.
 """
@@ -72,7 +80,7 @@ from medlang_circuits.translate import translate_to_clinical
 
 logger = logging.getLogger(__name__)
 
-MODES = ("2panel", "4quadrant", "translation")
+MODES = ("2panel", "4quadrant", "translation", "dialect")
 RECOVERY_COLOR = "#15803d"  # positive deltas share the clinical green
 DEFAULT_PNG_DPI = 220  # high-resolution static export
 
@@ -417,6 +425,95 @@ def evaluate_translation(
 
 
 # ---------------------------------------------------------------------------
+# Mode 4: dialect (syntax/register variants around a fixed term)
+# ---------------------------------------------------------------------------
+
+
+def evaluate_dialect(
+    pair: dict[str, Any],
+    index: int,
+    out_dir: Path,
+    backend: str = "hosted",
+    dpi: int = DEFAULT_PNG_DPI,
+    fetcher: Any = None,
+    graph_model: str | None = None,
+    source_set: str | None = None,
+    generation_params: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Baseline phrasing vs. dialect/register rewrites of the same clinical situation.
+
+    Panel 1 is the baseline (standard phrasing, clinical accent); each variant
+    panel carries its dialect label and, in the gap above it, a delta badge of
+    the target-token probability vs. the baseline panel. Without an explicit
+    target the baseline's top logit anchors the comparison."""
+    baseline_prompt = pair.get("baseline_prompt") or pair.get("top_prompt")
+    variants = pair.get("variants") or []
+    if not baseline_prompt or not variants:
+        raise ValueError("dialect mode needs 'baseline_prompt' and a non-empty 'variants' list")
+    if any(not v.get("prompt") or not v.get("dialect") for v in variants):
+        raise ValueError("every dialect variant needs 'dialect' and 'prompt' keys")
+    anchor = pair.get("target_clinical_token")
+    force_tokens = pair.get("force_target_tokens") or []
+    targets = AttributionTargets.of(force_tokens) if force_tokens else None
+    params = _generation_params(targets, generation_params, graph_model, source_set)
+
+    baseline_graph = _trace(baseline_prompt, "baseline", index, out_dir, backend, params, targets, fetcher)
+    variant_graphs = [
+        _trace(v["prompt"], f"variant_{j:02d}", index, out_dir, backend, params, targets, fetcher)
+        for j, v in enumerate(variants, start=1)
+    ]
+
+    reference = _resolve_reference(baseline_graph, anchor, targets)  # falls back to the top logit
+    target_token = reference[0] if reference else None
+    p_baseline = reference[1] if reference else None
+    probs = [_probability_for(g, target_token) for g in variant_graphs]
+
+    panels = build_panels(
+        [baseline_graph] + variant_graphs,
+        labels=[f"Baseline (standard phrasing): “{baseline_prompt}”"]
+        + [f"{v['dialect']}: “{v['prompt']}”" for v in variants],
+        accents=[CATEGORY_COLORS["clinical"]] + [CATEGORY_COLORS["off_target"]] * len(variants),
+        value_label_flags=[True] + [False] * len(variants),
+        headlines=[_headline(target_token, p) for p in [p_baseline] + probs],
+        refs=[1] + [0] * len(variants),  # every variant panel diffs against the baseline
+    )
+    badges = [
+        _delta_badge(f"Dialect Δ vs. baseline ({v['dialect']})", p_baseline, p)
+        for v, p in zip(variants, probs)
+    ]
+
+    html_path = out_dir / f"index_{index:02d}.html"
+    png_path = out_dir / f"index_{index:02d}.png"
+    render_panels_html(panels, str(html_path), badges=badges)
+    render_panels_png(panels, str(png_path), badges=badges, dpi=dpi)
+
+    return {
+        "index": index,
+        "mode": "dialect",
+        "baseline_prompt": baseline_prompt,
+        "held_fixed": pair.get("held_fixed"),
+        "term": pair.get("term"),
+        "target_token": target_token,
+        "baseline_probability": p_baseline,
+        "variants": [
+            {
+                "dialect": v["dialect"],
+                "prompt": v["prompt"],
+                "probability": p,
+                "delta_vs_baseline": (p - p_baseline) if p is not None and p_baseline is not None else None,
+            }
+            for v, p in zip(variants, probs)
+        ],
+        "forced_targets": list(force_tokens),
+        "predictive_spread": {
+            "baseline": logit_spread(baseline_graph),
+            "variants": [logit_spread(g) for g in variant_graphs],
+        },
+        "outputs": {"html": str(html_path), "png": str(png_path)},
+    }
+
+
+# ---------------------------------------------------------------------------
 # Dispatch
 # ---------------------------------------------------------------------------
 
@@ -454,6 +551,11 @@ def run_batch(
     for i, pair in enumerate(pairs, start=1):
         if mode == "4quadrant":
             result = evaluate_quadrant(
+                pair, i, out, backend=backend, dpi=dpi, fetcher=fetcher,
+                graph_model=graph_model, source_set=source_set, generation_params=generation_params,
+            )
+        elif mode == "dialect":
+            result = evaluate_dialect(
                 pair, i, out, backend=backend, dpi=dpi, fetcher=fetcher,
                 graph_model=graph_model, source_set=source_set, generation_params=generation_params,
             )
@@ -495,7 +597,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("pairs_file", help="JSON file containing an array of pair objects")
     parser.add_argument("--mode", choices=MODES, default="2panel",
                         help="2panel: direct lexical swap; 4quadrant: syntax-vs-terminology matrix; "
-                             "translation: organic LLM mitigation chain")
+                             "translation: organic LLM mitigation chain; "
+                             "dialect: baseline vs. dialect/register variants around a fixed term")
     parser.add_argument("--out", default="medlang_batch_out", help="Output directory")
     parser.add_argument("--backend", choices=["hosted", "local"], default="hosted")
     parser.add_argument("--show-mitigation", action="store_true",
