@@ -1,6 +1,11 @@
 name: Model Evaluation (medlang-circuits)
 
+# Also starts on a push to .github/trigger/model-evaluation.json (same keys
+# as the dispatch inputs) - see .github/trigger/README.md.
 on:
+  push:
+    paths:
+      - ".github/trigger/model-evaluation.json"
   workflow_dispatch:
     inputs:
       model_selection:
@@ -33,6 +38,9 @@ on:
           - classification
           - two_step
 
+permissions:
+  contents: write
+
 jobs:
   evaluate:
     runs-on: ubuntu-latest
@@ -47,25 +55,94 @@ jobs:
       - name: Install package with LLM extras
         run: pip install ".[llm]"
 
-      - name: Resolve model selection
-        id: models
+      - name: Resolve run parameters
+        id: params
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IN_MODEL_SELECTION: ${{ inputs.model_selection }}
+          IN_MAX_SPEND: ${{ inputs.max_spend }}
+          IN_SAMPLE_SIZE: ${{ inputs.sample_size }}
+          IN_SCENARIO: ${{ inputs.scenario }}
         run: |
-          if [ "${{ inputs.model_selection }}" = "all" ]; then
-            echo "list=claude-opus-4-8 claude-sonnet-5 claude-haiku-4-5" >> "$GITHUB_OUTPUT"
-          else
-            echo "list=${{ inputs.model_selection }}" >> "$GITHUB_OUTPUT"
-          fi
+          python - <<'EOF'
+          import json, os
+          defaults = {"model_selection": "claude-haiku-4-5", "max_spend": "5",
+                      "sample_size": "8", "scenario": "all"}
+          params = dict(defaults)
+          if os.environ["EVENT_NAME"] == "push":
+              with open(".github/trigger/model-evaluation.json", encoding="utf-8") as f:
+                  params.update({k: str(v) for k, v in json.load(f).items() if k in defaults})
+          else:
+              for key in defaults:
+                  value = os.environ.get("IN_" + key.upper(), "")
+                  if value:
+                      params[key] = value
+          if params["model_selection"] == "all":
+              params["list"] = "claude-opus-4-8 claude-sonnet-5 claude-haiku-4-5"
+          else:
+              params["list"] = params["model_selection"]
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              for key, value in params.items():
+                  out.write(f"{key}={value}\n")
+          print(json.dumps(params, indent=2))
+          EOF
 
       - name: Run evaluation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           python -m medlang_circuits.evaluate_models \
-            --models ${{ steps.models.outputs.list }} \
-            --scenario "${{ inputs.scenario }}" \
-            --sample-size "${{ inputs.sample_size }}" \
-            --max-spend "${{ inputs.max_spend }}" \
+            --models ${{ steps.params.outputs.list }} \
+            --scenario "${{ steps.params.outputs.scenario }}" \
+            --sample-size "${{ steps.params.outputs.sample_size }}" \
+            --max-spend "${{ steps.params.outputs.max_spend }}" \
             --out eval_out
+
+      - name: Export frontend table + commit to the dispatched branch
+        if: always()
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          [ -f eval_out/results.json ] || { echo "no results"; exit 0; }
+          python - <<'EOF'
+          import json
+          from datetime import date
+          results = json.load(open("eval_out/results.json", encoding="utf-8"))
+          per_model_cost = (results.get("usage") or {}).get("per_model") or {}
+          models = []
+          for model, blocks in (results.get("by_model") or {}).items():
+              ts = blocks.get("two_step") or {}
+              flags = ts.get("flags") or {}
+              models.append({
+                  "id": model,
+                  "patient_accuracy": ts.get("patient_accuracy"),
+                  "clinician_accuracy": ts.get("clinician_accuracy"),
+                  "delta": ts.get("delta"),
+                  "mitigated": flags.get("mitigated"),
+                  "regressions": flags.get("regressions"),
+                  "cost_usd": round((per_model_cost.get(model) or {}).get("cost", 0.0), 4) or None,
+                  "status": "evaluated" if ts.get("patient_accuracy") is not None else "pending",
+              })
+          payload = {
+              "updated": str(date.today()),
+              "task": "clinical concept extraction, scored on the same expected terms before and after translation",
+              "models": models,
+          }
+          import pathlib
+          pathlib.Path("data/evaluations").mkdir(parents=True, exist_ok=True)
+          pathlib.Path("data/evaluations/model_evaluations_frontend.json").write_text(
+              json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(payload, indent=2))
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/evaluations/model_evaluations_frontend.json
+          git commit -m "Model evaluation frontend export ($(date -u +%Y%m%dT%H%M%SZ))" || exit 0
+          for i in 1 2 3; do
+            git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH" && break
+            sleep $((i * 2))
+          done
 
       - name: Publish summary to run page
         if: always()
