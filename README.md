@@ -147,9 +147,24 @@ medlang-evaluate --models claude-opus-4-8 claude-sonnet-5 claude-haiku-4-5 \
   --scenario both --sample-size 8 --max-spend 5 --out eval_out
 ```
 
-Writes `eval_out/results.json` (full per-item log) and `eval_out/summary.md`
-(accuracy/cost table). Evaluation items live in
-`medlang_circuits/data/eval_pairs.json`; pass `--pairs` to use your own set.
+Scenarios: `translation` and `classification` are single-call checks;
+`--scenario two_step` (included in `all`) runs the dual-stage conversion &
+re-evaluation pipeline — **Stage A** scores a concept-extraction task on the
+raw patient phrasing, **Stage B** translates that exact phrasing into
+clinician language with the production prompt, and **Stage C** re-scores the
+identical task on the generated clinician text. The report compares patient
+vs. clinician accuracy per model (the delta) and audit-flags every
+problematic item: `patient_phrasing_failure` (the patient wording alone broke
+the model; translation mitigates), `translation_regression` (the conversion
+lost the concept), or `unresolved_failure` (both missed).
+
+Writes `eval_out/results.json` (full per-item log), `eval_out/summary.md`
+(accuracy/cost tables, including the patient-vs-clinician comparison), and
+appends every run to `eval_out/audit_registry_log.json` — a cumulative
+registry entry per execution with the ISO timestamp, the original patient
+text, the intermediate clinician translation, per-stage token counts and
+cost, the comparative metrics, and all flagged cases. Evaluation items live
+in `medlang_circuits/data/eval_pairs.json`; pass `--pairs` to use your own set.
 Retired model names (e.g. `claude-3-5-sonnet`, `claude-3-haiku`) are remapped
 to their current equivalents with a warning. Every Anthropic-calling entry
 point (`run_comparison`, `medlang-batch-eval --llm-model`, `medlang-evaluate`)

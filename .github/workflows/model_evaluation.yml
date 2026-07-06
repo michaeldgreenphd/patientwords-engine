@@ -23,13 +23,15 @@ on:
         type: string
         default: "8"
       scenario:
-        description: "Which pipeline step to evaluate"
+        description: "Which pipeline step to evaluate (two_step = patient baseline -> clinician conversion -> re-evaluation; all = everything)"
         type: choice
-        default: both
+        default: all
         options:
+          - all
           - both
           - translation
           - classification
+          - two_step
 
 jobs:
   evaluate:

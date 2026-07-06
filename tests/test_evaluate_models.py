@@ -101,6 +101,95 @@ def test_legacy_alias_resolution():
     assert any("no pricing" in w for w in warnings2)
 
 
+def _patch_two_step(monkeypatch, translations, concepts, in_tok=100, out_tok=20):
+    """Fake _call that discriminates by system prompt: Stage B gets the
+    translation table, Stages A/C get the concept-extraction table."""
+    def fake_call(client, model, system, prompt, max_tokens=em.MAX_OUTPUT_TOKENS):
+        if system == em._TRANSLATE_SYSTEM:
+            return translations.get(prompt, prompt), in_tok, out_tok
+        return concepts.get(prompt, "miss"), in_tok, out_tok
+
+    monkeypatch.setattr(em, "_call", fake_call)
+
+
+def test_two_step_delta_and_flags(monkeypatch, pairs_file, tmp_path):
+    # item1: patient phrasing misses, clinician phrasing hits -> patient_phrasing_failure
+    # item2: patient hits, translation loses the concept -> translation_regression
+    # item3: both hit -> unflagged
+    _patch_two_step(
+        monkeypatch,
+        translations={"phrase one": "clinical one", "phrase two": "clinical two", "phrase three": "clinical three"},
+        concepts={
+            "phrase one": "no match", "clinical one": "the Alpha term",
+            "phrase two": "beta", "clinical two": "nothing relevant",
+            "phrase three": "delta", "clinical three": "delta",
+        },
+    )
+    results = em.run_evaluation(
+        ["claude-haiku-4-5"], scenario="two_step", sample_size=5,
+        max_spend=5.0, pairs_path=pairs_file, out_dir=tmp_path / "out", client=object(),
+    )
+    ts = results["by_model"]["claude-haiku-4-5"]["two_step"]
+    assert ts["completed"] == 3
+    assert ts["patient_accuracy"] == pytest.approx(2 / 3)
+    assert ts["clinician_accuracy"] == pytest.approx(2 / 3)
+    assert ts["delta"] == pytest.approx(0.0)
+    assert ts["flags"] == {em.FLAG_PATIENT_FAILURE: 1, em.FLAG_TRANSLATION_REGRESSION: 1, em.FLAG_UNRESOLVED: 0}
+    # intermediate clinician text and per-stage accounting are captured verbatim
+    rec = ts["items"][0]
+    assert rec["clinician_text"] == "clinical one"
+    assert set(rec["stages"]) == {"A_patient_baseline", "B_clinician_translation", "C_clinician_reeval"}
+    assert all(s["input_tokens"] == 100 and s["output_tokens"] == 20 and s["cost_usd"] > 0 for s in rec["stages"].values())
+    # 3 items x 3 stages
+    assert results["usage"]["per_model"]["claude-haiku-4-5"]["calls"] == 9
+    # comparative section lands in the markdown summary
+    summary = (tmp_path / "out" / "summary.md").read_text(encoding="utf-8")
+    assert "Patient vs. clinician phrasing" in summary
+    assert "| claude-haiku-4-5 | 67% | 67% | +0% | 1 | 1 | 0 |" in summary
+    assert "patient_phrasing_failure" in summary and "translation_regression" in summary
+
+
+def test_audit_registry_appends_with_timestamps(monkeypatch, pairs_file, tmp_path):
+    from datetime import datetime
+
+    _patch_two_step(monkeypatch, translations={"phrase one": "clinical one"}, concepts={"clinical one": "alpha"})
+    out = tmp_path / "out"
+    for _ in range(2):
+        em.run_evaluation(
+            ["claude-haiku-4-5"], scenario="two_step", sample_size=1,
+            max_spend=5.0, pairs_path=pairs_file, out_dir=out, client=object(),
+        )
+    registry = json.loads((out / "audit_registry_log.json").read_text(encoding="utf-8"))
+    assert len(registry) == 2  # one entry per run, appended
+    entry = registry[-1]
+    datetime.fromisoformat(entry["run_timestamp"])  # exact ISO execution time
+    model_block = entry["two_step"]["claude-haiku-4-5"]
+    rec = model_block["items"][0]
+    assert rec["patient_text"] == "phrase one"
+    assert rec["clinician_text"] == "clinical one"
+    assert rec["stages"]["B_clinician_translation"]["cost_usd"] > 0
+    assert model_block["comparative_metrics"]["delta"] == pytest.approx(1.0)  # A missed, C hit
+    assert entry["problematic_cases"][0]["flag"] == em.FLAG_PATIENT_FAILURE
+    assert entry["usage"]["total_cost_usd"] > 0
+
+
+def test_two_step_budget_truncation_mid_item(monkeypatch, pairs_file, tmp_path):
+    # haiku worst case per call = $0.0015; budget affords exactly one call ->
+    # stage A runs, stage B is refused, the item is excluded from metrics
+    _patch_two_step(monkeypatch, translations={}, concepts={}, in_tok=100, out_tok=20)
+    results = em.run_evaluation(
+        ["claude-haiku-4-5"], scenario="two_step", sample_size=3,
+        max_spend=0.0016, pairs_path=pairs_file, out_dir=tmp_path / "out", client=object(),
+    )
+    ts = results["by_model"]["claude-haiku-4-5"]["two_step"]
+    assert results["usage"]["truncated_by_budget"]
+    assert ts["completed"] == 0 and ts["skipped_for_budget"] == 3
+    assert ts["patient_accuracy"] is None
+    first = ts["items"][0]
+    assert set(first["stages"]) == {"A_patient_baseline"}
+    assert "budget exhausted before stage B" in first["skipped"]
+
+
 def test_packaged_pairs_load_and_shape():
     pairs = em.load_pairs()
     assert 5 <= len(pairs["translation"]) <= 12
