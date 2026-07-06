@@ -120,6 +120,67 @@ def test_validate_dialect_variant():
 # ---------------------------------------------------------------------------
 
 
+VALID_QUADRANT = {
+    "standard_frame": "I have{term}, and I feel really unwell. I should go to",
+    "nonstandard_frame": "I been had{term}, and I been feeling really unwell. I should go to",
+    "medical_term": "alpha",
+    "patient_term": "the beta",
+    "expected_clinical_continuations": ["gamma"],
+    "rationale": "prestige vs shifted axes",
+}
+
+
+@pytest.mark.parametrize("mutate,reason_part", [
+    (lambda c: c.pop("medical_term"), "missing keys"),
+    (lambda c: c.update(standard_frame="I have {term} twice {term} so I go to"), "exactly once"),
+    (lambda c: c.update(nonstandard_frame=c["nonstandard_frame"] + "."), "probe boundary"),
+    (lambda c: c.update(nonstandard_frame=c["standard_frame"]), "no morphosyntax shift"),
+    (lambda c: c.update(patient_term=" Alpha "), "no lexicon shift"),
+    (lambda c: c.update(expected_clinical_continuations=[" "]), "non-empty list"),
+])
+def test_validate_quadrant_item_rejections(mutate, reason_part):
+    candidate = dict(VALID_QUADRANT)
+    mutate(candidate)
+    item, reason = scenario_gen.validate_quadrant_item(candidate, set())
+    assert item is None
+    assert reason_part in reason
+
+
+def test_validate_quadrant_item_accepts_composes_and_dedupes():
+    seen = set()
+    item, reason = scenario_gen.validate_quadrant_item(dict(VALID_QUADRANT), seen)
+    assert reason is None
+    # batch-ready --mode 4quadrant shape, terms carrying their leading space
+    assert item["frames"]["standard"].endswith("go to")
+    assert item["terms"] == {"medical": " alpha", "patient": " the beta"}
+    assert item["target_clinical_token"] == " gamma"
+    quads = item["generation"]["quadrants"]
+    assert quads["A"] == "I have alpha, and I feel really unwell. I should go to"
+    assert quads["D"] == "I been had the beta, and I been feeling really unwell. I should go to"
+    # identical resubmission is a duplicate
+    dup, reason = scenario_gen.validate_quadrant_item(dict(VALID_QUADRANT), seen)
+    assert dup is None and reason == "duplicate of a seed or an already-accepted item"
+
+
+def test_generate_quadrant_scenarios_offline(monkeypatch):
+    fake_call, calls = _fake_call_returning([json.dumps([VALID_QUADRANT])])
+    monkeypatch.setattr(scenario_gen, "_call", fake_call)
+    seeds = [{
+        "frames": {"clinical": "I have{term}, so the fox goes to", "patient": "I got{term}, so the fox goes to"},
+        "terms": {"clinical": " delta", "patient": " the epsilon"},
+        "target_clinical_token": " zeta",
+    }]
+    result = scenario_gen.generate_quadrant_scenarios(1, seed_pairs=seeds, topics=["everyday life"],
+                                                      max_spend=1.0, client=object())
+    assert len(result["pairs"]) == 1
+    assert result["pairs"][0]["generation"]["topics"] == ["everyday life"]
+    assert result["rejected"] == []
+    # seeds ride along as few-shot examples and dedupe context
+    assert "delta" in calls[0]["prompt"]
+    assert "everyday life" in calls[0]["prompt"]
+    assert "morphosyntax" in calls[0]["system"]
+
+
 def test_parse_json_array_salvages_truncated_output():
     items = [dict(VALID_CANDIDATE), dict(VALID_CANDIDATE)]
     full = json.dumps(items, indent=2)

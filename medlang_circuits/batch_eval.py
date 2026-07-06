@@ -11,15 +11,22 @@ medlang_circuits.targets). Mode-specific fields:
     The polished two-panel stacked view with the Language Penalty badge.
     (--show-mitigation appends the legacy third translated panel.)
 
---mode 4quadrant - the syntax-vs-terminology matrix:
-    {"frames": {"clinical": "I have{term}, so ...", "patient": "I've got{term}, so ..."},
-     "terms":  {"clinical": " depression", "patient": " the blues"}}
-    or explicit {"quadrants": {"A": ..., "B": ..., "C": ..., "D": ...}}.
-    Renders a 2x2 grid - A: clinical frame + clinical term, B: clinical frame
-    + patient term, C: patient frame + clinical term, D: patient frame +
-    patient term - with the target probability printed prominently in each
-    box, vocabulary deltas (term swap: A->B, C->D) in the column gutters and
-    syntax deltas (frame swap: A->C, B->D) in the row gutter.
+--mode 4quadrant - the morphosyntax-vs-lexicon matrix:
+    {"frames": {"standard": "I have{term}, so ...", "nonstandard": "I been had{term}, so ..."},
+     "terms":  {"medical": " diabetes", "patient": " the sugar"}}
+    (legacy key aliases: frames clinical=standard / patient=nonstandard,
+    terms clinical=medical; explicit {"quadrants": {"A": ..., "B": ...,
+    "C": ..., "D": ...}} is also accepted with the lettering below).
+    Renders the study's generic 2x2 - rows are morphosyntax (standard on
+    top), columns are lexicon (patient-derived language left, medical
+    lexicon right):
+        A - medical lexicon + standard morphosyntax (prestige form)
+        B - medical lexicon + nonstandard morphosyntax (variety shift only)
+        C - patient language + standard morphosyntax (register shift only)
+        D - patient language + nonstandard morphosyntax (both axes shifted)
+    with the target probability printed prominently in each box, register
+    (lexicon) deltas A->C and B->D in the column gutters and variety
+    (morphosyntax) deltas A->B and C->D in the row gutter.
 
 --mode translation - organic downstream mitigation:
     {"patient_prompt": "..."}  (or "bottom_prompt")
@@ -86,11 +93,14 @@ DEFAULT_PNG_DPI = 220  # high-resolution static export
 
 QUAD_KEYS = ("A", "B", "C", "D")
 QUAD_LABELS = {
-    "A": "A · Clinical frame + clinical term",
-    "B": "B · Clinical frame + patient term",
-    "C": "C · Patient frame + clinical term",
-    "D": "D · Patient frame + patient term",
+    "A": "A · Medical lexicon + standard morphosyntax (prestige form)",
+    "B": "B · Medical lexicon + nonstandard morphosyntax (variety shift only)",
+    "C": "C · Patient-derived language + standard morphosyntax (register shift only)",
+    "D": "D · Patient-derived language + nonstandard morphosyntax (both axes shifted)",
 }
+# Grid placement (top-left, top-right, bottom-left, bottom-right): rows are
+# morphosyntax (standard on top), columns are lexicon (patient-derived left).
+QUAD_GRID_ORDER = ("C", "A", "D", "B")
 
 
 # ---------------------------------------------------------------------------
@@ -250,8 +260,25 @@ def evaluate_pair(
 # ---------------------------------------------------------------------------
 
 
+FRAME_ALIASES = {"standard": ("standard", "clinical"), "nonstandard": ("nonstandard", "patient")}
+TERM_ALIASES = {"medical": ("medical", "clinical"), "patient": ("patient",)}
+
+
+def _axis_value(source: dict[str, str], aliases: tuple[str, ...], what: str) -> str:
+    for alias in aliases:
+        if alias in source:
+            return source[alias]
+    raise ValueError(f"{what} must define one of {aliases}")
+
+
 def _quadrant_prompts(pair: dict[str, Any]) -> dict[str, str]:
-    """Resolve the four matrix prompts from explicit quadrants or frames x terms."""
+    """Resolve the four matrix prompts from explicit quadrants or frames x terms.
+
+    Frames are the morphosyntax axis ('standard'/'nonstandard'; legacy aliases
+    'clinical'/'patient'), terms the lexicon axis ('medical'/'patient'; legacy
+    alias 'clinical' for 'medical'). Lettering follows the generic matrix in
+    the module docstring.
+    """
     if "quadrants" in pair:
         quadrants = pair["quadrants"]
         missing = [k for k in QUAD_KEYS if k not in quadrants]
@@ -260,16 +287,14 @@ def _quadrant_prompts(pair: dict[str, Any]) -> dict[str, str]:
         return {k: quadrants[k] for k in QUAD_KEYS}
     if "frames" in pair and "terms" in pair:
         frames, terms = pair["frames"], pair["terms"]
-        for source, keys in ((frames, ("clinical", "patient")), (terms, ("clinical", "patient"))):
-            missing = [k for k in keys if k not in source]
-            if missing:
-                raise ValueError(f"frames/terms must define 'clinical' and 'patient'; missing {missing}")
-        compose = lambda frame, term: frames[frame].replace("{term}", terms[term])  # noqa: E731
+        frame = {key: _axis_value(frames, aliases, f"frames[{key}]") for key, aliases in FRAME_ALIASES.items()}
+        term = {key: _axis_value(terms, aliases, f"terms[{key}]") for key, aliases in TERM_ALIASES.items()}
+        compose = lambda f, t: frame[f].replace("{term}", term[t])  # noqa: E731
         return {
-            "A": compose("clinical", "clinical"),
-            "B": compose("clinical", "patient"),
-            "C": compose("patient", "clinical"),
-            "D": compose("patient", "patient"),
+            "A": compose("standard", "medical"),
+            "B": compose("nonstandard", "medical"),
+            "C": compose("standard", "patient"),
+            "D": compose("nonstandard", "patient"),
         }
     raise ValueError("4quadrant mode needs either 'quadrants': {A,B,C,D} or 'frames' + 'terms'")
 
@@ -285,40 +310,42 @@ def evaluate_quadrant(
     source_set: str | None = None,
     generation_params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """2x2 matrix factorizing core medical keyword vs. surrounding frame syntax."""
+    """The generic 2x2: morphosyntax rows x lexicon columns (see module docstring)."""
     prompts = _quadrant_prompts(pair)
     anchor = pair.get("target_clinical_token")
     force_tokens = pair.get("force_target_tokens") or []
     targets = AttributionTargets.of(force_tokens) if force_tokens else None
     params = _generation_params(targets, generation_params, graph_model, source_set)
 
-    graphs = [
-        _trace(prompts[key], f"quad_{key.lower()}", index, out_dir, backend, params, targets, fetcher)
+    graphs = {
+        key: _trace(prompts[key], f"quad_{key.lower()}", index, out_dir, backend, params, targets, fetcher)
         for key in QUAD_KEYS
-    ]
+    }
 
-    reference = _resolve_reference(graphs[0], anchor, targets)
+    reference = _resolve_reference(graphs["A"], anchor, targets)  # A = prestige form
     target_token = reference[0] if reference else None
     probs = {
-        key: (reference[1] if key == "A" and reference else _probability_for(graph, target_token))
-        for key, graph in zip(QUAD_KEYS, graphs)
+        key: (reference[1] if key == "A" and reference else _probability_for(graphs[key], target_token))
+        for key in QUAD_KEYS
     }
 
     panels = build_panels(
-        graphs,
-        labels=[f"{QUAD_LABELS[k]}: “{prompts[k]}”" for k in QUAD_KEYS],
-        # term axis drives accents: clinical-term boxes blue, patient-term boxes orange
-        accents=[CATEGORY_COLORS["clinical"], CATEGORY_COLORS["off_target"],
-                 CATEGORY_COLORS["clinical"], CATEGORY_COLORS["off_target"]],
-        value_label_flags=[True, False, False, False],  # A is the pure-clinical reference box
-        headlines=[_headline(target_token, probs[k]) for k in QUAD_KEYS],
-        refs=[1, 0, 3, 2],  # emphasis diffs across the term axis within each frame row
+        [graphs[k] for k in QUAD_GRID_ORDER],
+        labels=[f"{QUAD_LABELS[k]}: “{prompts[k]}”" for k in QUAD_GRID_ORDER],
+        # lexicon axis drives accents: medical-lexicon boxes blue, patient-language boxes orange
+        accents=[CATEGORY_COLORS["off_target"], CATEGORY_COLORS["clinical"],
+                 CATEGORY_COLORS["off_target"], CATEGORY_COLORS["clinical"]],
+        value_label_flags=[False, True, False, False],  # A is the prestige reference box
+        headlines=[_headline(target_token, probs[k]) for k in QUAD_GRID_ORDER],
+        refs=[1, 0, 3, 2],  # emphasis diffs across the lexicon axis within each morphosyntax row
     )
     badges = {
-        "vocab_top": _delta_badge("Vocabulary Δ", probs["A"], probs["B"]),
-        "vocab_bottom": _delta_badge("Vocabulary Δ", probs["C"], probs["D"]),
-        "syntax_left": _delta_badge("Syntax Δ", probs["A"], probs["C"]),
-        "syntax_right": _delta_badge("Syntax Δ", probs["B"], probs["D"]),
+        # column gutters: register (lexicon) shift within each morphosyntax row
+        "vocab_top": _delta_badge("Register shift Δ", probs["A"], probs["C"]),
+        "vocab_bottom": _delta_badge("Register shift Δ", probs["B"], probs["D"]),
+        # row gutter: variety (morphosyntax) shift within each lexicon column
+        "syntax_left": _delta_badge("Variety shift Δ", probs["C"], probs["D"]),
+        "syntax_right": _delta_badge("Variety shift Δ", probs["A"], probs["B"]),
     }
 
     html_path = out_dir / f"index_{index:02d}.html"
@@ -335,10 +362,12 @@ def evaluate_quadrant(
         "prompts": prompts,
         "target_token": target_token,
         "probabilities": probs,
-        "vocabulary_deltas": {"clinical_frame": _delta("A", "B"), "patient_frame": _delta("C", "D")},
-        "syntax_deltas": {"clinical_term": _delta("A", "C"), "patient_term": _delta("B", "D")},
+        "register_shift_deltas": {"standard_morphosyntax": _delta("A", "C"),
+                                  "nonstandard_morphosyntax": _delta("B", "D")},
+        "variety_shift_deltas": {"medical_lexicon": _delta("A", "B"),
+                                 "patient_language": _delta("C", "D")},
         "forced_targets": list(force_tokens),
-        "predictive_spread": {key: logit_spread(g) for key, g in zip(QUAD_KEYS, graphs)},
+        "predictive_spread": {key: logit_spread(graphs[key]) for key in QUAD_KEYS},
         "outputs": {"html": str(html_path), "png": str(png_path)},
     }
 

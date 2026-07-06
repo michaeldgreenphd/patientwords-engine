@@ -1,11 +1,15 @@
 """Claude-driven scenario generation + the hand-built spreadsheet importer.
 
-Three capabilities behind the ``medlang-generate`` CLI:
+Four capabilities behind the ``medlang-generate`` CLI:
 
 - ``generate_stress_pairs`` - have Claude author new patient-vs-clinical
   next-token stress pairs in the hand-built dataset's format (single
   contiguous term swap inside an identical syntactic frame, ending at a
   next-token probe boundary), programmatically validated before acceptance.
+- ``generate_quadrant_scenarios`` - have Claude author 4-quadrant items for
+  the generic morphosyntax-x-lexicon matrix: a standard/nonstandard frame
+  pair with a single {term} slot, crossed with a medical/patient term pair
+  (feeds ``--mode 4quadrant`` in medlang-batch-eval).
 - ``generate_dialect_variants`` - hold one swapped term verbatim and have
   Claude rewrite only the surrounding syntax as different English
   dialects/registers would frame the same situation (feeds ``--mode dialect``
@@ -84,6 +88,35 @@ STRESS_PAIR_SYSTEM = (
     "Output STRICT JSON only - a JSON array of objects, each with exactly these keys: "
     '{"patient_prompt": str, "clinical_prompt": str, "patient_term": str, "clinical_term": str, '
     '"expected_clinical_continuations": [str, ...], "rationale": str}. No text outside the JSON.'
+)
+
+QUADRANT_SYSTEM = (
+    "You generate four-way stress-test items for a mechanistic-interpretability study of how a "
+    "small language model treats medical lexicon versus patient-derived language, crossed with "
+    "standard versus nonstandard English morphosyntax. Each item is a FRAME PAIR crossed with a "
+    "TERM PAIR - follow all rules exactly:\n"
+    "1. 'standard_frame' and 'nonstandard_frame' describe the SAME situation and contain the "
+    "placeholder {term} exactly once, at the same semantic position. The standard frame uses "
+    "standard English morphosyntax. The nonstandard frame re-renders ONLY the grammar (verbal "
+    "aspect, agreement, copula, tense marking) the way a real speaker of a nonstandard English "
+    "variety would - authentic and respectful, never caricature, exaggeration, or mockery. Keep "
+    "the content words identical apart from the grammar.\n"
+    "2. 'medical_term' is the precise clinical lexicon for the condition or situation; "
+    "'patient_term' is the colloquial patient-derived expression for the same thing. Each must "
+    "fit the {term} slot of BOTH frames grammatically.\n"
+    "3. Both frames end mid-sentence at a natural next-token probe point (for example after "
+    "'...I should go to', '...I need to take my', '...she picked up some'), with no terminal "
+    "punctuation. The next token is the measurement, not part of the item.\n"
+    "4. The frame must make the next token diagnostic: the natural continuation should plausibly "
+    "differ between a mundane everyday reading and a care-seeking/medical reading.\n"
+    "5. Vary persons, tenses, probe words, and everyday settings across items.\n"
+    "Output STRICT JSON only - a JSON array of objects, each with exactly these keys: "
+    '{"standard_frame": str, "nonstandard_frame": str, "medical_term": str, "patient_term": str, '
+    '"expected_clinical_continuations": [str, ...], "rationale": str}. Abstract shape example '
+    '(structure only, invent real content): {"standard_frame": "I have{term}, and I feel really '
+    'unwell. I should go to", "nonstandard_frame": "I been had{term}, and I been feeling really '
+    'unwell. I should go to", "medical_term": " alpha", "patient_term": " the beta"}. '
+    "No text outside the JSON."
 )
 
 DIALECT_SYSTEM = (
@@ -183,6 +216,86 @@ def validate_stress_pair(candidate: Any, seen: set[tuple[str, str]]) -> tuple[di
             "expected_clinical_continuations": [str(c).strip() for c in continuations if str(c).strip()],
             "rationale": str(candidate.get("rationale") or "").strip(),
             "swap_spans": spans,
+        },
+    }, None
+
+
+REQUIRED_QUADRANT_KEYS = ("standard_frame", "nonstandard_frame", "medical_term", "patient_term",
+                          "expected_clinical_continuations")
+
+
+def _compose_quadrants(frames: dict[str, Any], terms: dict[str, Any]) -> dict[str, str] | None:
+    """Compose the four cell prompts (legacy clinical/patient key aliases accepted)."""
+    standard = frames.get("standard") or frames.get("clinical")
+    nonstandard = frames.get("nonstandard") or frames.get("patient")
+    medical = terms.get("medical") or terms.get("clinical")
+    patient = terms.get("patient")
+    if not all((standard, nonstandard, medical, patient)):
+        return None
+    return {
+        "A": standard.replace("{term}", medical),
+        "B": nonstandard.replace("{term}", medical),
+        "C": standard.replace("{term}", patient),
+        "D": nonstandard.replace("{term}", patient),
+    }
+
+
+def validate_quadrant_item(candidate: Any, seen: set[tuple[str, str]]) -> tuple[dict[str, Any] | None, str | None]:
+    """Acceptance gate for one generated 4-quadrant item (frames x terms).
+
+    Returns (batch_ready_item, None) on acceptance - adding its dedupe key to
+    ``seen`` - or (None, rejection_reason).
+    """
+    if not isinstance(candidate, dict):
+        return None, "not an object"
+    missing = [k for k in REQUIRED_QUADRANT_KEYS if not candidate.get(k)]
+    if missing:
+        return None, f"missing keys: {missing}"
+    continuations = candidate["expected_clinical_continuations"]
+    if not isinstance(continuations, list) or not any(str(c).strip() for c in continuations):
+        return None, "expected_clinical_continuations must be a non-empty list"
+
+    frames = {}
+    for key in ("standard_frame", "nonstandard_frame"):
+        frame = re.sub(r"[ \t]+\{term\}", "{term}", str(candidate[key]).strip())
+        if frame.count("{term}") != 1:
+            return None, f"{key} must contain the placeholder {{term}} exactly once"
+        if not ends_at_probe_boundary(frame):
+            return None, f"{key} does not end at a probe boundary (terminal punctuation or empty)"
+        frames[key] = frame
+    if _norm_prompt(frames["standard_frame"]) == _norm_prompt(frames["nonstandard_frame"]):
+        return None, "frames are identical - no morphosyntax shift"
+
+    terms = {}
+    for key in ("medical_term", "patient_term"):
+        term = str(candidate[key]).strip()
+        if not term:
+            return None, f"{key} is empty"
+        terms[key] = " " + term  # composition relies on the term carrying its leading space
+    if terms["medical_term"].casefold() == terms["patient_term"].casefold():
+        return None, "terms are identical - no lexicon shift"
+
+    composed = _compose_quadrants(
+        {"standard": frames["standard_frame"], "nonstandard": frames["nonstandard_frame"]},
+        {"medical": terms["medical_term"], "patient": terms["patient_term"]},
+    )
+    key = (_norm_prompt(composed["A"]), _norm_prompt(composed["D"]))
+    if key in seen:
+        return None, "duplicate of a seed or an already-accepted item"
+    seen.add(key)
+
+    first = next(str(c).strip() for c in continuations if str(c).strip())
+    return {
+        # batch-ready 4quadrant schema: frames x terms compose the four cells
+        "frames": {"standard": frames["standard_frame"], "nonstandard": frames["nonstandard_frame"]},
+        "terms": {"medical": terms["medical_term"], "patient": terms["patient_term"]},
+        "target_clinical_token": " " + first,
+        "generation": {
+            "medical_term": terms["medical_term"].strip(),
+            "patient_term": terms["patient_term"].strip(),
+            "expected_clinical_continuations": [str(c).strip() for c in continuations if str(c).strip()],
+            "rationale": str(candidate.get("rationale") or "").strip(),
+            "quadrants": composed,
         },
     }, None
 
@@ -355,7 +468,107 @@ def generate_stress_pairs(
 
 
 # ---------------------------------------------------------------------------
-# 2. Dialect syntax variants
+# 2. Quadrant scenarios (morphosyntax x lexicon; --mode 4quadrant input)
+# ---------------------------------------------------------------------------
+
+
+def _quadrant_seed_examples(seed_items: Iterable[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """Few-shot examples + dedupe keys from existing 4quadrant items."""
+    examples = []
+    for seed in seed_items or []:
+        frames, terms = seed.get("frames") or {}, seed.get("terms") or {}
+        composed = _compose_quadrants(frames, terms) if frames and terms else None
+        if composed is None:
+            continue  # not a 4quadrant item (e.g. a 2panel seed file) - skip
+        example = {
+            "standard_frame": frames.get("standard") or frames.get("clinical"),
+            "nonstandard_frame": frames.get("nonstandard") or frames.get("patient"),
+            "medical_term": terms.get("medical") or terms.get("clinical"),
+            "patient_term": terms.get("patient"),
+        }
+        target = seed.get("target_clinical_token")
+        continuations = (seed.get("generation") or {}).get("expected_clinical_continuations")
+        if continuations:
+            example["expected_clinical_continuations"] = continuations
+        elif target:
+            example["expected_clinical_continuations"] = [target.strip()]
+        examples.append((example, composed))
+    return examples
+
+
+def generate_quadrant_scenarios(
+    n: int,
+    model: str | None = None,
+    seed_pairs: list[dict[str, Any]] | None = None,
+    topics: list[str] | None = None,
+    max_spend: float = 2.0,
+    client: Any = None,
+) -> dict[str, Any]:
+    """Generate up to ``n`` validated 4-quadrant items (frames x terms).
+
+    Accepted items are batch-ready --mode 4quadrant inputs: a standard/
+    nonstandard morphosyntax frame pair with a single {term} slot, crossed
+    with a medical/patient term pair, plus the target token from the first
+    expected continuation.
+    """
+    model = _resolve_model(model)
+    client = _require_client(client)
+    tracker = CostTracker(max_spend=max_spend)
+    seen: set[tuple[str, str]] = set()
+    examples = []
+    for example, composed in _quadrant_seed_examples(seed_pairs):
+        examples.append(example)
+        seen.add((_norm_prompt(composed["A"]), _norm_prompt(composed["D"])))
+
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    rounds = 0
+    max_rounds = max(4, 2 * math.ceil(n / GEN_BATCH_SIZE) + 2)
+    while len(accepted) < n and rounds < max_rounds and tracker.can_afford(model):
+        rounds += 1
+        want = min(n - len(accepted), GEN_BATCH_SIZE)
+        parts = [f"Generate {want} new items."]
+        if topics:
+            parts.append("Steer coverage across these topics/situations: " + ", ".join(topics) + ".")
+        if examples:
+            parts.append("Format and quality examples from the existing dataset (do NOT repeat or "
+                         "trivially rephrase them):\n" + json.dumps(examples, indent=2))
+        used = sorted(key[0] for key in seen)
+        if used:
+            parts.append("Prestige-form sentences already used - avoid duplicating any of these:\n"
+                         + json.dumps(used, indent=2))
+        text, in_tok, out_tok = _call(client, model, QUADRANT_SYSTEM, "\n\n".join(parts),
+                                      max_tokens=GEN_MAX_TOKENS)
+        tracker.record(model, in_tok, out_tok)
+        candidates = _parse_json_array(text)
+        if not candidates:
+            rejected.append({"candidate": text[:500], "reason": "response was not a JSON array"})
+            continue
+        for candidate in candidates:
+            if len(accepted) >= n:
+                break
+            item, reason = validate_quadrant_item(candidate, seen)
+            if item is None:
+                rejected.append({"candidate": candidate, "reason": reason})
+                logger.info("Rejected quadrant item: %s", reason)
+            else:
+                item["generation"]["model"] = model
+                if topics:
+                    item["generation"]["topics"] = list(topics)
+                accepted.append(item)
+    return {
+        "pairs": accepted,
+        "topics": list(topics) if topics else [],
+        "rejected": rejected,
+        "model": model,
+        "rounds": rounds,
+        "truncated": tracker.truncated,
+        "usage": {"total_cost_usd": round(tracker.spent, 6), "per_model": tracker.per_model},
+    }
+
+
+# ---------------------------------------------------------------------------
+# 3. Dialect syntax variants
 # ---------------------------------------------------------------------------
 
 
@@ -445,7 +658,7 @@ def dialect_batch_item(result: dict[str, Any], target_token: str | None = None) 
 
 
 # ---------------------------------------------------------------------------
-# 3. Spreadsheet importer
+# 4. Spreadsheet importer
 # ---------------------------------------------------------------------------
 
 # Column layout of the hand-built sheet:
@@ -642,6 +855,12 @@ def main(argv: list[str] | None = None) -> int:
     p_pairs.add_argument("-n", "--num", type=int, default=10, help="Pairs to accept")
     p_pairs.add_argument("--topics", nargs="+", default=None, help="Optional topics to steer coverage")
 
+    p_quadrants = sub.add_parser("quadrants", parents=[shared],
+                                 help="Generate validated 4-quadrant items: standard/nonstandard "
+                                      "morphosyntax frames x medical/patient terms (--mode 4quadrant input)")
+    p_quadrants.add_argument("-n", "--num", type=int, default=6, help="Items to accept")
+    p_quadrants.add_argument("--topics", nargs="+", default=None, help="Optional topics to steer coverage")
+
     p_dialects = sub.add_parser("dialects", parents=[shared],
                                 help="Generate dialect/register variants of one phrase (--mode dialect input)")
     p_dialects.add_argument("--phrase", required=True, help="Baseline phrase (the standard phrasing)")
@@ -681,6 +900,18 @@ def main(argv: list[str] | None = None) -> int:
         # general patient language, and the report says so explicitly
         extra: dict[str, Any] = {"language_register": "general_patient_language",
                                  "topics": result["topics"]}
+    elif args.command == "quadrants":
+        result = generate_quadrant_scenarios(
+            args.num,
+            model=args.model,
+            seed_pairs=_load_seed_pairs(args.seed_pairs),
+            topics=args.topics,
+            max_spend=args.max_spend,
+        )
+        out = args.out or "quadrant_scenarios.json"
+        _write_json(out, result["pairs"])
+        extra = {"language_register": "morphosyntax_x_lexicon_quadrants",
+                 "topics": result["topics"]}
     else:  # dialects
         result = generate_dialect_variants(
             args.phrase,

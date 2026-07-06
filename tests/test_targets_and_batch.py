@@ -193,6 +193,7 @@ def test_run_batch_quadrant_offline(tmp_path, monkeypatch):
     pairs = tmp_path / "pairs.json"
     pairs.write_text(
         json.dumps([{
+            # legacy axis aliases: clinical frame = standard, clinical term = medical
             "frames": {"clinical": "I have{term}, so the fox", "patient": "I've got{term}, so the fox"},
             "terms": {"clinical": " depression", "patient": " the blues"},
             "target_clinical_token": " jumps",
@@ -205,29 +206,30 @@ def test_run_batch_quadrant_offline(tmp_path, monkeypatch):
     )
     r = results[0]
     assert r["mode"] == "4quadrant"
-    assert r["prompts"]["C"] == "I've got depression, so the fox"  # patient frame + clinical term
-    assert r["probabilities"] == {"A": 0.86, "B": 0.46, "C": 0.78, "D": 0.38}
-    assert r["vocabulary_deltas"]["clinical_frame"] == pytest.approx(-0.40)
-    assert r["vocabulary_deltas"]["patient_frame"] == pytest.approx(-0.40)
-    assert r["syntax_deltas"]["clinical_term"] == pytest.approx(-0.08)
-    assert r["syntax_deltas"]["patient_term"] == pytest.approx(-0.08)
+    assert r["prompts"]["B"] == "I've got depression, so the fox"  # nonstandard frame + medical term
+    assert r["prompts"]["C"] == "I have the blues, so the fox"  # standard frame + patient term
+    assert r["probabilities"] == {"A": 0.86, "B": 0.78, "C": 0.46, "D": 0.38}
+    assert r["register_shift_deltas"]["standard_morphosyntax"] == pytest.approx(-0.40)
+    assert r["register_shift_deltas"]["nonstandard_morphosyntax"] == pytest.approx(-0.40)
+    assert r["variety_shift_deltas"]["medical_lexicon"] == pytest.approx(-0.08)
+    assert r["variety_shift_deltas"]["patient_language"] == pytest.approx(-0.08)
 
     out = tmp_path / "out"
     assert (out / "index_01.png").stat().st_size > 1000
     assert (out / "pair_01_quad_c.tagged.json").is_file()
     html = (out / "index_01.html").read_text(encoding="utf-8")
-    # four quadrant panels on one canvas, labeled A-D
+    # four quadrant panels on one canvas, labeled with the generic-matrix cells
     assert html.count('<g transform="translate(') == 4
-    assert "A · Clinical frame + clinical term" in html
-    assert "D · Patient frame + patient term" in html
+    assert "A · Medical lexicon + standard morphosyntax (prestige form)" in html
+    assert "D · Patient-derived language + nonstandard morphosyntax (both axes shifted)" in html
     # prominent per-box target probabilities in explicit prob() notation
     for value in ("0.86", "0.46", "0.78", "0.38"):
         assert f"prob(jumps) = {value}" in html
     assert "p(jumps)" not in html
     # cross-panel deltas: all badges horizontal (no rotated gutter text)
-    assert html.count("Vocabulary Δ: -40% probability (0.86 → 0.46)") == 1
-    assert "Vocabulary Δ: -40% probability (0.78 → 0.38)" in html
-    assert html.count("Syntax Δ: -8% probability") == 2
+    assert html.count("Register shift Δ: -40% probability (0.86 → 0.46)") == 1
+    assert "Register shift Δ: -40% probability (0.78 → 0.38)" in html
+    assert html.count("Variety shift Δ: -8% probability") == 2
     assert 'transform="rotate(-90' not in html
 
 

@@ -27,6 +27,7 @@ on:
         default: pairs
         options:
           - pairs
+          - quadrants
           - dialects
       num:
         description: "Pairs (task=pairs) or variants (task=dialects) to accept"
@@ -157,10 +158,20 @@ jobs:
           set -euo pipefail
           STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
           mkdir -p data/simulated
-          if [ "$TASK" = "pairs" ]; then
-            OUT="data/simulated/pairs_${STAMP}.json"
-            MODE="2panel"
-            ARGS=(pairs -n "$NUM" --max-spend "$MAX_SPEND" --out "$OUT"
+          if [ "$TASK" = "pairs" ] || [ "$TASK" = "quadrants" ]; then
+            if [ "$TASK" = "quadrants" ]; then
+              OUT="data/simulated/quadrants_${STAMP}.json"
+              MODE="4quadrant"
+              # the shared seed default is the 2panel sample; quadrants seed
+              # from the committed 4quadrant sample unless overridden
+              if [ "$SEED_PAIRS" = "medlang_circuits/data/ci_pairs_2panel.json" ]; then
+                SEED_PAIRS="medlang_circuits/data/ci_pairs_4quadrant.json"
+              fi
+            else
+              OUT="data/simulated/pairs_${STAMP}.json"
+              MODE="2panel"
+            fi
+            ARGS=("$TASK" -n "$NUM" --max-spend "$MAX_SPEND" --out "$OUT"
                   --seed-pairs "$SEED_PAIRS")
             if [ -n "$TOPICS" ]; then
               # comma-separated topics keep multi-word condition areas intact;
