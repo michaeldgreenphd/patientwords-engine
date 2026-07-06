@@ -55,6 +55,7 @@ import argparse
 import json
 import logging
 import sys
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -75,11 +76,12 @@ from medlang_circuits.graph_client import (
     resolve_graph_model,
     slugify,
 )
-from medlang_circuits.neuronpedia_features import FeatureFetcher
+from medlang_circuits.neuronpedia_features import FeatureFetcher, NullFetcher
 from medlang_circuits.schema_utils import is_feature_node, node_layer_and_index
 from medlang_circuits.targets import (
     TOP_K_SPREAD_DEFAULT,
     AttributionTargets,
+    bare_token,
     logit_spread,
     select_logits,
     target_probability,
@@ -112,6 +114,37 @@ QUAD_EDGE_VIEWS = (
     ("variety_medical", "A", "B", "Variety shift Δ"),
     ("variety_patient", "C", "D", "Variety shift Δ"),
 )
+
+
+# Function words that stage the real diagnostic token one position later.
+# When a screen fails because BOTH phrasings converge on one of these, the
+# probe extends by that token and re-measures at the next position.
+PROBE_EXTENSION_TOKENS = frozenset(
+    "the a an my his her their our your some this that these those to of for".split()
+)
+
+
+def clinical_mass_fraction(graph: dict[str, Any]) -> float | None:
+    """Share of transcoder-feature attribution mass on clinical-tagged features.
+
+    The quantitative form of "medical wording lights up medical reasoning":
+    mass is |incident edge weight| summed per feature node; the fraction is
+    clinical mass over all feature mass (logits and structural nodes excluded).
+    """
+    weight: dict[str, float] = defaultdict(float)
+    for link in graph.get("links", []):
+        w = abs(link.get("weight", 0.0))
+        weight[link.get("source")] += w
+        weight[link.get("target")] += w
+    total = clinical = 0.0
+    for node in graph.get("nodes", []):
+        if not is_feature_node(node):
+            continue
+        w = weight[node["node_id"]]
+        total += w
+        if (node.get("medlang") or {}).get("category") == "clinical":
+            clinical += w
+    return round(clinical / total, 4) if total else None
 
 
 def _feature_identities(graph: dict[str, Any]) -> dict[tuple[int, int], list[str]]:
@@ -265,29 +298,50 @@ def evaluate_pair(
     targets = AttributionTargets.of(force_tokens) if force_tokens else None
     params = _generation_params(targets, generation_params, graph_model, source_set)
 
-    clinical_graph = _trace(pair["top_prompt"], "clinical", index, out_dir, backend, params, targets, fetcher)
+    clinical_prompt, patient_prompt = pair["top_prompt"], pair["bottom_prompt"]
+    clinical_graph = _trace(clinical_prompt, "clinical", index, out_dir, backend, params, targets, fetcher)
 
     screening: dict[str, Any] | None = None
     if screen_targets is not None:
         observed = target_probability(clinical_graph, anchor=anchor) if anchor else None
+        extension: str | None = None
+        if observed is None or observed[1] < screen_targets:
+            # Probe extension: when the phrasing funnels into a function word
+            # ('...I should go to' -> ' the'), the article is a staging token,
+            # not a failed measurement. Extend BOTH prompts by it and
+            # re-measure one position deeper (once).
+            top = target_probability(clinical_graph)
+            staged = bare_token(top[0]) if top else ""
+            if staged in PROBE_EXTENSION_TOKENS:
+                extension = staged
+                clinical_prompt = clinical_prompt.rstrip() + " " + staged
+                patient_prompt = patient_prompt.rstrip() + " " + staged
+                logger.info("Pair %d: probe extended by %r, re-tracing clinical side", index, staged)
+                clinical_graph = _trace(clinical_prompt, "clinical", index, out_dir,
+                                        backend, params, targets, fetcher)
+                observed = target_probability(clinical_graph, anchor=anchor) if anchor else None
         if observed is None or observed[1] < screen_targets:
             reason = (
                 "intended target not in the traced clinical spread" if observed is None
                 else f"intended target below min_prob ({observed[1]:.3f} < {screen_targets})"
             )
+            if extension:
+                reason += f" (even after probe extension by '{extension}')"
             logger.info("Pair %d screened out: %s", index, reason)
             return {
                 "index": index,
                 "mode": "2panel",
-                "prompts": {"clinical": pair["top_prompt"], "patient": pair["bottom_prompt"]},
+                "prompts": {"clinical": clinical_prompt, "patient": patient_prompt},
                 "target_token": observed[0] if observed else None,
                 "probabilities": {"clinical": observed[1] if observed else None, "patient": None},
                 "language_penalty": None,
+                "clinical_mass": {"clinical": clinical_mass_fraction(clinical_graph)},
                 "screening": {
                     "status": "screened_out",
                     "min_prob": screen_targets,
                     "intended_target": anchor,
                     "observed_clinical": list(observed) if observed else None,
+                    "probe_extension": extension,
                     "reason": reason,
                 },
                 "forced_targets": list(force_tokens),
@@ -299,13 +353,14 @@ def evaluate_pair(
             "min_prob": screen_targets,
             "intended_target": anchor,
             "observed_clinical": list(observed),
+            "probe_extension": extension,
         }
 
-    prompts = [pair["top_prompt"], pair["bottom_prompt"]]
+    prompts = [clinical_prompt, patient_prompt]
     roles = ["clinical", "patient"]
     translation_method = None
     if show_mitigation:
-        translation = translate_to_clinical(pair["bottom_prompt"], use_llm=use_llm_translation, model=llm_model)
+        translation = translate_to_clinical(patient_prompt, use_llm=use_llm_translation, model=llm_model)
         prompts.append(translation["text"])
         roles.append("translated")
         translation_method = translation["method"]
@@ -362,6 +417,7 @@ def evaluate_pair(
         "target_token": target_token,
         "probabilities": dict(zip(roles, probs)),
         "language_penalty": (probs[1] - probs[0]) if probs[0] is not None and probs[1] is not None else None,
+        "clinical_mass": {role: clinical_mass_fraction(g) for role, g in zip(roles, graphs)},
         **result_screening,
         "mitigation_recovery": (
             (probs[2] - probs[1]) if len(probs) == 3 and probs[1] is not None and probs[2] is not None else None
@@ -718,6 +774,7 @@ def run_batch(
     generation_params: dict[str, Any] | None = None,
     start_index: int = 1,
     screen_targets: float | None = None,
+    generate_missing_explanations: int = 0,
 ) -> list[dict[str, Any]]:
     """Sequentially evaluate every pair in the JSON file under the chosen mode.
 
@@ -743,8 +800,16 @@ def run_batch(
 
     graph_model = resolve_graph_model(graph_model)
     if fetcher is None:
-        # Fails fast for models whose default feature source set is unregistered.
-        fetcher = FeatureFetcher(model_id=graph_model, source_set=source_set)
+        try:
+            fetcher = FeatureFetcher(model_id=graph_model, source_set=source_set,
+                                     generate_missing=generate_missing_explanations)
+        except ValueError as e:
+            # No registered autointerp source set (non-gemma models): trace and
+            # measure probabilities anyway; features render without clinical
+            # accents until the model's source set is registered.
+            logger.warning("Feature details unavailable for %s (%s) - tracing with "
+                           "untagged features", graph_model, e)
+            fetcher = NullFetcher()
 
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -818,6 +883,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="(2panel) Trace the clinical side first and screen out pairs whose "
                              "intended target misses the clinical spread at >= MIN_PROB; "
                              "screened-out pairs stay in the summary with their observed spread")
+    parser.add_argument("--generate-missing-explanations", type=int, default=0, metavar="CAP",
+                        help="EXPERIMENTAL: ask Neuronpedia to auto-interp up to CAP unexplained "
+                             "features per run (server-side, uses the provider keys saved in "
+                             "your Neuronpedia ACCOUNT settings)")
     add_graph_cli_arguments(parser)
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
 
@@ -835,6 +904,7 @@ def main(argv: list[str] | None = None) -> int:
         generation_params=generation_params_from_args(args),
         start_index=args.start_index,
         screen_targets=args.screen_targets,
+        generate_missing_explanations=args.generate_missing_explanations,
     )
     print(json.dumps(results, indent=2))
     return 0

@@ -56,6 +56,19 @@ class FeatureDetails(dict):
     """Plain dict with keys: description (str), top_tokens (list[str])."""
 
 
+class NullFetcher:
+    """Detail fetcher for models with no registered autointerp source set.
+
+    Tracing and probability measurement work; features keyword-match against
+    their clerp only (usually nothing), so nodes fall to the default category
+    and render without clinical accents until a source set is registered."""
+
+    source_set = None
+
+    def get(self, layer: int, index: int) -> FeatureDetails:
+        return FeatureDetails(description="", top_tokens=[])
+
+
 class FeatureFetcher:
     def __init__(
         self,
@@ -65,6 +78,7 @@ class FeatureFetcher:
         cache_dir: str | os.PathLike | None = None,
         api_key: str | None = None,
         timeout: float = 20.0,
+        generate_missing: int = 0,
     ):
         self.model_id = model_id
         self.source_set = source_set or default_source_set(model_id)
@@ -72,12 +86,57 @@ class FeatureFetcher:
         self.cache_dir = Path(cache_dir or DEFAULT_CACHE_DIR)
         self.api_key = api_key or os.environ.get("NEURONPEDIA_API_KEY")
         self.timeout = timeout
+        # EXPERIMENTAL auto-interp backfill: when a feature has no explanation
+        # yet, ask Neuronpedia to generate one (their servers use the provider
+        # keys saved in the ACCOUNT settings - no local keys involved), then
+        # refetch. Capped per run; failures degrade to the empty description.
+        self.generate_missing = max(0, int(generate_missing))
+        self._generated = 0
+        self.explain_endpoint = os.environ.get(
+            "NEURONPEDIA_EXPLAIN_ENDPOINT", "/api/explanation/generate")
+        self.explain_model = os.environ.get(
+            "NEURONPEDIA_EXPLAIN_MODEL", "claude-haiku-4-5")
+        self.explain_type = os.environ.get(
+            "NEURONPEDIA_EXPLAIN_TYPE", "oai_token-act-pair")
         self._session = requests.Session()
         if self.api_key:
             self._session.headers["x-api-key"] = self.api_key
 
+    def _maybe_generate_explanation(self, layer: int, index: int) -> bool:
+        """Request server-side auto-interp for one unexplained feature; True on 2xx."""
+        if self._generated >= self.generate_missing:
+            return False
+        self._generated += 1
+        body = {
+            "modelId": self.model_id,
+            "layer": f"{layer}-{self.source_set}",
+            "index": str(index),
+            "explanationType": self.explain_type,
+            "explanationModelName": self.explain_model,
+        }
+        try:
+            resp = self._session.post(self.base_url + self.explain_endpoint,
+                                      json=body, timeout=max(self.timeout, 60.0))
+            if resp.ok:
+                logger.info("Auto-interp generated for %s %s-%s/%s",
+                            self.model_id, layer, self.source_set, index)
+                return True
+            logger.warning(
+                "Auto-interp generation failed (%s) for %s-%s/%s: %s - if the schema "
+                "differs, override NEURONPEDIA_EXPLAIN_ENDPOINT/_MODEL/_TYPE",
+                resp.status_code, layer, self.source_set, index, resp.text[:200])
+        except requests.RequestException as e:
+            logger.warning("Auto-interp generation request failed: %s", e)
+        return False
+
     def _cache_path(self, layer: int, index: int) -> Path:
         return self.cache_dir / self.model_id / f"{layer}-{self.source_set}" / f"{index}.json"
+
+    def _fetch_raw(self, layer: int, index: int) -> dict:
+        url = f"{self.base_url}/api/feature/{self.model_id}/{layer}-{self.source_set}/{index}"
+        resp = self._session.get(url, timeout=self.timeout)
+        resp.raise_for_status()
+        return resp.json()
 
     def get(self, layer: int, index: int) -> FeatureDetails:
         """Return {description, top_tokens} for a feature; empty values on any failure."""
@@ -89,11 +148,8 @@ class FeatureFetcher:
             except (json.JSONDecodeError, OSError):
                 pass  # corrupt cache entry - refetch
 
-        url = f"{self.base_url}/api/feature/{self.model_id}/{layer}-{self.source_set}/{index}"
         try:
-            resp = self._session.get(url, timeout=self.timeout)
-            resp.raise_for_status()
-            raw = resp.json()
+            raw = self._fetch_raw(layer, index)
         except (requests.RequestException, ValueError) as e:
             logger.warning("Feature fetch failed for L%s/%s: %s", layer, index, e)
             return FeatureDetails(description="", top_tokens=[])
@@ -102,6 +158,16 @@ class FeatureFetcher:
             description=_extract_description(raw),
             top_tokens=_extract_top_tokens(raw),
         )
+        if not details["description"] and self.generate_missing:
+            if self._maybe_generate_explanation(layer, index):
+                try:
+                    refetched = self._fetch_raw(layer, index)
+                    details = FeatureDetails(
+                        description=_extract_description(refetched),
+                        top_tokens=_extract_top_tokens(refetched),
+                    )
+                except (requests.RequestException, ValueError) as e:
+                    logger.warning("Refetch after auto-interp failed for L%s/%s: %s", layer, index, e)
         try:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             with open(cache_path, "w", encoding="utf-8") as f:

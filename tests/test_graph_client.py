@@ -246,7 +246,8 @@ def test_batch_cli_flags_reach_generate_graph(tmp_path, monkeypatch, capsys):
     assert rc == 0
     capsys.readouterr()
 
-    assert fetcher_kwargs == {"model_id": "qwen3-1.7b", "source_set": "my-autointerp-set"}
+    assert fetcher_kwargs == {"model_id": "qwen3-1.7b", "source_set": "my-autointerp-set",
+                              "generate_missing": 0}
     assert len(calls) == 2  # clinical + patient panels
     for call in calls:
         params = call["params"]

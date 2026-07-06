@@ -30,7 +30,10 @@ Everything is push-to-run; no session required. Costs: generation only
 (Anthropic tokens; tracing is free with the Neuronpedia account key).
 
 1. **Generate** — edit `scenario-generation.json` and push:
-   `{"task": "pairs", "num": "150", "topics": "<comma-separated areas>",
+   `{"task": "pairs", "num": "150", "topics": "sleep problems and insomnia,
+     heartburn and acid reflux, migraine and everyday headaches, seasonal
+     allergies and hay fever, diabetes and blood sugar, high blood pressure,
+     anxiety and everyday stress, back pain and sore muscles",
      "seed_pairs": "data/simulated/seed_union_20260706.json",
      "feedback": "data/simulated/feedback_pairs_20260706T201750Z.json",
      "anthropic_model": "claude-opus-4-8", "max_spend": "10",
@@ -43,6 +46,20 @@ Everything is push-to-run; no session required. Costs: generation only
      "offsets": [0, 3, 6, ...], "sample_size": "3",
      "screen_targets": "0.02", "commit_outputs": true,
      "max_feature_nodes": "2500"}`
+   The screen includes automatic **probe extension**: when both phrasings
+   funnel into a function word ("the", "a", "my", ...), the probe extends by
+   that token and re-measures one position deeper before rejecting. Each
+   result also records `clinical_mass` - the share of feature attribution on
+   clinical-tagged features - the quantitative "medical wording lights up
+   medical circuitry" metric. Optional: `"generate_explanations": "25"`
+   auto-interps up to N unexplained features per chunk (EXPERIMENTAL;
+   requires a provider key saved in the Neuronpedia ACCOUNT settings).
+   Cross-model comparison: re-push the same trigger with `"graph_model":
+   "gemma-3-4b-it"` (or qwen3-4b / qwen3-1.7b) - outputs land in
+   `trace_out/<stem>__<model>/`; non-gemma features stay untagged (gray)
+   until their autointerp source sets are registered in
+   `neuronpedia_features.MODEL_SOURCE_SETS`, but probabilities and penalties
+   measure fine.
    One matrix job per offset, 3 in parallel; ~5 min per graph; screened-out
    candidates cost one graph, measured pairs two. Expect ~6-8 hours for 150
    candidates. `max_feature_nodes 2500` roughly halves render weight - use

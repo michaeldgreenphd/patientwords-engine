@@ -124,7 +124,7 @@ jobs:
               "screen_targets": "", "commit_outputs": "false",
               "max_n_logits": "10", "desired_logit_prob": "0.95",
               "node_threshold": "0.8", "edge_threshold": "0.98",
-              "max_feature_nodes": "5000",
+              "max_feature_nodes": "5000", "generate_explanations": "0",
           }
           params = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
@@ -175,6 +175,7 @@ jobs:
           MODE: ${{ fromJson(needs.params.outputs.config).mode }}
           SAMPLE_SIZE: ${{ fromJson(needs.params.outputs.config).sample_size }}
           PAIRS_FILE: ${{ fromJson(needs.params.outputs.config).pairs_file }}
+          GRAPH_MODEL: ${{ fromJson(needs.params.outputs.config).graph_model }}
           OFFSET: ${{ matrix.offset }}
         run: |
           python - <<'EOF'
@@ -190,6 +191,9 @@ jobs:
           with open("ci_pairs.json", "w", encoding="utf-8") as f:
               json.dump(selected, f, indent=2)
           stem = os.path.splitext(os.path.basename(path))[0]
+          model = os.environ.get("GRAPH_MODEL", "gemma-2-2b")
+          if model != "gemma-2-2b":  # cross-model runs get their own dir
+              stem = f"{stem}__{model}"
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
               env.write(f"OUT_DIR=trace_out/{stem}\n")
           print(f"Selected pairs {offset + 1}-{offset + len(selected)} of {len(pairs)} "
@@ -202,6 +206,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}  # translation mode only
           OFFSET: ${{ matrix.offset }}
           SCREEN: ${{ fromJson(needs.params.outputs.config).screen_targets }}
+          GEN_EXPL: ${{ fromJson(needs.params.outputs.config).generate_explanations }}
         run: |
           ARGS=(ci_pairs.json
             --mode "${{ fromJson(needs.params.outputs.config).mode }}"
@@ -216,6 +221,9 @@ jobs:
             --out "$OUT_DIR")
           if [ -n "$SCREEN" ]; then
             ARGS+=(--screen-targets "$SCREEN")
+          fi
+          if [ -n "$GEN_EXPL" ] && [ "$GEN_EXPL" != "0" ]; then
+            ARGS+=(--generate-missing-explanations "$GEN_EXPL")
           fi
           medlang-batch-eval "${ARGS[@]}"
 

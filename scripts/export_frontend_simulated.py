@@ -133,6 +133,7 @@ for stamp in [s.strip() for s in args.stamps.split(",") if s.strip()]:
             "topics": gen.get("topics", []),
             "screening": r.get("screening"),
             "circuit_diff": r.get("circuit_diff"),
+            "clinical_mass": r.get("clinical_mass"),
         }
         for suffix, key in ((("", "html")), ("", "png"), ("_diff", "diff_html"), ("_diff", "diff_png")):
             ext = "html" if key.endswith("html") else "png"

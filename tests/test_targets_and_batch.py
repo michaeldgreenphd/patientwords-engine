@@ -225,10 +225,13 @@ def test_run_batch_screen_targets(tmp_path, monkeypatch):
     # patient side never traced, no render - but the record stays complete
     assert results[1]["screening"]["status"] == "screened_out"
     assert "not in the traced clinical spread" in results[1]["screening"]["reason"]
+    # the top logit was the article 'a', so the probe extended once before giving up
+    assert "after probe extension by 'a'" in results[1]["screening"]["reason"]
     assert results[1]["probabilities"] == {"clinical": None, "patient": None}
     assert results[1]["predictive_spread"]["clinical"]  # observed spread for feedback
     assert not (out / "index_02.png").exists()
-    assert traced_prompts == ["clinical measurable", "patient measurable", "clinical unmeasurable"]
+    assert traced_prompts == ["clinical measurable", "patient measurable",
+                              "clinical unmeasurable", "clinical unmeasurable a"]
 
     summary = json.loads((out / "batch_summary.json").read_text(encoding="utf-8"))
     assert summary["screen_targets"] == 0.5
@@ -236,6 +239,50 @@ def test_run_batch_screen_targets(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="2panel-mode"):
         batch_eval.run_batch(str(pairs), out_dir=str(out), mode="4quadrant",
                              fetcher=build_fetcher(), screen_targets=0.5)
+
+
+def test_screen_probe_extension(tmp_path, monkeypatch):
+    # First clinical trace tops out at the article 'a'; the probe extends both
+    # prompts by it and the second trace surfaces the real diagnostic token.
+    traced = []
+
+    def fake_generate(prompt, slug=None, backend="hosted", **params):
+        traced.append(prompt)
+        g = _two_logit_graph()
+        if not prompt.rstrip().endswith(" a"):
+            # pre-extension: only function-word logits in the spread
+            for node in g["nodes"]:
+                if node["node_id"] == "L_999_3":
+                    node["clerp"] = "the (p=0.4)"
+        return g
+
+    monkeypatch.setattr(batch_eval, "generate_graph", fake_generate)
+    pairs = tmp_path / "pairs.json"
+    pairs.write_text(
+        json.dumps([{"top_prompt": "clinical probe", "bottom_prompt": "patient probe",
+                     "target_clinical_token": " jumps"}]),
+        encoding="utf-8",
+    )
+    results = batch_eval.run_batch(
+        str(pairs), out_dir=str(tmp_path / "out"), dpi=50, fetcher=build_fetcher(), screen_targets=0.5,
+    )
+    r = results[0]
+    assert r["screening"]["status"] == "passed"
+    assert r["screening"]["probe_extension"] == "a"
+    # both prompts measured one position deeper, on the extended text
+    assert r["prompts"] == {"clinical": "clinical probe a", "patient": "patient probe a"}
+    assert traced == ["clinical probe", "clinical probe a", "patient probe a"]
+    assert r["probabilities"]["clinical"] == 0.81
+
+
+def test_clinical_mass_fraction():
+    g = make_graph()
+    # tag one of the three feature nodes clinical; mass = |incident weight|
+    for node in g["nodes"]:
+        cat = "clinical" if node["node_id"] == "3_00042_1" else "off_target"
+        node["medlang"] = {"category": cat}
+    # feature masses: 3_00042_1 -> 2+4=6, 7_00007_2 -> 4+6=10, 9_00001_3 -> 1.5
+    assert batch_eval.clinical_mass_fraction(g) == pytest.approx(6 / 17.5, abs=1e-4)
 
 
 def test_run_batch_quadrant_offline(tmp_path, monkeypatch):
