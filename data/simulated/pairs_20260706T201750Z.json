@@ -1,0 +1,338 @@
+[
+  {
+    "top_prompt": "I just can't seem to fall asleep due to insomnia, so my doctor started me on a",
+    "bottom_prompt": "I just can't seem to nod off no matter what, so my doctor started me on a",
+    "target_clinical_token": " sleeping",
+    "generation": {
+      "patient_term": "nod off no matter what",
+      "clinical_term": "fall asleep due to insomnia",
+      "expected_clinical_continuations": [
+        "sleeping",
+        "sedative",
+        "pill"
+      ],
+      "rationale": "The lay 'nod off no matter what' could continue toward a mundane 'routine' or 'schedule', while the clinical 'insomnia' funnels the next token after 'a' toward a sleeping pill or sedative.",
+      "swap_spans": {
+        "patient_span": "nod off no matter what,",
+        "clinical_span": "fall asleep due to insomnia,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  },
+  {
+    "top_prompt": "That awful migraine is back, so I dug through my bag for a",
+    "bottom_prompt": "That awful pounding behind my eye is back, so I dug through my bag for a",
+    "target_clinical_token": " painkiller",
+    "generation": {
+      "patient_term": "pounding behind my eye",
+      "clinical_term": "migraine",
+      "expected_clinical_continuations": [
+        "painkiller",
+        "pill",
+        "tablet"
+      ],
+      "rationale": "The lay 'pounding behind my eye' could continue toward 'snack' or 'tissue', while the clinical 'migraine' shifts the next token toward a painkiller or pill.",
+      "swap_spans": {
+        "patient_span": "pounding behind my eye",
+        "clinical_span": "migraine"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  },
+  {
+    "top_prompt": "He's been up half the night with gastroesophageal reflux every evening, so tonight he swallowed an",
+    "bottom_prompt": "He's been up half the night with heartburn every evening, so tonight he swallowed an",
+    "target_clinical_token": " antacid",
+    "generation": {
+      "patient_term": "heartburn",
+      "clinical_term": "gastroesophageal reflux",
+      "expected_clinical_continuations": [
+        "antacid",
+        "acid"
+      ],
+      "rationale": "The 'an' before a vowel-initial word and the clinical 'gastroesophageal reflux' funnel toward 'antacid', while lay 'heartburn' could continue toward 'early night' or a drink.",
+      "swap_spans": {
+        "patient_span": "heartburn",
+        "clinical_span": "gastroesophageal reflux"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  },
+  {
+    "top_prompt": "She's been suffering from chronic insomnia every night, so the doctor prescribed a",
+    "bottom_prompt": "She's been staring at the ceiling for hours every night, so the doctor prescribed a",
+    "target_clinical_token": " sleeping",
+    "generation": {
+      "patient_term": "staring at the ceiling for hours",
+      "clinical_term": "suffering from chronic insomnia",
+      "expected_clinical_continuations": [
+        "sleeping",
+        "sedative",
+        "pill"
+      ],
+      "rationale": "The lay 'staring at the ceiling' reads as ordinary restlessness that might invite a 'break' or 'routine', while 'chronic insomnia' with 'prescribed a' funnels toward a sleeping pill or sedative.",
+      "swap_spans": {
+        "patient_span": "staring at the ceiling for hours",
+        "clinical_span": "suffering from chronic insomnia"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My allergic conjunctivitis flares up every spring, so this year my doctor put me on a",
+    "bottom_prompt": "My eyes are itchy and watering like crazy every spring, so this year my doctor put me on a",
+    "target_clinical_token": " drop",
+    "generation": {
+      "patient_term": "eyes are itchy and watering like crazy",
+      "clinical_term": "allergic conjunctivitis flares up",
+      "expected_clinical_continuations": [
+        "drop",
+        "steroid",
+        "daily"
+      ],
+      "rationale": "The lay 'itchy watering eyes' might continue with a napkin or a nap, while the clinical 'allergic conjunctivitis' funnels after 'a' toward an eye 'drop' or similar remedy.",
+      "swap_spans": {
+        "patient_span": "eyes are itchy and watering like crazy",
+        "clinical_span": "allergic conjunctivitis flares up"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been up all night with heartburn again, so first thing this morning I chewed a",
+    "bottom_prompt": "I've been up all night with my gut on fire again, so first thing this morning I chewed a",
+    "target_clinical_token": " tablet",
+    "generation": {
+      "patient_term": "my gut on fire",
+      "clinical_term": "heartburn",
+      "expected_clinical_continuations": [
+        "tablet",
+        "Tums",
+        "pill"
+      ],
+      "rationale": "'Gut on fire' could lead to breakfast or coffee, whereas 'heartburn' with 'chewed a' funnels toward a chewable antacid 'tablet'.",
+      "swap_spans": {
+        "patient_span": "my gut on fire",
+        "clinical_span": "heartburn"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My migraine hit me at the office, so I dimmed the screen and swallowed a",
+    "bottom_prompt": "That thumping behind my eyes hit me at the office, so I dimmed the screen and swallowed a",
+    "target_clinical_token": " pill",
+    "generation": {
+      "patient_term": "That thumping behind my eyes",
+      "clinical_term": "My migraine",
+      "expected_clinical_continuations": [
+        "pill",
+        "painkiller",
+        "tablet"
+      ],
+      "rationale": "'Thumping behind my eyes' reads as ordinary strain that might get a coffee, while 'migraine' with 'swallowed a' funnels toward a 'pill' or abortive medication.",
+      "swap_spans": {
+        "patient_span": "That thumping behind my eyes",
+        "clinical_span": "My migraine"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  },
+  {
+    "top_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+    "bottom_prompt": "She just can't switch her brain off at bedtime lately, so before turning in she takes a",
+    "target_clinical_token": " sedative",
+    "generation": {
+      "patient_term": "can't switch her brain off at bedtime",
+      "clinical_term": "dealing with sleep-onset insomnia",
+      "expected_clinical_continuations": [
+        "sedative",
+        "sleeping",
+        "pill"
+      ],
+      "rationale": "The colloquial 'can't switch her brain off' invites a warm bath or tea, while 'sleep-onset insomnia' shifts the token after 'a' toward a sedative or sleeping pill.",
+      "swap_spans": {
+        "patient_span": "She just can't switch her brain off at bedtime",
+        "clinical_span": "She's been dealing with sleep-onset insomnia"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  },
+  {
+    "top_prompt": "He gets allergic rhinitis every time the grass gets cut, so before mowing he sprays some",
+    "bottom_prompt": "He's been sniffly and congested every time the grass gets cut, so before mowing he sprays some",
+    "target_clinical_token": " nasal",
+    "generation": {
+      "patient_term": "sniffly and congested",
+      "clinical_term": "gets allergic rhinitis",
+      "expected_clinical_continuations": [
+        "nasal",
+        "steroid",
+        "medicine"
+      ],
+      "rationale": "'Sniffly and congested' could continue with water or sunscreen, but 'allergic rhinitis' with 'sprays some' funnels toward a 'nasal' spray.",
+      "swap_spans": {
+        "patient_span": "He's been sniffly and congested",
+        "clinical_span": "He gets allergic rhinitis"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I had severe insomnia before the flight, so at the airport shop I bought a",
+    "bottom_prompt": "I couldn't get a wink of sleep before the flight, so at the airport shop I bought a",
+    "target_clinical_token": " sleeping",
+    "generation": {
+      "patient_term": "couldn't get a wink of sleep",
+      "clinical_term": "had severe insomnia",
+      "expected_clinical_continuations": [
+        "sleeping",
+        "pill",
+        "sedative"
+      ],
+      "rationale": "The lay 'couldn't get a wink of sleep' at an airport invites a mundane 'coffee' or 'magazine', while 'severe insomnia' shifts the next token after 'a' toward a sleep aid like a sleeping pill.",
+      "swap_spans": {
+        "patient_span": "couldn't get a wink of sleep",
+        "clinical_span": "had severe insomnia"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  },
+  {
+    "top_prompt": "After that greasy takeaway my acid reflux flared again, so I rummaged in the cupboard for an",
+    "bottom_prompt": "After that greasy takeaway my gut was burning again, so I rummaged in the cupboard for an",
+    "target_clinical_token": " antacid",
+    "generation": {
+      "patient_term": "my gut was burning again",
+      "clinical_term": "my acid reflux flared again",
+      "expected_clinical_continuations": [
+        "antacid",
+        "acid"
+      ],
+      "rationale": "'Gut was burning' after takeaway could continue toward 'ice cream' or a drink, while 'acid reflux' plus the article 'an' funnels toward 'antacid'.",
+      "swap_spans": {
+        "patient_span": "gut was burning",
+        "clinical_span": "acid reflux flared"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  },
+  {
+    "top_prompt": "That migraine came on right before the presentation, so I quickly took a",
+    "bottom_prompt": "That splitting headache came on right before the presentation, so I quickly took a",
+    "target_clinical_token": " pill",
+    "generation": {
+      "patient_term": "That splitting headache",
+      "clinical_term": "That migraine",
+      "expected_clinical_continuations": [
+        "pill",
+        "painkiller",
+        "triptan"
+      ],
+      "rationale": "The everyday 'splitting headache' before a talk might continue with 'break' or 'coffee', whereas 'migraine' biases the next token after 'a' toward a pill or painkiller.",
+      "swap_spans": {
+        "patient_span": "splitting headache",
+        "clinical_span": "migraine"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Every spring my seasonal allergies act up at the picnic, so I always pack some",
+    "bottom_prompt": "Every spring my nose runs and my eyes water at the picnic, so I always pack some",
+    "target_clinical_token": " antihistamines",
+    "generation": {
+      "patient_term": "my nose runs and my eyes water",
+      "clinical_term": "my seasonal allergies act up",
+      "expected_clinical_continuations": [
+        "antihistamines",
+        "allergy",
+        "medicine"
+      ],
+      "rationale": "The lay 'nose runs and eyes water' at a picnic invites 'tissues' or 'napkins', while 'seasonal allergies' pushes the continuation toward antihistamines or allergy medicine.",
+      "swap_spans": {
+        "patient_span": "nose runs and my eyes water",
+        "clinical_span": "seasonal allergies act up"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems and insomnia",
+        "heartburn and acid reflux",
+        "migraine and everyday headaches",
+        "seasonal allergies and hay fever"
+      ]
+    }
+  }
+]
