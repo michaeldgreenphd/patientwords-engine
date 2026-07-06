@@ -331,6 +331,29 @@ def evaluate_pair(
     render_panels_html(panels, str(html_path), badges=badges)
     render_panels_png(panels, str(png_path), badges=badges, dpi=dpi)
 
+    # Circuit diff: the same shared-feature dimming the quadrant edge views
+    # use. Features present in both prompts render as faint context, so the
+    # full-ink circuitry is exactly what the term swap added or removed.
+    dim_c, dim_p, diff_counts = shared_feature_dimming(graphs[0], graphs[1])
+    diff_panels = build_panels(
+        [graphs[0], graphs[1]],
+        labels=[f"Clinical wording: “{prompts[0]}”", f"Patient wording: “{prompts[1]}”"],
+        accents=[CATEGORY_COLORS["clinical"], CATEGORY_COLORS["off_target"]],
+        value_label_flags=[True, False],
+        headlines=[_headline(target_token, probs[0]), _headline(target_token, probs[1])],
+        refs=[1, 0],
+        dimmed=[dim_c, dim_p],
+    )
+    diff_badge = {"lines": [
+        badges[0] or "Language Penalty: —",
+        f"circuit diff: shared features dimmed — {diff_counts['shared_features']} in both · "
+        f"{diff_counts['unique_to_a']} only clinical · {diff_counts['unique_to_b']} only patient",
+    ]}
+    diff_html = out_dir / f"index_{index:02d}_diff.html"
+    diff_png = out_dir / f"index_{index:02d}_diff.png"
+    render_panels_html(diff_panels, str(diff_html), badges=[diff_badge])
+    render_panels_png(diff_panels, str(diff_png), badges=[diff_badge], dpi=dpi)
+
     result_screening = {"screening": screening} if screening else {}
     return {
         "index": index,
@@ -346,7 +369,9 @@ def evaluate_pair(
         "translation_method": translation_method,
         "forced_targets": list(force_tokens),
         "predictive_spread": {role: logit_spread(g) for role, g in zip(roles, graphs)},
-        "outputs": {"html": str(html_path), "png": str(png_path)},
+        "circuit_diff": diff_counts,
+        "outputs": {"html": str(html_path), "png": str(png_path),
+                    "diff_html": str(diff_html), "diff_png": str(diff_png)},
     }
 
 

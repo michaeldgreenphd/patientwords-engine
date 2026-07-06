@@ -18,10 +18,14 @@ Resolution order for the config path:
     2. ``MEDLANG_KEYWORD_CONFIG`` environment variable
     3. ``keyword_config.json`` in the current working directory
     4. ``keyword_config.json`` next to this package
+    5. the packaged default (``medlang_circuits/data/keyword_config_default.json``)
+       - a general medical/structural vocabulary so CI trace runs tag
+       features without a local config; any local config fully overrides it
 
-If no config is found, placeholder terms are returned (which match nothing in
-practice) and classification falls through to the LLM fallback / default
-category. See ``keyword_config.example.json`` for a template.
+If nothing is found (packaged default removed), placeholder terms are
+returned (which match nothing in practice) and classification falls through
+to the LLM fallback / default category. See ``keyword_config.example.json``
+for a template.
 """
 
 from __future__ import annotations
@@ -58,6 +62,10 @@ def _candidate_paths(path: str | os.PathLike | None) -> list[Path]:
         candidates.append(Path(env_path))
     candidates.append(Path.cwd() / CONFIG_FILENAME)
     candidates.append(Path(__file__).resolve().parent.parent / CONFIG_FILENAME)
+    # Packaged default vocabulary: keeps CI trace runs tagging features
+    # (clinical = green ink) when no local config exists; any local config
+    # above fully overrides it.
+    candidates.append(Path(__file__).resolve().parent / "data" / "keyword_config_default.json")
     return candidates
 
 
