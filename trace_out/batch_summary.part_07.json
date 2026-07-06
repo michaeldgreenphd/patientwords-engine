@@ -1,0 +1,150 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 7,
+  "results": [
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My allergic rhinitis is really getting to me this week, so on the way home I stopped to buy some",
+        "patient": "The pollen's really getting to me this week, so on the way home I stopped to buy some"
+      },
+      "target_token": "Output \" allergy\"",
+      "probabilities": {
+        "clinical": 0.09,
+        "patient": 0.064
+      },
+      "language_penalty": -0.025999999999999995,
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" allergy\"",
+            0.09
+          ],
+          [
+            "Output \" Sud\"",
+            0.075
+          ],
+          [
+            "Output \" Ben\"",
+            0.062
+          ],
+          [
+            "Output \" anti\"",
+            0.054
+          ],
+          [
+            "Output \" Clar\"",
+            0.049
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.115
+          ],
+          [
+            "Output \" allergy\"",
+            0.064
+          ],
+          [
+            "Output \" new\"",
+            0.038
+          ],
+          [
+            "Output \" Ben\"",
+            0.028
+          ],
+          [
+            "Output \" ear\"",
+            0.027
+          ]
+        ]
+      },
+      "outputs": {
+        "html": "trace_out/index_07.html",
+        "png": "trace_out/index_07.png"
+      }
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He keeps getting acid reflux creeping up after dinner, so tonight he's taking an",
+        "patient": "He keeps getting that sour burn creeping up after dinner, so tonight he's taking an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.448,
+        "patient": 0.141
+      },
+      "language_penalty": -0.30700000000000005,
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.448
+          ],
+          [
+            "Output \" OTC\"",
+            0.07
+          ],
+          [
+            "Output \" extra\"",
+            0.068
+          ],
+          [
+            "Output \" over\"",
+            0.066
+          ],
+          [
+            "Output \" anti\"",
+            0.054
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" extra\"",
+            0.183
+          ],
+          [
+            "Output \" aspirin\"",
+            0.142
+          ],
+          [
+            "Output \" ant\"",
+            0.141
+          ],
+          [
+            "Output \" anti\"",
+            0.066
+          ],
+          [
+            "Output \" over\"",
+            0.049
+          ]
+        ]
+      },
+      "outputs": {
+        "html": "trace_out/index_08.html",
+        "png": "trace_out/index_08.png"
+      }
+    }
+  ]
+}
