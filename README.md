@@ -1,15 +1,42 @@
-# medlang-circuits
+# patientwords-engine
 
-Pipeline for comparing attribution graphs of two phrasings of the same next-token
-prompt (standard clinical terminology vs. colloquial patient language) on
-gemma-2-2b with Gemma Scope transcoders. Built on Neuronpedia's graph stack —
-either the hosted neuronpedia.org generation API or a local `apps/graph`
-circuit-tracer server.
+Backend engine for [patientwords](https://github.com/michaeldgreenphd/patientwords)
+(`medlang-circuits` Python package): a pipeline for comparing attribution graphs of
+two phrasings of the same next-token prompt (standard clinical terminology vs.
+colloquial patient language) on gemma-2-2b with Gemma Scope transcoders. Built on
+Neuronpedia's graph stack — either the hosted neuronpedia.org generation API or a
+local graph server run from a Neuronpedia checkout.
+
+## Provenance & acknowledgments
+
+Built on top of [Neuronpedia](https://github.com/hijohnnylin/neuronpedia)
+(MIT license, © Johnny Lin), whose hosted APIs this engine consumes for
+attribution-graph generation (`/api/graph/generate`, powered by
+[circuit-tracer](https://github.com/safety-research/circuit-tracer)) and feature
+autointerp descriptions (`/api/feature/...`). No Neuronpedia source files are
+vendored here; the coupling is the HTTP contract only.
+
+- Developed July 2026 inside a fork of the Neuronpedia monorepo
+  ([michaeldgreenphd/neuronpedia](https://github.com/michaeldgreenphd/neuronpedia),
+  branch `claude/medical-language-circuit-trace-1dge1c`, under
+  `apps/experiments/medlang-circuits/`), forked from upstream commit `458cb46`
+  ("package updates", 2026-06-17).
+- Ported to this standalone repository on 2026-07-06 with `git filter-repo`
+  (full commit history of the package preserved; branch tip at port time:
+  `64eb1df`).
+- To pull later work from the fork: re-run the same filter on the updated
+  branch and compare/cherry-pick, e.g.
+  `git filter-repo --path apps/experiments/medlang-circuits --path .github/workflows/model_evaluation.yml --path-rename apps/experiments/medlang-circuits/:''`.
+- Related repositories: [patientwords](https://github.com/michaeldgreenphd/patientwords)
+  (the public frontend/gallery this engine generates figures for) ·
+  [Neuronpedia](https://github.com/hijohnnylin/neuronpedia) ·
+  [circuit-tracer](https://github.com/safety-research/circuit-tracer) ·
+  [Gemma Scope](https://huggingface.co/google/gemma-scope-2b-pt-transcoders).
 
 ## What it does
 
 1. **Feature tagging (Task 1)** — `feature_tagger.annotate_graph` post-processes a
-   graph JSON (schema: `apps/webapp/app/api/graph/graph-schema.json`): it fetches
+   graph JSON (schema: `apps/webapp/app/api/graph/graph-schema.json` in the Neuronpedia repo): it fetches
    each transcoder feature's autointerp description + top activating tokens from
    Neuronpedia (disk-cached), classifies it into `clinical` / `off_target` /
    `structural` via keyword matching (with an optional Anthropic LLM fallback),
@@ -57,7 +84,8 @@ circuit-tracer server.
 ## Setup
 
 ```bash
-cd apps/experiments/medlang-circuits
+git clone https://github.com/michaeldgreenphd/patientwords-engine
+cd patientwords-engine
 poetry install            # or: pip install -e ".[llm]"
 ```
 
@@ -74,7 +102,7 @@ default bucket.
 | Variable | Needed for |
 | --- | --- |
 | `NEURONPEDIA_API_KEY` | hosted graph generation + feature-description fetching |
-| `GRAPH_SERVER_SECRET`, `GRAPH_SERVER_URL` | `--backend local` (a running `apps/graph` server) |
+| `GRAPH_SERVER_SECRET`, `GRAPH_SERVER_URL` | `--backend local` (a running graph server from a Neuronpedia checkout, `apps/graph`) |
 | `ANTHROPIC_API_KEY` | LLM translation and the `--llm-classifier` fallback |
 | `MEDLANG_ANTHROPIC_MODEL` | override the default Anthropic model |
 | `MEDLANG_KEYWORD_CONFIG` | custom keyword-config path |

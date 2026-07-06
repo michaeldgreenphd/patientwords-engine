@@ -37,9 +37,6 @@ jobs:
   evaluate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: apps/experiments/medlang-circuits
     steps:
       - uses: actions/checkout@v4
 
@@ -82,5 +79,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: model-evaluation-${{ github.run_number }}
-          path: apps/experiments/medlang-circuits/eval_out/
+          path: eval_out/
           if-no-files-found: warn
