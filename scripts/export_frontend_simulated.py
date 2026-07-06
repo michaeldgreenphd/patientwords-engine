@@ -165,6 +165,12 @@ for stamp in [s.strip() for s in args.stamps.split(",") if s.strip()]:
 
 if first_preview is not None:
     shutil.copy2(first_preview, FRONTEND / "modes/simulated/preview.html")
+    # one raster survives --no-pngs: the og:image for link unfurls
+    for stamp in [s.strip() for s in args.stamps.split(",") if s.strip()]:
+        candidate = ENGINE / f"trace_out/pairs_{stamp}" / first_preview.name.replace(".html", ".png")
+        if candidate.is_file():
+            shutil.copy2(candidate, FRONTEND / "modes/simulated/preview.png")
+            break
 
 payload = {
     "batches": batches,
