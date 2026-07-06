@@ -11,6 +11,12 @@ name: Scenario Generation (medlang-circuits)
 # Secrets: ANTHROPIC_API_KEY (generation), NEURONPEDIA_API_KEY (tracing).
 # Caveat: non-gemma models fail at the feature-tagging step until their
 # autointerp source sets are registered (see MODEL_SOURCE_SETS).
+#
+# Two ways to start a run:
+#   - workflow_dispatch from the Actions tab, parameters as form inputs;
+#   - push a parameters file to .github/trigger/scenario-generation.json
+#     (same keys as the dispatch inputs). This lets automation with
+#     contents-write access but no actions-write scope start runs.
 
 on:
   workflow_dispatch:
@@ -72,6 +78,9 @@ on:
         description: "Generated items to trace per model ('0' = archive only, skip tracing)"
         type: string
         default: "2"
+  push:
+    paths:
+      - ".github/trigger/scenario-generation.json"
 
 permissions:
   contents: write
@@ -90,19 +99,60 @@ jobs:
       - name: Install package with LLM extras
         run: pip install ".[llm]"
 
+      - name: Resolve run parameters
+        id: params
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IN_TASK: ${{ inputs.task }}
+          IN_NUM: ${{ inputs.num }}
+          IN_TOPICS: ${{ inputs.topics }}
+          IN_SEED_PAIRS: ${{ inputs.seed_pairs }}
+          IN_PHRASE: ${{ inputs.phrase }}
+          IN_TERM: ${{ inputs.term }}
+          IN_TARGET_TOKEN: ${{ inputs.target_token }}
+          IN_ANTHROPIC_MODEL: ${{ inputs.anthropic_model }}
+          IN_MAX_SPEND: ${{ inputs.max_spend }}
+          IN_GRAPH_MODELS: ${{ inputs.graph_models }}
+          IN_TRACE_SAMPLE_SIZE: ${{ inputs.trace_sample_size }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          defaults = {
+              "task": "pairs", "num": "6", "topics": "",
+              "seed_pairs": "medlang_circuits/data/ci_pairs_2panel.json",
+              "phrase": "", "term": "", "target_token": "",
+              "anthropic_model": "claude-sonnet-5", "max_spend": "2",
+              "graph_models": "gemma-2-2b", "trace_sample_size": "2",
+          }
+          params = dict(defaults)
+          if os.environ["EVENT_NAME"] == "push":
+              with open(".github/trigger/scenario-generation.json", encoding="utf-8") as f:
+                  overrides = json.load(f)
+              params.update({k: str(v) for k, v in overrides.items() if k in defaults})
+          else:
+              for key in defaults:
+                  value = os.environ.get("IN_" + key.upper(), "")
+                  if value:
+                      params[key] = value
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              for key, value in params.items():
+                  out.write(f"{key}={value.replace(chr(10), ' ')}\n")
+          print(json.dumps(params, indent=2))
+          EOF
+
       - name: Generate scenarios
         id: gen
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          TASK: ${{ inputs.task }}
-          NUM: ${{ inputs.num }}
-          TOPICS: ${{ inputs.topics }}
-          SEED_PAIRS: ${{ inputs.seed_pairs }}
-          PHRASE: ${{ inputs.phrase }}
-          TERM: ${{ inputs.term }}
-          TARGET_TOKEN: ${{ inputs.target_token }}
-          GEN_MODEL: ${{ inputs.anthropic_model }}
-          MAX_SPEND: ${{ inputs.max_spend }}
+          TASK: ${{ steps.params.outputs.task }}
+          NUM: ${{ steps.params.outputs.num }}
+          TOPICS: ${{ steps.params.outputs.topics }}
+          SEED_PAIRS: ${{ steps.params.outputs.seed_pairs }}
+          PHRASE: ${{ steps.params.outputs.phrase }}
+          TERM: ${{ steps.params.outputs.term }}
+          TARGET_TOKEN: ${{ steps.params.outputs.target_token }}
+          GEN_MODEL: ${{ steps.params.outputs.anthropic_model }}
+          MAX_SPEND: ${{ steps.params.outputs.max_spend }}
         run: |
           set -euo pipefail
           STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -180,19 +230,19 @@ jobs:
           cp "${{ steps.gen.outputs.out }}" "${{ steps.gen.outputs.report }}" ../main-archive/data/simulated/
           cd ../main-archive
           git add data/simulated/
-          git commit -m "Archive simulated ${{ inputs.task }} scenarios: $(basename '${{ steps.gen.outputs.out }}')"
+          git commit -m "Archive simulated ${{ steps.params.outputs.task }} scenarios: $(basename '${{ steps.gen.outputs.out }}')"
           git push origin HEAD:main
           echo "Archived ${{ steps.gen.outputs.out }}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Trace on the selected Neuronpedia models
-        if: ${{ inputs.trace_sample_size != '0' && steps.gen.outputs.count != '0' }}
+        if: ${{ steps.params.outputs.trace_sample_size != '0' && steps.gen.outputs.count != '0' }}
         env:
           NEURONPEDIA_API_KEY: ${{ secrets.NEURONPEDIA_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OUT: ${{ steps.gen.outputs.out }}
           MODE: ${{ steps.gen.outputs.mode }}
-          N: ${{ inputs.trace_sample_size }}
-          MODELS: ${{ inputs.graph_models }}
+          N: ${{ steps.params.outputs.trace_sample_size }}
+          MODELS: ${{ steps.params.outputs.graph_models }}
         run: |
           set -uo pipefail
           python - <<'EOF'
@@ -221,7 +271,7 @@ jobs:
           fi
 
       - name: Publish cross-model probability comparison
-        if: ${{ always() && inputs.trace_sample_size != '0' }}
+        if: ${{ always() && steps.params.outputs.trace_sample_size != '0' }}
         run: |
           python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
           import json
@@ -257,7 +307,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: scenario-generation-${{ inputs.task }}-${{ github.run_number }}
+          name: scenario-generation-${{ steps.params.outputs.task }}-${{ github.run_number }}
           path: |
             data/simulated/
             trace_out/

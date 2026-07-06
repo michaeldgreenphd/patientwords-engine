@@ -4,6 +4,14 @@ name: Circuit Trace Evaluation (medlang-circuits)
 # companion Model Evaluation workflow benchmarks the Anthropic translation
 # models instead. Hosted generation takes minutes per graph, so keep
 # sample_size tiny for CI runs.
+#
+# Two ways to start a run:
+#   - workflow_dispatch from the Actions tab, parameters as form inputs;
+#   - push a parameters file to .github/trigger/circuit-trace.json (same
+#     keys as the dispatch inputs). This lets automation with contents-write
+#     access but no actions-write scope start runs, and chains chunked runs
+#     (pairs_file + offset + sample_size) over one batch with global output
+#     numbering and per-chunk committed checkpoints.
 
 on:
   workflow_dispatch:
@@ -62,9 +70,17 @@ on:
         description: "Pairs to trace (hosted generation takes minutes per graph)"
         type: string
         default: "1"
+  push:
+    paths:
+      - ".github/trigger/circuit-trace.json"
 
 permissions:
   contents: write
+
+# Chunked runs commit checkpoints to the same branch; never run two at once.
+concurrency:
+  group: circuit-trace-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   trace:
@@ -80,12 +96,54 @@ jobs:
       - name: Install package with LLM extras
         run: pip install ".[llm]"
 
+      - name: Resolve run parameters
+        id: params
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IN_GRAPH_MODEL: ${{ inputs.graph_model }}
+          IN_MODE: ${{ inputs.mode }}
+          IN_PAIRS_FILE: ${{ inputs.pairs_file }}
+          IN_OFFSET: ${{ inputs.offset }}
+          IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
+          IN_MAX_N_LOGITS: ${{ inputs.max_n_logits }}
+          IN_DESIRED_LOGIT_PROB: ${{ inputs.desired_logit_prob }}
+          IN_NODE_THRESHOLD: ${{ inputs.node_threshold }}
+          IN_EDGE_THRESHOLD: ${{ inputs.edge_threshold }}
+          IN_MAX_FEATURE_NODES: ${{ inputs.max_feature_nodes }}
+          IN_SAMPLE_SIZE: ${{ inputs.sample_size }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          defaults = {
+              "graph_model": "gemma-2-2b", "mode": "2panel",
+              "pairs_file": "", "offset": "0", "commit_outputs": "false",
+              "max_n_logits": "10", "desired_logit_prob": "0.95",
+              "node_threshold": "0.8", "edge_threshold": "0.98",
+              "max_feature_nodes": "5000", "sample_size": "1",
+          }
+          params = dict(defaults)
+          if os.environ["EVENT_NAME"] == "push":
+              with open(".github/trigger/circuit-trace.json", encoding="utf-8") as f:
+                  overrides = json.load(f)
+              params.update({k: str(v).lower() if isinstance(v, bool) else str(v)
+                             for k, v in overrides.items() if k in defaults})
+          else:
+              for key in defaults:
+                  value = os.environ.get("IN_" + key.upper(), "")
+                  if value:
+                      params[key] = value
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              for key, value in params.items():
+                  out.write(f"{key}={value.replace(chr(10), ' ')}\n")
+          print(json.dumps(params, indent=2))
+          EOF
+
       - name: Select sample pairs
         env:
-          MODE: ${{ inputs.mode }}
-          SAMPLE_SIZE: ${{ inputs.sample_size }}
-          PAIRS_FILE: ${{ inputs.pairs_file }}
-          OFFSET: ${{ inputs.offset }}
+          MODE: ${{ steps.params.outputs.mode }}
+          SAMPLE_SIZE: ${{ steps.params.outputs.sample_size }}
+          PAIRS_FILE: ${{ steps.params.outputs.pairs_file }}
+          OFFSET: ${{ steps.params.outputs.offset }}
         run: |
           python - <<'EOF'
           import json, os
@@ -106,24 +164,24 @@ jobs:
         env:
           NEURONPEDIA_API_KEY: ${{ secrets.NEURONPEDIA_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}  # translation mode only
-          OFFSET: ${{ inputs.offset }}
+          OFFSET: ${{ steps.params.outputs.offset }}
         run: |
           medlang-batch-eval ci_pairs.json \
-            --mode "${{ inputs.mode }}" \
+            --mode "${{ steps.params.outputs.mode }}" \
             --backend hosted \
-            --graph-model "${{ inputs.graph_model }}" \
-            --max-n-logits "${{ inputs.max_n_logits }}" \
-            --desired-logit-prob "${{ inputs.desired_logit_prob }}" \
-            --node-threshold "${{ inputs.node_threshold }}" \
-            --edge-threshold "${{ inputs.edge_threshold }}" \
-            --max-feature-nodes "${{ inputs.max_feature_nodes }}" \
+            --graph-model "${{ steps.params.outputs.graph_model }}" \
+            --max-n-logits "${{ steps.params.outputs.max_n_logits }}" \
+            --desired-logit-prob "${{ steps.params.outputs.desired_logit_prob }}" \
+            --node-threshold "${{ steps.params.outputs.node_threshold }}" \
+            --edge-threshold "${{ steps.params.outputs.edge_threshold }}" \
+            --max-feature-nodes "${{ steps.params.outputs.max_feature_nodes }}" \
             --start-index "$((OFFSET + 1))" \
             --out trace_out
 
       - name: Commit trace outputs to the dispatched branch
-        if: ${{ always() && inputs.commit_outputs }}
+        if: ${{ always() && steps.params.outputs.commit_outputs == 'true' }}
         env:
-          OFFSET: ${{ inputs.offset }}
+          OFFSET: ${{ steps.params.outputs.offset }}
           BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
@@ -144,7 +202,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f "${FILES[@]}"
-          git commit -m "Trace outputs for pairs starting at ${START} (${{ inputs.graph_model }}, ${{ inputs.mode }})"
+          git commit -m "Trace outputs for pairs starting at ${START} (${{ steps.params.outputs.graph_model }}, ${{ steps.params.outputs.mode }})"
           PUSHED=0
           for i in 1 2 3; do
             if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
@@ -161,7 +219,7 @@ jobs:
           SUMMARY=$(ls trace_out/batch_summary*.json 2>/dev/null | head -1 || true)
           if [ -n "$SUMMARY" ]; then
             {
-              echo "## Circuit trace batch summary (${{ inputs.graph_model }}, ${{ inputs.mode }})"
+              echo "## Circuit trace batch summary (${{ steps.params.outputs.graph_model }}, ${{ steps.params.outputs.mode }})"
               echo '```json'
               cat "$SUMMARY"
               echo '```'
@@ -172,6 +230,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: circuit-trace-${{ inputs.graph_model }}-${{ inputs.mode }}-${{ github.run_number }}-offset${{ inputs.offset }}
+          name: circuit-trace-${{ steps.params.outputs.graph_model }}-${{ steps.params.outputs.mode }}-${{ github.run_number }}-offset${{ steps.params.outputs.offset }}
           path: trace_out/
           if-no-files-found: warn
