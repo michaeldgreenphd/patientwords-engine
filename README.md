@@ -3,7 +3,8 @@
 Backend engine for [patientwords](https://github.com/michaeldgreenphd/patientwords)
 (`medlang-circuits` Python package): a pipeline for comparing attribution graphs of
 two phrasings of the same next-token prompt (standard clinical terminology vs.
-colloquial patient language) on gemma-2-2b with Gemma Scope transcoders. Built on
+colloquial patient language) on gemma-2-2b with Gemma Scope transcoders by default
+(other hosted models selectable — see *Choosing the traced model*). Built on
 Neuronpedia's graph stack — either the hosted neuronpedia.org generation API or a
 local graph server run from a Neuronpedia checkout.
 
@@ -105,6 +106,7 @@ default bucket.
 | `GRAPH_SERVER_SECRET`, `GRAPH_SERVER_URL` | `--backend local` (a running graph server from a Neuronpedia checkout, `apps/graph`) |
 | `ANTHROPIC_API_KEY` | LLM translation and the `--llm-classifier` fallback |
 | `MEDLANG_ANTHROPIC_MODEL` | override the default Anthropic model |
+| `MEDLANG_GRAPH_MODEL` | override the default traced model (`gemma-2-2b`) |
 | `MEDLANG_KEYWORD_CONFIG` | custom keyword-config path |
 
 ## Usage
@@ -161,6 +163,76 @@ result = run_comparison(
 )
 print(result["summary"]["clinical_feature_overlap"])
 ```
+
+## Choosing the traced model
+
+Both CLIs (`medlang-compare`, `medlang-batch-eval`) and the corresponding Python
+entry points (`run_comparison`, `run_batch`, `evaluate_pair`, …,
+`generate_graph`) accept `--graph-model` / `graph_model` to pick which model the
+circuit tracer runs on. The registry (`graph_client.MODEL_REGISTRY`, a
+module-level dict — extend it as more models are enabled for hosted generation)
+maps Neuronpedia IDs to the TransformerLens IDs used by the local backend:
+
+| Neuronpedia ID | TransformerLens ID (local backend) | Notes |
+| --- | --- | --- |
+| `gemma-2-2b` (default) | `google/gemma-2-2b` | default feature source set: `gemmascope-transcoder-16k` |
+| `gemma-3-4b-it` | `google/gemma-3-4b-it` | requires `--source-set` (see caveat below) |
+| `qwen3-4b` | `Qwen/Qwen3-4B` | requires `--source-set` (see caveat below) |
+| `qwen3-1.7b` | `Qwen/Qwen3-1.7B` | requires `--source-set`; supports LORSA/QK tracing (`--qk-*`) |
+
+The default resolves as: explicit argument → `MEDLANG_GRAPH_MODEL` environment
+variable → `gemma-2-2b`.
+
+**Request parameters** (validated client-side against neuronpedia.org's schema —
+out-of-range values raise a `ValueError` naming the bound instead of an API 400):
+
+| Flag | Bounds | Default | Notes |
+| --- | --- | --- | --- |
+| `--source-set` | — | unset | omitted from the hosted request when unset; the server applies the model's default transcoder set |
+| `--max-n-logits` | int 5–15 | 10 | salient logits to trace |
+| `--desired-logit-prob` | 0.6–0.99 | 0.95 | cumulative probability mass to cover |
+| `--node-threshold` | 0.5–0.95 | 0.8 | node pruning threshold |
+| `--edge-threshold` | 0.65–0.98 | 0.98 | edge pruning threshold |
+| `--max-feature-nodes` | int 1500–10000 | 5000 | sent as `maxFeatureNodes` |
+| `--qk-top-fraction` | 0.05–0.5 | unset | `qwen3-1.7b` (LORSA/QK tracing) only — rejected for other models |
+| `--qk-topk` | int 1–5 | unset | `qwen3-1.7b` (LORSA/QK tracing) only — rejected for other models |
+
+The local backend additionally honors `batch_size` (default 48) and `compress`
+(default `False`) as `generate_graph()` keyword arguments, and sends the mapped
+TransformerLens model ID.
+
+**Source-set caveat for non-gemma models:** feature tagging fetches autointerp
+descriptions per source set, and only `gemma-2-2b` has a registered default
+(`gemmascope-transcoder-16k`). For the other models the per-model map
+(`neuronpedia_features.MODEL_SOURCE_SETS`) holds a placeholder that raises a
+"set `--source-set` explicitly" error until the right autointerp source names
+are filled in — pass `--source-set` with the model's source name from
+neuronpedia.org in the meantime. The chosen model and source set are recorded
+in each run's `summary.json` / `batch_summary.json`, so outputs are
+self-describing.
+
+```bash
+# Trace a different model with tightened thresholds
+medlang-batch-eval pairs.json --graph-model qwen3-4b --source-set <autointerp-source> \
+  --max-n-logits 12 --node-threshold 0.7 --max-feature-nodes 8000
+
+# QK/LORSA tracing options (qwen3-1.7b only)
+medlang-batch-eval pairs.json --graph-model qwen3-1.7b --source-set <autointerp-source> \
+  --qk-top-fraction 0.2 --qk-topk 3
+```
+
+The same run is dispatchable from GitHub Actions
+(`.github/workflows/circuit_trace_evaluation.yml`, *Circuit Trace Evaluation*
+in the Actions tab): pick the traced model, mode, and every tracer parameter
+from the `workflow_dispatch` form. It runs `medlang-batch-eval` against the
+hosted backend on a committed sample pairs file
+(`medlang_circuits/data/ci_pairs_<mode>.json`, truncated to `sample_size`,
+default 1 — hosted generation takes minutes per graph), reads
+`NEURONPEDIA_API_KEY` (and, for translation mode, `ANTHROPIC_API_KEY`) from
+repository secrets, prints the batch summary to the run page, and uploads the
+output directory (HTML/PNG/tagged JSON) as an artifact even on failure. This
+workflow benchmarks the *traced* model; the Model Evaluation workflow below
+benchmarks the Anthropic *translation* models.
 
 ## Model evaluation
 
