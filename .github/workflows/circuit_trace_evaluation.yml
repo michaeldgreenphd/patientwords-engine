@@ -26,6 +26,18 @@ on:
           - 4quadrant
           - translation
           - dialect
+      pairs_file:
+        description: "Repo path of the pairs JSON to trace (empty = the committed ci_pairs sample for the mode)"
+        type: string
+        default: ""
+      offset:
+        description: "Pairs to skip before tracing (chunked runs; output numbering stays global via --start-index)"
+        type: string
+        default: "0"
+      commit_outputs:
+        description: "Commit index_NN.html/png + the summary part back to the dispatched branch (checkpointing)"
+        type: boolean
+        default: false
       max_n_logits:
         description: "Salient logits to trace (int 5-15)"
         type: string
@@ -51,6 +63,9 @@ on:
         type: string
         default: "1"
 
+permissions:
+  contents: write
+
 jobs:
   trace:
     runs-on: ubuntu-latest
@@ -69,21 +84,29 @@ jobs:
         env:
           MODE: ${{ inputs.mode }}
           SAMPLE_SIZE: ${{ inputs.sample_size }}
+          PAIRS_FILE: ${{ inputs.pairs_file }}
+          OFFSET: ${{ inputs.offset }}
         run: |
           python - <<'EOF'
           import json, os
           mode, n = os.environ["MODE"], int(os.environ["SAMPLE_SIZE"])
-          with open(f"medlang_circuits/data/ci_pairs_{mode}.json", encoding="utf-8") as f:
+          offset = int(os.environ["OFFSET"])
+          path = os.environ["PAIRS_FILE"] or f"medlang_circuits/data/ci_pairs_{mode}.json"
+          with open(path, encoding="utf-8") as f:
               pairs = json.load(f)
+          selected = pairs[offset:offset + n]
+          if not selected:
+              raise SystemExit(f"offset {offset} is past the end of {path} ({len(pairs)} pairs)")
           with open("ci_pairs.json", "w", encoding="utf-8") as f:
-              json.dump(pairs[:n], f, indent=2)
-          print(f"Selected {len(pairs[:n])} of {len(pairs)} committed {mode} pairs")
+              json.dump(selected, f, indent=2)
+          print(f"Selected pairs {offset + 1}-{offset + len(selected)} of {len(pairs)} from {path}")
           EOF
 
       - name: Run batch evaluation against the hosted backend
         env:
           NEURONPEDIA_API_KEY: ${{ secrets.NEURONPEDIA_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}  # translation mode only
+          OFFSET: ${{ inputs.offset }}
         run: |
           medlang-batch-eval ci_pairs.json \
             --mode "${{ inputs.mode }}" \
@@ -94,16 +117,53 @@ jobs:
             --node-threshold "${{ inputs.node_threshold }}" \
             --edge-threshold "${{ inputs.edge_threshold }}" \
             --max-feature-nodes "${{ inputs.max_feature_nodes }}" \
+            --start-index "$((OFFSET + 1))" \
             --out trace_out
+
+      - name: Commit trace outputs to the dispatched branch
+        if: ${{ always() && inputs.commit_outputs }}
+        env:
+          OFFSET: ${{ inputs.offset }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # Checkpoint whatever finished (the per-pair batch_summary.json
+          # checkpointing means a timeout still leaves committed pairs). The
+          # summary is renamed to a .part_NN file so chunks never clobber
+          # each other; heavyweight *.tagged.json graphs stay artifact-only.
+          START=$((OFFSET + 1))
+          if [ -f trace_out/batch_summary.json ]; then
+            mv trace_out/batch_summary.json "trace_out/batch_summary.part_$(printf '%02d' "$START").json"
+          fi
+          shopt -s nullglob
+          FILES=(trace_out/index_*.html trace_out/index_*.png trace_out/batch_summary.part_*.json)
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "No trace outputs to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f "${FILES[@]}"
+          git commit -m "Trace outputs for pairs starting at ${START} (${{ inputs.graph_model }}, ${{ inputs.mode }})"
+          PUSHED=0
+          for i in 1 2 3; do
+            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+              PUSHED=1
+              break
+            fi
+            sleep $((i * 2))
+          done
+          [ "$PUSHED" -eq 1 ]
 
       - name: Publish summary to run page
         if: always()
         run: |
-          if [ -f trace_out/batch_summary.json ]; then
+          SUMMARY=$(ls trace_out/batch_summary*.json 2>/dev/null | head -1 || true)
+          if [ -n "$SUMMARY" ]; then
             {
               echo "## Circuit trace batch summary (${{ inputs.graph_model }}, ${{ inputs.mode }})"
               echo '```json'
-              cat trace_out/batch_summary.json
+              cat "$SUMMARY"
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -112,6 +172,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: circuit-trace-${{ inputs.graph_model }}-${{ inputs.mode }}-${{ github.run_number }}
+          name: circuit-trace-${{ inputs.graph_model }}-${{ inputs.mode }}-${{ github.run_number }}-offset${{ inputs.offset }}
           path: trace_out/
           if-no-files-found: warn

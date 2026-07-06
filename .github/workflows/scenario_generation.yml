@@ -27,9 +27,13 @@ on:
         type: string
         default: "6"
       topics:
-        description: "(pairs) Optional space-separated topics to steer coverage"
+        description: "(pairs) Optional topics to steer coverage (comma-separated; spaces OK inside a topic)"
         type: string
         default: ""
+      seed_pairs:
+        description: "(pairs) Repo path of existing pairs used as few-shot examples + dedupe set"
+        type: string
+        default: "medlang_circuits/data/ci_pairs_2panel.json"
       phrase:
         description: "(dialects) Baseline phrase - the standard phrasing, ending at the probe boundary"
         type: string
@@ -93,6 +97,7 @@ jobs:
           TASK: ${{ inputs.task }}
           NUM: ${{ inputs.num }}
           TOPICS: ${{ inputs.topics }}
+          SEED_PAIRS: ${{ inputs.seed_pairs }}
           PHRASE: ${{ inputs.phrase }}
           TERM: ${{ inputs.term }}
           TARGET_TOKEN: ${{ inputs.target_token }}
@@ -106,10 +111,24 @@ jobs:
             OUT="data/simulated/pairs_${STAMP}.json"
             MODE="2panel"
             ARGS=(pairs -n "$NUM" --max-spend "$MAX_SPEND" --out "$OUT"
-                  --seed-pairs medlang_circuits/data/ci_pairs_2panel.json)
+                  --seed-pairs "$SEED_PAIRS")
             if [ -n "$TOPICS" ]; then
-              # shellcheck disable=SC2086
-              ARGS+=(--topics $TOPICS)
+              # comma-separated topics keep multi-word condition areas intact;
+              # a comma-free value falls back to the legacy space splitting
+              if [[ "$TOPICS" == *","* ]]; then
+                IFS=',' read -ra RAW_TOPICS <<< "$TOPICS"
+              else
+                read -ra RAW_TOPICS <<< "$TOPICS"
+              fi
+              TOPIC_ARGS=()
+              for t in "${RAW_TOPICS[@]}"; do
+                t="${t#"${t%%[![:space:]]*}"}"
+                t="${t%"${t##*[![:space:]]}"}"
+                [ -n "$t" ] && TOPIC_ARGS+=("$t")
+              done
+              if [ ${#TOPIC_ARGS[@]} -gt 0 ]; then
+                ARGS+=(--topics "${TOPIC_ARGS[@]}")
+              fi
             fi
           else
             if [ -z "$PHRASE" ] || [ -z "$TERM" ]; then
@@ -151,11 +170,17 @@ jobs:
         if: ${{ steps.gen.outputs.count != '0' }}
         run: |
           set -euo pipefail
+          # Commit ONLY the batch + sidecar onto main, whichever ref this run
+          # was dispatched from - code on a feature branch must not ride along.
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "${{ steps.gen.outputs.out }}" "${{ steps.gen.outputs.report }}"
+          git fetch origin main
+          git worktree add ../main-archive origin/main
+          mkdir -p ../main-archive/data/simulated
+          cp "${{ steps.gen.outputs.out }}" "${{ steps.gen.outputs.report }}" ../main-archive/data/simulated/
+          cd ../main-archive
+          git add data/simulated/
           git commit -m "Archive simulated ${{ inputs.task }} scenarios: $(basename '${{ steps.gen.outputs.out }}')"
-          git pull --rebase origin main
           git push origin HEAD:main
           echo "Archived ${{ steps.gen.outputs.out }}" >> "$GITHUB_STEP_SUMMARY"
 

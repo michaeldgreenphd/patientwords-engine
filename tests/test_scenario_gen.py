@@ -120,6 +120,16 @@ def test_validate_dialect_variant():
 # ---------------------------------------------------------------------------
 
 
+def test_parse_json_array_salvages_truncated_output():
+    items = [dict(VALID_CANDIDATE), dict(VALID_CANDIDATE)]
+    full = json.dumps(items, indent=2)
+    assert scenario_gen._parse_json_array(full) == items
+    # a max_tokens cutoff mid-second-object keeps the complete first object
+    truncated = full[: full.rfind('"rationale"')]
+    assert scenario_gen._parse_json_array(truncated) == [VALID_CANDIDATE]
+    assert scenario_gen._parse_json_array("no json here") == []
+
+
 def test_generate_stress_pairs_offline(monkeypatch):
     second_valid = dict(VALID_CANDIDATE)
     second_valid.update(

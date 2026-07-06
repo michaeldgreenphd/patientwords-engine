@@ -43,8 +43,11 @@ logger = logging.getLogger(__name__)
 
 TERMINAL_PUNCTUATION = ".!?…;:"
 GEN_BATCH_SIZE = 6  # candidates requested per API call
-GEN_MAX_TOKENS = 1600
-DIALECT_MAX_TOKENS = 1200
+# Sized so a full batch of candidates with rationales never hits the cap: a
+# 1600-token cap truncated every round of a 6-candidate run to unparseable
+# JSON (0 accepted from 6 rounds).
+GEN_MAX_TOKENS = 4096
+DIALECT_MAX_TOKENS = 2048
 
 # Register/dialect coverage when the caller doesn't pass --dialects. These are
 # framing varieties, not caricatures - the prompt enforces respectful renderings.
@@ -205,19 +208,39 @@ def validate_dialect_variant(candidate: Any, term: str, seen: set[str]) -> tuple
     return {"dialect": dialect, "prompt": prompt}, None
 
 
+def _salvage_truncated_array(segment: str) -> list[Any]:
+    """Recover the complete leading objects of an array cut off mid-item (a
+    max_tokens truncation): close the array at each '}' from the end until it
+    parses. The lost tail is at most one candidate; the rest of the round's
+    output stays usable."""
+    for cut in range(len(segment) - 1, -1, -1):
+        if segment[cut] != "}":
+            continue
+        try:
+            parsed = json.loads(segment[:cut + 1] + "]")
+        except json.JSONDecodeError:
+            continue
+        return parsed if isinstance(parsed, list) else []
+    return []
+
+
 def _parse_json_array(text: str) -> list[Any]:
-    """Parse the model's response as a JSON array, tolerating code fences/prose."""
+    """Parse the model's response as a JSON array, tolerating code fences,
+    surrounding prose, and mid-item truncation."""
     stripped = re.sub(r"^\s*```(?:json)?\s*|\s*```\s*$", "", text.strip(), flags=re.S)
     try:
         parsed = json.loads(stripped)
     except json.JSONDecodeError:
         start, end = stripped.find("["), stripped.rfind("]")
-        if start == -1 or end <= start:
+        if start == -1:
             return []
-        try:
-            parsed = json.loads(stripped[start:end + 1])
-        except json.JSONDecodeError:
-            return []
+        if end > start:
+            try:
+                parsed = json.loads(stripped[start:end + 1])
+            except json.JSONDecodeError:
+                parsed = _salvage_truncated_array(stripped[start:])
+        else:
+            parsed = _salvage_truncated_array(stripped[start:])
     return parsed if isinstance(parsed, list) else []
 
 

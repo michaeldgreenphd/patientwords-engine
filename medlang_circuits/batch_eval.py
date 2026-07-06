@@ -531,10 +531,20 @@ def run_batch(
     graph_model: str | None = None,
     source_set: str | None = None,
     generation_params: dict[str, Any] | None = None,
+    start_index: int = 1,
 ) -> list[dict[str, Any]]:
-    """Sequentially evaluate every pair in the JSON file under the chosen mode."""
+    """Sequentially evaluate every pair in the JSON file under the chosen mode.
+
+    ``batch_summary.json`` is checkpointed after every pair - hosted graph
+    generation takes minutes per graph, so a crash, cancellation, or CI
+    timeout must not lose the pairs already traced. ``start_index`` offsets
+    the output numbering (index_NN.*, pair_NN_*.tagged.json) so chunked runs
+    over slices of one batch keep a single global numbering.
+    """
     if mode not in MODES:
         raise ValueError(f"Unknown mode {mode!r}; expected one of {MODES}")
+    if start_index < 1:
+        raise ValueError(f"start_index must be >= 1; got {start_index}")
     with open(pairs_path, encoding="utf-8") as f:
         pairs = json.load(f)
     if not isinstance(pairs, list):
@@ -547,8 +557,18 @@ def run_batch(
 
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    results = []
-    for i, pair in enumerate(pairs, start=1):
+    results: list[dict[str, Any]] = []
+    summary_path = out / "batch_summary.json"
+    summary = {
+        "mode": mode,
+        "backend": backend,
+        "graph_model": graph_model,
+        "source_set": source_set or getattr(fetcher, "source_set", None),
+        "generation_params": generation_params or {},
+        "start_index": start_index,
+        "results": results,
+    }
+    for i, pair in enumerate(pairs, start=start_index):
         if mode == "4quadrant":
             result = evaluate_quadrant(
                 pair, i, out, backend=backend, dpi=dpi, fetcher=fetcher,
@@ -573,17 +593,9 @@ def run_batch(
                 graph_model=graph_model, source_set=source_set, generation_params=generation_params,
             )
         results.append(result)
-    summary_path = out / "batch_summary.json"
-    summary = {
-        "mode": mode,
-        "backend": backend,
-        "graph_model": graph_model,
-        "source_set": source_set or getattr(fetcher, "source_set", None),
-        "generation_params": generation_params or {},
-        "results": results,
-    }
-    with open(summary_path, "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2)
+        with open(summary_path, "w", encoding="utf-8") as f:  # checkpoint per pair
+            json.dump(summary, f, indent=2)
+        logger.info("Checkpointed pair %d (%d done) to %s", i, len(results), summary_path)
     logger.info("Batch complete: %d pairs (mode=%s), summary at %s", len(results), mode, summary_path)
     return results
 
@@ -607,6 +619,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--llm-model", default=None,
                         help="Anthropic model for translation (default: MEDLANG_ANTHROPIC_MODEL or claude-opus-4-8)")
     parser.add_argument("--dpi", type=int, default=DEFAULT_PNG_DPI, help="PNG export resolution")
+    parser.add_argument("--start-index", type=int, default=1,
+                        help="First output number (chunked runs over slices of one batch keep global numbering)")
     add_graph_cli_arguments(parser)
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
 
@@ -622,6 +636,7 @@ def main(argv: list[str] | None = None) -> int:
         graph_model=args.graph_model,
         source_set=args.source_set,
         generation_params=generation_params_from_args(args),
+        start_index=args.start_index,
     )
     print(json.dumps(results, indent=2))
     return 0

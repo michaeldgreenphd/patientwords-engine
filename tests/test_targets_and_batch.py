@@ -142,6 +142,39 @@ def test_run_batch_offline_with_mitigation(tmp_path, monkeypatch):
     assert r["predictive_spread"]["patient"] == [("a", 0.9), ("jumps", 0.4)]
 
 
+def test_run_batch_checkpoints_and_start_index(tmp_path, monkeypatch):
+    def fake_generate(prompt, slug=None, backend="hosted", **params):
+        if "boom" in prompt:
+            raise RuntimeError("hosted backend fell over")
+        return _two_logit_graph()
+
+    monkeypatch.setattr(batch_eval, "generate_graph", fake_generate)
+
+    pairs = tmp_path / "pairs.json"
+    pairs.write_text(
+        json.dumps([
+            {"top_prompt": "clinical one", "bottom_prompt": "patient one", "target_clinical_token": " jumps"},
+            {"top_prompt": "clinical boom", "bottom_prompt": "patient boom", "target_clinical_token": " jumps"},
+        ]),
+        encoding="utf-8",
+    )
+
+    out = tmp_path / "out"
+    with pytest.raises(RuntimeError):
+        batch_eval.run_batch(
+            str(pairs), out_dir=str(out), dpi=60, fetcher=build_fetcher(), start_index=3,
+        )
+
+    # the pair completed before the crash is numbered globally and checkpointed
+    assert (out / "index_03.png").is_file()
+    summary = json.loads((out / "batch_summary.json").read_text(encoding="utf-8"))
+    assert summary["start_index"] == 3
+    assert [r["index"] for r in summary["results"]] == [3]
+
+    with pytest.raises(ValueError, match="start_index"):
+        batch_eval.run_batch(str(pairs), out_dir=str(out), fetcher=build_fetcher(), start_index=0)
+
+
 def test_run_batch_quadrant_offline(tmp_path, monkeypatch):
     def fake_generate(prompt, slug=None, backend="hosted", **params):
         g = _two_logit_graph()
