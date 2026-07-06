@@ -76,6 +76,7 @@ from medlang_circuits.graph_client import (
     slugify,
 )
 from medlang_circuits.neuronpedia_features import FeatureFetcher
+from medlang_circuits.schema_utils import is_feature_node, node_layer_and_index
 from medlang_circuits.targets import (
     TOP_K_SPREAD_DEFAULT,
     AttributionTargets,
@@ -101,6 +102,52 @@ QUAD_LABELS = {
 # Grid placement (top-left, top-right, bottom-left, bottom-right): rows are
 # morphosyntax (standard on top), columns are lexicon (patient-derived left).
 QUAD_GRID_ORDER = ("C", "A", "D", "B")
+
+# Pairwise edge views: each matrix edge as its own two-panel comparison with
+# the shared circuit dimmed, so what the single swap changes is the only ink.
+QUAD_EDGE_VIEWS = (
+    # (tag, from, to, badge kind)
+    ("register_standard", "A", "C", "Register shift Δ"),
+    ("register_nonstandard", "B", "D", "Register shift Δ"),
+    ("variety_medical", "A", "B", "Variety shift Δ"),
+    ("variety_patient", "C", "D", "Variety shift Δ"),
+)
+
+
+def _feature_identities(graph: dict[str, Any]) -> dict[tuple[int, int], list[str]]:
+    """Map (layer, feature index) -> node_ids for the graph's transcoder features."""
+    meta = graph.get("metadata", {})
+    schema_version, scan = meta.get("schema_version"), meta.get("scan", "gemma-2-2b")
+    identities: dict[tuple[int, int], list[str]] = {}
+    for node in graph.get("nodes", []):
+        if not is_feature_node(node):
+            continue
+        key = node_layer_and_index(node, schema_version, scan)
+        if key is not None:
+            identities.setdefault(key, []).append(node["node_id"])
+    return identities
+
+
+def shared_feature_dimming(
+    graph_a: dict[str, Any], graph_b: dict[str, Any]
+) -> tuple[set[str], set[str], dict[str, int]]:
+    """Node_ids of features PRESENT IN BOTH graphs (to dim), plus diff counts.
+
+    Feature identity is (layer, feature index) - position-independent, so a
+    feature that fires in both prompts is background context however the
+    tokens moved. Everything else (features unique to one side, logits,
+    structural nodes) keeps full ink.
+    """
+    ids_a, ids_b = _feature_identities(graph_a), _feature_identities(graph_b)
+    shared = set(ids_a) & set(ids_b)
+    dim_a = {node_id for key in shared for node_id in ids_a[key]}
+    dim_b = {node_id for key in shared for node_id in ids_b[key]}
+    counts = {
+        "shared_features": len(shared),
+        "unique_to_a": len(set(ids_a) - shared),
+        "unique_to_b": len(set(ids_b) - shared),
+    }
+    return dim_a, dim_b, counts
 
 
 # ---------------------------------------------------------------------------
@@ -201,12 +248,58 @@ def evaluate_pair(
     graph_model: str | None = None,
     source_set: str | None = None,
     generation_params: dict[str, Any] | None = None,
+    screen_targets: float | None = None,
 ) -> dict[str, Any]:
-    """Direct lexical swap: clinical top panel vs. patient bottom panel."""
+    """Direct lexical swap: clinical top panel vs. patient bottom panel.
+
+    With ``screen_targets`` set, the clinical side is traced FIRST and the
+    pair only proceeds if the intended target_clinical_token actually appears
+    in the clinical spread at >= that probability (strict anchor match - no
+    top-logit fallback for the screening decision). Screened-out pairs are
+    still recorded in full - clinical trace, observed spread, machine-readable
+    reason - so the batch stays auditable and the failures can be fed back to
+    the generator; they just skip the patient trace and the renders.
+    """
     anchor = pair.get("target_clinical_token")
     force_tokens = pair.get("force_target_tokens") or []
     targets = AttributionTargets.of(force_tokens) if force_tokens else None
     params = _generation_params(targets, generation_params, graph_model, source_set)
+
+    clinical_graph = _trace(pair["top_prompt"], "clinical", index, out_dir, backend, params, targets, fetcher)
+
+    screening: dict[str, Any] | None = None
+    if screen_targets is not None:
+        observed = target_probability(clinical_graph, anchor=anchor) if anchor else None
+        if observed is None or observed[1] < screen_targets:
+            reason = (
+                "intended target not in the traced clinical spread" if observed is None
+                else f"intended target below min_prob ({observed[1]:.3f} < {screen_targets})"
+            )
+            logger.info("Pair %d screened out: %s", index, reason)
+            return {
+                "index": index,
+                "mode": "2panel",
+                "prompts": {"clinical": pair["top_prompt"], "patient": pair["bottom_prompt"]},
+                "target_token": observed[0] if observed else None,
+                "probabilities": {"clinical": observed[1] if observed else None, "patient": None},
+                "language_penalty": None,
+                "screening": {
+                    "status": "screened_out",
+                    "min_prob": screen_targets,
+                    "intended_target": anchor,
+                    "observed_clinical": list(observed) if observed else None,
+                    "reason": reason,
+                },
+                "forced_targets": list(force_tokens),
+                "predictive_spread": {"clinical": logit_spread(clinical_graph)},
+                "outputs": {},
+            }
+        screening = {
+            "status": "passed",
+            "min_prob": screen_targets,
+            "intended_target": anchor,
+            "observed_clinical": list(observed),
+        }
 
     prompts = [pair["top_prompt"], pair["bottom_prompt"]]
     roles = ["clinical", "patient"]
@@ -217,9 +310,9 @@ def evaluate_pair(
         roles.append("translated")
         translation_method = translation["method"]
 
-    graphs = [
+    graphs = [clinical_graph] + [
         _trace(prompt, role, index, out_dir, backend, params, targets, fetcher)
-        for prompt, role in zip(prompts, roles)
+        for prompt, role in zip(prompts[1:], roles[1:])
     ]
 
     reference = _resolve_reference(graphs[0], anchor, targets)
@@ -238,6 +331,7 @@ def evaluate_pair(
     render_panels_html(panels, str(html_path), badges=badges)
     render_panels_png(panels, str(png_path), badges=badges, dpi=dpi)
 
+    result_screening = {"screening": screening} if screening else {}
     return {
         "index": index,
         "mode": "2panel",
@@ -245,6 +339,7 @@ def evaluate_pair(
         "target_token": target_token,
         "probabilities": dict(zip(roles, probs)),
         "language_penalty": (probs[1] - probs[0]) if probs[0] is not None and probs[1] is not None else None,
+        **result_screening,
         "mitigation_recovery": (
             (probs[2] - probs[1]) if len(probs) == 3 and probs[1] is not None and probs[2] is not None else None
         ),
@@ -353,6 +448,42 @@ def evaluate_quadrant(
     render_quadrant_html(panels, str(html_path), badges=badges)
     render_quadrant_png(panels, str(png_path), badges=badges, dpi=dpi)
 
+    # One two-panel comparison per matrix edge, shared circuit dimmed: the
+    # top panel is the "from" cell, the bottom the "to" cell, and the only
+    # full-ink features are the ones the single swap added or removed.
+    edge_views: dict[str, dict[str, Any]] = {}
+    for tag, key_from, key_to, kind in QUAD_EDGE_VIEWS:
+        dim_from, dim_to, counts = shared_feature_dimming(graphs[key_from], graphs[key_to])
+        edge_panels = build_panels(
+            [graphs[key_from], graphs[key_to]],
+            labels=[f"{QUAD_LABELS[k]}: “{prompts[k]}”" for k in (key_from, key_to)],
+            accents=[CATEGORY_COLORS["clinical" if key_from in ("A", "B") else "off_target"],
+                     CATEGORY_COLORS["clinical" if key_to in ("A", "B") else "off_target"]],
+            value_label_flags=[key_from == "A", key_to == "A"],
+            headlines=[_headline(target_token, probs[k]) for k in (key_from, key_to)],
+            refs=[1, 0],
+            dimmed=[dim_from, dim_to],
+        )
+        edge_badge = {"lines": [
+            _delta_badge(f"{kind} ({key_from} → {key_to})", probs[key_from], probs[key_to])
+            or f"{kind} ({key_from} → {key_to}): —",
+            f"shared circuit dimmed: {counts['shared_features']} features in both · "
+            f"{counts['unique_to_a']} only in {key_from} · {counts['unique_to_b']} only in {key_to}",
+        ]}
+        edge_html = out_dir / f"index_{index:02d}_{tag}.html"
+        edge_png = out_dir / f"index_{index:02d}_{tag}.png"
+        render_panels_html(edge_panels, str(edge_html), badges=[edge_badge])
+        render_panels_png(edge_panels, str(edge_png), badges=[edge_badge], dpi=dpi)
+        edge_views[tag] = {
+            "from": key_from,
+            "to": key_to,
+            "delta": (probs[key_to] - probs[key_from])
+            if probs[key_from] is not None and probs[key_to] is not None else None,
+            **counts,
+            "html": str(edge_html),
+            "png": str(edge_png),
+        }
+
     def _delta(a: str, b: str) -> float | None:
         return (probs[b] - probs[a]) if probs[a] is not None and probs[b] is not None else None
 
@@ -368,7 +499,7 @@ def evaluate_quadrant(
                                  "patient_language": _delta("C", "D")},
         "forced_targets": list(force_tokens),
         "predictive_spread": {key: logit_spread(graphs[key]) for key in QUAD_KEYS},
-        "outputs": {"html": str(html_path), "png": str(png_path)},
+        "outputs": {"html": str(html_path), "png": str(png_path), "edge_views": edge_views},
     }
 
 
@@ -561,6 +692,7 @@ def run_batch(
     source_set: str | None = None,
     generation_params: dict[str, Any] | None = None,
     start_index: int = 1,
+    screen_targets: float | None = None,
 ) -> list[dict[str, Any]]:
     """Sequentially evaluate every pair in the JSON file under the chosen mode.
 
@@ -568,12 +700,17 @@ def run_batch(
     generation takes minutes per graph, so a crash, cancellation, or CI
     timeout must not lose the pairs already traced. ``start_index`` offsets
     the output numbering (index_NN.*, pair_NN_*.tagged.json) so chunked runs
-    over slices of one batch keep a single global numbering.
+    over slices of one batch keep a single global numbering. ``screen_targets``
+    (2panel only) traces the clinical side first and skips the patient trace
+    when the intended target misses the clinical spread at that probability -
+    the screened-out pair stays in the summary with its observed spread.
     """
     if mode not in MODES:
         raise ValueError(f"Unknown mode {mode!r}; expected one of {MODES}")
     if start_index < 1:
         raise ValueError(f"start_index must be >= 1; got {start_index}")
+    if screen_targets is not None and mode != "2panel":
+        raise ValueError("--screen-targets is a 2panel-mode feature")
     with open(pairs_path, encoding="utf-8") as f:
         pairs = json.load(f)
     if not isinstance(pairs, list):
@@ -595,6 +732,7 @@ def run_batch(
         "source_set": source_set or getattr(fetcher, "source_set", None),
         "generation_params": generation_params or {},
         "start_index": start_index,
+        "screen_targets": screen_targets,
         "results": results,
     }
     for i, pair in enumerate(pairs, start=start_index):
@@ -620,6 +758,7 @@ def run_batch(
                 use_llm_translation=use_llm_translation, llm_model=llm_model,
                 dpi=dpi, fetcher=fetcher,
                 graph_model=graph_model, source_set=source_set, generation_params=generation_params,
+                screen_targets=screen_targets,
             )
         results.append(result)
         with open(summary_path, "w", encoding="utf-8") as f:  # checkpoint per pair
@@ -650,6 +789,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dpi", type=int, default=DEFAULT_PNG_DPI, help="PNG export resolution")
     parser.add_argument("--start-index", type=int, default=1,
                         help="First output number (chunked runs over slices of one batch keep global numbering)")
+    parser.add_argument("--screen-targets", type=float, default=None, metavar="MIN_PROB",
+                        help="(2panel) Trace the clinical side first and screen out pairs whose "
+                             "intended target misses the clinical spread at >= MIN_PROB; "
+                             "screened-out pairs stay in the summary with their observed spread")
     add_graph_cli_arguments(parser)
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
 
@@ -666,6 +809,7 @@ def main(argv: list[str] | None = None) -> int:
         source_set=args.source_set,
         generation_params=generation_params_from_args(args),
         start_index=args.start_index,
+        screen_targets=args.screen_targets,
     )
     print(json.dumps(results, indent=2))
     return 0

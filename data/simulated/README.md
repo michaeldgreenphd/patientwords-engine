@@ -30,6 +30,15 @@ data. The hand-built measured dataset (imported from the spreadsheet via
 `medlang-generate import-sheet`, manual measurements under `provenance`)
 lives separately in `data/measured/imported_pairs.json`.
 
+Batches traced with the measurement screen (`medlang-batch-eval
+--screen-targets`) carry a `screening` block on every result in the trace
+summaries: `passed` pairs record the observed clinical probability of the
+intended target; `screened_out` pairs keep their clinical trace, observed
+spread, and a machine-readable reason (they are recorded, never silently
+dropped), and can be fed back to the generator as counterexamples via
+`medlang-generate pairs --feedback`. See "The evidence loop" in the repo
+README.
+
 Trace any archived file directly:
 
 ```bash

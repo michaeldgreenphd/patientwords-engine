@@ -76,6 +76,8 @@ MARGIN = {"left": 66, "right": 34, "top": 40, "bottom": 56}
 PANEL_GAP = 14
 BADGE_GAP = 46  # panel gap when a single-line badge renders in it
 BADGE_LINE_HEIGHT = 22
+DIMMED_NODE_OPACITY = 0.16  # shared-circuit context in pairwise diff views
+
 QUAD_GUTTER_X = 64
 QUAD_GUTTER_Y = 100  # row gutter hosts syntax deltas and the lower vocabulary delta
 QUAD_VOCAB_STRIP = 36  # header strip above the top row for the upper vocabulary delta
@@ -378,13 +380,17 @@ def _panel_svg(
     for y in prep["elision_ys"]:
         parts.append(f'<text x="{MARGIN["left"] - 12}" y="{y + 3:.1f}" class="lk">&#8942;</text>')
 
+    dimmed_nodes: set[str] = panel.get("dimmed") or set()
     for link in prep["links"]:
         src_id, tgt_id = link.get("source"), link.get("target")
         src, tgt = positions.get(src_id), positions.get(tgt_id)
         if src is None or tgt is None:
             continue
         weight = link.get("weight", 0.0)
-        muted = category_of.get(src_id) == "structural" and category_of.get(tgt_id) == "structural"
+        muted = (
+            (category_of.get(src_id) == "structural" and category_of.get(tgt_id) == "structural")
+            or src_id in dimmed_nodes or tgt_id in dimmed_nodes
+        )
         color, width, opacity = _edge_style(weight, max_weight, muted)
         d = _bezier_d(src, tgt, radius.get(src_id, 0.0), radius.get(tgt_id, 0.0))
         parts.append(
@@ -405,26 +411,30 @@ def _panel_svg(
         idx = len(tooltip_data)
         tooltip_data.append(_node_tooltip_data(node, prep["node_weight"][node_id], frac))
         hook = f'class="n" data-p="{panel_index}" data-i="{idx}"'
+        dim_attr = f' fill-opacity="{DIMMED_NODE_OPACITY}"' if node_id in dimmed_nodes else ""
         if node.get("feature_type") == "embedding":
             parts.append(
                 f'<rect {hook} x="{pos[0] - r:.1f}" y="{pos[1] - r:.1f}" '
-                f'width="{2 * r:.1f}" height="{2 * r:.1f}" fill="{color}"/>'
+                f'width="{2 * r:.1f}" height="{2 * r:.1f}" fill="{color}"{dim_attr}/>'
             )
         else:
-            parts.append(f'<circle {hook} cx="{pos[0]:.1f}" cy="{pos[1]:.1f}" r="{r:.1f}" fill="{color}"/>')
+            parts.append(
+                f'<circle {hook} cx="{pos[0]:.1f}" cy="{pos[1]:.1f}" r="{r:.1f}" '
+                f'fill="{color}"{dim_attr}/>'
+            )
         if node.get("feature_type") == "logit" and node.get("clerp"):
             parts.append(
                 f'<text x="{pos[0]:.1f}" y="{pos[1] - r - 5:.1f}" class="ll">'
                 f"{html.escape(_logit_label(node))}</text>"
             )
         # Threshold-based value layer: high-confidence clinical intermediates only.
-        if value_labels and category == "clinical" and frac >= NODE_VALUE_THRESHOLD:
+        if value_labels and category == "clinical" and frac >= NODE_VALUE_THRESHOLD and node_id not in dimmed_nodes:
             parts.append(f'<text x="{pos[0]:.1f}" y="{pos[1] + r + 10:.1f}" class="nv">{frac:.2f}</text>')
 
     # Inline category labels beside each category's most prominent node (no detached legend).
     for category, node_id in prep["prominent"].items():
         pos = positions.get(node_id)
-        if pos is None:
+        if pos is None or node_id in dimmed_nodes:
             continue
         parts.append(
             f'<text x="{pos[0] + radius[node_id] + 5:.1f}" y="{pos[1] + 4:.1f}" class="cl" '
@@ -521,6 +531,7 @@ def build_panels(
     value_label_flags: list[bool] | None = None,
     headlines: list[str | None] | None = None,
     refs: list[int] | None = None,
+    dimmed: list[set[str] | None] | None = None,
 ) -> list[dict[str, Any]]:
     """Build panel specs for the renderers.
 
@@ -528,7 +539,10 @@ def build_panels(
     patient wording (orange accent, no value labels); every other panel is a
     clinical-role panel (blue accent, value labels on). ``refs`` names each
     panel's comparison partner for baseline emphasis (default: panel 0 vs
-    panel 1, every later panel vs the panel above it).
+    panel 1, every later panel vs the panel above it). ``dimmed`` gives each
+    panel a set of node_ids to fade into background context (shared-circuit
+    de-emphasis in pairwise diff views): faded fill, no value labels, and
+    edges touching a dimmed node render muted.
     """
     token_lists = [g.get("metadata", {}).get("prompt_tokens", []) for g in graphs]
     panels: list[dict[str, Any]] = []
@@ -555,6 +569,7 @@ def build_panels(
             "emphasized": focus,
             "value_labels": value_labels,
             "headline": headlines[i] if headlines else None,
+            "dimmed": (dimmed[i] if dimmed and i < len(dimmed) else None) or set(),
         })
     return panels
 
@@ -697,7 +712,11 @@ def _paint_panel_ax(ax, prep: dict[str, Any], panel: dict[str, Any]) -> None:
         src, tgt = link.get("source"), link.get("target")
         if src in positions and tgt in positions:
             weight = link.get("weight", 0.0)
-            muted = category_of.get(src) == "structural" and category_of.get(tgt) == "structural"
+            dimmed_nodes = panel.get("dimmed") or set()
+            muted = (
+                (category_of.get(src) == "structural" and category_of.get(tgt) == "structural")
+                or src in dimmed_nodes or tgt in dimmed_nodes
+            )
             color, width, opacity = _edge_style(weight, prep["max_weight"], muted)
             p1, p2 = _trim_endpoints(positions[src], positions[tgt], radius[src], radius[tgt])
             (x1, y1), (x2, y2) = p1, p2
@@ -708,21 +727,27 @@ def _paint_panel_ax(ax, prep: dict[str, Any], panel: dict[str, Any]) -> None:
             )
             ax.add_patch(PathPatch(path, fill=False, edgecolor=color, linewidth=width, alpha=opacity))
 
+    dimmed_nodes = panel.get("dimmed") or set()
     for node in prep["nodes"]:
         node_id = node["node_id"]
         x, y = positions[node_id]
         r = radius[node_id]
         marker = "s" if node.get("feature_type") == "embedding" else "o"
-        ax.scatter([x], [y], s=r**2 * 3.4, c=CATEGORY_COLORS[_category(node)], marker=marker, zorder=3)
+        alpha = DIMMED_NODE_OPACITY if node_id in dimmed_nodes else 1.0
+        ax.scatter([x], [y], s=r**2 * 3.4, c=CATEGORY_COLORS[_category(node)],
+                   marker=marker, zorder=3, alpha=alpha)
         if node.get("feature_type") == "logit" and node.get("clerp"):
             ax.text(x, y + r + 5, _logit_label(node), ha="center", fontsize=7,
                     color="#374151", family="monospace")
         frac = prep["mass_frac"][node_id]
-        if panel.get("value_labels") and _category(node) == "clinical" and frac >= NODE_VALUE_THRESHOLD:
+        if (panel.get("value_labels") and _category(node) == "clinical"
+                and frac >= NODE_VALUE_THRESHOLD and node_id not in dimmed_nodes):
             ax.text(x, y - r - 11, f"{frac:.2f}", ha="center", fontsize=7,
                     color="#6b7280", family="monospace")
 
     for category, node_id in prep["prominent"].items():
+        if node_id in dimmed_nodes:
+            continue
         x, y = positions[node_id]
         ax.text(x + radius[node_id] + 6, y - 3, CATEGORY_LABELS[category], fontsize=9,
                 fontweight="bold", color=CATEGORY_COLORS[category])

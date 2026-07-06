@@ -175,6 +175,53 @@ def test_run_batch_checkpoints_and_start_index(tmp_path, monkeypatch):
         batch_eval.run_batch(str(pairs), out_dir=str(out), fetcher=build_fetcher(), start_index=0)
 
 
+def test_run_batch_screen_targets(tmp_path, monkeypatch):
+    traced_prompts = []
+
+    def fake_generate(prompt, slug=None, backend="hosted", **params):
+        traced_prompts.append(prompt)
+        return _two_logit_graph()
+
+    monkeypatch.setattr(batch_eval, "generate_graph", fake_generate)
+    pairs = tmp_path / "pairs.json"
+    pairs.write_text(
+        json.dumps([
+            {"top_prompt": "clinical measurable", "bottom_prompt": "patient measurable",
+             "target_clinical_token": " jumps"},
+            {"top_prompt": "clinical unmeasurable", "bottom_prompt": "patient unmeasurable",
+             "target_clinical_token": " zebra"},
+        ]),
+        encoding="utf-8",
+    )
+
+    out = tmp_path / "out"
+    results = batch_eval.run_batch(
+        str(pairs), out_dir=str(out), dpi=50, fetcher=build_fetcher(), screen_targets=0.5,
+    )
+
+    # pair 1 passes the screen (jumps at 0.81 >= 0.5) and is fully measured
+    assert results[0]["screening"]["status"] == "passed"
+    assert results[0]["screening"]["observed_clinical"] == ["jumps", 0.81]
+    assert results[0]["probabilities"]["patient"] == 0.81
+    assert (out / "index_01.png").is_file()
+
+    # pair 2's intended target is not in the clinical spread: screened out,
+    # patient side never traced, no render - but the record stays complete
+    assert results[1]["screening"]["status"] == "screened_out"
+    assert "not in the traced clinical spread" in results[1]["screening"]["reason"]
+    assert results[1]["probabilities"] == {"clinical": None, "patient": None}
+    assert results[1]["predictive_spread"]["clinical"]  # observed spread for feedback
+    assert not (out / "index_02.png").exists()
+    assert traced_prompts == ["clinical measurable", "patient measurable", "clinical unmeasurable"]
+
+    summary = json.loads((out / "batch_summary.json").read_text(encoding="utf-8"))
+    assert summary["screen_targets"] == 0.5
+
+    with pytest.raises(ValueError, match="2panel-mode"):
+        batch_eval.run_batch(str(pairs), out_dir=str(out), mode="4quadrant",
+                             fetcher=build_fetcher(), screen_targets=0.5)
+
+
 def test_run_batch_quadrant_offline(tmp_path, monkeypatch):
     def fake_generate(prompt, slug=None, backend="hosted", **params):
         g = _two_logit_graph()
@@ -231,6 +278,19 @@ def test_run_batch_quadrant_offline(tmp_path, monkeypatch):
     assert "Register shift Δ: -40% probability (0.78 → 0.38)" in html
     assert html.count("Variety shift Δ: -8% probability") == 2
     assert 'transform="rotate(-90' not in html
+
+    # per-edge pairwise views: shared circuit dimmed, diff counts recorded
+    edges = r["outputs"]["edge_views"]
+    assert set(edges) == {"register_standard", "register_nonstandard",
+                          "variety_medical", "variety_patient"}
+    assert edges["register_standard"]["from"] == "A" and edges["register_standard"]["to"] == "C"
+    assert edges["register_standard"]["delta"] == pytest.approx(-0.40)
+    # identical fixture graphs on all four cells: every feature is shared
+    assert edges["variety_medical"]["shared_features"] == 3
+    assert edges["variety_medical"]["unique_to_a"] == 0
+    edge_html = (out / "index_01_register_standard.html").read_text(encoding="utf-8")
+    assert 'fill-opacity="0.16"' in edge_html  # shared features render as context
+    assert (out / "index_01_variety_patient.png").stat().st_size > 1000
 
 
 def test_run_batch_translation_offline(tmp_path, monkeypatch):

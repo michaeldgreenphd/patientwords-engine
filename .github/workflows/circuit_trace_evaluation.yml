@@ -3,15 +3,19 @@ name: Circuit Trace Evaluation (medlang-circuits)
 # Benchmarks the TRACED model (hosted attribution-graph generation) - the
 # companion Model Evaluation workflow benchmarks the Anthropic translation
 # models instead. Hosted generation takes minutes per graph, so keep
-# sample_size tiny for CI runs.
+# per-chunk sample sizes small; large batches fan out as a matrix of
+# chunks (one job per offset, max 3 in parallel).
 #
 # Two ways to start a run:
 #   - workflow_dispatch from the Actions tab, parameters as form inputs;
 #   - push a parameters file to .github/trigger/circuit-trace.json (same
-#     keys as the dispatch inputs). This lets automation with contents-write
-#     access but no actions-write scope start runs, and chains chunked runs
-#     (pairs_file + offset + sample_size) over one batch with global output
-#     numbering and per-chunk committed checkpoints.
+#     keys as the dispatch inputs; "offsets" may be a list). This lets
+#     automation with contents-write access but no actions-write scope
+#     start runs and chain chunked tracing over one batch with global
+#     output numbering and per-chunk committed checkpoints.
+#
+# Outputs land in trace_out/<pairs-file-stem>/ so different batches never
+# collide on index numbering.
 
 on:
   workflow_dispatch:
@@ -38,12 +42,20 @@ on:
         description: "Repo path of the pairs JSON to trace (empty = the committed ci_pairs sample for the mode)"
         type: string
         default: ""
-      offset:
-        description: "Pairs to skip before tracing (chunked runs; output numbering stays global via --start-index)"
+      offsets:
+        description: "Comma-separated pair offsets; one matrix trace job per offset (max 3 parallel), numbering stays global"
         type: string
         default: "0"
+      sample_size:
+        description: "Pairs to trace per offset (hosted generation takes minutes per graph)"
+        type: string
+        default: "1"
+      screen_targets:
+        description: "(2panel) Screen pairs: the intended target must reach this probability on the clinical side; screened-out pairs skip the patient trace but stay recorded ('' = off)"
+        type: string
+        default: ""
       commit_outputs:
-        description: "Commit index_NN.html/png + the summary part back to the dispatched branch (checkpointing)"
+        description: "Commit index_NN html/png + the summary part back to the dispatched branch (checkpointing)"
         type: boolean
         default: false
       max_n_logits:
@@ -66,10 +78,6 @@ on:
         description: "Feature node cap (int 1500-10000)"
         type: string
         default: "5000"
-      sample_size:
-        description: "Pairs to trace (hosted generation takes minutes per graph)"
-        type: string
-        default: "1"
   push:
     paths:
       - ".github/trigger/circuit-trace.json"
@@ -77,15 +85,81 @@ on:
 permissions:
   contents: write
 
-# Chunked runs commit checkpoints to the same branch; never run two at once.
+# One run at a time per branch; the matrix parallelizes chunks inside a run.
 concurrency:
   group: circuit-trace-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  params:
+    runs-on: ubuntu-latest
+    outputs:
+      config: ${{ steps.params.outputs.config }}
+      offsets: ${{ steps.params.outputs.offsets }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve run parameters
+        id: params
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IN_GRAPH_MODEL: ${{ inputs.graph_model }}
+          IN_MODE: ${{ inputs.mode }}
+          IN_PAIRS_FILE: ${{ inputs.pairs_file }}
+          IN_OFFSETS: ${{ inputs.offsets }}
+          IN_SAMPLE_SIZE: ${{ inputs.sample_size }}
+          IN_SCREEN_TARGETS: ${{ inputs.screen_targets }}
+          IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
+          IN_MAX_N_LOGITS: ${{ inputs.max_n_logits }}
+          IN_DESIRED_LOGIT_PROB: ${{ inputs.desired_logit_prob }}
+          IN_NODE_THRESHOLD: ${{ inputs.node_threshold }}
+          IN_EDGE_THRESHOLD: ${{ inputs.edge_threshold }}
+          IN_MAX_FEATURE_NODES: ${{ inputs.max_feature_nodes }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          defaults = {
+              "graph_model": "gemma-2-2b", "mode": "2panel",
+              "pairs_file": "", "offsets": "0", "sample_size": "1",
+              "screen_targets": "", "commit_outputs": "false",
+              "max_n_logits": "10", "desired_logit_prob": "0.95",
+              "node_threshold": "0.8", "edge_threshold": "0.98",
+              "max_feature_nodes": "5000",
+          }
+          params = dict(defaults)
+          if os.environ["EVENT_NAME"] == "push":
+              with open(".github/trigger/circuit-trace.json", encoding="utf-8") as f:
+                  overrides = json.load(f)
+              if "offset" in overrides and "offsets" not in overrides:  # legacy key
+                  overrides["offsets"] = overrides.pop("offset")
+              if isinstance(overrides.get("offsets"), list):
+                  overrides["offsets"] = ",".join(str(o) for o in overrides["offsets"])
+              params.update({k: str(v).lower() if isinstance(v, bool) else str(v)
+                             for k, v in overrides.items() if k in defaults})
+          else:
+              for key in defaults:
+                  value = os.environ.get("IN_" + key.upper(), "")
+                  if value:
+                      params[key] = value
+          offsets = sorted({int(x) for x in params["offsets"].replace(",", " ").split()})
+          if not offsets:
+              raise SystemExit("no offsets to trace")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write("config=" + json.dumps(params) + "\n")
+              out.write("offsets=" + json.dumps(offsets) + "\n")
+          print(json.dumps(params, indent=2))
+          print("offsets:", offsets)
+          EOF
+
   trace:
+    needs: params
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        offset: ${{ fromJson(needs.params.outputs.offsets) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -96,54 +170,12 @@ jobs:
       - name: Install package with LLM extras
         run: pip install ".[llm]"
 
-      - name: Resolve run parameters
-        id: params
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          IN_GRAPH_MODEL: ${{ inputs.graph_model }}
-          IN_MODE: ${{ inputs.mode }}
-          IN_PAIRS_FILE: ${{ inputs.pairs_file }}
-          IN_OFFSET: ${{ inputs.offset }}
-          IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
-          IN_MAX_N_LOGITS: ${{ inputs.max_n_logits }}
-          IN_DESIRED_LOGIT_PROB: ${{ inputs.desired_logit_prob }}
-          IN_NODE_THRESHOLD: ${{ inputs.node_threshold }}
-          IN_EDGE_THRESHOLD: ${{ inputs.edge_threshold }}
-          IN_MAX_FEATURE_NODES: ${{ inputs.max_feature_nodes }}
-          IN_SAMPLE_SIZE: ${{ inputs.sample_size }}
-        run: |
-          python - <<'EOF'
-          import json, os
-          defaults = {
-              "graph_model": "gemma-2-2b", "mode": "2panel",
-              "pairs_file": "", "offset": "0", "commit_outputs": "false",
-              "max_n_logits": "10", "desired_logit_prob": "0.95",
-              "node_threshold": "0.8", "edge_threshold": "0.98",
-              "max_feature_nodes": "5000", "sample_size": "1",
-          }
-          params = dict(defaults)
-          if os.environ["EVENT_NAME"] == "push":
-              with open(".github/trigger/circuit-trace.json", encoding="utf-8") as f:
-                  overrides = json.load(f)
-              params.update({k: str(v).lower() if isinstance(v, bool) else str(v)
-                             for k, v in overrides.items() if k in defaults})
-          else:
-              for key in defaults:
-                  value = os.environ.get("IN_" + key.upper(), "")
-                  if value:
-                      params[key] = value
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
-              for key, value in params.items():
-                  out.write(f"{key}={value.replace(chr(10), ' ')}\n")
-          print(json.dumps(params, indent=2))
-          EOF
-
       - name: Select sample pairs
         env:
-          MODE: ${{ steps.params.outputs.mode }}
-          SAMPLE_SIZE: ${{ steps.params.outputs.sample_size }}
-          PAIRS_FILE: ${{ steps.params.outputs.pairs_file }}
-          OFFSET: ${{ steps.params.outputs.offset }}
+          MODE: ${{ fromJson(needs.params.outputs.config).mode }}
+          SAMPLE_SIZE: ${{ fromJson(needs.params.outputs.config).sample_size }}
+          PAIRS_FILE: ${{ fromJson(needs.params.outputs.config).pairs_file }}
+          OFFSET: ${{ matrix.offset }}
         run: |
           python - <<'EOF'
           import json, os
@@ -157,31 +189,40 @@ jobs:
               raise SystemExit(f"offset {offset} is past the end of {path} ({len(pairs)} pairs)")
           with open("ci_pairs.json", "w", encoding="utf-8") as f:
               json.dump(selected, f, indent=2)
-          print(f"Selected pairs {offset + 1}-{offset + len(selected)} of {len(pairs)} from {path}")
+          stem = os.path.splitext(os.path.basename(path))[0]
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
+              env.write(f"OUT_DIR=trace_out/{stem}\n")
+          print(f"Selected pairs {offset + 1}-{offset + len(selected)} of {len(pairs)} "
+                f"from {path} -> trace_out/{stem}")
           EOF
 
       - name: Run batch evaluation against the hosted backend
         env:
           NEURONPEDIA_API_KEY: ${{ secrets.NEURONPEDIA_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}  # translation mode only
-          OFFSET: ${{ steps.params.outputs.offset }}
+          OFFSET: ${{ matrix.offset }}
+          SCREEN: ${{ fromJson(needs.params.outputs.config).screen_targets }}
         run: |
-          medlang-batch-eval ci_pairs.json \
-            --mode "${{ steps.params.outputs.mode }}" \
-            --backend hosted \
-            --graph-model "${{ steps.params.outputs.graph_model }}" \
-            --max-n-logits "${{ steps.params.outputs.max_n_logits }}" \
-            --desired-logit-prob "${{ steps.params.outputs.desired_logit_prob }}" \
-            --node-threshold "${{ steps.params.outputs.node_threshold }}" \
-            --edge-threshold "${{ steps.params.outputs.edge_threshold }}" \
-            --max-feature-nodes "${{ steps.params.outputs.max_feature_nodes }}" \
-            --start-index "$((OFFSET + 1))" \
-            --out trace_out
+          ARGS=(ci_pairs.json
+            --mode "${{ fromJson(needs.params.outputs.config).mode }}"
+            --backend hosted
+            --graph-model "${{ fromJson(needs.params.outputs.config).graph_model }}"
+            --max-n-logits "${{ fromJson(needs.params.outputs.config).max_n_logits }}"
+            --desired-logit-prob "${{ fromJson(needs.params.outputs.config).desired_logit_prob }}"
+            --node-threshold "${{ fromJson(needs.params.outputs.config).node_threshold }}"
+            --edge-threshold "${{ fromJson(needs.params.outputs.config).edge_threshold }}"
+            --max-feature-nodes "${{ fromJson(needs.params.outputs.config).max_feature_nodes }}"
+            --start-index "$((OFFSET + 1))"
+            --out "$OUT_DIR")
+          if [ -n "$SCREEN" ]; then
+            ARGS+=(--screen-targets "$SCREEN")
+          fi
+          medlang-batch-eval "${ARGS[@]}"
 
       - name: Commit trace outputs to the dispatched branch
-        if: ${{ always() && steps.params.outputs.commit_outputs == 'true' }}
+        if: ${{ always() && fromJson(needs.params.outputs.config).commit_outputs == 'true' }}
         env:
-          OFFSET: ${{ steps.params.outputs.offset }}
+          OFFSET: ${{ matrix.offset }}
           BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
@@ -190,11 +231,11 @@ jobs:
           # summary is renamed to a .part_NN file so chunks never clobber
           # each other; heavyweight *.tagged.json graphs stay artifact-only.
           START=$((OFFSET + 1))
-          if [ -f trace_out/batch_summary.json ]; then
-            mv trace_out/batch_summary.json "trace_out/batch_summary.part_$(printf '%02d' "$START").json"
+          if [ -f "$OUT_DIR/batch_summary.json" ]; then
+            mv "$OUT_DIR/batch_summary.json" "$OUT_DIR/batch_summary.part_$(printf '%02d' "$START").json"
           fi
           shopt -s nullglob
-          FILES=(trace_out/index_*.html trace_out/index_*.png trace_out/batch_summary.part_*.json)
+          FILES=("$OUT_DIR"/index_*.html "$OUT_DIR"/index_*.png "$OUT_DIR"/batch_summary.part_*.json)
           if [ ${#FILES[@]} -eq 0 ]; then
             echo "No trace outputs to commit"
             exit 0
@@ -202,9 +243,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f "${FILES[@]}"
-          git commit -m "Trace outputs for pairs starting at ${START} (${{ steps.params.outputs.graph_model }}, ${{ steps.params.outputs.mode }})"
+          git commit -m "Trace outputs: $OUT_DIR pairs starting at ${START} (${{ fromJson(needs.params.outputs.config).graph_model }}, ${{ fromJson(needs.params.outputs.config).mode }})"
           PUSHED=0
-          for i in 1 2 3; do
+          for i in 1 2 3 4 5; do
             if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
               PUSHED=1
               break
@@ -216,10 +257,10 @@ jobs:
       - name: Publish summary to run page
         if: always()
         run: |
-          SUMMARY=$(ls trace_out/batch_summary*.json 2>/dev/null | head -1 || true)
+          SUMMARY=$(ls "$OUT_DIR"/batch_summary*.json 2>/dev/null | head -1 || true)
           if [ -n "$SUMMARY" ]; then
             {
-              echo "## Circuit trace batch summary (${{ steps.params.outputs.graph_model }}, ${{ steps.params.outputs.mode }})"
+              echo "## Circuit trace batch summary (${{ fromJson(needs.params.outputs.config).graph_model }}, ${{ fromJson(needs.params.outputs.config).mode }}, offset ${{ matrix.offset }})"
               echo '```json'
               cat "$SUMMARY"
               echo '```'
@@ -230,6 +271,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: circuit-trace-${{ steps.params.outputs.graph_model }}-${{ steps.params.outputs.mode }}-${{ github.run_number }}-offset${{ steps.params.outputs.offset }}
+          name: circuit-trace-${{ fromJson(needs.params.outputs.config).graph_model }}-${{ fromJson(needs.params.outputs.config).mode }}-${{ github.run_number }}-offset${{ matrix.offset }}
           path: trace_out/
           if-no-files-found: warn

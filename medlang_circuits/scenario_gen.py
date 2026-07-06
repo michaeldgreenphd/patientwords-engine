@@ -85,6 +85,12 @@ STRESS_PAIR_SYSTEM = (
     "of the situation, so the term swap can move which continuation the model prefers.\n"
     "4. Vary the frames across items: first and third person, different tenses, different "
     "probe words, everyday settings (work, a bar, the weather, family life).\n"
+    "5. The FIRST expected_clinical_continuations entry is the measured target: it must be a "
+    "single, common, high-frequency English word (ideally one wordpiece - e.g. an everyday noun "
+    "right after an article or possessive), the kind of continuation a small 2B-parameter model "
+    "would place in its top-10 next tokens for the clinical phrasing. No rare drug names, no "
+    "multi-word targets, no proper nouns. Design the frame so its grammar funnels hard toward "
+    "that word (for example 'taking an' before a vowel-initial remedy).\n"
     "Output STRICT JSON only - a JSON array of objects, each with exactly these keys: "
     '{"patient_prompt": str, "clinical_prompt": str, "patient_term": str, "clinical_term": str, '
     '"expected_clinical_continuations": [str, ...], "rationale": str}. No text outside the JSON.'
@@ -403,12 +409,17 @@ def generate_stress_pairs(
     topics: list[str] | None = None,
     max_spend: float = 2.0,
     client: Any = None,
+    feedback: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Generate up to ``n`` validated stress pairs; returns pairs + rejects + usage.
 
     Accepted pairs are batch-ready 2panel items (top_prompt / bottom_prompt /
     target_clinical_token from the first expected continuation) so the output
-    file feeds medlang-batch-eval directly.
+    file feeds medlang-batch-eval directly. ``feedback`` closes the evidence
+    loop: entries describing frames the traced model screened out (each with
+    the clinical prompt, the intended target, and the model's actual top
+    continuations) are shown as counterexamples so the next round designs
+    around the model's real behavior instead of repeating the failure.
     """
     model = _resolve_model(model)
     client = _require_client(client)
@@ -428,6 +439,13 @@ def generate_stress_pairs(
         parts = [f"Generate {want} new items."]
         if topics:
             parts.append("Steer coverage across these topics/situations: " + ", ".join(topics) + ".")
+        if feedback:
+            parts.append(
+                "MEASUREMENT-SCREENING FAILURES from a previous round: for these frames the "
+                "traced model's top continuations stayed mundane even under the CLINICAL "
+                "wording, so the intended target was unmeasurable. Study why (the probe word "
+                "invited a non-medical continuation) and design structurally different frames - "
+                "do not imitate or lightly rephrase these:\n" + json.dumps(feedback, indent=2))
         if examples:
             parts.append("Format and quality examples from the existing dataset (do NOT repeat or "
                          "trivially rephrase them):\n" + json.dumps(examples, indent=2))
@@ -847,6 +865,9 @@ def main(argv: list[str] | None = None) -> int:
     shared.add_argument("--out", default=None, help="Output JSON path (batch-ready pairs)")
     shared.add_argument("--seed-pairs", default=None,
                         help="JSON file of existing pairs (few-shot examples + dedupe set)")
+    shared.add_argument("--feedback", default=None,
+                        help="(pairs) JSON file of measurement-screening failures from a previous "
+                             "round, shown to the generator as counterexamples")
 
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -887,12 +908,17 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "pairs":
+        feedback = None
+        if args.feedback:
+            with open(args.feedback, encoding="utf-8") as f:
+                feedback = json.load(f)
         result = generate_stress_pairs(
             args.num,
             model=args.model,
             seed_pairs=_load_seed_pairs(args.seed_pairs),
             topics=args.topics,
             max_spend=args.max_spend,
+            feedback=feedback,
         )
         out = args.out or "generated_pairs.json"
         _write_json(out, result["pairs"])

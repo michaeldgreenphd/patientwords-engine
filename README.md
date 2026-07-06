@@ -319,24 +319,86 @@ probs, circuit links, Notes, sourcing) ride along under each pair's
 the optional extra (`pip install ".[sheets]"`, i.e. openpyxl); plain CSV
 works with the stdlib.
 
-**The generate → trace → compare loop:**
+## The evidence loop (measurement screening)
+
+The study's claim - *patient language steers the model away from the medical
+continuation* - is only testable on a pair if the medical continuation is
+actually **on the table** under the clinical wording. The generator's
+`expected_clinical_continuations` are hypotheses about the traced model's
+behavior, and hypotheses can miss: a frame like "at lunch I'll grab a" never
+elicits a medical token from a 2B model no matter which wording it carries,
+so nothing about patient language can be measured on it. The evidence loop
+closes this gap with a **measurement screen** between generation and the
+full trace:
+
+1. **Generate** (over-generate ~30%): `medlang-generate pairs` with the
+   prompt's target discipline - the first expected continuation must be a
+   single common word the traced model could plausibly rank in its top-10.
+   Format validators (single-span swap, probe boundary, dedupe) gate
+   acceptance as before.
+2. **Screen** (`medlang-batch-eval ... --screen-targets 0.02`): the
+   *clinical side is traced first*, and the pair proceeds only if the
+   intended `target_clinical_token` appears in the clinical spread at ≥ the
+   threshold - a **strict anchor match**, no top-logit fallback for the
+   screening decision. Screened-out pairs are *not discarded*: they keep
+   their clinical trace, observed spread, and a machine-readable reason in
+   `batch_summary.json` (`"screening": {"status": "screened_out", ...}`);
+   they just skip the patient trace and the renders.
+3. **Full trace** for survivors - the screening trace *is* the clinical-side
+   trace, so screening costs one graph per rejected candidate, not two.
+   Survivors carry `"screening": {"status": "passed", ...}` with the
+   observed clinical probability.
+4. **Feed back**: the screened-out entries (clinical prompt, intended
+   target, the model's actual top continuations) go back to the generator as
+   counterexamples via `medlang-generate pairs --feedback failures.json`,
+   which regenerates replacements designed around the model's real behavior.
+   Repeat 2-3 until the batch is full.
+5. **Publish everything.** Selection happens *before* the experiment, on
+   whether the instrument can detect anything - never on which way the
+   result came out. Survivors that show **no** penalty are kept and reported;
+   that is the honest denominator for the flip rate and the mean penalty.
+
+**The generate → screen → trace → compare loop:**
 
 ```bash
 # 1. Import the hand-built sheet (manual measurements ride along as provenance)
 medlang-generate import-sheet Dialect_Testing_Phrases.xlsx --out imported_pairs.json
 
-# 2. Expand it: 10 new validated pairs, few-shot on the originals
-medlang-generate pairs -n 10 --seed-pairs imported_pairs.json --max-spend 2 --out generated_pairs.json
+# 2. Expand it: over-generate validated pairs, few-shot on the originals
+medlang-generate pairs -n 13 --seed-pairs imported_pairs.json --max-spend 2 --out generated_pairs.json
 
-# 3. Dialect variants around one fixed clinical term (pure syntax effect)
+# 3. Screen + trace: clinical side first; unmeasurable pairs recorded, not traced further
+medlang-batch-eval generated_pairs.json --mode 2panel --screen-targets 0.02 --out generated_out
+
+# 4. Close the loop: regenerate replacements around the recorded failures
+#    (assemble failures.json from the screened_out entries in batch_summary.json)
+medlang-generate pairs -n 3 --seed-pairs generated_pairs.json --feedback failures.json --out topup.json
+
+# 5. Dialect variants around one fixed clinical term (pure syntax effect)
 medlang-generate dialects --phrase "I have <TERM>, so I need to talk to a" \
   --term "<TERM>" -n 6 --held-fixed clinical --target-token " <continuation>" --out dialect_pairs.json
 
-# 4. Trace everything and compare against the recorded measurements
+# 6. Trace the rest and compare against the recorded measurements
 medlang-batch-eval imported_pairs.json  --mode 2panel  --out sheet_out
-medlang-batch-eval generated_pairs.json --mode 2panel  --out generated_out
 medlang-batch-eval dialect_pairs.json   --mode dialect --out dialect_out
 ```
+
+In CI, the same loop runs through the two workflows: **Scenario Generation**
+(`feedback` input for step 4) and **Circuit Trace Evaluation**
+(`screen_targets` input for step 2, `offsets` matrix input to fan a large
+batch out across parallel chunk jobs with globally numbered outputs under
+`trace_out/<batch-stem>/`).
+
+**Reading the 4quadrant renders:** besides the full 2×2 canvas, every
+quadrant item now writes four **pairwise edge views**
+(`index_NN_register_standard.*`, `index_NN_register_nonstandard.*`,
+`index_NN_variety_medical.*`, `index_NN_variety_patient.*`) - one per matrix
+edge, two stacked panels each. Features present in *both* cells (matched by
+transcoder layer + feature index, position-independent) are dimmed to
+background context along with their edges, so the full-ink nodes are exactly
+the circuitry the single swap added or removed; each view carries its
+register/variety delta badge and the shared/unique feature counts (also
+recorded under `outputs.edge_views` in `batch_summary.json`).
 
 Each `batch_summary.json` carries the traced model/source set and, for
 imported pairs, the original observed tokens/probs — so fresh traces line up

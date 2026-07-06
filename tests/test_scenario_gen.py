@@ -251,6 +251,17 @@ def test_generate_stress_pairs_remaps_legacy_model_names(monkeypatch):
     assert result["model"] == "claude-sonnet-5"
 
 
+def test_generate_stress_pairs_feedback_counterexamples(monkeypatch):
+    fake_call, calls = _fake_call_returning([json.dumps([VALID_CANDIDATE])])
+    monkeypatch.setattr(scenario_gen, "_call", fake_call)
+    feedback = [{"clinical_prompt": "a frame that failed", "intended_target": " delta",
+                 "observed_top": [["mundane", 0.4]]}]
+    result = scenario_gen.generate_stress_pairs(1, feedback=feedback, max_spend=1.0, client=object())
+    assert len(result["pairs"]) == 1
+    assert "MEASUREMENT-SCREENING FAILURES" in calls[0]["prompt"]
+    assert "a frame that failed" in calls[0]["prompt"]
+
+
 def test_generate_stress_pairs_topics_recorded(monkeypatch):
     fake_call, calls = _fake_call_returning([json.dumps([VALID_CANDIDATE])])
     monkeypatch.setattr(scenario_gen, "_call", fake_call)

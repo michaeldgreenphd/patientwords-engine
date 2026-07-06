@@ -25,7 +25,9 @@ parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
 parser.add_argument("--engine", default=".", help="engine repo root (default: cwd)")
 parser.add_argument("--frontend", required=True, help="frontend repo root")
 parser.add_argument("--stamp", required=True, help="batch UTC stamp, e.g. 20260706T175614Z")
-parser.add_argument("--trace-dir", default="trace_out", help="trace output dir relative to the engine root")
+parser.add_argument("--trace-dir", default=None,
+                    help="trace output dir relative to the engine root "
+                         "(default: trace_out/pairs_<stamp>, falling back to trace_out)")
 args = parser.parse_args()
 
 
@@ -54,7 +56,12 @@ STAMP = args.stamp
 
 batch_path = ENGINE / f"data/simulated/pairs_{STAMP}.json"
 report_path = ENGINE / f"data/simulated/pairs_{STAMP}.report.json"
-trace_dir = ENGINE / args.trace_dir
+if args.trace_dir:
+    trace_dir = ENGINE / args.trace_dir
+else:
+    trace_dir = ENGINE / f"trace_out/pairs_{STAMP}"
+    if not trace_dir.is_dir():
+        trace_dir = ENGINE / "trace_out"
 
 batch = json.loads(batch_path.read_text(encoding="utf-8"))
 report = json.loads(report_path.read_text(encoding="utf-8"))
@@ -116,6 +123,7 @@ for index in sorted(results):
         "patient_term": gen.get("patient_term"),
         "clinical_term": gen.get("clinical_term"),
         "topics": gen.get("topics", []),
+        "screening": r.get("screening"),
     }
     for src, key in ((html, "html"), (png, "png")):
         if src.is_file():
