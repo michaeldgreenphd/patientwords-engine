@@ -1,0 +1,158 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 4,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been suffering from chronic insomnia every night, so the doctor prescribed a",
+        "patient": "She's been staring at the ceiling for hours every night, so the doctor prescribed a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " sleeping",
+        "observed_clinical": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleeping\"",
+            0.267
+          ],
+          [
+            "Output \" new\"",
+            0.074
+          ],
+          [
+            "Output \" sed\"",
+            0.073
+          ],
+          [
+            "Output \" drug\"",
+            0.067
+          ],
+          [
+            "Output \" sleep\"",
+            0.06
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My allergic conjunctivitis flares up every spring, so this year my doctor put me on a",
+        "patient": "My eyes are itchy and watering like crazy every spring, so this year my doctor put me on a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " drop",
+        "observed_clinical": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" new\"",
+            0.149
+          ],
+          [
+            "Output \" prescription\"",
+            0.129
+          ],
+          [
+            "Output \" steroid\"",
+            0.111
+          ],
+          [
+            "Output \" daily\"",
+            0.064
+          ],
+          [
+            "Output \" topical\"",
+            0.052
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been up all night with heartburn again, so first thing this morning I chewed a",
+        "patient": "I've been up all night with my gut on fire again, so first thing this morning I chewed a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " tablet",
+        "observed_clinical": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" couple\"",
+            0.151
+          ],
+          [
+            "Output \" piece\"",
+            0.11
+          ],
+          [
+            "Output \" half\"",
+            0.057
+          ],
+          [
+            "Output \" T\"",
+            0.052
+          ],
+          [
+            "Output \" few\"",
+            0.051
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}
