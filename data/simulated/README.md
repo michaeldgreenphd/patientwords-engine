@@ -6,9 +6,16 @@ every generated batch is preserved and reproducible.
 
 - `pairs_<UTC timestamp>.json` — patient-vs-clinical stress pairs
   (batch-ready 2panel schema; each pair carries a `generation` block with the
-  swapped terms, expected continuations, rationale, and generating model).
+  swapped terms, expected continuations, rationale, steering topics, and
+  generating model).
 - `dialects_<UTC timestamp>.json` — dialect/register variant sets around a
   fixed term (`--mode dialect` batch schema).
+- `*.report.json` — the cost/provenance sidecar for each batch: run
+  timestamp, Anthropic model, **USD spent vs. the ceiling**, token usage,
+  accept/reject counts with rejection reasons, and the run's steering
+  parameters. Sum the `cost_usd` fields across sidecars for the archive's
+  total generation cost. (Neuronpedia tracing itself is free — account rate
+  limits only.)
 
 These are **simulated data**: LLM-authored phrasings that passed the
 programmatic validators in `medlang_circuits/scenario_gen.py` (single

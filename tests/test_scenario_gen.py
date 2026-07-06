@@ -180,6 +180,39 @@ def test_generate_stress_pairs_remaps_legacy_model_names(monkeypatch):
     assert result["model"] == "claude-sonnet-5"
 
 
+def test_generate_stress_pairs_topics_recorded(monkeypatch):
+    fake_call, calls = _fake_call_returning([json.dumps([VALID_CANDIDATE])])
+    monkeypatch.setattr(scenario_gen, "_call", fake_call)
+    result = generate_stress_pairs(1, topics=["topic one", "topic two"], client=object())
+    assert "topic one, topic two" in calls[0]["prompt"]  # steering reaches the model
+    assert result["pairs"][0]["generation"]["topics"] == ["topic one", "topic two"]
+    assert result["topics"] == ["topic one", "topic two"]
+
+
+def test_pairs_cli_writes_cost_report_sidecar(tmp_path, monkeypatch, capsys):
+    fake_call, calls = _fake_call_returning([json.dumps([VALID_CANDIDATE])])
+    monkeypatch.setattr(scenario_gen, "_call", fake_call)
+    monkeypatch.setattr(scenario_gen, "_get_client", lambda: object())
+
+    out = tmp_path / "pairs_test.json"
+    rc = scenario_gen.main(["pairs", "-n", "1", "--max-spend", "1.5",
+                            "--topics", "topic one", "--out", str(out)])
+    assert rc == 0
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["report"] == str(tmp_path / "pairs_test.report.json")
+
+    report = json.loads((tmp_path / "pairs_test.report.json").read_text(encoding="utf-8"))
+    assert report["task"] == "pairs"
+    assert report["accepted"] == 1 and report["rejected"] == 0
+    assert report["max_spend_usd"] == 1.5
+    assert report["cost_usd"] > 0
+    assert report["cost_usd"] == report["usage"]["total_cost_usd"]
+    assert report["language_register"] == "general_patient_language"
+    assert report["topics"] == ["topic one"]
+    assert report["batch_file"] == str(out)
+    assert "run_timestamp" in report
+
+
 def test_generate_stress_pairs_budget_ceiling(monkeypatch):
     fake_call, calls = _fake_call_returning([json.dumps([VALID_CANDIDATE])])
     monkeypatch.setattr(scenario_gen, "_call", fake_call)

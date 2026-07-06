@@ -128,13 +128,20 @@ jobs:
             ARGS+=(--model "$GEN_MODEL")
           fi
           medlang-generate "${ARGS[@]}" | tee generation_report.json
+          REPORT="${OUT%.json}.report.json"
           COUNT=$(python -c "import json; d=json.load(open('$OUT')); \
             print(sum(len(i.get('variants',[1])) if 'variants' in i else 1 for i in d) if d else 0)")
+          COST=$(python -c "import json; r=json.load(open('$REPORT')); \
+            print(f\"\${r['cost_usd']:.4f} spent of the \${r['max_spend_usd']:.2f} ceiling\")")
           echo "out=$OUT" >> "$GITHUB_OUTPUT"
+          echo "report=$REPORT" >> "$GITHUB_OUTPUT"
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
           {
             echo "## Generation (${TASK})"
+            echo ""
+            echo "**Cost: ${COST}** (Neuronpedia tracing below is free - account rate limits only)"
+            echo ""
             echo '```json'
             cat generation_report.json
             echo '```'
@@ -146,7 +153,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "${{ steps.gen.outputs.out }}"
+          git add "${{ steps.gen.outputs.out }}" "${{ steps.gen.outputs.report }}"
           git commit -m "Archive simulated ${{ inputs.task }} scenarios: $(basename '${{ steps.gen.outputs.out }}')"
           git pull --rebase origin main
           git push origin HEAD:main

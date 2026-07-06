@@ -263,8 +263,24 @@ varied person/tense/probe-word/setting. Every candidate is then
 Accepted pairs are written batch-ready (`top_prompt` / `bottom_prompt` /
 `target_clinical_token` from the first expected continuation), so the output
 feeds `medlang-batch-eval` directly. `--seed-pairs existing.json` few-shots
-the generator with your dataset and seeds the dedupe set; `--topics` steers
-coverage.
+the generator with your dataset and seeds the dedupe set. `--topics` steers
+coverage — pass condition areas (e.g. cardiac, respiratory, mental health)
+to simulate per-condition; the topics are recorded in each pair's
+`generation` block so archives can be broken down by condition later.
+Generated pairs currently use **general patient language**; dialect-tagged
+register categorization of pairs is a planned extension of the existing
+dialect machinery (`generation.language_register` in the report marks
+today's batches so they stay distinguishable).
+
+**Cost accounting:** every `medlang-generate pairs`/`dialects` run writes a
+`<batch>.report.json` sidecar next to its output — run timestamp, model,
+**USD spent vs. the `--max-spend` ceiling**, full token usage, and
+accept/reject counts with reasons. The CLI prints the same `cost_usd`
+figure, the Scenario Generation workflow headlines it on the run page and
+commits the sidecar into `data/simulated/` with the batch. Generation and
+translation are the only paid steps (Anthropic tokens); Neuronpedia graph
+generation and feature lookups are free with an account key, rate limits
+aside.
 
 **Dialect syntax variants** — `medlang-generate dialects` holds the swapped
 term verbatim and fixed while Claude rewrites only the surrounding syntax as

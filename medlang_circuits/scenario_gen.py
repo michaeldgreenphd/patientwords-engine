@@ -32,6 +32,7 @@ import logging
 import math
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Iterator
 
@@ -314,9 +315,14 @@ def generate_stress_pairs(
                 logger.info("Rejected candidate: %s", reason)
             else:
                 pair["generation"]["model"] = model
+                if topics:
+                    # condition/topic steering rides along so archives can be
+                    # categorized later (e.g. per-condition breakdowns)
+                    pair["generation"]["topics"] = list(topics)
                 accepted.append(pair)
     return {
         "pairs": accepted,
+        "topics": list(topics) if topics else [],
         "rejected": rejected,
         "model": model,
         "rounds": rounds,
@@ -557,9 +563,39 @@ def _load_seed_pairs(path: str | None) -> list[dict[str, Any]] | None:
     return seeds
 
 
-def _write_json(path: str, payload: Any) -> None:
+def _write_json(path: str | Path, payload: Any) -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
+
+
+def write_generation_report(out_path: str, task: str, max_spend: float,
+                            result: dict[str, Any], extra: dict[str, Any] | None = None) -> Path:
+    """Write the cost/provenance sidecar next to a generated batch.
+
+    ``pairs_<stamp>.json`` gets ``pairs_<stamp>.report.json`` carrying the run
+    timestamp, model, spend (actual vs. ceiling), accept/reject counts with
+    reasons, and the run's steering parameters - so every archived batch is
+    accountable without digging through CI logs.
+    """
+    accepted = result.get("pairs", result.get("variants", []))
+    report = {
+        "run_timestamp": datetime.now(timezone.utc).isoformat(),
+        "task": task,
+        "model": result["model"],
+        "accepted": len(accepted),
+        "rejected": len(result["rejected"]),
+        "rejection_reasons": sorted({r["reason"] for r in result["rejected"]}),
+        "rounds": result["rounds"],
+        "truncated_by_budget": result["truncated"],
+        "max_spend_usd": max_spend,
+        "cost_usd": result["usage"]["total_cost_usd"],
+        "usage": result["usage"],
+        "batch_file": out_path,
+        **(extra or {}),
+    }
+    path = Path(out_path).with_suffix(".report.json")
+    _write_json(path, report)
+    return path
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -618,6 +654,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         out = args.out or "generated_pairs.json"
         _write_json(out, result["pairs"])
+        # dialect-tagged registers are a later capability; today's pairs are
+        # general patient language, and the report says so explicitly
+        extra: dict[str, Any] = {"language_register": "general_patient_language",
+                                 "topics": result["topics"]}
     else:  # dialects
         result = generate_dialect_variants(
             args.phrase,
@@ -630,14 +670,21 @@ def main(argv: list[str] | None = None) -> int:
         )
         out = args.out or "dialect_pairs.json"
         _write_json(out, [dialect_batch_item(result, target_token=args.target_token)])
+        extra = {"baseline_prompt": result["baseline_prompt"], "term": result["term"],
+                 "held_fixed": result["held_fixed"],
+                 "dialects": [v["dialect"] for v in result["variants"]]}
 
+    report_path = write_generation_report(out, args.command, args.max_spend, result, extra)
     print(json.dumps({
         "accepted": len(result.get("pairs", result.get("variants", []))),
         "rejected": len(result["rejected"]),
         "rounds": result["rounds"],
         "truncated_by_budget": result["truncated"],
+        "cost_usd": result["usage"]["total_cost_usd"],
+        "max_spend_usd": args.max_spend,
         "usage": result["usage"],
         "out": out,
+        "report": str(report_path),
     }, indent=2))
     return 0
 
