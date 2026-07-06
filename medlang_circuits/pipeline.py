@@ -13,7 +13,8 @@ from typing import Any
 
 from medlang_circuits.compare_viz import render_stacked_html, render_stacked_png
 from medlang_circuits.feature_tagger import METADATA_KEY, SUMMARY_KEY, annotate_graph
-from medlang_circuits.graph_client import generate_graph, slugify
+from medlang_circuits.graph_client import generate_graph, resolve_graph_model, slugify
+from medlang_circuits.neuronpedia_features import FeatureFetcher
 from medlang_circuits.translate import translate_to_clinical
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,8 @@ def run_comparison(
     use_llm_classifier: bool = False,
     llm_model: str | None = None,
     render_png: bool = True,
+    graph_model: str | None = None,
+    source_set: str | None = None,
     generation_params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run the full comparison and return a result dict with output paths + summary.
@@ -37,9 +40,16 @@ def run_comparison(
         clinical_prompt: explicit clinical phrasing; auto-translated when None.
         backend: "hosted" (neuronpedia.org API) or "local" (apps/graph server).
         use_llm_classifier: enable the Anthropic fallback for unmatched features.
+        graph_model: traced model (Neuronpedia ID; default MEDLANG_GRAPH_MODEL or gemma-2-2b).
+        source_set: transcoder/autointerp source set; None -> the model's default.
+        generation_params: bounded tracer parameters passed to generate_graph.
     """
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
+
+    graph_model = resolve_graph_model(graph_model)
+    # Built up front so a missing source-set default fails before minutes of tracing.
+    fetcher = FeatureFetcher(model_id=graph_model, source_set=source_set)
 
     translation_method = "provided"
     if clinical_prompt is None:
@@ -48,8 +58,10 @@ def run_comparison(
         logger.info("Translated patient prompt via %s: %r", translation_method, clinical_prompt)
 
     params = generation_params or {}
-    clinical_graph = generate_graph(clinical_prompt, slug=slugify(clinical_prompt, "medlang-clin"), backend=backend, **params)
-    patient_graph = generate_graph(patient_prompt, slug=slugify(patient_prompt, "medlang-pat"), backend=backend, **params)
+    clinical_graph = generate_graph(clinical_prompt, slug=slugify(clinical_prompt, "medlang-clin"),
+                                    backend=backend, model_id=graph_model, source_set=source_set, **params)
+    patient_graph = generate_graph(patient_prompt, slug=slugify(patient_prompt, "medlang-pat"),
+                                   backend=backend, model_id=graph_model, source_set=source_set, **params)
 
     llm_classifier = None
     if use_llm_classifier:
@@ -59,7 +71,7 @@ def run_comparison(
             return classify_feature_with_llm(description, top_tokens, model=llm_model)
 
     for graph in (clinical_graph, patient_graph):
-        annotate_graph(graph, llm_classifier=llm_classifier)
+        annotate_graph(graph, fetcher=fetcher, llm_classifier=llm_classifier)
 
     paths = {
         "clinical_graph": out / "clinical_graph.tagged.json",
@@ -79,6 +91,12 @@ def run_comparison(
     summary = build_divergence_summary(clinical_graph, patient_graph)
     summary["translation_method"] = translation_method
     summary["prompts"] = {"clinical": clinical_prompt, "patient": patient_prompt}
+    summary["graph_generation"] = {
+        "model": graph_model,
+        "source_set": source_set or getattr(fetcher, "source_set", None),
+        "backend": backend,
+        "params": params,
+    }
     with open(paths["summary"], "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
 

@@ -53,7 +53,14 @@ from medlang_circuits.compare_viz import (
     render_quadrant_png,
 )
 from medlang_circuits.feature_tagger import annotate_graph
-from medlang_circuits.graph_client import generate_graph, slugify
+from medlang_circuits.graph_client import (
+    add_graph_cli_arguments,
+    generate_graph,
+    generation_params_from_args,
+    resolve_graph_model,
+    slugify,
+)
+from medlang_circuits.neuronpedia_features import FeatureFetcher
 from medlang_circuits.targets import (
     TOP_K_SPREAD_DEFAULT,
     AttributionTargets,
@@ -99,8 +106,17 @@ def _headline(token: str | None, prob: float | None) -> str | None:
     return f"prob({token}) = {prob:.2f}" if token is not None and prob is not None else None
 
 
-def _generation_params(targets: AttributionTargets | None, generation_params: dict | None) -> dict:
+def _generation_params(
+    targets: AttributionTargets | None,
+    generation_params: dict | None,
+    graph_model: str | None = None,
+    source_set: str | None = None,
+) -> dict:
     params = dict(generation_params or {})
+    if graph_model:
+        params.setdefault("model_id", graph_model)
+    if source_set:
+        params.setdefault("source_set", source_set)
     if targets:
         # Widen the salient-logit set and pass tokens through for forks with native forcing.
         for key, value in targets.to_generation_params().items():
@@ -164,13 +180,15 @@ def evaluate_pair(
     llm_model: str | None = None,
     dpi: int = DEFAULT_PNG_DPI,
     fetcher: Any = None,
+    graph_model: str | None = None,
+    source_set: str | None = None,
     generation_params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Direct lexical swap: clinical top panel vs. patient bottom panel."""
     anchor = pair.get("target_clinical_token")
     force_tokens = pair.get("force_target_tokens") or []
     targets = AttributionTargets.of(force_tokens) if force_tokens else None
-    params = _generation_params(targets, generation_params)
+    params = _generation_params(targets, generation_params, graph_model, source_set)
 
     prompts = [pair["top_prompt"], pair["bottom_prompt"]]
     roles = ["clinical", "patient"]
@@ -255,6 +273,8 @@ def evaluate_quadrant(
     backend: str = "hosted",
     dpi: int = DEFAULT_PNG_DPI,
     fetcher: Any = None,
+    graph_model: str | None = None,
+    source_set: str | None = None,
     generation_params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """2x2 matrix factorizing core medical keyword vs. surrounding frame syntax."""
@@ -262,7 +282,7 @@ def evaluate_quadrant(
     anchor = pair.get("target_clinical_token")
     force_tokens = pair.get("force_target_tokens") or []
     targets = AttributionTargets.of(force_tokens) if force_tokens else None
-    params = _generation_params(targets, generation_params)
+    params = _generation_params(targets, generation_params, graph_model, source_set)
 
     graphs = [
         _trace(prompts[key], f"quad_{key.lower()}", index, out_dir, backend, params, targets, fetcher)
@@ -329,6 +349,8 @@ def evaluate_translation(
     llm_model: str | None = None,
     dpi: int = DEFAULT_PNG_DPI,
     fetcher: Any = None,
+    graph_model: str | None = None,
+    source_set: str | None = None,
     generation_params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Organic mitigation chain: patient prompt -> LLM translation -> fresh native trace.
@@ -338,7 +360,7 @@ def evaluate_translation(
     anchor = pair.get("target_clinical_token")
     force_tokens = pair.get("force_target_tokens") or []
     targets = AttributionTargets.of(force_tokens) if force_tokens else None
-    params = _generation_params(targets, generation_params)
+    params = _generation_params(targets, generation_params, graph_model, source_set)
 
     translation = translate_to_clinical(patient_prompt, use_llm=use_llm_translation, model=llm_model)
     translated_prompt = translation["text"]  # raw LLM output, traced natively below
@@ -409,6 +431,8 @@ def run_batch(
     llm_model: str | None = None,
     dpi: int = DEFAULT_PNG_DPI,
     fetcher: Any = None,
+    graph_model: str | None = None,
+    source_set: str | None = None,
     generation_params: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Sequentially evaluate every pair in the JSON file under the chosen mode."""
@@ -419,29 +443,45 @@ def run_batch(
     if not isinstance(pairs, list):
         raise ValueError(f"{pairs_path} must contain a JSON array of pair objects")
 
+    graph_model = resolve_graph_model(graph_model)
+    if fetcher is None:
+        # Fails fast for models whose default feature source set is unregistered.
+        fetcher = FeatureFetcher(model_id=graph_model, source_set=source_set)
+
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     results = []
     for i, pair in enumerate(pairs, start=1):
         if mode == "4quadrant":
             result = evaluate_quadrant(
-                pair, i, out, backend=backend, dpi=dpi, fetcher=fetcher, generation_params=generation_params
+                pair, i, out, backend=backend, dpi=dpi, fetcher=fetcher,
+                graph_model=graph_model, source_set=source_set, generation_params=generation_params,
             )
         elif mode == "translation":
             result = evaluate_translation(
                 pair, i, out, backend=backend, use_llm_translation=use_llm_translation,
-                llm_model=llm_model, dpi=dpi, fetcher=fetcher, generation_params=generation_params,
+                llm_model=llm_model, dpi=dpi, fetcher=fetcher,
+                graph_model=graph_model, source_set=source_set, generation_params=generation_params,
             )
         else:
             result = evaluate_pair(
                 pair, i, out, backend=backend, show_mitigation=show_mitigation,
                 use_llm_translation=use_llm_translation, llm_model=llm_model,
-                dpi=dpi, fetcher=fetcher, generation_params=generation_params,
+                dpi=dpi, fetcher=fetcher,
+                graph_model=graph_model, source_set=source_set, generation_params=generation_params,
             )
         results.append(result)
     summary_path = out / "batch_summary.json"
+    summary = {
+        "mode": mode,
+        "backend": backend,
+        "graph_model": graph_model,
+        "source_set": source_set or getattr(fetcher, "source_set", None),
+        "generation_params": generation_params or {},
+        "results": results,
+    }
     with open(summary_path, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2)
+        json.dump(summary, f, indent=2)
     logger.info("Batch complete: %d pairs (mode=%s), summary at %s", len(results), mode, summary_path)
     return results
 
@@ -464,6 +504,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--llm-model", default=None,
                         help="Anthropic model for translation (default: MEDLANG_ANTHROPIC_MODEL or claude-opus-4-8)")
     parser.add_argument("--dpi", type=int, default=DEFAULT_PNG_DPI, help="PNG export resolution")
+    add_graph_cli_arguments(parser)
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
 
     results = run_batch(
@@ -475,6 +516,9 @@ def main(argv: list[str] | None = None) -> int:
         use_llm_translation=not args.no_llm_translation,
         llm_model=args.llm_model,
         dpi=args.dpi,
+        graph_model=args.graph_model,
+        source_set=args.source_set,
+        generation_params=generation_params_from_args(args),
     )
     print(json.dumps(results, indent=2))
     return 0

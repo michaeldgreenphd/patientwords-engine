@@ -22,6 +22,7 @@ import logging
 import sys
 
 from medlang_circuits.feature_tagger import annotate_graph
+from medlang_circuits.graph_client import add_graph_cli_arguments, generation_params_from_args
 from medlang_circuits.pipeline import run_comparison
 
 
@@ -40,6 +41,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--llm-classifier", action="store_true", help="Use the Anthropic fallback for unmatched features")
     parser.add_argument("--no-llm-translation", action="store_true", help="Skip the API translation (phrase table only)")
     parser.add_argument("--no-png", action="store_true", help="Skip the matplotlib PNG export")
+    add_graph_cli_arguments(parser)
     args = parser.parse_args(argv)
 
     result = run_comparison(
@@ -50,6 +52,9 @@ def main(argv: list[str] | None = None) -> int:
         use_llm_translation=not args.no_llm_translation,
         use_llm_classifier=args.llm_classifier,
         render_png=not args.no_png,
+        graph_model=args.graph_model,
+        source_set=args.source_set,
+        generation_params=generation_params_from_args(args),
     )
     print(json.dumps(result, indent=2))
     return 0
