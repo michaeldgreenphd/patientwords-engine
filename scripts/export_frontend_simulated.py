@@ -31,6 +31,10 @@ parser.add_argument("--engine", default=".", help="engine repo root (default: cw
 parser.add_argument("--frontend", required=True, help="frontend repo root")
 parser.add_argument("--stamps", required=True,
                     help="comma-separated batch UTC stamps in display order")
+parser.add_argument("--no-pngs", action="store_true",
+                    help="skip PNG copies (recommended for large series - the interactive "
+                         "HTML renders are the essential artifact and GitHub Pages repos "
+                         "should stay light)")
 args = parser.parse_args()
 
 ENGINE = Path(args.engine)
@@ -132,6 +136,8 @@ for stamp in [s.strip() for s in args.stamps.split(",") if s.strip()]:
         }
         for suffix, key in ((("", "html")), ("", "png"), ("_diff", "diff_html"), ("_diff", "diff_png")):
             ext = "html" if key.endswith("html") else "png"
+            if args.no_pngs and ext == "png":
+                continue
             src = trace_dir / f"index_{index:02d}{suffix}.{ext}"
             if src.is_file():
                 dest = out_modes / src.name
