@@ -107,7 +107,7 @@ def test_hosted_request_defaults(fake_requests):
     assert body["maxFeatureNodes"] == 5000
     # None source set is omitted so the server applies the model's default
     assert "sourceSetName" not in body
-    assert "qkTopFraction" not in body and "qkTopK" not in body
+    assert "qkTopFraction" not in body and "qkTopk" not in body
     assert graph == fake_requests.graph
 
 
@@ -121,7 +121,7 @@ def test_qk_params_forwarded_for_lorsa_model(fake_requests):
                       model_id="qwen3-1.7b", qk_top_fraction=0.1, qk_topk=2)
     body = fake_requests.posts[0]
     assert body["qkTopFraction"] == 0.1
-    assert body["qkTopK"] == 2
+    assert body["qkTopk"] == 2
 
 
 # ---------------------------------------------------------------------------

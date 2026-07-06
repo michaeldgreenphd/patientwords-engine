@@ -160,7 +160,9 @@ def _generate_hosted(
     if params.get("qk_top_fraction") is not None:
         body["qkTopFraction"] = params["qk_top_fraction"]
     if params.get("qk_topk") is not None:
-        body["qkTopK"] = params["qk_topk"]
+        # NOTE: the hosted API silently ignores unknown keys rather than 400ing,
+        # so a misspelled field here would drop the option without any error.
+        body["qkTopk"] = params["qk_topk"]
 
     logger.info("Requesting hosted graph generation: model=%s slug=%s", model_id, slug)
     resp = session.post(f"{NEURONPEDIA_BASE_URL}/api/graph/generate", json=body, timeout=timeout)
