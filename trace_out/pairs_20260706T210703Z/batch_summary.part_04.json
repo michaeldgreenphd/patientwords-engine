@@ -1,0 +1,230 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 4,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He woke up at 3am with gastroesophageal reflux, so he stumbled to the kitchen for an",
+        "patient": "He woke up at 3am with that sour burn crawling up his throat, so he stumbled to the kitchen for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.192,
+        "patient": null
+      },
+      "language_penalty": null,
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antacid",
+        "observed_clinical": [
+          "Output \" ant\"",
+          0.192
+        ]
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.192
+          ],
+          [
+            "Output \" aspirin\"",
+            0.179
+          ],
+          [
+            "Output \" apple\"",
+            0.113
+          ],
+          [
+            "Output \" ice\"",
+            0.046
+          ],
+          [
+            "Output \" orange\"",
+            0.034
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" aspirin\"",
+            0.408
+          ],
+          [
+            "Output \" orange\"",
+            0.061
+          ],
+          [
+            "Output \" ice\"",
+            0.048
+          ],
+          [
+            "Output \" apple\"",
+            0.046
+          ],
+          [
+            "Output \" energy\"",
+            0.039
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 948,
+        "unique_to_a": 343,
+        "unique_to_b": 390
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260706T210703Z/index_04.html",
+        "png": "trace_out/pairs_20260706T210703Z/index_04.png",
+        "diff_html": "trace_out/pairs_20260706T210703Z/index_04_diff.html",
+        "diff_png": "trace_out/pairs_20260706T210703Z/index_04_diff.png"
+      }
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My little girl's been suffering from allergic rhinitis in the garden all spring, so I booked her in to see the",
+        "patient": "My little girl's been sneezing her head off in the garden all spring, so I booked her in to see the"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.111,
+        "patient": null
+      },
+      "language_penalty": null,
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.111
+        ]
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ENT\"",
+            0.111
+          ],
+          [
+            "Output \" doctor\"",
+            0.111
+          ],
+          [
+            "Output \" GP\"",
+            0.1
+          ],
+          [
+            "Output \" allergy\"",
+            0.055
+          ],
+          [
+            "Output \" aller\"",
+            0.054
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" vet\"",
+            0.741
+          ],
+          [
+            "Output \" vets\"",
+            0.08
+          ],
+          [
+            "Output \" Vet\"",
+            0.032
+          ],
+          [
+            "Output \" local\"",
+            0.025
+          ],
+          [
+            "Output \" GP\"",
+            0.014
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 893,
+        "unique_to_a": 534,
+        "unique_to_b": 437
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260706T210703Z/index_05.html",
+        "png": "trace_out/pairs_20260706T210703Z/index_05.png",
+        "diff_html": "trace_out/pairs_20260706T210703Z/index_05_diff.html",
+        "diff_png": "trace_out/pairs_20260706T210703Z/index_05_diff.png"
+      }
+    },
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Whenever my acid reflux creeps up after a big meal, I lean on my nightstand and grab my",
+        "patient": "Whenever that sour burn creeps up after a big meal, I lean on my nightstand and grab my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " antacid",
+        "observed_clinical": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" trusty\"",
+            0.208
+          ],
+          [
+            "Output \" bottle\"",
+            0.086
+          ],
+          [
+            "Output \" \"",
+            0.046
+          ],
+          [
+            "Output \" phone\"",
+            0.04
+          ],
+          [
+            "Output \" favorite\"",
+            0.036
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}
