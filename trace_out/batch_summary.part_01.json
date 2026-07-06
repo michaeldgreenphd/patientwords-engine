@@ -1,5 +1,5 @@
 {
-  "mode": "4quadrant",
+  "mode": "2panel",
   "backend": "hosted",
   "graph_model": "gemma-2-2b",
   "source_set": "gemmascope-transcoder-16k",
@@ -14,122 +14,136 @@
   "results": [
     {
       "index": 1,
-      "mode": "4quadrant",
+      "mode": "2panel",
       "prompts": {
-        "A": "Every night this week I've had insomnia, so tomorrow I think I'll finally call",
-        "B": "Every night this week I been having insomnia, so tomorrow I think I'ma finally call",
-        "C": "Every night this week I've had trouble sleeping, so tomorrow I think I'll finally call",
-        "D": "Every night this week I been having trouble sleeping, so tomorrow I think I'ma finally call"
+        "clinical": "I've been having chronic insomnia all week, so tonight I'm gonna take a",
+        "patient": "I've been tossing and turning all week, so tonight I'm gonna take a"
       },
-      "target_token": "Output \" it\"",
+      "target_token": "Output \" nap\"",
       "probabilities": {
-        "A": 0.211,
-        "B": 0.336,
-        "C": 0.26,
-        "D": 0.373
+        "clinical": 0.155,
+        "patient": 0.129
       },
-      "register_shift_deltas": {
-        "standard_morphosyntax": 0.049000000000000016,
-        "nonstandard_morphosyntax": 0.03699999999999998
-      },
-      "variety_shift_deltas": {
-        "medical_lexicon": 0.12500000000000003,
-        "patient_language": 0.11299999999999999
-      },
+      "language_penalty": -0.025999999999999995,
+      "mitigation_recovery": null,
+      "translation_method": null,
       "forced_targets": [],
       "predictive_spread": {
-        "A": [
+        "clinical": [
           [
-            "Output \" it\"",
-            0.211
+            "Output \" nap\"",
+            0.155
           ],
           [
-            "Output \" in\"",
-            0.194
+            "Output \" break\"",
+            0.094
           ],
           [
-            "Output \" my\"",
-            0.158
+            "Output \" look\"",
+            0.082
           ],
           [
-            "Output \" the\"",
-            0.146
+            "Output \" chance\"",
+            0.06
           ],
           [
-            "Output \" a\"",
-            0.053
-          ]
-        ],
-        "B": [
-          [
-            "Output \" it\"",
-            0.336
-          ],
-          [
-            "Output \" in\"",
-            0.15
-          ],
-          [
-            "Output \" my\"",
-            0.135
-          ],
-          [
-            "Output \" the\"",
-            0.112
-          ],
-          [
-            "Output \" a\"",
-            0.04
-          ]
-        ],
-        "C": [
-          [
-            "Output \" it\"",
-            0.26
-          ],
-          [
-            "Output \" in\"",
-            0.177
-          ],
-          [
-            "Output \" the\"",
-            0.144
-          ],
-          [
-            "Output \" my\"",
-            0.135
-          ],
-          [
-            "Output \" a\"",
-            0.063
-          ]
-        ],
-        "D": [
-          [
-            "Output \" it\"",
-            0.373
-          ],
-          [
-            "Output \" in\"",
-            0.147
-          ],
-          [
-            "Output \" the\"",
-            0.116
-          ],
-          [
-            "Output \" my\"",
-            0.092
-          ],
-          [
-            "Output \" a\"",
+            "Output \" shot\"",
             0.052
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" nap\"",
+            0.129
+          ],
+          [
+            "Output \" chance\"",
+            0.076
+          ],
+          [
+            "Output \" break\"",
+            0.075
+          ],
+          [
+            "Output \" look\"",
+            0.065
+          ],
+          [
+            "Output \" shot\"",
+            0.059
           ]
         ]
       },
       "outputs": {
         "html": "trace_out/index_01.html",
         "png": "trace_out/index_01.png"
+      }
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My acid reflux flared up after that pizza, so I reached for the",
+        "patient": "My chest is on fire after that pizza, so I reached for the"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.146,
+        "patient": null
+      },
+      "language_penalty": null,
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.146
+          ],
+          [
+            "Output \" Pep\"",
+            0.108
+          ],
+          [
+            "Output \" T\"",
+            0.078
+          ],
+          [
+            "Output \" milk\"",
+            0.028
+          ],
+          [
+            "Output \" bottle\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bottle\"",
+            0.115
+          ],
+          [
+            "Output \" nearest\"",
+            0.054
+          ],
+          [
+            "Output \" ice\"",
+            0.049
+          ],
+          [
+            "Output \" first\"",
+            0.036
+          ],
+          [
+            "Output \" water\"",
+            0.035
+          ]
+        ]
+      },
+      "outputs": {
+        "html": "trace_out/index_02.html",
+        "png": "trace_out/index_02.png"
       }
     }
   ]
