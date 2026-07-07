@@ -60,3 +60,33 @@ rate-limits); the failures are backend availability, not cost.
 3. **Publish** — archive the run dirs to a Release (`archive-renders` trigger),
    then re-export with `--archive-url <release>`. The model buttons appear the
    moment `models_meta` lists more than one available model.
+
+## Behavior without graphs (the logits path)
+
+Because the hosted tracer can't render the other models, their **next-token
+behavior** is measured directly instead — the cross-model comparison the graphs
+can't give. `scripts/logits_eval.py` loads the open weights (CPU, bf16), reads
+the target token's probability under each phrasing plus the top-k spread, and
+writes the *same* `batch_summary.part_01.json` schema, so the export merges each
+model into `scenario.models[<id>]` with no changes. There is no transcoder, so
+`clinical_mass` and the circuit render are absent (`models_meta.graphs = false`);
+the front end labels these models "next-token behavior only".
+
+- **Workflow** — `logits_evaluation.yml`, fired by `.github/trigger/logits-eval.json`:
+  ```json
+  {"models":["qwen3-4b","qwen3-1.7b"],
+   "pairs_file":"data/simulated/pairs_20260706T201750Z.json",
+   "limit":13,"commit_outputs":true}
+  ```
+  It installs CPU torch + transformers, runs one model per matrix cell, and
+  commits the tiny per-model summary. The Qwen models are open; **gemma-3-4b-it
+  is gated** — add an `HF_TOKEN` repo secret and include it in `models` to run it.
+- **Publish** — after the summaries land, `git pull`, then re-export with all
+  stamps and models:
+  ```
+  python scripts/export_frontend_simulated.py --frontend ../patientwords \
+    --stamps <all stamps> --models gemma-2-2b,qwen3-4b,qwen3-1.7b --no-pngs \
+    [--archive-url <gemma render release>]
+  ```
+  gemma's numbers stay graph-derived; the Qwen numbers are raw next-token logits.
+  That method difference is the one caveat of comparing them side by side.
