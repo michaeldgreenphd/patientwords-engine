@@ -1,0 +1,401 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 113,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 113,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My chronic pain has persisted for months, so every morning I swallow a",
+        "patient": "My whole body's been screaming for months, so every morning I swallow a"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.173,
+        "patient": 0.151
+      },
+      "language_penalty": -0.021999999999999992,
+      "clinical_mass": {
+        "clinical": 0.4637,
+        "patient": 0.3126
+      },
+      "error_share": {
+        "clinical": 0.1102,
+        "patient": 0.119
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" \" (p=0.028)",
+        "patient": "embedding \u2192 Output \" few\" (p=0.079)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": [
+          "Output \" pill\"",
+          0.173
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pill\"",
+            0.173
+          ],
+          [
+            "Output \" handful\"",
+            0.148
+          ],
+          [
+            "Output \" few\"",
+            0.065
+          ],
+          [
+            "Output \" cocktail\"",
+            0.037
+          ],
+          [
+            "Output \" \"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pill\"",
+            0.151
+          ],
+          [
+            "Output \" handful\"",
+            0.13
+          ],
+          [
+            "Output \" few\"",
+            0.079
+          ],
+          [
+            "Output \" couple\"",
+            0.046
+          ],
+          [
+            "Output \" bunch\"",
+            0.045
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 467,
+        "unique_to_a": 288,
+        "unique_to_b": 371
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_113.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_113.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_113_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_113_diff.png"
+      }
+    },
+    {
+      "index": 114,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After that big holiday feast my constipation flared up, so at the store I grabbed a mild",
+        "patient": "After that big holiday feast my belly's all backed up, so at the store I grabbed a mild"
+      },
+      "target_token": "Output \" lax\"",
+      "probabilities": {
+        "clinical": 0.669,
+        "patient": 0.085
+      },
+      "language_penalty": -0.5840000000000001,
+      "clinical_mass": {
+        "clinical": 0.3374,
+        "patient": 0.1323
+      },
+      "error_share": {
+        "clinical": 0.1324,
+        "patient": 0.1267
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" lax\" (p=0.669)",
+        "patient": "embedding \u2192 Output \"-\" (p=0.068)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " laxative",
+        "observed_clinical": [
+          "Output \" lax\"",
+          0.669
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lax\"",
+            0.669
+          ],
+          [
+            "Output \" fiber\"",
+            0.031
+          ],
+          [
+            "Output \" stool\"",
+            0.03
+          ],
+          [
+            "Output \" Lax\"",
+            0.021
+          ],
+          [
+            "Output \"-\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \",\"",
+            0.09
+          ],
+          [
+            "Output \" lax\"",
+            0.085
+          ],
+          [
+            "Output \"-\"",
+            0.068
+          ],
+          [
+            "Output \" and\"",
+            0.05
+          ],
+          [
+            "Output \" ginger\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 500,
+        "unique_to_a": 284,
+        "unique_to_b": 422
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_114.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_114.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_114_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_114_diff.png"
+      }
+    },
+    {
+      "index": 115,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My kid's cheeks keep having eczema flares all red and crusty, so the pharmacist handed me a soothing",
+        "patient": "My kid's cheeks keep flaring up all red and crusty, so the pharmacist handed me a soothing"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.305,
+        "patient": 0.269
+      },
+      "language_penalty": -0.035999999999999976,
+      "clinical_mass": {
+        "clinical": 0.3484,
+        "patient": 0.3526
+      },
+      "error_share": {
+        "clinical": 0.1318,
+        "patient": 0.136
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" balm\" (p=0.076)",
+        "patient": "embedding \u2192 Output \" balm\" (p=0.077)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cream",
+        "observed_clinical": [
+          "Output \" cream\"",
+          0.305
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cream\"",
+            0.305
+          ],
+          [
+            "Output \" ointment\"",
+            0.145
+          ],
+          [
+            "Output \" lotion\"",
+            0.1
+          ],
+          [
+            "Output \" balm\"",
+            0.076
+          ],
+          [
+            "Output \" salve\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cream\"",
+            0.269
+          ],
+          [
+            "Output \" ointment\"",
+            0.165
+          ],
+          [
+            "Output \" lotion\"",
+            0.093
+          ],
+          [
+            "Output \" balm\"",
+            0.077
+          ],
+          [
+            "Output \" salve\"",
+            0.047
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 718,
+        "unique_to_a": 134,
+        "unique_to_b": 138
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_115.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_115.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_115_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_115_diff.png"
+      }
+    },
+    {
+      "index": 116,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My systolic blood pressure was way up again, so every morning I swallow my little blue",
+        "patient": "The top number at the checkup was way up again, so every morning I swallow my little blue"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.634,
+        "patient": 0.635
+      },
+      "language_penalty": 0.0010000000000000009,
+      "clinical_mass": {
+        "clinical": 0.3737,
+        "patient": 0.3481
+      },
+      "error_share": {
+        "clinical": 0.1318,
+        "patient": 0.1417
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.023)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7C] terminology related to medicine, health, and nutriti \u2192 Output \" pills\" (p=0.236)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": [
+          "Output \" pill\"",
+          0.634
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pill\"",
+            0.634
+          ],
+          [
+            "Output \" pills\"",
+            0.184
+          ],
+          [
+            "Output \" tablet\"",
+            0.027
+          ],
+          [
+            "Output \" blood\"",
+            0.023
+          ],
+          [
+            "Output \" heart\"",
+            0.008
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pill\"",
+            0.635
+          ],
+          [
+            "Output \" pills\"",
+            0.236
+          ],
+          [
+            "Output \" tablet\"",
+            0.023
+          ],
+          [
+            "Output \" capsule\"",
+            0.009
+          ],
+          [
+            "Output \" and\"",
+            0.006
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 453,
+        "unique_to_a": 253,
+        "unique_to_b": 273
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_116.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_116.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_116_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_116_diff.png"
+      }
+    }
+  ]
+}
