@@ -78,6 +78,7 @@ from medlang_circuits.graph_client import (
 )
 from medlang_circuits.neuronpedia_features import FeatureFetcher, NullFetcher
 from medlang_circuits.schema_utils import is_feature_node, node_layer_and_index
+from medlang_circuits.steering import steer_ablate, top_offtarget_features
 from medlang_circuits.targets import (
     TOP_K_SPREAD_DEFAULT,
     AttributionTargets,
@@ -145,6 +146,116 @@ def clinical_mass_fraction(graph: dict[str, Any]) -> float | None:
         if (node.get("medlang") or {}).get("category") == "clinical":
             clinical += w
     return round(clinical / total, 4) if total else None
+
+
+def error_node_share(graph: dict[str, Any]) -> float | None:
+    """Share of attribution mass carried by MLP reconstruction-error nodes.
+
+    Transcoders only approximate each MLP; the residual appears as error
+    nodes. This is the trace's honesty metric: the fraction of attribution
+    the feature basis does NOT explain (0.0 = fully explained).
+    """
+    weight: dict[str, float] = defaultdict(float)
+    for link in graph.get("links", []):
+        w = abs(link.get("weight", 0.0))
+        weight[link.get("source")] += w
+        weight[link.get("target")] += w
+    total = err = 0.0
+    for node in graph.get("nodes", []):
+        ftype = node.get("feature_type")
+        if ftype == "mlp reconstruction error":
+            err += weight[node["node_id"]]
+            total += weight[node["node_id"]]
+        elif is_feature_node(node):
+            total += weight[node["node_id"]]
+    return round(err / total, 4) if total else None
+
+
+def _path_layer_rank(node: dict[str, Any]) -> int:
+    if node.get("feature_type") == "embedding":
+        return -1
+    if node.get("feature_type") == "logit":
+        return 10**6
+    try:
+        return int(node.get("layer"))
+    except (TypeError, ValueError):
+        return 0
+
+
+def top_attribution_path(
+    graph: dict[str, Any], target_node_id: str | None = None
+) -> list[dict[str, Any]]:
+    """Strongest embedding-to-logit attribution chain, one node per hop.
+
+    Path strength is the product of normalized |edge weight| along the chain,
+    maximized by a single DP pass over links sorted by source layer (edges
+    that do not ascend in layer are skipped, keeping the DP acyclic). The
+    result reads as the graph's one-line causal story.
+    """
+    nodes = {n["node_id"]: n for n in graph.get("nodes", [])}
+    links = graph.get("links", [])
+    if not nodes or not links:
+        return []
+    max_w = max((abs(l.get("weight", 0.0)) for l in links), default=1.0) or 1.0
+
+    score: dict[str, float] = {
+        nid: 1.0 for nid, n in nodes.items() if n.get("feature_type") == "embedding"
+    }
+    back: dict[str, str] = {}
+    for link in sorted(links, key=lambda l: _path_layer_rank(nodes.get(l.get("source"), {}))):
+        s, t = link.get("source"), link.get("target")
+        if s not in score or s not in nodes or t not in nodes:
+            continue
+        if _path_layer_rank(nodes[t]) <= _path_layer_rank(nodes[s]):
+            continue
+        cand = score[s] * (abs(link.get("weight", 0.0)) / max_w)
+        if cand > score.get(t, 0.0):
+            score[t] = cand
+            back[t] = s
+
+    if target_node_id is None:
+        logits = [n for n in nodes.values()
+                  if n.get("feature_type") == "logit" and n["node_id"] in score]
+        if not logits:
+            return []
+        target_node_id = max(logits, key=lambda n: score[n["node_id"]])["node_id"]
+    if target_node_id not in score:
+        return []
+
+    chain = [target_node_id]
+    while chain[-1] in back and len(chain) < 24:
+        chain.append(back[chain[-1]])
+    chain.reverse()
+
+    out = []
+    for nid in chain:
+        n = nodes[nid]
+        med = n.get("medlang") or {}
+        out.append({
+            "node_id": nid,
+            "layer": n.get("layer"),
+            "feature_type": n.get("feature_type"),
+            "category": med.get("category"),
+            "label": (med.get("description") or n.get("clerp") or "")[:80],
+        })
+    return out
+
+
+def path_text(path: list[dict[str, Any]]) -> str | None:
+    """Render a top_attribution_path as a compact readable chain."""
+    if not path:
+        return None
+    steps = []
+    for p in path:
+        label = (p.get("label") or "").strip()
+        if p.get("feature_type") == "embedding":
+            steps.append(label or "embedding")
+        elif p.get("feature_type") == "logit":
+            steps.append(label or "logit")
+        else:
+            cat = (p.get("category") or "?")[:1].upper()
+            steps.append(f"[L{p.get('layer')}·{cat}] {label[:52]}")
+    return " → ".join(steps)
 
 
 def _feature_identities(graph: dict[str, Any]) -> dict[tuple[int, int], list[str]]:
@@ -268,6 +379,18 @@ def _probability_for(graph: dict[str, Any], token: str | None) -> float | None:
 # ---------------------------------------------------------------------------
 
 
+def _steer_validation(patient_prompt: str, patient_graph: dict[str, Any], k: int) -> dict[str, Any]:
+    """EXPERIMENTAL: ablate the patient graph's top off-target features and
+    record both continuations. Failures are recorded, never raised - the
+    measurement stands on its own with or without the causal check."""
+    features = top_offtarget_features(patient_graph, k)
+    if not features:
+        return {"ablated_features": [], "note": "no off-target features to ablate"}
+    scan = (patient_graph.get("metadata") or {}).get("scan", "gemma-2-2b")
+    result = steer_ablate(patient_prompt, features, model_id=scan)
+    return {"ablated_features": features, **result}
+
+
 def evaluate_pair(
     pair: dict[str, Any],
     index: int,
@@ -282,6 +405,7 @@ def evaluate_pair(
     source_set: str | None = None,
     generation_params: dict[str, Any] | None = None,
     screen_targets: float | None = None,
+    steer_validate: int = 0,
 ) -> dict[str, Any]:
     """Direct lexical swap: clinical top panel vs. patient bottom panel.
 
@@ -336,6 +460,7 @@ def evaluate_pair(
                 "probabilities": {"clinical": observed[1] if observed else None, "patient": None},
                 "language_penalty": None,
                 "clinical_mass": {"clinical": clinical_mass_fraction(clinical_graph)},
+                "error_share": {"clinical": error_node_share(clinical_graph)},
                 "screening": {
                     "status": "screened_out",
                     "min_prob": screen_targets,
@@ -418,6 +543,10 @@ def evaluate_pair(
         "probabilities": dict(zip(roles, probs)),
         "language_penalty": (probs[1] - probs[0]) if probs[0] is not None and probs[1] is not None else None,
         "clinical_mass": {role: clinical_mass_fraction(g) for role, g in zip(roles, graphs)},
+        "error_share": {role: error_node_share(g) for role, g in zip(roles, graphs)},
+        "top_path": {role: path_text(top_attribution_path(g)) for role, g in zip(roles, graphs)},
+        **({"steering": _steer_validation(prompts[1], graphs[1], steer_validate)}
+           if steer_validate else {}),
         **result_screening,
         "mitigation_recovery": (
             (probs[2] - probs[1]) if len(probs) == 3 and probs[1] is not None and probs[2] is not None else None
@@ -750,6 +879,8 @@ def evaluate_dialect(
             "baseline": logit_spread(baseline_graph),
             "variants": [logit_spread(g) for g in variant_graphs],
         },
+        "error_share": {"baseline": error_node_share(baseline_graph)},
+        "top_path": {"baseline": path_text(top_attribution_path(baseline_graph))},
         "outputs": {"html": str(html_path), "png": str(png_path)},
     }
 
@@ -773,6 +904,7 @@ def run_batch(
     source_set: str | None = None,
     generation_params: dict[str, Any] | None = None,
     start_index: int = 1,
+    steer_validate: int = 0,
     screen_targets: float | None = None,
     generate_missing_explanations: int = 0,
 ) -> list[dict[str, Any]]:
@@ -846,7 +978,7 @@ def run_batch(
             result = evaluate_pair(
                 pair, i, out, backend=backend, show_mitigation=show_mitigation,
                 use_llm_translation=use_llm_translation, llm_model=llm_model,
-                dpi=dpi, fetcher=fetcher,
+                dpi=dpi, fetcher=fetcher, steer_validate=steer_validate,
                 graph_model=graph_model, source_set=source_set, generation_params=generation_params,
                 screen_targets=screen_targets,
             )
@@ -883,6 +1015,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="(2panel) Trace the clinical side first and screen out pairs whose "
                              "intended target misses the clinical spread at >= MIN_PROB; "
                              "screened-out pairs stay in the summary with their observed spread")
+    parser.add_argument("--steer-validate", type=int, default=0, metavar="K",
+                        help="EXPERIMENTAL (2panel): after measuring a pair, ablate the top K "
+                             "off-target features of the patient graph via Neuronpedia steering "
+                             "and record the default vs. steered continuations (causal check)")
     parser.add_argument("--generate-missing-explanations", type=int, default=0, metavar="CAP",
                         help="EXPERIMENTAL: ask Neuronpedia to auto-interp up to CAP unexplained "
                              "features per run (server-side, uses the provider keys saved in "
@@ -904,6 +1040,7 @@ def main(argv: list[str] | None = None) -> int:
         generation_params=generation_params_from_args(args),
         start_index=args.start_index,
         screen_targets=args.screen_targets,
+        steer_validate=args.steer_validate,
         generate_missing_explanations=args.generate_missing_explanations,
     )
     print(json.dumps(results, indent=2))

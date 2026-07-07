@@ -125,6 +125,7 @@ jobs:
               "max_n_logits": "10", "desired_logit_prob": "0.95",
               "node_threshold": "0.8", "edge_threshold": "0.98",
               "max_feature_nodes": "5000", "generate_explanations": "0",
+              "steer_validate": "0",
           }
           params = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
@@ -207,6 +208,7 @@ jobs:
           OFFSET: ${{ matrix.offset }}
           SCREEN: ${{ fromJson(needs.params.outputs.config).screen_targets }}
           GEN_EXPL: ${{ fromJson(needs.params.outputs.config).generate_explanations }}
+          STEER_VALIDATE: ${{ fromJson(needs.params.outputs.config).steer_validate }}
         run: |
           ARGS=(ci_pairs.json
             --mode "${{ fromJson(needs.params.outputs.config).mode }}"
@@ -224,6 +226,9 @@ jobs:
           fi
           if [ -n "$GEN_EXPL" ] && [ "$GEN_EXPL" != "0" ]; then
             ARGS+=(--generate-missing-explanations "$GEN_EXPL")
+          fi
+          if [ -n "$STEER_VALIDATE" ] && [ "$STEER_VALIDATE" != "0" ]; then
+            ARGS+=(--steer-validate "$STEER_VALIDATE")
           fi
           medlang-batch-eval "${ARGS[@]}"
 

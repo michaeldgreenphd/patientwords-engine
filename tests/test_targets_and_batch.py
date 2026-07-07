@@ -405,3 +405,104 @@ def test_run_batch_translation_offline(tmp_path, monkeypatch):
     # recovered target probabilities as per-panel headlines, prob() notation
     assert "prob(jumps) = 0.40" in html and "prob(jumps) = 0.81" in html
     assert r["predictive_spread"]["translated"] == [("a", 0.9), ("jumps", 0.81)]
+
+
+def _interp_graph():
+    """Tiny annotated graph: emb -> off-target(L2) -> clinical(L5) -> logit,
+    plus an error node hanging off the middle."""
+    nodes = [
+        {"node_id": "E_1_0", "feature_type": "embedding", "layer": "E", "ctx_idx": 0,
+         "clerp": "the"},
+        {"node_id": "2_100_1", "feature_type": "cross layer transcoder", "layer": "2",
+         "ctx_idx": 1, "feature": 200100, "clerp": "idiom feature",
+         "medlang": {"category": "off_target", "description": "mood idioms"}},
+        {"node_id": "5_200_1", "feature_type": "cross layer transcoder", "layer": "5",
+         "ctx_idx": 1, "feature": 500200, "clerp": "therapy feature",
+         "medlang": {"category": "clinical", "description": "mental-health treatment"}},
+        {"node_id": "err_3_1", "feature_type": "mlp reconstruction error", "layer": "3",
+         "ctx_idx": 1, "clerp": ""},
+        {"node_id": "L_9", "feature_type": "logit", "layer": "9", "ctx_idx": 2,
+         "clerp": "therapist (p=0.8)"},
+    ]
+    links = [
+        {"source": "E_1_0", "target": "2_100_1", "weight": 2.0},
+        {"source": "2_100_1", "target": "5_200_1", "weight": 4.0},
+        {"source": "5_200_1", "target": "L_9", "weight": 3.0},
+        {"source": "err_3_1", "target": "5_200_1", "weight": 1.0},
+    ]
+    return {"metadata": {"scan": "gemma-2-2b"}, "nodes": nodes, "links": links}
+
+
+def test_error_node_share():
+    from medlang_circuits.batch_eval import error_node_share
+    g = _interp_graph()
+    share = error_node_share(g)
+    # error node carries 1.0 of (1.0 err + 6.0 off_target + 8.0 clinical) mass
+    assert share is not None and 0.0 < share < 0.2
+    g_clean = {"metadata": {}, "nodes": [n for n in g["nodes"] if "err" not in n["node_id"]],
+               "links": g["links"][:3]}
+    assert error_node_share(g_clean) == 0.0
+
+
+def test_top_attribution_path_reads_as_chain():
+    from medlang_circuits.batch_eval import top_attribution_path, path_text
+    path = top_attribution_path(_interp_graph())
+    ids = [p["node_id"] for p in path]
+    assert ids == ["E_1_0", "2_100_1", "5_200_1", "L_9"]
+    text = path_text(path)
+    assert "mood idioms" in text and "mental-health treatment" in text
+    assert text.endswith("therapist (p=0.8)")
+    assert path_text([]) is None
+
+
+def test_top_offtarget_features_ranks_by_mass():
+    from medlang_circuits.steering import top_offtarget_features
+    feats = top_offtarget_features(_interp_graph(), 3)
+    assert len(feats) == 1
+    assert feats[0]["layer"] == 2 and feats[0]["index"] == 100
+    assert feats[0]["label"] == "mood idioms"
+
+
+def test_steer_ablate_offline(monkeypatch):
+    from medlang_circuits import steering
+
+    sent = {}
+
+    class Resp:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"DEFAULT": "friend about it", "STEERED": "therapist about it"}
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        sent["url"] = url
+        sent["body"] = json
+        return Resp()
+
+    monkeypatch.setattr(steering.requests, "post", fake_post)
+    monkeypatch.setenv("NEURONPEDIA_API_KEY", "test-key")
+    out = steering.steer_ablate("I've got the blues, so I need to talk to a",
+                                [{"layer": 2, "index": 100}])
+    assert out["ok"] and out["response"]["STEERED"] == "therapist about it"
+    assert sent["url"].endswith("/api/steer")
+    feat = sent["body"]["features"][0]
+    assert feat["layer"] == "2-gemmascope-transcoder-16k" and feat["index"] == 100
+    assert feat["strength"] < 0  # ablation, not amplification
+    assert out["request"]["features"] == [{"layer": 2, "index": 100}]
+
+
+def test_steer_ablate_records_failure(monkeypatch):
+    from medlang_circuits import steering
+
+    class Resp:
+        ok = False
+        status_code = 400
+        text = "unknown steer_method"
+
+    monkeypatch.setattr(steering.requests, "post",
+                        lambda *a, **k: Resp())
+    monkeypatch.setenv("NEURONPEDIA_API_KEY", "test-key")
+    out = steering.steer_ablate("prompt", [{"layer": 1, "index": 2}])
+    assert out["ok"] is False and out["status"] == 400
+    assert "unknown steer_method" in out["error"]
