@@ -8,6 +8,12 @@ default and steered continuations can be compared. If knocking out the top
 off-target features restores the clinical continuation, the language-penalty
 story is causal, not just correlational.
 
+The same call runs the opposite intervention: a positive strength amplifies
+features instead of suppressing them. Boosting the clinical graph's top
+clinical features while the model reads the *patient* wording asks whether
+the clinical circuit, forced on, overrides what the colloquial phrasing
+primed - mitigation on the listener side rather than the speaker side.
+
 The exact response schema of ``/api/steer`` is not pinned by this module: the
 raw JSON is stored verbatim in the batch summary, and the endpoint, method
 and strength are all env-overridable (NEURONPEDIA_STEER_ENDPOINT / _METHOD /
@@ -31,15 +37,20 @@ logger = logging.getLogger(__name__)
 
 NEURONPEDIA_BASE_URL = "https://www.neuronpedia.org"
 DEFAULT_STRENGTH = -10.0
+DEFAULT_BOOST_STRENGTH = 10.0
 DEFAULT_N_TOKENS = 8
 
 
-def top_offtarget_features(graph: dict[str, Any], k: int) -> list[dict[str, Any]]:
-    """The k highest-mass off-target features of a tagged graph.
+def boost_strength() -> float:
+    """Positive steering strength for feature amplification (env-overridable)."""
+    return float(os.environ.get("NEURONPEDIA_STEER_BOOST_STRENGTH", DEFAULT_BOOST_STRENGTH))
+
+
+def top_features_by_category(graph: dict[str, Any], k: int, category: str) -> list[dict[str, Any]]:
+    """The k highest-mass features of one medlang category in a tagged graph.
 
     Mass is |incident edge weight| summed per node, aggregated over every
-    position where the same (layer, feature index) fires. These are the
-    ablation candidates: the features the colloquial wording dragged in.
+    position where the same (layer, feature index) fires.
     """
     meta = graph.get("metadata", {})
     schema_version, scan = meta.get("schema_version"), meta.get("scan", "gemma-2-2b")
@@ -53,7 +64,7 @@ def top_offtarget_features(graph: dict[str, Any], k: int) -> list[dict[str, Any]
     for node in graph.get("nodes", []):
         if not is_feature_node(node):
             continue
-        if (node.get("medlang") or {}).get("category") != "off_target":
+        if (node.get("medlang") or {}).get("category") != category:
             continue
         key = node_layer_and_index(node, schema_version, scan)
         if key is None:
@@ -66,6 +77,19 @@ def top_offtarget_features(graph: dict[str, Any], k: int) -> list[dict[str, Any]
         {"layer": layer, "index": index, "mass": round(m, 4), "label": label[(layer, index)]}
         for (layer, index), m in ranked
     ]
+
+
+def top_offtarget_features(graph: dict[str, Any], k: int) -> list[dict[str, Any]]:
+    """The k highest-mass off-target features: the ablation candidates -
+    the features the colloquial wording dragged in."""
+    return top_features_by_category(graph, k, "off_target")
+
+
+def top_clinical_features(graph: dict[str, Any], k: int) -> list[dict[str, Any]]:
+    """The k highest-mass clinical features: the boost candidates - the
+    circuit the clinical wording recruits, to be amplified on the patient
+    wording (positive strength) as a listener-side mitigation probe."""
+    return top_features_by_category(graph, k, "clinical")
 
 
 def steer_ablate(

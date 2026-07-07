@@ -506,3 +506,79 @@ def test_steer_ablate_records_failure(monkeypatch):
     out = steering.steer_ablate("prompt", [{"layer": 1, "index": 2}])
     assert out["ok"] is False and out["status"] == 400
     assert "unknown steer_method" in out["error"]
+
+
+def test_top_clinical_features_mirrors_offtarget_ranking():
+    from medlang_circuits.steering import top_clinical_features
+    feats = top_clinical_features(_interp_graph(), 3)
+    assert len(feats) == 1
+    assert feats[0]["layer"] == 5 and feats[0]["index"] == 200
+    assert feats[0]["label"] == "mental-health treatment"
+    assert feats[0]["mass"] == 8.0  # 4.0 in + 3.0 out + 1.0 error edge
+
+
+def test_boost_strength_env_override(monkeypatch):
+    from medlang_circuits import steering
+    monkeypatch.delenv("NEURONPEDIA_STEER_BOOST_STRENGTH", raising=False)
+    assert steering.boost_strength() == steering.DEFAULT_BOOST_STRENGTH > 0
+    monkeypatch.setenv("NEURONPEDIA_STEER_BOOST_STRENGTH", "4.5")
+    assert steering.boost_strength() == 4.5
+
+
+def _capture_steer_post(monkeypatch):
+    from medlang_circuits import steering
+
+    sent = {}
+
+    class Resp:
+        ok = True
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return {"DEFAULT": "friend", "STEERED": "doctor"}
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        sent["body"] = json
+        return Resp()
+
+    monkeypatch.setattr(steering.requests, "post", fake_post)
+    monkeypatch.setenv("NEURONPEDIA_API_KEY", "test-key")
+    return sent
+
+
+def test_steer_boost_amplifies_clinical_features_on_patient_prompt(monkeypatch):
+    from medlang_circuits.batch_eval import _steer_boost
+
+    sent = _capture_steer_post(monkeypatch)
+    out = _steer_boost("I've got the blues, so I need to talk to a",
+                       _interp_graph(), 3, source_set="gemmascope-transcoder-16k")
+    assert out["ok"] and out["boosted_features"][0]["layer"] == 5
+    feat = sent["body"]["features"][0]
+    assert feat["strength"] > 0  # amplification, not ablation
+    assert feat["layer"] == "5-gemmascope-transcoder-16k" and feat["index"] == 200
+    assert sent["body"]["prompt"].startswith("I've got the blues")
+
+
+def test_steer_validation_threads_source_set(monkeypatch):
+    # Regression: source_set used to be dropped, silently steering against the
+    # 16k default even when the batch was traced with another source set.
+    from medlang_circuits.batch_eval import _steer_validation
+
+    sent = _capture_steer_post(monkeypatch)
+    out = _steer_validation("prompt", _interp_graph(), 3, source_set="custom-set-32k")
+    assert out["ok"] and out["ablated_features"][0]["layer"] == 2
+    feat = sent["body"]["features"][0]
+    assert feat["layer"] == "2-custom-set-32k" and feat["strength"] < 0
+
+
+def test_run_batch_rejects_steer_flags_outside_2panel(tmp_path):
+    import pytest
+    from medlang_circuits.batch_eval import run_batch
+
+    pairs = tmp_path / "pairs.json"
+    pairs.write_text("[]", encoding="utf-8")
+    with pytest.raises(ValueError, match="2panel"):
+        run_batch(str(pairs), out_dir=str(tmp_path / "out"), mode="dialect", steer_validate=2)
+    with pytest.raises(ValueError, match="2panel"):
+        run_batch(str(pairs), out_dir=str(tmp_path / "out"), mode="translation", steer_boost=2)

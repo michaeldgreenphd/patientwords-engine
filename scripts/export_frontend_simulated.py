@@ -260,7 +260,7 @@ for e in demo:
     meta = e.get("_render")
     if not meta:
         continue
-    stem = meta["stem"]; index = meta["index"]; dirs = meta["dirs"]
+    stem, index, dirs = meta["stem"], meta["index"], meta["dirs"]
 
     # Base (gemma) render is the public preview.
     base_dir = Path(dirs[BASE_MODEL]) if BASE_MODEL in dirs else None

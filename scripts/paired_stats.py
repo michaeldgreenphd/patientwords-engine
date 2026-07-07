@@ -27,7 +27,6 @@ import glob
 import json
 import math
 import random
-import re
 from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])

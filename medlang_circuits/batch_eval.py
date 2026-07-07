@@ -78,7 +78,12 @@ from medlang_circuits.graph_client import (
 )
 from medlang_circuits.neuronpedia_features import FeatureFetcher, NullFetcher
 from medlang_circuits.schema_utils import is_feature_node, node_layer_and_index
-from medlang_circuits.steering import steer_ablate, top_offtarget_features
+from medlang_circuits.steering import (
+    boost_strength,
+    steer_ablate,
+    top_clinical_features,
+    top_offtarget_features,
+)
 from medlang_circuits.targets import (
     display_token,
     TOP_K_SPREAD_DEFAULT,
@@ -198,7 +203,7 @@ def top_attribution_path(
     links = graph.get("links", [])
     if not nodes or not links:
         return []
-    max_w = max((abs(l.get("weight", 0.0)) for l in links), default=1.0) or 1.0
+    max_w = max((abs(link.get("weight", 0.0)) for link in links), default=1.0) or 1.0
 
     # Greedy backtrace from the target: at each node follow the strongest
     # incoming |weight| edge (from a strictly lower layer) until reaching an
@@ -392,7 +397,8 @@ def _probability_for(graph: dict[str, Any], token: str | None) -> float | None:
 # ---------------------------------------------------------------------------
 
 
-def _steer_validation(patient_prompt: str, patient_graph: dict[str, Any], k: int) -> dict[str, Any]:
+def _steer_validation(patient_prompt: str, patient_graph: dict[str, Any], k: int,
+                      source_set: str | None = None) -> dict[str, Any]:
     """EXPERIMENTAL: ablate the patient graph's top off-target features and
     record both continuations. Failures are recorded, never raised - the
     measurement stands on its own with or without the causal check."""
@@ -400,8 +406,27 @@ def _steer_validation(patient_prompt: str, patient_graph: dict[str, Any], k: int
     if not features:
         return {"ablated_features": [], "note": "no off-target features to ablate"}
     scan = (patient_graph.get("metadata") or {}).get("scan", "gemma-2-2b")
-    result = steer_ablate(patient_prompt, features, model_id=scan)
+    kwargs = {"source_set": source_set} if source_set else {}
+    result = steer_ablate(patient_prompt, features, model_id=scan, **kwargs)
     return {"ablated_features": features, **result}
+
+
+def _steer_boost(patient_prompt: str, clinical_graph: dict[str, Any], k: int,
+                 source_set: str | None = None) -> dict[str, Any]:
+    """EXPERIMENTAL: amplify the CLINICAL graph's top clinical features while
+    completing the PATIENT prompt - the listener-side mitigation probe. Where
+    ablation asks "did the off-target features cause the miss?", boosting asks
+    "does forcing the clinical circuit on recover the target without changing
+    the patient's words?". Failures are recorded, never raised."""
+    features = top_clinical_features(clinical_graph, k)
+    if not features:
+        return {"boosted_features": [], "note": "no clinical features to boost"}
+    scan = (clinical_graph.get("metadata") or {}).get("scan", "gemma-2-2b")
+    kwargs: dict[str, Any] = {"strength": boost_strength()}
+    if source_set:
+        kwargs["source_set"] = source_set
+    result = steer_ablate(patient_prompt, features, model_id=scan, **kwargs)
+    return {"boosted_features": features, **result}
 
 
 def evaluate_pair(
@@ -419,6 +444,7 @@ def evaluate_pair(
     generation_params: dict[str, Any] | None = None,
     screen_targets: float | None = None,
     steer_validate: int = 0,
+    steer_boost: int = 0,
 ) -> dict[str, Any]:
     """Direct lexical swap: clinical top panel vs. patient bottom panel.
 
@@ -558,8 +584,10 @@ def evaluate_pair(
         "clinical_mass": {role: clinical_mass_fraction(g) for role, g in zip(roles, graphs)},
         "error_share": {role: error_node_share(g) for role, g in zip(roles, graphs)},
         "top_path": {role: path_text(top_attribution_path(g)) for role, g in zip(roles, graphs)},
-        **({"steering": _steer_validation(prompts[1], graphs[1], steer_validate)}
+        **({"steering": _steer_validation(prompts[1], graphs[1], steer_validate, source_set)}
            if steer_validate else {}),
+        **({"steering_boost": _steer_boost(prompts[1], graphs[0], steer_boost, source_set)}
+           if steer_boost else {}),
         **result_screening,
         "mitigation_recovery": (
             (probs[2] - probs[1]) if len(probs) == 3 and probs[1] is not None and probs[2] is not None else None
@@ -918,6 +946,7 @@ def run_batch(
     generation_params: dict[str, Any] | None = None,
     start_index: int = 1,
     steer_validate: int = 0,
+    steer_boost: int = 0,
     screen_targets: float | None = None,
     generate_missing_explanations: int = 0,
 ) -> list[dict[str, Any]]:
@@ -938,6 +967,8 @@ def run_batch(
         raise ValueError(f"start_index must be >= 1; got {start_index}")
     if screen_targets is not None and mode != "2panel":
         raise ValueError("--screen-targets is a 2panel-mode feature")
+    if (steer_validate or steer_boost) and mode != "2panel":
+        raise ValueError("--steer-validate/--steer-boost are 2panel-mode features")
     with open(pairs_path, encoding="utf-8") as f:
         pairs = json.load(f)
     if not isinstance(pairs, list):
@@ -991,7 +1022,7 @@ def run_batch(
             result = evaluate_pair(
                 pair, i, out, backend=backend, show_mitigation=show_mitigation,
                 use_llm_translation=use_llm_translation, llm_model=llm_model,
-                dpi=dpi, fetcher=fetcher, steer_validate=steer_validate,
+                dpi=dpi, fetcher=fetcher, steer_validate=steer_validate, steer_boost=steer_boost,
                 graph_model=graph_model, source_set=source_set, generation_params=generation_params,
                 screen_targets=screen_targets,
             )
@@ -1032,6 +1063,11 @@ def main(argv: list[str] | None = None) -> int:
                         help="EXPERIMENTAL (2panel): after measuring a pair, ablate the top K "
                              "off-target features of the patient graph via Neuronpedia steering "
                              "and record the default vs. steered continuations (causal check)")
+    parser.add_argument("--steer-boost", type=int, default=0, metavar="K",
+                        help="EXPERIMENTAL (2panel): amplify the top K clinical features of the "
+                             "CLINICAL graph while completing the PATIENT prompt (positive "
+                             "strength) - does forcing the clinical circuit on recover the "
+                             "target without changing the patient's words?")
     parser.add_argument("--generate-missing-explanations", type=int, default=0, metavar="CAP",
                         help="EXPERIMENTAL: ask Neuronpedia to auto-interp up to CAP unexplained "
                              "features per run (server-side, uses the provider keys saved in "
@@ -1054,6 +1090,7 @@ def main(argv: list[str] | None = None) -> int:
         start_index=args.start_index,
         screen_targets=args.screen_targets,
         steer_validate=args.steer_validate,
+        steer_boost=args.steer_boost,
         generate_missing_explanations=args.generate_missing_explanations,
     )
     print(json.dumps(results, indent=2))

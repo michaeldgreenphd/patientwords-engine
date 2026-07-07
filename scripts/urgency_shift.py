@@ -158,7 +158,10 @@ for part in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
         if (model, stem, r["index"]) in seen:
             continue
         sp = r.get("predictive_spread") or {}
-        clean = lambda side: [[bare(t), p] for t, p in (sp.get(side) or []) if bare(t)]
+
+        def clean(side):
+            return [[bare(t), p] for t, p in (sp.get(side) or []) if bare(t)]
+
         cont = r.get("continuations") or {}
         add(model, stem, r["index"], r.get("prompts"), clean("clinical"), clean("patient"),
             topic=topics.get((stem, r["index"])),
