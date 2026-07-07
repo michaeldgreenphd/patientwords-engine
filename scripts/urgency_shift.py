@@ -147,7 +147,9 @@ for bf in glob.glob("data/simulated/pairs_*.json"):
 
 # engine trace_out summaries first - they carry continuations
 seen = set()
-for part in sorted(glob.glob("trace_out/pairs_*/batch_summary.part_*.json")):
+# all 2panel-schema runs: generated batches AND curated subsets (mitigation etc.);
+# non-2panel dirs are skipped harmlessly because add() requires clinical+patient spreads
+for part in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
     run_dir = Path(part).parent.name
     stem, _, model_suffix = run_dir.partition("__")
     summary = json.loads(Path(part).read_text(encoding="utf-8"))
