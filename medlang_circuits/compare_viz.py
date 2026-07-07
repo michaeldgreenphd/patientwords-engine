@@ -72,10 +72,10 @@ DEFAULT_MAX_EDGES = 400
 PANEL_WIDTH = 1180
 ROW_HEIGHT = 34
 ELIDED_GAP_ROWS = 1.45  # vertical space for a run of >=1 empty layers
-MARGIN = {"left": 66, "right": 34, "top": 40, "bottom": 56}
-PANEL_GAP = 14
-BADGE_GAP = 46  # panel gap when a single-line badge renders in it
-BADGE_LINE_HEIGHT = 22
+MARGIN = {"left": 66, "right": 34, "top": 118, "bottom": 66}
+PANEL_GAP = 18
+BADGE_GAP = 64  # panel gap when a single-line badge renders in it
+BADGE_LINE_HEIGHT = 34
 DIMMED_NODE_OPACITY = 0.16  # shared-circuit context in pairwise diff views
 STRUCTURAL_FILL_OPACITY = 0.55  # scaffolding recedes; clinical/off-target carry the ink
 
@@ -86,7 +86,7 @@ QUAD_VOCAB_STRIP = 36  # header strip above the top row for the upper vocabulary
 # Vertical rim-to-rim spacing between stacked logit nodes (the predictive
 # spread). Labels sit beside each node, so the gap only needs to clear the
 # 9.5px label line height.
-LOGIT_STACK_GAP = 10
+LOGIT_STACK_GAP = 16
 
 MIN_RADIUS = 3.0  # muted structural/embedding floor
 MAX_RADIUS = 14.0  # cap (a probability-1.0 logit)
@@ -263,7 +263,11 @@ def _prepare(graph: dict[str, Any], max_edges: int) -> dict[str, Any]:
 
     prominent: dict[str, str] = {}
     for category in CATEGORY_COLORS:
-        candidates = [n for n in nodes if _category(n) == category]
+        # exemplar labels sit on feature nodes only: a "Structural" tag on the
+        # top logit or an embedding square mislabels the most important marks
+        candidates = [n for n in nodes
+                      if _category(n) == category
+                      and n.get("feature_type") not in ("logit", "embedding")]
         if candidates:
             prominent[category] = max(candidates, key=lambda n: node_weight[n["node_id"]])["node_id"]
 
@@ -280,7 +284,13 @@ def _prepare(graph: dict[str, Any], max_edges: int) -> dict[str, Any]:
 
     layer_ticks = [(_layer_label(layer, top_layer), y_of_row(row))
                    for layer, row in row_of.items() if _keep_tick(layer)]
+    logit_nodes = [n for n in nodes if n.get("feature_type") == "logit"]
+    top_logit_id = (
+        max(logit_nodes, key=lambda n: (_logit_prob(n) or 0.0))["node_id"]
+        if logit_nodes else None
+    )
     return {
+        "top_logit_id": top_logit_id,
         "nodes": nodes,
         "links": links,
         "positions": positions,
@@ -302,10 +312,10 @@ def _prepare(graph: dict[str, Any], max_edges: int) -> dict[str, Any]:
 def _edge_style(weight: float, max_weight: float, muted: bool) -> tuple[str, float, float]:
     """(color, stroke_width, opacity). Low weights fade to near-invisible."""
     frac = abs(weight) / max_weight if max_weight else 0.0
-    width = 0.3 + 2.3 * frac**1.2
-    opacity = 0.03 + 0.55 * frac**1.6
+    width = 0.4 + 3.4 * frac**1.1
+    opacity = 0.05 + 0.75 * frac**1.3
     if muted:
-        return MUTED_EDGE_COLOR, min(width, 1.0), min(opacity, 0.35)
+        return MUTED_EDGE_COLOR, min(width, 1.2), min(opacity, 0.35)
     return (POSITIVE_EDGE_COLOR if weight >= 0 else NEGATIVE_EDGE_COLOR), width, opacity
 
 
@@ -379,12 +389,20 @@ def _panel_svg(
     headline: str | None = panel.get("headline")
 
     parts = [f'<g transform="translate({x_offset:.0f},{y_offset:.0f})">']
-    parts.append(f'<text x="{MARGIN["left"]}" y="22" class="t">{html.escape(panel["label"])}</text>')
-    if headline:
-        # Second line under the title: long titles can reach the panel center, and the
-        # logit spread owns the right - the title's own left column is always free.
+    # Title splits at the first ': ' into a large role line (readable even at
+    # gallery-thumbnail scale) and a smaller prompt line underneath.
+    role_text, _, prompt_text = (panel["label"] or "").partition(": ")
+    parts.append(f'<text x="{MARGIN["left"]}" y="34" class="t">{html.escape(role_text)}</text>')
+    if prompt_text:
         parts.append(
-            f'<text x="{MARGIN["left"]}" y="48" class="pp">{html.escape(headline)}</text>'
+            f'<text x="{MARGIN["left"]}" y="60" class="tp">{html.escape(prompt_text)}</text>'
+        )
+    if headline:
+        # Big numeric callout: the one number each panel exists to show. The
+        # logit spread owns the right edge; the left column is always free.
+        parts.append(
+            f'<text x="{MARGIN["left"]}" y="{100 if prompt_text else 74}" class="pp">'
+            f"{html.escape(headline)}</text>"
         )
 
     positions, radius = prep["positions"], prep["radius"]
@@ -428,7 +446,8 @@ def _panel_svg(
         hook = f'class="n" data-p="{panel_index}" data-i="{idx}"'
         if node_id in dimmed_nodes:
             dim_attr = f' fill-opacity="{DIMMED_NODE_OPACITY}"'
-        elif category == "structural":
+        elif category == "structural" and node.get("feature_type") != "logit":
+            # logits stay full-ink: their size IS the prediction probability
             dim_attr = f' fill-opacity="{STRUCTURAL_FILL_OPACITY}"'
         else:
             dim_attr = ""
@@ -443,10 +462,17 @@ def _panel_svg(
                 f'fill="{color}"{dim_attr}/>'
             )
         if node.get("feature_type") == "logit" and node.get("clerp"):
+            is_top = node_id == prep.get("top_logit_id")
+            cls = "llt" if is_top else "ll"
             parts.append(
-                f'<text x="{pos[0] - r - 6:.1f}" y="{pos[1] + 3.5:.1f}" class="ll">'
+                f'<text x="{pos[0] - r - 7:.1f}" y="{pos[1] + (5 if is_top else 4):.1f}" class="{cls}">'
                 f"{html.escape(_logit_label(node))}</text>"
             )
+            if is_top:
+                parts.append(
+                    f'<circle cx="{pos[0]:.1f}" cy="{pos[1]:.1f}" r="{r + 3.5:.1f}" fill="none" '
+                    f'stroke="{INK}" stroke-width="1.8"/>'
+                )
         # Threshold-based value layer: high-confidence clinical intermediates only.
         if value_labels and category == "clinical" and frac >= NODE_VALUE_THRESHOLD and node_id not in dimmed_nodes:
             parts.append(f'<text x="{pos[0]:.1f}" y="{pos[1] + r + 10:.1f}" class="nv">{frac:.2f}</text>')
@@ -461,11 +487,24 @@ def _panel_svg(
             f'fill="{CATEGORY_COLORS[category]}">{CATEGORY_LABELS[category]}</text>'
         )
 
-    # Token baseline: emphasize the compared word so the intervention reads at a glance.
-    token_y = prep["panel_height"] - MARGIN["bottom"] + 26
+    # Token baseline: the compared word is the entire point of the figure, so
+    # it gets weight, size, and an accent underline that reads even when the
+    # text itself is thumbnail-small.
+    token_y = prep["panel_height"] - MARGIN["bottom"] + 30
     for i, token in enumerate(prep["tokens"]):
-        style = f' style="fill:{emphasis_color};font-weight:600"' if i in emphasized_tokens else ""
-        parts.append(f'<text x="{prep["x_of"](i):.1f}" y="{token_y}" class="tk"{style}>{html.escape(token)}</text>')
+        x = prep["x_of"](i)
+        if i in emphasized_tokens:
+            half = max(16.0, len(token) * 4.8)
+            parts.append(
+                f'<text x="{x:.1f}" y="{token_y}" class="tk tke" '
+                f'style="fill:{emphasis_color}">{html.escape(token)}</text>'
+            )
+            parts.append(
+                f'<rect x="{x - half:.1f}" y="{token_y + 6:.1f}" width="{2 * half:.1f}" '
+                f'height="3.5" fill="{emphasis_color}"/>'
+            )
+        else:
+            parts.append(f'<text x="{x:.1f}" y="{token_y}" class="tk">{html.escape(token)}</text>')
 
     if prep["dropped_edges"]:
         parts.append(
@@ -482,44 +521,69 @@ _CSS = (
     "body{font-family:-apple-system,'Helvetica Neue',Helvetica,Arial,sans-serif;color:" + INK + "}"
     "main{max-width:1240px;margin:0 auto;padding:20px 16px}"
     "main.wide{max-width:2520px}"
-    "h1{font-size:17px;font-weight:600;margin:0 0 2px}"
-    "p.sub{font-size:12px;color:" + FAINT_INK + ";margin:0 0 14px}"
+    "h1{font-size:24px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}"
+    ".lg{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#4b5563;"
+    "margin:2px 0 16px;line-height:2}"
+    ".lg .sw{display:inline-block;width:10px;height:10px;margin:0 6px 0 0;vertical-align:-1px}"
+    ".lg b{color:" + INK + ";font-weight:600}"
+    ".lg .gap{display:inline-block;width:18px}"
     "svg{width:100%;height:auto;display:block}"
-    ".t{font-size:13px;font-weight:600;fill:" + INK + "}"
-    ".pp{font-size:18px;font-weight:700;fill:" + INK + ";font-family:ui-monospace,Menlo,monospace}"
-    ".tk{font-size:10.5px;text-anchor:middle;fill:" + TOKEN_INK + ";font-family:ui-monospace,'SF Mono',Menlo,monospace}"
-    ".ll{font-size:9.5px;text-anchor:end;fill:#374151;font-family:ui-monospace,Menlo,monospace}"
-    ".lk{font-size:9px;text-anchor:end;fill:" + FAINT_INK + "}"
-    ".nv{font-size:9px;text-anchor:middle;fill:#6b7280;font-family:ui-monospace,Menlo,monospace}"
-    ".bd{font-size:13px;font-weight:600;text-anchor:middle}"
-    ".cl{font-size:11px;font-weight:600}"
+    # role line: readable at ~34% gallery-thumbnail scale
+    ".t{font-size:30px;font-weight:800;fill:" + INK + ";letter-spacing:-.01em}"
+    # prompt sentence: secondary, full-width legible line
+    ".tp{font-size:17px;font-weight:400;fill:#374151}"
+    # headline number: the panel's one number, unmissable at any scale
+    ".pp{font-size:34px;font-weight:800;fill:" + INK + ";font-family:ui-monospace,Menlo,monospace}"
+    ".tk{font-size:13px;text-anchor:middle;fill:#475569;font-family:ui-monospace,'SF Mono',Menlo,monospace}"
+    ".tke{font-size:16.5px;font-weight:800}"
+    ".ll{font-size:12.5px;text-anchor:end;fill:#4b5563;font-family:ui-monospace,Menlo,monospace}"
+    ".llt{font-size:20px;font-weight:800;text-anchor:end;fill:" + INK + ";"
+    "font-family:ui-monospace,Menlo,monospace}"
+    ".lk{font-size:11.5px;text-anchor:end;fill:#6b7280}"
+    ".nv{font-size:11px;text-anchor:middle;fill:#4b5563;font-family:ui-monospace,Menlo,monospace}"
+    ".bd{font-size:24px;font-weight:800;text-anchor:middle}"
+    ".cl{font-size:13px;font-weight:700}"
     ".n{cursor:pointer}.n:hover{stroke:#9aa3af;stroke-width:1.6}"  # visible on green AND black nodes
-    "#tt{position:absolute;display:none;max-width:340px;background:#fff;border:1px solid #d1d5db;"
-    "border-radius:4px;padding:8px 10px;font-size:12px;line-height:1.45;box-shadow:0 2px 8px rgba(0,0,0,.09);"
+    "#tt{position:absolute;display:none;max-width:360px;background:#fff;border:1px solid #d1d5db;"
+    "border-radius:4px;padding:9px 11px;font-size:13px;line-height:1.5;box-shadow:0 2px 8px rgba(0,0,0,.09);"
     "pointer-events:none;z-index:9}"
-    "#tt .h{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#334155}"
+    "#tt .h{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#334155}"
     "#tt .c{font-weight:600}#tt .d{color:#374151;margin-top:3px}"
 )
 
 _JS = (
-    "var tt=document.getElementById('tt');"
-    "document.querySelectorAll('.n').forEach(function(e){"
-    "e.addEventListener('mousemove',function(ev){"
+    "var tt=document.getElementById('tt'),pinned=false;"
+    "function show(e,px,py){"
     "var d=DATA[+e.dataset.p][+e.dataset.i];"
     "tt.innerHTML='<div class=h>'+d.id+'</div>"
     "<div class=c>'+d.cat+' &middot; '+d.wl+': '+d.w+'</div><div class=d>'+d.desc+'</div>';"
     "tt.style.display='block';"
-    "var x=ev.pageX+14,y=ev.pageY+12;"
-    "if(x+360>document.documentElement.clientWidth)x=ev.pageX-354;"
-    "tt.style.left=x+'px';tt.style.top=y+'px';});"
-    "e.addEventListener('mouseleave',function(){tt.style.display='none';});});"
+    "var x=px+14,y=py+12,de=document.documentElement;"
+    "if(x+tt.offsetWidth+8>de.clientWidth+de.scrollLeft+window.scrollX)x=px-tt.offsetWidth-14;"
+    "if(x<2)x=2;"
+    "if(y+tt.offsetHeight+8>window.scrollY+window.innerHeight)y=py-tt.offsetHeight-12;"
+    "if(y<2)y=2;"
+    "tt.style.left=x+'px';tt.style.top=y+'px';}"
+    "document.querySelectorAll('.n').forEach(function(e){"
+    "e.addEventListener('mousemove',function(ev){if(!pinned)show(e,ev.pageX,ev.pageY);});"
+    "e.addEventListener('mouseleave',function(){if(!pinned)tt.style.display='none';});"
+    # tap/click fallback: pin the tooltip so hover-only devices are not required
+    "e.addEventListener('click',function(ev){"
+    "ev.stopPropagation();pinned=true;show(e,ev.pageX,ev.pageY);});});"
+    "document.addEventListener('click',function(){pinned=false;tt.style.display='none';});"
 )
 
-_SUB_CAPTION = (
-    "Hover any node for its feature id, category, mass, and description. "
-    "Node size = attribution mass (logits: next-token probability); green = clinical, "
-    "black = off-target, gray = structural; "
-    f"<span style=\"color:{NEGATIVE_EDGE_COLOR}\">red</span> curves push against the prediction."
+_LEGEND = (
+    f'<span class="sw" style="background:{CATEGORY_COLORS["clinical"]}"></span><b>clinical</b>'
+    '<span class="gap"></span>'
+    f'<span class="sw" style="background:{CATEGORY_COLORS["off_target"]}"></span><b>off-target</b>'
+    '<span class="gap"></span>'
+    f'<span class="sw" style="background:{CATEGORY_COLORS["structural"]}"></span><b>structural</b>'
+    '<span class="gap"></span>node size = attribution mass'
+    '<span class="gap"></span>curve width/opacity = |attribution weight|'
+    '<span class="gap"></span>'
+    f'<span style="color:{NEGATIVE_EDGE_COLOR};font-weight:600">red curve</span> = negative'
+    '<span class="gap"></span>hover or tap any node for details'
 )
 
 
@@ -533,7 +597,7 @@ def _document(svg_parts: list[str], data: list[list[dict]], width: int, height: 
         "<title>Attribution graph comparison</title>"
         f"<style>{_CSS}</style></head><body><main{main_class}>"
         "<h1>Attribution graph comparison</h1>"
-        f"<p class=\"sub\">{_SUB_CAPTION}</p>"
+        f"<div class=\"lg\">{_LEGEND}</div>"
         f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">'
         f"{''.join(svg_parts)}</svg></main>"
         '<div id="tt"></div>'
@@ -753,50 +817,84 @@ def _paint_panel_ax(ax, prep: dict[str, Any], panel: dict[str, Any]) -> None:
         marker = "s" if node.get("feature_type") == "embedding" else "o"
         if node_id in dimmed_nodes:
             alpha = DIMMED_NODE_OPACITY
-        elif _category(node) == "structural":
+        elif _category(node) == "structural" and node.get("feature_type") != "logit":
             alpha = STRUCTURAL_FILL_OPACITY
         else:
             alpha = 1.0
         ax.scatter([x], [y], s=r**2 * 3.4, c=CATEGORY_COLORS[_category(node)],
                    marker=marker, zorder=3, alpha=alpha)
         if node.get("feature_type") == "logit" and node.get("clerp"):
-            ax.text(x - r - 5, y, _logit_label(node), ha="right", va="center",
-                    fontsize=7, color="#374151", family="monospace")
+            is_top = node_id == prep.get("top_logit_id")
+            ax.text(x - r - 6, y, _logit_label(node), ha="right", va="center",
+                    fontsize=13 if is_top else 8.5,
+                    fontweight="bold" if is_top else "normal",
+                    color=INK if is_top else "#4b5563", family="monospace")
+            if is_top:
+                ax.scatter([x], [y], s=(r + 3.5)**2 * 3.4, facecolors="none",
+                           edgecolors=INK, linewidths=1.4, zorder=4)
         frac = prep["mass_frac"][node_id]
         if (panel.get("value_labels") and _category(node) == "clinical"
                 and frac >= NODE_VALUE_THRESHOLD and node_id not in dimmed_nodes):
-            ax.text(x, y - r - 11, f"{frac:.2f}", ha="center", fontsize=7,
-                    color="#6b7280", family="monospace")
+            ax.text(x, y - r - 11, f"{frac:.2f}", ha="center", fontsize=8,
+                    color="#4b5563", family="monospace")
 
     for category, node_id in prep["prominent"].items():
         if node_id in dimmed_nodes:
             continue
         x, y = positions[node_id]
-        ax.text(x + radius[node_id] + 6, y - 3, CATEGORY_LABELS[category], fontsize=9,
+        ax.text(x + radius[node_id] + 6, y - 3, CATEGORY_LABELS[category], fontsize=10,
                 fontweight="bold", color=CATEGORY_COLORS[category])
 
     for label, y in prep["layer_ticks"]:
-        ax.text(MARGIN["left"] - 12, panel_h - y - 3, label, ha="right", fontsize=7, color=FAINT_INK)
+        ax.text(MARGIN["left"] - 12, panel_h - y - 3, label, ha="right", fontsize=8, color="#6b7280")
     emphasized = panel.get("emphasized") or set()
     for token_index, token in enumerate(prep["tokens"]):
         is_emphasized = token_index in emphasized
+        tx = prep["x_of"](token_index)
         ax.text(
-            prep["x_of"](token_index), MARGIN["bottom"] - 30, token,
-            ha="center", fontsize=8,
-            color=panel.get("accent", TOKEN_INK) if is_emphasized else TOKEN_INK,
+            tx, MARGIN["bottom"] - 30, token,
+            ha="center", fontsize=11 if is_emphasized else 9,
+            color=panel.get("accent", TOKEN_INK) if is_emphasized else "#475569",
             fontweight="bold" if is_emphasized else "normal",
             family="monospace",
         )
+        if is_emphasized:
+            half = max(16.0, len(token) * 4.8)
+            ax.plot([tx - half, tx + half],
+                    [MARGIN["bottom"] - 40, MARGIN["bottom"] - 40],
+                    color=panel.get("accent", TOKEN_INK), linewidth=2.4,
+                    solid_capstyle="butt", zorder=4)
 
+    role_text, _, prompt_text = (panel.get("label") or "").partition(": ")
+    ax.text(MARGIN["left"], panel_h - 34, role_text, ha="left",
+            fontsize=17, fontweight="bold", color=INK)
+    if prompt_text:
+        ax.text(MARGIN["left"], panel_h - 58, prompt_text, ha="left",
+                fontsize=10.5, color="#374151")
     if panel.get("headline"):
-        ax.text(MARGIN["left"], panel_h - 44, panel["headline"], ha="left",
-                fontsize=13, fontweight="bold", color=INK, family="monospace")
-
-    ax.set_title(panel["label"], fontsize=11, loc="left", color=INK)
+        ax.text(MARGIN["left"], panel_h - (96 if prompt_text else 70), panel["headline"],
+                ha="left", fontsize=19, fontweight="bold", color=INK, family="monospace")
     ax.set_xlim(0, PANEL_WIDTH)
     ax.set_ylim(0, panel_h)
     ax.set_facecolor("white")
     ax.axis("off")
+
+
+def _png_legend(fig: Any) -> None:
+    """One-line reading key at the top of static exports (mirrors the HTML legend)."""
+    entries = [
+        ("\u25cf clinical", CATEGORY_COLORS["clinical"], "bold"),
+        ("\u25cf off-target", CATEGORY_COLORS["off_target"], "bold"),
+        ("\u25cf structural", "#9aa8b8", "bold"),
+        ("node size = attribution mass", "#4b5563", "normal"),
+        ("curve width/opacity = |weight|", "#4b5563", "normal"),
+        ("red curve = negative", NEGATIVE_EDGE_COLOR, "bold"),
+    ]
+    x = 0.01
+    for text, color, weight in entries:
+        fig.text(x, 0.995, text, ha="left", va="top", fontsize=9,
+                 color=color, family="monospace", fontweight=weight)
+        x += 0.017 + len(text) * 0.0062
 
 
 def render_panels_png(
@@ -821,6 +919,7 @@ def render_panels_png(
         facecolor="white", squeeze=False,
     )
     axes = axes[:, 0]
+    _png_legend(fig)
 
     max_badge_lines = 1
     for panel_index, (ax, prep, panel) in enumerate(zip(axes, preps, panels)):
@@ -831,7 +930,7 @@ def render_panels_png(
             max_badge_lines = max(max_badge_lines, len(lines))
             for line_index, (text, color) in enumerate(reversed(lines)):
                 ax.text(0.5, 1.055 + 0.06 * line_index, text, transform=ax.transAxes,
-                        ha="center", fontsize=11, fontweight="bold", color=color)
+                        ha="center", fontsize=15, fontweight="bold", color=color)
 
     fig.tight_layout(h_pad=2.0 + 2.0 * max_badge_lines)
     fig.savefig(out_path, dpi=dpi, facecolor="white")
@@ -864,6 +963,7 @@ def render_quadrant_png(
         2, 2, figsize=(24, max(fig_height, 7)), height_ratios=row_heights,
         facecolor="white", squeeze=False,
     )
+    _png_legend(fig)
     order = [axes[0][0], axes[0][1], axes[1][0], axes[1][1]]
     for ax, prep, panel in zip(order, preps, panels):
         _paint_panel_ax(ax, prep, panel)
@@ -876,13 +976,13 @@ def render_quadrant_png(
         if badges.get(key):
             text, color = _one(badges[key])
             ax.text(1.03, 1.045, text, transform=ax.transAxes, ha="center",
-                    fontsize=11, fontweight="bold", color=color)
+                    fontsize=15, fontweight="bold", color=color)
     # Syntax deltas horizontal in the row gutter, centered under each column.
     for key, ax in (("syntax_left", axes[1][0]), ("syntax_right", axes[1][1])):
         if badges.get(key):
             text, color = _one(badges[key])
             ax.text(0.5, 1.11, text, transform=ax.transAxes, ha="center",
-                    fontsize=11, fontweight="bold", color=color)
+                    fontsize=15, fontweight="bold", color=color)
 
     fig.tight_layout(h_pad=4.0, w_pad=4.0)
     fig.savefig(out_path, dpi=dpi, facecolor="white")

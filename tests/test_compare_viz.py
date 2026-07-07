@@ -48,17 +48,20 @@ def test_render_stacked_html_standalone_interactive(tmp_path):
     # ...and the tooltip carries the exact same normalized number alongside absolute mass
     assert '"w":"6.000 (norm 0.60)"' in html
     # proportional node sizing: radii vary across nodes instead of a uniform value
-    radii = {m for m in re.findall(r' r="([\d.]+)"', html)}
+    # node circles only - the top-1 logit's emphasis ring draws wider on purpose
+    radii = {m for m in re.findall(r'class="n"[^/]*? r="([\d.]+)"', html)}
     assert len(radii) > 2
     assert all(3.0 <= float(r) <= 14.0 for r in radii)
     # bezier endpoints are trimmed to node rims (curves exist and start offset from centers)
     assert html.count("<path d=\"M") == len(top["links"]) + len(bottom["links"])
     # only the single compared word is emphasized per panel, in the panel accent color;
     # surrounding differenced tokens (" very") stay muted like static tokens
-    assert f'style="fill:{CATEGORY_COLORS["clinical"]};font-weight:600"> quick<' in html
-    assert f'style="fill:{CATEGORY_COLORS["off_target"]};font-weight:600"> swift<' in html
+    assert f'class="tk tke" style="fill:{CATEGORY_COLORS["clinical"]}"> quick<' in html
+    # ...and gets an accent underline bar
+    assert f'height="3.5" fill="{CATEGORY_COLORS["clinical"]}"' in html
+    assert f'class="tk tke" style="fill:{CATEGORY_COLORS["off_target"]}"> swift<' in html
     assert 'font-weight:600"> very<' not in html
-    assert html.count("font-weight:600\">") == 2  # exactly one emphasized token per panel
+    assert html.count('class="tk tke"') == 2  # exactly one emphasized token per panel
     # inline category labels instead of a detached legend
     assert ">Clinical</text>" in html and ">Off-target</text>" in html
     assert "<legend" not in html
