@@ -6,7 +6,7 @@ Shared rendering core (every layout inherits these):
 - no detached legend: category names are written inline next to each
   category's most prominent node, in that category's color
 - structural/embedding/logit nodes and structural-to-structural edges are a
-  muted light gray; saturated blue (clinical) and orange (off_target) are
+  muted light gray; saturated green (clinical) and near-black (off_target) are
   reserved for transcoder features
 - node radius is proportional to normalized attribution mass (logits: the
   next-token probability), 3px floor to 14px cap
@@ -22,7 +22,7 @@ Shared rendering core (every layout inherits these):
   prominently at the panel's top right
 - delta badges render centered in the gutters between panels
 
-Three isolated layout engines sit on top:
+Two isolated layout engines sit on top:
 
     render_panels_html/png    - vertical stack (2panel mode, and the
                                 translation chain, whose gap carries the LLM
@@ -625,8 +625,8 @@ def build_panels(
     """Build panel specs for the renderers.
 
     Defaults follow the clinical/patient/translated convention: panel 1 is the
-    patient wording (orange accent, no value labels); every other panel is a
-    clinical-role panel (blue accent, value labels on). ``refs`` names each
+    patient wording (ink accent, no value labels); every other panel is a
+    clinical-role panel (green accent, value labels on). ``refs`` names each
     panel's comparison partner for baseline emphasis (default: panel 0 vs
     panel 1, every later panel vs the panel above it). ``dimmed`` gives each
     panel a set of node_ids to fade into background context (shared-circuit

@@ -46,9 +46,9 @@ vendored here; the coupling is the HTTP contract only.
    still load in the standard Neuronpedia viewer.
 2. **Stacked comparison viz (Task 2)** — `compare_viz` renders two tagged graphs
    stacked vertically (clinical wording top, patient wording bottom; tokens on
-   the x-axis, layers on the y-axis). Clinical features are blue, off-target
-   orange, structural gray; edge width/opacity scales with |attribution weight|
-   (negative edges dashed red). Outputs a self-contained HTML file (hover
+   the x-axis, layers on the y-axis). Clinical features are green, off-target
+   black, structural gray; edge width/opacity scales with |attribution weight|
+   (negative edges solid red). Outputs a self-contained HTML file (hover
    tooltips, no external assets) and a matplotlib/networkx PNG.
 3. **Auto-translation pipeline (Task 3)** — `pipeline.run_comparison` takes a
    patient sentence, translates it to clinical terminology (Anthropic Messages
@@ -65,7 +65,9 @@ vendored here; the coupling is the HTTP contract only.
 5. **Batch evaluation harness** — `batch_eval.run_batch` consumes a JSON array
    of pair objects, traces/tags/retargets each sequentially, and writes
    numbered `index_01.html` / `index_01.png` outputs plus `batch_summary.json`.
-   Three isolated visualization modes via `--mode`:
+   Four isolated visualization modes via `--mode` (2panel, 4quadrant,
+   translation, dialect — the last two detailed under *Generating stress-test
+   scenarios*):
    - **`2panel`** (default) — direct lexical swap: the polished two-panel
      stack with the **Language Penalty** badge (Δ = p_patient − p_clinical
      for the target medical token). `--show-mitigation` appends the legacy
@@ -90,9 +92,12 @@ cd patientwords-engine
 poetry install            # or: pip install -e ".[llm]"
 ```
 
-**Keyword config (required for classification):** term lists are data, not code.
-Copy `keyword_config.example.json` to `keyword_config.json` (or point
-`MEDLANG_KEYWORD_CONFIG` at your file) and populate the three category lists
+**Keyword config (optional override):** classification works out of the box —
+a packaged default vocabulary (`medlang_circuits/data/keyword_config_default.json`)
+is loaded automatically, so CI trace runs tag features with no local config.
+Term lists are data, not code: to override, copy `keyword_config.example.json`
+to `keyword_config.json` (or point `MEDLANG_KEYWORD_CONFIG` at your file) and
+populate the three category lists
 with your vocabulary. An optional `"translations"` key maps colloquial phrases
 to standard phrasing for the offline translation fallback. Without a config,
 keyword matching is a no-op and features fall through to the LLM fallback /
@@ -149,7 +154,7 @@ Pair formats (`target_clinical_token` / `force_target_tokens` optional on all):
 ```
 
 Outputs land in `medlang_out/`: `clinical_graph.tagged.json`,
-`patient_graph.tagged.json`, `comparison.html`, `comparison.png`, `summary.json`.
+`patient_graph.tagged.json`, `index.html`, `comparison.png`, `summary.json`.
 
 From Python:
 

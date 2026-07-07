@@ -1,4 +1,4 @@
-"""Batch evaluation harness with three isolated visualization modes.
+"""Batch evaluation harness with four isolated visualization modes.
 
 Input is a JSON file containing an array of pair objects. Common optional
 fields on every object: ``target_clinical_token`` (word anchor for the delta
@@ -188,10 +188,11 @@ def top_attribution_path(
 ) -> list[dict[str, Any]]:
     """Strongest embedding-to-logit attribution chain, one node per hop.
 
-    Path strength is the product of normalized |edge weight| along the chain,
-    maximized by a single DP pass over links sorted by source layer (edges
-    that do not ascend in layer are skipped, keeping the DP acyclic). The
-    result reads as the graph's one-line causal story.
+    Built by a greedy backtrace from the target logit: at each hop follow the
+    strongest incoming |edge weight| from a strictly lower layer until an
+    embedding is reached. (A max-product DP would collapse to a single strong
+    direct edge; the greedy walk keeps the multi-hop story through features.)
+    The result reads as the graph's one-line causal story.
     """
     nodes = {n["node_id"]: n for n in graph.get("nodes", [])}
     links = graph.get("links", [])
@@ -649,7 +650,7 @@ def evaluate_quadrant(
     panels = build_panels(
         [graphs[k] for k in QUAD_GRID_ORDER],
         labels=[f"{QUAD_LABELS[k]}: “{prompts[k]}”" for k in QUAD_GRID_ORDER],
-        # lexicon axis drives accents: medical-lexicon boxes blue, patient-language boxes orange
+        # lexicon axis drives accents: medical-lexicon boxes green, patient-language boxes ink
         accents=[CATEGORY_COLORS["off_target"], CATEGORY_COLORS["clinical"],
                  CATEGORY_COLORS["off_target"], CATEGORY_COLORS["clinical"]],
         value_label_flags=[False, True, False, False],  # A is the prestige reference box
