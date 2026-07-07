@@ -427,6 +427,39 @@ Set `trace_sample_size: 0` to archive without tracing (generation needs only
 Trace Evaluation* workflow's `mode` input now also includes `dialect`, with a
 committed sample at `medlang_circuits/data/ci_pairs_dialect.json`.
 
+## Deeper interpretability: four instruments (July 2026)
+
+1. **Error-node share** (`error_share` in every 2panel/dialect result): the
+   fraction of attribution mass carried by MLP reconstruction-error nodes,
+   i.e. how much of the computation the transcoder basis does NOT explain.
+   Around 0.10 on current traces; if it climbs on some prompt, treat that
+   trace's story as less complete.
+
+2. **Top attribution path** (`top_path`): the strongest chain from the
+   target logit back to an embedding, following the largest incoming
+   |attribution| at each hop. Every measured graph now carries its one-line
+   causal story in the batch summary.
+
+3. **Dialect-invariant clinical core** (`scripts/dialect_invariant_core.py`):
+   for a dialect sweep, the baseline clinical features that survive every
+   framing. Runs entirely on the committed HTML renders. First sweep:
+   "clinical depression" keeps 127/220 clinical features under all six
+   framings while "HIV" keeps only 40/209 - some terms' clinical circuitry
+   is dialect-robust, others' mostly gets rebuilt per framing.
+
+4. **Steering validation** (`--steer-validate K`, EXPERIMENTAL): after
+   measuring a 2panel pair, ablate the patient graph's top-K off-target
+   features via Neuronpedia's steering API (negative strength) and record
+   default vs. steered continuations plus full logprobs. This upgrades the
+   attribution story from correlational to causal. First live trial ("I've
+   got the blues, so I need to talk to a"): default top token " friend"
+   (p=0.23); with the top-5 off-target features suppressed the top token
+   becomes " therapist" (p=0.10) - the clinical referral returns when the
+   colloquial features are removed. Steering runs on Neuronpedia's GPUs and
+   does not bill; endpoint/method/strength are env-overridable
+   (NEURONPEDIA_STEER_ENDPOINT/_METHOD/_STRENGTH) and every response is
+   stored verbatim in the batch summary.
+
 ## What a run costs (measured, July 2026)
 
 Three separate meters, and only one of them bills real money by default:
