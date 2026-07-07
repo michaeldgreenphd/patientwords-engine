@@ -134,6 +134,7 @@ jobs:
               "feedback": "",
               "phrase": "", "term": "", "target_token": "",
               "num_baselines": "8",
+              "dialects": "",
               "anthropic_model": "claude-sonnet-5", "max_spend": "2",
               "graph_models": "gemma-2-2b", "trace_sample_size": "2",
           }
@@ -166,6 +167,7 @@ jobs:
           TERM: ${{ steps.params.outputs.term }}
           TARGET_TOKEN: ${{ steps.params.outputs.target_token }}
           NUM_BASELINES: ${{ steps.params.outputs.num_baselines }}
+          DIALECT_LABELS: ${{ steps.params.outputs.dialects }}
           GEN_MODEL: ${{ steps.params.outputs.anthropic_model }}
           MAX_SPEND: ${{ steps.params.outputs.max_spend }}
         run: |
@@ -216,6 +218,12 @@ jobs:
                     --held-fixed clinical --max-spend "$MAX_SPEND" --out "$OUT")
               if [ -n "$TARGET_TOKEN" ]; then
                 ARGS+=(--target-token "$TARGET_TOKEN")
+              fi
+              if [ -n "$DIALECT_LABELS" ]; then
+                # pipe-separated custom register labels (e.g. graded-colloquialism
+                # ladder rungs); labels may contain spaces and commas
+                IFS='|' read -ra LABELS <<< "$DIALECT_LABELS"
+                ARGS+=(--dialects "${LABELS[@]}")
               fi
             else
               # sweep mode: baselines + fixed terms derive from measured pairs
