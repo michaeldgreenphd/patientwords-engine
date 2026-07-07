@@ -1,0 +1,401 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 93,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 93,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My fibromyalgia aches all over every single day, so this morning I swallowed a",
+        "patient": "My whole body aches all over every single day, so this morning I swallowed a"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.095,
+        "patient": 0.073
+      },
+      "language_penalty": -0.022000000000000006,
+      "clinical_mass": {
+        "clinical": 0.35,
+        "patient": 0.3613
+      },
+      "error_share": {
+        "clinical": 0.1209,
+        "patient": 0.1175
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" \" (p=0.053)",
+        "patient": "embedding \u2192 Output \" few\" (p=0.084)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": [
+          "Output \" pill\"",
+          0.095
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" handful\"",
+            0.136
+          ],
+          [
+            "Output \" pill\"",
+            0.095
+          ],
+          [
+            "Output \" few\"",
+            0.094
+          ],
+          [
+            "Output \" couple\"",
+            0.067
+          ],
+          [
+            "Output \" \"",
+            0.053
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" couple\"",
+            0.088
+          ],
+          [
+            "Output \" few\"",
+            0.084
+          ],
+          [
+            "Output \" handful\"",
+            0.082
+          ],
+          [
+            "Output \" pill\"",
+            0.073
+          ],
+          [
+            "Output \" whole\"",
+            0.057
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 601,
+        "unique_to_a": 169,
+        "unique_to_b": 224
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_93.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_93.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_93_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_93_diff.png"
+      }
+    },
+    {
+      "index": 94,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every morning my COPD feels tight and I can't stop hacking, so before the commute I took a",
+        "patient": "Every morning my chest feels tight and I can't stop hacking, so before the commute I took a"
+      },
+      "target_token": "Output \" puff\"",
+      "probabilities": {
+        "clinical": 0.103,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3493,
+        "patient": 0.3386
+      },
+      "error_share": {
+        "clinical": 0.1212,
+        "patient": 0.116
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" \" (p=0.069)",
+        "patient": "embedding \u2192 Output \" \" (p=0.048)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " puff",
+        "observed_clinical": [
+          "Output \" puff\"",
+          0.103
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" couple\"",
+            0.123
+          ],
+          [
+            "Output \" puff\"",
+            0.103
+          ],
+          [
+            "Output \" deep\"",
+            0.1
+          ],
+          [
+            "Output \" few\"",
+            0.082
+          ],
+          [
+            "Output \" \"",
+            0.069
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" couple\"",
+            0.146
+          ],
+          [
+            "Output \" few\"",
+            0.075
+          ],
+          [
+            "Output \" dose\"",
+            0.063
+          ],
+          [
+            "Output \" deep\"",
+            0.053
+          ],
+          [
+            "Output \" \"",
+            0.048
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 596,
+        "unique_to_a": 197,
+        "unique_to_b": 222
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_94.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_94.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_94_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_94_diff.png"
+      }
+    },
+    {
+      "index": 95,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My old man's heart has been acting up lately, so the doctor fitted him with a",
+        "patient": "My old man's pump has been acting up lately, so the doctor fitted him with a"
+      },
+      "target_token": "Output \" pacemaker\"",
+      "probabilities": {
+        "clinical": 0.293,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3916,
+        "patient": 0.1775
+      },
+      "error_share": {
+        "clinical": 0.1162,
+        "patient": 0.1258
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.060)",
+        "patient": "embedding \u2192 [L19\u00b7O] positive, superlative, or comparative phrases | new \u2192 [L21\u00b7O] code and the beginning of calendar years | instances \u2192 [L23\u00b7O] numbers and words associated with lists and counting \u2192 Output \" brand\" (p=0.043)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pacemaker",
+        "observed_clinical": [
+          "Output \" pacemaker\"",
+          0.293
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pacemaker\"",
+            0.293
+          ],
+          [
+            "Output \" def\"",
+            0.217
+          ],
+          [
+            "Output \" new\"",
+            0.074
+          ],
+          [
+            "Output \" heart\"",
+            0.06
+          ],
+          [
+            "Output \" little\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" new\"",
+            0.705
+          ],
+          [
+            "Output \" brand\"",
+            0.043
+          ],
+          [
+            "Output \" newer\"",
+            0.02
+          ],
+          [
+            "Output \" fancy\"",
+            0.013
+          ],
+          [
+            "Output \" \"\"",
+            0.012
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 396,
+        "unique_to_a": 371,
+        "unique_to_b": 357
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_95.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_95.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_95_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_95_diff.png"
+      }
+    },
+    {
+      "index": 96,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since work's been crazy I keep feeling depressed, so my doctor wrote me a",
+        "patient": "Since work's been crazy I keep feeling down, so my doctor wrote me a"
+      },
+      "target_token": "Output \" prescription\"",
+      "probabilities": {
+        "clinical": 0.493,
+        "patient": 0.489
+      },
+      "language_penalty": -0.0040000000000000036,
+      "clinical_mass": {
+        "clinical": 0.3704,
+        "patient": 0.3604
+      },
+      "error_share": {
+        "clinical": 0.1216,
+        "patient": 0.1221
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] mentions of patents and inventors | Authorization or \u2192 [L19\u00b7C] drug prescriptions and medical treatments | medicine \u2192 Output \" prescription\" (p=0.493)",
+        "patient": "embedding \u2192 [L18\u00b7O] mentions of patents and inventors | Authorization or \u2192 [L19\u00b7C] drug prescriptions and medical treatments | medicine \u2192 Output \" prescription\" (p=0.489)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " prescription",
+        "observed_clinical": [
+          "Output \" prescription\"",
+          0.493
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.493
+          ],
+          [
+            "Output \" script\"",
+            0.255
+          ],
+          [
+            "Output \" scrip\"",
+            0.044
+          ],
+          [
+            "Output \" few\"",
+            0.013
+          ],
+          [
+            "Output \" Xan\"",
+            0.011
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" prescription\"",
+            0.489
+          ],
+          [
+            "Output \" script\"",
+            0.27
+          ],
+          [
+            "Output \" scrip\"",
+            0.042
+          ],
+          [
+            "Output \" little\"",
+            0.013
+          ],
+          [
+            "Output \" few\"",
+            0.012
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 728,
+        "unique_to_a": 71,
+        "unique_to_b": 78
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_96.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_96.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_96_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_96_diff.png"
+      }
+    }
+  ]
+}
