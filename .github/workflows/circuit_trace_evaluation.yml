@@ -50,6 +50,10 @@ on:
         description: "Pairs to trace per offset (hosted generation takes minutes per graph)"
         type: string
         default: "1"
+      show_mitigation:
+        description: "(2panel) Trace a third panel: the patient sentence LLM-translated to clinical wording (uses ANTHROPIC_API_KEY)"
+        type: boolean
+        default: false
       screen_targets:
         description: "(2panel) Screen pairs: the intended target must reach this probability on the clinical side; screened-out pairs skip the patient trace but stay recorded ('' = off)"
         type: string
@@ -110,6 +114,7 @@ jobs:
           IN_OFFSETS: ${{ inputs.offsets }}
           IN_SAMPLE_SIZE: ${{ inputs.sample_size }}
           IN_SCREEN_TARGETS: ${{ inputs.screen_targets }}
+          IN_SHOW_MITIGATION: ${{ inputs.show_mitigation }}
           IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
           IN_MAX_N_LOGITS: ${{ inputs.max_n_logits }}
           IN_DESIRED_LOGIT_PROB: ${{ inputs.desired_logit_prob }}
@@ -122,7 +127,7 @@ jobs:
           defaults = {
               "graph_model": "gemma-2-2b", "graph_models": "", "mode": "2panel",
               "pairs_file": "", "offsets": "0", "sample_size": "1",
-              "screen_targets": "", "commit_outputs": "false",
+              "screen_targets": "", "show_mitigation": "false", "commit_outputs": "false",
               "max_n_logits": "10", "desired_logit_prob": "0.95",
               "node_threshold": "0.8", "edge_threshold": "0.98",
               "max_feature_nodes": "5000", "generate_explanations": "0",
@@ -222,6 +227,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}  # translation mode only
           OFFSET: ${{ matrix.offset }}
           SCREEN: ${{ fromJson(needs.params.outputs.config).screen_targets }}
+          MITIGATE: ${{ fromJson(needs.params.outputs.config).show_mitigation }}
           GEN_EXPL: ${{ fromJson(needs.params.outputs.config).generate_explanations }}
           STEER_VALIDATE: ${{ fromJson(needs.params.outputs.config).steer_validate }}
         run: |
@@ -238,6 +244,9 @@ jobs:
             --out "$OUT_DIR")
           if [ -n "$SCREEN" ]; then
             ARGS+=(--screen-targets "$SCREEN")
+          fi
+          if [ "$MITIGATE" = "true" ]; then
+            ARGS+=(--show-mitigation)
           fi
           if [ -n "$GEN_EXPL" ] && [ "$GEN_EXPL" != "0" ]; then
             ARGS+=(--generate-missing-explanations "$GEN_EXPL")

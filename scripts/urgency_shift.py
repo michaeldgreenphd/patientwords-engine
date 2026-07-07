@@ -77,7 +77,8 @@ def classify(top_c, top_p):
 rows = []
 
 
-def add(model, name, index, prompts, spread_c, spread_p, topic=None):
+def add(model, name, index, prompts, spread_c, spread_p, topic=None,
+        penalty=None, spread_t=None):
     if not spread_c or not spread_p:
         return
     et_c, cov_c = expected_tier(spread_c, args.min_coverage)
@@ -99,8 +100,20 @@ def add(model, name, index, prompts, spread_c, spread_p, topic=None):
         "expected_tier_clinical": None if et_c is None else round(et_c, 3),
         "expected_tier_patient": None if et_p is None else round(et_p, 3),
         "tier_shift": None if (et_c is None or et_p is None) else round(et_p - et_c, 3),
+        "language_penalty": penalty,
         "coverage": [round(cov_c, 2), round(cov_p, 2)],
     })
+    # mitigation runs carry a third, translated side: does translating the
+    # patient sentence restore the URGENCY, not just the probability?
+    if spread_t:
+        et_t, _ = expected_tier(spread_t, args.min_coverage)
+        r = rows[-1]
+        r["top_translated"] = spread_t[0][0]
+        r["tier_top_translated"] = tier(spread_t[0][0])
+        r["expected_tier_translated"] = None if et_t is None else round(et_t, 3)
+        et_p_val = r["expected_tier_patient"]
+        r["urgency_recovery"] = (None if (et_t is None or et_p_val is None)
+                                 else round(et_t - et_p_val, 3))
 
 
 # site payload (bare-token spreads, per model)
@@ -125,7 +138,8 @@ if site.is_file():
             add(mid, s.get("batch"), s.get("batch_index"),
                 {"clinical": s.get("clinical_prompt")},
                 m.get("spread_clinical"), m.get("spread_patient"),
-                topic=s.get("topic") or topics.get((s.get("batch"), s.get("batch_index"))))
+                topic=s.get("topic") or topics.get((s.get("batch"), s.get("batch_index"))),
+                penalty=m.get("language_penalty"))
 
 # engine trace_out summaries not yet published (labels need stripping)
 seen = {(r["model"], r["batch"], r["index"]) for r in rows}
@@ -140,7 +154,8 @@ for part in sorted(glob.glob("trace_out/pairs_*/batch_summary.part_*.json")):
         sp = r.get("predictive_spread") or {}
         clean = lambda side: [[bare(t), p] for t, p in (sp.get(side) or []) if bare(t)]
         add(model, stem, r["index"], r.get("prompts"), clean("clinical"), clean("patient"),
-            topic=topics.get((stem, r["index"])))
+            topic=topics.get((stem, r["index"])),
+            penalty=r.get("language_penalty"), spread_t=clean("translated") or None)
 
 flips = [r for r in rows if r["flipped"]]
 down = [r for r in flips if r["flip_class"] == "downgrade"]
@@ -226,6 +241,16 @@ by_topic = {}
 for r in rows:
     t = r.get("topic") or "(unlabeled)"
     by_topic.setdefault(t, []).append(r)
+translated = [r for r in rows if r.get("urgency_recovery") is not None]
+if translated:
+    summary["mitigation"] = {
+        "n": len(translated),
+        "mean_urgency_recovery": round(sum(r["urgency_recovery"] for r in translated)
+                                       / len(translated), 4),
+        "restored_top_tier": sum(1 for r in translated
+                                 if (r.get("tier_top_translated") or -1) >= (r.get("tier_top_clinical") or 0)),
+    }
+
 summary["per_condition"] = {}
 for t, tr in sorted(by_topic.items(), key=lambda kv: -len(kv[1])):
     ts = [r["tier_shift"] for r in tr if r["tier_shift"] is not None]
