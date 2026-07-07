@@ -1,0 +1,173 @@
+name: Logits Evaluation (medlang-circuits)
+
+# Cross-model next-token behavior WITHOUT attribution graphs, for models
+# Neuronpedia's circuit tracer can't render (see docs/cross-model.md). Runs the
+# open weights on CPU and writes a batch_eval-compatible batch_summary so the
+# frontend export merges each model into scenario.models[<model>]. No graph, no
+# transcoder features - just probabilities, the language penalty, and the spread.
+#
+# Start it from the Actions tab (workflow_dispatch) or by pushing a params file
+# to .github/trigger/logits-eval.json, e.g.
+#   {"models":["qwen3-4b","qwen3-1.7b"],
+#    "pairs_file":"data/simulated/pairs_20260706T201750Z.json",
+#    "limit":13,"commit_outputs":true}
+#
+# gemma-3-4b-it is gated on Hugging Face; add an HF_TOKEN repo secret to include
+# it. The Qwen models are open and need no token.
+
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: "Space/comma-separated models (qwen3-4b, qwen3-1.7b, gemma-3-4b-it)"
+        type: string
+        default: "qwen3-4b qwen3-1.7b"
+      pairs_file:
+        description: "Repo path of the pairs JSON to measure"
+        type: string
+        default: "data/simulated/pairs_20260706T201750Z.json"
+      limit:
+        description: "Measure only the first N pairs (0 = all)"
+        type: string
+        default: "0"
+      commit_outputs:
+        description: "Commit the per-model batch_summary back to the branch"
+        type: boolean
+        default: false
+  push:
+    paths:
+      - ".github/trigger/logits-eval.json"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: logits-eval-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  params:
+    runs-on: ubuntu-latest
+    outputs:
+      models: ${{ steps.params.outputs.models }}
+      pairs_file: ${{ steps.params.outputs.pairs_file }}
+      limit: ${{ steps.params.outputs.limit }}
+      commit_outputs: ${{ steps.params.outputs.commit_outputs }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve parameters
+        id: params
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IN_MODELS: ${{ inputs.models }}
+          IN_PAIRS_FILE: ${{ inputs.pairs_file }}
+          IN_LIMIT: ${{ inputs.limit }}
+          IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          defaults = {"models": "qwen3-4b qwen3-1.7b",
+                      "pairs_file": "data/simulated/pairs_20260706T201750Z.json",
+                      "limit": "0", "commit_outputs": "false"}
+          p = dict(defaults)
+          if os.environ["EVENT_NAME"] == "push":
+              with open(".github/trigger/logits-eval.json", encoding="utf-8") as f:
+                  cfg = json.load(f)
+              if isinstance(cfg.get("models"), list):
+                  cfg["models"] = " ".join(str(m) for m in cfg["models"])
+              p.update({k: (str(v).lower() if isinstance(v, bool) else str(v))
+                        for k, v in cfg.items() if k in defaults})
+          else:
+              for k in defaults:
+                  v = os.environ.get("IN_" + k.upper(), "")
+                  if v:
+                      p[k] = v
+          models = [m.strip() for m in p["models"].replace(",", " ").split() if m.strip()]
+          if not models:
+              raise SystemExit("no models to evaluate")
+          out = os.environ["GITHUB_OUTPUT"]
+          with open(out, "a", encoding="utf-8") as f:
+              f.write("models=" + json.dumps(models) + "\n")
+              f.write("pairs_file=" + p["pairs_file"] + "\n")
+              f.write("limit=" + p["limit"] + "\n")
+              f.write("commit_outputs=" + p["commit_outputs"] + "\n")
+          print("models:", models, "| pairs:", p["pairs_file"], "| limit:", p["limit"])
+          EOF
+
+  eval:
+    needs: params
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        model: ${{ fromJson(needs.params.outputs.models) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install CPU torch + transformers
+        run: |
+          pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet transformers accelerate
+
+      - name: Resolve output dir
+        env:
+          MODEL: ${{ matrix.model }}
+          PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
+        run: |
+          STEM=$(basename "$PAIRS_FILE" .json)
+          echo "OUT_DIR=trace_out/${STEM}__${MODEL}" >> "$GITHUB_ENV"
+
+      - name: Measure next-token behavior
+        env:
+          MODEL: ${{ matrix.model }}
+          PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
+          LIMIT: ${{ needs.params.outputs.limit }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}   # only needed for gated models (gemma)
+        run: |
+          python scripts/logits_eval.py --pairs "$PAIRS_FILE" --model "$MODEL" \
+            --out "$OUT_DIR" --limit "$LIMIT"
+
+      - name: Commit the per-model summary to the branch
+        if: ${{ always() && needs.params.outputs.commit_outputs == 'true' }}
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ ! -f "$OUT_DIR/batch_summary.part_01.json" ]; then
+            echo "No summary to commit"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f "$OUT_DIR/batch_summary.part_01.json"
+          git commit -m "Logits eval: $OUT_DIR (${{ matrix.model }}, next-token behavior)"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+              exit 0
+            fi
+            sleep $((i * 2))
+          done
+          exit 1
+
+      - name: Job summary
+        if: always()
+        run: |
+          SUMMARY="$OUT_DIR/batch_summary.part_01.json"
+          if [ -f "$SUMMARY" ]; then
+            {
+              echo "## Logits eval (${{ matrix.model }})"
+              echo '```'
+              python - "$SUMMARY" <<'EOF'
+          import json, sys
+          s = json.load(open(sys.argv[1]))
+          for r in s["results"]:
+              print(f"pair {r['index']:2d}  clin={r['probabilities']['clinical']}  "
+                    f"pat={r['probabilities']['patient']}  penalty={r['language_penalty']}")
+          EOF
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
