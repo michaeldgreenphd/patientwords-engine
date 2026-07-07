@@ -30,6 +30,9 @@ parser.add_argument("--frontend", default="../patientwords")
 parser.add_argument("--min-coverage", type=float, default=0.3,
                     help="minimum share of a spread's mass that must be tier-assigned")
 parser.add_argument("--out", default="urgency_shift.json")
+parser.add_argument("--publish", default="",
+                    help="frontend repo root: also write a trimmed data/urgency_shift.json "
+                         "for the site (summary + join-keyed rows + vocabulary status)")
 args = parser.parse_args()
 
 vocab = json.loads(Path(args.tiers).read_text(encoding="utf-8"))["tokens"]
@@ -263,6 +266,22 @@ for t, tr in sorted(by_topic.items(), key=lambda kv: -len(kv[1])):
 
 Path(args.out).write_text(json.dumps({"summary": summary, "rows": rows}, indent=1) + "\n",
                           encoding="utf-8")
+if args.publish:
+    vocab_meta = json.loads(Path(args.tiers).read_text(encoding="utf-8"))
+    trimmed = [{k: r.get(k) for k in ("batch", "index", "model", "tier_top_clinical",
+                                      "tier_top_patient", "flip_class", "tier_shift",
+                                      "urgency_recovery")}
+               for r in rows if r["flipped"] or r.get("tier_shift") is not None]
+    site_payload = {
+        "vocabulary_status": "draft pending domain review",
+        "tiers": vocab_meta.get("tiers"),
+        "summary": {k: summary[k] for k in ("measurements", "flips", "flip_classes",
+                                            "per_model", "concordance") if k in summary},
+        "rows": trimmed,
+    }
+    site_path = Path(args.publish) / "data/urgency_shift.json"
+    site_path.write_text(json.dumps(site_payload, indent=1) + "\n", encoding="utf-8")
+    print(f"site copy -> {site_path} ({len(trimmed)} rows)")
 print(json.dumps(summary, indent=1))
 print(f"\nDowngrade flips ({len(down)}), most confident first:")
 for r in sorted(down, key=lambda r: -(r["p_top_patient"] or 0))[:20]:
