@@ -1,0 +1,401 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 65,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 65,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My osteoarthritis has been giving out on the stairs for weeks, so I finally saw a",
+        "patient": "My knees have been giving out on the stairs for weeks, so I finally saw a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.298,
+        "patient": 0.519
+      },
+      "language_penalty": 0.22100000000000003,
+      "clinical_mass": {
+        "clinical": 0.3966,
+        "patient": 0.3883
+      },
+      "error_share": {
+        "clinical": 0.1173,
+        "patient": 0.1184
+      },
+      "top_path": {
+        "clinical": "[L20\u00b7S]  \u2192 [L24\u00b7C] words related to medical treatment or legal cases |  \u2192 Output \" physical\" (p=0.058)",
+        "patient": "[L20\u00b7S]  \u2192 [L24\u00b7C] words related to medical treatment or legal cases |  \u2192 Output \" physical\" (p=0.052)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.298
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.298
+          ],
+          [
+            "Output \" specialist\"",
+            0.107
+          ],
+          [
+            "Output \" chi\"",
+            0.096
+          ],
+          [
+            "Output \" physio\"",
+            0.063
+          ],
+          [
+            "Output \" physical\"",
+            0.058
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.519
+          ],
+          [
+            "Output \" specialist\"",
+            0.067
+          ],
+          [
+            "Output \" chi\"",
+            0.054
+          ],
+          [
+            "Output \" physical\"",
+            0.052
+          ],
+          [
+            "Output \" po\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 547,
+        "unique_to_a": 250,
+        "unique_to_b": 218
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_65.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_65.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_65_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_65_diff.png"
+      }
+    },
+    {
+      "index": 66,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every time the pollen hits my asthma acts up on the porch, so I keep an",
+        "patient": "Every time the pollen hits I get all wheezy on the porch, so I keep an"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.18,
+        "patient": 0.203
+      },
+      "language_penalty": 0.02300000000000002,
+      "clinical_mass": {
+        "clinical": 0.1893,
+        "patient": 0.2111
+      },
+      "error_share": {
+        "clinical": 0.1251,
+        "patient": 0.1257
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] references to sight and vision | eye \u2192 Output \" eye\" (p=0.486)",
+        "patient": "embedding \u2192 [L19\u00b7O] references to sight and vision | eye \u2192 Output \" eye\" (p=0.402)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " inhaler",
+        "observed_clinical": [
+          "Output \" inhal\"",
+          0.18
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" eye\"",
+            0.486
+          ],
+          [
+            "Output \" inhal\"",
+            0.18
+          ],
+          [
+            "Output \" umbrella\"",
+            0.053
+          ],
+          [
+            "Output \" extra\"",
+            0.05
+          ],
+          [
+            "Output \" air\"",
+            0.043
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" eye\"",
+            0.402
+          ],
+          [
+            "Output \" inhal\"",
+            0.203
+          ],
+          [
+            "Output \" air\"",
+            0.074
+          ],
+          [
+            "Output \" extra\"",
+            0.053
+          ],
+          [
+            "Output \" Epi\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 589,
+        "unique_to_a": 156,
+        "unique_to_b": 187
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_66.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_66.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_66_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_66_diff.png"
+      }
+    },
+    {
+      "index": 67,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The doc says my hypertension won't come down, so every morning I take my",
+        "patient": "The doc says my top number won't come down, so every morning I take my"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.044,
+        "patient": 0.032
+      },
+      "language_penalty": -0.011999999999999997,
+      "clinical_mass": {
+        "clinical": 0.3487,
+        "patient": 0.3057
+      },
+      "error_share": {
+        "clinical": 0.1172,
+        "patient": 0.1119
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.271)",
+        "patient": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.280)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pills",
+        "observed_clinical": [
+          "Output \" pill\"",
+          0.044
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.271
+          ],
+          [
+            "Output \" BP\"",
+            0.116
+          ],
+          [
+            "Output \" \"",
+            0.063
+          ],
+          [
+            "Output \" meds\"",
+            0.055
+          ],
+          [
+            "Output \" pill\"",
+            0.044
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.28
+          ],
+          [
+            "Output \" meds\"",
+            0.062
+          ],
+          [
+            "Output \" BP\"",
+            0.042
+          ],
+          [
+            "Output \" \"",
+            0.04
+          ],
+          [
+            "Output \" pill\"",
+            0.032
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 519,
+        "unique_to_a": 281,
+        "unique_to_b": 356
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_67.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_67.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_67_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_67_diff.png"
+      }
+    },
+    {
+      "index": 68,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing insomnia before bed lately, so tonight I brewed myself a cup of",
+        "patient": "I've been feeling all wound up before bed lately, so tonight I brewed myself a cup of"
+      },
+      "target_token": "Output \" tea\"",
+      "probabilities": {
+        "clinical": 0.178,
+        "patient": 0.16
+      },
+      "language_penalty": -0.017999999999999988,
+      "clinical_mass": {
+        "clinical": 0.1366,
+        "patient": 0.1256
+      },
+      "error_share": {
+        "clinical": 0.1132,
+        "patient": 0.1165
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" this\" (p=0.053)",
+        "patient": "embedding \u2192 [L18\u00b7O] mentions of coffee, along with associated words like \u2192 [L19\u00b7O] descriptions of food, drink, and social situations | \u2192 [L21\u00b7O] text related to the topic of tea | references to tea \u2192 Output \" tea\" (p=0.160)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " tea",
+        "observed_clinical": [
+          "Output \" tea\"",
+          0.178
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" tea\"",
+            0.178
+          ],
+          [
+            "Output \" chamomile\"",
+            0.168
+          ],
+          [
+            "Output \" Sleepy\"",
+            0.066
+          ],
+          [
+            "Output \" this\"",
+            0.053
+          ],
+          [
+            "Output \" sleepy\"",
+            0.049
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" chamomile\"",
+            0.202
+          ],
+          [
+            "Output \" tea\"",
+            0.16
+          ],
+          [
+            "Output \" Sleepy\"",
+            0.069
+          ],
+          [
+            "Output \" sleepy\"",
+            0.056
+          ],
+          [
+            "Output \" lavender\"",
+            0.03
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 577,
+        "unique_to_a": 166,
+        "unique_to_b": 233
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_68.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_68.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_68_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_68_diff.png"
+      }
+    }
+  ]
+}
