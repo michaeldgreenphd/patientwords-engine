@@ -1,0 +1,401 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 49,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 49,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When the dust kicks up my asthma flares, so at work I keep a spare",
+        "patient": "When the dust kicks up my chest gets all tight, so at work I keep a spare"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.692,
+        "patient": 0.043
+      },
+      "language_penalty": -0.6489999999999999,
+      "clinical_mass": {
+        "clinical": 0.3048,
+        "patient": 0.1667
+      },
+      "error_share": {
+        "clinical": 0.1352,
+        "patient": 0.1268
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.692)",
+        "patient": "embedding \u2192 [L21\u00b7O] words related to argumentation, sequences and newnes \u2192 Output \" one\" (p=0.058)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " inhaler",
+        "observed_clinical": [
+          "Output \" inhal\"",
+          0.692
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.692
+          ],
+          [
+            "Output \" mask\"",
+            0.059
+          ],
+          [
+            "Output \" set\"",
+            0.028
+          ],
+          [
+            "Output \" puffer\"",
+            0.026
+          ],
+          [
+            "Output \" pair\"",
+            0.017
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" shirt\"",
+            0.183
+          ],
+          [
+            "Output \" t\"",
+            0.068
+          ],
+          [
+            "Output \" pair\"",
+            0.06
+          ],
+          [
+            "Output \" one\"",
+            0.058
+          ],
+          [
+            "Output \" inhal\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 507,
+        "unique_to_a": 259,
+        "unique_to_b": 370
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_49.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_49.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_49_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_49_diff.png"
+      }
+    },
+    {
+      "index": 50,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been running to the john all night with diarrhea, so this morning I poured myself a big glass of",
+        "patient": "I've been running to the john all night with the runs, so this morning I poured myself a big glass of"
+      },
+      "target_token": "Output \" water\"",
+      "probabilities": {
+        "clinical": 0.333,
+        "patient": 0.387
+      },
+      "language_penalty": 0.05399999999999999,
+      "clinical_mass": {
+        "clinical": 0.1467,
+        "patient": 0.1352
+      },
+      "error_share": {
+        "clinical": 0.1094,
+        "patient": 0.1096
+      },
+      "top_path": {
+        "clinical": "[L16\u00b7S]  \u2192 [L18\u00b7O] text describing laboratory procedures in molecular b \u2192 [L21\u00b7O] lab procedure descriptions | water-related terms | s \u2192 [L22\u00b7O] mentions of laboratory procedures involving solution \u2192 Output \" water\" (p=0.333)",
+        "patient": "embedding \u2192 [L18\u00b7O] text describing laboratory procedures in molecular b \u2192 [L21\u00b7O] lab procedure descriptions | water-related terms | s \u2192 [L22\u00b7O] mentions of laboratory procedures involving solution \u2192 Output \" water\" (p=0.387)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " water",
+        "observed_clinical": [
+          "Output \" water\"",
+          0.333
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" water\"",
+            0.333
+          ],
+          [
+            "Output \" orange\"",
+            0.066
+          ],
+          [
+            "Output \" warm\"",
+            0.053
+          ],
+          [
+            "Output \" milk\"",
+            0.048
+          ],
+          [
+            "Output \" apple\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" water\"",
+            0.387
+          ],
+          [
+            "Output \" orange\"",
+            0.072
+          ],
+          [
+            "Output \" warm\"",
+            0.043
+          ],
+          [
+            "Output \" prune\"",
+            0.036
+          ],
+          [
+            "Output \" cranberry\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 693,
+        "unique_to_a": 101,
+        "unique_to_b": 130
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_50.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_50.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_50_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_50_diff.png"
+      }
+    },
+    {
+      "index": 51,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The pollen's brutal today and my allergic rhinitis won't quit, so before the barbecue I took an",
+        "patient": "The pollen's brutal today and my sniffles won't quit, so before the barbecue I took an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.351,
+        "patient": 0.051
+      },
+      "language_penalty": -0.3,
+      "clinical_mass": {
+        "clinical": 0.3204,
+        "patient": 0.1729
+      },
+      "error_share": {
+        "clinical": 0.127,
+        "patient": 0.1176
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" allergy\" (p=0.113)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" hour\" (p=0.170)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antihistamine",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.351
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.351
+          ],
+          [
+            "Output \" extra\"",
+            0.119
+          ],
+          [
+            "Output \" allergy\"",
+            0.113
+          ],
+          [
+            "Output \" hour\"",
+            0.056
+          ],
+          [
+            "Output \" over\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hour\"",
+            0.17
+          ],
+          [
+            "Output \" extra\"",
+            0.12
+          ],
+          [
+            "Output \" afternoon\"",
+            0.117
+          ],
+          [
+            "Output \" early\"",
+            0.108
+          ],
+          [
+            "Output \" anti\"",
+            0.051
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 581,
+        "unique_to_a": 144,
+        "unique_to_b": 217
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_51.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_51.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_51_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_51_diff.png"
+      }
+    },
+    {
+      "index": 52,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's been having major depression lately and can't get out of bed, so his doctor started him on an",
+        "patient": "He's been feeling really low lately and can't get out of bed, so his doctor started him on an"
+      },
+      "target_token": "Output \" antidepress\"",
+      "probabilities": {
+        "clinical": 0.544,
+        "patient": 0.601
+      },
+      "language_penalty": 0.05699999999999994,
+      "clinical_mass": {
+        "clinical": 0.481,
+        "patient": 0.419
+      },
+      "error_share": {
+        "clinical": 0.1099,
+        "patient": 0.1208
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" antidepress\" (p=0.544)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L22\u00b7C] sentences related to drug use | medications \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.169)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antidepressant",
+        "observed_clinical": [
+          "Output \" antidepress\"",
+          0.544
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" antidepress\"",
+            0.544
+          ],
+          [
+            "Output \" anti\"",
+            0.229
+          ],
+          [
+            "Output \" SS\"",
+            0.167
+          ],
+          [
+            "Output \" experimental\"",
+            0.005
+          ],
+          [
+            "Output \" MA\"",
+            0.004
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" antidepress\"",
+            0.601
+          ],
+          [
+            "Output \" anti\"",
+            0.169
+          ],
+          [
+            "Output \" SS\"",
+            0.128
+          ],
+          [
+            "Output \" experimental\"",
+            0.014
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.011
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 476,
+        "unique_to_a": 243,
+        "unique_to_b": 290
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_52.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_52.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_52_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_52_diff.png"
+      }
+    }
+  ]
+}
