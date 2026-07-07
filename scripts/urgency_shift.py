@@ -38,10 +38,21 @@ args = parser.parse_args()
 vocab = json.loads(Path(args.tiers).read_text(encoding="utf-8"))["tokens"]
 
 
-def tier(token):
+def tier(token, cont=None):
+    """Tier for a token; when a greedy continuation exists ('new' -> 'new sleeping
+    pill'), try the completed phrase's words right-to-left first - the head noun
+    carries the urgency information."""
     if not token:
         return None
-    e = vocab.get(str(token).strip().lower())
+    key = str(token).strip().lower()
+    if cont:
+        phrase = cont.get(str(token).strip()) or cont.get(key)
+        if phrase:
+            for w in reversed(str(phrase).lower().split()):
+                e = vocab.get(w.strip('.,!?\'"'))
+                if e and e["tier"] is not None:
+                    return e["tier"]
+    e = vocab.get(key)
     return e["tier"] if e else None
 
 
@@ -52,12 +63,12 @@ def bare(label):
     return (m.group(1) if m else label).strip() or None
 
 
-def expected_tier(spread, min_cov):
+def expected_tier(spread, min_cov, cont=None):
     """Probability-weighted mean tier; None when too little mass is tier-assigned."""
     total = wsum = cov = 0.0
     for token, prob in spread or []:
         total += prob
-        tr = tier(token)
+        tr = tier(token, cont)
         if tr is not None:
             cov += prob
             wsum += prob * tr
@@ -66,8 +77,8 @@ def expected_tier(spread, min_cov):
     return wsum / cov, cov / total
 
 
-def classify(top_c, top_p):
-    tc, tp = tier(top_c), tier(top_p)
+def classify(top_c, top_p, cont_c=None, cont_p=None):
+    tc, tp = tier(top_c, cont_c), tier(top_p, cont_p)
     if tc is None or tp is None:
         return "uninformative"
     if tp < tc:
@@ -81,11 +92,11 @@ rows = []
 
 
 def add(model, name, index, prompts, spread_c, spread_p, topic=None,
-        penalty=None, spread_t=None):
+        penalty=None, spread_t=None, cont_c=None, cont_p=None):
     if not spread_c or not spread_p:
         return
-    et_c, cov_c = expected_tier(spread_c, args.min_coverage)
-    et_p, cov_p = expected_tier(spread_p, args.min_coverage)
+    et_c, cov_c = expected_tier(spread_c, args.min_coverage, cont_c)
+    et_p, cov_p = expected_tier(spread_p, args.min_coverage, cont_p)
     top_c = spread_c[0][0] if spread_c else None
     top_p = spread_p[0][0] if spread_p else None
     flipped = bool(top_c and top_p and top_c != top_p)
@@ -97,9 +108,9 @@ def add(model, name, index, prompts, spread_c, spread_p, topic=None,
         # p=0.5 is different evidence from one at p=0.1
         "p_top_clinical": round(spread_c[0][1], 3) if spread_c else None,
         "p_top_patient": round(spread_p[0][1], 3) if spread_p else None,
-        "tier_top_clinical": tier(top_c), "tier_top_patient": tier(top_p),
+        "tier_top_clinical": tier(top_c, cont_c), "tier_top_patient": tier(top_p, cont_p),
         "flipped": flipped,
-        "flip_class": classify(top_c, top_p) if flipped else None,
+        "flip_class": classify(top_c, top_p, cont_c, cont_p) if flipped else None,
         "expected_tier_clinical": None if et_c is None else round(et_c, 3),
         "expected_tier_patient": None if et_p is None else round(et_p, 3),
         "tier_shift": None if (et_c is None or et_p is None) else round(et_p - et_c, 3),
@@ -134,18 +145,8 @@ for bf in glob.glob("data/simulated/pairs_*.json"):
     for i, pair in enumerate(batch, start=1):
         topics[(stem, i)] = (pair.get("generation") or {}).get("topic")
 
-if site.is_file():
-    payload = json.loads(site.read_text(encoding="utf-8"))
-    for s in payload.get("scenarios", []):
-        for mid, m in (s.get("models") or {}).items():
-            add(mid, s.get("batch"), s.get("batch_index"),
-                {"clinical": s.get("clinical_prompt")},
-                m.get("spread_clinical"), m.get("spread_patient"),
-                topic=s.get("topic") or topics.get((s.get("batch"), s.get("batch_index"))),
-                penalty=m.get("language_penalty"))
-
-# engine trace_out summaries not yet published (labels need stripping)
-seen = {(r["model"], r["batch"], r["index"]) for r in rows}
+# engine trace_out summaries first - they carry continuations
+seen = set()
 for part in sorted(glob.glob("trace_out/pairs_*/batch_summary.part_*.json")):
     run_dir = Path(part).parent.name
     stem, _, model_suffix = run_dir.partition("__")
@@ -156,9 +157,25 @@ for part in sorted(glob.glob("trace_out/pairs_*/batch_summary.part_*.json")):
             continue
         sp = r.get("predictive_spread") or {}
         clean = lambda side: [[bare(t), p] for t, p in (sp.get(side) or []) if bare(t)]
+        cont = r.get("continuations") or {}
         add(model, stem, r["index"], r.get("prompts"), clean("clinical"), clean("patient"),
             topic=topics.get((stem, r["index"])),
-            penalty=r.get("language_penalty"), spread_t=clean("translated") or None)
+            penalty=r.get("language_penalty"), spread_t=clean("translated") or None,
+            cont_c=cont.get("clinical"), cont_p=cont.get("patient"))
+        seen.add((model, stem, r["index"]))
+
+# site payload fills anything the engine tree lacks
+if site.is_file():
+    payload = json.loads(site.read_text(encoding="utf-8"))
+    for s in payload.get("scenarios", []):
+        for mid, m in (s.get("models") or {}).items():
+            if (mid, s.get("batch"), s.get("batch_index")) in seen:
+                continue
+            add(mid, s.get("batch"), s.get("batch_index"),
+                {"clinical": s.get("clinical_prompt")},
+                m.get("spread_clinical"), m.get("spread_patient"),
+                topic=s.get("topic") or topics.get((s.get("batch"), s.get("batch_index"))),
+                penalty=m.get("language_penalty"))
 
 flips = [r for r in rows if r["flipped"]]
 down = [r for r in flips if r["flip_class"] == "downgrade"]

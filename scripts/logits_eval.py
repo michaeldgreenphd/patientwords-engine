@@ -40,8 +40,15 @@ def label(tokenizer, token_id):
     return 'Output "' + tokenizer.decode([int(token_id)]) + '"'
 
 
-def measure(model, tokenizer, prompt, target_id, topk):
-    """Next-token probability of target_id after `prompt`, plus the top-k spread."""
+def measure(model, tokenizer, prompt, target_id, topk, decode_top=4, decode_steps=2):
+    """Next-token probability of target_id after `prompt`, plus the top-k spread.
+
+    Also greedily decodes `decode_steps` extra tokens for the top `decode_top`
+    candidates ("continuations"): a top-1 of ' new' alone is uninformative, but
+    its continuation 'new sleeping pill' is classifiable by the urgency tiers.
+    The 4 sequences share one length (prompt + 1 candidate), so decoding runs
+    as 2 batched forward passes, not 8 singles.
+    """
     import torch
 
     input_ids = tokenizer(prompt, return_tensors="pt", add_special_tokens=True).input_ids
@@ -52,7 +59,24 @@ def measure(model, tokenizer, prompt, target_id, topk):
     top = torch.topk(probs, topk)
     spread = [[label(tokenizer, idx), round(float(p), 4)]
               for p, idx in zip(top.values.tolist(), top.indices.tolist())]
-    return target_prob, spread
+
+    continuations = {}
+    cand = top.indices.tolist()[:decode_top]
+    if cand:
+        batch = torch.cat([
+            torch.cat([input_ids, torch.tensor([[c]])], dim=1) for c in cand
+        ], dim=0)
+        with torch.no_grad():
+            for _ in range(decode_steps):
+                nxt = model(batch).logits[:, -1].argmax(dim=-1, keepdim=True)
+                batch = torch.cat([batch, nxt], dim=1)
+        start = input_ids.shape[1]
+        for row, c in zip(batch.tolist(), cand):
+            text = tokenizer.decode(row[start:]).strip()
+            key = tokenizer.decode([c]).strip()
+            if key and text and text != key:
+                continuations[key] = text
+    return target_prob, spread, continuations
 
 
 def build_result(index, pair, tokenizer, measure_fn, topk):
@@ -71,8 +95,8 @@ def build_result(index, pair, tokenizer, measure_fn, topk):
             "forced_targets": [], "circuit_diff": None, "screening": None,
         }
     target_id = target_ids[0]
-    prob_c, spread_c = measure_fn(clinical, target_id, topk)
-    prob_p, spread_p = measure_fn(patient, target_id, topk)
+    prob_c, spread_c, cont_c = measure_fn(clinical, target_id, topk)
+    prob_p, spread_p, cont_p = measure_fn(patient, target_id, topk)
     penalty = round(prob_p - prob_c, 4) if (prob_c is not None and prob_p is not None) else None
     return {
         "index": index, "mode": "2panel",
@@ -82,6 +106,8 @@ def build_result(index, pair, tokenizer, measure_fn, topk):
         "language_penalty": penalty,
         "predictive_spread": {"clinical": spread_c, "patient": spread_p},
         "forced_targets": [],
+        # bare-token -> greedy multi-token completion, for urgency classification
+        "continuations": {"clinical": cont_c, "patient": cont_p},
         "circuit_diff": None,   # no graph -> no circuit diff
         "screening": None,      # measured directly, not screened
     }
