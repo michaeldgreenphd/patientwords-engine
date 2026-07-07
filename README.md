@@ -1,5 +1,10 @@
 # patientwords-engine
 
+> **Research code, work in progress.** Findings are preliminary (the care-urgency tier
+> vocabulary is pending domain review) and everything here measures language-model
+> probabilities only — nothing is medical advice or a clinical tool. If you use this
+> code or data, please cite it (see `CITATION.cff`).
+
 Backend engine for [patientwords](https://github.com/michaeldgreenphd/patientwords)
 (`medlang-circuits` Python package): a pipeline for comparing attribution graphs of
 two phrasings of the same next-token prompt (standard clinical terminology vs.
