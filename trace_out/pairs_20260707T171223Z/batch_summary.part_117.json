@@ -1,0 +1,305 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 117,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 117,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since the wildfire smoke rolled in he's had bronchospasm, so before the drive he grabbed his rescue",
+        "patient": "Ever since the wildfire smoke rolled in he's been all wheezy, so before the drive he grabbed his rescue"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.836,
+        "patient": 0.83
+      },
+      "language_penalty": -0.006000000000000005,
+      "clinical_mass": {
+        "clinical": 0.4252,
+        "patient": 0.3418
+      },
+      "error_share": {
+        "clinical": 0.1526,
+        "patient": 0.1473
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" breathing\" (p=0.016)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.830)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " inhaler",
+        "observed_clinical": [
+          "Output \" inhal\"",
+          0.836
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.836
+          ],
+          [
+            "Output \" meds\"",
+            0.028
+          ],
+          [
+            "Output \" nebu\"",
+            0.019
+          ],
+          [
+            "Output \" breathing\"",
+            0.016
+          ],
+          [
+            "Output \" puffer\"",
+            0.009
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.83
+          ],
+          [
+            "Output \" meds\"",
+            0.044
+          ],
+          [
+            "Output \" medicine\"",
+            0.015
+          ],
+          [
+            "Output \" mask\"",
+            0.012
+          ],
+          [
+            "Output \" medication\"",
+            0.011
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 485,
+        "unique_to_a": 210,
+        "unique_to_b": 301
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_117.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_117.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_117_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_117_diff.png"
+      }
+    },
+    {
+      "index": 118,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My constipation flared up again after the road trip, so at the pharmacy I picked up a gentle",
+        "patient": "My gut's all bound up again after the road trip, so at the pharmacy I picked up a gentle"
+      },
+      "target_token": "Output \" lax\"",
+      "probabilities": {
+        "clinical": 0.603,
+        "patient": 0.285
+      },
+      "language_penalty": -0.318,
+      "clinical_mass": {
+        "clinical": 0.4315,
+        "patient": 0.3778
+      },
+      "error_share": {
+        "clinical": 0.1218,
+        "patient": 0.1319
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" lax\" (p=0.603)",
+        "patient": "embedding \u2192 [L21\u00b7C] words and phrases related to gut bacteria, digestion \u2192 [L25\u00b7C] content from scientific or medical papers. | gut hea \u2192 Output \" digestive\" (p=0.053)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " laxative",
+        "observed_clinical": [
+          "Output \" lax\"",
+          0.603
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lax\"",
+            0.603
+          ],
+          [
+            "Output \" stool\"",
+            0.051
+          ],
+          [
+            "Output \" fiber\"",
+            0.038
+          ],
+          [
+            "Output \",\"",
+            0.032
+          ],
+          [
+            "Output \" stimulant\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" lax\"",
+            0.285
+          ],
+          [
+            "Output \",\"",
+            0.09
+          ],
+          [
+            "Output \" digestive\"",
+            0.053
+          ],
+          [
+            "Output \" probiotic\"",
+            0.037
+          ],
+          [
+            "Output \" anti\"",
+            0.037
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 435,
+        "unique_to_a": 330,
+        "unique_to_b": 424
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_118.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_118.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_118_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_118_diff.png"
+      }
+    },
+    {
+      "index": 119,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Grandma's been constipated for a week, so before dinner she took a",
+        "patient": "Grandma's been all bunged up for a week, so before dinner she took a"
+      },
+      "target_token": "Output \" lax\"",
+      "probabilities": {
+        "clinical": 0.263,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3072,
+        "patient": 0.1461
+      },
+      "error_share": {
+        "clinical": 0.1178,
+        "patient": 0.1186
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" big\" (p=0.041)",
+        "patient": "embedding \u2192 Output \" long\" (p=0.032)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " laxative",
+        "observed_clinical": [
+          "Output \" lax\"",
+          0.263
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lax\"",
+            0.263
+          ],
+          [
+            "Output \" dose\"",
+            0.069
+          ],
+          [
+            "Output \" couple\"",
+            0.061
+          ],
+          [
+            "Output \" big\"",
+            0.041
+          ],
+          [
+            "Output \" stool\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" nap\"",
+            0.299
+          ],
+          [
+            "Output \" shower\"",
+            0.088
+          ],
+          [
+            "Output \" bath\"",
+            0.06
+          ],
+          [
+            "Output \" little\"",
+            0.036
+          ],
+          [
+            "Output \" long\"",
+            0.032
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 430,
+        "unique_to_a": 383,
+        "unique_to_b": 383
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_119.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_119.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_119_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_119_diff.png"
+      }
+    }
+  ]
+}
