@@ -1,0 +1,359 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 37,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 37,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been suffering from insomnia for hours staring at the ceiling, so tonight I finally swallowed a",
+        "patient": "I've been wide awake for hours staring at the ceiling, so tonight I finally swallowed a"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.119,
+        "patient": 0.109
+      },
+      "language_penalty": -0.009999999999999995,
+      "clinical_mass": {
+        "clinical": 0.264,
+        "patient": 0.2248
+      },
+      "error_share": {
+        "clinical": 0.1239,
+        "patient": 0.1273
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sleeping\" (p=0.085)",
+        "patient": "embedding \u2192 [L18\u00b7S] instances of the indefinite article 'a' or 'an' near \u2192 [L24\u00b7S] articles, prepositions, and other common short words \u2192 Output \" couple\" (p=0.100)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": [
+          "Output \" pill\"",
+          0.119
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pill\"",
+            0.119
+          ],
+          [
+            "Output \" few\"",
+            0.115
+          ],
+          [
+            "Output \" sleeping\"",
+            0.085
+          ],
+          [
+            "Output \" couple\"",
+            0.072
+          ],
+          [
+            "Output \" handful\"",
+            0.054
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" few\"",
+            0.149
+          ],
+          [
+            "Output \" pill\"",
+            0.109
+          ],
+          [
+            "Output \" couple\"",
+            0.1
+          ],
+          [
+            "Output \" sleeping\"",
+            0.072
+          ],
+          [
+            "Output \" handful\"",
+            0.067
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 633,
+        "unique_to_a": 192,
+        "unique_to_b": 210
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_37.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_37.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_37_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_37_diff.png"
+      }
+    },
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The kid's got eczema all over, so the doctor prescribed a",
+        "patient": "The kid's got these dry itchy patches all over, so the doctor prescribed a"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.194,
+        "patient": 0.195
+      },
+      "language_penalty": 0.0010000000000000009,
+      "clinical_mass": {
+        "clinical": 0.4522,
+        "patient": 0.4689
+      },
+      "error_share": {
+        "clinical": 0.1141,
+        "patient": 0.1274
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" special\" (p=0.077)",
+        "patient": "embedding \u2192 Output \" special\" (p=0.040)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cream",
+        "observed_clinical": [
+          "Output \" cream\"",
+          0.194
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cream\"",
+            0.194
+          ],
+          [
+            "Output \" steroid\"",
+            0.103
+          ],
+          [
+            "Output \" special\"",
+            0.077
+          ],
+          [
+            "Output \" topical\"",
+            0.058
+          ],
+          [
+            "Output \" lotion\"",
+            0.05
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cream\"",
+            0.195
+          ],
+          [
+            "Output \" steroid\"",
+            0.122
+          ],
+          [
+            "Output \" topical\"",
+            0.098
+          ],
+          [
+            "Output \" special\"",
+            0.04
+          ],
+          [
+            "Output \" shampoo\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 558,
+        "unique_to_a": 265,
+        "unique_to_b": 272
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_38.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_38.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_38_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_38_diff.png"
+      }
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My chronic lumbar pain has flared since the move, so at the pharmacy I grabbed a",
+        "patient": "My lower back's been killing me since the move, so at the pharmacy I grabbed a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4186
+      },
+      "error_share": {
+        "clinical": 0.1225
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " painkiller",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" bottle\"",
+            0.354
+          ],
+          [
+            "Output \" couple\"",
+            0.076
+          ],
+          [
+            "Output \" new\"",
+            0.068
+          ],
+          [
+            "Output \" prescription\"",
+            0.062
+          ],
+          [
+            "Output \" few\"",
+            0.061
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every spring my allergic rhinitis flares, so before the picnic I took an",
+        "patient": "Every spring my nose runs and my eyes stream, so before the picnic I took an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.572,
+        "patient": 0.324
+      },
+      "language_penalty": -0.24799999999999994,
+      "clinical_mass": {
+        "clinical": 0.418,
+        "patient": 0.3181
+      },
+      "error_share": {
+        "clinical": 0.1297,
+        "patient": 0.1179
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" allergy\" (p=0.121)",
+        "patient": "embedding \u2192 Output \" over\" (p=0.046)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antihistamine",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.572
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.572
+          ],
+          [
+            "Output \" allergy\"",
+            0.121
+          ],
+          [
+            "Output \" extra\"",
+            0.097
+          ],
+          [
+            "Output \" over\"",
+            0.028
+          ],
+          [
+            "Output \" oral\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.324
+          ],
+          [
+            "Output \" allergy\"",
+            0.18
+          ],
+          [
+            "Output \" extra\"",
+            0.122
+          ],
+          [
+            "Output \" over\"",
+            0.046
+          ],
+          [
+            "Output \" eye\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 454,
+        "unique_to_a": 198,
+        "unique_to_b": 279
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_40.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_40.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_40_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_40_diff.png"
+      }
+    }
+  ]
+}
