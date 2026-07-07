@@ -77,7 +77,7 @@ def classify(top_c, top_p):
 rows = []
 
 
-def add(model, name, index, prompts, spread_c, spread_p):
+def add(model, name, index, prompts, spread_c, spread_p, topic=None):
     if not spread_c or not spread_p:
         return
     et_c, cov_c = expected_tier(spread_c, args.min_coverage)
@@ -86,9 +86,13 @@ def add(model, name, index, prompts, spread_c, spread_p):
     top_p = spread_p[0][0] if spread_p else None
     flipped = bool(top_c and top_p and top_c != top_p)
     rows.append({
-        "model": model, "batch": name, "index": index,
+        "model": model, "batch": name, "index": index, "topic": topic,
         "clinical_prompt": (prompts or {}).get("clinical"),
         "top_clinical": top_c, "top_patient": top_p,
+        # how strongly each side commits to its top prediction - a downgrade at
+        # p=0.5 is different evidence from one at p=0.1
+        "p_top_clinical": round(spread_c[0][1], 3) if spread_c else None,
+        "p_top_patient": round(spread_p[0][1], 3) if spread_p else None,
         "tier_top_clinical": tier(top_c), "tier_top_patient": tier(top_p),
         "flipped": flipped,
         "flip_class": classify(top_c, top_p) if flipped else None,
@@ -101,13 +105,27 @@ def add(model, name, index, prompts, spread_c, spread_p):
 
 # site payload (bare-token spreads, per model)
 site = Path(args.frontend) / "data/simulated_scenarios.json"
+# topic lookup: (batch stem, 1-based index) -> condition area, from the batch files
+topics = {}
+for bf in glob.glob("data/simulated/pairs_*.json"):
+    if bf.endswith(".report.json"):
+        continue
+    stem = Path(bf).stem
+    try:
+        batch = json.loads(Path(bf).read_text(encoding="utf-8"))
+    except Exception:
+        continue
+    for i, pair in enumerate(batch, start=1):
+        topics[(stem, i)] = (pair.get("generation") or {}).get("topic")
+
 if site.is_file():
     payload = json.loads(site.read_text(encoding="utf-8"))
     for s in payload.get("scenarios", []):
         for mid, m in (s.get("models") or {}).items():
             add(mid, s.get("batch"), s.get("batch_index"),
                 {"clinical": s.get("clinical_prompt")},
-                m.get("spread_clinical"), m.get("spread_patient"))
+                m.get("spread_clinical"), m.get("spread_patient"),
+                topic=s.get("topic") or topics.get((s.get("batch"), s.get("batch_index"))))
 
 # engine trace_out summaries not yet published (labels need stripping)
 seen = {(r["model"], r["batch"], r["index"]) for r in rows}
@@ -121,7 +139,8 @@ for part in sorted(glob.glob("trace_out/pairs_*/batch_summary.part_*.json")):
             continue
         sp = r.get("predictive_spread") or {}
         clean = lambda side: [[bare(t), p] for t, p in (sp.get(side) or []) if bare(t)]
-        add(model, stem, r["index"], r.get("prompts"), clean("clinical"), clean("patient"))
+        add(model, stem, r["index"], r.get("prompts"), clean("clinical"), clean("patient"),
+            topic=topics.get((stem, r["index"])))
 
 flips = [r for r in rows if r["flipped"]]
 down = [r for r in flips if r["flip_class"] == "downgrade"]
@@ -140,23 +159,90 @@ summary = {
     "tier_shift_n": len(shifts),
     "per_model": {},
 }
+def sign_test(k_down, k_up):
+    """Two-sided exact sign test: is the downgrade/upgrade split consistent with 50/50?"""
+    import math
+    n = k_down + k_up
+    if n == 0:
+        return None
+    k = min(k_down, k_up)
+    p = sum(math.comb(n, i) for i in range(0, k + 1)) / 2 ** n
+    return round(min(1.0, 2 * p), 5)
+
+
 for model in sorted({r["model"] for r in rows}):
     mr = [r for r in rows if r["model"] == model]
     ms = [r["tier_shift"] for r in mr if r["tier_shift"] is not None]
     mf = [r for r in mr if r["flipped"]]
+    d = sum(1 for r in mf if r["flip_class"] == "downgrade")
+    u = sum(1 for r in mf if r["flip_class"] == "upgrade")
+    # confident downgrades: the patient side commits to the downgraded action
+    conf = [r for r in mf if r["flip_class"] == "downgrade"
+            and (r["p_top_patient"] or 0) >= 0.2]
     summary["per_model"][model] = {
         "n": len(mr), "flips": len(mf),
-        "downgrades": sum(1 for r in mf if r["flip_class"] == "downgrade"),
-        "upgrades": sum(1 for r in mf if r["flip_class"] == "upgrade"),
+        "downgrades": d, "upgrades": u,
+        "sign_test_p": sign_test(d, u),
+        "confident_downgrades_p>=0.2": len(conf),
         "mean_tier_shift": round(sum(ms) / len(ms), 4) if ms else None,
+    }
+
+# Cross-model concordance: do the models downgrade on the SAME phrases?
+# Correlated downgrades point at the language; uncorrelated ones at the model.
+by_phrase = {}
+for r in rows:
+    by_phrase.setdefault((r["batch"], r["index"]), {})[r["model"]] = r
+multi = {k: v for k, v in by_phrase.items() if len(v) >= 2}
+conc = {
+    "phrases_measured_by_2plus_models": len(multi),
+    "downgrade_on_any_model": 0, "downgrade_on_2plus_models": 0,
+    "flip_on_2plus_models": 0,
+    "pairwise_downgrade_overlap": {},
+}
+for k, v in multi.items():
+    dg = [m for m, r in v.items() if r["flip_class"] == "downgrade"]
+    fl = [m for m, r in v.items() if r["flipped"]]
+    if dg:
+        conc["downgrade_on_any_model"] += 1
+    if len(dg) >= 2:
+        conc["downgrade_on_2plus_models"] += 1
+    if len(fl) >= 2:
+        conc["flip_on_2plus_models"] += 1
+models_seen = sorted({r["model"] for r in rows})
+for i, a in enumerate(models_seen):
+    for b in models_seen[i + 1:]:
+        both = [v for v in multi.values() if a in v and b in v]
+        da = {id(v) for v in both if v[a]["flip_class"] == "downgrade"}
+        db = {id(v) for v in both if v[b]["flip_class"] == "downgrade"}
+        union = da | db
+        conc["pairwise_downgrade_overlap"][f"{a} & {b}"] = {
+            "phrases": len(both), "either": len(union), "both": len(da & db),
+            "jaccard": round(len(da & db) / len(union), 3) if union else None,
+        }
+summary["concordance"] = conc
+
+# Per-condition breakdown: where do the downgrades live?
+by_topic = {}
+for r in rows:
+    t = r.get("topic") or "(unlabeled)"
+    by_topic.setdefault(t, []).append(r)
+summary["per_condition"] = {}
+for t, tr in sorted(by_topic.items(), key=lambda kv: -len(kv[1])):
+    ts = [r["tier_shift"] for r in tr if r["tier_shift"] is not None]
+    summary["per_condition"][t] = {
+        "n": len(tr),
+        "downgrades": sum(1 for r in tr if r["flip_class"] == "downgrade"),
+        "upgrades": sum(1 for r in tr if r["flip_class"] == "upgrade"),
+        "mean_tier_shift": round(sum(ts) / len(ts), 4) if ts else None,
     }
 
 Path(args.out).write_text(json.dumps({"summary": summary, "rows": rows}, indent=1) + "\n",
                           encoding="utf-8")
 print(json.dumps(summary, indent=1))
-print(f"\nDowngrade flips ({len(down)}):")
-for r in sorted(down, key=lambda r: (r["tier_top_patient"] or 0) - (r["tier_top_clinical"] or 0))[:20]:
+print(f"\nDowngrade flips ({len(down)}), most confident first:")
+for r in sorted(down, key=lambda r: -(r["p_top_patient"] or 0))[:20]:
     print(f"  [{r['model']}] {r['batch']}#{r['index']}: "
-          f"{r['top_clinical']!r}(t{r['tier_top_clinical']}) -> {r['top_patient']!r}(t{r['tier_top_patient']}) | "
-          f"{(r['clinical_prompt'] or '')[:56]}")
+          f"{r['top_clinical']!r}(t{r['tier_top_clinical']}, p={r['p_top_clinical']}) -> "
+          f"{r['top_patient']!r}(t{r['tier_top_patient']}, p={r['p_top_patient']}) | "
+          f"{(r['clinical_prompt'] or '')[:52]}")
 print(f"-> {args.out}")
