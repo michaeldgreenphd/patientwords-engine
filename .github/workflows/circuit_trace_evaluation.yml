@@ -136,6 +136,8 @@ jobs:
                   overrides["offsets"] = overrides.pop("offset")
               if isinstance(overrides.get("offsets"), list):
                   overrides["offsets"] = ",".join(str(o) for o in overrides["offsets"])
+              if isinstance(overrides.get("graph_models"), list):
+                  overrides["graph_models"] = ",".join(str(m) for m in overrides["graph_models"])
               params.update({k: str(v).lower() if isinstance(v, bool) else str(v)
                              for k, v in overrides.items() if k in defaults})
           else:
@@ -298,5 +300,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: circuit-trace-${{ matrix.model }}-${{ fromJson(needs.params.outputs.config).mode }}-${{ github.run_number }}-offset${{ matrix.offset }}
-          path: trace_out/
+          # just this cell's dir - uploading all of trace_out/ ships the whole
+          # (hundreds of MB) archive from every matrix cell
+          path: ${{ env.OUT_DIR }}
           if-no-files-found: warn
