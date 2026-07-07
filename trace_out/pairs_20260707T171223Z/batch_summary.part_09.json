@@ -1,0 +1,359 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 9,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My eczema has been flaring up something awful, so tonight I'm slathering on some of",
+        "patient": "My skin's been flaring up something awful, so tonight I'm slathering on some of"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1307
+      },
+      "error_share": {
+        "clinical": 0.1256
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " cream",
+        "observed_clinical": null,
+        "probe_extension": "of",
+        "reason": "intended target not in the traced clinical spread (even after probe extension by 'of')"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" this\"",
+            0.373
+          ],
+          [
+            "Output \" my\"",
+            0.273
+          ],
+          [
+            "Output \" the\"",
+            0.229
+          ],
+          [
+            "Output \" these\"",
+            0.045
+          ],
+          [
+            "Output \" that\"",
+            0.014
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every spring my allergic rhinitis acts up, so before the walk I pop an",
+        "patient": "Every spring my nose goes crazy, so before the walk I pop an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.586,
+        "patient": 0.522
+      },
+      "language_penalty": -0.06399999999999995,
+      "clinical_mass": {
+        "clinical": 0.4503,
+        "patient": 0.3871
+      },
+      "error_share": {
+        "clinical": 0.1252,
+        "patient": 0.1175
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" allergy\" (p=0.068)",
+        "patient": "embedding \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" allergy\" (p=0.107)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antihistamine",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.586
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.586
+          ],
+          [
+            "Output \" allergy\"",
+            0.068
+          ],
+          [
+            "Output \" extra\"",
+            0.052
+          ],
+          [
+            "Output \" Alle\"",
+            0.045
+          ],
+          [
+            "Output \" Al\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.522
+          ],
+          [
+            "Output \" allergy\"",
+            0.107
+          ],
+          [
+            "Output \" extra\"",
+            0.057
+          ],
+          [
+            "Output \" Al\"",
+            0.036
+          ],
+          [
+            "Output \" Alle\"",
+            0.035
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 479,
+        "unique_to_a": 235,
+        "unique_to_b": 274
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_10.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_10.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_10_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_10_diff.png"
+      }
+    },
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since the divorce he has chronic insomnia, so his doctor prescribed a",
+        "patient": "Ever since the divorce he can't shut his brain off at night, so his doctor prescribed a"
+      },
+      "target_token": "Output \" sleeping\"",
+      "probabilities": {
+        "clinical": 0.237,
+        "patient": 0.208
+      },
+      "language_penalty": -0.028999999999999998,
+      "clinical_mass": {
+        "clinical": 0.4307,
+        "patient": 0.2963
+      },
+      "error_share": {
+        "clinical": 0.1232,
+        "patient": 0.1261
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sleep\" (p=0.067)",
+        "patient": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleeping\" (p=0.208)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " sleeping",
+        "observed_clinical": [
+          "Output \" sleeping\"",
+          0.237
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleeping\"",
+            0.237
+          ],
+          [
+            "Output \" drug\"",
+            0.093
+          ],
+          [
+            "Output \" sleep\"",
+            0.067
+          ],
+          [
+            "Output \" new\"",
+            0.055
+          ],
+          [
+            "Output \" medication\"",
+            0.054
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleeping\"",
+            0.208
+          ],
+          [
+            "Output \" sleep\"",
+            0.099
+          ],
+          [
+            "Output \" drug\"",
+            0.076
+          ],
+          [
+            "Output \" sed\"",
+            0.056
+          ],
+          [
+            "Output \" pill\"",
+            0.052
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 450,
+        "unique_to_a": 308,
+        "unique_to_b": 381
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_11.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_11.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_11_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_11_diff.png"
+      }
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After that greasy diner meal I have acid reflux, so I reached for an",
+        "patient": "After that greasy diner meal my stomach's on fire, so I reached for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.523,
+        "patient": 0.09
+      },
+      "language_penalty": -0.43300000000000005,
+      "clinical_mass": {
+        "clinical": 0.2803,
+        "patient": 0.1689
+      },
+      "error_share": {
+        "clinical": 0.1335,
+        "patient": 0.1202
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.072)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.285)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antacid",
+        "observed_clinical": [
+          "Output \" ant\"",
+          0.523
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.523
+          ],
+          [
+            "Output \" over\"",
+            0.072
+          ],
+          [
+            "Output \" anti\"",
+            0.045
+          ],
+          [
+            "Output \" apple\"",
+            0.045
+          ],
+          [
+            "Output \" OTC\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ice\"",
+            0.285
+          ],
+          [
+            "Output \" ant\"",
+            0.09
+          ],
+          [
+            "Output \" apple\"",
+            0.09
+          ],
+          [
+            "Output \" aspirin\"",
+            0.059
+          ],
+          [
+            "Output \" old\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 465,
+        "unique_to_a": 267,
+        "unique_to_b": 322
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_12.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_12.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_12_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_12_diff.png"
+      }
+    }
+  ]
+}
