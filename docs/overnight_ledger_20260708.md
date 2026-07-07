@@ -17,3 +17,5 @@ Hard ceiling this session: **$8.00** Anthropic credits. Tracing/logits/CI: $0.
 Project lifetime spend before tonight: $6.08.
 
 Updated at each check-in; final numbers in the morning report.
+
+**GitHub Actions minutes event (2026-07-08 ~00:00):** user reports ~90% of the monthly Actions quota consumed (private-repo CI: trace runners waiting on hosted generation + CPU logits runs). All queued/chained CI halted; two live runs need a manual cancel. Remaining planned logits re-runs (154345Z, 201750Z), gen A trace chunks 8-20, gen A logits, and gen B trace are DEFERRED pending a quota decision (public repo / paid minutes / monthly reset). Data already landed is checkpointed and safe.

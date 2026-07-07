@@ -113,6 +113,14 @@ flips first, then |language penalty|). Full render sets go to GitHub Releases vi
 `scripts/archive_run.py` + the archive workflow (`docs/archiving.md`); pass the Release URL
 back with `--archive-url`.
 
+## Figure style (standing preference)
+
+Figures follow Tufte: simple and readable, maximum data-ink. Concretely for the renderer
+(`compare_viz.py`) and any new figure code: no decorative chrome, hairline structure only,
+direct labels on the data instead of legends where possible, muted structural elements so
+the clinical/off-target contrast carries the story, serif/mono typography per the site
+palette, and every mark must survive gallery-thumbnail scale. When in doubt, remove ink.
+
 ## Tests
 
 Offline and fast (`tests/`, `conftest.py` provides fixtures; no network, no keys). Every
