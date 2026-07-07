@@ -1,0 +1,619 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 8,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "For the scan they will run iodinated contrast through your IV so the before you should",
+        "patient": "For the scan they will run the dye through your IV so before you should"
+      },
+      "target_token": "Output \" drink\"",
+      "probabilities": {
+        "clinical": 0.198,
+        "patient": 0.074
+      },
+      "language_penalty": -0.12400000000000001,
+      "clinical_mass": {
+        "clinical": 0.2397,
+        "patient": 0.1725
+      },
+      "error_share": {
+        "clinical": 0.1467,
+        "patient": 0.1325
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L20\u00b7O] the general topic of fasting, especially in a religi \u2192 Output \" fast\" (p=0.042)",
+        "patient": "embedding \u2192 Output \" be\" (p=0.119)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" drink\"",
+            0.198
+          ],
+          [
+            "Output \" have\"",
+            0.133
+          ],
+          [
+            "Output \" be\"",
+            0.128
+          ],
+          [
+            "Output \" not\"",
+            0.047
+          ],
+          [
+            "Output \" fast\"",
+            0.042
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" have\"",
+            0.133
+          ],
+          [
+            "Output \" be\"",
+            0.119
+          ],
+          [
+            "Output \" drink\"",
+            0.074
+          ],
+          [
+            "Output \" get\"",
+            0.054
+          ],
+          [
+            "Output \" ask\"",
+            0.049
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 536,
+        "unique_to_a": 271,
+        "unique_to_b": 242
+      },
+      "outputs": {
+        "html": "trace_out/imported_pairs/index_08.html",
+        "png": "trace_out/imported_pairs/index_08.png",
+        "diff_html": "trace_out/imported_pairs/index_08_diff.html",
+        "diff_png": "trace_out/imported_pairs/index_08_diff.png"
+      }
+    },
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He said he was getting opioid withdrawal so they should",
+        "patient": "He said he was getting dope sick so they should"
+      },
+      "target_token": "Output \" give\"",
+      "probabilities": {
+        "clinical": 0.16,
+        "patient": 0.068
+      },
+      "language_penalty": -0.092,
+      "clinical_mass": {
+        "clinical": 0.1875,
+        "patient": 0.1538
+      },
+      "error_share": {
+        "clinical": 0.113,
+        "patient": 0.1077
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" be\" (p=0.056)",
+        "patient": "embedding \u2192 Output \" just\" (p=0.078)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" give\"",
+            0.16
+          ],
+          [
+            "Output \" let\"",
+            0.065
+          ],
+          [
+            "Output \" be\"",
+            0.056
+          ],
+          [
+            "Output \" prescribe\"",
+            0.045
+          ],
+          [
+            "Output \" have\"",
+            0.038
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" just\"",
+            0.078
+          ],
+          [
+            "Output \" give\"",
+            0.068
+          ],
+          [
+            "Output \" get\"",
+            0.067
+          ],
+          [
+            "Output \" let\"",
+            0.064
+          ],
+          [
+            "Output \" take\"",
+            0.057
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 520,
+        "unique_to_a": 276,
+        "unique_to_b": 296
+      },
+      "outputs": {
+        "html": "trace_out/imported_pairs/index_09.html",
+        "png": "trace_out/imported_pairs/index_09.png",
+        "diff_html": "trace_out/imported_pairs/index_09_diff.html",
+        "diff_png": "trace_out/imported_pairs/index_09_diff.png"
+      }
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Before you go out in the cold, grab your gloves, your scarf, and your bronchodilator, and remember to",
+        "patient": "Before you go out in the cold, grab your gloves, your scarf, and your puffer, and remember to"
+      },
+      "target_token": "Output \" take\"",
+      "probabilities": {
+        "clinical": 0.139,
+        "patient": 0.074
+      },
+      "language_penalty": -0.06500000000000002,
+      "clinical_mass": {
+        "clinical": 0.1276,
+        "patient": 0.0512
+      },
+      "error_share": {
+        "clinical": 0.1269,
+        "patient": 0.1137
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L4\u00b7C] terms related to the lungs and pulmonary system | lu \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 [L25\u00b7O] words and phrases related to breathing and physical  \u2192 Output \" breathe\" (p=0.052)",
+        "patient": "embedding \u2192 Output \" take\" (p=0.074)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" take\"",
+            0.139
+          ],
+          [
+            "Output \" check\"",
+            0.089
+          ],
+          [
+            "Output \" breathe\"",
+            0.052
+          ],
+          [
+            "Output \" keep\"",
+            0.052
+          ],
+          [
+            "Output \" bring\"",
+            0.05
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bring\"",
+            0.09
+          ],
+          [
+            "Output \" take\"",
+            0.074
+          ],
+          [
+            "Output \" check\"",
+            0.074
+          ],
+          [
+            "Output \" keep\"",
+            0.056
+          ],
+          [
+            "Output \" put\"",
+            0.048
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 645,
+        "unique_to_a": 177,
+        "unique_to_b": 159
+      },
+      "outputs": {
+        "html": "trace_out/imported_pairs/index_10.html",
+        "png": "trace_out/imported_pairs/index_10.png",
+        "diff_html": "trace_out/imported_pairs/index_10_diff.html",
+        "diff_png": "trace_out/imported_pairs/index_10_diff.png"
+      }
+    },
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "They said her IV was almost out and to call before it ran dry, so she should",
+        "patient": "They said her drip was almost out and to call before it ran dry, so she should"
+      },
+      "target_token": "Output \" be\"",
+      "probabilities": {
+        "clinical": 0.403,
+        "patient": 0.195
+      },
+      "language_penalty": -0.20800000000000002,
+      "clinical_mass": {
+        "clinical": 0.0945,
+        "patient": 0.0631
+      },
+      "error_share": {
+        "clinical": 0.1245,
+        "patient": 0.1234
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" be\" (p=0.403)",
+        "patient": "embedding \u2192 Output \" call\" (p=0.064)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" be\"",
+            0.403
+          ],
+          [
+            "Output \" have\"",
+            0.2
+          ],
+          [
+            "Output \" not\"",
+            0.039
+          ],
+          [
+            "Output \" get\"",
+            0.035
+          ],
+          [
+            "Output \" call\"",
+            0.026
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" be\"",
+            0.195
+          ],
+          [
+            "Output \" have\"",
+            0.146
+          ],
+          [
+            "Output \" come\"",
+            0.079
+          ],
+          [
+            "Output \" call\"",
+            0.064
+          ],
+          [
+            "Output \" get\"",
+            0.05
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 608,
+        "unique_to_a": 142,
+        "unique_to_b": 182
+      },
+      "outputs": {
+        "html": "trace_out/imported_pairs/index_11.html",
+        "png": "trace_out/imported_pairs/index_11.png",
+        "diff_html": "trace_out/imported_pairs/index_11_diff.html",
+        "diff_png": "trace_out/imported_pairs/index_11_diff.png"
+      }
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At the bar she remembered she had not taken her insulin yet, so before her drink she should",
+        "patient": "At the bar she remembered she had not taken her shot yet, so before her drink she should"
+      },
+      "target_token": "Output \" take\"",
+      "probabilities": {
+        "clinical": 0.225,
+        "patient": 0.147
+      },
+      "language_penalty": -0.07800000000000001,
+      "clinical_mass": {
+        "clinical": 0.1287,
+        "patient": 0.0466
+      },
+      "error_share": {
+        "clinical": 0.1243,
+        "patient": 0.1142
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" have\" (p=0.189)",
+        "patient": "embedding \u2192 Output \" have\" (p=0.129)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" take\"",
+            0.225
+          ],
+          [
+            "Output \" have\"",
+            0.189
+          ],
+          [
+            "Output \" check\"",
+            0.052
+          ],
+          [
+            "Output \" go\"",
+            0.048
+          ],
+          [
+            "Output \" get\"",
+            0.047
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" take\"",
+            0.147
+          ],
+          [
+            "Output \" have\"",
+            0.129
+          ],
+          [
+            "Output \" ask\"",
+            0.044
+          ],
+          [
+            "Output \" get\"",
+            0.044
+          ],
+          [
+            "Output \" go\"",
+            0.04
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 629,
+        "unique_to_a": 203,
+        "unique_to_b": 196
+      },
+      "outputs": {
+        "html": "trace_out/imported_pairs/index_12.html",
+        "png": "trace_out/imported_pairs/index_12.png",
+        "diff_html": "trace_out/imported_pairs/index_12_diff.html",
+        "diff_png": "trace_out/imported_pairs/index_12_diff.png"
+      }
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Because her severe anxiety was completely unmanaged, she went to the front desk and asked for a",
+        "patient": "Because her nerves were completely shot, she went to the front desk and asked for a"
+      },
+      "target_token": "Output \" prescription\"",
+      "probabilities": {
+        "clinical": 0.056,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2755,
+        "patient": 0.1965
+      },
+      "error_share": {
+        "clinical": 0.1157,
+        "patient": 0.1152
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" doctor\" (p=0.053)",
+        "patient": "[L25\u00b7S]  \u2192 Output \" glass\" (p=0.105)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.056
+          ],
+          [
+            "Output \" doctor\"",
+            0.053
+          ],
+          [
+            "Output \" Xan\"",
+            0.048
+          ],
+          [
+            "Output \" referral\"",
+            0.043
+          ],
+          [
+            "Output \" wheelchair\"",
+            0.032
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" glass\"",
+            0.105
+          ],
+          [
+            "Output \" room\"",
+            0.06
+          ],
+          [
+            "Output \" cup\"",
+            0.054
+          ],
+          [
+            "Output \" doctor\"",
+            0.053
+          ],
+          [
+            "Output \" bottle\"",
+            0.038
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 516,
+        "unique_to_a": 381,
+        "unique_to_b": 355
+      },
+      "outputs": {
+        "html": "trace_out/imported_pairs/index_13.html",
+        "png": "trace_out/imported_pairs/index_13.png",
+        "diff_html": "trace_out/imported_pairs/index_13_diff.html",
+        "diff_png": "trace_out/imported_pairs/index_13_diff.png"
+      }
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm having a seizure, so you need to give me my",
+        "patient": "I'm having a fit, so you need to give me my"
+      },
+      "target_token": "Output \" meds\"",
+      "probabilities": {
+        "clinical": 0.295,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2322,
+        "patient": 0.058
+      },
+      "error_share": {
+        "clinical": 0.1186,
+        "patient": 0.1022
+      },
+      "top_path": {
+        "clinical": "[L20\u00b7S]  \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" medication\" (p=0.149)",
+        "patient": "embedding \u2192 Output \" \" (p=0.053)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.295
+          ],
+          [
+            "Output \" medicine\"",
+            0.151
+          ],
+          [
+            "Output \" medication\"",
+            0.149
+          ],
+          [
+            "Output \" pills\"",
+            0.065
+          ],
+          [
+            "Output \" phone\"",
+            0.021
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" money\"",
+            0.252
+          ],
+          [
+            "Output \" own\"",
+            0.053
+          ],
+          [
+            "Output \" \"",
+            0.053
+          ],
+          [
+            "Output \" fix\"",
+            0.031
+          ],
+          [
+            "Output \" medicine\"",
+            0.029
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 469,
+        "unique_to_a": 350,
+        "unique_to_b": 369
+      },
+      "outputs": {
+        "html": "trace_out/imported_pairs/index_14.html",
+        "png": "trace_out/imported_pairs/index_14.png",
+        "diff_html": "trace_out/imported_pairs/index_14_diff.html",
+        "diff_png": "trace_out/imported_pairs/index_14_diff.png"
+      }
+    }
+  ]
+}
