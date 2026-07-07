@@ -198,33 +198,42 @@ def top_attribution_path(
         return []
     max_w = max((abs(l.get("weight", 0.0)) for l in links), default=1.0) or 1.0
 
-    score: dict[str, float] = {
-        nid: 1.0 for nid, n in nodes.items() if n.get("feature_type") == "embedding"
-    }
-    back: dict[str, str] = {}
-    for link in sorted(links, key=lambda l: _path_layer_rank(nodes.get(l.get("source"), {}))):
+    # Greedy backtrace from the target: at each node follow the strongest
+    # incoming |weight| edge (from a strictly lower layer) until reaching an
+    # embedding. A max-product DP would collapse to a single strong direct
+    # edge; the greedy chain preserves the multi-hop story through features.
+    preds: dict[str, list[tuple[float, str]]] = defaultdict(list)
+    for link in links:
         s, t = link.get("source"), link.get("target")
-        if s not in score or s not in nodes or t not in nodes:
+        if s not in nodes or t not in nodes:
             continue
         if _path_layer_rank(nodes[t]) <= _path_layer_rank(nodes[s]):
             continue
-        cand = score[s] * (abs(link.get("weight", 0.0)) / max_w)
-        if cand > score.get(t, 0.0):
-            score[t] = cand
-            back[t] = s
+        preds[t].append((abs(link.get("weight", 0.0)) / max_w, s))
 
     if target_node_id is None:
         logits = [n for n in nodes.values()
-                  if n.get("feature_type") == "logit" and n["node_id"] in score]
+                  if n.get("feature_type") == "logit" and preds.get(n["node_id"])]
         if not logits:
             return []
-        target_node_id = max(logits, key=lambda n: score[n["node_id"]])["node_id"]
-    if target_node_id not in score:
+        target_node_id = max(
+            logits,
+            key=lambda n: max(w for w, _ in preds[n["node_id"]]),
+        )["node_id"]
+    if target_node_id not in nodes:
         return []
 
     chain = [target_node_id]
-    while chain[-1] in back and len(chain) < 24:
-        chain.append(back[chain[-1]])
+    seen = {target_node_id}
+    while len(chain) < 24:
+        options = [(w, s) for w, s in preds.get(chain[-1], []) if s not in seen]
+        if not options:
+            break
+        _, nxt = max(options)
+        chain.append(nxt)
+        seen.add(nxt)
+        if nodes[nxt].get("feature_type") == "embedding":
+            break
     chain.reverse()
 
     out = []
