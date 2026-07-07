@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import html
 import json
 import os
 import re
@@ -73,7 +74,9 @@ def core_for_item(panels: list[list[dict]], top_n: int = 8) -> dict:
     top = [
         {
             "feature": f"L{k[0]}/{k[1]}",
-            "desc": (base_clinical[k].get("desc") or "")[:110],
+            # renders HTML-escape descriptions for their innerHTML tooltip; the
+            # site sets these via textContent, so unescape to plain text here
+            "desc": html.unescape(base_clinical[k].get("desc") or "")[:110],
             "survives": f"{survives[k]}/{n_var}",
             "norm_mass": norm_mass(base_clinical[k]),
         }
