@@ -57,6 +57,10 @@ on:
         description: "(dialects) Optional target token for the batch item, e.g. ' therapist'"
         type: string
         default: ""
+      num_baselines:
+        description: "(dialects sweep) How many measured baselines to sweep when phrase/term are empty"
+        type: string
+        default: "8"
       anthropic_model:
         description: "Anthropic model for generation"
         type: choice
@@ -116,6 +120,7 @@ jobs:
           IN_PHRASE: ${{ inputs.phrase }}
           IN_TERM: ${{ inputs.term }}
           IN_TARGET_TOKEN: ${{ inputs.target_token }}
+          IN_NUM_BASELINES: ${{ inputs.num_baselines }}
           IN_ANTHROPIC_MODEL: ${{ inputs.anthropic_model }}
           IN_MAX_SPEND: ${{ inputs.max_spend }}
           IN_GRAPH_MODELS: ${{ inputs.graph_models }}
@@ -128,6 +133,7 @@ jobs:
               "seed_pairs": "medlang_circuits/data/ci_pairs_2panel.json",
               "feedback": "",
               "phrase": "", "term": "", "target_token": "",
+              "num_baselines": "8",
               "anthropic_model": "claude-sonnet-5", "max_spend": "2",
               "graph_models": "gemma-2-2b", "trace_sample_size": "2",
           }
@@ -159,6 +165,7 @@ jobs:
           PHRASE: ${{ steps.params.outputs.phrase }}
           TERM: ${{ steps.params.outputs.term }}
           TARGET_TOKEN: ${{ steps.params.outputs.target_token }}
+          NUM_BASELINES: ${{ steps.params.outputs.num_baselines }}
           GEN_MODEL: ${{ steps.params.outputs.anthropic_model }}
           MAX_SPEND: ${{ steps.params.outputs.max_spend }}
         run: |
@@ -202,16 +209,22 @@ jobs:
               fi
             fi
           else
-            if [ -z "$PHRASE" ] || [ -z "$TERM" ]; then
-              echo "::error::task=dialects requires the 'phrase' and 'term' inputs"
-              exit 1
-            fi
             OUT="data/simulated/dialects_${STAMP}.json"
             MODE="dialect"
-            ARGS=(dialects --phrase "$PHRASE" --term "$TERM" -n "$NUM"
-                  --held-fixed clinical --max-spend "$MAX_SPEND" --out "$OUT")
-            if [ -n "$TARGET_TOKEN" ]; then
-              ARGS+=(--target-token "$TARGET_TOKEN")
+            if [ -n "$PHRASE" ] && [ -n "$TERM" ]; then
+              ARGS=(dialects --phrase "$PHRASE" --term "$TERM" -n "$NUM"
+                    --held-fixed clinical --max-spend "$MAX_SPEND" --out "$OUT")
+              if [ -n "$TARGET_TOKEN" ]; then
+                ARGS+=(--target-token "$TARGET_TOKEN")
+              fi
+            else
+              # sweep mode: baselines + fixed terms derive from measured pairs
+              SWEEP_SEEDS="$SEED_PAIRS"
+              if [ "$SWEEP_SEEDS" = "medlang_circuits/data/ci_pairs_2panel.json" ]; then
+                SWEEP_SEEDS="data/measured/imported_pairs.json"
+              fi
+              ARGS=(dialects --seed-pairs "$SWEEP_SEEDS" --num-baselines "$NUM_BASELINES"
+                    -n "$NUM" --max-spend "$MAX_SPEND" --out "$OUT")
             fi
           fi
           if [ -n "$GEN_MODEL" ]; then

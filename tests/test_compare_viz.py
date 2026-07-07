@@ -107,11 +107,14 @@ def test_logit_spread_stacks_without_collisions(graph):
     ys = {nid: pos[nid][1] for nid in ("L_mid", "L_999_3", "L_low")}
     # ordered by probability: 0.9 on top, then 0.81, then 0.2
     assert ys["L_mid"] < ys["L_999_3"] < ys["L_low"]
-    # same x (a clean vertical stack), rim-to-rim spacing >= the label gap
+    # same x (a clean vertical stack); labels sit beside each node, so the
+    # invariant is rim-to-rim clearance plus center spacing above the 9.5px
+    # label line height
     assert pos["L_mid"][0] == pos["L_999_3"][0] == pos["L_low"][0]
     for upper, lower in (("L_mid", "L_999_3"), ("L_999_3", "L_low")):
         gap = (ys[lower] - ys[upper]) - radius[upper] - radius[lower]
-        assert gap >= 17.9
+        assert gap >= 9.9
+        assert ys[lower] - ys[upper] >= 12.0
     # the panel grew to make room for the stack (vs. the unstacked fixture)
     single = _prepare(make_graph(), max_edges=100)
     assert prep["panel_height"] > single["panel_height"]

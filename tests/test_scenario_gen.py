@@ -486,3 +486,50 @@ def test_run_batch_dialect_top_logit_fallback_and_validation(tmp_path, monkeypat
     with pytest.raises(ValueError, match="variants"):
         batch_eval.run_batch(str(bad), out_dir=str(tmp_path / "out2"), mode="dialect",
                              dpi=50, fetcher=build_fetcher())
+
+
+def test_swap_span():
+    from medlang_circuits.scenario_gen import _swap_span
+    assert _swap_span("To manage the HIV, I need to take my",
+                      "To manage the package, I need to take my") == "HIV"
+    assert _swap_span("I've got clinical depression, so I need to talk to a",
+                      "I've got the blues, so I need to talk to a") == "clinical depression"
+    # identical strings have no swap span
+    assert _swap_span("same words", "same words") == ""
+
+
+def test_generate_dialect_sweep_offline(monkeypatch):
+    from medlang_circuits.scenario_gen import generate_dialect_sweep
+    fake_call, calls = _fake_call_returning([
+        json.dumps([
+            {"dialect": "Variant One", "prompt": "me beta been acting up, so I gone see my"},
+            {"dialect": "Variant Two", "prompt": "beta acting up again so imma go see my"},
+        ]),
+        json.dumps([
+            {"dialect": "Variant One", "prompt": "the gamma, it be bothering me, so I call my"},
+            {"dialect": "Variant Two", "prompt": "gamma is at me something awful, so I ring my"},
+        ]),
+    ])
+    monkeypatch.setattr(scenario_gen, "_call", fake_call)
+
+    seeds = [
+        {"top_prompt": "Since the beta was acting up, I went to see my",
+         "bottom_prompt": "Since the delta was acting up, I went to see my",
+         "target_clinical_token": " doctor"},
+        # unusable: identical prompts -> no swap span; recorded, not dropped
+        {"top_prompt": "same words here", "bottom_prompt": "same words here"},
+        {"top_prompt": "The gamma keeps bothering me, so I call my",
+         "bottom_prompt": "The tummy keeps bothering me, so I call my",
+         "target_clinical_token": " physician"},
+    ]
+    result = generate_dialect_sweep(seeds, num_baselines=2, n_variants=2,
+                                    max_spend=2.0, client=object())
+    assert len(result["items"]) == 2
+    assert [b["term"] for b in result["baselines"]] == ["beta", "gamma"]
+    assert result["items"][0]["target_clinical_token"] == " doctor"
+    assert result["items"][1]["target_clinical_token"] == " physician"
+    assert len(result["items"][0]["variants"]) == 2
+    assert result["skipped"] and result["skipped"][0]["reason"] == "no clean swap span"
+    assert result["usage"]["total_cost_usd"] > 0
+    # both baselines called the generator once each
+    assert len(calls) == 2

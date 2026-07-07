@@ -77,14 +77,16 @@ PANEL_GAP = 14
 BADGE_GAP = 46  # panel gap when a single-line badge renders in it
 BADGE_LINE_HEIGHT = 22
 DIMMED_NODE_OPACITY = 0.16  # shared-circuit context in pairwise diff views
+STRUCTURAL_FILL_OPACITY = 0.55  # scaffolding recedes; clinical/off-target carry the ink
 
 QUAD_GUTTER_X = 64
 QUAD_GUTTER_Y = 100  # row gutter hosts syntax deltas and the lower vocabulary delta
 QUAD_VOCAB_STRIP = 36  # header strip above the top row for the upper vocabulary delta
 
 # Vertical rim-to-rim spacing between stacked logit nodes (the predictive
-# spread) - leaves room for each node's token/prob label without collisions.
-LOGIT_STACK_GAP = 18
+# spread). Labels sit beside each node, so the gap only needs to clear the
+# 9.5px label line height.
+LOGIT_STACK_GAP = 10
 
 MIN_RADIUS = 3.0  # muted structural/embedding floor
 MAX_RADIUS = 14.0  # cap (a probability-1.0 logit)
@@ -265,7 +267,19 @@ def _prepare(graph: dict[str, Any], max_edges: int) -> dict[str, Any]:
         if candidates:
             prominent[category] = max(candidates, key=lambda n: node_weight[n["node_id"]])["node_id"]
 
-    layer_ticks = [(_layer_label(layer, top_layer), y_of_row(row)) for layer, row in row_of.items()]
+    occupied_layers = sorted(row_of)
+    # Deep graphs label every 5th layer (plus ends/emb/logit); shallow ones keep all ticks.
+    thin_ticks = len(occupied_layers) > 12
+
+    def _keep_tick(layer: int) -> bool:
+        if not thin_ticks:
+            return True
+        if layer in (occupied_layers[0], occupied_layers[-1], -1, top_layer + 1):
+            return True
+        return layer % 5 == 0
+
+    layer_ticks = [(_layer_label(layer, top_layer), y_of_row(row))
+                   for layer, row in row_of.items() if _keep_tick(layer)]
     return {
         "nodes": nodes,
         "links": links,
@@ -411,7 +425,12 @@ def _panel_svg(
         idx = len(tooltip_data)
         tooltip_data.append(_node_tooltip_data(node, prep["node_weight"][node_id], frac))
         hook = f'class="n" data-p="{panel_index}" data-i="{idx}"'
-        dim_attr = f' fill-opacity="{DIMMED_NODE_OPACITY}"' if node_id in dimmed_nodes else ""
+        if node_id in dimmed_nodes:
+            dim_attr = f' fill-opacity="{DIMMED_NODE_OPACITY}"'
+        elif category == "structural":
+            dim_attr = f' fill-opacity="{STRUCTURAL_FILL_OPACITY}"'
+        else:
+            dim_attr = ""
         if node.get("feature_type") == "embedding":
             parts.append(
                 f'<rect {hook} x="{pos[0] - r:.1f}" y="{pos[1] - r:.1f}" '
@@ -424,7 +443,7 @@ def _panel_svg(
             )
         if node.get("feature_type") == "logit" and node.get("clerp"):
             parts.append(
-                f'<text x="{pos[0]:.1f}" y="{pos[1] - r - 5:.1f}" class="ll">'
+                f'<text x="{pos[0] - r - 6:.1f}" y="{pos[1] + 3.5:.1f}" class="ll">'
                 f"{html.escape(_logit_label(node))}</text>"
             )
         # Threshold-based value layer: high-confidence clinical intermediates only.
@@ -449,8 +468,8 @@ def _panel_svg(
 
     if prep["dropped_edges"]:
         parts.append(
-            f'<text x="{PANEL_WIDTH - MARGIN["right"]}" y="22" class="lk" text-anchor="end">'
-            f"{prep['dropped_edges']} weakest edges omitted</text>"
+            f'<text x="{PANEL_WIDTH - MARGIN["right"]}" y="{prep["panel_height"] - 6:.0f}" '
+            f'class="lk" text-anchor="end">{prep["dropped_edges"]} weakest edges omitted</text>'
         )
     parts.append("</g>")
     return parts, tooltip_data
@@ -468,7 +487,7 @@ _CSS = (
     ".t{font-size:13px;font-weight:600;fill:" + INK + "}"
     ".pp{font-size:18px;font-weight:700;fill:" + INK + ";font-family:ui-monospace,Menlo,monospace}"
     ".tk{font-size:10.5px;text-anchor:middle;fill:" + TOKEN_INK + ";font-family:ui-monospace,'SF Mono',Menlo,monospace}"
-    ".ll{font-size:9.5px;text-anchor:middle;fill:#374151;font-family:ui-monospace,Menlo,monospace}"
+    ".ll{font-size:9.5px;text-anchor:end;fill:#374151;font-family:ui-monospace,Menlo,monospace}"
     ".lk{font-size:9px;text-anchor:end;fill:" + FAINT_INK + "}"
     ".nv{font-size:9px;text-anchor:middle;fill:#6b7280;font-family:ui-monospace,Menlo,monospace}"
     ".bd{font-size:13px;font-weight:600;text-anchor:middle}"
@@ -496,12 +515,10 @@ _JS = (
 )
 
 _SUB_CAPTION = (
-    "Hover a node for its feature id, category, probability/attribution mass, and autointerp "
-    "description. Node size scales with attribution mass (logits: next-token probability); curve "
-    "width and opacity scale with |attribution weight|; "
-    f"<span style=\"color:{NEGATIVE_EDGE_COLOR}\">red</span> curves are negative. The emphasized "
-    "baseline token in each panel marks the compared word; numbers beside clinical nodes "
-    f"(clinical-role panels) show normalized attribution mass &#8805; {NODE_VALUE_THRESHOLD:.2f}."
+    "Hover any node for its feature id, category, mass, and description. "
+    "Node size = attribution mass (logits: next-token probability); green = clinical, "
+    "black = off-target, gray = structural; "
+    f"<span style=\"color:{NEGATIVE_EDGE_COLOR}\">red</span> curves push against the prediction."
 )
 
 
@@ -733,12 +750,17 @@ def _paint_panel_ax(ax, prep: dict[str, Any], panel: dict[str, Any]) -> None:
         x, y = positions[node_id]
         r = radius[node_id]
         marker = "s" if node.get("feature_type") == "embedding" else "o"
-        alpha = DIMMED_NODE_OPACITY if node_id in dimmed_nodes else 1.0
+        if node_id in dimmed_nodes:
+            alpha = DIMMED_NODE_OPACITY
+        elif _category(node) == "structural":
+            alpha = STRUCTURAL_FILL_OPACITY
+        else:
+            alpha = 1.0
         ax.scatter([x], [y], s=r**2 * 3.4, c=CATEGORY_COLORS[_category(node)],
                    marker=marker, zorder=3, alpha=alpha)
         if node.get("feature_type") == "logit" and node.get("clerp"):
-            ax.text(x, y + r + 5, _logit_label(node), ha="center", fontsize=7,
-                    color="#374151", family="monospace")
+            ax.text(x - r - 5, y, _logit_label(node), ha="right", va="center",
+                    fontsize=7, color="#374151", family="monospace")
         frac = prep["mass_frac"][node_id]
         if (panel.get("value_labels") and _category(node) == "clinical"
                 and frac >= NODE_VALUE_THRESHOLD and node_id not in dimmed_nodes):

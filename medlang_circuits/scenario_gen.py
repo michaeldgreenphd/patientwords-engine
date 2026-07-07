@@ -677,6 +677,109 @@ def dialect_batch_item(result: dict[str, Any], target_token: str | None = None) 
         item["target_clinical_token"] = target_token
     return item
 
+def _swap_span(a: str, b: str) -> str:
+    """The contiguous span of ``a`` that differs from ``b`` (prefix/suffix diff).
+
+    The raw character diff can land mid-word when the swapped words share
+    letters ("beta"/"delta" share the "ta" suffix), so the span snaps outward
+    to word boundaries before trimming punctuation.
+    """
+    i = 0
+    while i < min(len(a), len(b)) and a[i] == b[i]:
+        i += 1
+    j = 0
+    while j < min(len(a), len(b)) - i and a[len(a) - 1 - j] == b[len(b) - 1 - j]:
+        j += 1
+    lo, hi = i, len(a) - j
+    if lo >= hi:
+        return ""
+    while lo > 0 and a[lo - 1] not in " \t":
+        lo -= 1
+    while hi < len(a) and a[hi] not in " \t,.;:!?":
+        hi += 1
+    return a[lo:hi].strip(" \t,.;:!?")
+
+
+def generate_dialect_sweep(
+    seed_pairs: list[dict[str, Any]],
+    num_baselines: int,
+    n_variants: int,
+    dialects: list[str] | None = None,
+    model: str | None = None,
+    max_spend: float = 2.0,
+    client: Any = None,
+) -> dict[str, Any]:
+    """Run generate_dialect_variants over several measured baselines.
+
+    Each seed pair contributes its clinical phrasing (``top_prompt``) as the
+    baseline; the fixed term is the span that differs from ``bottom_prompt``.
+    Pairs whose swap span cannot be derived cleanly are skipped and recorded,
+    never silently dropped. All baselines share one spend ceiling.
+    """
+    model = _resolve_model(model)
+    client = _require_client(client)
+    items: list[dict[str, Any]] = []
+    baselines: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    all_variants: list[dict[str, str]] = []
+    all_rejected: list[dict[str, Any]] = []
+    rounds = 0
+    spent = 0.0
+    per_model: dict[str, dict[str, Any]] = {}
+    truncated = False
+
+    for pair in seed_pairs:
+        if len(items) >= num_baselines:
+            break
+        phrase = str(pair.get("top_prompt") or "").strip()
+        other = str(pair.get("bottom_prompt") or "").strip()
+        term = _swap_span(phrase, other) if phrase and other else ""
+        if not phrase or not term or term == phrase or len(term) < 3 or term not in phrase:
+            skipped.append({"top_prompt": phrase, "reason": "no clean swap span"})
+            continue
+        remaining = max_spend - spent
+        if remaining <= 0.01:
+            truncated = True
+            break
+        result = generate_dialect_variants(
+            phrase, term, n_variants,
+            dialects=dialects, model=model, held_fixed="clinical",
+            max_spend=remaining, client=client,
+        )
+        rounds += result["rounds"]
+        spent += result["usage"]["total_cost_usd"]
+        truncated = truncated or result["truncated"]
+        for name, usage in result["usage"]["per_model"].items():
+            slot = per_model.setdefault(name, {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0})
+            for key in slot:
+                slot[key] = round(slot[key] + usage.get(key, 0), 6)
+        all_rejected.extend(result["rejected"])
+        if not result["variants"]:
+            skipped.append({"top_prompt": phrase, "term": term, "reason": "no variants accepted"})
+            continue
+        all_variants.extend(result["variants"])
+        target = pair.get("target_clinical_token")
+        items.append(dialect_batch_item(result, target_token=target))
+        baselines.append({
+            "baseline_prompt": phrase,
+            "term": term,
+            "target_token": target,
+            "variants": len(result["variants"]),
+            "cost_usd": result["usage"]["total_cost_usd"],
+        })
+
+    return {
+        "items": items,
+        "baselines": baselines,
+        "skipped": skipped,
+        "variants": all_variants,
+        "rejected": all_rejected,
+        "model": model,
+        "rounds": rounds,
+        "truncated": truncated,
+        "usage": {"total_cost_usd": round(spent, 6), "per_model": per_model},
+    }
+
 
 # ---------------------------------------------------------------------------
 # 4. Spreadsheet importer
@@ -887,8 +990,10 @@ def main(argv: list[str] | None = None) -> int:
 
     p_dialects = sub.add_parser("dialects", parents=[shared],
                                 help="Generate dialect/register variants of one phrase (--mode dialect input)")
-    p_dialects.add_argument("--phrase", required=True, help="Baseline phrase (the standard phrasing)")
-    p_dialects.add_argument("--term", required=True, help="Swapped term to hold verbatim and fixed")
+    p_dialects.add_argument("--phrase", default=None, help="Baseline phrase (the standard phrasing)")
+    p_dialects.add_argument("--term", default=None, help="Swapped term to hold verbatim and fixed")
+    p_dialects.add_argument("--num-baselines", type=int, default=8,
+                            help="With --seed-pairs: how many measured baselines to sweep")
     p_dialects.add_argument("-n", "--num", type=int, default=6, help="Variants to accept")
     p_dialects.add_argument("--dialects", nargs="+", default=None,
                             help="Dialects/registers to draw from (default: built-in coverage list)")
@@ -941,7 +1046,22 @@ def main(argv: list[str] | None = None) -> int:
         _write_json(out, result["pairs"])
         extra = {"language_register": "morphosyntax_x_lexicon_quadrants",
                  "topics": result["topics"]}
-    else:  # dialects
+    elif args.command == "dialects" and args.seed_pairs:
+        result = generate_dialect_sweep(
+            _load_seed_pairs(args.seed_pairs) or [],
+            args.num_baselines,
+            args.num,
+            dialects=args.dialects,
+            model=args.model,
+            max_spend=args.max_spend,
+        )
+        out = args.out or "dialect_pairs.json"
+        _write_json(out, result["items"])
+        extra = {"held_fixed": "clinical", "baselines": result["baselines"],
+                 "skipped": result["skipped"]}
+    else:  # dialects, single baseline
+        if not args.phrase or not args.term:
+            parser.error("dialects needs --phrase and --term, or --seed-pairs for a sweep")
         result = generate_dialect_variants(
             args.phrase,
             args.term,
