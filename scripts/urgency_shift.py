@@ -290,7 +290,7 @@ if args.publish:
                                       "urgency_recovery")}
                for r in rows if r["flipped"] or r.get("tier_shift") is not None]
     site_payload = {
-        "vocabulary_status": "draft pending domain review",
+        "vocabulary_status": vocab_meta.get("status", "draft pending domain review"),
         "tiers": vocab_meta.get("tiers"),
         "summary": {k: summary[k] for k in ("measurements", "flips", "flip_classes",
                                             "per_model", "concordance", "mitigation")
