@@ -97,7 +97,9 @@ jobs:
   eval:
     needs: params
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # CPU inference on a 4B model runs ~1 min/pair; a 120-pair batch needs
+    # a few hours of headroom.
+    timeout-minutes: 240
     strategy:
       fail-fast: false
       max-parallel: 2
