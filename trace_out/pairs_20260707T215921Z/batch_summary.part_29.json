@@ -1,0 +1,275 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 29,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 29,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have chronic insomnia at night, so my doctor put me on a",
+        "patient": "I can't switch my brain off at night, so my doctor put me on a"
+      },
+      "target_token": "Output \" sleeping\"",
+      "probabilities": {
+        "clinical": 0.134,
+        "patient": 0.251
+      },
+      "language_penalty": 0.11699999999999999,
+      "clinical_mass": {
+        "clinical": 0.4494,
+        "patient": 0.3354
+      },
+      "error_share": {
+        "clinical": 0.1163,
+        "patient": 0.1102
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sleep\" (p=0.081)",
+        "patient": "embedding \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" drug\" (p=0.040)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " sleeping",
+        "observed_clinical": [
+          "Output \" sleeping\"",
+          0.134
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleeping\"",
+            0.134
+          ],
+          [
+            "Output \" low\"",
+            0.116
+          ],
+          [
+            "Output \" sleep\"",
+            0.081
+          ],
+          [
+            "Output \" prescription\"",
+            0.075
+          ],
+          [
+            "Output \" \"",
+            0.071
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleeping\"",
+            0.251
+          ],
+          [
+            "Output \" sleep\"",
+            0.064
+          ],
+          [
+            "Output \" low\"",
+            0.048
+          ],
+          [
+            "Output \" drug\"",
+            0.04
+          ],
+          [
+            "Output \" sed\"",
+            0.039
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 402,
+        "unique_to_a": 350,
+        "unique_to_b": 401
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_29.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_29.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_29_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_29_diff.png"
+      }
+    },
+    {
+      "index": 30,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The old man has sleepwalking episodes at night, so we asked about a",
+        "patient": "The old man walks around the house asleep at night, so we asked about a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1662
+      },
+      "error_share": {
+        "clinical": 0.123
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " specialist",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.087
+          ],
+          [
+            "Output \" night\"",
+            0.054
+          ],
+          [
+            "Output \" bed\"",
+            0.044
+          ],
+          [
+            "Output \" new\"",
+            0.039
+          ],
+          [
+            "Output \" medication\"",
+            0.028
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's been having diarrhea all weekend, so before the drive he grabbed a",
+        "patient": "He's been having the trots all weekend, so before the drive he grabbed a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2398
+      },
+      "error_share": {
+        "clinical": 0.1234
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " towel",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" couple\"",
+            0.112
+          ],
+          [
+            "Output \" bag\"",
+            0.079
+          ],
+          [
+            "Output \" handful\"",
+            0.076
+          ],
+          [
+            "Output \" few\"",
+            0.074
+          ],
+          [
+            "Output \" little\"",
+            0.05
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since the chili night I've had acid reflux, so with dinner I ordered a",
+        "patient": "Ever since the chili night I've had wicked heartburn, so with dinner I ordered a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1128
+      },
+      "error_share": {
+        "clinical": 0.1255
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " water",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" salad\"",
+            0.105
+          ],
+          [
+            "Output \" bowl\"",
+            0.055
+          ],
+          [
+            "Output \" small\"",
+            0.053
+          ],
+          [
+            "Output \" chicken\"",
+            0.043
+          ],
+          [
+            "Output \" side\"",
+            0.039
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}
