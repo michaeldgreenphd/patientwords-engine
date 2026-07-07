@@ -1,0 +1,359 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 33,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My allergic rhinitis acts up every time I mow, so I keep swallowing an",
+        "patient": "My eyes and nose stream every time I mow, so I keep swallowing an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.483,
+        "patient": 0.325
+      },
+      "language_penalty": -0.15799999999999997,
+      "clinical_mass": {
+        "clinical": 0.426,
+        "patient": 0.3313
+      },
+      "error_share": {
+        "clinical": 0.1281,
+        "patient": 0.1191
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" allergy\" (p=0.118)",
+        "patient": "embedding \u2192 Output \" eye\" (p=0.066)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antihistamine",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.483
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.483
+          ],
+          [
+            "Output \" allergy\"",
+            0.118
+          ],
+          [
+            "Output \" extra\"",
+            0.045
+          ],
+          [
+            "Output \" OTC\"",
+            0.035
+          ],
+          [
+            "Output \" over\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.325
+          ],
+          [
+            "Output \" allergy\"",
+            0.082
+          ],
+          [
+            "Output \" eye\"",
+            0.066
+          ],
+          [
+            "Output \" extra\"",
+            0.051
+          ],
+          [
+            "Output \" OTC\"",
+            0.044
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 429,
+        "unique_to_a": 280,
+        "unique_to_b": 344
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_33.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_33.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_33_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_33_diff.png"
+      }
+    },
+    {
+      "index": 34,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been snoring so loud the whole house complains, so my wife bought me a",
+        "patient": "I've been sawing logs so loud the whole house complains, so my wife bought me a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2075
+      },
+      "error_share": {
+        "clinical": 0.1132
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " pillow",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" new\"",
+            0.112
+          ],
+          [
+            "Output \" CP\"",
+            0.091
+          ],
+          [
+            "Output \" Sn\"",
+            0.066
+          ],
+          [
+            "Output \" sleep\"",
+            0.064
+          ],
+          [
+            "Output \" mask\"",
+            0.04
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 35,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Her elbows keep getting these psoriasis flare-ups, so the doctor gave her a",
+        "patient": "Her elbows keep getting these angry red flare-ups, so the doctor gave her a"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.12,
+        "patient": 0.107
+      },
+      "language_penalty": -0.012999999999999998,
+      "clinical_mass": {
+        "clinical": 0.4549,
+        "patient": 0.4402
+      },
+      "error_share": {
+        "clinical": 0.1294,
+        "patient": 0.1296
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" new\" (p=0.051)",
+        "patient": "embedding \u2192 Output \" shot\" (p=0.036)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cream",
+        "observed_clinical": [
+          "Output \" cream\"",
+          0.12
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.327
+          ],
+          [
+            "Output \" cream\"",
+            0.12
+          ],
+          [
+            "Output \" steroid\"",
+            0.098
+          ],
+          [
+            "Output \" topical\"",
+            0.077
+          ],
+          [
+            "Output \" new\"",
+            0.051
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" prescription\"",
+            0.364
+          ],
+          [
+            "Output \" steroid\"",
+            0.15
+          ],
+          [
+            "Output \" cream\"",
+            0.107
+          ],
+          [
+            "Output \" topical\"",
+            0.055
+          ],
+          [
+            "Output \" shot\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 671,
+        "unique_to_a": 131,
+        "unique_to_b": 183
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_35.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_35.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_35_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_35_diff.png"
+      }
+    },
+    {
+      "index": 36,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep forgetting my morning doses, so the pharmacist set me up with an",
+        "patient": "I keep forgetting my morning ones, so the pharmacist set me up with an"
+      },
+      "target_token": "Output \" app\"",
+      "probabilities": {
+        "clinical": 0.159,
+        "patient": 0.175
+      },
+      "language_penalty": 0.015999999999999986,
+      "clinical_mass": {
+        "clinical": 0.2671,
+        "patient": 0.1772
+      },
+      "error_share": {
+        "clinical": 0.1278,
+        "patient": 0.1262
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" automated\" (p=0.072)",
+        "patient": "embedding \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" automated\" (p=0.064)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " app",
+        "observed_clinical": [
+          "Output \" app\"",
+          0.159
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" automatic\"",
+            0.18
+          ],
+          [
+            "Output \" alarm\"",
+            0.167
+          ],
+          [
+            "Output \" app\"",
+            0.159
+          ],
+          [
+            "Output \" auto\"",
+            0.144
+          ],
+          [
+            "Output \" automated\"",
+            0.072
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" alarm\"",
+            0.198
+          ],
+          [
+            "Output \" app\"",
+            0.175
+          ],
+          [
+            "Output \" automatic\"",
+            0.164
+          ],
+          [
+            "Output \" auto\"",
+            0.106
+          ],
+          [
+            "Output \" automated\"",
+            0.064
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 605,
+        "unique_to_a": 214,
+        "unique_to_b": 198
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_36.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_36.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_36_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_36_diff.png"
+      }
+    }
+  ]
+}
