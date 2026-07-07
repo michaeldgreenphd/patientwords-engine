@@ -152,8 +152,8 @@ def test_run_batch_offline_with_mitigation(tmp_path, monkeypatch):
     assert "Language Penalty: -41% probability (0.81 → 0.40)" in html
     assert "Mitigation Recovery: +41% probability (0.40 → 0.81)" in html
     # the predictive spread keeps the article logit visible (prob notation, no p= syntax)
-    assert "a · prob 0.90" in html
-    assert "jumps · prob 0.81" in html
+    assert "“a” · prob 0.90" in html
+    assert "“jumps” · prob 0.81" in html
     assert r["predictive_spread"]["clinical"] == [("a", 0.9), ("jumps", 0.81)]
     assert r["predictive_spread"]["patient"] == [("a", 0.9), ("jumps", 0.4)]
 

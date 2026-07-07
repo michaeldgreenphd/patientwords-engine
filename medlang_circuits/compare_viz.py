@@ -48,7 +48,7 @@ from collections import defaultdict
 from typing import Any
 
 from medlang_circuits.schema_utils import max_numeric_layer, node_display_layer
-from medlang_circuits.targets import parse_logit_clerp
+from medlang_circuits.targets import bare_token, parse_logit_clerp
 
 logger = logging.getLogger(__name__)
 
@@ -334,11 +334,12 @@ def _bezier_d(src: tuple[float, float], tgt: tuple[float, float], r_src: float, 
 
 
 def _logit_label(node: dict[str, Any]) -> str:
-    """Display label for a logit node: 'therapist · prob 0.86' (no p= syntax)."""
+    """Display label for a logit node: '\u201ctherapist\u201d \u00b7 prob 0.86' (no p= syntax)."""
     token, prob = parse_logit_clerp(node.get("clerp"))
+    token = bare_token(token)  # hosted clerps wrap the token as Output "..."
     if prob is None:
         return (node.get("clerp") or "")[:24]
-    return f"{token[:16]} · prob {prob:.2f}"
+    return f"\u201c{token[:20]}\u201d \u00b7 prob {prob:.2f}"
 
 
 def _node_tooltip_data(node: dict[str, Any], mass: float, mass_frac: float) -> dict[str, str]:
