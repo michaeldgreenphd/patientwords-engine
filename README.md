@@ -427,6 +427,48 @@ Set `trace_sample_size: 0` to archive without tracing (generation needs only
 Trace Evaluation* workflow's `mode` input now also includes `dialect`, with a
 committed sample at `medlang_circuits/data/ci_pairs_dialect.json`.
 
+## What a run costs (measured, July 2026)
+
+Three separate meters, and only one of them bills real money by default:
+
+1. **Anthropic API (generation + evaluation)** - the only default dollar
+   cost. Claude authors the scenarios and runs the model evaluations, billed
+   to the `ANTHROPIC_API_KEY` in the Actions secrets. Observed unit costs
+   across every batch this project has run:
+
+   | task | observed | unit cost |
+   |---|---|---|
+   | stress pairs | 10-13 candidates for $0.12-0.19 | ~$0.010-0.027 per candidate |
+   | quadrant scenarios | 4 items for $0.025 | ~$0.006 per item |
+   | dialect sweep | 8 baselines x 6 framings for $0.083 | ~$0.010 per baseline |
+   | model evaluation | 3 models, two_step | $0.02-0.04 per run |
+
+   Every batch writes its exact cost to a `*.report.json` sidecar next to the
+   data, so these numbers stay auditable.
+
+2. **Neuronpedia (tracing)** - **$0**. The hosted graph-generation API does
+   not bill: the `NEURONPEDIA_API_KEY` authenticates and rate-limits, nothing
+   more. Every trace this project has run (about 130 graphs so far) has cost
+   $0. The one Neuronpedia-adjacent path that does cost money is auto-interp
+   backfill (next section), which bills the Anthropic key saved in your
+   Neuronpedia account settings at roughly $0.001-0.003 per explanation, and
+   only when explicitly requested via `generate_explanations`.
+
+3. **GitHub Actions minutes** - free until the private-repo allowance runs
+   out (2,000 minutes/month on the free plan). Tracing paces at roughly 1.5-2
+   minutes per graph, so a 150-candidate screened run (~270 graphs: every
+   clinical side plus measured patient sides and probe extensions) uses
+   roughly 450-550 runner-minutes, about a quarter of the monthly allowance,
+   and finishes in ~2.5-3 hours of wall clock at `max-parallel: 3`.
+
+**Budgeting the big run.** For the planned ~150-candidate run: generation
+lands between $2.50 and $4.50 (the runbook's `max_spend: 10` is a hard
+ceiling well above it), tracing is $0, and optional auto-interp backfill at
+`generate_explanations: 50` per batch adds at most ~$1.50. Call it **$4-6
+all-in against a $20 budget** - meaning the same $20 could fund three to four
+runs of that size, or one run of 450+ candidates if wall-clock and Actions
+minutes were no object. The practical ceiling is runner time, not dollars.
+
 ## Auto-interp backfill (feature explanations on demand)
 
 Node colors and the site's medical-circuit metrics all flow from feature
