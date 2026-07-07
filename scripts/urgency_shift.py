@@ -293,7 +293,8 @@ if args.publish:
         "vocabulary_status": "draft pending domain review",
         "tiers": vocab_meta.get("tiers"),
         "summary": {k: summary[k] for k in ("measurements", "flips", "flip_classes",
-                                            "per_model", "concordance") if k in summary},
+                                            "per_model", "concordance", "mitigation")
+                    if k in summary},
         "rows": trimmed,
     }
     site_path = Path(args.publish) / "data/urgency_shift.json"
