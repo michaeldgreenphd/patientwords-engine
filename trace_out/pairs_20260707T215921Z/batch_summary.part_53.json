@@ -1,0 +1,359 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 53,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 53,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's been having acid reflux after coffee, so his doctor told him to cut back on the",
+        "patient": "He's been feeling really acidy after coffee, so his doctor told him to cut back on the"
+      },
+      "target_token": "Output \" coffee\"",
+      "probabilities": {
+        "clinical": 0.502,
+        "patient": 0.362
+      },
+      "language_penalty": -0.14,
+      "clinical_mass": {
+        "clinical": 0.2288,
+        "patient": 0.1835
+      },
+      "error_share": {
+        "clinical": 0.1226,
+        "patient": 0.122
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" coffee\" (p=0.502)",
+        "patient": "embedding \u2192 Output \" coffee\" (p=0.362)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " coffee",
+        "observed_clinical": [
+          "Output \" coffee\"",
+          0.502
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" coffee\"",
+            0.502
+          ],
+          [
+            "Output \" caffeine\"",
+            0.22
+          ],
+          [
+            "Output \" amount\"",
+            0.108
+          ],
+          [
+            "Output \" java\"",
+            0.023
+          ],
+          [
+            "Output \" acid\"",
+            0.021
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" coffee\"",
+            0.362
+          ],
+          [
+            "Output \" caffeine\"",
+            0.329
+          ],
+          [
+            "Output \" amount\"",
+            0.064
+          ],
+          [
+            "Output \" java\"",
+            0.054
+          ],
+          [
+            "Output \" acid\"",
+            0.028
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 467,
+        "unique_to_a": 261,
+        "unique_to_b": 263
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_53.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_53.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_53_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_53_diff.png"
+      }
+    },
+    {
+      "index": 54,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been constipated for a week, so the nurse suggested she try more",
+        "patient": "She's been all clogged up for a week, so the nurse suggested she try more"
+      },
+      "target_token": "Output \" fiber\"",
+      "probabilities": {
+        "clinical": 0.4,
+        "patient": 0.057
+      },
+      "language_penalty": -0.343,
+      "clinical_mass": {
+        "clinical": 0.2931,
+        "patient": 0.2615
+      },
+      "error_share": {
+        "clinical": 0.118,
+        "patient": 0.1187
+      },
+      "top_path": {
+        "clinical": "[L23\u00b7S]  \u2192 Output \" fiber\" (p=0.400)",
+        "patient": "embedding \u2192 Output \" frequent\" (p=0.060)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " fiber",
+        "observed_clinical": [
+          "Output \" fiber\"",
+          0.4
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" fiber\"",
+            0.4
+          ],
+          [
+            "Output \" fibre\"",
+            0.109
+          ],
+          [
+            "Output \" prunes\"",
+            0.074
+          ],
+          [
+            "Output \" water\"",
+            0.042
+          ],
+          [
+            "Output \" fluids\"",
+            0.034
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" water\"",
+            0.102
+          ],
+          [
+            "Output \" frequent\"",
+            0.06
+          ],
+          [
+            "Output \" fiber\"",
+            0.057
+          ],
+          [
+            "Output \" fluids\"",
+            0.037
+          ],
+          [
+            "Output \" probiotics\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 413,
+        "unique_to_a": 433,
+        "unique_to_b": 470
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_54.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_54.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_54_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_54_diff.png"
+      }
+    },
+    {
+      "index": 55,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep having insomnia every night, so the doctor started me on a low-dose of",
+        "patient": "I keep counting sheep every night, so the doctor started me on a low-dose of"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4654
+      },
+      "error_share": {
+        "clinical": 0.1177
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " sedative",
+        "observed_clinical": null,
+        "probe_extension": "of",
+        "reason": "intended target not in the traced clinical spread (even after probe extension by 'of')"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" Amb\"",
+            0.14
+          ],
+          [
+            "Output \" Xan\"",
+            0.07
+          ],
+          [
+            "Output \" Z\"",
+            0.046
+          ],
+          [
+            "Output \" this\"",
+            0.045
+          ],
+          [
+            "Output \" melatonin\"",
+            0.045
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 56,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been having daytime sleepiness all afternoon, so at lunch she grabbed a strong",
+        "patient": "She's been dozing off at her desk all afternoon, so at lunch she grabbed a strong"
+      },
+      "target_token": "Output \" coffee\"",
+      "probabilities": {
+        "clinical": 0.17,
+        "patient": 0.228
+      },
+      "language_penalty": 0.057999999999999996,
+      "clinical_mass": {
+        "clinical": 0.1741,
+        "patient": 0.0999
+      },
+      "error_share": {
+        "clinical": 0.1191,
+        "patient": 0.1207
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] mentions of coffee, along with associated words like \u2192 [L25\u00b7O] words associated with dining at a cafe or restaurant \u2192 Output \" coffee\" (p=0.170)",
+        "patient": "embedding \u2192 [L18\u00b7O] mentions of coffee, along with associated words like \u2192 [L25\u00b7O] words associated with dining at a cafe or restaurant \u2192 Output \" coffee\" (p=0.228)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " coffee",
+        "observed_clinical": [
+          "Output \" coffee\"",
+          0.17
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cup\"",
+            0.303
+          ],
+          [
+            "Output \" coffee\"",
+            0.17
+          ],
+          [
+            "Output \" nap\"",
+            0.076
+          ],
+          [
+            "Output \" dose\"",
+            0.068
+          ],
+          [
+            "Output \" espresso\"",
+            0.035
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cup\"",
+            0.401
+          ],
+          [
+            "Output \" coffee\"",
+            0.228
+          ],
+          [
+            "Output \" espresso\"",
+            0.053
+          ],
+          [
+            "Output \",\"",
+            0.031
+          ],
+          [
+            "Output \" dose\"",
+            0.017
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 489,
+        "unique_to_a": 340,
+        "unique_to_b": 289
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_56.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_56.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_56_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_56_diff.png"
+      }
+    }
+  ]
+}
