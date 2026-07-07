@@ -1,0 +1,317 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 105,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 105,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep having night sweats every night, so the doctor ordered a",
+        "patient": "I keep waking up drenched in sweat every night, so the doctor ordered a"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.232,
+        "patient": 0.094
+      },
+      "language_penalty": -0.138,
+      "clinical_mass": {
+        "clinical": 0.4243,
+        "patient": 0.3079
+      },
+      "error_share": {
+        "clinical": 0.1227,
+        "patient": 0.1309
+      },
+      "top_path": {
+        "clinical": "[L14\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 Output \" test\" (p=0.072)",
+        "patient": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.305)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.232
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.232
+          ],
+          [
+            "Output \" sleep\"",
+            0.121
+          ],
+          [
+            "Output \" test\"",
+            0.072
+          ],
+          [
+            "Output \" hormone\"",
+            0.053
+          ],
+          [
+            "Output \" urine\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.305
+          ],
+          [
+            "Output \" blood\"",
+            0.094
+          ],
+          [
+            "Output \" heart\"",
+            0.069
+          ],
+          [
+            "Output \" test\"",
+            0.036
+          ],
+          [
+            "Output \" CP\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 453,
+        "unique_to_a": 435,
+        "unique_to_b": 350
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_105.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_105.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_105_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_105_diff.png"
+      }
+    },
+    {
+      "index": 106,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My contact dermatitis has flared after the new detergent, so tonight I'm putting on some",
+        "patient": "My skin's gone all fiery and itchy after the new detergent, so tonight I'm putting on some"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.025,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2802,
+        "patient": 0.2376
+      },
+      "error_share": {
+        "clinical": 0.1299,
+        "patient": 0.1267
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" of\" (p=0.073)",
+        "patient": "embedding \u2192 Output \" of\" (p=0.102)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cream",
+        "observed_clinical": [
+          "Output \" cream\"",
+          0.025
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" of\"",
+            0.073
+          ],
+          [
+            "Output \" Vase\"",
+            0.05
+          ],
+          [
+            "Output \" coconut\"",
+            0.032
+          ],
+          [
+            "Output \" Ave\"",
+            0.029
+          ],
+          [
+            "Output \" cream\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" of\"",
+            0.102
+          ],
+          [
+            "Output \" moistur\"",
+            0.034
+          ],
+          [
+            "Output \" old\"",
+            0.03
+          ],
+          [
+            "Output \" coconut\"",
+            0.029
+          ],
+          [
+            "Output \" aloe\"",
+            0.024
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 549,
+        "unique_to_a": 309,
+        "unique_to_b": 279
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_106.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_106.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_106_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_106_diff.png"
+      }
+    },
+    {
+      "index": 107,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My chronic insomnia's been bad lately, so my doctor told me to take a",
+        "patient": "I can't sleep a wink lately, so my doctor told me to take a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3803
+      },
+      "error_share": {
+        "clinical": 0.1122
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleeping\"",
+            0.149
+          ],
+          [
+            "Output \" sleep\"",
+            0.08
+          ],
+          [
+            "Output \" melatonin\"",
+            0.074
+          ],
+          [
+            "Output \" \"",
+            0.055
+          ],
+          [
+            "Output \" short\"",
+            0.028
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 108,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My generalized anxiety's been bad at work, so on my lunch break I picked up a",
+        "patient": "My mind won't stop spinning at work, so on my lunch break I picked up a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.0718
+      },
+      "error_share": {
+        "clinical": 0.125
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " prescription",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" copy\"",
+            0.178
+          ],
+          [
+            "Output \" book\"",
+            0.153
+          ],
+          [
+            "Output \" new\"",
+            0.108
+          ],
+          [
+            "Output \" few\"",
+            0.065
+          ],
+          [
+            "Output \" couple\"",
+            0.064
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}
