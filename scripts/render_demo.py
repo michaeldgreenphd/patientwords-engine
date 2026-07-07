@@ -216,6 +216,7 @@ def main() -> int:
     badge = {"lines": [{"text": "Language Penalty: −51% probability (0.86 → 0.35)",
                         "color": "#b4483d"}]}
     out2 = os.path.join(args.site, "modes", "2panel")
+    os.makedirs(out2, exist_ok=True)
     render_panels_html(panels, os.path.join(out2, "index.html"), badges=[badge])
     render_panels_png(panels, os.path.join(out2, "preview.png"), badges=[badge], dpi=args.dpi)
     print("wrote", out2)
@@ -238,6 +239,7 @@ def main() -> int:
          "color": "#15803d"},
     ]}
     outt = os.path.join(args.site, "modes", "translation")
+    os.makedirs(outt, exist_ok=True)
     render_panels_html(tpanels, os.path.join(outt, "index.html"), badges=[tbadge])
     render_panels_png(tpanels, os.path.join(outt, "preview.png"), badges=[tbadge], dpi=args.dpi)
     print("wrote", outt)

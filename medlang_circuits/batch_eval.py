@@ -80,6 +80,7 @@ from medlang_circuits.neuronpedia_features import FeatureFetcher, NullFetcher
 from medlang_circuits.schema_utils import is_feature_node, node_layer_and_index
 from medlang_circuits.steering import steer_ablate, top_offtarget_features
 from medlang_circuits.targets import (
+    display_token,
     TOP_K_SPREAD_DEFAULT,
     AttributionTargets,
     bare_token,
@@ -321,7 +322,9 @@ def _delta_badge(kind: str, p_from: float | None, p_to: float | None) -> dict[st
 
 
 def _headline(token: str | None, prob: float | None) -> str | None:
-    return f"prob({token}) = {prob:.2f}" if token is not None and prob is not None else None
+    if token is None or prob is None:
+        return None
+    return f"prob(\u201c{display_token(token)}\u201d) = {prob:.2f}"
 
 
 def _generation_params(

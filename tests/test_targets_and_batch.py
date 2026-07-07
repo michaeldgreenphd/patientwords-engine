@@ -334,7 +334,7 @@ def test_run_batch_quadrant_offline(tmp_path, monkeypatch):
     assert "D · Patient-derived language + nonstandard morphosyntax (both axes shifted)" in html
     # prominent per-box target probabilities in explicit prob() notation
     for value in ("0.86", "0.46", "0.78", "0.38"):
-        assert f"prob(jumps) = {value}" in html
+        assert f"prob(“jumps”) = {value}" in html
     assert "p(jumps)" not in html
     # cross-panel deltas: all badges horizontal (no rotated gutter text)
     assert html.count("Register shift Δ: -40% probability (0.86 → 0.46)") == 1
@@ -403,7 +403,7 @@ def test_run_batch_translation_offline(tmp_path, monkeypatch):
     assert "LLM Translation (phrase_table): “clinical phrasing about the fox”" in html
     assert "Recovered target probability: +41% probability (0.40 → 0.81)" in html
     # recovered target probabilities as per-panel headlines, prob() notation
-    assert "prob(jumps) = 0.40" in html and "prob(jumps) = 0.81" in html
+    assert "prob(“jumps”) = 0.40" in html and "prob(“jumps”) = 0.81" in html
     assert r["predictive_spread"]["translated"] == [("a", 0.9), ("jumps", 0.81)]
 
 

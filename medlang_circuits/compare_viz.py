@@ -48,7 +48,7 @@ from collections import defaultdict
 from typing import Any
 
 from medlang_circuits.schema_utils import max_numeric_layer, node_display_layer
-from medlang_circuits.targets import bare_token, parse_logit_clerp
+from medlang_circuits.targets import display_token, parse_logit_clerp
 
 logger = logging.getLogger(__name__)
 
@@ -346,7 +346,7 @@ def _bezier_d(src: tuple[float, float], tgt: tuple[float, float], r_src: float, 
 def _logit_label(node: dict[str, Any]) -> str:
     """Display label for a logit node: '\u201ctherapist\u201d \u00b7 prob 0.86' (no p= syntax)."""
     token, prob = parse_logit_clerp(node.get("clerp"))
-    token = bare_token(token)  # hosted clerps wrap the token as Output "..."
+    token = display_token(token)  # hosted clerps wrap the token as Output "..."
     if prob is None:
         return (node.get("clerp") or "")[:24]
     return f"\u201c{token[:20]}\u201d \u00b7 prob {prob:.2f}"
@@ -392,7 +392,10 @@ def _panel_svg(
     # Title splits at the first ': ' into a large role line (readable even at
     # gallery-thumbnail scale) and a smaller prompt line underneath.
     role_text, _, prompt_text = (panel["label"] or "").partition(": ")
-    parts.append(f'<text x="{MARGIN["left"]}" y="34" class="t">{html.escape(role_text)}</text>')
+    # 30px/800 fits ~42 chars inside the panel; longer roles (quadrant cells)
+    # step down so they can never cross into a neighboring panel
+    role_cls = "t" if len(role_text) <= 42 else ("tm" if len(role_text) <= 62 else "ts")
+    parts.append(f'<text x="{MARGIN["left"]}" y="34" class="{role_cls}">{html.escape(role_text)}</text>')
     if prompt_text:
         parts.append(
             f'<text x="{MARGIN["left"]}" y="60" class="tp">{html.escape(prompt_text)}</text>'
@@ -530,6 +533,8 @@ _CSS = (
     "svg{width:100%;height:auto;display:block}"
     # role line: readable at ~34% gallery-thumbnail scale
     ".t{font-size:30px;font-weight:800;fill:" + INK + ";letter-spacing:-.01em}"
+    ".tm{font-size:22px;font-weight:800;fill:" + INK + ";letter-spacing:-.01em}"
+    ".ts{font-size:17px;font-weight:800;fill:" + INK + "}"
     # prompt sentence: secondary, full-width legible line
     ".tp{font-size:17px;font-weight:400;fill:#374151}"
     # headline number: the panel's one number, unmissable at any scale
@@ -559,7 +564,7 @@ _JS = (
     "<div class=c>'+d.cat+' &middot; '+d.wl+': '+d.w+'</div><div class=d>'+d.desc+'</div>';"
     "tt.style.display='block';"
     "var x=px+14,y=py+12,de=document.documentElement;"
-    "if(x+tt.offsetWidth+8>de.clientWidth+de.scrollLeft+window.scrollX)x=px-tt.offsetWidth-14;"
+    "if(x+tt.offsetWidth+8>de.scrollLeft+de.clientWidth)x=px-tt.offsetWidth-14;"
     "if(x<2)x=2;"
     "if(y+tt.offsetHeight+8>window.scrollY+window.innerHeight)y=py-tt.offsetHeight-12;"
     "if(y<2)y=2;"
@@ -571,6 +576,8 @@ _JS = (
     "e.addEventListener('click',function(ev){"
     "ev.stopPropagation();pinned=true;show(e,ev.pageX,ev.pageY);});});"
     "document.addEventListener('click',function(){pinned=false;tt.style.display='none';});"
+    # clicking the parent page blurs the iframe: unpin there too
+    "window.addEventListener('blur',function(){pinned=false;tt.style.display='none';});"
 )
 
 _LEGEND = (
@@ -866,8 +873,9 @@ def _paint_panel_ax(ax, prep: dict[str, Any], panel: dict[str, Any]) -> None:
                     solid_capstyle="butt", zorder=4)
 
     role_text, _, prompt_text = (panel.get("label") or "").partition(": ")
+    role_size = 17 if len(role_text) <= 42 else (13 if len(role_text) <= 62 else 10)
     ax.text(MARGIN["left"], panel_h - 34, role_text, ha="left",
-            fontsize=17, fontweight="bold", color=INK)
+            fontsize=role_size, fontweight="bold", color=INK)
     if prompt_text:
         ax.text(MARGIN["left"], panel_h - 58, prompt_text, ha="left",
                 fontsize=10.5, color="#374151")

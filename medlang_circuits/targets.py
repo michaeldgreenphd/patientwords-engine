@@ -71,6 +71,16 @@ def anchor_matches(label: str, anchor: str) -> bool:
             and (anchor_text.startswith(token_text) or token_text.startswith(anchor_text)))
 
 
+def display_token(label: str | None) -> str:
+    """Case-preserving display form of a logit token: strips the hosted
+    'Output "..."' wrapper and whitespace, nothing else. (bare_token also
+    lowercases - right for matching, wrong for display: 'Xanax' != 'xanax'.)"""
+    if not label:
+        return ""
+    match = _HOSTED_OUTPUT_RE.match(label.strip())
+    return (match.group(1) if match else label).strip()
+
+
 def parse_logit_clerp(clerp: str | None) -> tuple[str, float | None]:
     """Split a logit node label like 'therapist (p=0.62)' into (token, probability)."""
     if not clerp:
