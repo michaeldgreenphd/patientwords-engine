@@ -1,0 +1,19 @@
+# Overnight session ledger — 2026-07-07/08
+
+Hard ceiling this session: **$8.00** Anthropic credits. Tracing/logits/CI: $0.
+
+| Phase | Item | Status | Cost |
+|---|---|---|---|
+| 0 | Validity correlation (27 hand pairs) | DONE — r=0.687 / ρ=0.665 (n=14 matched; 12/14 within ±0.08; outlier #17) | $0 |
+| 0 | Mitigation trace (20 downgrade phrases) | in CI queue | ~$0.03 translation calls (paid at trace time) |
+| 0 | Continuation decoding (Qwen path) | code shipped; 119-pair re-run firing | $0 |
+| 1 | Gen A: 80 pairs, digestive+sleep 2x | running (cap $2.50) | pending sidecar |
+| 1 | Gen B: 60 pairs, other 6 topics | queued next (cap $2.00) | pending |
+| 1 | New-batch gemma trace + Qwen logits | after gen lands | $0 |
+| 2 | Safety cards + hedging/redirecting vocab | DONE, browser-verified, pushed | $0 |
+| 3 | Review checklist + one-line findings flip | DONE (docs/tier_review_checklist.md) | $0 |
+
+**Session paid total so far: $0.00 committed; ≤$4.53 planned (A $2.50 + B $2.00 + translations ~$0.03).**
+Project lifetime spend before tonight: $6.08.
+
+Updated at each check-in; final numbers in the morning report.
