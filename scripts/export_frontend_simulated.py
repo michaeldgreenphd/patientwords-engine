@@ -318,6 +318,11 @@ models_meta = [
         "source_set": traced_by_model.get(m, {}).get("source_set"),
         "features": m in FEATURED,
         "attention_replacement": m in QK,
+        # whether this model has an attribution graph at all. The logits backend
+        # (models Neuronpedia can't render) measures next-token behavior only, so
+        # the front end tells the reader there is no circuit graph rather than
+        # implying one is hidden in the archive.
+        "graphs": traced_by_model.get(m, {}).get("backend") != "logits",
         "available": True,
         "n_traced": sum(1 for s in scenarios if m in s.get("models", {})),
         "default": m == BASE_MODEL,
