@@ -432,6 +432,32 @@ Set `trace_sample_size: 0` to archive without tracing (generation needs only
 Trace Evaluation* workflow's `mode` input now also includes `dialect`, with a
 committed sample at `medlang_circuits/data/ci_pairs_dialect.json`.
 
+## Publishing: a demo on the site, the full run in a Release
+
+The public gallery is a **demonstration**, not a data dump.
+`scripts/export_frontend_simulated.py` writes every scenario's measurements to
+the site but copies the interactive circuit render only for the most
+consequential ones — flips first, then the largest language penalty — capped by
+`--max-renders` (default **25**). A large run's full render set is a few hundred
+MB of HTML and PNG, so it is bundled and attached to a **GitHub Release** on
+this engine repo instead of bloating the site or git. The export prints a
+ready-to-fire archive trigger whenever a publish exceeds 100 scenarios.
+
+```bash
+# demo: numbers for all, renders for the top 25 (site stays light)
+python scripts/export_frontend_simulated.py --frontend ../patientwords \
+    --stamps 20260707T023656Z,20260707T023704Z --no-pngs
+
+# archive: zip the full render set + attach to a Release (CI has the token)
+python scripts/archive_run.py --runs trace_out/pairs_20260707T023656Z \
+    --tag renders-20260707 --out-dir dist        # local packaging
+#   then push .github/trigger/archive-renders.json to upload it
+```
+
+See **[docs/archiving.md](docs/archiving.md)** for the full flow, the
+`archive_renders` workflow, the committed `render_archives/*.manifest.json`
+index, and the optional `prune` that drops archived PNGs from the branch.
+
 ## Deeper interpretability: four instruments (July 2026)
 
 1. **Error-node share** (`error_share` in every 2panel/dialect result): the

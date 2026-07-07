@@ -40,6 +40,11 @@ parser.add_argument("--max-renders", type=int, default=25,
                          "consequential scenarios (flips first, then largest language penalty); "
                          "every scenario still gets its lightweight numbers. 0 = no cap. The "
                          "full render set lives in the engine repo / a run archive.")
+parser.add_argument("--archive-url", default="",
+                    help="URL of the back-end render archive (a GitHub Release on the engine "
+                         "repo). Recorded in the payload so data-only scenarios can point at "
+                         "the full circuit render. See scripts/archive_run.py + the "
+                         "archive_renders workflow.")
 args = parser.parse_args()
 
 ENGINE = Path(args.engine)
@@ -205,6 +210,8 @@ payload = {
     "traced": traced_meta,
     "scenarios": scenarios,
 }
+if args.archive_url:
+    payload["archive"] = {"release_url": args.archive_url}
 out_data = FRONTEND / "data/simulated_scenarios.json"
 out_data.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 measured_n = sum(1 for s in scenarios
@@ -213,3 +220,16 @@ data_only = len(scenarios) - copied
 print(f"{len(scenarios)} scenarios ({measured_n} measured) across {len(batches)} batch(es) -> {out_data}")
 print(f"  {copied} interactive renders published (cap {args.max_renders or 'none'}); "
       f"{data_only} scenarios are data-only on the public site")
+
+# Over ~100 scenarios the full render set is heavy enough that it belongs in a
+# back-end archive, not the site repo. Nudge the operator with a ready-to-fire
+# trigger for the archive_renders workflow (see docs/archiving.md).
+if len(scenarios) > 100 and not args.archive_url:
+    run_dirs = [f"trace_out/pairs_{s.strip()}"
+                for s in args.stamps.split(",") if s.strip()]
+    trigger = {"tag": "renders-<date>", "runs": run_dirs, "prune": False}
+    print(f"\n  Note: {len(scenarios)} scenarios (>100) - archive the full render set to a")
+    print("  GitHub Release so the back-end keeps it without bloating git. Fire:")
+    print("    .github/trigger/archive-renders.json =")
+    print("    " + json.dumps(trigger))
+    print("  then re-run this export with --archive-url <release-url> to link data-only rows.")
