@@ -1,0 +1,545 @@
+{
+  "mode": "dialect",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 5,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 5,
+      "mode": "dialect",
+      "baseline_prompt": "Before I go outside I grab my inhaler and",
+      "held_fixed": "clinical",
+      "term": "inhaler",
+      "target_token": "Output \" my\"",
+      "baseline_probability": 0.174,
+      "variants": [
+        {
+          "dialect": "Southern US English",
+          "prompt": "Fore I head on outside, I go on and grab my inhaler and",
+          "probability": 0.229,
+          "delta_vs_baseline": 0.05500000000000002
+        },
+        {
+          "dialect": "British English",
+          "prompt": "Before I pop outside I make sure to pick up my inhaler and",
+          "probability": 0.198,
+          "delta_vs_baseline": 0.02400000000000002
+        },
+        {
+          "dialect": "texting/informal register",
+          "prompt": "b4 i go out i grab my inhaler and",
+          "probability": 0.199,
+          "delta_vs_baseline": 0.025000000000000022
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" my\"",
+            0.174
+          ],
+          [
+            "Output \" take\"",
+            0.094
+          ],
+          [
+            "Output \" a\"",
+            0.074
+          ],
+          [
+            "Output \" put\"",
+            0.058
+          ],
+          [
+            "Output \" make\"",
+            0.038
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" my\"",
+              0.229
+            ],
+            [
+              "Output \" I\"",
+              0.079
+            ],
+            [
+              "Output \" a\"",
+              0.065
+            ],
+            [
+              "Output \" take\"",
+              0.06
+            ],
+            [
+              "Output \" put\"",
+              0.051
+            ]
+          ],
+          [
+            [
+              "Output \" my\"",
+              0.198
+            ],
+            [
+              "Output \" a\"",
+              0.1
+            ],
+            [
+              "Output \" take\"",
+              0.068
+            ],
+            [
+              "Output \" carry\"",
+              0.041
+            ],
+            [
+              "Output \" the\"",
+              0.038
+            ]
+          ],
+          [
+            [
+              "Output \" my\"",
+              0.199
+            ],
+            [
+              "Output \" i\"",
+              0.083
+            ],
+            [
+              "Output \" take\"",
+              0.083
+            ],
+            [
+              "Output \" a\"",
+              0.052
+            ],
+            [
+              "Output \" put\"",
+              0.048
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.1238
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 Output \" a\" (p=0.074)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260707T155124Z/index_05.html",
+        "png": "trace_out/dialects_20260707T155124Z/index_05.png"
+      }
+    },
+    {
+      "index": 6,
+      "mode": "dialect",
+      "baseline_prompt": "Now that I have the postprandial, I am going to just go to",
+      "held_fixed": "clinical",
+      "term": "postprandial",
+      "target_token": "Output \" the\"",
+      "baseline_probability": 0.315,
+      "variants": [
+        {
+          "dialect": "Southern US English",
+          "prompt": "Well, now that I done got my postprandial, I reckon I'm just gonna head on over to the",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "African American Vernacular English",
+          "prompt": "Aight, now that I got my postprandial, I'm finna just go on to the",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "British English",
+          "prompt": "Right, now that I've had the postprandial done, I think I shall just pop along to the",
+          "probability": null,
+          "delta_vs_baseline": null
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" the\"",
+            0.315
+          ],
+          [
+            "Output \" bed\"",
+            0.222
+          ],
+          [
+            "Output \" sleep\"",
+            0.153
+          ],
+          [
+            "Output \" town\"",
+            0.066
+          ],
+          [
+            "Output \" work\"",
+            0.042
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" local\"",
+              0.082
+            ],
+            [
+              "Output \" bar\"",
+              0.068
+            ],
+            [
+              "Output \" pub\"",
+              0.065
+            ],
+            [
+              "Output \" \"",
+              0.051
+            ],
+            [
+              "Output \" kitchen\"",
+              0.045
+            ]
+          ],
+          [
+            [
+              "Output \" next\"",
+              0.471
+            ],
+            [
+              "Output \" main\"",
+              0.083
+            ],
+            [
+              "Output \" actual\"",
+              0.054
+            ],
+            [
+              "Output \" real\"",
+              0.042
+            ],
+            [
+              "Output \" good\"",
+              0.027
+            ]
+          ],
+          [
+            [
+              "Output \" pub\"",
+              0.13
+            ],
+            [
+              "Output \" local\"",
+              0.099
+            ],
+            [
+              "Output \" post\"",
+              0.048
+            ],
+            [
+              "Output \" gym\"",
+              0.047
+            ],
+            [
+              "Output \" hospital\"",
+              0.038
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.1077
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 Output \" the\" (p=0.315)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260707T155124Z/index_06.html",
+        "png": "trace_out/dialects_20260707T155124Z/index_06.png"
+      }
+    },
+    {
+      "index": 7,
+      "mode": "dialect",
+      "baseline_prompt": "Ever since the argument with her sister, she keeps having syncopal episodes at work, so the nurse told her to go to",
+      "held_fixed": "clinical",
+      "term": "having syncopal episodes",
+      "target_token": "Output \" the\"",
+      "baseline_probability": 0.782,
+      "variants": [
+        {
+          "dialect": "Southern US English",
+          "prompt": "Well, ever since she got to fussin' with her sister, bless her heart, she's been having syncopal episodes over at her work, so the nurse done told her she oughta head on over to the",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "British English",
+          "prompt": "Ever since that row with her sister, she's been having syncopal episodes at work, so the nurse told her she really ought to pop along to the",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "African American Vernacular English",
+          "prompt": "Ever since she got into it with her sister, she been having syncopal episodes at her job, so the nurse told her she need to go on down to the",
+          "probability": null,
+          "delta_vs_baseline": null
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" the\"",
+            0.782
+          ],
+          [
+            "Output \" a\"",
+            0.051
+          ],
+          [
+            "Output \" her\"",
+            0.035
+          ],
+          [
+            "Output \" hospital\"",
+            0.021
+          ],
+          [
+            "Output \" an\"",
+            0.014
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" doctor\"",
+              0.332
+            ],
+            [
+              "Output \" hospital\"",
+              0.147
+            ],
+            [
+              "Output \" doc\"",
+              0.118
+            ],
+            [
+              "Output \" ER\"",
+              0.081
+            ],
+            [
+              "Output \" clinic\"",
+              0.041
+            ]
+          ],
+          [
+            [
+              "Output \" doctor\"",
+              0.315
+            ],
+            [
+              "Output \" GP\"",
+              0.222
+            ],
+            [
+              "Output \" doctors\"",
+              0.118
+            ],
+            [
+              "Output \" hospital\"",
+              0.074
+            ],
+            [
+              "Output \" docs\"",
+              0.054
+            ]
+          ],
+          [
+            [
+              "Output \" ER\"",
+              0.222
+            ],
+            [
+              "Output \" doctor\"",
+              0.187
+            ],
+            [
+              "Output \" hospital\"",
+              0.157
+            ],
+            [
+              "Output \" emergency\"",
+              0.082
+            ],
+            [
+              "Output \" doctors\"",
+              0.052
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.1156
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 Output \" the\" (p=0.782)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260707T155124Z/index_07.html",
+        "png": "trace_out/dialects_20260707T155124Z/index_07.png"
+      }
+    },
+    {
+      "index": 8,
+      "mode": "dialect",
+      "baseline_prompt": "For the scan they will run iodinated contrast through your IV so the before you should",
+      "held_fixed": "clinical",
+      "term": "iodinated contrast through your IV so the",
+      "target_token": "Output \" drink\"",
+      "baseline_probability": 0.198,
+      "variants": [
+        {
+          "dialect": "Southern US English",
+          "prompt": "Now for that there scan, they're fixin' to run iodinated contrast through your IV so the before that you oughta",
+          "probability": 0.1,
+          "delta_vs_baseline": -0.098
+        },
+        {
+          "dialect": "British English",
+          "prompt": "For the scan, they'll be putting iodinated contrast through your IV so the beforehand you really ought to",
+          "probability": 0.133,
+          "delta_vs_baseline": -0.065
+        },
+        {
+          "dialect": "texting/informal register",
+          "prompt": "ok so for the scan they gonna push iodinated contrast through your IV so the before it u should",
+          "probability": 0.262,
+          "delta_vs_baseline": 0.064
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" drink\"",
+            0.198
+          ],
+          [
+            "Output \" have\"",
+            0.133
+          ],
+          [
+            "Output \" be\"",
+            0.128
+          ],
+          [
+            "Output \" not\"",
+            0.047
+          ],
+          [
+            "Output \" fast\"",
+            0.042
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" be\"",
+              0.131
+            ],
+            [
+              "Output \" drink\"",
+              0.1
+            ],
+            [
+              "Output \" go\"",
+              0.079
+            ],
+            [
+              "Output \" get\"",
+              0.063
+            ],
+            [
+              "Output \" have\"",
+              0.062
+            ]
+          ],
+          [
+            [
+              "Output \" drink\"",
+              0.133
+            ],
+            [
+              "Output \" be\"",
+              0.09
+            ],
+            [
+              "Output \" avoid\"",
+              0.086
+            ],
+            [
+              "Output \" have\"",
+              0.06
+            ],
+            [
+              "Output \" eat\"",
+              0.039
+            ]
+          ],
+          [
+            [
+              "Output \" drink\"",
+              0.262
+            ],
+            [
+              "Output \" be\"",
+              0.111
+            ],
+            [
+              "Output \" have\"",
+              0.083
+            ],
+            [
+              "Output \" not\"",
+              0.054
+            ],
+            [
+              "Output \" eat\"",
+              0.041
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.1467
+      },
+      "top_path": {
+        "baseline": "[L18\u00b7S]  \u2192 [L20\u00b7O] the general topic of fasting, especially in a religi \u2192 Output \" fast\" (p=0.042)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260707T155124Z/index_08.html",
+        "png": "trace_out/dialects_20260707T155124Z/index_08.png"
+      }
+    }
+  ]
+}
