@@ -1,0 +1,313 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 57,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 57,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since that big meal my gastritis has flared up, so tonight I'm just going to lie on the",
+        "patient": "Ever since that big meal my gut's been acting up, so tonight I'm just going to lie on the"
+      },
+      "target_token": "Output \" couch\"",
+      "probabilities": {
+        "clinical": 0.727,
+        "patient": 0.711
+      },
+      "language_penalty": -0.016000000000000014,
+      "clinical_mass": {
+        "clinical": 0.1064,
+        "patient": 0.0942
+      },
+      "error_share": {
+        "clinical": 0.1225,
+        "patient": 0.1158
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] phrases related to lying down or not feeling well |  \u2192 [L24\u00b7O] references to people being in or on a bed | bed \u2192 Output \" bed\" (p=0.039)",
+        "patient": "embedding \u2192 [L19\u00b7O] phrases related to lying down or not feeling well |  \u2192 [L24\u00b7O] references to people being in or on a bed | bed \u2192 Output \" bed\" (p=0.054)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " couch",
+        "observed_clinical": [
+          "Output \" couch\"",
+          0.727
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" couch\"",
+            0.727
+          ],
+          [
+            "Output \" sofa\"",
+            0.184
+          ],
+          [
+            "Output \" bed\"",
+            0.039
+          ],
+          [
+            "Output \" floor\"",
+            0.021
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" couch\"",
+            0.711
+          ],
+          [
+            "Output \" sofa\"",
+            0.096
+          ],
+          [
+            "Output \" floor\"",
+            0.081
+          ],
+          [
+            "Output \" bed\"",
+            0.054
+          ],
+          [
+            "Output \" ground\"",
+            0.008
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 592,
+        "unique_to_a": 108,
+        "unique_to_b": 141
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_57.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_57.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_57_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_57_diff.png"
+      }
+    },
+    {
+      "index": 58,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's been having acid reflux since lunch, so at his desk he reached for a",
+        "patient": "He's been feeling really acidy since lunch, so at his desk he reached for a"
+      },
+      "target_token": "Output \" glass\"",
+      "probabilities": {
+        "clinical": 0.117,
+        "patient": 0.07
+      },
+      "language_penalty": -0.047,
+      "clinical_mass": {
+        "clinical": 0.2625,
+        "patient": 0.1266
+      },
+      "error_share": {
+        "clinical": 0.1277,
+        "patient": 0.1269
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L22\u00b7O] food items and coffee, especially those related to F \u2192 Output \" glass\" (p=0.117)",
+        "patient": "embedding \u2192 Output \" can\" (p=0.032)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " glass",
+        "observed_clinical": [
+          "Output \" glass\"",
+          0.117
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" bottle\"",
+            0.159
+          ],
+          [
+            "Output \" glass\"",
+            0.117
+          ],
+          [
+            "Output \" box\"",
+            0.045
+          ],
+          [
+            "Output \" piece\"",
+            0.036
+          ],
+          [
+            "Output \" pill\"",
+            0.032
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bottle\"",
+            0.224
+          ],
+          [
+            "Output \" glass\"",
+            0.07
+          ],
+          [
+            "Output \" small\"",
+            0.038
+          ],
+          [
+            "Output \" packet\"",
+            0.035
+          ],
+          [
+            "Output \" can\"",
+            0.032
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 533,
+        "unique_to_a": 340,
+        "unique_to_b": 312
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_58.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_58.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_58_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_58_diff.png"
+      }
+    },
+    {
+      "index": 59,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She keeps having sleep apnea at night, so the clinic told her to bring in her",
+        "patient": "She keeps waking up gasping at night, so the clinic told her to bring in her"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3263
+      },
+      "error_share": {
+        "clinical": 0.1371
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " machine",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" husband\"",
+            0.094
+          ],
+          [
+            "Output \" blood\"",
+            0.091
+          ],
+          [
+            "Output \" CP\"",
+            0.08
+          ],
+          [
+            "Output \" oxygen\"",
+            0.041
+          ],
+          [
+            "Output \" sleep\"",
+            0.038
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 60,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The old man has sleepwalking episodes at night, so the doctor ordered a",
+        "patient": "The old man wanders the house asleep at night, so the doctor ordered a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3096
+      },
+      "error_share": {
+        "clinical": 0.1219
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " study",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.196
+          ],
+          [
+            "Output \" medication\"",
+            0.044
+          ],
+          [
+            "Output \" drug\"",
+            0.043
+          ],
+          [
+            "Output \" night\"",
+            0.042
+          ],
+          [
+            "Output \" blood\"",
+            0.039
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}
