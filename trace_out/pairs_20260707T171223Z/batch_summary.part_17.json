@@ -1,0 +1,401 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 17,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's had major depression for months, so the clinic set him up with a",
+        "patient": "He's been down in the dumps for months, so the clinic set him up with a"
+      },
+      "target_token": "Output \" therapist\"",
+      "probabilities": {
+        "clinical": 0.156,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4274,
+        "patient": 0.125
+      },
+      "error_share": {
+        "clinical": 0.1113,
+        "patient": 0.1183
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" new\" (p=0.051)",
+        "patient": "embedding \u2192 Output \" new\" (p=0.085)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " therapist",
+        "observed_clinical": [
+          "Output \" therapist\"",
+          0.156
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" psychiatrist\"",
+            0.209
+          ],
+          [
+            "Output \" therapist\"",
+            0.156
+          ],
+          [
+            "Output \" doctor\"",
+            0.061
+          ],
+          [
+            "Output \" new\"",
+            0.051
+          ],
+          [
+            "Output \" psychologist\"",
+            0.038
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" date\"",
+            0.101
+          ],
+          [
+            "Output \" new\"",
+            0.085
+          ],
+          [
+            "Output \" dog\"",
+            0.043
+          ],
+          [
+            "Output \" little\"",
+            0.035
+          ],
+          [
+            "Output \" puppy\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 346,
+        "unique_to_a": 407,
+        "unique_to_b": 548
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_17.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_17.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_17_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My kid's been having an asthma attack in the yard, so I ran inside for his",
+        "patient": "My kid's been wheezing and gasping in the yard, so I ran inside for his"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.724,
+        "patient": 0.585
+      },
+      "language_penalty": -0.139,
+      "clinical_mass": {
+        "clinical": 0.39,
+        "patient": 0.3565
+      },
+      "error_share": {
+        "clinical": 0.1327,
+        "patient": 0.1343
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" asthma\" (p=0.024)",
+        "patient": "embedding \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.585)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " inhaler",
+        "observed_clinical": [
+          "Output \" inhal\"",
+          0.724
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.724
+          ],
+          [
+            "Output \" medicine\"",
+            0.035
+          ],
+          [
+            "Output \" asthma\"",
+            0.024
+          ],
+          [
+            "Output \" puffer\"",
+            0.021
+          ],
+          [
+            "Output \" nebu\"",
+            0.021
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.585
+          ],
+          [
+            "Output \" asthma\"",
+            0.098
+          ],
+          [
+            "Output \" medicine\"",
+            0.062
+          ],
+          [
+            "Output \" meds\"",
+            0.027
+          ],
+          [
+            "Output \" nebu\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 537,
+        "unique_to_a": 233,
+        "unique_to_b": 275
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_18.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_18.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_18_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My irritable bowel is flaring after every meal, so tonight I'm sipping some",
+        "patient": "My tummy's tied in knots after every meal, so tonight I'm sipping some"
+      },
+      "target_token": "Output \" tea\"",
+      "probabilities": {
+        "clinical": 0.085,
+        "patient": 0.142
+      },
+      "language_penalty": 0.05699999999999998,
+      "clinical_mass": {
+        "clinical": 0.2504,
+        "patient": 0.2093
+      },
+      "error_share": {
+        "clinical": 0.1239,
+        "patient": 0.1221
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] descriptions of food, drink, and social situations | \u2192 Output \" tea\" (p=0.085)",
+        "patient": "embedding \u2192 [L19\u00b7O] descriptions of food, drink, and social situations | \u2192 Output \" tea\" (p=0.142)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " tea",
+        "observed_clinical": [
+          "Output \" tea\"",
+          0.085
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" tea\"",
+            0.085
+          ],
+          [
+            "Output \" hot\"",
+            0.075
+          ],
+          [
+            "Output \" peppermint\"",
+            0.065
+          ],
+          [
+            "Output \" ginger\"",
+            0.064
+          ],
+          [
+            "Output \" chamomile\"",
+            0.056
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" tea\"",
+            0.142
+          ],
+          [
+            "Output \" chamomile\"",
+            0.095
+          ],
+          [
+            "Output \" peppermint\"",
+            0.081
+          ],
+          [
+            "Output \" ginger\"",
+            0.059
+          ],
+          [
+            "Output \" hot\"",
+            0.052
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 541,
+        "unique_to_a": 238,
+        "unique_to_b": 281
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_19.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_19.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_19_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_19_diff.png"
+      }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have obstructive sleep apnea and my partner says I stop breathing, so I need a sleep",
+        "patient": "I keep waking up gasping and my partner says I stop breathing, so I need a sleep"
+      },
+      "target_token": "Output \" study\"",
+      "probabilities": {
+        "clinical": 0.607,
+        "patient": 0.601
+      },
+      "language_penalty": -0.006000000000000005,
+      "clinical_mass": {
+        "clinical": 0.3501,
+        "patient": 0.2969
+      },
+      "error_share": {
+        "clinical": 0.1299,
+        "patient": 0.1216
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" apnea\" (p=0.170)",
+        "patient": "[L25\u00b7S]  \u2192 Output \" study\" (p=0.601)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " study",
+        "observed_clinical": [
+          "Output \" study\"",
+          0.607
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" study\"",
+            0.607
+          ],
+          [
+            "Output \" apnea\"",
+            0.17
+          ],
+          [
+            "Output \" test\"",
+            0.065
+          ],
+          [
+            "Output \" machine\"",
+            0.044
+          ],
+          [
+            "Output \" monitor\"",
+            0.024
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" study\"",
+            0.601
+          ],
+          [
+            "Output \" apnea\"",
+            0.126
+          ],
+          [
+            "Output \" test\"",
+            0.063
+          ],
+          [
+            "Output \" monitor\"",
+            0.046
+          ],
+          [
+            "Output \" ap\"",
+            0.041
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 464,
+        "unique_to_a": 261,
+        "unique_to_b": 330
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_20.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_20.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_20_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_20_diff.png"
+      }
+    }
+  ]
+}
