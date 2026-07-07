@@ -96,6 +96,7 @@ jobs:
     outputs:
       config: ${{ steps.params.outputs.config }}
       offsets: ${{ steps.params.outputs.offsets }}
+      models: ${{ steps.params.outputs.models }}
     steps:
       - uses: actions/checkout@v4
 
@@ -119,7 +120,7 @@ jobs:
           python - <<'EOF'
           import json, os
           defaults = {
-              "graph_model": "gemma-2-2b", "mode": "2panel",
+              "graph_model": "gemma-2-2b", "graph_models": "", "mode": "2panel",
               "pairs_file": "", "offsets": "0", "sample_size": "1",
               "screen_targets": "", "commit_outputs": "false",
               "max_n_logits": "10", "desired_logit_prob": "0.95",
@@ -145,11 +146,22 @@ jobs:
           offsets = sorted({int(x) for x in params["offsets"].replace(",", " ").split()})
           if not offsets:
               raise SystemExit("no offsets to trace")
+          # graph_models (list/space/comma) fans the trace out over models; "all"
+          # expands to every hosted model. Falls back to the single graph_model,
+          # so a legacy single-model trigger behaves exactly as before.
+          raw = params.get("graph_models") or params["graph_model"]
+          models = [m.strip() for m in str(raw).replace(",", " ").split() if m.strip()]
+          if "all" in models:
+              models = ["gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b"]
+          if not models:
+              models = [params["graph_model"]]
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               out.write("config=" + json.dumps(params) + "\n")
               out.write("offsets=" + json.dumps(offsets) + "\n")
+              out.write("models=" + json.dumps(models) + "\n")
           print(json.dumps(params, indent=2))
           print("offsets:", offsets)
+          print("models:", models)
           EOF
 
   trace:
@@ -160,6 +172,7 @@ jobs:
       fail-fast: false
       max-parallel: 3
       matrix:
+        model: ${{ fromJson(needs.params.outputs.models) }}
         offset: ${{ fromJson(needs.params.outputs.offsets) }}
     steps:
       - uses: actions/checkout@v4
@@ -176,7 +189,7 @@ jobs:
           MODE: ${{ fromJson(needs.params.outputs.config).mode }}
           SAMPLE_SIZE: ${{ fromJson(needs.params.outputs.config).sample_size }}
           PAIRS_FILE: ${{ fromJson(needs.params.outputs.config).pairs_file }}
-          GRAPH_MODEL: ${{ fromJson(needs.params.outputs.config).graph_model }}
+          GRAPH_MODEL: ${{ matrix.model }}
           OFFSET: ${{ matrix.offset }}
         run: |
           python - <<'EOF'
@@ -213,7 +226,7 @@ jobs:
           ARGS=(ci_pairs.json
             --mode "${{ fromJson(needs.params.outputs.config).mode }}"
             --backend hosted
-            --graph-model "${{ fromJson(needs.params.outputs.config).graph_model }}"
+            --graph-model "${{ matrix.model }}"
             --max-n-logits "${{ fromJson(needs.params.outputs.config).max_n_logits }}"
             --desired-logit-prob "${{ fromJson(needs.params.outputs.config).desired_logit_prob }}"
             --node-threshold "${{ fromJson(needs.params.outputs.config).node_threshold }}"
@@ -256,7 +269,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f "${FILES[@]}"
-          git commit -m "Trace outputs: $OUT_DIR pairs starting at ${START} (${{ fromJson(needs.params.outputs.config).graph_model }}, ${{ fromJson(needs.params.outputs.config).mode }})"
+          git commit -m "Trace outputs: $OUT_DIR pairs starting at ${START} (${{ matrix.model }}, ${{ fromJson(needs.params.outputs.config).mode }})"
           PUSHED=0
           for i in 1 2 3 4 5; do
             if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
@@ -273,7 +286,7 @@ jobs:
           SUMMARY=$(ls "$OUT_DIR"/batch_summary*.json 2>/dev/null | head -1 || true)
           if [ -n "$SUMMARY" ]; then
             {
-              echo "## Circuit trace batch summary (${{ fromJson(needs.params.outputs.config).graph_model }}, ${{ fromJson(needs.params.outputs.config).mode }}, offset ${{ matrix.offset }})"
+              echo "## Circuit trace batch summary (${{ matrix.model }}, ${{ fromJson(needs.params.outputs.config).mode }}, offset ${{ matrix.offset }})"
               echo '```json'
               cat "$SUMMARY"
               echo '```'
@@ -284,6 +297,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: circuit-trace-${{ fromJson(needs.params.outputs.config).graph_model }}-${{ fromJson(needs.params.outputs.config).mode }}-${{ github.run_number }}-offset${{ matrix.offset }}
+          name: circuit-trace-${{ matrix.model }}-${{ fromJson(needs.params.outputs.config).mode }}-${{ github.run_number }}-offset${{ matrix.offset }}
           path: trace_out/
           if-no-files-found: warn
