@@ -311,3 +311,84 @@ def test_compare_cli_flags_reach_generate_graph(tmp_path, monkeypatch, capsys):
         "backend": "hosted",
         "params": {"max_n_logits": 12},
     }
+
+
+def test_hosted_retries_transient_500(monkeypatch):
+    import requests as real_requests
+
+    calls = {"post": 0}
+
+    class Resp:
+        def __init__(self, payload=None, status=200):
+            self._payload = payload or {}
+            self.status_code = status
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise real_requests.exceptions.HTTPError(
+                    f"{self.status_code} Server Error", response=self)
+
+        def json(self):
+            return self._payload
+
+    class Sess:
+        def __init__(self):
+            self.headers = {}
+
+        def post(self, url, json=None, timeout=None):
+            calls["post"] += 1
+            if calls["post"] < 3:
+                return Resp(status=500)
+            return Resp({})
+
+        def get(self, url, timeout=None):
+            return Resp({"url": "https://files.example/graph.json"})
+
+    class Req:
+        def Session(self):
+            return Sess()
+
+        def get(self, url, timeout=None):
+            return Resp({"nodes": [], "links": []})
+
+    monkeypatch.setattr(gc, "requests", Req())
+    monkeypatch.setattr(gc, "HOSTED_RETRY_SLEEP", 0.0)
+    monkeypatch.setenv("NEURONPEDIA_API_KEY", "test-key")
+    graph = gc.generate_graph("the quick brown fox", slug="s", backend="hosted")
+    assert calls["post"] == 3  # two 500s waited out, third attempt succeeded
+    assert graph == {"nodes": [], "links": []}
+
+
+def test_hosted_gives_up_after_max_attempts(monkeypatch):
+    import pytest
+    import requests as real_requests
+
+    calls = {"post": 0}
+
+    class Resp:
+        status_code = 500
+
+        def raise_for_status(self):
+            raise real_requests.exceptions.HTTPError("500 Server Error", response=self)
+
+    class Sess:
+        def __init__(self):
+            self.headers = {}
+
+        def post(self, url, json=None, timeout=None):
+            calls["post"] += 1
+            return Resp()
+
+        def get(self, url, timeout=None):
+            raise AssertionError("metadata fetch should never run when generate 500s")
+
+    class Req:
+        def Session(self):
+            return Sess()
+
+    monkeypatch.setattr(gc, "requests", Req())
+    monkeypatch.setattr(gc, "HOSTED_RETRY_SLEEP", 0.0)
+    monkeypatch.setenv("NEURONPEDIA_API_KEY", "test-key")
+    with pytest.raises(RuntimeError, match="after 4 attempts"):
+        gc.generate_graph("the quick brown fox", slug="s", backend="hosted")
+    assert calls["post"] == gc.HOSTED_ATTEMPTS

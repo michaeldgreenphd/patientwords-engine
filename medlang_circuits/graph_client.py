@@ -136,6 +136,20 @@ def generate_graph(
     raise ValueError(f"Unknown backend {backend!r}; expected 'hosted' or 'local'")
 
 
+# Retry policy for the hosted backend: Neuronpedia intermittently returns
+# 5xx under parallel load (observed as 500s when three matrix jobs generate
+# concurrently). Those are worth waiting out instead of failing the batch.
+RETRYABLE_HOSTED_STATUS = {429, 500, 502, 503, 504}
+HOSTED_ATTEMPTS = 4
+HOSTED_RETRY_SLEEP = 15.0  # doubles per retry: 15s, 30s, 60s
+
+# Bound at import so retry logic keeps working when tests monkeypatch
+# graph_client.requests with a fake module.
+_HTTPError = requests.exceptions.HTTPError
+_ConnectionError = requests.exceptions.ConnectionError
+_Timeout = requests.exceptions.Timeout
+
+
 def _generate_hosted(
     prompt: str, slug: str, model_id: str, source_set: str | None, timeout: float, **params: Any
 ) -> dict[str, Any]:
@@ -164,6 +178,36 @@ def _generate_hosted(
         # so a misspelled field here would drop the option without any error.
         body["qkTopk"] = params["qk_topk"]
 
+    last_err: Exception | None = None
+    for attempt in range(HOSTED_ATTEMPTS):
+        # a fresh slug per attempt sidesteps server-side state from a half
+        # finished earlier attempt (generate succeeded, metadata fetch 500d)
+        attempt_slug = slug if attempt == 0 else f"{slug}-r{attempt}"
+        if attempt:
+            wait = HOSTED_RETRY_SLEEP * 2 ** (attempt - 1)
+            logger.warning(
+                "Hosted generation retry %d/%d for slug=%s in %.0fs (%s)",
+                attempt, HOSTED_ATTEMPTS - 1, attempt_slug, wait, last_err,
+            )
+            time.sleep(wait)
+        body["slug"] = attempt_slug
+        try:
+            return _hosted_attempt(session, body, model_id, attempt_slug, timeout)
+        except _HTTPError as err:
+            status = getattr(err.response, "status_code", None)
+            if status not in RETRYABLE_HOSTED_STATUS:
+                raise
+            last_err = err
+        except (_ConnectionError, _Timeout) as err:
+            last_err = err
+    raise RuntimeError(
+        f"hosted graph generation failed after {HOSTED_ATTEMPTS} attempts for slug={slug!r}"
+    ) from last_err
+
+
+def _hosted_attempt(
+    session: Any, body: dict[str, Any], model_id: str, slug: str, timeout: float
+) -> dict[str, Any]:
     logger.info("Requesting hosted graph generation: model=%s slug=%s", model_id, slug)
     resp = session.post(f"{NEURONPEDIA_BASE_URL}/api/graph/generate", json=body, timeout=timeout)
     resp.raise_for_status()
