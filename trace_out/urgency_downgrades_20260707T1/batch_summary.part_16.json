@@ -1,0 +1,582 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 16,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep having night sweats every night, so the doctor ordered a",
+        "patient": "I keep waking up drenched in sweat every night, so the doctor ordered a",
+        "translated": "I keep experiencing nocturnal diaphoresis every night, so the physician ordered a"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.232,
+        "patient": 0.094,
+        "translated": 0.046
+      },
+      "language_penalty": -0.138,
+      "clinical_mass": {
+        "clinical": 0.4243,
+        "patient": 0.3079,
+        "translated": 0.3886
+      },
+      "error_share": {
+        "clinical": 0.1227,
+        "patient": 0.1309,
+        "translated": 0.142
+      },
+      "top_path": {
+        "clinical": "[L14\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 Output \" test\" (p=0.072)",
+        "patient": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.305)",
+        "translated": "embedding \u2192 Output \" \" (p=0.343)"
+      },
+      "mitigation_recovery": -0.048,
+      "translation_method": "llm",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.232
+          ],
+          [
+            "Output \" sleep\"",
+            0.121
+          ],
+          [
+            "Output \" test\"",
+            0.072
+          ],
+          [
+            "Output \" hormone\"",
+            0.053
+          ],
+          [
+            "Output \" urine\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.305
+          ],
+          [
+            "Output \" blood\"",
+            0.094
+          ],
+          [
+            "Output \" heart\"",
+            0.069
+          ],
+          [
+            "Output \" test\"",
+            0.036
+          ],
+          [
+            "Output \" CP\"",
+            0.034
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" \"",
+            0.343
+          ],
+          [
+            "Output \" urine\"",
+            0.06
+          ],
+          [
+            "Output \" sleep\"",
+            0.048
+          ],
+          [
+            "Output \" blood\"",
+            0.046
+          ],
+          [
+            "Output \" sweat\"",
+            0.04
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 453,
+        "unique_to_a": 435,
+        "unique_to_b": 350
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1/index_16.html",
+        "png": "trace_out/urgency_downgrades_20260707T1/index_16.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1/index_16_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1/index_16_diff.png"
+      }
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Grandma's been constipated for a week, so before dinner she took a",
+        "patient": "Grandma's been all bunged up for a week, so before dinner she took a",
+        "translated": "Grandmother has been constipated for a week, so before dinner she took a"
+      },
+      "target_token": "Output \" lax\"",
+      "probabilities": {
+        "clinical": 0.263,
+        "patient": null,
+        "translated": 0.453
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3072,
+        "patient": 0.1461,
+        "translated": 0.3162
+      },
+      "error_share": {
+        "clinical": 0.1178,
+        "patient": 0.1186,
+        "translated": 0.1205
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" big\" (p=0.041)",
+        "patient": "embedding \u2192 Output \" long\" (p=0.032)",
+        "translated": "embedding \u2192 [L22\u00b7O] food items and coffee, especially those related to F \u2192 Output \" bowl\" (p=0.057)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lax\"",
+            0.263
+          ],
+          [
+            "Output \" dose\"",
+            0.069
+          ],
+          [
+            "Output \" couple\"",
+            0.061
+          ],
+          [
+            "Output \" big\"",
+            0.041
+          ],
+          [
+            "Output \" stool\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" nap\"",
+            0.299
+          ],
+          [
+            "Output \" shower\"",
+            0.088
+          ],
+          [
+            "Output \" bath\"",
+            0.06
+          ],
+          [
+            "Output \" little\"",
+            0.036
+          ],
+          [
+            "Output \" long\"",
+            0.032
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" lax\"",
+            0.453
+          ],
+          [
+            "Output \" bowl\"",
+            0.057
+          ],
+          [
+            "Output \" stool\"",
+            0.045
+          ],
+          [
+            "Output \" spoonful\"",
+            0.026
+          ],
+          [
+            "Output \" few\"",
+            0.026
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 430,
+        "unique_to_a": 383,
+        "unique_to_b": 383
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1/index_17.html",
+        "png": "trace_out/urgency_downgrades_20260707T1/index_17.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1/index_17_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My irritable bowel is flaring after every meal, so tonight I'm sipping some",
+        "patient": "My tummy's tied in knots after every meal, so tonight I'm sipping some",
+        "translated": "My abdomen experiences cramping after every meal, so tonight I'm sipping some"
+      },
+      "target_token": "Output \" tea\"",
+      "probabilities": {
+        "clinical": 0.085,
+        "patient": 0.142,
+        "translated": 0.089
+      },
+      "language_penalty": 0.05699999999999998,
+      "clinical_mass": {
+        "clinical": 0.2504,
+        "patient": 0.2093,
+        "translated": 0.2839
+      },
+      "error_share": {
+        "clinical": 0.1239,
+        "patient": 0.1221,
+        "translated": 0.1247
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] descriptions of food, drink, and social situations | \u2192 Output \" tea\" (p=0.085)",
+        "patient": "embedding \u2192 [L19\u00b7O] descriptions of food, drink, and social situations | \u2192 Output \" tea\" (p=0.142)",
+        "translated": "embedding \u2192 [L19\u00b7O] descriptions of food, drink, and social situations | \u2192 Output \" tea\" (p=0.089)"
+      },
+      "mitigation_recovery": -0.05299999999999999,
+      "translation_method": "llm",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" tea\"",
+            0.085
+          ],
+          [
+            "Output \" hot\"",
+            0.075
+          ],
+          [
+            "Output \" peppermint\"",
+            0.065
+          ],
+          [
+            "Output \" ginger\"",
+            0.064
+          ],
+          [
+            "Output \" chamomile\"",
+            0.056
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" tea\"",
+            0.142
+          ],
+          [
+            "Output \" chamomile\"",
+            0.095
+          ],
+          [
+            "Output \" peppermint\"",
+            0.081
+          ],
+          [
+            "Output \" ginger\"",
+            0.059
+          ],
+          [
+            "Output \" hot\"",
+            0.052
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" ginger\"",
+            0.117
+          ],
+          [
+            "Output \" tea\"",
+            0.089
+          ],
+          [
+            "Output \" warm\"",
+            0.072
+          ],
+          [
+            "Output \" peppermint\"",
+            0.07
+          ],
+          [
+            "Output \" water\"",
+            0.067
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 541,
+        "unique_to_a": 238,
+        "unique_to_b": 281
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1/index_18.html",
+        "png": "trace_out/urgency_downgrades_20260707T1/index_18.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1/index_18_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having daytime hypersomnia every afternoon, so tonight I skipped my usual",
+        "patient": "I've been catching some z's on the couch every afternoon, so tonight I skipped my usual",
+        "translated": "I've been taking naps on the couch every afternoon, so tonight I omitted my usual"
+      },
+      "target_token": "Output \" \"",
+      "probabilities": {
+        "clinical": 0.174,
+        "patient": null,
+        "translated": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1411,
+        "patient": 0.068,
+        "translated": 0.0993
+      },
+      "error_share": {
+        "clinical": 0.1318,
+        "patient": 0.1221,
+        "translated": 0.1222
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" evening\" (p=0.072)",
+        "patient": "embedding \u2192 Output \" evening\" (p=0.066)",
+        "translated": "embedding \u2192 Output \" nap\" (p=0.038)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" \"",
+            0.174
+          ],
+          [
+            "Output \" bedtime\"",
+            0.113
+          ],
+          [
+            "Output \" dose\"",
+            0.082
+          ],
+          [
+            "Output \" evening\"",
+            0.072
+          ],
+          [
+            "Output \" dinner\"",
+            0.044
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" \"",
+            0.133
+          ],
+          [
+            "Output \" workout\"",
+            0.074
+          ],
+          [
+            "Output \" evening\"",
+            0.066
+          ],
+          [
+            "Output \" bedtime\"",
+            0.066
+          ],
+          [
+            "Output \" routine\"",
+            0.037
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" evening\"",
+            0.118
+          ],
+          [
+            "Output \" \"",
+            0.105
+          ],
+          [
+            "Output \" bedtime\"",
+            0.103
+          ],
+          [
+            "Output \" bath\"",
+            0.044
+          ],
+          [
+            "Output \" nap\"",
+            0.038
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 563,
+        "unique_to_a": 298,
+        "unique_to_b": 361
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1/index_19.html",
+        "png": "trace_out/urgency_downgrades_20260707T1/index_19.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1/index_19_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1/index_19_diff.png"
+      }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After that greasy fry-up my dyspepsia flared up, so at the counter I grabbed an",
+        "patient": "After that greasy fry-up my gut's all churned up, so at the counter I grabbed an",
+        "translated": "After that high-fat fried meal my gastrointestinal tract is experiencing nausea, so at the counter I grabbed an"
+      },
+      "target_token": "Output \" apple\"",
+      "probabilities": {
+        "clinical": 0.167,
+        "patient": 0.167,
+        "translated": 0.154
+      },
+      "language_penalty": 0.0,
+      "clinical_mass": {
+        "clinical": 0.0855,
+        "patient": 0.0484,
+        "translated": 0.1813
+      },
+      "error_share": {
+        "clinical": 0.1371,
+        "patient": 0.1252,
+        "translated": 0.1327
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.063)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.119)",
+        "translated": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.084)"
+      },
+      "mitigation_recovery": -0.013000000000000012,
+      "translation_method": "llm",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" apple\"",
+            0.167
+          ],
+          [
+            "Output \" orange\"",
+            0.134
+          ],
+          [
+            "Output \" egg\"",
+            0.085
+          ],
+          [
+            "Output \" ice\"",
+            0.063
+          ],
+          [
+            "Output \" iced\"",
+            0.042
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" apple\"",
+            0.167
+          ],
+          [
+            "Output \" orange\"",
+            0.135
+          ],
+          [
+            "Output \" ice\"",
+            0.119
+          ],
+          [
+            "Output \" iced\"",
+            0.088
+          ],
+          [
+            "Output \" egg\"",
+            0.061
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" apple\"",
+            0.154
+          ],
+          [
+            "Output \" ice\"",
+            0.084
+          ],
+          [
+            "Output \" orange\"",
+            0.074
+          ],
+          [
+            "Output \" ant\"",
+            0.046
+          ],
+          [
+            "Output \" anti\"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 696,
+        "unique_to_a": 119,
+        "unique_to_b": 157
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1/index_20.html",
+        "png": "trace_out/urgency_downgrades_20260707T1/index_20.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1/index_20_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1/index_20_diff.png"
+      }
+    }
+  ]
+}
