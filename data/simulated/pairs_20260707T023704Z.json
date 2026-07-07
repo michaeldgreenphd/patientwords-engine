@@ -1,0 +1,820 @@
+[
+  {
+    "top_prompt": "Since I have insomnia, I need to talk to my",
+    "bottom_prompt": "Since I can't shut my brain off at night, I need to talk to my",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "can't shut my brain off at night",
+      "clinical_term": "insomnia",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "The colloquial phrase reads as ordinary racing thoughts, while the clinical term 'insomnia' pulls the next token toward a care-seeking noun like 'doctor' rather than a mundane object like 'phone' or 'book'.",
+      "topic": "sleep problems",
+      "swap_spans": {
+        "patient_span": "can't shut my brain off at night,",
+        "clinical_span": "have insomnia,"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've had irritable bowel syndrome flaring up all week, so I need to watch my",
+    "bottom_prompt": "My stomach's been doing flips all week, so I need to watch my",
+    "target_clinical_token": " diet",
+    "generation": {
+      "patient_term": "stomach's been doing flips",
+      "clinical_term": "irritable bowel syndrome",
+      "expected_clinical_continuations": [
+        "diet"
+      ],
+      "rationale": "The vague colloquial complaint could lead anywhere (e.g. 'step'), but the named GI condition strongly funnels the model toward a management noun like 'diet'.",
+      "topic": "digestive issues",
+      "swap_spans": {
+        "patient_span": "My stomach's been doing flips",
+        "clinical_span": "I've had irritable bowel syndrome flaring up"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have eczema flaring up, so I should put on some",
+    "bottom_prompt": "I've got a nasty rash that won't quit, so I should put on some",
+    "target_clinical_token": " cream",
+    "generation": {
+      "patient_term": "nasty rash that won't quit",
+      "clinical_term": "eczema flaring up",
+      "expected_clinical_continuations": [
+        "cream"
+      ],
+      "rationale": "Both phrasings could plausibly precede 'cream', but the clinical diagnosis 'eczema' sharpens the model's confidence toward a treatment noun over a vaguer completion like 'lotion' or 'sunscreen'.",
+      "topic": "skin conditions",
+      "swap_spans": {
+        "patient_span": "I've got a nasty rash that won't quit,",
+        "clinical_span": "I have eczema flaring up,"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Since I've had chronic lower back pain for weeks, I need to take some",
+    "bottom_prompt": "Since my back's been killing me for weeks, I need to take some",
+    "target_clinical_token": " medicine",
+    "generation": {
+      "patient_term": "back's been killing me",
+      "clinical_term": "chronic lower back pain",
+      "expected_clinical_continuations": [
+        "medicine"
+      ],
+      "rationale": "The idiom 'killing me' is ambiguous between exhaustion and pain, while the precise clinical term biases the next token toward a treatment noun like 'medicine' rather than 'time' or 'rest'.",
+      "topic": "chronic pain",
+      "swap_spans": {
+        "patient_span": "my back's been killing me",
+        "clinical_span": "I've had chronic lower back pain"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Since my asthma is acting up again today, I should reach for my",
+    "bottom_prompt": "Since the wheezes are acting up again today, I should reach for my",
+    "target_clinical_token": " inhaler",
+    "generation": {
+      "patient_term": "wheezes",
+      "clinical_term": "asthma",
+      "expected_clinical_continuations": [
+        "inhaler"
+      ],
+      "rationale": "The colloquial 'wheezes' could still refer to a cold, but the clinical term 'asthma' pushes the continuation strongly toward the device noun 'inhaler' rather than a generic remedy.",
+      "topic": "breathing and allergies",
+      "swap_spans": {
+        "patient_span": "the wheezes are",
+        "clinical_span": "my asthma is"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Because I have insomnia again, I need to call my",
+    "bottom_prompt": "Because I have the sleepless nights again, I need to call my",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "the sleepless nights",
+      "clinical_term": "insomnia",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "The colloquial 'sleepless nights' could plausibly lead to calling a friend or family member, while the clinical term 'insomnia' funnels strongly toward seeking medical care from a doctor.",
+      "topic": "sleep problems",
+      "swap_spans": {
+        "patient_span": "the sleepless nights",
+        "clinical_span": "insomnia"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Since I have chronic insomnia these days, I finally called to book a",
+    "bottom_prompt": "Since I can't get any shut-eye these days, I finally called to book a",
+    "target_clinical_token": " appointment",
+    "generation": {
+      "patient_term": "can't get any shut-eye",
+      "clinical_term": "chronic insomnia",
+      "expected_clinical_continuations": [
+        "appointment"
+      ],
+      "rationale": "The colloquial 'shut-eye' reads as everyday tiredness, while 'chronic insomnia' funnels toward booking a medical appointment rather than just resting.",
+      "topic": "sleep problems",
+      "swap_spans": {
+        "patient_span": "can't get any shut-eye",
+        "clinical_span": "have chronic insomnia"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "He's had acute diarrhea since lunch, so he needs to buy some",
+    "bottom_prompt": "He's had the trots since lunch, so he needs to buy some",
+    "target_clinical_token": " medicine",
+    "generation": {
+      "patient_term": "the trots",
+      "clinical_term": "acute diarrhea",
+      "expected_clinical_continuations": [
+        "medicine"
+      ],
+      "rationale": "Slang 'the trots' could be read as a joke or minor complaint, while the clinical term pushes toward a care-oriented purchase like medicine.",
+      "topic": "digestive issues",
+      "swap_spans": {
+        "patient_span": "the trots",
+        "clinical_span": "acute diarrhea"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Her eczema has flared up again, so she went to grab some",
+    "bottom_prompt": "Her skin's been all patchy and itchy again, so she went to grab some",
+    "target_clinical_token": " cream",
+    "generation": {
+      "patient_term": "skin's been all patchy and itchy",
+      "clinical_term": "eczema has flared up",
+      "expected_clinical_continuations": [
+        "cream"
+      ],
+      "rationale": "The lay description is vague enough to suggest random shopping, whereas the clinical term for a flare-up strongly cues a topical treatment like cream.",
+      "topic": "skin conditions",
+      "swap_spans": {
+        "patient_span": "skin's been all patchy and itchy",
+        "clinical_span": "eczema has flared up"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Now that my arthritis is flaring up every morning, I finally asked my doctor for a",
+    "bottom_prompt": "Now that my joints are killing me every morning, I finally asked my doctor for a",
+    "target_clinical_token": " prescription",
+    "generation": {
+      "patient_term": "joints are killing me",
+      "clinical_term": "arthritis is flaring up",
+      "expected_clinical_continuations": [
+        "prescription"
+      ],
+      "rationale": "The colloquial complaint could just mean general soreness, while naming the condition clinically biases toward requesting a prescription.",
+      "topic": "chronic pain",
+      "swap_spans": {
+        "patient_span": "joints are killing me",
+        "clinical_span": "arthritis is flaring up"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Since I've had seasonal allergies all week, I should take some",
+    "bottom_prompt": "Since my nose has been stuffed up all week, I should take some",
+    "target_clinical_token": " medicine",
+    "generation": {
+      "patient_term": "nose has been stuffed up",
+      "clinical_term": "seasonal allergies",
+      "expected_clinical_continuations": [
+        "medicine"
+      ],
+      "rationale": "The mundane phrasing could imply just a cold, but naming the clinical condition sharpens the expectation of taking allergy medicine.",
+      "topic": "breathing and allergies",
+      "swap_spans": {
+        "patient_span": "my nose has been stuffed up",
+        "clinical_span": "I've had seasonal allergies"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+    "bottom_prompt": "Because my ticker's been acting funny lately, I finally went to see a",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "ticker's been acting funny",
+      "clinical_term": "arrhythmia symptoms",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "The colloquial 'ticker' phrase keeps the reading casual, whereas the clinical term for irregular heartbeat pushes strongly toward seeking a doctor.",
+      "topic": "heart and blood pressure",
+      "swap_spans": {
+        "patient_span": "my ticker's been acting funny",
+        "clinical_span": "I've had arrhythmia symptoms"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Because I have insomnia every night, I finally booked a",
+    "bottom_prompt": "Because I keep tossing and turning every night, I finally booked a",
+    "target_clinical_token": " appointment",
+    "generation": {
+      "patient_term": "keep tossing and turning every night",
+      "clinical_term": "have insomnia every night",
+      "expected_clinical_continuations": [
+        "appointment"
+      ],
+      "rationale": "Colloquial restlessness could lead to a mundane continuation like booking a vacation or hotel, while the clinical insomnia framing should funnel the model toward booking a medical appointment.",
+      "topic": "sleep problems",
+      "swap_spans": {
+        "patient_span": "keep tossing and turning",
+        "clinical_span": "have insomnia"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "She keeps experiencing nocturnal hyperhidrosis every night, so she finally called her",
+    "bottom_prompt": "She keeps waking up in a cold sweat every night, so she finally called her",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "waking up in a cold sweat",
+      "clinical_term": "experiencing nocturnal hyperhidrosis",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "The mundane reading suggests calling a family member about a bad night, while the clinical framing of a recognized nocturnal symptom pulls the next token toward a medical professional like 'doctor'.",
+      "topic": "sleep problems",
+      "swap_spans": {
+        "patient_span": "waking up in a cold sweat",
+        "clinical_span": "experiencing nocturnal hyperhidrosis"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Because he keeps experiencing sleep apnea, he finally agreed to see a",
+    "bottom_prompt": "Because he keeps snoring so loud she can't sleep, he finally agreed to see a",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "snoring so loud she can't sleep",
+      "clinical_term": "experiencing sleep apnea",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "The clinical term 'sleep apnea' strongly funnels the model toward a care-seeking continuation like 'doctor', whereas the colloquial 'snoring' framing could plausibly continue toward a mundane fix (earplugs, another room).",
+      "topic": "sleep problems",
+      "swap_spans": {
+        "patient_span": "snoring so loud she can't sleep,",
+        "clinical_span": "experiencing sleep apnea,"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Her irritable bowel syndrome flared up all morning, so she reached for some",
+    "bottom_prompt": "Her stomach's been in knots all morning, so she reached for some",
+    "target_clinical_token": " medicine",
+    "generation": {
+      "patient_term": "stomach's been in knots",
+      "clinical_term": "irritable bowel syndrome flared up",
+      "expected_clinical_continuations": [
+        "medicine"
+      ],
+      "rationale": "The colloquial 'in knots' could plausibly continue toward stress relief (coffee, water), while the clinical diagnosis pushes strongly toward a medical remedy like 'medicine'.",
+      "topic": "digestive issues",
+      "swap_spans": {
+        "patient_span": "stomach's been in knots",
+        "clinical_span": "irritable bowel syndrome flared up"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Because I have somniloquy, my roommate says I should see a",
+    "bottom_prompt": "Because I keep talking in my sleep, my roommate says I should see a",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "talking in my sleep",
+      "clinical_term": "somniloquy",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "The colloquial phrase for talking during sleep is replaced by its clinical name; the frame's next token plausibly differs between a mundane 'friend' reading and a care-seeking 'doctor' reading.",
+      "topic": "sleep problems",
+      "swap_spans": {
+        "patient_span": "keep talking in my sleep,",
+        "clinical_span": "have somniloquy,"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been nauseous all morning, so I should take some",
+    "bottom_prompt": "I've been sick to my stomach all morning, so I should take some",
+    "target_clinical_token": " medicine",
+    "generation": {
+      "patient_term": "sick to my stomach",
+      "clinical_term": "nauseous",
+      "expected_clinical_continuations": [
+        "medicine"
+      ],
+      "rationale": "Swapping the idiom for the clinical adjective keeps the frame identical while funneling the model toward a high-frequency medical noun like 'medicine'.",
+      "topic": "digestive issues",
+      "swap_spans": {
+        "patient_span": "sick to my stomach",
+        "clinical_span": "nauseous"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Since I've had acne flare-ups all week, I finally bought some",
+    "bottom_prompt": "Since I've been breaking out in spots all week, I finally bought some",
+    "target_clinical_token": " cream",
+    "generation": {
+      "patient_term": "breaking out in spots",
+      "clinical_term": "acne flare-ups",
+      "expected_clinical_continuations": [
+        "cream"
+      ],
+      "rationale": "The everyday description of pimples is replaced with the clinical term for the condition, with the frame steering toward the common treatment noun 'cream'.",
+      "topic": "skin conditions",
+      "swap_spans": {
+        "patient_span": "been breaking out in spots",
+        "clinical_span": "had acne flare-ups"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Because he has early-onset dementia, his wife booked him a",
+    "bottom_prompt": "Because he keeps losing his marbles at work, his wife booked him a",
+    "target_clinical_token": " appointment",
+    "generation": {
+      "patient_term": "losing his marbles",
+      "clinical_term": "early-onset dementia",
+      "expected_clinical_continuations": [
+        "appointment"
+      ],
+      "rationale": "The idiom for cognitive decline is swapped for its clinical diagnosis, with the frame's ending naturally biasing toward a care-seeking noun like 'appointment' over a mundane one like 'trip'.",
+      "topic": "mental health",
+      "swap_spans": {
+        "patient_span": "keeps losing his marbles at work,",
+        "clinical_span": "has early-onset dementia,"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Since she's in a hypertensive crisis today, she needs to see a",
+    "bottom_prompt": "Since her blood pressure's through the roof today, she needs to see a",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "blood pressure's through the roof",
+      "clinical_term": "hypertensive crisis",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "The everyday exaggeration for high blood pressure is replaced by the precise emergency term, with the frame funneling toward the care-seeking noun 'doctor'.",
+      "topic": "heart and blood pressure",
+      "swap_spans": {
+        "patient_span": "her blood pressure's through the roof",
+        "clinical_span": "she's in a hypertensive crisis"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I forgot to take my antihypertensives again, so I need to grab my",
+    "bottom_prompt": "I forgot to take my heart pills again, so I need to grab my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "heart pills",
+      "clinical_term": "antihypertensives",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "The lay term for blood-pressure pills is swapped for the precise drug class, with the possessive ending funneling toward the common noun 'medication' rather than a mundane object like 'keys'.",
+      "topic": "medication routines",
+      "swap_spans": {
+        "patient_span": "heart pills",
+        "clinical_span": "antihypertensives"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Since I've been dealing with insomnia for a week straight, I finally scheduled a",
+    "bottom_prompt": "Since I've been counting sheep all night for a week straight, I finally scheduled a",
+    "target_clinical_token": " sleep",
+    "generation": {
+      "patient_term": "counting sheep all night",
+      "clinical_term": "insomnia",
+      "expected_clinical_continuations": [
+        "sleep",
+        "doctor"
+      ],
+      "rationale": "The clinical framing of insomnia funnels toward a medical appointment noun like 'sleep' (study/clinic) rather than a mundane continuation about counting.",
+      "topic": "sleep problems",
+      "swap_spans": {
+        "patient_span": "counting sheep all night",
+        "clinical_span": "dealing with insomnia"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My gastrointestinal distress has continued all week after every meal, so I need to watch my",
+    "bottom_prompt": "My gut's been off all week after every meal, so I need to watch my",
+    "target_clinical_token": " diet",
+    "generation": {
+      "patient_term": "gut's been off",
+      "clinical_term": "gastrointestinal distress",
+      "expected_clinical_continuations": [
+        "diet",
+        "food"
+      ],
+      "rationale": "Clinical phrasing pushes toward a health-management noun like 'diet' rather than a casual reading of feeling off.",
+      "topic": "digestive issues",
+      "swap_spans": {
+        "patient_span": "gut's been off",
+        "clinical_span": "gastrointestinal distress has continued"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "His psoriasis flared up again this winter, so he put on some",
+    "bottom_prompt": "His skin's gone all scaly and flaky again this winter, so he put on some",
+    "target_clinical_token": " cream",
+    "generation": {
+      "patient_term": "skin's gone all scaly and flaky",
+      "clinical_term": "psoriasis",
+      "expected_clinical_continuations": [
+        "cream",
+        "lotion"
+      ],
+      "rationale": "Naming the clinical condition psoriasis biases the model toward a treatment noun like 'cream' rather than a generic weather-related reading.",
+      "topic": "skin conditions",
+      "swap_spans": {
+        "patient_span": "skin's gone all scaly and flaky",
+        "clinical_span": "psoriasis flared up"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've had sciatica for days now, so I finally went to see a",
+    "bottom_prompt": "I've had shooting pains down my leg for days now, so I finally went to see a",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "shooting pains down my leg",
+      "clinical_term": "sciatica",
+      "expected_clinical_continuations": [
+        "doctor",
+        "specialist"
+      ],
+      "rationale": "The precise diagnosis sciatica strengthens the expectation of a medical professional noun over an ambiguous everyday explanation.",
+      "topic": "chronic pain",
+      "swap_spans": {
+        "patient_span": "shooting pains down my leg",
+        "clinical_span": "sciatica"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Since my seasonal allergies have flared up again this spring, I should take some",
+    "bottom_prompt": "Since my eyes are watering and my nose won't stop running this spring, I should take some",
+    "target_clinical_token": " medicine",
+    "generation": {
+      "patient_term": "eyes are watering and my nose won't stop running",
+      "clinical_term": "seasonal allergies",
+      "expected_clinical_continuations": [
+        "medicine",
+        "medication"
+      ],
+      "rationale": "The clinical label 'seasonal allergies' sharpens the expectation of a remedy noun like 'medicine' rather than a weather complaint.",
+      "topic": "breathing and allergies",
+      "swap_spans": {
+        "patient_span": "eyes are watering and my nose won't stop running",
+        "clinical_span": "seasonal allergies have flared up again"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've had tachycardia all day at work, so I should call my",
+    "bottom_prompt": "My heart's been racing all day at work, so I should call my",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "heart's been racing",
+      "clinical_term": "tachycardia",
+      "expected_clinical_continuations": [
+        "doctor",
+        "cardiologist"
+      ],
+      "rationale": "Naming the arrhythmia clinically pushes the continuation toward contacting a medical professional rather than a stress-related everyday reading.",
+      "topic": "heart and blood pressure",
+      "swap_spans": {
+        "patient_span": "My heart's been racing",
+        "clinical_span": "I've had tachycardia"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  }
+]
