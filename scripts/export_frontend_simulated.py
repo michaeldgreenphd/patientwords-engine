@@ -35,6 +35,11 @@ parser.add_argument("--no-pngs", action="store_true",
                     help="skip PNG copies (recommended for large series - the interactive "
                          "HTML renders are the essential artifact and GitHub Pages repos "
                          "should stay light)")
+parser.add_argument("--max-renders", type=int, default=25,
+                    help="cap interactive renders copied to the public site to the N most "
+                         "consequential scenarios (flips first, then largest language penalty); "
+                         "every scenario still gets its lightweight numbers. 0 = no cap. The "
+                         "full render set lives in the engine repo / a run archive.")
 args = parser.parse_args()
 
 ENGINE = Path(args.engine)
@@ -91,9 +96,6 @@ for stamp in [s.strip() for s in args.stamps.split(",") if s.strip()]:
     if not results:
         sys.exit(f"no batch_summary.part_*.json under {trace_dir} - pull the engine branch first")
 
-    out_modes = FRONTEND / "modes/simulated" / stem
-    out_modes.mkdir(parents=True, exist_ok=True)
-
     for index in sorted(results):
         r = results[index]
         display_index += 1
@@ -136,17 +138,7 @@ for stamp in [s.strip() for s in args.stamps.split(",") if s.strip()]:
             "circuit_diff": r.get("circuit_diff"),
             "clinical_mass": r.get("clinical_mass"),
         }
-        for suffix, key in ((("", "html")), ("", "png"), ("_diff", "diff_html"), ("_diff", "diff_png")):
-            ext = "html" if key.endswith("html") else "png"
-            if args.no_pngs and ext == "png":
-                continue
-            src = trace_dir / f"index_{index:02d}{suffix}.{ext}"
-            if src.is_file():
-                dest = out_modes / src.name
-                shutil.copy2(src, dest)
-                entry[key] = f"modes/simulated/{stem}/{src.name}"
-                if key == "html" and first_preview is None:
-                    first_preview = dest
+        entry["_render"] = {"trace_dir": str(trace_dir), "stem": stem, "index": index}
         scenarios.append(entry)
 
     batches.append({
@@ -164,6 +156,40 @@ for stamp in [s.strip() for s in args.stamps.split(",") if s.strip()]:
         },
         "screen_targets": screen_targets,
     })
+
+# Public site keeps interactive renders only for the most consequential
+# scenarios (flips first, then largest |language penalty|); every scenario
+# still carries its numbers. The full render set is archived separately.
+def _consequence(e):
+    lp = e.get("language_penalty")
+    mag = abs(lp) if isinstance(lp, (int, float)) else 0.0
+    return (1 if e.get("flipped") else 0) * 10 + mag
+
+ranked = sorted(scenarios, key=_consequence, reverse=True)
+demo = ranked if args.max_renders <= 0 else ranked[:args.max_renders]
+copied = 0
+for e in demo:
+    meta = e.get("_render")
+    if not meta:
+        continue
+    src_dir = Path(meta["trace_dir"]); stem = meta["stem"]; index = meta["index"]
+    out_modes = FRONTEND / "modes/simulated" / stem
+    # full comparison only on the public site (the circuit-diff view is
+    # showcased on the syntax edge-views); keeps the demo set light
+    for suffix, key in ((("", "html")), ("", "png")):
+        ext = "html" if key.endswith("html") else "png"
+        if args.no_pngs and ext == "png":
+            continue
+        src = src_dir / f"index_{index:02d}{suffix}.{ext}"
+        if src.is_file():
+            out_modes.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, out_modes / src.name)
+            e[key] = f"modes/simulated/{stem}/{src.name}"
+            if key == "html" and first_preview is None:
+                first_preview = out_modes / src.name
+    copied += 1
+for e in scenarios:
+    e.pop("_render", None)  # drop the private marker from every entry
 
 if first_preview is not None:
     shutil.copy2(first_preview, FRONTEND / "modes/simulated/preview.html")
@@ -183,4 +209,7 @@ out_data = FRONTEND / "data/simulated_scenarios.json"
 out_data.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 measured_n = sum(1 for s in scenarios
                  if not (s.get("screening") or {}).get("status") == "screened_out")
+data_only = len(scenarios) - copied
 print(f"{len(scenarios)} scenarios ({measured_n} measured) across {len(batches)} batch(es) -> {out_data}")
+print(f"  {copied} interactive renders published (cap {args.max_renders or 'none'}); "
+      f"{data_only} scenarios are data-only on the public site")
