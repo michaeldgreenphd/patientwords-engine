@@ -1,0 +1,997 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 49,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 49,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "During the barbecue I had bronchospasm, so I reached for an",
+        "patient": "During the barbecue my chest got all tight and whistly, so I reached for an"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.649,
+        "patient": 0.332
+      },
+      "language_penalty": -0.317,
+      "clinical_mass": {
+        "clinical": 0.3923,
+        "patient": 0.1923
+      },
+      "error_share": {
+        "clinical": 0.12,
+        "patient": 0.1071
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.649)",
+        "patient": "embedding \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" old\" (p=0.096)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " inhaler",
+        "observed_clinical": [
+          "Output \" inhal\"",
+          0.649
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.649
+          ],
+          [
+            "Output \" al\"",
+            0.072
+          ],
+          [
+            "Output \" asthma\"",
+            0.046
+          ],
+          [
+            "Output \" Epi\"",
+            0.037
+          ],
+          [
+            "Output \" Al\"",
+            0.026
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.332
+          ],
+          [
+            "Output \" old\"",
+            0.096
+          ],
+          [
+            "Output \" aspirin\"",
+            0.08
+          ],
+          [
+            "Output \" asthma\"",
+            0.055
+          ],
+          [
+            "Output \" anti\"",
+            0.044
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 615,
+        "unique_to_a": 649,
+        "unique_to_b": 746
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_49.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_49.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_49_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_49_diff.png"
+      }
+    },
+    {
+      "index": 50,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's been having panic attacks at the office lately, so his boss suggested he see a",
+        "patient": "He's been totally losing it at the office lately, so his boss suggested he see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.168,
+        "patient": 0.148
+      },
+      "language_penalty": -0.020000000000000018,
+      "clinical_mass": {
+        "clinical": 0.3168,
+        "patient": 0.2513
+      },
+      "error_share": {
+        "clinical": 0.0996,
+        "patient": 0.1005
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L19\u00b7C] language about therapy and counseling | therapy and  \u2192 [L20\u00b7C] words related to mental health, psychology, and medi \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" psychologist\" (p=0.086)",
+        "patient": "[L17\u00b7S]  \u2192 [L19\u00b7C] language about therapy and counseling | therapy and  \u2192 [L20\u00b7C] words related to mental health, psychology, and medi \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" psychologist\" (p=0.079)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.168
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" therapist\"",
+            0.353
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.173
+          ],
+          [
+            "Output \" doctor\"",
+            0.168
+          ],
+          [
+            "Output \" psychologist\"",
+            0.086
+          ],
+          [
+            "Output \" shrink\"",
+            0.068
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" therapist\"",
+            0.26
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.201
+          ],
+          [
+            "Output \" shrink\"",
+            0.167
+          ],
+          [
+            "Output \" doctor\"",
+            0.148
+          ],
+          [
+            "Output \" psychologist\"",
+            0.079
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 904,
+        "unique_to_a": 500,
+        "unique_to_b": 480
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_50.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_50.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_50_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_50_diff.png"
+      }
+    },
+    {
+      "index": 51,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At the family dinner he had atrial fibrillation, so his wife told him to grab his",
+        "patient": "At the family dinner his ticker kept skipping and fluttering, so his wife told him to grab his"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2166
+      },
+      "error_share": {
+        "clinical": 0.1005
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " pills",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" phone\"",
+            0.166
+          ],
+          [
+            "Output \" heart\"",
+            0.1
+          ],
+          [
+            "Output \" cell\"",
+            0.035
+          ],
+          [
+            "Output \" inhal\"",
+            0.034
+          ],
+          [
+            "Output \" cane\"",
+            0.028
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 52,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every morning with breakfast I lay out my antihypertensives and swallow a",
+        "patient": "Every morning with breakfast I lay out my blood pressure stuff and swallow a"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.138,
+        "patient": 0.269
+      },
+      "language_penalty": 0.131,
+      "clinical_mass": {
+        "clinical": 0.2855,
+        "patient": 0.2969
+      },
+      "error_share": {
+        "clinical": 0.1072,
+        "patient": 0.1002
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] terminology related to medicine, health, and nutriti \u2192 Output \" tablet\" (p=0.036)",
+        "patient": "embedding \u2192 [L24\u00b7S] articles, prepositions, and other common short words \u2192 Output \" couple\" (p=0.133)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": [
+          "Output \" pill\"",
+          0.138
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" few\"",
+            0.162
+          ],
+          [
+            "Output \" pill\"",
+            0.138
+          ],
+          [
+            "Output \" handful\"",
+            0.133
+          ],
+          [
+            "Output \" couple\"",
+            0.081
+          ],
+          [
+            "Output \" tablet\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pill\"",
+            0.269
+          ],
+          [
+            "Output \" couple\"",
+            0.133
+          ],
+          [
+            "Output \" few\"",
+            0.108
+          ],
+          [
+            "Output \" bunch\"",
+            0.065
+          ],
+          [
+            "Output \" handful\"",
+            0.058
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 940,
+        "unique_to_a": 435,
+        "unique_to_b": 387
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_52.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_52.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_52_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_52_diff.png"
+      }
+    },
+    {
+      "index": 53,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My whole face is breaking out in acne again, so I dabbed on some of",
+        "patient": "My whole face is breaking out in zits again, so I dabbed on some of"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1315
+      },
+      "error_share": {
+        "clinical": 0.1034
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " cream",
+        "observed_clinical": null,
+        "probe_extension": "of",
+        "reason": "intended target not in the traced clinical spread (even after probe extension by 'of')"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" this\"",
+            0.667
+          ],
+          [
+            "Output \" the\"",
+            0.126
+          ],
+          [
+            "Output \" my\"",
+            0.106
+          ],
+          [
+            "Output \" these\"",
+            0.063
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 54,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My knee's been giving me osteoarthritis for years now, so I take a daily",
+        "patient": "My knee's been giving me grief for years now, so I take a daily"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.056,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4146,
+        "patient": 0.3493
+      },
+      "error_share": {
+        "clinical": 0.0871,
+        "patient": 0.0847
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7C] words, phrases and punctuation marks associated with \u2192 Output \" pain\" (p=0.049)",
+        "patient": "[L21\u00b7S]  \u2192 [L25\u00b7C] words, phrases and punctuation marks associated with \u2192 Output \" pain\" (p=0.050)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": [
+          "Output \" pill\"",
+          0.056
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dose\"",
+            0.387
+          ],
+          [
+            "Output \" supplement\"",
+            0.08
+          ],
+          [
+            "Output \" pill\"",
+            0.056
+          ],
+          [
+            "Output \" pain\"",
+            0.049
+          ],
+          [
+            "Output \" glucos\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dose\"",
+            0.377
+          ],
+          [
+            "Output \" supplement\"",
+            0.065
+          ],
+          [
+            "Output \" pain\"",
+            0.05
+          ],
+          [
+            "Output \" \"",
+            0.047
+          ],
+          [
+            "Output \" anti\"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1091,
+        "unique_to_a": 199,
+        "unique_to_b": 238
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_54.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_54.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_54_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_54_diff.png"
+      }
+    },
+    {
+      "index": 55,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The dust always sets off my allergic rhinitis, so at my desk I keep an",
+        "patient": "The dust always sets off my sniffles, so at my desk I keep an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.091,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2076,
+        "patient": 0.1519
+      },
+      "error_share": {
+        "clinical": 0.1064,
+        "patient": 0.1075
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" allergy\" (p=0.058)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" empty\" (p=0.076)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antihistamine",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.091
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" air\"",
+            0.241
+          ],
+          [
+            "Output \" inhal\"",
+            0.117
+          ],
+          [
+            "Output \" anti\"",
+            0.091
+          ],
+          [
+            "Output \" allergy\"",
+            0.058
+          ],
+          [
+            "Output \" eye\"",
+            0.043
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" air\"",
+            0.164
+          ],
+          [
+            "Output \" old\"",
+            0.131
+          ],
+          [
+            "Output \" empty\"",
+            0.076
+          ],
+          [
+            "Output \" extra\"",
+            0.072
+          ],
+          [
+            "Output \" inhal\"",
+            0.054
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1104,
+        "unique_to_a": 215,
+        "unique_to_b": 291
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_55.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_55.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_55_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_55_diff.png"
+      }
+    },
+    {
+      "index": 56,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's been having panic attacks since the breakup, so his doctor started him on an",
+        "patient": "He's been going to pieces since the breakup, so his doctor started him on an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.348,
+        "patient": 0.517
+      },
+      "language_penalty": 0.16900000000000004,
+      "clinical_mass": {
+        "clinical": 0.3948,
+        "patient": 0.3173
+      },
+      "error_share": {
+        "clinical": 0.0994,
+        "patient": 0.0964
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.348)",
+        "patient": "embedding \u2192 Output \" anti\" (p=0.168)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antidepressant",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.348
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.348
+          ],
+          [
+            "Output \" antidepress\"",
+            0.341
+          ],
+          [
+            "Output \" SS\"",
+            0.197
+          ],
+          [
+            "Output \" anxiety\"",
+            0.033
+          ],
+          [
+            "Output \" experimental\"",
+            0.012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" antidepress\"",
+            0.517
+          ],
+          [
+            "Output \" anti\"",
+            0.168
+          ],
+          [
+            "Output \" SS\"",
+            0.088
+          ],
+          [
+            "Output \" experimental\"",
+            0.078
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.016
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 771,
+        "unique_to_a": 543,
+        "unique_to_b": 532
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_56.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_56.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_56_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_56_diff.png"
+      }
+    },
+    {
+      "index": 57,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every night before bed I lay out my anticonvulsants and swallow the",
+        "patient": "Every night before bed I lay out my nerve pills and swallow the"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3256
+      },
+      "error_share": {
+        "clinical": 0.1142
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " last",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pills\"",
+            0.248
+          ],
+          [
+            "Output \" whole\"",
+            0.073
+          ],
+          [
+            "Output \" lot\"",
+            0.07
+          ],
+          [
+            "Output \" tablets\"",
+            0.061
+          ],
+          [
+            "Output \" pill\"",
+            0.053
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 58,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My face has been all inflamed with eczema lately, so tonight I'm going to smear on some of",
+        "patient": "My face has been all broken out and crusty lately, so tonight I'm going to smear on some of"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1317
+      },
+      "error_share": {
+        "clinical": 0.1025
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " cream",
+        "observed_clinical": null,
+        "probe_extension": "of",
+        "reason": "intended target not in the traced clinical spread (even after probe extension by 'of')"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" this\"",
+            0.521
+          ],
+          [
+            "Output \" my\"",
+            0.179
+          ],
+          [
+            "Output \" the\"",
+            0.17
+          ],
+          [
+            "Output \" these\"",
+            0.063
+          ],
+          [
+            "Output \" that\"",
+            0.019
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 59,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "His chest gets all bronchoconstricted on cold mornings, so before the walk he grabs an",
+        "patient": "His chest gets all tight and wheezy on cold mornings, so before the walk he grabs an"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.696,
+        "patient": 0.755
+      },
+      "language_penalty": 0.05900000000000005,
+      "clinical_mass": {
+        "clinical": 0.3052,
+        "patient": 0.3096
+      },
+      "error_share": {
+        "clinical": 0.1152,
+        "patient": 0.1071
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.696)",
+        "patient": "embedding \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.755)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " inhaler",
+        "observed_clinical": [
+          "Output \" inhal\"",
+          0.696
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.696
+          ],
+          [
+            "Output \" extra\"",
+            0.054
+          ],
+          [
+            "Output \" asthma\"",
+            0.035
+          ],
+          [
+            "Output \" Al\"",
+            0.021
+          ],
+          [
+            "Output \" al\"",
+            0.017
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.755
+          ],
+          [
+            "Output \" asthma\"",
+            0.047
+          ],
+          [
+            "Output \" extra\"",
+            0.04
+          ],
+          [
+            "Output \" Al\"",
+            0.021
+          ],
+          [
+            "Output \" al\"",
+            0.018
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 961,
+        "unique_to_a": 321,
+        "unique_to_b": 292
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_59.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_59.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_59_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_59_diff.png"
+      }
+    },
+    {
+      "index": 60,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every night before bed she checks her blood pressure and swallows a",
+        "patient": "Every night before bed she checks her ticker and swallows a"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.262,
+        "patient": 0.288
+      },
+      "language_penalty": 0.025999999999999968,
+      "clinical_mass": {
+        "clinical": 0.3402,
+        "patient": 0.2968
+      },
+      "error_share": {
+        "clinical": 0.0993,
+        "patient": 0.1049
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" few\" (p=0.046)",
+        "patient": "[L17\u00b7S]  \u2192 [L19\u00b7C] terminology related to medicine, health, and nutriti \u2192 Output \" pill\" (p=0.288)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": [
+          "Output \" pill\"",
+          0.262
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pill\"",
+            0.262
+          ],
+          [
+            "Output \" handful\"",
+            0.193
+          ],
+          [
+            "Output \" few\"",
+            0.046
+          ],
+          [
+            "Output \" couple\"",
+            0.035
+          ],
+          [
+            "Output \" daily\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pill\"",
+            0.288
+          ],
+          [
+            "Output \" handful\"",
+            0.159
+          ],
+          [
+            "Output \" few\"",
+            0.058
+          ],
+          [
+            "Output \" couple\"",
+            0.034
+          ],
+          [
+            "Output \" daily\"",
+            0.03
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 992,
+        "unique_to_a": 309,
+        "unique_to_b": 314
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_60.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_60.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_60_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_60_diff.png"
+      }
+    }
+  ]
+}
