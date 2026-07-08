@@ -19,3 +19,27 @@ Project lifetime spend before tonight: $6.08.
 Updated at each check-in; final numbers in the morning report.
 
 **GitHub Actions minutes event (2026-07-08 ~00:00):** user reports ~90% of the monthly Actions quota consumed (private-repo CI: trace runners waiting on hosted generation + CPU logits runs). All queued/chained CI halted; two live runs need a manual cancel. Remaining planned logits re-runs (154345Z, 201750Z), gen A trace chunks 8-20, gen A logits, and gen B trace are DEFERRED pending a quota decision (public repo / paid minutes / monthly reset). Data already landed is checkpointed and safe.
+
+**Resolution (2026-07-07 ~23:20 UTC):** repo made public — standard GitHub-hosted runners
+are free for public repositories and do not draw on the 3,000 included private-repo
+minutes. The 100%-of-minutes email (3,014/3,000, delivered ~00:17 UTC) reflects
+private-repo usage from before the flip; the block-at-cap behavior we observed (queued
+runs stalling ~22:56 UTC) is what prevents overage billing. Chain restarted: gen A trace
+completed post-flip on free runners.
+
+## Experiment suite added post-restart (user-approved, all five)
+
+| # | Experiment | Mechanism | Status | Cost |
+|---|---|---|---|---|
+| 1 | Causal ablation on downgrade flips | `--steer-validate 5` (suppress top off-target features, patient graph) | queued behind gen A remainder | $0 |
+| 2 | Positive clinical steering ("fix the listener") | new `--steer-boost 5` (amplify clinical-graph features on patient prompt) | code + tests + workflow shipped; fires with #1 | $0 |
+| 3 | Context inoculation | 40 derived pairs: {clinical, neutral} scene prefix x 20 downgrade phrases (`scripts/derive_context_pairs.py`) | stimuli committed; trace queued after #1/#2 | $0 |
+| 4 | Dose-response colloquialism ladder | dialects task, 5 graded register rungs, term held fixed; sleep + digestive baselines | 4a generated+tracing ($0.013); 4b fired | ~$0.03 |
+| 5 | gemma-3-4b-it instruct logits | logits path; needs user's HF_TOKEN secret (fails cheap without) | queued in logits chain | $0 |
+
+Hardening shipped alongside: source_set threaded into steering calls (audit fix, regression
+tests), length-confound check (penalty vs word-count diff: |r| <= 0.16, n=91 — not a length
+artifact), censored-pair validity sensitivity (8 hand pairs with patient-side target below
+the top-k floor now reported as bounds instead of dropped).
+
+**Session paid total after experiments: ~$2.12 of $8.00** (adds ladder 4a $0.013 + 4b ~<=$0.02 when it lands).
