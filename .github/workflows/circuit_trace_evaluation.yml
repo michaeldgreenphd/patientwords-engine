@@ -50,6 +50,10 @@ on:
         description: "Pairs to trace per offset (hosted generation takes minutes per graph)"
         type: string
         default: "1"
+      show_mitigation:
+        description: "(2panel) Trace a third panel: the patient sentence LLM-translated to clinical wording (uses ANTHROPIC_API_KEY)"
+        type: boolean
+        default: false
       screen_targets:
         description: "(2panel) Screen pairs: the intended target must reach this probability on the clinical side; screened-out pairs skip the patient trace but stay recorded ('' = off)"
         type: string
@@ -96,6 +100,7 @@ jobs:
     outputs:
       config: ${{ steps.params.outputs.config }}
       offsets: ${{ steps.params.outputs.offsets }}
+      models: ${{ steps.params.outputs.models }}
     steps:
       - uses: actions/checkout@v4
 
@@ -109,6 +114,7 @@ jobs:
           IN_OFFSETS: ${{ inputs.offsets }}
           IN_SAMPLE_SIZE: ${{ inputs.sample_size }}
           IN_SCREEN_TARGETS: ${{ inputs.screen_targets }}
+          IN_SHOW_MITIGATION: ${{ inputs.show_mitigation }}
           IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
           IN_MAX_N_LOGITS: ${{ inputs.max_n_logits }}
           IN_DESIRED_LOGIT_PROB: ${{ inputs.desired_logit_prob }}
@@ -119,13 +125,14 @@ jobs:
           python - <<'EOF'
           import json, os
           defaults = {
-              "graph_model": "gemma-2-2b", "mode": "2panel",
+              "graph_model": "gemma-2-2b", "graph_models": "", "mode": "2panel",
               "pairs_file": "", "offsets": "0", "sample_size": "1",
-              "screen_targets": "", "commit_outputs": "false",
+              "screen_targets": "", "show_mitigation": "false", "commit_outputs": "false",
               "max_n_logits": "10", "desired_logit_prob": "0.95",
               "node_threshold": "0.8", "edge_threshold": "0.98",
               "max_feature_nodes": "5000", "generate_explanations": "0",
-              "steer_validate": "0",
+              "steer_validate": "0", "steer_boost": "0", "steer_placebo": "0",
+              "steer_strength": "", "steer_boost_strength": "",
           }
           params = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
@@ -135,6 +142,8 @@ jobs:
                   overrides["offsets"] = overrides.pop("offset")
               if isinstance(overrides.get("offsets"), list):
                   overrides["offsets"] = ",".join(str(o) for o in overrides["offsets"])
+              if isinstance(overrides.get("graph_models"), list):
+                  overrides["graph_models"] = ",".join(str(m) for m in overrides["graph_models"])
               params.update({k: str(v).lower() if isinstance(v, bool) else str(v)
                              for k, v in overrides.items() if k in defaults})
           else:
@@ -145,11 +154,22 @@ jobs:
           offsets = sorted({int(x) for x in params["offsets"].replace(",", " ").split()})
           if not offsets:
               raise SystemExit("no offsets to trace")
+          # graph_models (list/space/comma) fans the trace out over models; "all"
+          # expands to every hosted model. Falls back to the single graph_model,
+          # so a legacy single-model trigger behaves exactly as before.
+          raw = params.get("graph_models") or params["graph_model"]
+          models = [m.strip() for m in str(raw).replace(",", " ").split() if m.strip()]
+          if "all" in models:
+              models = ["gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b"]
+          if not models:
+              models = [params["graph_model"]]
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               out.write("config=" + json.dumps(params) + "\n")
               out.write("offsets=" + json.dumps(offsets) + "\n")
+              out.write("models=" + json.dumps(models) + "\n")
           print(json.dumps(params, indent=2))
           print("offsets:", offsets)
+          print("models:", models)
           EOF
 
   trace:
@@ -160,6 +180,7 @@ jobs:
       fail-fast: false
       max-parallel: 3
       matrix:
+        model: ${{ fromJson(needs.params.outputs.models) }}
         offset: ${{ fromJson(needs.params.outputs.offsets) }}
     steps:
       - uses: actions/checkout@v4
@@ -176,7 +197,7 @@ jobs:
           MODE: ${{ fromJson(needs.params.outputs.config).mode }}
           SAMPLE_SIZE: ${{ fromJson(needs.params.outputs.config).sample_size }}
           PAIRS_FILE: ${{ fromJson(needs.params.outputs.config).pairs_file }}
-          GRAPH_MODEL: ${{ fromJson(needs.params.outputs.config).graph_model }}
+          GRAPH_MODEL: ${{ matrix.model }}
           OFFSET: ${{ matrix.offset }}
         run: |
           python - <<'EOF'
@@ -207,13 +228,18 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}  # translation mode only
           OFFSET: ${{ matrix.offset }}
           SCREEN: ${{ fromJson(needs.params.outputs.config).screen_targets }}
+          MITIGATE: ${{ fromJson(needs.params.outputs.config).show_mitigation }}
           GEN_EXPL: ${{ fromJson(needs.params.outputs.config).generate_explanations }}
           STEER_VALIDATE: ${{ fromJson(needs.params.outputs.config).steer_validate }}
+          STEER_BOOST: ${{ fromJson(needs.params.outputs.config).steer_boost }}
+          STEER_PLACEBO: ${{ fromJson(needs.params.outputs.config).steer_placebo }}
+          NEURONPEDIA_STEER_STRENGTH: ${{ fromJson(needs.params.outputs.config).steer_strength }}
+          NEURONPEDIA_STEER_BOOST_STRENGTH: ${{ fromJson(needs.params.outputs.config).steer_boost_strength }}
         run: |
           ARGS=(ci_pairs.json
             --mode "${{ fromJson(needs.params.outputs.config).mode }}"
             --backend hosted
-            --graph-model "${{ fromJson(needs.params.outputs.config).graph_model }}"
+            --graph-model "${{ matrix.model }}"
             --max-n-logits "${{ fromJson(needs.params.outputs.config).max_n_logits }}"
             --desired-logit-prob "${{ fromJson(needs.params.outputs.config).desired_logit_prob }}"
             --node-threshold "${{ fromJson(needs.params.outputs.config).node_threshold }}"
@@ -224,12 +250,24 @@ jobs:
           if [ -n "$SCREEN" ]; then
             ARGS+=(--screen-targets "$SCREEN")
           fi
+          if [ "$MITIGATE" = "true" ]; then
+            ARGS+=(--show-mitigation)
+          fi
           if [ -n "$GEN_EXPL" ] && [ "$GEN_EXPL" != "0" ]; then
             ARGS+=(--generate-missing-explanations "$GEN_EXPL")
           fi
           if [ -n "$STEER_VALIDATE" ] && [ "$STEER_VALIDATE" != "0" ]; then
             ARGS+=(--steer-validate "$STEER_VALIDATE")
           fi
+          if [ -n "$STEER_BOOST" ] && [ "$STEER_BOOST" != "0" ]; then
+            ARGS+=(--steer-boost "$STEER_BOOST")
+          fi
+          if [ -n "$STEER_PLACEBO" ] && [ "$STEER_PLACEBO" != "0" ]; then
+            ARGS+=(--steer-placebo "$STEER_PLACEBO")
+          fi
+          # empty strength overrides fall back to module defaults
+          [ -z "$NEURONPEDIA_STEER_STRENGTH" ] && unset NEURONPEDIA_STEER_STRENGTH
+          [ -z "$NEURONPEDIA_STEER_BOOST_STRENGTH" ] && unset NEURONPEDIA_STEER_BOOST_STRENGTH
           medlang-batch-eval "${ARGS[@]}"
 
       - name: Commit trace outputs to the dispatched branch
@@ -256,7 +294,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f "${FILES[@]}"
-          git commit -m "Trace outputs: $OUT_DIR pairs starting at ${START} (${{ fromJson(needs.params.outputs.config).graph_model }}, ${{ fromJson(needs.params.outputs.config).mode }})"
+          git commit -m "Trace outputs: $OUT_DIR pairs starting at ${START} (${{ matrix.model }}, ${{ fromJson(needs.params.outputs.config).mode }})"
           PUSHED=0
           for i in 1 2 3 4 5; do
             if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
@@ -273,7 +311,7 @@ jobs:
           SUMMARY=$(ls "$OUT_DIR"/batch_summary*.json 2>/dev/null | head -1 || true)
           if [ -n "$SUMMARY" ]; then
             {
-              echo "## Circuit trace batch summary (${{ fromJson(needs.params.outputs.config).graph_model }}, ${{ fromJson(needs.params.outputs.config).mode }}, offset ${{ matrix.offset }})"
+              echo "## Circuit trace batch summary (${{ matrix.model }}, ${{ fromJson(needs.params.outputs.config).mode }}, offset ${{ matrix.offset }})"
               echo '```json'
               cat "$SUMMARY"
               echo '```'
@@ -284,6 +322,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: circuit-trace-${{ fromJson(needs.params.outputs.config).graph_model }}-${{ fromJson(needs.params.outputs.config).mode }}-${{ github.run_number }}-offset${{ matrix.offset }}
-          path: trace_out/
+          name: circuit-trace-${{ matrix.model }}-${{ fromJson(needs.params.outputs.config).mode }}-${{ github.run_number }}-offset${{ matrix.offset }}
+          # just this cell's dir - uploading all of trace_out/ ships the whole
+          # (hundreds of MB) archive from every matrix cell
+          path: ${{ env.OUT_DIR }}
           if-no-files-found: warn

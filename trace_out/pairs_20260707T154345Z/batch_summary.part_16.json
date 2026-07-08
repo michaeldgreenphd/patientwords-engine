@@ -1,0 +1,301 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 16,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since the pollen kicked in, my allergic rhinitis flared up, so at the pharmacy I asked for an",
+        "patient": "Ever since the pollen kicked in, my nose is a faucet, so at the pharmacy I asked for an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.518,
+        "patient": 0.22
+      },
+      "language_penalty": -0.29800000000000004,
+      "clinical_mass": {
+        "clinical": 0.4797,
+        "patient": 0.4063
+      },
+      "error_share": {
+        "clinical": 0.1375,
+        "patient": 0.1256
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.072)",
+        "patient": "embedding \u2192 [L18\u00b7C] words related to purchasing medicine over the counte \u2192 [L23\u00b7O] words or phrases related to legal and governmental a \u2192 Output \" over\" (p=0.286)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antihistamine",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.518
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.518
+          ],
+          [
+            "Output \" allergy\"",
+            0.084
+          ],
+          [
+            "Output \" inhal\"",
+            0.073
+          ],
+          [
+            "Output \" over\"",
+            0.072
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.032
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" over\"",
+            0.286
+          ],
+          [
+            "Output \" anti\"",
+            0.22
+          ],
+          [
+            "Output \" allergy\"",
+            0.105
+          ],
+          [
+            "Output \" OTC\"",
+            0.081
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.04
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 498,
+        "unique_to_a": 197,
+        "unique_to_b": 258
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T154345Z/index_16.html",
+        "png": "trace_out/pairs_20260707T154345Z/index_16.png",
+        "diff_html": "trace_out/pairs_20260707T154345Z/index_16_diff.html",
+        "diff_png": "trace_out/pairs_20260707T154345Z/index_16_diff.png"
+      }
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He has chronic insomnia at night no matter what, so his wife handed him a",
+        "patient": "He can't drop off at night no matter what, so his wife handed him a"
+      },
+      "target_token": "Output \" pillow\"",
+      "probabilities": {
+        "clinical": 0.058,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1906,
+        "patient": 0.0615
+      },
+      "error_share": {
+        "clinical": 0.1149,
+        "patient": 0.0995
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sleeping\" (p=0.088)",
+        "patient": "embedding \u2192 Output \" sleeping\" (p=0.038)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": [
+          "Output \" pillow\"",
+          0.058
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" book\"",
+            0.122
+          ],
+          [
+            "Output \" sleeping\"",
+            0.088
+          ],
+          [
+            "Output \" pillow\"",
+            0.058
+          ],
+          [
+            "Output \" pill\"",
+            0.055
+          ],
+          [
+            "Output \" bottle\"",
+            0.053
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" note\"",
+            0.07
+          ],
+          [
+            "Output \" list\"",
+            0.044
+          ],
+          [
+            "Output \" bag\"",
+            0.039
+          ],
+          [
+            "Output \" sleeping\"",
+            0.038
+          ],
+          [
+            "Output \" key\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 457,
+        "unique_to_a": 405,
+        "unique_to_b": 394
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T154345Z/index_17.html",
+        "png": "trace_out/pairs_20260707T154345Z/index_17.png",
+        "diff_html": "trace_out/pairs_20260707T154345Z/index_17_diff.html",
+        "diff_png": "trace_out/pairs_20260707T154345Z/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My lumbar radiculopathy's been acting up for months, so at the clinic they ordered an",
+        "patient": "My lower back's been acting up for months, so at the clinic they ordered an"
+      },
+      "target_token": "Output \" MRI\"",
+      "probabilities": {
+        "clinical": 0.74,
+        "patient": 0.535
+      },
+      "language_penalty": -0.20499999999999996,
+      "clinical_mass": {
+        "clinical": 0.562,
+        "patient": 0.4752
+      },
+      "error_share": {
+        "clinical": 0.1253,
+        "patient": 0.1088
+      },
+      "top_path": {
+        "clinical": "[L16\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 [L19\u00b7C] words related to radiology and medical imaging | Med \u2192 Output \" MRI\" (p=0.740)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 [L19\u00b7C] words related to radiology and medical imaging | Med \u2192 [L20\u00b7O] terminology and notation related to X-ray analysis a \u2192 Output \" X\" (p=0.142)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " MRI",
+        "observed_clinical": [
+          "Output \" MRI\"",
+          0.74
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" MRI\"",
+            0.74
+          ],
+          [
+            "Output \" x\"",
+            0.058
+          ],
+          [
+            "Output \" EMG\"",
+            0.052
+          ],
+          [
+            "Output \" m\"",
+            0.03
+          ],
+          [
+            "Output \" epid\"",
+            0.026
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" MRI\"",
+            0.535
+          ],
+          [
+            "Output \" x\"",
+            0.264
+          ],
+          [
+            "Output \" X\"",
+            0.142
+          ],
+          [
+            "Output \" ultrasound\"",
+            0.021
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 488,
+        "unique_to_a": 214,
+        "unique_to_b": 278
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T154345Z/index_18.html",
+        "png": "trace_out/pairs_20260707T154345Z/index_18.png",
+        "diff_html": "trace_out/pairs_20260707T154345Z/index_18_diff.html",
+        "diff_png": "trace_out/pairs_20260707T154345Z/index_18_diff.png"
+      }
+    }
+  ]
+}

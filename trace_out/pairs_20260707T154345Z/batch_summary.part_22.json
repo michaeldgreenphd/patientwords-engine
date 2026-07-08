@@ -1,0 +1,167 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 22,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have chronic insomnia no matter what I try, so before bed I swallow a",
+        "patient": "I just can't drift off no matter what I try, so before bed I swallow a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3629
+      },
+      "error_share": {
+        "clinical": 0.1213
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" couple\"",
+            0.109
+          ],
+          [
+            "Output \" melatonin\"",
+            0.096
+          ],
+          [
+            "Output \" few\"",
+            0.08
+          ],
+          [
+            "Output \" \"",
+            0.071
+          ],
+          [
+            "Output \" handful\"",
+            0.066
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My asthma flares up in the cold, so I always carry an",
+        "patient": "My chest gets all tight and wheezy in the cold, so I always carry an"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.873,
+        "patient": 0.896
+      },
+      "language_penalty": 0.02300000000000002,
+      "clinical_mass": {
+        "clinical": 0.3948,
+        "patient": 0.3547
+      },
+      "error_share": {
+        "clinical": 0.1211,
+        "patient": 0.124
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" asthma\" (p=0.038)",
+        "patient": "embedding \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.896)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " inhaler",
+        "observed_clinical": [
+          "Output \" inhal\"",
+          0.873
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.873
+          ],
+          [
+            "Output \" asthma\"",
+            0.038
+          ],
+          [
+            "Output \" al\"",
+            0.018
+          ],
+          [
+            "Output \" Epi\"",
+            0.014
+          ],
+          [
+            "Output \" emergency\"",
+            0.007
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.896
+          ],
+          [
+            "Output \" asthma\"",
+            0.019
+          ],
+          [
+            "Output \" al\"",
+            0.012
+          ],
+          [
+            "Output \" Epi\"",
+            0.011
+          ],
+          [
+            "Output \" extra\"",
+            0.008
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 410,
+        "unique_to_a": 253,
+        "unique_to_b": 285
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T154345Z/index_23.html",
+        "png": "trace_out/pairs_20260707T154345Z/index_23.png",
+        "diff_html": "trace_out/pairs_20260707T154345Z/index_23_diff.html",
+        "diff_png": "trace_out/pairs_20260707T154345Z/index_23_diff.png"
+      }
+    }
+  ]
+}

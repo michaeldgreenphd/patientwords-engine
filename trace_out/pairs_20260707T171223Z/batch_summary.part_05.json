@@ -1,0 +1,359 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 5,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He gets allergic rhinitis every spring, so before mowing he takes an",
+        "patient": "He gets all stuffed up every spring, so before mowing he takes an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.673,
+        "patient": 0.083
+      },
+      "language_penalty": -0.5900000000000001,
+      "clinical_mass": {
+        "clinical": 0.4704,
+        "patient": 0.2935
+      },
+      "error_share": {
+        "clinical": 0.1279,
+        "patient": 0.1185
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" allergy\" (p=0.151)",
+        "patient": "[L16\u00b7S]  \u2192 [L18\u00b7C] words related to allergic rhinitis and asthma, plus  \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.125)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antihistamine",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.673
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.673
+          ],
+          [
+            "Output \" allergy\"",
+            0.151
+          ],
+          [
+            "Output \" oral\"",
+            0.026
+          ],
+          [
+            "Output \" over\"",
+            0.018
+          ],
+          [
+            "Output \" Alle\"",
+            0.011
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.125
+          ],
+          [
+            "Output \" anti\"",
+            0.083
+          ],
+          [
+            "Output \" aspir\"",
+            0.055
+          ],
+          [
+            "Output \" extra\"",
+            0.052
+          ],
+          [
+            "Output \" allergy\"",
+            0.049
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 408,
+        "unique_to_a": 246,
+        "unique_to_b": 402
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_05.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_05.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_05_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_05_diff.png"
+      }
+    },
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've had chronic insomnia lately, so at bedtime I take a",
+        "patient": "I've been wired every night lately, so at bedtime I take a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2826
+      },
+      "error_share": {
+        "clinical": 0.1111
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" \"",
+            0.078
+          ],
+          [
+            "Output \" melatonin\"",
+            0.066
+          ],
+          [
+            "Output \" couple\"",
+            0.063
+          ],
+          [
+            "Output \" half\"",
+            0.049
+          ],
+          [
+            "Output \" few\"",
+            0.048
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My osteoarthritis has been aching for months, so every morning I swallow a",
+        "patient": "My knees have been aching for months, so every morning I swallow a"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.192,
+        "patient": 0.151
+      },
+      "language_penalty": -0.04100000000000001,
+      "clinical_mass": {
+        "clinical": 0.4321,
+        "patient": 0.4385
+      },
+      "error_share": {
+        "clinical": 0.1167,
+        "patient": 0.1171
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] terminology related to medicine, health, and nutriti \u2192 Output \" tablet\" (p=0.040)",
+        "patient": "embedding \u2192 Output \" few\" (p=0.075)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": [
+          "Output \" pill\"",
+          0.192
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pill\"",
+            0.192
+          ],
+          [
+            "Output \" handful\"",
+            0.089
+          ],
+          [
+            "Output \" few\"",
+            0.058
+          ],
+          [
+            "Output \" couple\"",
+            0.052
+          ],
+          [
+            "Output \" tablet\"",
+            0.04
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pill\"",
+            0.151
+          ],
+          [
+            "Output \" couple\"",
+            0.085
+          ],
+          [
+            "Output \" handful\"",
+            0.077
+          ],
+          [
+            "Output \" few\"",
+            0.075
+          ],
+          [
+            "Output \" bottle\"",
+            0.045
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 573,
+        "unique_to_a": 182,
+        "unique_to_b": 219
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_07.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_07.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_07_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_07_diff.png"
+      }
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been dealing with insomnia for hours, so I finally got up and made myself a cup of",
+        "patient": "I've been counting sheep for hours, so I finally got up and made myself a cup of"
+      },
+      "target_token": "Output \" tea\"",
+      "probabilities": {
+        "clinical": 0.486,
+        "patient": 0.556
+      },
+      "language_penalty": 0.07000000000000006,
+      "clinical_mass": {
+        "clinical": 0.0655,
+        "patient": 0.0447
+      },
+      "error_share": {
+        "clinical": 0.0976,
+        "patient": 0.1082
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] mentions of coffee, along with associated words like \u2192 [L19\u00b7O] descriptions of food, drink, and social situations | \u2192 [L21\u00b7O] text related to the topic of tea | references to tea \u2192 Output \" tea\" (p=0.486)",
+        "patient": "embedding \u2192 [L18\u00b7O] mentions of coffee, along with associated words like \u2192 [L19\u00b7O] descriptions of food, drink, and social situations | \u2192 Output \" coffee\" (p=0.296)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " tea",
+        "observed_clinical": [
+          "Output \" tea\"",
+          0.486
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" tea\"",
+            0.486
+          ],
+          [
+            "Output \" coffee\"",
+            0.316
+          ],
+          [
+            "Output \" hot\"",
+            0.044
+          ],
+          [
+            "Output \" chamomile\"",
+            0.016
+          ],
+          [
+            "Output \" green\"",
+            0.012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" tea\"",
+            0.556
+          ],
+          [
+            "Output \" coffee\"",
+            0.296
+          ],
+          [
+            "Output \" hot\"",
+            0.042
+          ],
+          [
+            "Output \" chamomile\"",
+            0.011
+          ],
+          [
+            "Output \" cocoa\"",
+            0.01
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 561,
+        "unique_to_a": 136,
+        "unique_to_b": 138
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_08.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_08.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_08_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_08_diff.png"
+      }
+    }
+  ]
+}

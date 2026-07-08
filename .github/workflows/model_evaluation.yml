@@ -116,6 +116,7 @@ jobs:
               flags = ts.get("flags") or {}
               models.append({
                   "id": model,
+                  "items": len(ts.get("items") or []) or None,
                   "patient_accuracy": ts.get("patient_accuracy"),
                   "clinician_accuracy": ts.get("clinician_accuracy"),
                   "delta": ts.get("delta"),

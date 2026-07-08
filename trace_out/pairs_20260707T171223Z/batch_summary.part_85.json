@@ -1,0 +1,339 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 85,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 85,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My osteoarthritis has been grinding on the stairs for months, so my doctor ordered an",
+        "patient": "My knees have been grinding on the stairs for months, so my doctor ordered an"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4733
+      },
+      "error_share": {
+        "clinical": 0.1235
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " xray",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" MRI\"",
+            0.658
+          ],
+          [
+            "Output \" X\"",
+            0.107
+          ],
+          [
+            "Output \" x\"",
+            0.09
+          ],
+          [
+            "Output \" ultrasound\"",
+            0.036
+          ],
+          [
+            "Output \" injection\"",
+            0.012
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 86,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My panic attacks flare up at meetings, so my doctor started me on an",
+        "patient": "My chest gets all tight and I feel panicky at meetings, so my doctor started me on an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.354,
+        "patient": 0.333
+      },
+      "language_penalty": -0.020999999999999963,
+      "clinical_mass": {
+        "clinical": 0.4688,
+        "patient": 0.4428
+      },
+      "error_share": {
+        "clinical": 0.1247,
+        "patient": 0.1282
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L22\u00b7C] sentences related to drug use | medications \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.354)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L22\u00b7C] sentences related to drug use | medications \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.333)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antidepressant",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.354
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.354
+          ],
+          [
+            "Output \" SS\"",
+            0.24
+          ],
+          [
+            "Output \" antidepress\"",
+            0.217
+          ],
+          [
+            "Output \" anxiety\"",
+            0.047
+          ],
+          [
+            "Output \" Ati\"",
+            0.015
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.333
+          ],
+          [
+            "Output \" antidepress\"",
+            0.29
+          ],
+          [
+            "Output \" SS\"",
+            0.189
+          ],
+          [
+            "Output \" anxiety\"",
+            0.039
+          ],
+          [
+            "Output \" inhal\"",
+            0.032
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 451,
+        "unique_to_a": 298,
+        "unique_to_b": 347
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_86.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_86.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_86_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_86_diff.png"
+      }
+    },
+    {
+      "index": 87,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having generalized anxiety and can't switch off at meetings, so my doctor started me on a low",
+        "patient": "I've been feeling all keyed up and can't switch off at meetings, so my doctor started me on a low"
+      },
+      "target_token": "Output \" dose\"",
+      "probabilities": {
+        "clinical": 0.923,
+        "patient": 0.853
+      },
+      "language_penalty": -0.07000000000000006,
+      "clinical_mass": {
+        "clinical": 0.4305,
+        "patient": 0.3573
+      },
+      "error_share": {
+        "clinical": 0.1343,
+        "patient": 0.1308
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] words related to medical studies involving drugs, do \u2192 [L22\u00b7C] words and abbreviations related to measuring radiati \u2192 Output \" dose\" (p=0.923)",
+        "patient": "embedding \u2192 [L18\u00b7C] words related to medical studies involving drugs, do \u2192 [L22\u00b7C] words and abbreviations related to measuring radiati \u2192 Output \" dose\" (p=0.853)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " dose",
+        "observed_clinical": [
+          "Output \" dose\"",
+          0.923
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dose\"",
+            0.923
+          ],
+          [
+            "Output \" dosage\"",
+            0.03
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dose\"",
+            0.853
+          ],
+          [
+            "Output \"-\"",
+            0.075
+          ],
+          [
+            "Output \" dosage\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 522,
+        "unique_to_a": 220,
+        "unique_to_b": 260
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_87.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_87.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_87_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_87_diff.png"
+      }
+    },
+    {
+      "index": 88,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Grandpa keeps having narcolepsy episodes during the day, so the nurse booked him a sleep",
+        "patient": "Grandpa keeps nodding off mid-sentence during the day, so the nurse booked him a sleep"
+      },
+      "target_token": "Output \" study\"",
+      "probabilities": {
+        "clinical": 0.583,
+        "patient": 0.644
+      },
+      "language_penalty": 0.061000000000000054,
+      "clinical_mass": {
+        "clinical": 0.3214,
+        "patient": 0.3241
+      },
+      "error_share": {
+        "clinical": 0.1312,
+        "patient": 0.1277
+      },
+      "top_path": {
+        "clinical": "[L21\u00b7S]  \u2192 Output \" study\" (p=0.583)",
+        "patient": "[L25\u00b7S]  \u2192 Output \" study\" (p=0.644)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " study",
+        "observed_clinical": [
+          "Output \" study\"",
+          0.583
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" study\"",
+            0.583
+          ],
+          [
+            "Output \" test\"",
+            0.125
+          ],
+          [
+            "Output \" clinic\"",
+            0.112
+          ],
+          [
+            "Output \"-\"",
+            0.034
+          ],
+          [
+            "Output \" appointment\"",
+            0.013
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" study\"",
+            0.644
+          ],
+          [
+            "Output \" test\"",
+            0.172
+          ],
+          [
+            "Output \" clinic\"",
+            0.054
+          ],
+          [
+            "Output \"-\"",
+            0.022
+          ],
+          [
+            "Output \" check\"",
+            0.019
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 536,
+        "unique_to_a": 262,
+        "unique_to_b": 247
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_88.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_88.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_88_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_88_diff.png"
+      }
+    }
+  ]
+}

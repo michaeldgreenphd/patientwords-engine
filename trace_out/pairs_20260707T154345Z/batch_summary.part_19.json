@@ -1,0 +1,305 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 19,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been having generalized anxiety before every meeting, so her doctor started her on an",
+        "patient": "She's been wound up and panicky before every meeting, so her doctor started her on an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.348,
+        "patient": 0.448
+      },
+      "language_penalty": 0.10000000000000003,
+      "clinical_mass": {
+        "clinical": 0.457,
+        "patient": 0.3879
+      },
+      "error_share": {
+        "clinical": 0.1197,
+        "patient": 0.1299
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" anxiety\" (p=0.037)",
+        "patient": "[L17\u00b7S]  \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.448)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antidepressant",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.348
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.348
+          ],
+          [
+            "Output \" antidepress\"",
+            0.276
+          ],
+          [
+            "Output \" SS\"",
+            0.239
+          ],
+          [
+            "Output \" anxiety\"",
+            0.037
+          ],
+          [
+            "Output \" anx\"",
+            0.013
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.448
+          ],
+          [
+            "Output \" antidepress\"",
+            0.335
+          ],
+          [
+            "Output \" SS\"",
+            0.054
+          ],
+          [
+            "Output \" anxiety\"",
+            0.05
+          ],
+          [
+            "Output \" experimental\"",
+            0.014
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 428,
+        "unique_to_a": 325,
+        "unique_to_b": 358
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T154345Z/index_19.html",
+        "png": "trace_out/pairs_20260707T154345Z/index_19.png",
+        "diff_html": "trace_out/pairs_20260707T154345Z/index_19_diff.html",
+        "diff_png": "trace_out/pairs_20260707T154345Z/index_19_diff.png"
+      }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every time I climb the stairs I get dyspneic, so the nurse handed me an",
+        "patient": "Every time I climb the stairs I get winded, so the nurse handed me an"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.66,
+        "patient": 0.684
+      },
+      "language_penalty": 0.02400000000000002,
+      "clinical_mass": {
+        "clinical": 0.4112,
+        "patient": 0.308
+      },
+      "error_share": {
+        "clinical": 0.1435,
+        "patient": 0.1248
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L4\u00b7C] terms related to the lungs and pulmonary system | lu \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.660)",
+        "patient": "[L3\u00b7S]  \u2192 [L4\u00b7C] terms related to the lungs and pulmonary system | lu \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.684)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " inhaler",
+        "observed_clinical": [
+          "Output \" inhal\"",
+          0.66
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.66
+          ],
+          [
+            "Output \" al\"",
+            0.095
+          ],
+          [
+            "Output \" oxygen\"",
+            0.07
+          ],
+          [
+            "Output \" asthma\"",
+            0.027
+          ],
+          [
+            "Output \" ox\"",
+            0.012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.684
+          ],
+          [
+            "Output \" oxygen\"",
+            0.173
+          ],
+          [
+            "Output \" asthma\"",
+            0.025
+          ],
+          [
+            "Output \" exercise\"",
+            0.011
+          ],
+          [
+            "Output \" al\"",
+            0.009
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 503,
+        "unique_to_a": 252,
+        "unique_to_b": 310
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T154345Z/index_20.html",
+        "png": "trace_out/pairs_20260707T154345Z/index_20.png",
+        "diff_html": "trace_out/pairs_20260707T154345Z/index_20_diff.html",
+        "diff_png": "trace_out/pairs_20260707T154345Z/index_20_diff.png"
+      }
+    },
+    {
+      "index": 21,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since the layoffs he's had generalized anxiety, so his wife booked him a",
+        "patient": "Ever since the layoffs he's been on edge and jumpy, so his wife booked him a"
+      },
+      "target_token": "Output \" session\"",
+      "probabilities": {
+        "clinical": 0.093,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2138,
+        "patient": 0.1277
+      },
+      "error_share": {
+        "clinical": 0.1243,
+        "patient": 0.1242
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" session\" (p=0.093)",
+        "patient": "embedding \u2192 Output \" trip\" (p=0.117)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " session",
+        "observed_clinical": [
+          "Output \" session\"",
+          0.093
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" trip\"",
+            0.12
+          ],
+          [
+            "Output \" session\"",
+            0.093
+          ],
+          [
+            "Output \" week\"",
+            0.082
+          ],
+          [
+            "Output \" massage\"",
+            0.059
+          ],
+          [
+            "Output \" flight\"",
+            0.055
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" trip\"",
+            0.117
+          ],
+          [
+            "Output \" massage\"",
+            0.099
+          ],
+          [
+            "Output \" week\"",
+            0.067
+          ],
+          [
+            "Output \" weekend\"",
+            0.066
+          ],
+          [
+            "Output \" vacation\"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 601,
+        "unique_to_a": 250,
+        "unique_to_b": 260
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T154345Z/index_21.html",
+        "png": "trace_out/pairs_20260707T154345Z/index_21.png",
+        "diff_html": "trace_out/pairs_20260707T154345Z/index_21_diff.html",
+        "diff_png": "trace_out/pairs_20260707T154345Z/index_21_diff.png"
+      }
+    }
+  ]
+}

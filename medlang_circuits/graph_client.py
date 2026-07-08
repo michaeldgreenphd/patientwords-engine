@@ -33,13 +33,19 @@ logger = logging.getLogger(__name__)
 NEURONPEDIA_BASE_URL = os.environ.get("NEURONPEDIA_BASE_URL", "https://www.neuronpedia.org")
 LOCAL_SERVER_URL = os.environ.get("GRAPH_SERVER_URL", "http://localhost:5004")
 
-# Neuronpedia model ID -> TransformerLens model ID. These are the models
-# enabled for hosted graph generation as of July 2026; extend as more land.
+# Neuronpedia model ID -> TransformerLens model ID. Registered candidates for
+# hosted graph generation. Tested against the live backend on 2026-07-07: only
+# gemma-2-2b actually produces graphs. gemma-3-4b-it and qwen3-1.7b return a
+# fast non-retryable error (not served), and qwen3-4b returns persistent 500s
+# from /api/graph/generate even with no parallel load. The others are kept here
+# so the cross-model trace matrix + front-end model selector light up
+# automatically if/when Neuronpedia enables them - re-run the 2-pair probe (a
+# graph_models circuit-trace trigger) to re-check before scaling.
 MODEL_REGISTRY: dict[str, str] = {
-    "gemma-2-2b": "google/gemma-2-2b",
-    "gemma-3-4b-it": "google/gemma-3-4b-it",
-    "qwen3-4b": "Qwen/Qwen3-4B",
-    "qwen3-1.7b": "Qwen/Qwen3-1.7B",
+    "gemma-2-2b": "google/gemma-2-2b",       # confirmed working
+    "gemma-3-4b-it": "google/gemma-3-4b-it", # registered; not served yet (400/404)
+    "qwen3-4b": "Qwen/Qwen3-4B",             # registered; hosted backend 500s
+    "qwen3-1.7b": "Qwen/Qwen3-1.7B",         # registered; not served yet (400/404)
 }
 
 DEFAULT_GRAPH_MODEL = "gemma-2-2b"

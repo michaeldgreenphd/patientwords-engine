@@ -1,0 +1,359 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 101,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 101,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "His tachycardia at rest has him worried, so the nurse hooked him up to a",
+        "patient": "His pounding heart at rest has him worried, so the nurse hooked him up to a"
+      },
+      "target_token": "Output \" monitor\"",
+      "probabilities": {
+        "clinical": 0.178,
+        "patient": 0.191
+      },
+      "language_penalty": 0.013000000000000012,
+      "clinical_mass": {
+        "clinical": 0.4463,
+        "patient": 0.4144
+      },
+      "error_share": {
+        "clinical": 0.1359,
+        "patient": 0.1408
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.204)",
+        "patient": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.317)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " monitor",
+        "observed_clinical": [
+          "Output \" monitor\"",
+          0.178
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" heart\"",
+            0.204
+          ],
+          [
+            "Output \" cardiac\"",
+            0.191
+          ],
+          [
+            "Output \" monitor\"",
+            0.178
+          ],
+          [
+            "Output \" telemetry\"",
+            0.064
+          ],
+          [
+            "Output \" \"",
+            0.062
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" heart\"",
+            0.317
+          ],
+          [
+            "Output \" monitor\"",
+            0.191
+          ],
+          [
+            "Output \" machine\"",
+            0.084
+          ],
+          [
+            "Output \" cardiac\"",
+            0.067
+          ],
+          [
+            "Output \" \"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 474,
+        "unique_to_a": 278,
+        "unique_to_b": 262
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_101.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_101.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_101_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_101_diff.png"
+      }
+    },
+    {
+      "index": 102,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since I've had allergic rhinitis this week, at the counter I asked for a",
+        "patient": "Since my nose has been all stuffed up this week, at the counter I asked for a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4602
+      },
+      "error_share": {
+        "clinical": 0.1256
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " spray",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" nasal\"",
+            0.094
+          ],
+          [
+            "Output \" prescription\"",
+            0.052
+          ],
+          [
+            "Output \" medicine\"",
+            0.048
+          ],
+          [
+            "Output \" decon\"",
+            0.048
+          ],
+          [
+            "Output \" cold\"",
+            0.038
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 103,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since the move my major depression has flared, so my doctor gave me a",
+        "patient": "Ever since the move my mood's been in the pits, so my doctor gave me a"
+      },
+      "target_token": "Output \" prescription\"",
+      "probabilities": {
+        "clinical": 0.306,
+        "patient": 0.442
+      },
+      "language_penalty": 0.136,
+      "clinical_mass": {
+        "clinical": 0.4167,
+        "patient": 0.385
+      },
+      "error_share": {
+        "clinical": 0.1188,
+        "patient": 0.1223
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" \" (p=0.028)",
+        "patient": "embedding \u2192 Output \" new\" (p=0.029)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " prescription",
+        "observed_clinical": [
+          "Output \" prescription\"",
+          0.306
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.306
+          ],
+          [
+            "Output \" new\"",
+            0.143
+          ],
+          [
+            "Output \" script\"",
+            0.082
+          ],
+          [
+            "Output \" \"",
+            0.028
+          ],
+          [
+            "Output \" low\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" prescription\"",
+            0.442
+          ],
+          [
+            "Output \" script\"",
+            0.075
+          ],
+          [
+            "Output \" few\"",
+            0.031
+          ],
+          [
+            "Output \" new\"",
+            0.029
+          ],
+          [
+            "Output \" little\"",
+            0.029
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 554,
+        "unique_to_a": 258,
+        "unique_to_b": 258
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_103.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_103.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_103_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_103_diff.png"
+      }
+    },
+    {
+      "index": 104,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "His peripheral neuropathy has flared since the diet change, so tonight he's rubbing on some",
+        "patient": "His feet have been all pins and needles since the diet change, so tonight he's rubbing on some"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.08,
+        "patient": 0.075
+      },
+      "language_penalty": -0.0050000000000000044,
+      "clinical_mass": {
+        "clinical": 0.4131,
+        "patient": 0.3267
+      },
+      "error_share": {
+        "clinical": 0.1315,
+        "patient": 0.1296
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" of\" (p=0.080)",
+        "patient": "embedding \u2192 Output \" of\" (p=0.056)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cream",
+        "observed_clinical": [
+          "Output \" cream\"",
+          0.08
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" of\"",
+            0.08
+          ],
+          [
+            "Output \" cream\"",
+            0.08
+          ],
+          [
+            "Output \" topical\"",
+            0.057
+          ],
+          [
+            "Output \" lido\"",
+            0.043
+          ],
+          [
+            "Output \" lotion\"",
+            0.042
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" lotion\"",
+            0.093
+          ],
+          [
+            "Output \" cream\"",
+            0.075
+          ],
+          [
+            "Output \" of\"",
+            0.056
+          ],
+          [
+            "Output \" peppermint\"",
+            0.027
+          ],
+          [
+            "Output \" ice\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 476,
+        "unique_to_a": 361,
+        "unique_to_b": 427
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_104.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_104.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_104_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_104_diff.png"
+      }
+    }
+  ]
+}

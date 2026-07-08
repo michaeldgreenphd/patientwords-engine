@@ -1,0 +1,359 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 29,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 29,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Grandma keeps having tremors at breakfast, so the nurse handed her a",
+        "patient": "Grandma keeps having the shakes at breakfast, so the nurse handed her a"
+      },
+      "target_token": "Output \" cup\"",
+      "probabilities": {
+        "clinical": 0.158,
+        "patient": 0.171
+      },
+      "language_penalty": 0.013000000000000012,
+      "clinical_mass": {
+        "clinical": 0.2412,
+        "patient": 0.1998
+      },
+      "error_share": {
+        "clinical": 0.1263,
+        "patient": 0.1266
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L19\u00b7O] descriptions of food, drink, and social situations | \u2192 [L22\u00b7O] food items and coffee, especially those related to F \u2192 Output \" cup\" (p=0.158)",
+        "patient": "embedding \u2192 [L19\u00b7O] descriptions of food, drink, and social situations | \u2192 [L22\u00b7O] food items and coffee, especially those related to F \u2192 Output \" cup\" (p=0.171)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cup",
+        "observed_clinical": [
+          "Output \" cup\"",
+          0.158
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" glass\"",
+            0.251
+          ],
+          [
+            "Output \" cup\"",
+            0.158
+          ],
+          [
+            "Output \" bottle\"",
+            0.035
+          ],
+          [
+            "Output \" little\"",
+            0.031
+          ],
+          [
+            "Output \" small\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" glass\"",
+            0.194
+          ],
+          [
+            "Output \" cup\"",
+            0.171
+          ],
+          [
+            "Output \" little\"",
+            0.048
+          ],
+          [
+            "Output \" bottle\"",
+            0.048
+          ],
+          [
+            "Output \" prescription\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 649,
+        "unique_to_a": 197,
+        "unique_to_b": 186
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_29.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_29.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_29_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_29_diff.png"
+      }
+    },
+    {
+      "index": 30,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been constipated for days, so at the shop I grabbed a",
+        "patient": "I've been all stopped up for days, so at the shop I grabbed a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1972
+      },
+      "error_share": {
+        "clinical": 0.1237
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " laxative",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" bottle\"",
+            0.123
+          ],
+          [
+            "Output \" couple\"",
+            0.082
+          ],
+          [
+            "Output \" bag\"",
+            0.077
+          ],
+          [
+            "Output \" few\"",
+            0.056
+          ],
+          [
+            "Output \" handful\"",
+            0.055
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "His psoriasis flared on his elbows, so tonight he's rubbing in a",
+        "patient": "His skin's gone all scaly on his elbows, so tonight he's rubbing in a"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.119,
+        "patient": 0.12
+      },
+      "language_penalty": 0.0010000000000000009,
+      "clinical_mass": {
+        "clinical": 0.3447,
+        "patient": 0.2629
+      },
+      "error_share": {
+        "clinical": 0.1276,
+        "patient": 0.1277
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] terms related to skin conditions and medical treatme \u2192 Output \" cream\" (p=0.119)",
+        "patient": "embedding \u2192 Output \" special\" (p=0.056)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cream",
+        "observed_clinical": [
+          "Output \" cream\"",
+          0.119
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" thick\"",
+            0.126
+          ],
+          [
+            "Output \" cream\"",
+            0.119
+          ],
+          [
+            "Output \" steroid\"",
+            0.106
+          ],
+          [
+            "Output \" lotion\"",
+            0.052
+          ],
+          [
+            "Output \" mixture\"",
+            0.034
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cream\"",
+            0.12
+          ],
+          [
+            "Output \" thick\"",
+            0.07
+          ],
+          [
+            "Output \" little\"",
+            0.069
+          ],
+          [
+            "Output \" lotion\"",
+            0.058
+          ],
+          [
+            "Output \" special\"",
+            0.056
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 500,
+        "unique_to_a": 283,
+        "unique_to_b": 342
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_31.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_31.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_31_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_31_diff.png"
+      }
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since the layoffs I've had insomnia at night, so my GP wrote me a",
+        "patient": "Ever since the layoffs I can't drop off at night, so my GP wrote me a"
+      },
+      "target_token": "Output \" prescription\"",
+      "probabilities": {
+        "clinical": 0.434,
+        "patient": 0.263
+      },
+      "language_penalty": -0.17099999999999999,
+      "clinical_mass": {
+        "clinical": 0.3929,
+        "patient": 0.2743
+      },
+      "error_share": {
+        "clinical": 0.1285,
+        "patient": 0.1278
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sleep\" (p=0.014)",
+        "patient": "embedding \u2192 Output \" letter\" (p=0.082)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " prescription",
+        "observed_clinical": [
+          "Output \" prescription\"",
+          0.434
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.434
+          ],
+          [
+            "Output \" script\"",
+            0.313
+          ],
+          [
+            "Output \" sleeping\"",
+            0.116
+          ],
+          [
+            "Output \" short\"",
+            0.015
+          ],
+          [
+            "Output \" sleep\"",
+            0.014
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" script\"",
+            0.266
+          ],
+          [
+            "Output \" prescription\"",
+            0.263
+          ],
+          [
+            "Output \" note\"",
+            0.183
+          ],
+          [
+            "Output \" letter\"",
+            0.082
+          ],
+          [
+            "Output \" scrip\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 485,
+        "unique_to_a": 322,
+        "unique_to_b": 375
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_32.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_32.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_32_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_32_diff.png"
+      }
+    }
+  ]
+}

@@ -1,0 +1,359 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 73,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 73,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She just can't fall asleep at night lately, so before bed she takes a",
+        "patient": "She just can't drift off at night lately, so before bed she takes a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.16
+      },
+      "error_share": {
+        "clinical": 0.1139
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" bath\"",
+            0.069
+          ],
+          [
+            "Output \" few\"",
+            0.061
+          ],
+          [
+            "Output \" little\"",
+            0.061
+          ],
+          [
+            "Output \" warm\"",
+            0.051
+          ],
+          [
+            "Output \" glass\"",
+            0.044
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 74,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He keeps having sleep apnea all night, so the clinic fitted him with a",
+        "patient": "He keeps sawing logs so loud all night, so the clinic fitted him with a"
+      },
+      "target_token": "Output \" mask\"",
+      "probabilities": {
+        "clinical": 0.095,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3455,
+        "patient": 0.1351
+      },
+      "error_share": {
+        "clinical": 0.1209,
+        "patient": 0.1301
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" C\" (p=0.037)",
+        "patient": "embedding \u2192 Output \" noise\" (p=0.042)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " mask",
+        "observed_clinical": [
+          "Output \" mask\"",
+          0.095
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" CP\"",
+            0.311
+          ],
+          [
+            "Output \" machine\"",
+            0.096
+          ],
+          [
+            "Output \" mask\"",
+            0.095
+          ],
+          [
+            "Output \" continuous\"",
+            0.086
+          ],
+          [
+            "Output \" C\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hearing\"",
+            0.108
+          ],
+          [
+            "Output \" special\"",
+            0.103
+          ],
+          [
+            "Output \" new\"",
+            0.053
+          ],
+          [
+            "Output \" device\"",
+            0.045
+          ],
+          [
+            "Output \" noise\"",
+            0.042
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 368,
+        "unique_to_a": 452,
+        "unique_to_b": 480
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_74.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_74.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_74_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_74_diff.png"
+      }
+    },
+    {
+      "index": 75,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been suffering from insomnia every night, so my doctor gave me a",
+        "patient": "I've been wired and tossing till dawn every night, so my doctor gave me a"
+      },
+      "target_token": "Output \" prescription\"",
+      "probabilities": {
+        "clinical": 0.389,
+        "patient": 0.291
+      },
+      "language_penalty": -0.09800000000000003,
+      "clinical_mass": {
+        "clinical": 0.4228,
+        "patient": 0.3626
+      },
+      "error_share": {
+        "clinical": 0.1134,
+        "patient": 0.1287
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sleep\" (p=0.033)",
+        "patient": "embedding \u2192 Output \" \" (p=0.028)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pre",
+        "observed_clinical": [
+          "Output \" prescription\"",
+          0.389
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.389
+          ],
+          [
+            "Output \" sleeping\"",
+            0.18
+          ],
+          [
+            "Output \" script\"",
+            0.054
+          ],
+          [
+            "Output \" sleep\"",
+            0.033
+          ],
+          [
+            "Output \" small\"",
+            0.021
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" prescription\"",
+            0.291
+          ],
+          [
+            "Output \" script\"",
+            0.111
+          ],
+          [
+            "Output \" sleeping\"",
+            0.103
+          ],
+          [
+            "Output \" \"",
+            0.028
+          ],
+          [
+            "Output \" sleep\"",
+            0.027
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 484,
+        "unique_to_a": 303,
+        "unique_to_b": 373
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_75.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_75.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_75_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_75_diff.png"
+      }
+    },
+    {
+      "index": 76,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since the taco truck I've had chronic diarrhea, so I stopped at the shop for some",
+        "patient": "Ever since the taco truck my stomach's been running like a faucet, so I stopped at the shop for some"
+      },
+      "target_token": "Output \" water\"",
+      "probabilities": {
+        "clinical": 0.037,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1997,
+        "patient": 0.0857
+      },
+      "error_share": {
+        "clinical": 0.1295,
+        "patient": 0.1292
+      },
+      "top_path": {
+        "clinical": "[L20\u00b7S]  \u2192 [L22\u00b7O] words associated with food and light amounts of huma \u2192 Output \" chicken\" (p=0.042)",
+        "patient": "embedding \u2192 Output \" tacos\" (p=0.046)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " water",
+        "observed_clinical": [
+          "Output \" water\"",
+          0.037
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" food\"",
+            0.07
+          ],
+          [
+            "Output \" relief\"",
+            0.058
+          ],
+          [
+            "Output \" chicken\"",
+            0.042
+          ],
+          [
+            "Output \" water\"",
+            0.037
+          ],
+          [
+            "Output \" medicine\"",
+            0.034
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" food\"",
+            0.073
+          ],
+          [
+            "Output \" lunch\"",
+            0.062
+          ],
+          [
+            "Output \" grub\"",
+            0.047
+          ],
+          [
+            "Output \" tacos\"",
+            0.046
+          ],
+          [
+            "Output \" breakfast\"",
+            0.038
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 578,
+        "unique_to_a": 266,
+        "unique_to_b": 274
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_76.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_76.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_76_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_76_diff.png"
+      }
+    }
+  ]
+}

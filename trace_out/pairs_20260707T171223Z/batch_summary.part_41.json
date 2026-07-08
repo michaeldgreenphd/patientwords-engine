@@ -1,0 +1,359 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 41,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The doc says my hypertension is uncontrolled, so every morning I swallow my",
+        "patient": "The doc says my numbers are way too high up top, so every morning I swallow my"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.091,
+        "patient": 0.081
+      },
+      "language_penalty": -0.009999999999999995,
+      "clinical_mass": {
+        "clinical": 0.4011,
+        "patient": 0.2725
+      },
+      "error_share": {
+        "clinical": 0.1264,
+        "patient": 0.1253
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.111)",
+        "patient": "embedding \u2192 Output \" morning\" (p=0.063)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pills",
+        "observed_clinical": [
+          "Output \" pill\"",
+          0.091
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.111
+          ],
+          [
+            "Output \" pill\"",
+            0.091
+          ],
+          [
+            "Output \" first\"",
+            0.073
+          ],
+          [
+            "Output \" pills\"",
+            0.072
+          ],
+          [
+            "Output \" \"",
+            0.067
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pride\"",
+            0.086
+          ],
+          [
+            "Output \" pill\"",
+            0.081
+          ],
+          [
+            "Output \" morning\"",
+            0.063
+          ],
+          [
+            "Output \" pills\"",
+            0.059
+          ],
+          [
+            "Output \" \"",
+            0.055
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 464,
+        "unique_to_a": 284,
+        "unique_to_b": 359
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_41.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_41.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_41_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_41_diff.png"
+      }
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After that huge lunch my constipation flared up, so on the way home I stopped for a",
+        "patient": "After that huge lunch my belly's all backed up, so on the way home I stopped for a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1407
+      },
+      "error_share": {
+        "clinical": 0.1212
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " laxative",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" quick\"",
+            0.086
+          ],
+          [
+            "Output \" few\"",
+            0.047
+          ],
+          [
+            "Output \" snack\"",
+            0.04
+          ],
+          [
+            "Output \" wee\"",
+            0.04
+          ],
+          [
+            "Output \" pee\"",
+            0.032
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My osteoarthritis has been giving me grief all week, so this morning I swallowed a",
+        "patient": "My trick knee's been giving me grief all week, so this morning I swallowed a"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.078,
+        "patient": 0.05
+      },
+      "language_penalty": -0.027999999999999997,
+      "clinical_mass": {
+        "clinical": 0.3618,
+        "patient": 0.3232
+      },
+      "error_share": {
+        "clinical": 0.1198,
+        "patient": 0.1233
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7S] instances of the indefinite article 'a' or 'an' near \u2192 [L24\u00b7S] articles, prepositions, and other common short words \u2192 Output \" couple\" (p=0.153)",
+        "patient": "embedding \u2192 [L18\u00b7S] instances of the indefinite article 'a' or 'an' near \u2192 [L24\u00b7S] articles, prepositions, and other common short words \u2192 Output \" couple\" (p=0.179)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": [
+          "Output \" pill\"",
+          0.078
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" couple\"",
+            0.153
+          ],
+          [
+            "Output \" few\"",
+            0.126
+          ],
+          [
+            "Output \" pill\"",
+            0.078
+          ],
+          [
+            "Output \" handful\"",
+            0.076
+          ],
+          [
+            "Output \" dose\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" couple\"",
+            0.179
+          ],
+          [
+            "Output \" few\"",
+            0.125
+          ],
+          [
+            "Output \" bunch\"",
+            0.075
+          ],
+          [
+            "Output \" handful\"",
+            0.074
+          ],
+          [
+            "Output \" pill\"",
+            0.05
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 568,
+        "unique_to_a": 210,
+        "unique_to_b": 244
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_43.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_43.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_43_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_43_diff.png"
+      }
+    },
+    {
+      "index": 44,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When the pollen hits my allergic rhinitis flares, so before the game I popped an",
+        "patient": "When the pollen hits my nose won't quit, so before the game I popped an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.423,
+        "patient": 0.264
+      },
+      "language_penalty": -0.15899999999999997,
+      "clinical_mass": {
+        "clinical": 0.4498,
+        "patient": 0.357
+      },
+      "error_share": {
+        "clinical": 0.1322,
+        "patient": 0.1205
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" allergy\" (p=0.092)",
+        "patient": "embedding \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" allergy\" (p=0.086)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antihistamine",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.423
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.423
+          ],
+          [
+            "Output \" allergy\"",
+            0.092
+          ],
+          [
+            "Output \" extra\"",
+            0.07
+          ],
+          [
+            "Output \" Alle\"",
+            0.069
+          ],
+          [
+            "Output \" Al\"",
+            0.043
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.264
+          ],
+          [
+            "Output \" allergy\"",
+            0.086
+          ],
+          [
+            "Output \" Ad\"",
+            0.082
+          ],
+          [
+            "Output \" extra\"",
+            0.074
+          ],
+          [
+            "Output \" Alle\"",
+            0.057
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 548,
+        "unique_to_a": 160,
+        "unique_to_b": 267
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_44.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_44.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_44_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_44_diff.png"
+      }
+    }
+  ]
+}

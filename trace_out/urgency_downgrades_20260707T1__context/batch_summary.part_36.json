@@ -1,0 +1,447 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 36,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 36,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the coffee shop during a casual chat. My irritable bowel is flaring after every meal, so tonight I'm sipping some",
+        "patient": "This came up at the coffee shop during a casual chat. My tummy's tied in knots after every meal, so tonight I'm sipping some"
+      },
+      "target_token": "Output \" tea\"",
+      "probabilities": {
+        "clinical": 0.114,
+        "patient": 0.155
+      },
+      "language_penalty": 0.040999999999999995,
+      "clinical_mass": {
+        "clinical": 0.1982,
+        "patient": 0.18
+      },
+      "error_share": {
+        "clinical": 0.1074,
+        "patient": 0.1069
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] descriptions of food, drink, and social situations | \u2192 Output \" tea\" (p=0.114)",
+        "patient": "embedding \u2192 [L19\u00b7O] descriptions of food, drink, and social situations | \u2192 Output \" tea\" (p=0.155)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" tea\"",
+            0.114
+          ],
+          [
+            "Output \" hot\"",
+            0.071
+          ],
+          [
+            "Output \" chamomile\"",
+            0.066
+          ],
+          [
+            "Output \" peppermint\"",
+            0.057
+          ],
+          [
+            "Output \" ginger\"",
+            0.052
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" tea\"",
+            0.155
+          ],
+          [
+            "Output \" chamomile\"",
+            0.083
+          ],
+          [
+            "Output \" peppermint\"",
+            0.08
+          ],
+          [
+            "Output \" ginger\"",
+            0.064
+          ],
+          [
+            "Output \" hot\"",
+            0.063
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1160,
+        "unique_to_a": 282,
+        "unique_to_b": 345
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_36.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_36.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_36_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_36_diff.png"
+      }
+    },
+    {
+      "index": 37,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the doctor's office during a routine visit. I've been having daytime hypersomnia every afternoon, so tonight I skipped my usual",
+        "patient": "This came up at the doctor's office during a routine visit. I've been catching some z's on the couch every afternoon, so tonight I skipped my usual"
+      },
+      "target_token": "Output \" nap\"",
+      "probabilities": {
+        "clinical": 0.024,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1925,
+        "patient": 0.1401
+      },
+      "error_share": {
+        "clinical": 0.1096,
+        "patient": 0.1057
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" evening\" (p=0.061)",
+        "patient": "embedding \u2192 Output \" routine\" (p=0.057)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" \"",
+            0.162
+          ],
+          [
+            "Output \" dose\"",
+            0.115
+          ],
+          [
+            "Output \" bedtime\"",
+            0.1
+          ],
+          [
+            "Output \" evening\"",
+            0.061
+          ],
+          [
+            "Output \" nap\"",
+            0.024
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" \"",
+            0.126
+          ],
+          [
+            "Output \" bedtime\"",
+            0.076
+          ],
+          [
+            "Output \" routine\"",
+            0.057
+          ],
+          [
+            "Output \" evening\"",
+            0.046
+          ],
+          [
+            "Output \" dose\"",
+            0.037
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1191,
+        "unique_to_a": 432,
+        "unique_to_b": 479
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_37.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_37.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_37_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_37_diff.png"
+      }
+    },
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the coffee shop during a casual chat. I've been having daytime hypersomnia every afternoon, so tonight I skipped my usual",
+        "patient": "This came up at the coffee shop during a casual chat. I've been catching some z's on the couch every afternoon, so tonight I skipped my usual"
+      },
+      "target_token": "Output \" \"",
+      "probabilities": {
+        "clinical": 0.128,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1554,
+        "patient": 0.0747
+      },
+      "error_share": {
+        "clinical": 0.1101,
+        "patient": 0.1052
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" evening\" (p=0.078)",
+        "patient": "embedding \u2192 Output \" routine\" (p=0.046)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" \"",
+            0.128
+          ],
+          [
+            "Output \" dose\"",
+            0.09
+          ],
+          [
+            "Output \" bedtime\"",
+            0.081
+          ],
+          [
+            "Output \" evening\"",
+            0.078
+          ],
+          [
+            "Output \" dinner\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" \"",
+            0.098
+          ],
+          [
+            "Output \" bedtime\"",
+            0.053
+          ],
+          [
+            "Output \" evening\"",
+            0.052
+          ],
+          [
+            "Output \" workout\"",
+            0.047
+          ],
+          [
+            "Output \" routine\"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1131,
+        "unique_to_a": 454,
+        "unique_to_b": 538
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_38.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_38.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_38_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_38_diff.png"
+      }
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the doctor's office during a routine visit. After that greasy fry-up my dyspepsia flared up, so at the counter I grabbed an",
+        "patient": "This came up at the doctor's office during a routine visit. After that greasy fry-up my gut's all churned up, so at the counter I grabbed an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.099,
+        "patient": 0.037
+      },
+      "language_penalty": -0.062000000000000006,
+      "clinical_mass": {
+        "clinical": 0.1798,
+        "patient": 0.1358
+      },
+      "error_share": {
+        "clinical": 0.1149,
+        "patient": 0.1112
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" apple\" (p=0.116)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.075)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" apple\"",
+            0.116
+          ],
+          [
+            "Output \" ant\"",
+            0.099
+          ],
+          [
+            "Output \" aspirin\"",
+            0.062
+          ],
+          [
+            "Output \" over\"",
+            0.06
+          ],
+          [
+            "Output \" orange\"",
+            0.06
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" apple\"",
+            0.18
+          ],
+          [
+            "Output \" orange\"",
+            0.085
+          ],
+          [
+            "Output \" ice\"",
+            0.075
+          ],
+          [
+            "Output \" extra\"",
+            0.048
+          ],
+          [
+            "Output \" ant\"",
+            0.037
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1344,
+        "unique_to_a": 184,
+        "unique_to_b": 191
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_39.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_39.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_39_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_39_diff.png"
+      }
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the coffee shop during a casual chat. After that greasy fry-up my dyspepsia flared up, so at the counter I grabbed an",
+        "patient": "This came up at the coffee shop during a casual chat. After that greasy fry-up my gut's all churned up, so at the counter I grabbed an"
+      },
+      "target_token": "Output \" apple\"",
+      "probabilities": {
+        "clinical": 0.083,
+        "patient": 0.092
+      },
+      "language_penalty": 0.008999999999999994,
+      "clinical_mass": {
+        "clinical": 0.0966,
+        "patient": 0.051
+      },
+      "error_share": {
+        "clinical": 0.1155,
+        "patient": 0.1087
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.054)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" apple\" (p=0.092)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" apple\"",
+            0.083
+          ],
+          [
+            "Output \" extra\"",
+            0.076
+          ],
+          [
+            "Output \" orange\"",
+            0.076
+          ],
+          [
+            "Output \" ice\"",
+            0.054
+          ],
+          [
+            "Output \" aspirin\"",
+            0.051
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" extra\"",
+            0.109
+          ],
+          [
+            "Output \" apple\"",
+            0.092
+          ],
+          [
+            "Output \" espresso\"",
+            0.091
+          ],
+          [
+            "Output \" orange\"",
+            0.069
+          ],
+          [
+            "Output \" iced\"",
+            0.068
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1311,
+        "unique_to_a": 190,
+        "unique_to_b": 204
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_40.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_40.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_40_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_40_diff.png"
+      }
+    }
+  ]
+}

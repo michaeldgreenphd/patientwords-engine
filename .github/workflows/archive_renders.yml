@@ -1,0 +1,190 @@
+name: Archive Renders to Release (medlang-circuits)
+
+# Packages the FULL render set for one or more trace runs into a zip and
+# attaches it to a GitHub Release on this (private) engine repo. The public
+# site keeps only the capped demonstration set (see
+# export_frontend_simulated.py --max-renders); this is the durable back-end
+# copy of everything, kept off the site repo and - optionally - off the
+# engine's git working tree.
+#
+# Two ways to start it (same pattern as the trace workflow):
+#   - workflow_dispatch from the Actions tab; or
+#   - push a parameters file to .github/trigger/archive-renders.json, e.g.
+#       {"tag":"renders-20260707",
+#        "runs":["trace_out/dialects_20260707T000923Z",
+#                "trace_out/pairs_20260706T201750Z"],
+#        "no_pngs": false, "prune": false}
+#
+# A ~1KB manifest is committed to render_archives/<tag>.manifest.json so the
+# repo keeps an index of what was archived and where to download it; the zip
+# itself is never committed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag / bundle name, e.g. renders-20260707"
+        type: string
+        required: true
+      runs:
+        description: "Comma- or space-separated trace_out/<run> directories to bundle"
+        type: string
+        required: true
+      no_pngs:
+        description: "Drop the multi-MB PNGs from the bundle (keep interactive HTML + summaries)"
+        type: boolean
+        default: false
+      prune:
+        description: "After a successful upload, git-rm the archived runs' index_*.png from this branch (HTML stays; full-res PNGs live in the Release)"
+        type: boolean
+        default: false
+  push:
+    paths:
+      - ".github/trigger/archive-renders.json"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: archive-renders-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Resolve parameters
+        id: params
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IN_TAG: ${{ inputs.tag }}
+          IN_RUNS: ${{ inputs.runs }}
+          IN_NO_PNGS: ${{ inputs.no_pngs }}
+          IN_PRUNE: ${{ inputs.prune }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          if os.environ["EVENT_NAME"] == "push":
+              with open(".github/trigger/archive-renders.json", encoding="utf-8") as f:
+                  cfg = json.load(f)
+              tag = str(cfg["tag"])
+              runs = cfg["runs"]
+              if isinstance(runs, str):
+                  runs = runs.replace(",", " ").split()
+              no_pngs = bool(cfg.get("no_pngs", False))
+              prune = bool(cfg.get("prune", False))
+          else:
+              tag = os.environ["IN_TAG"]
+              runs = os.environ["IN_RUNS"].replace(",", " ").split()
+              no_pngs = os.environ.get("IN_NO_PNGS", "") == "true"
+              prune = os.environ.get("IN_PRUNE", "") == "true"
+          if not tag or not runs:
+              raise SystemExit("archive-renders needs a tag and at least one run")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"tag={tag}\n")
+              out.write("runs=" + " ".join(runs) + "\n")
+              out.write(f"no_pngs={'1' if no_pngs else '0'}\n")
+              out.write(f"prune={'1' if prune else '0'}\n")
+          print("tag:", tag)
+          print("runs:", runs)
+          print("no_pngs:", no_pngs, "prune:", prune)
+          EOF
+
+      - name: Build render bundle
+        env:
+          TAG: ${{ steps.params.outputs.tag }}
+          RUNS: ${{ steps.params.outputs.runs }}
+          NO_PNGS: ${{ steps.params.outputs.no_pngs }}
+        run: |
+          set -euo pipefail
+          ARGS=(--runs $RUNS --tag "$TAG" --out-dir dist)
+          if [ "$NO_PNGS" = "1" ]; then ARGS+=(--no-pngs); fi
+          python scripts/archive_run.py "${ARGS[@]}"
+
+      - name: Upload bundle to a GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.params.outputs.tag }}
+        run: |
+          set -euo pipefail
+          ZIP="dist/${TAG}.zip"
+          NOTES="Full circuit-render bundle for the runs in render_archives/${TAG}.manifest.json. The public site carries only the capped demonstration set."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP" --clobber
+          else
+            gh release create "$TAG" "$ZIP" --title "Renders: $TAG" --notes "$NOTES"
+          fi
+          URL=$(gh release view "$TAG" --json url -q .url)
+          echo "RELEASE_URL=$URL" >> "$GITHUB_ENV"
+          echo "Uploaded $ZIP to $URL"
+
+      - name: Record manifest + optional prune, commit to branch
+        env:
+          TAG: ${{ steps.params.outputs.tag }}
+          RUNS: ${{ steps.params.outputs.runs }}
+          PRUNE: ${{ steps.params.outputs.prune }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p render_archives
+          # Stamp the Release URL into the committed manifest.
+          python - <<'EOF'
+          import json, os
+          tag = os.environ["TAG"]
+          src = f"dist/{tag}.manifest.json"
+          with open(src, encoding="utf-8") as f:
+              m = json.load(f)
+          m["release_url"] = os.environ.get("RELEASE_URL")
+          with open(f"render_archives/{tag}.manifest.json", "w", encoding="utf-8") as f:
+              f.write(json.dumps(m, indent=2) + "\n")
+          print("manifest ->", f"render_archives/{tag}.manifest.json")
+          EOF
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "render_archives/${TAG}.manifest.json"
+
+          if [ "$PRUNE" = "1" ]; then
+            # The full-res PNGs now live in the Release; drop them from the
+            # working tree so fresh clones stay lean. Interactive HTML +
+            # summaries stay in git.
+            for run in $RUNS; do
+              git rm -q --ignore-unmatch "$run"/index_*.png || true
+            done
+          fi
+
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+            exit 0
+          fi
+          MSG="Archive renders: $TAG -> Release"
+          if [ "$PRUNE" = "1" ]; then MSG="$MSG (PNGs pruned from branch)"; fi
+          git commit -m "$MSG"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+              exit 0
+            fi
+            sleep $((i * 2))
+          done
+          exit 1
+
+      - name: Job summary
+        if: always()
+        env:
+          TAG: ${{ steps.params.outputs.tag }}
+        run: |
+          {
+            echo "## Render archive: $TAG"
+            if [ -f "render_archives/${TAG}.manifest.json" ]; then
+              echo '```json'
+              cat "render_archives/${TAG}.manifest.json"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

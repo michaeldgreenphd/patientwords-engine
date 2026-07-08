@@ -1,0 +1,317 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 13,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've had persistent insomnia for hours, so I finally took a",
+        "patient": "I've been counting sheep for hours, so I finally took a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1926
+      },
+      "error_share": {
+        "clinical": 0.1054
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" nap\"",
+            0.189
+          ],
+          [
+            "Output \" sleeping\"",
+            0.098
+          ],
+          [
+            "Output \" break\"",
+            0.047
+          ],
+          [
+            "Output \" look\"",
+            0.044
+          ],
+          [
+            "Output \" melatonin\"",
+            0.039
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's had chronic daytime hypersomnia from bad nights, so she scheduled a",
+        "patient": "She's been zonked out all day from bad nights, so she scheduled a"
+      },
+      "target_token": "Output \" sleep\"",
+      "probabilities": {
+        "clinical": 0.326,
+        "patient": 0.052
+      },
+      "language_penalty": -0.274,
+      "clinical_mass": {
+        "clinical": 0.3756,
+        "patient": 0.1635
+      },
+      "error_share": {
+        "clinical": 0.1329,
+        "patient": 0.1234
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.326)",
+        "patient": "embedding \u2192 Output \" \" (p=0.062)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " sleep",
+        "observed_clinical": [
+          "Output \" sleep\"",
+          0.326
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.326
+          ],
+          [
+            "Output \" \"",
+            0.078
+          ],
+          [
+            "Output \" nap\"",
+            0.035
+          ],
+          [
+            "Output \" night\"",
+            0.026
+          ],
+          [
+            "Output \" day\"",
+            0.026
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" nap\"",
+            0.17
+          ],
+          [
+            "Output \" massage\"",
+            0.062
+          ],
+          [
+            "Output \" \"",
+            0.062
+          ],
+          [
+            "Output \" sleep\"",
+            0.052
+          ],
+          [
+            "Output \" doctor\"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 342,
+        "unique_to_a": 457,
+        "unique_to_b": 508
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_14.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_14.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_14_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_14_diff.png"
+      }
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After the chili cook-off my acid reflux was on fire, so I swallowed an",
+        "patient": "After the chili cook-off my gut was on fire, so I swallowed an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.463,
+        "patient": 0.295
+      },
+      "language_penalty": -0.16800000000000004,
+      "clinical_mass": {
+        "clinical": 0.3752,
+        "patient": 0.3162
+      },
+      "error_share": {
+        "clinical": 0.1247,
+        "patient": 0.1237
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" extra\" (p=0.062)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" extra\" (p=0.054)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antacid",
+        "observed_clinical": [
+          "Output \" ant\"",
+          0.463
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.463
+          ],
+          [
+            "Output \" extra\"",
+            0.062
+          ],
+          [
+            "Output \" anti\"",
+            0.051
+          ],
+          [
+            "Output \" aspirin\"",
+            0.036
+          ],
+          [
+            "Output \" OTC\"",
+            0.033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ant\"",
+            0.295
+          ],
+          [
+            "Output \" aspirin\"",
+            0.083
+          ],
+          [
+            "Output \" Ad\"",
+            0.057
+          ],
+          [
+            "Output \" entire\"",
+            0.056
+          ],
+          [
+            "Output \" extra\"",
+            0.054
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 529,
+        "unique_to_a": 219,
+        "unique_to_b": 242
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_15.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_15.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_15_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_15_diff.png"
+      }
+    },
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's been having diarrhea all day, so at the store he grabbed some",
+        "patient": "He's been running to the bathroom all day, so at the store he grabbed some"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3498
+      },
+      "error_share": {
+        "clinical": 0.1208
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " medicine",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" Imo\"",
+            0.201
+          ],
+          [
+            "Output \" Pep\"",
+            0.11
+          ],
+          [
+            "Output \" of\"",
+            0.064
+          ],
+          [
+            "Output \" Ped\"",
+            0.035
+          ],
+          [
+            "Output \" pep\"",
+            0.032
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}

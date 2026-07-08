@@ -1,0 +1,317 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 69,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 69,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After that big meal my dyspepsia flared up, so I chewed an",
+        "patient": "After that big meal my belly's all sour and gassy, so I chewed an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.162,
+        "patient": 0.267
+      },
+      "language_penalty": 0.10500000000000001,
+      "clinical_mass": {
+        "clinical": 0.2701,
+        "patient": 0.2361
+      },
+      "error_share": {
+        "clinical": 0.131,
+        "patient": 0.1284
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" apple\" (p=0.066)",
+        "patient": "embedding \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.030)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antacid",
+        "observed_clinical": [
+          "Output \" ant\"",
+          0.162
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" aspirin\"",
+            0.282
+          ],
+          [
+            "Output \" ant\"",
+            0.162
+          ],
+          [
+            "Output \" apple\"",
+            0.066
+          ],
+          [
+            "Output \" orange\"",
+            0.046
+          ],
+          [
+            "Output \" Ant\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ant\"",
+            0.267
+          ],
+          [
+            "Output \" apple\"",
+            0.207
+          ],
+          [
+            "Output \" extra\"",
+            0.092
+          ],
+          [
+            "Output \" aspirin\"",
+            0.069
+          ],
+          [
+            "Output \" ice\"",
+            0.03
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 531,
+        "unique_to_a": 199,
+        "unique_to_b": 239
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_69.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_69.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_69_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_69_diff.png"
+      }
+    },
+    {
+      "index": 70,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My arms keep breaking out in eczema, so the doctor gave me a",
+        "patient": "My arms keep breaking out in itchy red patches, so the doctor gave me a"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.161,
+        "patient": 0.144
+      },
+      "language_penalty": -0.017000000000000015,
+      "clinical_mass": {
+        "clinical": 0.4683,
+        "patient": 0.4731
+      },
+      "error_share": {
+        "clinical": 0.1241,
+        "patient": 0.1262
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" topical\" (p=0.041)",
+        "patient": "embedding \u2192 Output \" new\" (p=0.041)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cream",
+        "observed_clinical": [
+          "Output \" cream\"",
+          0.161
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.34
+          ],
+          [
+            "Output \" cream\"",
+            0.161
+          ],
+          [
+            "Output \" steroid\"",
+            0.135
+          ],
+          [
+            "Output \" topical\"",
+            0.041
+          ],
+          [
+            "Output \" sample\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" prescription\"",
+            0.384
+          ],
+          [
+            "Output \" cream\"",
+            0.144
+          ],
+          [
+            "Output \" steroid\"",
+            0.099
+          ],
+          [
+            "Output \" topical\"",
+            0.045
+          ],
+          [
+            "Output \" new\"",
+            0.041
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 666,
+        "unique_to_a": 128,
+        "unique_to_b": 113
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_70.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_70.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_70_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_70_diff.png"
+      }
+    },
+    {
+      "index": 71,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My asthma acts up when the pollen's out, so at work I keep a",
+        "patient": "My chest gets all tight and whistly when the pollen's out, so at work I keep a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2275
+      },
+      "error_share": {
+        "clinical": 0.1239
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " spare",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" box\"",
+            0.11
+          ],
+          [
+            "Output \" bottle\"",
+            0.102
+          ],
+          [
+            "Output \" small\"",
+            0.076
+          ],
+          [
+            "Output \" little\"",
+            0.059
+          ],
+          [
+            "Output \" couple\"",
+            0.037
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 72,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The doc says my hypertension keeps creeping up, so every morning I take my",
+        "patient": "The doc says my top number keeps creeping up, so every morning I take my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3134
+      },
+      "error_share": {
+        "clinical": 0.1237
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " pills",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.55
+          ],
+          [
+            "Output \" BP\"",
+            0.133
+          ],
+          [
+            "Output \" first\"",
+            0.02
+          ],
+          [
+            "Output \" bp\"",
+            0.02
+          ],
+          [
+            "Output \" \"",
+            0.019
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}

@@ -1,0 +1,317 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 45,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 45,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The doc says my hypertension's been creeping up, so every night I take my",
+        "patient": "The doc says my top number's been creeping up, so every night I take my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2971
+      },
+      "error_share": {
+        "clinical": 0.1244
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " pills",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.544
+          ],
+          [
+            "Output \" BP\"",
+            0.122
+          ],
+          [
+            "Output \" meds\"",
+            0.022
+          ],
+          [
+            "Output \" bp\"",
+            0.021
+          ],
+          [
+            "Output \" own\"",
+            0.021
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 46,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep having excessive daytime sleepiness all afternoon, so tonight I'm setting an early",
+        "patient": "I keep nodding off at my desk all afternoon, so tonight I'm setting an early"
+      },
+      "target_token": "Output \" bedtime\"",
+      "probabilities": {
+        "clinical": 0.643,
+        "patient": 0.638
+      },
+      "language_penalty": -0.0050000000000000044,
+      "clinical_mass": {
+        "clinical": 0.1059,
+        "patient": 0.0859
+      },
+      "error_share": {
+        "clinical": 0.1182,
+        "patient": 0.1152
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] words and phrases referring to time | sleep \u2192 [L19\u00b7O] text right before descriptions of going to sleep | b \u2192 Output \" bed\" (p=0.075)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7O] words and phrases referring to time | sleep \u2192 [L19\u00b7O] text right before descriptions of going to sleep | b \u2192 Output \" bed\" (p=0.048)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " bed",
+        "observed_clinical": [
+          "Output \" bedtime\"",
+          0.643
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" bedtime\"",
+            0.643
+          ],
+          [
+            "Output \" alarm\"",
+            0.181
+          ],
+          [
+            "Output \" bed\"",
+            0.075
+          ],
+          [
+            "Output \" curfew\"",
+            0.02
+          ],
+          [
+            "Output \" night\"",
+            0.017
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bedtime\"",
+            0.638
+          ],
+          [
+            "Output \" alarm\"",
+            0.181
+          ],
+          [
+            "Output \" bed\"",
+            0.048
+          ],
+          [
+            "Output \" curfew\"",
+            0.022
+          ],
+          [
+            "Output \" deadline\"",
+            0.012
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 522,
+        "unique_to_a": 216,
+        "unique_to_b": 272
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_46.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_46.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_46_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_46_diff.png"
+      }
+    },
+    {
+      "index": 47,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My contact dermatitis flared after that new soap, so I dabbed on a bit of the",
+        "patient": "My skin's gone all blotchy after that new soap, so I dabbed on a bit of the"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2585
+      },
+      "error_share": {
+        "clinical": 0.1373
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " cream",
+        "observed_clinical": null,
+        "probe_extension": "the",
+        "reason": "intended target not in the traced clinical spread (even after probe extension by 'the')"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" soap\"",
+            0.086
+          ],
+          [
+            "Output \" \"",
+            0.04
+          ],
+          [
+            "Output \" lotion\"",
+            0.033
+          ],
+          [
+            "Output \" new\"",
+            0.031
+          ],
+          [
+            "Output \" tea\"",
+            0.031
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 48,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "His chronic lumbago has been acting up since the garden work, so he lay down on the",
+        "patient": "His lower back's been acting up since the garden work, so he lay down on the"
+      },
+      "target_token": "Output \" floor\"",
+      "probabilities": {
+        "clinical": 0.035,
+        "patient": 0.06
+      },
+      "language_penalty": 0.024999999999999994,
+      "clinical_mass": {
+        "clinical": 0.1129,
+        "patient": 0.1084
+      },
+      "error_share": {
+        "clinical": 0.1175,
+        "patient": 0.1066
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] phrases related to lying down or not feeling well |  \u2192 [L24\u00b7O] references to people being in or on a bed | bed \u2192 Output \" bed\" (p=0.155)",
+        "patient": "[L12\u00b7S]  \u2192 [L19\u00b7O] phrases related to lying down or not feeling well |  \u2192 [L24\u00b7O] references to people being in or on a bed | bed \u2192 Output \" bed\" (p=0.145)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " floor",
+        "observed_clinical": [
+          "Output \" floor\"",
+          0.035
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sofa\"",
+            0.289
+          ],
+          [
+            "Output \" couch\"",
+            0.267
+          ],
+          [
+            "Output \" bed\"",
+            0.155
+          ],
+          [
+            "Output \" floor\"",
+            0.035
+          ],
+          [
+            "Output \" grass\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" couch\"",
+            0.4
+          ],
+          [
+            "Output \" sofa\"",
+            0.163
+          ],
+          [
+            "Output \" bed\"",
+            0.145
+          ],
+          [
+            "Output \" floor\"",
+            0.06
+          ],
+          [
+            "Output \" grass\"",
+            0.028
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 512,
+        "unique_to_a": 215,
+        "unique_to_b": 215
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_48.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_48.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_48_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_48_diff.png"
+      }
+    }
+  ]
+}

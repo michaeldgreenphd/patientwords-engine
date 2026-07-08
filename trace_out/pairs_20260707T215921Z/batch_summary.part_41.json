@@ -1,0 +1,359 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 41,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing excessive daytime somnolence every night, so I finally cancelled my",
+        "patient": "I've been dead to the world by 9pm every night, so I finally cancelled my"
+      },
+      "target_token": "Output \" appointment\"",
+      "probabilities": {
+        "clinical": 0.05,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3008,
+        "patient": 0.0491
+      },
+      "error_share": {
+        "clinical": 0.1323,
+        "patient": 0.1183
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] scheduling an appointment | appointment \u2192 Output \" appointment\" (p=0.050)",
+        "patient": "embedding \u2192 [L18\u00b7O] mentions of ways to support the creator, such as sub \u2192 [L24\u00b7O] language used on a newsletter subscription page | Su \u2192 Output \" subscription\" (p=0.081)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " appointment",
+        "observed_clinical": [
+          "Output \" appointment\"",
+          0.05
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.136
+          ],
+          [
+            "Output \" \"",
+            0.069
+          ],
+          [
+            "Output \" sleep\"",
+            0.063
+          ],
+          [
+            "Output \" appointment\"",
+            0.05
+          ],
+          [
+            "Output \" meds\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" Netflix\"",
+            0.159
+          ],
+          [
+            "Output \" cable\"",
+            0.141
+          ],
+          [
+            "Output \" subscription\"",
+            0.081
+          ],
+          [
+            "Output \" gym\"",
+            0.057
+          ],
+          [
+            "Output \" internet\"",
+            0.05
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 356,
+        "unique_to_a": 486,
+        "unique_to_b": 506
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_41.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_41.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_41_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_41_diff.png"
+      }
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She keeps having apnea episodes all night, so the clinic ordered her a",
+        "patient": "She keeps jolting awake short of breath all night, so the clinic ordered her a"
+      },
+      "target_token": "Output \" sleep\"",
+      "probabilities": {
+        "clinical": 0.048,
+        "patient": 0.106
+      },
+      "language_penalty": 0.057999999999999996,
+      "clinical_mass": {
+        "clinical": 0.3395,
+        "patient": 0.3481
+      },
+      "error_share": {
+        "clinical": 0.1196,
+        "patient": 0.1301
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] words associated with sleep apnea and medical papers \u2192 Output \" sleep\" (p=0.048)",
+        "patient": "embedding \u2192 Output \" new\" (p=0.061)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " sleep",
+        "observed_clinical": [
+          "Output \" sleep\"",
+          0.048
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" CP\"",
+            0.338
+          ],
+          [
+            "Output \" c\"",
+            0.169
+          ],
+          [
+            "Output \" C\"",
+            0.07
+          ],
+          [
+            "Output \" new\"",
+            0.062
+          ],
+          [
+            "Output \" sleep\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" CP\"",
+            0.392
+          ],
+          [
+            "Output \" sleep\"",
+            0.106
+          ],
+          [
+            "Output \" new\"",
+            0.061
+          ],
+          [
+            "Output \" machine\"",
+            0.045
+          ],
+          [
+            "Output \" continuous\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 518,
+        "unique_to_a": 338,
+        "unique_to_b": 354
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_42.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_42.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_42_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_42_diff.png"
+      }
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been nauseated every morning this week, so her boss handed her a",
+        "patient": "She's been queasy every morning this week, so her boss handed her a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2193
+      },
+      "error_share": {
+        "clinical": 0.1244
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " bucket",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pregnancy\"",
+            0.071
+          ],
+          [
+            "Output \" sick\"",
+            0.063
+          ],
+          [
+            "Output \" bag\"",
+            0.056
+          ],
+          [
+            "Output \" bottle\"",
+            0.053
+          ],
+          [
+            "Output \" box\"",
+            0.045
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 44,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After the big lunch I got acid reflux something awful, so I popped an",
+        "patient": "After the big lunch I got the burps something awful, so I popped an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.439,
+        "patient": 0.39
+      },
+      "language_penalty": -0.04899999999999999,
+      "clinical_mass": {
+        "clinical": 0.4261,
+        "patient": 0.3512
+      },
+      "error_share": {
+        "clinical": 0.1156,
+        "patient": 0.1207
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" extra\" (p=0.041)",
+        "patient": "embedding \u2192 Output \" extra\" (p=0.047)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antacid",
+        "observed_clinical": [
+          "Output \" ant\"",
+          0.439
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.439
+          ],
+          [
+            "Output \" ome\"",
+            0.104
+          ],
+          [
+            "Output \" Al\"",
+            0.069
+          ],
+          [
+            "Output \" anti\"",
+            0.046
+          ],
+          [
+            "Output \" extra\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ant\"",
+            0.39
+          ],
+          [
+            "Output \" anti\"",
+            0.17
+          ],
+          [
+            "Output \" extra\"",
+            0.047
+          ],
+          [
+            "Output \" Ant\"",
+            0.044
+          ],
+          [
+            "Output \" Al\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 556,
+        "unique_to_a": 261,
+        "unique_to_b": 252
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_44.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_44.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_44_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_44_diff.png"
+      }
+    }
+  ]
+}

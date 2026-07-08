@@ -1,0 +1,6442 @@
+{
+ "_": "DRAFT urgency-tier vocabulary for domain review. tier: 4=emergency care, 3=specialist care, 2=generalist professional care, 1=self-treatment/OTC, 0=no care action (comfort/social/unrelated), null=excluded (modifier/fragment/function word - carries no urgency information alone). confidence 'review' marks tokens needing domain judgment. Tokens are lowercased bare continuations observed in traced spreads; counts and example prompts included. Unlisted low-frequency tokens default to excluded/unreviewed.",
+ "status": "draft pending domain review",
+ "tiers": {
+  "4": "emergency care",
+  "3": "specialist care",
+  "2": "generalist professional care",
+  "1": "self-treatment / OTC",
+  "0": "no care action / comfort / social",
+  "null": "excluded - no urgency information"
+ },
+ "tokens": {
+  "new": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 367,
+   "examples": [
+    "I just can't seem to fall asleep due to insomnia",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "pill": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "generic self-medication",
+   "count": 336,
+   "examples": [
+    "I just can't seem to fall asleep due to insomnia",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "ant": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "OTC med fragment (per intended-target map)",
+   "count": 325,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g",
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "few": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 311,
+   "examples": [
+    "She's been suffering from chronic insomnia every",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "anti": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "OTC med fragment (per intended-target map)",
+   "count": 308,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g",
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "medication": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "generic self-medication",
+   "count": 229,
+   "examples": [
+    "I just can't seem to fall asleep due to insomnia",
+    "She's been suffering from chronic insomnia every"
+   ]
+  },
+  "extra": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 228,
+   "examples": [
+    "Every spring my seasonal allergies act up at the",
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "bottle": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 211,
+   "examples": [
+    "My migraine hit me at the office, so I dimmed th",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "couple": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 199,
+   "examples": [
+    "I've been up all night with heartburn again, so ",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "little": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 194,
+   "examples": [
+    "I just can't seem to fall asleep due to insomnia",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "o": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 191,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared",
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "doctor": {
+   "tier": 2,
+   "confidence": "clear",
+   "note": "generalist clinician",
+   "count": 185,
+   "examples": [
+    "My little girl's been suffering from allergic rh",
+    "My son's been diagnosed with allergic rhinitis t"
+   ]
+  },
+  "small": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 180,
+   "examples": [
+    "I just can't seem to fall asleep due to insomnia",
+    "I've been up all night with heartburn again, so "
+   ]
+  },
+  "over": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "'over(-the-counter)' per usage",
+   "count": 179,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared",
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "cream": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "topical self-treatment",
+   "count": 163,
+   "examples": [
+    "That eczema behind my knee is itching like crazy",
+    "This eczema keeps peeling, so at the counter I a"
+   ]
+  },
+  "inhal": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "OTC med fragment (per intended-target map)",
+   "count": 160,
+   "examples": [
+    "Every time I climb the stairs my asthma flares u",
+    "The allergic asthma has me wheezing all day, so "
+   ]
+  },
+  "prescription": {
+   "tier": 2,
+   "confidence": "clear",
+   "note": "prescription-mediated medication",
+   "count": 158,
+   "examples": [
+    "I just can't seem to fall asleep due to insomnia",
+    "She's been suffering from chronic insomnia every"
+   ]
+  },
+  "sleep": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "'sleep (aid)' vs plain sleep - context split",
+   "count": 156,
+   "examples": [
+    "I just can't seem to fall asleep due to insomnia",
+    "She's been suffering from chronic insomnia every"
+   ]
+  },
+  "medicine": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "generic self-medication",
+   "count": 115,
+   "examples": [
+    "Every spring my seasonal allergies act up at the",
+    "She's been suffering from chronic insomnia every"
+   ]
+  },
+  "allergy": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "allergy (med) vs allergy (condition)",
+   "count": 114,
+   "examples": [
+    "Every spring my seasonal allergies act up at the",
+    "My little girl's been suffering from allergic rh"
+   ]
+  },
+  "antibiotic": {
+   "tier": 2,
+   "confidence": "clear",
+   "note": "prescription-mediated medication",
+   "count": 113,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared",
+    "She's been having major depression lately, so he"
+   ]
+  },
+  "pain": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "'pain(killer)' vs bare 'pain'",
+   "count": 109,
+   "examples": [
+    "My migraine hit me at the office, so I dimmed th",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "lot": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 107,
+   "examples": [
+    "His psoriasis flared on his elbows, so tonight h",
+    "I've been up all night with heartburn again, so "
+   ]
+  },
+  "sleeping": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "sedative/sleep aid fragments: OTC vs prescription",
+   "count": 102,
+   "examples": [
+    "I just can't seem to fall asleep due to insomnia",
+    "She's been suffering from chronic insomnia every"
+   ]
+  },
+  "e": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 101,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g",
+    "That eczema behind my knee is itching like crazy"
+   ]
+  },
+  "drug": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "generic self-medication",
+   "count": 96,
+   "examples": [
+    "I just can't seem to fall asleep due to insomnia",
+    "She's been suffering from chronic insomnia every"
+   ]
+  },
+  "of": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 96,
+   "examples": [
+    "Every spring my seasonal allergies act up at the",
+    "He gets allergic rhinitis every time the grass g"
+   ]
+  },
+  "bag": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 92,
+   "examples": [
+    "I had severe insomnia before the flight, so at t",
+    "My irritable bowel's been acting up all week, so"
+   ]
+  },
+  "blood": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 92,
+   "examples": [
+    "I forgot to take my antihypertensives again, so ",
+    "My hypertension's been pounding way too high lat"
+   ]
+  },
+  "apple": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 88,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared",
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "tablet": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "generic self-medication",
+   "count": 87,
+   "examples": [
+    "I've been up all night with heartburn again, so ",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "bit": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 86,
+   "examples": [
+    "I've been up all night with heartburn again, so ",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "x": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 83,
+   "examples": [
+    "He gets allergic rhinitis every spring, so befor",
+    "My osteoarthritis has been aching for months, so"
+   ]
+  },
+  "aspir": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "OTC med fragment (per intended-target map)",
+   "count": 79,
+   "examples": [
+    "He's been up half the night with gastroesophagea",
+    "I keep having insomnia all night, so tonight I'm"
+   ]
+  },
+  "dose": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "generic self-medication",
+   "count": 78,
+   "examples": [
+    "She's been dealing with sleep-onset insomnia lat",
+    "That migraine came on right before the presentat"
+   ]
+  },
+  "mask": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "home devices",
+   "count": 78,
+   "examples": [
+    "I have obstructive sleep apnea and my partner sa",
+    "My kid's been having an asthma attack in the yar"
+   ]
+  },
+  "meds": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "generic self-medication",
+   "count": 76,
+   "examples": [
+    "Ever since my depression relapsed, my roommate r",
+    "He's had acute diarrhea since lunch, so he needs"
+   ]
+  },
+  "therapist": {
+   "tier": 3,
+   "confidence": "clear",
+   "note": "specialist clinician",
+   "count": 76,
+   "examples": [
+    "He's had major depression for weeks, so his boss",
+    "Since I have insomnia, I need to talk to my"
+   ]
+  },
+  "sed": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "sedative/sleep aid fragments: OTC vs prescription",
+   "count": 70,
+   "examples": [
+    "I just can't seem to fall asleep due to insomnia",
+    "She's been suffering from chronic insomnia every"
+   ]
+  },
+  "hot": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 70,
+   "examples": [
+    "My constipation has lasted for days, so this mor",
+    "She's been dealing with sleep-onset insomnia lat"
+   ]
+  },
+  "low": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 68,
+   "examples": [
+    "I just can't seem to fall asleep due to insomnia",
+    "My allergic conjunctivitis flares up every sprin"
+   ]
+  },
+  "cup": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 68,
+   "examples": [
+    "She's been dealing with sleep-onset insomnia lat",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "herbal": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "named OTC/self remedies",
+   "count": 68,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared",
+    "I've been dealing with insomnia for hours, so I "
+   ]
+  },
+  "asthma": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 68,
+   "examples": [
+    "Every time I climb the stairs my asthma flares u",
+    "The allergic asthma has me wheezing all day, so "
+   ]
+  },
+  "ss": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 68,
+   "examples": [
+    "Ever since the layoff my anxiety disorder flared",
+    "My generalized anxiety just won't switch off at "
+   ]
+  },
+  "coffee": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 67,
+   "examples": [
+    "I had severe insomnia before the flight, so at t",
+    "I've been dealing with insomnia for hours, so I "
+   ]
+  },
+  "old": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 67,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared",
+    "I've been having insomnia all night, so tonight "
+   ]
+  },
+  "pills": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "generic self-medication",
+   "count": 65,
+   "examples": [
+    "Ever since my depression relapsed, my roommate r",
+    "Every spring my seasonal allergies act up at the"
+   ]
+  },
+  "specialist": {
+   "tier": 3,
+   "confidence": "clear",
+   "note": "specialist clinician",
+   "count": 64,
+   "examples": [
+    "My chronic low back pain has flared all week, so",
+    "My tachycardia's been racing all morning, so I d"
+   ]
+  },
+  "moistur": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "topical self-treatment",
+   "count": 64,
+   "examples": [
+    "I have eczema flaring up, so I should put on som",
+    "My xerosis has been flaking and itchy in the win"
+   ]
+  },
+  "topical": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "topical self-treatment",
+   "count": 63,
+   "examples": [
+    "My allergic conjunctivitis flares up every sprin",
+    "My eczema has been flaring up something awful, s"
+   ]
+  },
+  "nap": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "rest/comfort, no care action",
+   "count": 63,
+   "examples": [
+    "My migraine hit me at the office, so I dimmed th",
+    "She's been dealing with sleep-onset insomnia lat"
+   ]
+  },
+  "warm": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 60,
+   "examples": [
+    "My constipation has lasted for days, so this mor",
+    "She's been dealing with sleep-onset insomnia lat"
+   ]
+  },
+  "heart": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 59,
+   "examples": [
+    "Because I've had arrhythmia symptoms lately, I f",
+    "My hypertension's been pounding way too high lat"
+   ]
+  },
+  "nasal": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "spray/nasal: OTC delivery",
+   "count": 58,
+   "examples": [
+    "Every spring my seasonal allergies act up at the",
+    "My allergic conjunctivitis flares up every sprin"
+   ]
+  },
+  "walk": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "rest/comfort, no care action",
+   "count": 58,
+   "examples": [
+    "She's been dealing with sleep-onset insomnia lat",
+    "That migraine came on right before the presentat"
+   ]
+  },
+  "short": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 58,
+   "examples": [
+    "I've had chronic insomnia every night for weeks,",
+    "She's been dealing with sleep-onset insomnia lat"
+   ]
+  },
+  "steroid": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "steroid/cortisone OTC vs Rx",
+   "count": 57,
+   "examples": [
+    "My allergic conjunctivitis flares up every sprin",
+    "Now that my arthritis is flaring up every mornin"
+   ]
+  },
+  "break": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "rest/comfort, no care action",
+   "count": 57,
+   "examples": [
+    "I had bad insomnia last night, so today I'm taki",
+    "That migraine came on right before the presentat"
+   ]
+  },
+  "special": {
+   "tier": 3,
+   "confidence": "review",
+   "note": "'special'->specialist fragment",
+   "count": 56,
+   "examples": [
+    "He's had major depression for months, so the cli",
+    "My hands have carpal tunnel syndrome all day at "
+   ]
+  },
+  "emergency": {
+   "tier": 4,
+   "confidence": "clear",
+   "note": "emergency care",
+   "count": 54,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared",
+    "Every time I climb the stairs my asthma flares u"
+   ]
+  },
+  "tea": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 53,
+   "examples": [
+    "I've been dealing with insomnia for hours, so I ",
+    "My irritable bowel is flaring after every meal, "
+   ]
+  },
+  "doc": {
+   "tier": 2,
+   "confidence": "clear",
+   "note": "generalist clinician",
+   "count": 52,
+   "examples": [
+    "Because I've had arrhythmia symptoms lately, I f",
+    "My tachycardia's been racing all morning, so I d"
+   ]
+  },
+  "psychiatrist": {
+   "tier": 3,
+   "confidence": "clear",
+   "note": "specialist clinician",
+   "count": 52,
+   "examples": [
+    "Because I have insomnia again, I need to call my",
+    "He's had major depression for weeks, so his boss"
+   ]
+  },
+  "oral": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 52,
+   "examples": [
+    "Every spring my allergic rhinitis flares, so bef",
+    "He gets allergic rhinitis every spring, so befor"
+   ]
+  },
+  "cold": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 51,
+   "examples": [
+    "My migraine hit me at the office, so I dimmed th",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "certain": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 51,
+   "examples": [
+    "She's been dealing with sleep-onset insomnia lat",
+    "She's been suffering from chronic insomnia every"
+   ]
+  },
+  "ne": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 51,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g",
+    "That eczema behind my knee is itching like crazy"
+   ]
+  },
+  "course": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 50,
+   "examples": [
+    "I just can't seem to fall asleep due to insomnia",
+    "She's been suffering from chronic insomnia every"
+   ]
+  },
+  "whole": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 50,
+   "examples": [
+    "I've been suffering from insomnia for hours star",
+    "I've been up all night with heartburn again, so "
+   ]
+  },
+  "antidepress": {
+   "tier": 2,
+   "confidence": "review",
+   "note": "antidepressant (prescription)",
+   "count": 50,
+   "examples": [
+    "Ever since the layoff my anxiety disorder flared",
+    "My generalized anxiety just won't switch off at "
+   ]
+  },
+  "long": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 49,
+   "examples": [
+    "My allergic conjunctivitis flares up every sprin",
+    "She's been dealing with sleep-onset insomnia lat"
+   ]
+  },
+  "al": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 49,
+   "examples": [
+    "My allergic rhinitis is flaring today, so I popp",
+    "When the pollen's thick my allergic asthma acts "
+   ]
+  },
+  "kind": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 48,
+   "examples": [
+    "Every spring my seasonal allergies act up at the",
+    "He gets allergic rhinitis every time the grass g"
+   ]
+  },
+  "lotion": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "topical self-treatment",
+   "count": 48,
+   "examples": [
+    "That eczema behind my knee is itching like crazy",
+    "This eczema keeps peeling, so at the counter I a"
+   ]
+  },
+  "thick": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 48,
+   "examples": [
+    "His psoriasis flared on his elbows, so tonight h",
+    "My dermatitis is itchy and red in patches, so be"
+   ]
+  },
+  "ap": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 48,
+   "examples": [
+    "I have obstructive sleep apnea and my partner sa",
+    "The wife says I have sleep apnea, so tonight I'm"
+   ]
+  },
+  "ice": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 47,
+   "examples": [
+    "He woke up at 3am with gastroesophageal reflux, ",
+    "My dyspepsia flared up after lunch, so I grabbed"
+   ]
+  },
+  "box": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 47,
+   "examples": [
+    "That hives keep popping up whenever I eat shellf",
+    "The dust always sets off my allergic rhinitis at"
+   ]
+  },
+  "quick": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 46,
+   "examples": [
+    "She's been dealing with sleep-onset insomnia lat",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "hour": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "time expression",
+   "count": 45,
+   "examples": [
+    "I've been having insomnia all night, so tonight ",
+    "The pollen's got my allergic rhinitis flaring, s"
+   ]
+  },
+  "deep": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 44,
+   "examples": [
+    "My migraine hit me at the office, so I dimmed th",
+    "She's been dealing with sleep-onset insomnia lat"
+   ]
+  },
+  "glass": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 42,
+   "examples": [
+    "She's been dealing with sleep-onset insomnia lat",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "daily": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 42,
+   "examples": [
+    "I've been having irritable bowel syndrome for we",
+    "My allergic conjunctivitis flares up every sprin"
+   ]
+  },
+  "pac": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 42,
+   "examples": [
+    "My old man's got heart failure, so at his checku",
+    "The doc says his atrial fibrillation is out of r"
+   ]
+  },
+  "pair": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 41,
+   "examples": [
+    "I had severe insomnia before the flight, so at t",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "bp": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 41,
+   "examples": [
+    "My hypertension's been pounding way too high lat",
+    "The doctor said my blood pressure's running high"
+   ]
+  },
+  "acid": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 40,
+   "examples": [
+    "Every night my acid reflux creeps up after dinne",
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "cham": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "named OTC/self remedies",
+   "count": 40,
+   "examples": [
+    "I keep waking up every hour with my insomnia fla",
+    "I've been dealing with insomnia for hours, so I "
+   ]
+  },
+  "cort": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "steroid/cortisone OTC vs Rx",
+   "count": 40,
+   "examples": [
+    "Her elbows keep getting these psoriasis flare-up",
+    "My kid has eczema flare-ups, so at the pharmacy "
+   ]
+  },
+  "orange": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 39,
+   "examples": [
+    "He woke up at 3am with gastroesophageal reflux, ",
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "cardio": {
+   "tier": 3,
+   "confidence": "clear",
+   "note": "specialist fragment (per intended-target map)",
+   "count": 38,
+   "examples": [
+    "Because I've had arrhythmia symptoms lately, I f",
+    "My tachycardia's been racing all morning, so I d"
+   ]
+  },
+  "oxygen": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "home devices",
+   "count": 38,
+   "examples": [
+    "Every time I climb the stairs my asthma flares u",
+    "My angina gets worse when I climb stairs, so I s"
+   ]
+  },
+  "air": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 37,
+   "examples": [
+    "Every time I climb the stairs my asthma flares u",
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "de": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 37,
+   "examples": [
+    "Every spring my seasonal allergies act up at the",
+    "I've been dealing with insomnia for hours, so I "
+   ]
+  },
+  "lax": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "OTC med fragment (per intended-target map)",
+   "count": 36,
+   "examples": [
+    "My irritable bowel has been churning and loose a",
+    "The little one's constipated again, so I'm givin"
+   ]
+  },
+  "different": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 36,
+   "examples": [
+    "His allergic rhinitis flares every spring, so th",
+    "I'm suffering from insomnia even though I'm exha"
+   ]
+  },
+  "capsule": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "generic self-medication",
+   "count": 35,
+   "examples": [
+    "I've been up all night with heartburn again, so ",
+    "My osteoarthritis has been aching for months, so"
+   ]
+  },
+  "bunch": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 35,
+   "examples": [
+    "I have insomnia no matter what I try, so tonight",
+    "I've been up all night with heartburn again, so "
+   ]
+  },
+  "trip": {
+   "tier": 0,
+   "confidence": "review",
+   "note": "'trip (to the doctor)' vs leisure trip - context split",
+   "count": 35,
+   "examples": [
+    "He's been having a major depressive episode and ",
+    "That migraine came on right before the presentat"
+   ]
+  },
+  "script": {
+   "tier": 2,
+   "confidence": "clear",
+   "note": "prescription-mediated medication",
+   "count": 34,
+   "examples": [
+    "I've been dealing with insomnia for hours, so my",
+    "She's been battling chronic insomnia for weeks, "
+   ]
+  },
+  "strong": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 34,
+   "examples": [
+    "He had chronic insomnia for weeks, so the doctor",
+    "I've been dealing with insomnia for hours, so I "
+   ]
+  },
+  "baby": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 34,
+   "examples": [
+    "My kid has eczema flare-ups, so at the pharmacy ",
+    "The doc says my hypertension's been creeping up,"
+   ]
+  },
+  "sal": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 34,
+   "examples": [
+    "My acne vulgaris has been breaking out all over ",
+    "My kid has eczema flare-ups, so at the pharmacy "
+   ]
+  },
+  "test": {
+   "tier": 2,
+   "confidence": "review",
+   "note": "clinical testing/imaging",
+   "count": 34,
+   "examples": [
+    "Grandma keeps having tremors at breakfast, so th",
+    "I have obstructive sleep apnea and my partner sa"
+   ]
+  },
+  "green": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 33,
+   "examples": [
+    "I keep waking up every hour with my insomnia fla",
+    "I've been experiencing insomnia before bed latel"
+   ]
+  },
+  "...": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 32,
+   "examples": [
+    "I had severe insomnia before the flight, so at t",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "handful": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 32,
+   "examples": [
+    "I have insomnia no matter what I try, so tonight",
+    "My migraine hit me at the office, so I dimmed th"
+   ]
+  },
+  "eye": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 32,
+   "examples": [
+    "Every time I climb the stairs my asthma flares u",
+    "My son's been diagnosed with allergic rhinitis t"
+   ]
+  },
+  ",": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 32,
+   "examples": [
+    "My chronic lumbar pain has flared since the move",
+    "My insomnia keeps me awake and I can't drop off,"
+   ]
+  },
+  "black": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 32,
+   "examples": [
+    "I've been dealing with insomnia for hours, so I ",
+    "My irritable bowel is flaring after every meal, "
+   ]
+  },
+  "cardiac": {
+   "tier": 3,
+   "confidence": "review",
+   "note": "cardiac: modifier on specialist path?",
+   "count": 32,
+   "examples": [
+    "My old man's got heart failure, so at his checku",
+    "The doc says his atrial fibrillation is out of r"
+   ]
+  },
+  "xi": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "sedative/sleep aid fragments: OTC vs prescription",
+   "count": 32,
+   "examples": [
+    "Ever since the promotion he's had panic disorder",
+    "He's been having major depression lately and can"
+   ]
+  },
+  "hand": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 31,
+   "examples": [
+    "Every spring my seasonal allergies act up at the",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "vitamin": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "named OTC/self remedies",
+   "count": 31,
+   "examples": [
+    "My migraine hit me at the office, so I dimmed th",
+    "The doctor said my blood pressure's running high"
+   ]
+  },
+  "psychologist": {
+   "tier": 3,
+   "confidence": "clear",
+   "note": "specialist clinician",
+   "count": 31,
+   "examples": [
+    "Because I have somniloquy, my roommate says I sh",
+    "He's had major depression for weeks, so his boss"
+   ]
+  },
+  "entire": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 30,
+   "examples": [
+    "He's been up half the night with gastroesophagea",
+    "My allergic rhinitis acts up every time I mow, s"
+   ]
+  },
+  "time": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "time expression",
+   "count": 30,
+   "examples": [
+    "Since I've had chronic lower back pain for weeks",
+    "Since I've had seasonal allergies all week, I sh"
+   ]
+  },
+  "professional": {
+   "tier": 2,
+   "confidence": "review",
+   "note": "'professional' generic",
+   "count": 30,
+   "examples": [
+    "I've been experiencing persistent depressive dis",
+    "When I'm stressed at work, my suicidal ideation "
+   ]
+  },
+  "spoon": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 30,
+   "examples": [
+    "Grandma keeps having tremors at breakfast, so th",
+    "My osteoarthritis has been aching for months, so"
+   ]
+  },
+  "______": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 30,
+   "examples": [
+    "He keeps getting these tachycardia spells at his",
+    "He's had major depression for months, so the cli"
+   ]
+  },
+  "can": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 30,
+   "examples": [
+    "My dyspnea flares and I can't catch my breath on",
+    "When the dust kicks up my asthma flares, so at w"
+   ]
+  },
+  "large": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 29,
+   "examples": [
+    "I've been up all night with heartburn again, so ",
+    "My irritable bowel's been acting up all week, so"
+   ]
+  },
+  "bedtime": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "time expression",
+   "count": 29,
+   "examples": [
+    "I keep having excessive daytime sleepiness all a",
+    "I've been having daytime hypersomnia every after"
+   ]
+  },
+  "piece": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 28,
+   "examples": [
+    "I've been up all night with heartburn again, so ",
+    "When the pollen hits and I get bronchospasm, I a"
+   ]
+  },
+  "t": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 28,
+   "examples": [
+    "Her irritable bowel syndrome flared up all morni",
+    "I've been up all night with heartburn again, so "
+   ]
+  },
+  "referral": {
+   "tier": 3,
+   "confidence": "review",
+   "note": "referral/consultation imply specialist path",
+   "count": 28,
+   "examples": [
+    "Now that my arthritis is flaring up every mornin",
+    "She's been battling chronic insomnia for weeks, "
+   ]
+  },
+  "anxiety": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 28,
+   "examples": [
+    "Ever since the layoff my anxiety disorder flared",
+    "My generalized anxiety just won't switch off at "
+   ]
+  },
+  "beta": {
+   "tier": 2,
+   "confidence": "review",
+   "note": "benzodiazepine/beta-blocker fragments (prescription)",
+   "count": 28,
+   "examples": [
+    "He keeps getting these tachycardia spells at his",
+    "My panic attacks flare in crowds, so my counselo"
+   ]
+  },
+  "hydro": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "steroid/cortisone OTC vs Rx",
+   "count": 28,
+   "examples": [
+    "Her eczema has flared up again, so she went to g",
+    "That eczema behind my knee is itching like crazy"
+   ]
+  },
+  "bed": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "rest/comfort, no care action",
+   "count": 28,
+   "examples": [
+    "I keep having excessive daytime sleepiness all a",
+    "Since I got that dermatitis, I've been scratchin"
+   ]
+  },
+  "counselor": {
+   "tier": 3,
+   "confidence": "clear",
+   "note": "specialist clinician",
+   "count": 28,
+   "examples": [
+    "I've been experiencing persistent depressive dis",
+    "When I'm stressed at work, my suicidal ideation "
+   ]
+  },
+  "v": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 28,
+   "examples": [
+    "My eczema has been flaring up something awful, s",
+    "When the pollen hits and I get bronchospasm, I a"
+   ]
+  },
+  "breathing": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 28,
+   "examples": [
+    "My asthma flares climbing the stairs, so I keep ",
+    "My kid's been having an asthma attack in the yar"
+   ]
+  },
+  "alarm": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 28,
+   "examples": [
+    "I keep forgetting my morning doses, so the pharm",
+    "I keep having excessive daytime sleepiness all a"
+   ]
+  },
+  "water": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 27,
+   "examples": [
+    "Every spring my seasonal allergies act up at the",
+    "He gets allergic rhinitis every time the grass g"
+   ]
+  },
+  "umbrella": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 27,
+   "examples": [
+    "After that greasy diner meal I have acid reflux,",
+    "Every spring my allergic rhinitis flares, so bef"
+   ]
+  },
+  "monitor": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "home devices",
+   "count": 27,
+   "examples": [
+    "His tachycardia at rest has him worried, so the ",
+    "I have obstructive sleep apnea and my partner sa"
+   ]
+  },
+  "solution": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "formula/solution/liquid/powder/mixture: remedy forms",
+   "count": 26,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g",
+    "This psoriasis won't quit, so tonight I'm rubbin"
+   ]
+  },
+  "gp": {
+   "tier": 2,
+   "confidence": "clear",
+   "note": "generalist clinician",
+   "count": 26,
+   "examples": [
+    "My little girl's been suffering from allergic rh",
+    "She keeps experiencing nocturnal hyperhidrosis e"
+   ]
+  },
+  "bath": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "rest/comfort, no care action",
+   "count": 26,
+   "examples": [
+    "My insomnia keeps me awake and I can't drop off,",
+    "The little one's constipated again, so I'm givin"
+   ]
+  },
+  "pack": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 25,
+   "examples": [
+    "I had severe insomnia before the flight, so at t",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "\"": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 25,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g",
+    "I have poor medication adherence, so my pharmaci"
+   ]
+  },
+  "def": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 25,
+   "examples": [
+    "My angina gets worse when I climb stairs, so I s",
+    "My old man's got heart failure, so at his checku"
+   ]
+  },
+  "morning": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "time expression",
+   "count": 25,
+   "examples": [
+    "After I eat dairy, I experience lactose intolera",
+    "The doctor said my blood pressure's running high"
+   ]
+  },
+  "study": {
+   "tier": 2,
+   "confidence": "review",
+   "note": "clinical testing/imaging",
+   "count": 25,
+   "examples": [
+    "Grandpa keeps having narcolepsy episodes during ",
+    "I have obstructive sleep apnea and my partner sa"
+   ]
+  },
+  "device": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "home devices",
+   "count": 25,
+   "examples": [
+    "My old man's got heart failure, so at his checku",
+    "The wife says I have sleep apnea, so tonight I'm"
+   ]
+  },
+  "easy": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 24,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared",
+    "I keep having insomnia all night, so tonight I'm"
+   ]
+  },
+  "sample": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 24,
+   "examples": [
+    "This eczema keeps peeling, so at the counter I a",
+    "This eczema won't quit flaring up, so the pharma"
+   ]
+  },
+  "medications": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "generic self-medication",
+   "count": 24,
+   "examples": [
+    "Ever since my depression relapsed, my roommate r",
+    "The doc says I have hypertension, so every morni"
+   ]
+  },
+  "mri": {
+   "tier": 2,
+   "confidence": "review",
+   "note": "clinical testing/imaging",
+   "count": 24,
+   "examples": [
+    "My osteoarthritis has been aching for months, so",
+    "My osteoarthritis has been grinding on the stair"
+   ]
+  },
+  "the": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 24,
+   "examples": [
+    "His psoriasis flared up again this winter, so he",
+    "My eczema has been driving me nuts and won't sto"
+   ]
+  },
+  "an": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 24,
+   "examples": [
+    "Ever since the promotion he's had panic disorder",
+    "He gets allergic rhinitis every spring, so befor"
+   ]
+  },
+  "loe": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 24,
+   "examples": [
+    "My psoriasis won't quit, so tonight I'm rubbing ",
+    "This psoriasis won't quit, so tonight I'm rubbin"
+   ]
+  },
+  "(": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 24,
+   "examples": [
+    "His asthma flares when the dust flies, so before",
+    "My asthma flares up and wheezy on the stairs, so"
+   ]
+  },
+  "dinner": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 23,
+   "examples": [
+    "I keep having excessive daytime sleepiness all a",
+    "My gastric reflux is acting up, so I'm going to "
+   ]
+  },
+  "trial": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 22,
+   "examples": [
+    "I just can't seem to fall asleep due to insomnia",
+    "My allergic conjunctivitis flares up every sprin"
+   ]
+  },
+  "sort": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 22,
+   "examples": [
+    "Every spring my seasonal allergies act up at the",
+    "He gets allergic rhinitis every time the grass g"
+   ]
+  },
+  "book": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 22,
+   "examples": [
+    "I had severe insomnia before the flight, so at t",
+    "My generalized anxiety's been bad at work, so on"
+   ]
+  },
+  "otc": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "generic self-medication",
+   "count": 22,
+   "examples": [
+    "After every meal my acid reflux flares something",
+    "My acid reflux has been acting up after dinner, "
+   ]
+  },
+  "cp": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 22,
+   "examples": [
+    "I keep having sleep apnea episodes at night, so ",
+    "My old man's got heart failure, so at his checku"
+   ]
+  },
+  "my": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 22,
+   "examples": [
+    "His psoriasis flared up again this winter, so he",
+    "My eczema has been driving me nuts and won't sto"
+   ]
+  },
+  "physician": {
+   "tier": 2,
+   "confidence": "clear",
+   "note": "generalist clinician",
+   "count": 22,
+   "examples": [
+    "Because he keeps experiencing sleep apnea, he fi",
+    "Since she's in a hypertensive crisis today, she "
+   ]
+  },
+  "chest": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 22,
+   "examples": [
+    "My angina gets worse when I climb stairs, so I s",
+    "My dyspnea flares and I can't catch my breath on"
+   ]
+  },
+  "skin": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 22,
+   "examples": [
+    "Her elbows keep getting these psoriasis flare-up",
+    "The kid's got eczema all over, so the doctor pre"
+   ]
+  },
+  "-": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 22,
+   "examples": [
+    "Grandpa's had a hypertensive crisis and can't se",
+    "I've been having generalized anxiety and can't s"
+   ]
+  },
+  "moment": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "time expression",
+   "count": 21,
+   "examples": [
+    "She's been dealing with sleep-onset insomnia lat",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "afternoon": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "time expression",
+   "count": 21,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared",
+    "I keep having insomnia all night, so tonight I'm"
+   ]
+  },
+  "phone": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 21,
+   "examples": [
+    "The doc says my hypertension keeps creeping up, ",
+    "Whenever my acid reflux creeps up after a big me"
+   ]
+  },
+  "early": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 21,
+   "examples": [
+    "I've been having insomnia all night, so tonight ",
+    "The pollen's got my allergic rhinitis flaring, s"
+   ]
+  },
+  "machine": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "home devices",
+   "count": 21,
+   "examples": [
+    "I have obstructive sleep apnea and my partner sa",
+    "I keep having sleep apnea episodes at night, so "
+   ]
+  },
+  "milk": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 21,
+   "examples": [
+    "I've been running to the john all night with dia",
+    "The kid's got diarrhea again, so we should give "
+   ]
+  },
+  "rescue": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "asthma devices: puffer/spacer/pump/rescue(inhaler)",
+   "count": 21,
+   "examples": [
+    "Since my asthma is acting up again today, I shou",
+    "When I breathe in the cold air, my asthma flares"
+   ]
+  },
+  "friend": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "social support instead of care",
+   "count": 21,
+   "examples": [
+    "Because I have insomnia again, I need to call my",
+    "I've had tachycardia all day at work, so I shoul"
+   ]
+  },
+  "night": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "time expression",
+   "count": 21,
+   "examples": [
+    "I keep having excessive daytime sleepiness all a",
+    "Since I have chronic insomnia these days, I fina"
+   ]
+  },
+  "shot": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "injection/shot: self vs administered",
+   "count": 21,
+   "examples": [
+    "Ever since the move my major depression has flar",
+    "Her elbows keep getting these psoriasis flare-up"
+   ]
+  },
+  "muscle": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 21,
+   "examples": [
+    "His chronic lower back pain has lasted for month",
+    "My chronic lumbar pain has flared since the move"
+   ]
+  },
+  "m": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 21,
+   "examples": [
+    "My lumbar radiculopathy's been acting up for mon",
+    "My osteoarthritis has been grinding on the stair"
+   ]
+  },
+  "physical": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 20,
+   "examples": [
+    "My chronic low back pain has flared all week, so",
+    "My osteoarthritis has been giving out on the sta"
+   ]
+  },
+  "tube": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 20,
+   "examples": [
+    "This eczema keeps cracking, so I picked up a",
+    "This eczema won't quit flaring up, so the pharma"
+   ]
+  },
+  "more": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 20,
+   "examples": [
+    "He's had acute diarrhea since lunch, so he needs",
+    "The kid's got diarrhea again, so we should give "
+   ]
+  },
+  "moisturizer": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "topical self-treatment",
+   "count": 20,
+   "examples": [
+    "I have eczema flaring up, so I should put on som",
+    "This eczema keeps peeling, so at the counter I a"
+   ]
+  },
+  "a": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 20,
+   "examples": [
+    "My contact dermatitis flared after that new soap",
+    "Since I got that dermatitis, I've been scratchin"
+   ]
+  },
+  "usual": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 20,
+   "examples": [
+    "The doc says my hypertension's been creeping up,",
+    "The doctor said my blood pressure's running high"
+   ]
+  },
+  "medical": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 20,
+   "examples": [
+    "My kid's been having an asthma attack in the yar",
+    "My old man's heart has been acting up lately, so"
+   ]
+  },
+  "b": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 20,
+   "examples": [
+    "His peripheral neuropathy has flared since the d",
+    "My generalized anxiety keeps racing and I feel j"
+   ]
+  },
+  "ssr": {
+   "tier": 2,
+   "confidence": "review",
+   "note": "antidepressant (prescription)",
+   "count": 20,
+   "examples": [
+    "Ever since the promotion he's had panic disorder",
+    "He's been having major depression lately and can"
+   ]
+  },
+  ".": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 20,
+   "examples": [
+    "Grandpa keeps having narcolepsy episodes during ",
+    "The wife says I have sleep apnea, so tonight I'm"
+   ]
+  },
+  "empty": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "place/position",
+   "count": 19,
+   "examples": [
+    "He gets allergic rhinitis every spring, so befor",
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "tranquil": {
+   "tier": 2,
+   "confidence": "review",
+   "note": "tranquilizer (prescription era term)",
+   "count": 19,
+   "examples": [
+    "Ever since the divorce he has chronic insomnia, ",
+    "She's been suffering from chronic insomnia every"
+   ]
+  },
+  "lemon": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 19,
+   "examples": [
+    "I've been up all night with heartburn again, so ",
+    "My irritable bowel is flaring after every meal, "
+   ]
+  },
+  "look": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 19,
+   "examples": [
+    "I had bad insomnia last night, so today I'm taki",
+    "That migraine came on right before the presentat"
+   ]
+  },
+  "day": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "time expression",
+   "count": 19,
+   "examples": [
+    "I had bad insomnia last night, so today I'm taki",
+    "The little one's constipated again, so I'm givin"
+   ]
+  },
+  "own": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 19,
+   "examples": [
+    "I get dyspneic going up the stairs, so I should ",
+    "When I work out hard I get exertional dyspnea, s"
+   ]
+  },
+  "letter": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 19,
+   "examples": [
+    "Ever since the layoffs I've had insomnia at nigh",
+    "Since work's been crazy I keep feeling depressed"
+   ]
+  },
+  "note": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 18,
+   "examples": [
+    "Ever since the layoffs I've had insomnia at nigh",
+    "She's been battling chronic insomnia for weeks, "
+   ]
+  },
+  "alle": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "allergy (med) vs allergy (condition)",
+   "count": 18,
+   "examples": [
+    "Every spring my allergic rhinitis acts up outsid",
+    "My allergic rhinitis is flaring today, so I popp"
+   ]
+  },
+  "jar": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 18,
+   "examples": [
+    "Her psoriasis keeps flaring red and scaly, so at",
+    "This eczema keeps cracking, so I picked up a"
+   ]
+  },
+  "pulse": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 18,
+   "examples": [
+    "Grandpa's atrial fibrillation flared all day, so",
+    "My hypertension's been pounding way too high lat"
+   ]
+  },
+  "mom": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "social support instead of care",
+   "count": 18,
+   "examples": [
+    "Because I have insomnia again, I need to call my",
+    "Since I have insomnia, I need to talk to my"
+   ]
+  },
+  "therapy": {
+   "tier": 3,
+   "confidence": "review",
+   "note": "therapy/counseling as care path",
+   "count": 18,
+   "examples": [
+    "Ever since the layoffs he's had generalized anxi",
+    "I've been having a major depressive episode and "
+   ]
+  },
+  "egg": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 17,
+   "examples": [
+    "After that greasy diner meal I have acid reflux,",
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "big": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 17,
+   "examples": [
+    "I've been constipated for days, so at the shop I",
+    "I've been up all night with heartburn again, so "
+   ]
+  },
+  "ultrasound": {
+   "tier": 2,
+   "confidence": "review",
+   "note": "clinical testing/imaging",
+   "count": 17,
+   "examples": [
+    "My osteoarthritis has been aching for months, so",
+    "My osteoarthritis has been grinding on the stair"
+   ]
+  },
+  "sn": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 17,
+   "examples": [
+    "I've been snoring so loud the whole house compla",
+    "She's been having generalized anxiety before eve"
+   ]
+  },
+  "set": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 17,
+   "examples": [
+    "My asthma flares up and wheezy on the stairs, so",
+    "When the dust kicks up my asthma flares, so at w"
+   ]
+  },
+  "product": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 16,
+   "examples": [
+    "I've got seborrheic dermatitis on my scalp, so I",
+    "This eczema keeps peeling, so at the counter I a"
+   ]
+  },
+  "ointment": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "topical self-treatment",
+   "count": 16,
+   "examples": [
+    "I have eczema flaring up, so I should put on som",
+    "My lumbar radiculopathy has been acting up somet"
+   ]
+  },
+  "massage": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "rest/comfort, no care action",
+   "count": 16,
+   "examples": [
+    "My chronic lower back pain is flaring again, so ",
+    "Since I have chronic insomnia these days, I fina"
+   ]
+  },
+  "__": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 16,
+   "examples": [
+    "He's had major depression for months, so the cli",
+    "His asthma flares when the dust flies, so before"
+   ]
+  },
+  "portable": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 16,
+   "examples": [
+    "I've been snoring so loud the whole house compla",
+    "My dyspnea flares and I can't catch my breath on"
+   ]
+  },
+  "schedule": {
+   "tier": 0,
+   "confidence": "review",
+   "note": "schedule/routine/regimen: could precede medication",
+   "count": 16,
+   "examples": [
+    "I always get my morning medications muddled up, ",
+    "I keep having excessive daytime sleepiness all a"
+   ]
+  },
+  "allergic": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 16,
+   "examples": [
+    "Every spring my allergic rhinitis acts up outsid",
+    "His skin keeps breaking out in urticaria after w"
+   ]
+  },
+  "mr": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 16,
+   "examples": [
+    "My lumbar radiculopathy's been acting up for mon",
+    "My osteoarthritis has been grinding on the stair"
+   ]
+  },
+  "l": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 16,
+   "examples": [
+    "His psoriasis keeps flaking off in silver flakes",
+    "My constipation flared up again after the road t"
+   ]
+  },
+  "and": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 16,
+   "examples": [
+    "After that big holiday feast my constipation fla",
+    "My systolic blood pressure was way up again, so "
+   ]
+  },
+  "|": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 16,
+   "examples": [
+    "He gets allergic rhinitis every spring, so befor",
+    "The doctor said my blood pressure's running high"
+   ]
+  },
+  "(n": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 15,
+   "examples": [
+    "She's been having panic attacks lately, so befor",
+    "She's been suffering from chronic insomnia every"
+   ]
+  },
+  "stuff": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 15,
+   "examples": [
+    "Every spring my seasonal allergies act up at the",
+    "He gets allergic rhinitis every time the grass g"
+   ]
+  },
+  "food": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 15,
+   "examples": [
+    "Every spring my seasonal allergies act up at the",
+    "I've had irritable bowel syndrome flaring up all"
+   ]
+  },
+  "favorite": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 15,
+   "examples": [
+    "The allergic asthma has me wheezing all day, so ",
+    "Whenever my acid reflux creeps up after a big me"
+   ]
+  },
+  "evening": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "time expression",
+   "count": 15,
+   "examples": [
+    "I keep having excessive daytime sleepiness all a",
+    "I've been having insomnia all night, so tonight "
+   ]
+  },
+  "dr": {
+   "tier": 2,
+   "confidence": "clear",
+   "note": "generalist clinician",
+   "count": 15,
+   "examples": [
+    "I've had tachycardia all day at work, so I shoul",
+    "My tachycardia's been racing all morning, so I d"
+   ]
+  },
+  "flight": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 15,
+   "examples": [
+    "Because I have insomnia every night, I finally b",
+    "He's been having a major depressive episode and "
+   ]
+  },
+  "lunch": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 15,
+   "examples": [
+    "I've been having daytime hypersomnia every after",
+    "My gastric reflux is acting up, so I'm going to "
+   ]
+  },
+  "shirt": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 15,
+   "examples": [
+    "The wife says I have sleep apnea, so tonight I'm",
+    "When the dust kicks up my asthma flares, so at w"
+   ]
+  },
+  "exercise": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "rest/comfort, no care action",
+   "count": 15,
+   "examples": [
+    "Every time I climb the stairs I get dyspneic, so",
+    "I've been having daytime hypersomnia every after"
+   ]
+  },
+  "aspirin": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "named OTC/self remedies",
+   "count": 14,
+   "examples": [
+    "He woke up at 3am with gastroesophageal reflux, ",
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "ounce": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 14,
+   "examples": [
+    "He's been up half the night with gastroesophagea",
+    "My allergic rhinitis acts up every time I mow, s"
+   ]
+  },
+  "alkal": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "OTC med fragment (per intended-target map)",
+   "count": 14,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared",
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "alternative": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 14,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared"
+   ]
+  },
+  "chi": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 14,
+   "examples": [
+    "I've had sciatica for days now, so I finally wen",
+    "My chronic low back pain has flared all week, so"
+   ]
+  },
+  "continuous": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 14,
+   "examples": [
+    "I had poor medication adherence all week, so the",
+    "I keep having apnea episodes at night, so my wif"
+   ]
+  },
+  "room": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "place/position",
+   "count": 14,
+   "examples": [
+    "He's been having a major depressive episode and ",
+    "Since I have chronic insomnia these days, I fina"
+   ]
+  },
+  "this": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 14,
+   "examples": [
+    "My contact dermatitis flared after that new soap",
+    "My eczema has been driving me nuts and won't sto"
+   ]
+  },
+  "coconut": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 14,
+   "examples": [
+    "Ever since I got the eczema all over, before bed",
+    "My contact dermatitis flared after that new soap"
+   ]
+  },
+  "husband": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "social support instead of care",
+   "count": 14,
+   "examples": [
+    "Because I have insomnia again, I need to call my",
+    "Since I have insomnia, I need to talk to my"
+   ]
+  },
+  "brain": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 14,
+   "examples": [
+    "I've been experiencing insomnia all night, so my",
+    "Since I have insomnia, I need to talk to my"
+   ]
+  },
+  "visit": {
+   "tier": 2,
+   "confidence": "clear",
+   "note": "professional visit/booking",
+   "count": 14,
+   "examples": [
+    "I've been having a major depressive episode and ",
+    "Since I've been dealing with insomnia for a week"
+   ]
+  },
+  "medic": {
+   "tier": 2,
+   "confidence": "clear",
+   "note": "generalist clinician",
+   "count": 14,
+   "examples": [
+    "I've got seborrheic dermatitis on my scalp, so I",
+    "My seborrheic dermatitis is flaking and itchy, s"
+   ]
+  },
+  "salad": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 14,
+   "examples": [
+    "After that big holiday feast my constipation fla",
+    "My irritable bowel's been acting up all week, so"
+   ]
+  },
+  "sandwich": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 14,
+   "examples": [
+    "After that huge lunch my constipation flared up,",
+    "My irritable bowel's been acting up all week, so"
+   ]
+  },
+  "face": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 14,
+   "examples": [
+    "My eczema has been flaring up something awful, s",
+    "When the dust kicks up my asthma flares, so at w"
+   ]
+  },
+  "wine": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 14,
+   "examples": [
+    "I've been running to the john all night with dia",
+    "My irritable bowel is flaring after every meal, "
+   ]
+  },
+  "blanket": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "rest/comfort, no care action",
+   "count": 14,
+   "examples": [
+    "My asthma flares climbing the stairs, so I keep ",
+    "When the dust kicks up my asthma flares, so at w"
+   ]
+  },
+  "imaging": {
+   "tier": 2,
+   "confidence": "review",
+   "note": "clinical testing/imaging",
+   "count": 14,
+   "examples": [
+    "My lumbar radiculopathy's been acting up for mon",
+    "My osteoarthritis has been grinding on the stair"
+   ]
+  },
+  "mental": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 14,
+   "examples": [
+    "After the divorce he's had severe depression, so",
+    "She's had major depression for weeks, so her fri"
+   ]
+  },
+  "fresh": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 14,
+   "examples": [
+    "His psoriasis flared on his elbows, so tonight h",
+    "My psoriasis won't quit, so tonight I'm rubbing "
+   ]
+  },
+  "headache": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 13,
+   "examples": [
+    "My migraine hit me at the office, so I dimmed th",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "patch": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "topical self-treatment",
+   "count": 13,
+   "examples": [
+    "Her elbows keep getting these psoriasis flare-up",
+    "My allergic conjunctivitis flares up every sprin"
+   ]
+  },
+  "hard": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 13,
+   "examples": [
+    "I've been up all night with heartburn again, so ",
+    "My migraine hit me at the office, so I dimmed th"
+   ]
+  },
+  "while": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "time expression",
+   "count": 13,
+   "examples": [
+    "After that huge lunch my constipation flared up,",
+    "She's been dealing with sleep-onset insomnia lat"
+   ]
+  },
+  "antid": {
+   "tier": 2,
+   "confidence": "review",
+   "note": "antidepressant (prescription)",
+   "count": 13,
+   "examples": [
+    "After that curry my irritable bowel is flaring, ",
+    "After that greasy takeaway my acid reflux flared"
+   ]
+  },
+  "dog": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "social support instead of care",
+   "count": 13,
+   "examples": [
+    "I've been diagnosed with osteoarthritis in my jo",
+    "I've been having irritable bowel syndrome for we"
+   ]
+  },
+  "session": {
+   "tier": 3,
+   "confidence": "review",
+   "note": "therapy/counseling as care path",
+   "count": 13,
+   "examples": [
+    "Ever since the layoffs he's had generalized anxi",
+    "I've been having a major depressive episode and "
+   ]
+  },
+  "treatment": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 12,
+   "examples": [
+    "Her elbows keep getting these psoriasis flare-up",
+    "My allergic conjunctivitis flares up every sprin"
+   ]
+  },
+  "half": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 12,
+   "examples": [
+    "I have chronic insomnia no matter what I try, so",
+    "I've been up all night with heartburn again, so "
+   ]
+  },
+  "insect": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 12,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g"
+   ]
+  },
+  "liquid": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "formula/solution/liquid/powder/mixture: remedy forms",
+   "count": 12,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g",
+    "My systolic blood pressure was way up again, so "
+   ]
+  },
+  "snack": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 12,
+   "examples": [
+    "After that huge lunch my constipation flared up,",
+    "I had severe insomnia before the flight, so at t"
+   ]
+  },
+  "injection": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "injection/shot: self vs administered",
+   "count": 12,
+   "examples": [
+    "He gets allergic rhinitis every spring, so befor",
+    "My osteoarthritis has been aching for months, so"
+   ]
+  },
+  "shower": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "rest/comfort, no care action",
+   "count": 12,
+   "examples": [
+    "My chronic arthritis aches something awful in th",
+    "My insomnia keeps me awake and I can't drop off,"
+   ]
+  },
+  "consultation": {
+   "tier": 3,
+   "confidence": "review",
+   "note": "referral/consultation imply specialist path",
+   "count": 12,
+   "examples": [
+    "I've been having a major depressive episode and ",
+    "Since I've been dealing with insomnia for a week"
+   ]
+  },
+  "dermatologist": {
+   "tier": 3,
+   "confidence": "clear",
+   "note": "specialist clinician",
+   "count": 12,
+   "examples": [
+    "I've got folliculitis all over my chest that won",
+    "I've got severe dermatitis all over my back, so "
+   ]
+  },
+  "der": {
+   "tier": 3,
+   "confidence": "clear",
+   "note": "specialist fragment (per intended-target map)",
+   "count": 12,
+   "examples": [
+    "I've got folliculitis all over my chest that won",
+    "I've got severe dermatitis all over my back, so "
+   ]
+  },
+  "all": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 12,
+   "examples": [
+    "Every spring my allergic rhinitis acts up, so be",
+    "My stomach keeps making borborygmi after I eat, "
+   ]
+  },
+  "chicken": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 12,
+   "examples": [
+    "After that big holiday feast my constipation fla",
+    "My irritable bowel's been acting up all week, so"
+   ]
+  },
+  "wrist": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 12,
+   "examples": [
+    "Ever since that seafood my anaphylaxis is starti",
+    "My hands have carpal tunnel syndrome all day at "
+   ]
+  },
+  "number": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 12,
+   "examples": [
+    "The doc says I have hypertension, so every morni",
+    "The doc says my hypertension's been creeping up,"
+   ]
+  },
+  "enzyme": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "enzyme/fiber supplements",
+   "count": 12,
+   "examples": [
+    "After that curry my irritable bowel is flaring, ",
+    "Every night my acid reflux creeps up after dinne"
+   ]
+  },
+  "left": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "place/position",
+   "count": 12,
+   "examples": [
+    "My old man's got heart failure, so at his checku",
+    "The doc says my hypertension won't come down, so"
+   ]
+  },
+  "sick": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 12,
+   "examples": [
+    "Ever since the layoffs I've had insomnia at nigh",
+    "Since work's been crazy I keep feeling depressed"
+   ]
+  },
+  "mixture": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "formula/solution/liquid/powder/mixture: remedy forms",
+   "count": 12,
+   "examples": [
+    "My psoriasis won't quit, so tonight I'm rubbing ",
+    "This psoriasis won't quit, so tonight I'm rubbin"
+   ]
+  },
+  "open": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "place/position",
+   "count": 12,
+   "examples": [
+    "Every time the pollen hits my asthma acts up on ",
+    "When the pollen's thick my allergic asthma acts "
+   ]
+  },
+  "powder": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "formula/solution/liquid/powder/mixture: remedy forms",
+   "count": 12,
+   "examples": [
+    "His face keeps breaking out in acne, so the doct",
+    "My eczema has gone all cracked and weepy behind "
+   ]
+  },
+  "breath": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 12,
+   "examples": [
+    "Ever since the wildfire smoke rolled in he's had",
+    "My asthma flares climbing the stairs, so I keep "
+   ]
+  },
+  "er": {
+   "tier": 4,
+   "confidence": "clear",
+   "note": "emergency care",
+   "count": 12,
+   "examples": [
+    "After the fireworks my kid couldn't stop coughin"
+   ]
+  },
+  "clinic": {
+   "tier": 2,
+   "confidence": "clear",
+   "note": "generalist clinician",
+   "count": 12,
+   "examples": [
+    "After the fireworks my kid couldn't stop coughin",
+    "Grandpa keeps having narcolepsy episodes during "
+   ]
+  },
+  "week": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "time expression",
+   "count": 12,
+   "examples": [
+    "His chronic back pain has flared at work, so he ",
+    "My insomnia kept me up all night, so this aftern"
+   ]
+  },
+  "oil": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 12,
+   "examples": [
+    "His peripheral neuropathy has flared since the d",
+    "His psoriasis keeps flaking off in silver flakes"
+   ]
+  },
+  "h": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 12,
+   "examples": [
+    "My acid reflux flares after every meal, so tonig",
+    "My stomach has acid reflux after lunch, so I rea"
+   ]
+  },
+  "____": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 12,
+   "examples": [
+    "He gets allergic rhinitis every spring, so befor",
+    "She's had major depression for weeks, so her fri"
+   ]
+  },
+  "ep": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 12,
+   "examples": [
+    "Ever since the pollen kicked in, my allergic rhi",
+    "My asthma flares up in the cold, so I always car"
+   ]
+  },
+  "spray": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "spray/nasal: OTC delivery",
+   "count": 12,
+   "examples": [
+    "My asthma acts up when the pollen's out, so at w",
+    "My asthma flares climbing the stairs, so I keep "
+   ]
+  },
+  "pen": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "EpiPen: emergency-grade self-treatment (tier 1 vs 4?)",
+   "count": 11,
+   "examples": [
+    "His face keeps breaking out in acne, so the doct",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "excessive": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 11,
+   "examples": [
+    "He's been up half the night with gastroesophagea",
+    "My allergic rhinitis acts up every time I mow, s"
+   ]
+  },
+  "bite": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 11,
+   "examples": [
+    "I've been suffering from insomnia for hours star",
+    "My migraine hit me at the office, so I dimmed th"
+   ]
+  },
+  "ben": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 11,
+   "examples": [
+    "Every spring my seasonal allergies act up at the",
+    "He gets allergic rhinitis every time the grass g"
+   ]
+  },
+  "seat": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 11,
+   "examples": [
+    "I've been constipated for days, so at the shop I",
+    "That migraine came on right before the presentat"
+   ]
+  },
+  "experimental": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 11,
+   "examples": [
+    "He's been having major depression lately and can",
+    "She's been having major depression lately, so he"
+   ]
+  },
+  "back": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "place/position",
+   "count": 11,
+   "examples": [
+    "His chronic lower back pain has lasted for month",
+    "His chronic lumbago has been acting up since the"
+   ]
+  },
+  "key": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 11,
+   "examples": [
+    "My asthma flares up and wheezy on the stairs, so",
+    "When the dust kicks up my asthma flares, so at w"
+   ]
+  },
+  "overdose": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 10,
+   "examples": [
+    "Every spring my allergic rhinitis flares, so bef",
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "amount": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 10,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g",
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "drink": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 10,
+   "examples": [
+    "After that huge lunch my constipation flared up,",
+    "I had severe insomnia before the flight, so at t"
+   ]
+  },
+  "trusty": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 10,
+   "examples": [
+    "The allergic asthma has me wheezing all day, so ",
+    "Whenever my acid reflux creeps up after a big me"
+   ]
+  },
+  "pep": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 10,
+   "examples": [
+    "He's had acute diarrhea since lunch, so he needs",
+    "The kid's got diarrhea again, so we should give "
+   ]
+  },
+  "shrink": {
+   "tier": 3,
+   "confidence": "clear",
+   "note": "informal register for therapist - same tier, different register",
+   "count": 10,
+   "examples": [
+    "After the divorce he's had severe depression, so",
+    "He's had major depression for weeks, so his boss"
+   ]
+  },
+  "hotel": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 10,
+   "examples": [
+    "He's been having a major depressive episode and ",
+    "Since I have chronic insomnia these days, I fina"
+   ]
+  },
+  "mother": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "social support instead of care",
+   "count": 10,
+   "examples": [
+    "Because I have insomnia again, I need to call my",
+    "She keeps experiencing nocturnal hyperhidrosis e"
+   ]
+  },
+  "recommendation": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 10,
+   "examples": [
+    "Ever since the layoffs I've had insomnia at nigh",
+    "Now that my arthritis is flaring up every mornin"
+   ]
+  },
+  "acne": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 10,
+   "examples": [
+    "My eczema has been flaring up something awful, s",
+    "Since I've had acne flare-ups all week, I finall"
+   ]
+  },
+  "gastroenter": {
+   "tier": 3,
+   "confidence": "clear",
+   "note": "specialist fragment (per intended-target map)",
+   "count": 10,
+   "examples": [
+    "I've been experiencing chronic nausea and vomiti",
+    "My peptic ulcer has been acting up all week, so "
+   ]
+  },
+  "head": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 10,
+   "examples": [
+    "I've been experiencing insomnia all night, so my",
+    "I've been having restorative sleep all week, so "
+   ]
+  },
+  "good": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 10,
+   "examples": [
+    "I've got seborrheic dermatitis on my scalp, so I",
+    "My chronic lower back pain is flaring again, so "
+   ]
+  },
+  "fiber": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "enzyme/fiber supplements",
+   "count": 10,
+   "examples": [
+    "I've got irritable bowel syndrome and I feel blo",
+    "When I eat too much greasy food I get constipati"
+   ]
+  },
+  "body": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 10,
+   "examples": [
+    "I've been experiencing significant fatigue all w",
+    "I've been having restorative sleep all week, so "
+   ]
+  },
+  "exam": {
+   "tier": 2,
+   "confidence": "clear",
+   "note": "professional visit/booking",
+   "count": 10,
+   "examples": [
+    "Grandpa keeps having narcolepsy episodes during ",
+    "I keep having insomnia all night, so tonight I'm"
+   ]
+  },
+  "online": {
+   "tier": 0,
+   "confidence": "review",
+   "note": "app/online: could be telehealth",
+   "count": 10,
+   "examples": [
+    "I keep forgetting my morning doses, so the pharm",
+    "I keep having insomnia all night, so tonight I'm"
+   ]
+  },
+  "chai": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 10,
+   "examples": [
+    "I keep waking up every hour with my insomnia fla",
+    "I've been dealing with insomnia for hours, so I "
+   ]
+  },
+  "adv": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "Advil/ibuprofen/NSAID fragments",
+   "count": 10,
+   "examples": [
+    "Every spring my allergic rhinitis acts up outsid",
+    "Every spring my allergic rhinitis acts up, so be"
+   ]
+  },
+  "oat": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 10,
+   "examples": [
+    "After that greasy diner meal I have acid reflux,",
+    "My kid's cheeks keep having eczema flares all re"
+   ]
+  },
+  "app": {
+   "tier": 0,
+   "confidence": "review",
+   "note": "app/online: could be telehealth",
+   "count": 10,
+   "examples": [
+    "After that greasy diner meal I have acid reflux,",
+    "My stomach has acid reflux after lunch, so I rea"
+   ]
+  },
+  "appliance": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "home devices",
+   "count": 10,
+   "examples": [
+    "I have obstructive sleep apnea and my partner sa",
+    "The wife says I have sleep apnea, so tonight I'm"
+   ]
+  },
+  "acidic": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 10,
+   "examples": [
+    "Every night my acid reflux creeps up after dinne",
+    "My acid reflux flares up after every meal, so I "
+   ]
+  },
+  "st": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 10,
+   "examples": [
+    "My old man's got heart failure, so at his checku",
+    "My old man's heart has been acting up lately, so"
+   ]
+  },
+  "automatic": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 10,
+   "examples": [
+    "I keep forgetting my morning doses, so the pharm"
+   ]
+  },
+  "couch": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "rest/comfort, no care action",
+   "count": 10,
+   "examples": [
+    "His chronic lumbago has been acting up since the"
+   ]
+  },
+  "floor": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "place/position",
+   "count": 10,
+   "examples": [
+    "His chronic lumbago has been acting up since the"
+   ]
+  },
+  "grass": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 10,
+   "examples": [
+    "His chronic lumbago has been acting up since the"
+   ]
+  },
+  "sofa": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "rest/comfort, no care action",
+   "count": 10,
+   "examples": [
+    "His chronic lumbago has been acting up since the"
+   ]
+  },
+  "anal": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 10,
+   "examples": [
+    "His skin keeps breaking out in urticaria after w",
+    "My chronic lumbar pain has flared since the move"
+   ]
+  },
+  "routine": {
+   "tier": 0,
+   "confidence": "review",
+   "note": "schedule/routine/regimen: could precede medication",
+   "count": 10,
+   "examples": [
+    "I always get my morning medications muddled up, ",
+    "I've been having daytime hypersomnia every after"
+   ]
+  },
+  "jasmine": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 10,
+   "examples": [
+    "Ever since the funeral I've had insomnia at nigh",
+    "I keep waking up every hour with my insomnia fla"
+   ]
+  },
+  "ib": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "Advil/ibuprofen/NSAID fragments",
+   "count": 10,
+   "examples": [
+    "After that spicy dinner my gastritis is churning",
+    "I keep having insomnia all night, so tonight I'm"
+   ]
+  },
+  "puff": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "asthma devices: puffer/spacer/pump/rescue(inhaler)",
+   "count": 10,
+   "examples": [
+    "My asthma acts up when the pollen's out, so at w",
+    "My asthma flares climbing the stairs, so I keep "
+   ]
+  },
+  "prob": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 10,
+   "examples": [
+    "My kid's been up all night with rotavirus, so I'",
+    "The baby's been having reflux after every feed, "
+   ]
+  },
+  "counseling": {
+   "tier": 3,
+   "confidence": "review",
+   "note": "therapy/counseling as care path",
+   "count": 10,
+   "examples": [
+    "Ever since the layoffs he's had generalized anxi",
+    "I've been having a major depressive episode and "
+   ]
+  },
+  "appointment": {
+   "tier": 2,
+   "confidence": "clear",
+   "note": "professional visit/booking",
+   "count": 10,
+   "examples": [
+    "Grandpa keeps having narcolepsy episodes during ",
+    "I keep forgetting my morning doses, so the pharm"
+   ]
+  },
+  "arm": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 10,
+   "examples": [
+    "Ever since that seafood my anaphylaxis is starti",
+    "When the pollen's thick my allergic asthma acts "
+   ]
+  },
+  "stress": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 10,
+   "examples": [
+    "I keep having night sweats every night, so the d",
+    "My atrial fibrillation keeps skipping beats at t"
+   ]
+  },
+  "em": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 10,
+   "examples": [
+    "My kid's cheeks keep having eczema flares all re",
+    "My lumbar radiculopathy's been acting up for mon"
+   ]
+  },
+  "regimen": {
+   "tier": 0,
+   "confidence": "review",
+   "note": "schedule/routine/regimen: could precede medication",
+   "count": 9,
+   "examples": [
+    "He's been having panic attacks through crowds la",
+    "My allergic conjunctivitis flares up every sprin"
+   ]
+  },
+  "mouth": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 9,
+   "examples": [
+    "My migraine hit me at the office, so I dimmed th",
+    "The wife says I have sleep apnea, so tonight I'm"
+   ]
+  },
+  "chemical": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 9,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g"
+   ]
+  },
+  "epi": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "EpiPen: emergency-grade self-treatment (tier 1 vs 4?)",
+   "count": 9,
+   "examples": [
+    "That hives keep popping up whenever I eat shellf",
+    "The allergic asthma has me wheezing all day, so "
+   ]
+  },
+  "imo": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 9,
+   "examples": [
+    "He's had acute diarrhea since lunch, so he needs",
+    "The kid's got diarrhea again, so we should give "
+   ]
+  },
+  "reminder": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 9,
+   "examples": [
+    "I had poor medication adherence all week, so the",
+    "I have poor medication adherence, so my pharmaci"
+   ]
+  },
+  "that": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 9,
+   "examples": [
+    "His psoriasis flared up again this winter, so he",
+    "My eczema has been driving me nuts and won't sto"
+   ]
+  },
+  "free": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 9,
+   "examples": [
+    "He's had major depression for months, so the cli",
+    "Since I've had allergic rhinitis this week, at t"
+   ]
+  },
+  "first": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 9,
+   "examples": [
+    "The doc says my hypertension won't come down, so",
+    "The doc says my hypertension's been creeping up,"
+   ]
+  },
+  "vacation": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 9,
+   "examples": [
+    "Ever since the layoffs he's had generalized anxi",
+    "I've been having a major depressive episode and "
+   ]
+  },
+  "migraine": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 8,
+   "examples": [
+    "My migraine hit me at the office, so I dimmed th"
+   ]
+  },
+  "energy": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 8,
+   "examples": [
+    "He woke up at 3am with gastroesophageal reflux, ",
+    "My dyspepsia flared up after lunch, so I grabbed"
+   ]
+  },
+  "amb": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "sedative/sleep aid fragments: OTC vs prescription",
+   "count": 8,
+   "examples": [
+    "I've been having insomnia all night, so tonight ",
+    "My generalized anxiety just won't switch off at "
+   ]
+  },
+  "copy": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 8,
+   "examples": [
+    "My generalized anxiety's been bad at work, so on",
+    "My osteoarthritis is acting up again, so I picke"
+   ]
+  },
+  "stool": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 8,
+   "examples": [
+    "The baby's been having reflux after every feed, ",
+    "The little one's constipated again, so I'm givin"
+   ]
+  },
+  "ticket": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 8,
+   "examples": [
+    "Because I have insomnia every night, I finally b",
+    "He's been having a major depressive episode and "
+   ]
+  },
+  "olive": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 8,
+   "examples": [
+    "Ever since I got the eczema all over, before bed",
+    "His psoriasis keeps flaking off in silver flakes"
+   ]
+  },
+  "diet": {
+   "tier": 0,
+   "confidence": "review",
+   "note": "diet-adjacent",
+   "count": 8,
+   "examples": [
+    "I've had irritable bowel syndrome flaring up all",
+    "My gastrointestinal distress has continued all w"
+   ]
+  },
+  "intake": {
+   "tier": 0,
+   "confidence": "review",
+   "note": "diet-adjacent",
+   "count": 8,
+   "examples": [
+    "I've had irritable bowel syndrome flaring up all",
+    "My gastrointestinal distress has continued all w"
+   ]
+  },
+  "nebu": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "OTC med fragment (per intended-target map)",
+   "count": 8,
+   "examples": [
+    "Since my asthma is acting up again today, I shou",
+    "When I walk up hills I experience dyspnea, so I "
+   ]
+  },
+  "family": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "social support instead of care",
+   "count": 8,
+   "examples": [
+    "Every time I eat, I experience abdominal distens",
+    "She keeps experiencing nocturnal hyperhidrosis e"
+   ]
+  },
+  "neuro": {
+   "tier": 3,
+   "confidence": "clear",
+   "note": "specialist fragment (per intended-target map)",
+   "count": 8,
+   "examples": [
+    "Because I have somniloquy, my roommate says I sh",
+    "Since she's in a hypertensive crisis today, she "
+   ]
+  },
+  "mind": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 8,
+   "examples": [
+    "I've been experiencing insomnia all night, so my",
+    "I've been having restorative sleep all week, so "
+   ]
+  },
+  "smooth": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 8,
+   "examples": [
+    "After that huge lunch my constipation flared up,",
+    "My irritable bowel's been acting up all week, so"
+   ]
+  },
+  "keyboard": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 8,
+   "examples": [
+    "My hands have carpal tunnel syndrome all day at "
+   ]
+  },
+  "prescribed": {
+   "tier": 2,
+   "confidence": "clear",
+   "note": "prescription-mediated medication",
+   "count": 8,
+   "examples": [
+    "Her elbows keep getting these psoriasis flare-up",
+    "The doc says I have hypertension, so every morni"
+   ]
+  },
+  "refill": {
+   "tier": 2,
+   "confidence": "review",
+   "note": "refill: prescription-linked",
+   "count": 8,
+   "examples": [
+    "I always get my morning medications muddled up, ",
+    "I have poor medication adherence, so my pharmaci"
+   ]
+  },
+  "supply": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 8,
+   "examples": [
+    "I always get my morning medications muddled up, ",
+    "My dyspnea flares and I can't catch my breath on"
+   ]
+  },
+  "way": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 8,
+   "examples": [
+    "I always forget my medication adherence in the m",
+    "The doc says my hypertension is uncontrolled, so"
+   ]
+  },
+  "container": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 8,
+   "examples": [
+    "I always forget my medication adherence in the m",
+    "I always get my morning medications muddled up, "
+   ]
+  },
+  "awful": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 8,
+   "examples": [
+    "After that big meal my dyspepsia flared up, so I",
+    "My allergic rhinitis acts up every time I mow, s"
+   ]
+  },
+  "enormous": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 8,
+   "examples": [
+    "My acid reflux flares up after every meal, so I ",
+    "My allergic rhinitis acts up every time I mow, s"
+   ]
+  },
+  "humid": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "home devices",
+   "count": 8,
+   "examples": [
+    "I keep having apnea episodes at night, so my wif",
+    "I've been snoring so loud the whole house compla"
+   ]
+  },
+  "automated": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 8,
+   "examples": [
+    "I keep forgetting my morning doses, so the pharm"
+   ]
+  },
+  "alert": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 8,
+   "examples": [
+    "I keep forgetting my morning doses, so the pharm",
+    "I keep having narcolepsy episodes every afternoo"
+   ]
+  },
+  "ear": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 8,
+   "examples": [
+    "Ever since that seafood my anaphylaxis is starti",
+    "When the pollen hits my allergic rhinitis flares"
+   ]
+  },
+  "top": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "place/position",
+   "count": 8,
+   "examples": [
+    "The doc says my hypertension won't come down, so",
+    "The doc says my hypertension's been creeping up,"
+   ]
+  },
+  "porch": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 8,
+   "examples": [
+    "His chronic lumbago has been acting up since the"
+   ]
+  },
+  "lawn": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 8,
+   "examples": [
+    "His chronic lumbago has been acting up since the"
+   ]
+  },
+  "juice": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 8,
+   "examples": [
+    "I've been running to the john all night with dia"
+   ]
+  },
+  "am": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 8,
+   "examples": [
+    "Ever since the promotion he's had panic disorder",
+    "He's been having major depression lately and can"
+   ]
+  },
+  "phys": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 8,
+   "examples": [
+    "My osteoarthritis has been giving out on the sta"
+   ]
+  },
+  "orth": {
+   "tier": 3,
+   "confidence": "clear",
+   "note": "specialist fragment (per intended-target map)",
+   "count": 8,
+   "examples": [
+    "My osteoarthritis has been giving out on the sta",
+    "My osteoarthritis has been grinding on the stair"
+   ]
+  },
+  "match": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 8,
+   "examples": [
+    "I keep waking up every hour with my insomnia fla",
+    "I've been experiencing insomnia before bed latel"
+   ]
+  },
+  "en": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 8,
+   "examples": [
+    "After that curry my irritable bowel is flaring, ",
+    "My constipation flared up again after the road t"
+   ]
+  },
+  "hospital": {
+   "tier": 4,
+   "confidence": "review",
+   "note": "hospital: emergency vs routine admission",
+   "count": 8,
+   "examples": [
+    "After the fireworks my kid couldn't stop coughin"
+   ]
+  },
+  "ed": {
+   "tier": 4,
+   "confidence": "review",
+   "note": "ER fragment/plural?",
+   "count": 8,
+   "examples": [
+    "After the fireworks my kid couldn't stop coughin"
+   ]
+  },
+  "ar": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 8,
+   "examples": [
+    "My osteoarthritis has been grinding on the stair"
+   ]
+  },
+  "-d": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 8,
+   "examples": [
+    "I've been having generalized anxiety and can't s"
+   ]
+  },
+  "dosage": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "generic self-medication",
+   "count": 8,
+   "examples": [
+    "I've been having generalized anxiety and can't s"
+   ]
+  },
+  "-p": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 8,
+   "examples": [
+    "I've been having generalized anxiety and can't s"
+   ]
+  },
+  "hands": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 8,
+   "examples": [
+    "Ever since that seafood my anaphylaxis is starti"
+   ]
+  },
+  "hol": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 8,
+   "examples": [
+    "His tachycardia at rest has him worried, so the ",
+    "My atrial fibrillation keeps skipping beats at t"
+   ]
+  },
+  "ct": {
+   "tier": 2,
+   "confidence": "review",
+   "note": "clinical testing/imaging",
+   "count": 8,
+   "examples": [
+    "I keep having night sweats every night, so the d"
+   ]
+  },
+  "leave": {
+   "tier": 0,
+   "confidence": "review",
+   "note": "sick leave / time off",
+   "count": 8,
+   "examples": [
+    "His chronic back pain has flared at work, so he "
+   ]
+  },
+  "spacer": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "asthma devices: puffer/spacer/pump/rescue(inhaler)",
+   "count": 8,
+   "examples": [
+    "My asthma acts up when the pollen's out, so at w",
+    "When the pollen hits and I get bronchospasm, I a"
+   ]
+  },
+  "cur": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 8,
+   "examples": [
+    "I keep having excessive daytime sleepiness all a",
+    "I keep having narcolepsy episodes every afternoo"
+   ]
+  },
+  "net": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 8,
+   "examples": [
+    "My asthma acts up when the pollen's out, so at w",
+    "My asthma flares when the pollen's out, so at wo"
+   ]
+  },
+  "thin": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 8,
+   "examples": [
+    "My eczema has gone all cracked and weepy behind ",
+    "This eczema keeps coming back, so tonight I'm sl"
+   ]
+  },
+  "chamomile": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "named OTC/self remedies",
+   "count": 8,
+   "examples": [
+    "I've been dealing with insomnia for hours, so I ",
+    "I've been experiencing insomnia before bed latel"
+   ]
+  },
+  "val": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "sedative/sleep aid fragments: OTC vs prescription",
+   "count": 7,
+   "examples": [
+    "I've had chronic insomnia lately, so at bedtime ",
+    "She's been dealing with sleep-onset insomnia lat"
+   ]
+  },
+  "tissue": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 7,
+   "examples": [
+    "Every spring my seasonal allergies act up at the",
+    "Since I've had allergic rhinitis this week, at t"
+   ]
+  },
+  "paper": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 7,
+   "examples": [
+    "Every spring my seasonal allergies act up at the",
+    "Grandma keeps having tremors at breakfast, so th"
+   ]
+  },
+  "ad": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 7,
+   "examples": [
+    "My allergic rhinitis has me sneezing nonstop, so",
+    "My allergic rhinitis is flaring today, so I popp"
+   ]
+  },
+  "pillow": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "rest/comfort, no care action",
+   "count": 7,
+   "examples": [
+    "I keep having apnea episodes at night, so my wif",
+    "I keep having sleep apnea episodes at night, so "
+   ]
+  },
+  "anx": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 7,
+   "examples": [
+    "Ever since the layoff my anxiety disorder flared",
+    "She's been having generalized anxiety before eve"
+   ]
+  },
+  "shampoo": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 7,
+   "examples": [
+    "I've got seborrheic dermatitis on my scalp, so I",
+    "My seborrheic dermatitis is flaking and itchy, s"
+   ]
+  },
+  "brace": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "supportive gear",
+   "count": 7,
+   "examples": [
+    "My hands have carpal tunnel syndrome all day at "
+   ]
+  },
+  "calendar": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 7,
+   "examples": [
+    "I always get my morning medications muddled up, ",
+    "I have poor medication adherence, so my pharmaci"
+   ]
+  },
+  "lawyer": {
+   "tier": 0,
+   "confidence": "review",
+   "note": "lawyer - non-medical professional",
+   "count": 7,
+   "examples": [
+    "After the divorce he's had severe depression, so"
+   ]
+  },
+  "sleepy": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 7,
+   "examples": [
+    "I keep waking up every hour with my insomnia fla",
+    "I've been experiencing insomnia before bed latel"
+   ]
+  },
+  "par": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 6,
+   "examples": [
+    "My migraine hit me at the office, so I dimmed th"
+   ]
+  },
+  "melatonin": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "named OTC/self remedies",
+   "count": 6,
+   "examples": [
+    "I had severe insomnia before the flight, so at t",
+    "She's been dealing with sleep-onset insomnia lat"
+   ]
+  },
+  "chemicals": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 6,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g"
+   ]
+  },
+  "lavender": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "named OTC/self remedies",
+   "count": 6,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g",
+    "His peripheral neuropathy has flared since the d"
+   ]
+  },
+  "bar": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 6,
+   "examples": [
+    "I had severe insomnia before the flight, so at t"
+   ]
+  },
+  "chocolate": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 6,
+   "examples": [
+    "I had severe insomnia before the flight, so at t"
+   ]
+  },
+  "instant": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared"
+   ]
+  },
+  "option": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared"
+   ]
+  },
+  "sip": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 6,
+   "examples": [
+    "That migraine came on right before the presentat"
+   ]
+  },
+  "photo": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 6,
+   "examples": [
+    "That migraine came on right before the presentat"
+   ]
+  },
+  "snacks": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 6,
+   "examples": [
+    "Every spring my seasonal allergies act up at the"
+   ]
+  },
+  "aller": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "allergy (med) vs allergy (condition)",
+   "count": 6,
+   "examples": [
+    "My little girl's been suffering from allergic rh",
+    "My son's been diagnosed with allergic rhinitis t"
+   ]
+  },
+  "vet": {
+   "tier": 0,
+   "confidence": "review",
+   "note": "veterinarian - not human care; check context",
+   "count": 6,
+   "examples": [
+    "I've got psoriasis that won't budge, so I really",
+    "My little girl's been suffering from allergic rh"
+   ]
+  },
+  "local": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "After the fireworks my kid couldn't stop coughin",
+    "My little girl's been suffering from allergic rh"
+   ]
+  },
+  "humidifier": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "home devices",
+   "count": 6,
+   "examples": [
+    "I keep having sleep apnea episodes at night, so ",
+    "My xerosis has been flaking and itchy in the win"
+   ]
+  },
+  "vitamins": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "named OTC/self remedies",
+   "count": 6,
+   "examples": [
+    "Ever since my depression relapsed, my roommate r",
+    "I've been diagnosed with osteoarthritis in my jo"
+   ]
+  },
+  "natural": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "His allergic rhinitis flares every spring, so th",
+    "My contact dermatitis has flared after the new d"
+   ]
+  },
+  "eating": {
+   "tier": 0,
+   "confidence": "review",
+   "note": "diet-adjacent",
+   "count": 6,
+   "examples": [
+    "I've had irritable bowel syndrome flaring up all",
+    "My gastrointestinal distress has continued all w"
+   ]
+  },
+  "sugar": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 6,
+   "examples": [
+    "I've had irritable bowel syndrome flaring up all",
+    "My gastrointestinal distress has continued all w"
+   ]
+  },
+  "rest": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "rest/comfort, no care action",
+   "count": 6,
+   "examples": [
+    "My insomnia kept me up all night, so this aftern",
+    "Since I've had chronic lower back pain for weeks"
+   ]
+  },
+  "dentist": {
+   "tier": 3,
+   "confidence": "clear",
+   "note": "specialist clinician",
+   "count": 6,
+   "examples": [
+    "Because he keeps experiencing sleep apnea, he fi",
+    "Since I've been dealing with insomnia for a week"
+   ]
+  },
+  "place": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "place/position",
+   "count": 6,
+   "examples": [
+    "Because he has early-onset dementia, his wife bo",
+    "Ever since the layoffs he's had generalized anxi"
+   ]
+  },
+  "gastro": {
+   "tier": 3,
+   "confidence": "clear",
+   "note": "specialist fragment (per intended-target map)",
+   "count": 6,
+   "examples": [
+    "I've been experiencing chronic nausea and vomiti",
+    "My peptic ulcer has been acting up all week, so "
+   ]
+  },
+  "gi": {
+   "tier": 3,
+   "confidence": "clear",
+   "note": "specialist fragment (per intended-target map)",
+   "count": 6,
+   "examples": [
+    "I've been experiencing chronic nausea and vomiti",
+    "My peptic ulcer has been acting up all week, so "
+   ]
+  },
+  "z": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "sedative/sleep aid fragments: OTC vs prescription",
+   "count": 6,
+   "examples": [
+    "My gastric reflux is acting up, so I'm going to ",
+    "When I'm around pollen I get nasal congestion, s"
+   ]
+  },
+  "probiotics": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "named OTC/self remedies",
+   "count": 6,
+   "examples": [
+    "I've got irritable bowel syndrome and I feel blo",
+    "When I eat too much greasy food I get constipati"
+   ]
+  },
+  "gluten": {
+   "tier": 0,
+   "confidence": "review",
+   "note": "diet-adjacent",
+   "count": 6,
+   "examples": [
+    "After that big holiday feast my constipation fla",
+    "My stomach keeps making borborygmi after I eat, "
+   ]
+  },
+  "shoulder": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 6,
+   "examples": [
+    "Ever since that seafood my anaphylaxis is starti",
+    "Ever since the accident my shoulder's had chroni"
+   ]
+  },
+  "nose": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 6,
+   "examples": [
+    "Every spring my allergic rhinitis flares outside",
+    "When I'm around pollen I get nasal congestion, s"
+   ]
+  },
+  "puffer": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "asthma devices: puffer/spacer/pump/rescue(inhaler)",
+   "count": 6,
+   "examples": [
+    "When I breathe in the cold air, my asthma flares",
+    "When the dust kicks up my asthma flares, so at w"
+   ]
+  },
+  "jacket": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 6,
+   "examples": [
+    "When I breathe in the cold air, my asthma flares",
+    "When the dust kicks up my asthma flares, so at w"
+   ]
+  },
+  "mild": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "Ever since the divorce he has chronic insomnia, ",
+    "My seborrheic dermatitis is flaking and itchy, s"
+   ]
+  },
+  "wife": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "social support instead of care",
+   "count": 6,
+   "examples": [
+    "His asthma flares when the dust flies, so before",
+    "I've been waking up in the middle of the night w"
+   ]
+  },
+  "extended": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "I keep forgetting my morning doses, so the pharm",
+    "I keep having insomnia all night, so tonight I'm"
+   ]
+  },
+  "pizza": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 6,
+   "examples": [
+    "After that big holiday feast my constipation fla",
+    "My irritable bowel's been acting up all week, so"
+   ]
+  },
+  "meal": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 6,
+   "examples": [
+    "I've been having daytime hypersomnia every after",
+    "My irritable bowel's been acting up all week, so"
+   ]
+  },
+  "healing": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 6,
+   "examples": [
+    "My eczema has been flaring up something awful, s",
+    "This eczema keeps coming back, so tonight I'm sl"
+   ]
+  },
+  "spl": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "supportive gear",
+   "count": 6,
+   "examples": [
+    "My hands have carpal tunnel syndrome all day at "
+   ]
+  },
+  "bron": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 6,
+   "examples": [
+    "My asthma flares climbing the stairs, so I keep ",
+    "When the pollen hits and I get bronchospasm, I a"
+   ]
+  },
+  "watch": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 6,
+   "examples": [
+    "My dyspnea flares and I can't catch my breath on",
+    "The doc says his atrial fibrillation is out of r"
+   ]
+  },
+  "walking": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "rest/comfort, no care action",
+   "count": 6,
+   "examples": [
+    "My dyspnea flares and I can't catch my breath on"
+   ]
+  },
+  "pump": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "asthma devices: puffer/spacer/pump/rescue(inhaler)",
+   "count": 6,
+   "examples": [
+    "My old man's got heart failure, so at his checku",
+    "My old man's heart has been acting up lately, so"
+   ]
+  },
+  "excess": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "My acid reflux flares up after every meal, so I ",
+    "My allergic rhinitis acts up every time I mow, s"
+   ]
+  },
+  "auto": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 6,
+   "examples": [
+    "I keep forgetting my morning doses, so the pharm"
+   ]
+  },
+  "electronic": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "I keep forgetting my morning doses, so the pharm"
+   ]
+  },
+  "generic": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "My chronic lumbar pain has flared since the move"
+   ]
+  },
+  "package": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 6,
+   "examples": [
+    "I always get my morning medications muddled up, ",
+    "My chronic lumbar pain has flared since the move"
+   ]
+  },
+  "filter": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 6,
+   "examples": [
+    "My asthma acts up when the pollen's out, so at w",
+    "When the dust kicks up my asthma flares, so at w"
+   ]
+  },
+  "chart": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 6,
+   "examples": [
+    "Grandpa's atrial fibrillation flared all day, so",
+    "I always get my morning medications muddled up, "
+   ]
+  },
+  "ers": {
+   "tier": 4,
+   "confidence": "review",
+   "note": "ER fragment/plural?",
+   "count": 6,
+   "examples": [
+    "The wife says I have sleep apnea, so tonight I'm"
+   ]
+  },
+  "masks": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "home devices",
+   "count": 6,
+   "examples": [
+    "Ever since the wildfire smoke rolled in he's had",
+    "The wife says I have sleep apnea, so tonight I'm"
+   ]
+  },
+  "workout": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "rest/comfort, no care action",
+   "count": 6,
+   "examples": [
+    "I've been having daytime hypersomnia every after"
+   ]
+  },
+  "chiropr": {
+   "tier": 3,
+   "confidence": "review",
+   "note": "chiropractor fragment",
+   "count": 6,
+   "examples": [
+    "My osteoarthritis has been giving out on the sta"
+   ]
+  },
+  "pod": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 6,
+   "examples": [
+    "My osteoarthritis has been giving out on the sta"
+   ]
+  },
+  "earl": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 6,
+   "examples": [
+    "Ever since the funeral I've had insomnia at nigh",
+    "I've been experiencing insomnia before bed latel"
+   ]
+  },
+  "breathe": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 6,
+   "examples": [
+    "Ever since the wildfire smoke rolled in he's had",
+    "My asthma flares climbing the stairs, so I keep "
+   ]
+  },
+  "card": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 6,
+   "examples": [
+    "He has chronic insomnia at night no matter what,",
+    "My asthma flares climbing the stairs, so I keep "
+   ]
+  },
+  "band": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "supportive gear",
+   "count": 6,
+   "examples": [
+    "My eczema has gone all cracked and weepy behind "
+   ]
+  },
+  "nearest": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "place/position",
+   "count": 6,
+   "examples": [
+    "After the fireworks my kid couldn't stop coughin"
+   ]
+  },
+  "d": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "word fragment (unmapped)",
+   "count": 6,
+   "examples": [
+    "I've been having generalized anxiety and can't s"
+   ]
+  },
+  "arms": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 6,
+   "examples": [
+    "Ever since that seafood my anaphylaxis is starti"
+   ]
+  },
+  "check": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 6,
+   "examples": [
+    "My atrial fibrillation keeps skipping beats at t"
+   ]
+  },
+  "formula": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "formula/solution/liquid/powder/mixture: remedy forms",
+   "count": 6,
+   "examples": [
+    "My kid's been up all night with rotavirus, so I'",
+    "My kid's cheeks keep having eczema flares all re"
+   ]
+  },
+  "complete": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "I keep having night sweats every night, so the d"
+   ]
+  },
+  "sweat": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 6,
+   "examples": [
+    "I keep having night sweats every night, so the d"
+   ]
+  },
+  "order": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "After that greasy fry-up my dyspepsia flared up,",
+    "Every time I climb the stairs I get dyspneic, so"
+   ]
+  },
+  "gel": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "topical self-treatment",
+   "count": 6,
+   "examples": [
+    "My kid's cheeks keep having eczema flares all re"
+   ]
+  },
+  "tablets": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "generic self-medication",
+   "count": 6,
+   "examples": [
+    "My systolic blood pressure was way up again, so "
+   ]
+  },
+  "chance": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "I've been having insomnia all night, so tonight ",
+    "My kid's been up all night with rotavirus, so I'"
+   ]
+  },
+  "aluminum": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "punctuation/blank",
+   "count": 6,
+   "examples": [
+    "After that greasy diner meal I have acid reflux,",
+    "My stomach has acid reflux after lunch, so I rea"
+   ]
+  },
+  "nsa": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "Advil/ibuprofen/NSAID fragments",
+   "count": 6,
+   "examples": [
+    "My acid reflux flares after every meal, so tonig",
+    "My stomach has acid reflux after lunch, so I rea"
+   ]
+  },
+  "flexible": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "His chronic back pain has flared at work, so he "
+   ]
+  },
+  "job": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "unrelated objects/activities",
+   "count": 6,
+   "examples": [
+    "Ever since the layoffs he's had generalized anxi",
+    "His chronic back pain has flared at work, so he "
+   ]
+  },
+  "ast": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 6,
+   "examples": [
+    "Every time the pollen hits my asthma acts up on ",
+    "My asthma flares up in the cold, so I always car"
+   ]
+  },
+  "series": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "He's had major depression for months, so the cli",
+    "His chronic lower back pain has lasted for month"
+   ]
+  },
+  "bowl": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 6,
+   "examples": [
+    "My irritable bowel's been acting up all week, so"
+   ]
+  },
+  "meter": {
+   "tier": 1,
+   "confidence": "review",
+   "note": "home devices",
+   "count": 6,
+   "examples": [
+    "My asthma acts up when the pollen's out, so at w",
+    "When the pollen hits and I get bronchospasm, I a"
+   ]
+  },
+  "cool": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "My contact dermatitis has flared after the new d",
+    "When the pollen hits and I get bronchospasm, I a"
+   ]
+  },
+  "ginger": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 6,
+   "examples": [
+    "My irritable bowel is flaring after every meal, "
+   ]
+  },
+  "disorder": {
+   "tier": null,
+   "confidence": "review",
+   "note": "body part / symptom reference (not a care action)",
+   "count": 6,
+   "examples": [
+    "Grandpa keeps having narcolepsy episodes during ",
+    "I have obstructive sleep apnea and my partner sa"
+   ]
+  },
+  "benz": {
+   "tier": 2,
+   "confidence": "review",
+   "note": "benzodiazepine/beta-blocker fragments (prescription)",
+   "count": 6,
+   "examples": [
+    "My acne vulgaris has been breaking out all over ",
+    "My generalized anxiety keeps racing and I feel j"
+   ]
+  },
+  "cap": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "container/quantity en route to a remedy",
+   "count": 6,
+   "examples": [
+    "His peripheral neuropathy has flared since the d",
+    "The wife says I have sleep apnea, so tonight I'm"
+   ]
+  },
+  "pace": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "My old man's heart has been acting up lately, so",
+    "The doc says his atrial fibrillation is out of r"
+   ]
+  },
+  "heavy": {
+   "tier": null,
+   "confidence": "clear",
+   "note": "modifier/quantity",
+   "count": 6,
+   "examples": [
+    "My eczema has gone all cracked and weepy behind ",
+    "This eczema keeps coming back, so tonight I'm sl"
+   ]
+  },
+  "paink": {
+   "tier": 1,
+   "confidence": "clear",
+   "note": "OTC med fragment (per intended-target map)",
+   "count": 5,
+   "examples": [
+    "Since I've had chronic lower back pain for weeks",
+    "That awful migraine is back, so I dug through my"
+   ]
+  },
+  "monthly": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 5,
+   "examples": [
+    "I have poor medication adherence, so my pharmaci",
+    "My allergic conjunctivitis flares up every sprin"
+   ]
+  },
+  "combination": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 5,
+   "examples": [
+    "His chronic lower back pain has lasted for month",
+    "My allergic conjunctivitis flares up every sprin"
+   ]
+  },
+  "pres": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 5,
+   "examples": [
+    "Ever since the layoffs I've had insomnia at nigh",
+    "My allergic conjunctivitis flares up every sprin"
+   ]
+  },
+  "very": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 5,
+   "examples": [
+    "I've been up all night with heartburn again, so ",
+    "My eczema has gone all cracked and weepy behind "
+   ]
+  },
+  "on": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 5,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g",
+    "My acid reflux has flared since that spicy takeo"
+   ]
+  },
+  "packet": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 5,
+   "examples": [
+    "I had severe insomnia before the flight, so at t"
+   ]
+  },
+  "tissues": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 5,
+   "examples": [
+    "Every spring my seasonal allergies act up at the"
+   ]
+  },
+  "kle": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 5,
+   "examples": [
+    "Every spring my seasonal allergies act up at the"
+   ]
+  },
+  "prune": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 5,
+   "examples": [
+    "I've been running to the john all night with dia",
+    "My constipation has lasted for days, so this mor"
+   ]
+  },
+  "peppermint": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 5,
+   "examples": [
+    "Her irritable bowel syndrome flared up all morni",
+    "My irritable bowel is flaring after every meal, "
+   ]
+  },
+  "cocoa": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 5,
+   "examples": [
+    "I've been dealing with insomnia for hours, so I "
+   ]
+  },
+  "list": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 5,
+   "examples": [
+    "He has chronic insomnia at night no matter what,",
+    "My dyspnea flares and I can't catch my breath on"
+   ]
+  },
+  "hotline": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 5,
+   "examples": [
+    "After the divorce he's had severe depression, so"
+   ]
+  },
+  "weekly": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 5,
+   "examples": [
+    "I have poor medication adherence, so my pharmaci"
+   ]
+  },
+  "dispenser": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 5,
+   "examples": [
+    "I always get my morning medications muddled up, "
+   ]
+  },
+  "pediatrician": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My son's been diagnosed with allergic rhinitis t"
+   ]
+  },
+  "ent": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My little girl's been suffering from allergic rh",
+    "My son's been diagnosed with allergic rhinitis t"
+   ]
+  },
+  "primary": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My son's been diagnosed with allergic rhinitis t"
+   ]
+  },
+  "c": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Ever since the breakup my generalized anxiety fl",
+    "I keep having sleep apnea episodes at night, so "
+   ]
+  },
+  "iced": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My allergic asthma has flared this morning, so I",
+    "My dyspepsia flared up after lunch, so I grabbed"
+   ]
+  },
+  "nurse": {
+   "tier": 2,
+   "confidence": "clear",
+   "note": "generalist clinician",
+   "count": 4,
+   "examples": [
+    "My tachycardia's been racing all morning, so I d",
+    "Since she's in a hypertensive crisis today, she "
+   ]
+  },
+  "movie": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been having daytime hypersomnia every after",
+    "My tachycardia's been racing all morning, so I d"
+   ]
+  },
+  "bubble": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My insomnia keeps me awake and I can't drop off,"
+   ]
+  },
+  "epsom": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My insomnia keeps me awake and I can't drop off,"
+   ]
+  },
+  "cal": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My contact dermatitis has flared after the new d",
+    "That eczema behind my knee is itching like crazy"
+   ]
+  },
+  "these": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My acne vulgaris has been breaking out all over ",
+    "My eczema has been driving me nuts and won't sto"
+   ]
+  },
+  "pressure": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My hypertension's been pounding way too high lat",
+    "My old man's heart has been acting up lately, so"
+   ]
+  },
+  "ticker": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Grandpa's atrial fibrillation flared all day, so",
+    "My hypertension's been pounding way too high lat"
+   ]
+  },
+  "friends": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Since I have insomnia, I need to talk to my"
+   ]
+  },
+  "weight": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've had irritable bowel syndrome flaring up all",
+    "My gastrointestinal distress has continued all w"
+   ]
+  },
+  "work": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Since I got that dermatitis, I've been scratchin"
+   ]
+  },
+  "stomach": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been having irritable bowel syndrome for we",
+    "My constipation flared up again after the road t"
+   ]
+  },
+  "breakfast": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been having daytime hypersomnia every after",
+    "My gastric reflux is acting up, so I'm going to "
+   ]
+  },
+  "some": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My stomach keeps making borborygmi after I eat, "
+   ]
+  },
+  "dairy": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My stomach keeps making borborygmi after I eat, "
+   ]
+  },
+  "clarifying": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've got seborrheic dermatitis on my scalp, so I"
+   ]
+  },
+  "greasy": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Every time I eat greasy food my lipid malabsorpt"
+   ]
+  },
+  "fried": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Every time I eat greasy food my lipid malabsorpt"
+   ]
+  },
+  "grease": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Every time I eat greasy food my lipid malabsorpt"
+   ]
+  },
+  "fatty": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Every time I eat greasy food my lipid malabsorpt"
+   ]
+  },
+  "arthritis": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been diagnosed with osteoarthritis in my jo",
+    "My osteoarthritis has been stiff and achy for mo"
+   ]
+  },
+  "parents": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Every time I eat, I experience abdominal distens"
+   ]
+  },
+  "boyfriend": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been waking up in the middle of the night w"
+   ]
+  },
+  "take": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My irritable bowel's been acting up all week, so"
+   ]
+  },
+  "antigen": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Every spring my allergic rhinitis flares, so bef",
+    "He gets allergic rhinitis every spring, so befor"
+   ]
+  },
+  "tablespoon": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My osteoarthritis has been aching for months, so"
+   ]
+  },
+  "fish": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My osteoarthritis has been aching for months, so",
+    "My systolic blood pressure was way up again, so "
+   ]
+  },
+  "makeup": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My contact dermatitis flared after that new soap",
+    "My eczema has been flaring up something awful, s"
+   ]
+  },
+  "mechanical": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My hands have carpal tunnel syndrome all day at ",
+    "My old man's heart has been acting up lately, so"
+   ]
+  },
+  "mouse": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My hands have carpal tunnel syndrome all day at "
+   ]
+  },
+  "kids": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "The doc says I have hypertension, so every morni",
+    "The doc says my hypertension's been creeping up,"
+   ]
+  },
+  "loan": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "He's had major depression for months, so the cli",
+    "His chronic back pain has flared at work, so he "
+   ]
+  },
+  "red": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been running to the john all night with dia",
+    "My irritable bowel is flaring after every meal, "
+   ]
+  },
+  "patient": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I have poor medication adherence, so my pharmaci"
+   ]
+  },
+  "zinc": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My acne vulgaris has been breaking out all over ",
+    "My contact dermatitis has flared after the new d"
+   ]
+  },
+  "stim": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Ever since the breakup my generalized anxiety fl",
+    "My generalized anxiety keeps racing and I feel j"
+   ]
+  },
+  "separate": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I always forget my medication adherence in the m"
+   ]
+  },
+  "plate": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Grandma keeps having tremors at breakfast, so th"
+   ]
+  },
+  "diagnosis": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Ever since the layoffs I've had insomnia at nigh",
+    "My arms keep breaking out in eczema, so the doct"
+   ]
+  },
+  "inch": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My allergic rhinitis acts up every time I mow, s"
+   ]
+  },
+  "average": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My allergic rhinitis acts up every time I mow, s"
+   ]
+  },
+  "home": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I keep having apnea episodes at night, so my wif",
+    "I've been snoring so loud the whole house compla"
+   ]
+  },
+  "white": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "After that big holiday feast my constipation fla",
+    "I've been snoring so loud the whole house compla"
+   ]
+  },
+  "saw": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been snoring so loud the whole house compla"
+   ]
+  },
+  "fear": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been suffering from insomnia for hours star",
+    "The doc says my hypertension is uncontrolled, so"
+   ]
+  },
+  "petroleum": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My contact dermatitis flared after that new soap"
+   ]
+  },
+  "conce": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My contact dermatitis flared after that new soap"
+   ]
+  },
+  "ground": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "His chronic lumbago has been acting up since the"
+   ]
+  },
+  "living": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "His chronic lumbago has been acting up since the"
+   ]
+  },
+  "appetite": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "He's been having major depression lately and can",
+    "She's been having generalized anxiety before eve"
+   ]
+  },
+  "opioid": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My chronic lumbar pain has flared since the move"
+   ]
+  },
+  "rotation": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I always get my morning medications muddled up, "
+   ]
+  },
+  "plan": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I always get my morning medications muddled up, "
+   ]
+  },
+  "magazine": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I always get my morning medications muddled up, ",
+    "My generalized anxiety's been bad at work, so on"
+   ]
+  },
+  "wear": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "The wife says I have sleep apnea, so tonight I'm"
+   ]
+  },
+  "array": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Ever since the promotion he's had panic disorder",
+    "My acid reflux has flared since that spicy takeo"
+   ]
+  },
+  "crt": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My old man's got heart failure, so at his checku",
+    "The doc says his atrial fibrillation is out of r"
+   ]
+  },
+  "rhe": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My osteoarthritis has been giving out on the sta"
+   ]
+  },
+  "inh": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Ever since the wildfire smoke rolled in he's had",
+    "My asthma flares climbing the stairs, so I keep "
+   ]
+  },
+  "kit": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Ever since the wildfire smoke rolled in he's had",
+    "My asthma flares climbing the stairs, so I keep "
+   ]
+  },
+  "s": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My panic attacks flare up at meetings, so my doc",
+    "The baby's been having reflux after every feed, "
+   ]
+  },
+  "meeting": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been having a major depressive episode and "
+   ]
+  },
+  "private": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been having a major depressive episode and "
+   ]
+  },
+  "layer": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My eczema has gone all cracked and weepy behind "
+   ]
+  },
+  "pediatric": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "After the fireworks my kid couldn't stop coughin"
+   ]
+  },
+  "grocery": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Grandpa's had a hypertensive crisis and can't se"
+   ]
+  },
+  "keys": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Ever since that seafood my anaphylaxis is starti",
+    "Grandpa's had a hypertensive crisis and can't se"
+   ]
+  },
+  "glasses": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Grandpa's had a hypertensive crisis and can't se",
+    "His asthma flares when the dust flies, so before"
+   ]
+  },
+  "i": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My lumbar radiculopathy's been acting up for mon",
+    "My panic attacks flare up at meetings, so my doc"
+   ]
+  },
+  "-car": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been having generalized anxiety and can't s"
+   ]
+  },
+  "-s": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been having generalized anxiety and can't s"
+   ]
+  },
+  "sodium": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been having generalized anxiety and can't s"
+   ]
+  },
+  "-level": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been having generalized anxiety and can't s"
+   ]
+  },
+  "lab": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Grandpa keeps having narcolepsy episodes during "
+   ]
+  },
+  "diary": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Grandpa keeps having narcolepsy episodes during "
+   ]
+  },
+  "wake": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I keep having excessive daytime sleepiness all a",
+    "I keep having narcolepsy episodes every afternoo"
+   ]
+  },
+  "permanent": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My old man's heart has been acting up lately, so",
+    "The doc says his atrial fibrillation is out of r"
+   ]
+  },
+  "brand": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "After that big holiday feast my constipation fla",
+    "My old man's heart has been acting up lately, so"
+   ]
+  },
+  "telemetry": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "His tachycardia at rest has him worried, so the "
+   ]
+  },
+  "paste": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My skin's been developing contact dermatitis aft"
+   ]
+  },
+  "onion": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "After that greasy fry-up my dyspepsia flared up,"
+   ]
+  },
+  "teaspoon": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I have chronic insomnia no matter what I try, so",
+    "My chronic pain has persisted for months, so eve"
+   ]
+  },
+  "ch": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "After that big holiday feast my constipation fla"
+   ]
+  },
+  "capsules": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My systolic blood pressure was way up again, so "
+   ]
+  },
+  "respir": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Ever since the wildfire smoke rolled in he's had"
+   ]
+  },
+  "taxi": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "After the divorce he's had severe depression, so",
+    "Grandma's been constipated for a week, so before"
+   ]
+  },
+  "/an": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Grandma's been constipated for a week, so before",
+    "She's been having panic attacks lately, so befor"
+   ]
+  },
+  "electrom": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My lumbar radiculopathy's been acting up for mon"
+   ]
+  },
+  "ms": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My lumbar radiculopathy's been acting up for mon"
+   ]
+  },
+  "incentive": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Every time I climb the stairs I get dyspneic, so"
+   ]
+  },
+  "debt": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "After the divorce he's had severe depression, so",
+    "Grandpa keeps having narcolepsy episodes during "
+   ]
+  },
+  "soup": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My irritable bowel's been acting up all week, so"
+   ]
+  },
+  "caesar": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My irritable bowel's been acting up all week, so"
+   ]
+  },
+  "grilled": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My irritable bowel's been acting up all week, so"
+   ]
+  },
+  "sunscreen": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My contact dermatitis flared after that new soap",
+    "My eczema has been flaring up something awful, s"
+   ]
+  },
+  "split": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My hands have carpal tunnel syndrome all day at "
+   ]
+  },
+  "/her": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My kid's been having an asthma attack in the yar"
+   ]
+  },
+  "or": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My kid's been having an asthma attack in the yar"
+   ]
+  },
+  "ref": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Ever since the layoffs I've had insomnia at nigh",
+    "I have poor medication adherence, so my pharmaci"
+   ]
+  },
+  "med": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "He keeps getting these tachycardia spells at his",
+    "I have poor medication adherence, so my pharmaci"
+   ]
+  },
+  "email": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I keep forgetting my morning doses, so the pharm"
+   ]
+  },
+  "readings": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "The doc says my hypertension keeps creeping up, ",
+    "The doc says my hypertension's been creeping up,"
+   ]
+  },
+  "experiment": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "He's been having major depression lately and can"
+   ]
+  },
+  "planner": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I always get my morning medications muddled up, "
+   ]
+  },
+  "eyed": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "When the pollen's thick my allergic asthma acts "
+   ]
+  },
+  "something": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I keep waking up every hour with my insomnia fla",
+    "I've been experiencing insomnia before bed latel"
+   ]
+  },
+  "knee": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My osteoarthritis has been giving out on the sta"
+   ]
+  },
+  "ind": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "After that big meal my dyspepsia flared up, so I"
+   ]
+  },
+  "sp": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My asthma acts up when the pollen's out, so at w",
+    "My asthma flares when the pollen's out, so at wo"
+   ]
+  },
+  "barrier": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My contact dermatitis has flared after the new d",
+    "My eczema has gone all cracked and weepy behind "
+   ]
+  },
+  "starting": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been having generalized anxiety and can't s"
+   ]
+  },
+  "\u5242\u91cf": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I've been having generalized anxiety and can't s"
+   ]
+  },
+  "\u5904\u65b9": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Since work's been crazy I keep feeling depressed"
+   ]
+  },
+  "depression": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "Since work's been crazy I keep feeling depressed"
+   ]
+  },
+  "thicker": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "This eczema keeps coming back, so tonight I'm sl"
+   ]
+  },
+  "thyroid": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I keep having night sweats every night, so the d"
+   ]
+  },
+  "glucose": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I keep having night sweats every night, so the d"
+   ]
+  },
+  "-pill": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "My systolic blood pressure was way up again, so "
+   ]
+  },
+  "apnea": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 4,
+   "examples": [
+    "I have obstructive sleep apnea and my partner sa",
+    "The wife says I have sleep apnea, so tonight I'm"
+   ]
+  },
+  "nightly": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "I just can't seem to fall asleep due to insomnia"
+   ]
+  },
+  "es": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "He's been up half the night with gastroesophagea"
+   ]
+  },
+  "preventive": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "My allergic conjunctivitis flares up every sprin"
+   ]
+  },
+  "huge": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "My migraine hit me at the office, so I dimmed th"
+   ]
+  },
+  "pesticide": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g"
+   ]
+  },
+  "herb": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g"
+   ]
+  },
+  "disin": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "He gets allergic rhinitis every time the grass g"
+   ]
+  },
+  "muff": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "I had severe insomnia before the flight, so at t"
+   ]
+  },
+  "item": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared"
+   ]
+  },
+  "excuse": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared"
+   ]
+  },
+  "alternate": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "After that greasy takeaway my acid reflux flared"
+   ]
+  },
+  "clar": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "Every spring my seasonal allergies act up at the"
+   ]
+  },
+  "wipes": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "Every spring my seasonal allergies act up at the"
+   ]
+  },
+  "supplies": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "Every spring my seasonal allergies act up at the"
+   ]
+  },
+  "items": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "Every spring my seasonal allergies act up at the"
+   ]
+  },
+  "honey": {
+   "tier": 0,
+   "confidence": "clear",
+   "note": "food/drink comfort",
+   "count": 3,
+   "examples": [
+    "Every spring my seasonal allergies act up at the"
+   ]
+  },
+  "type": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "Every spring my seasonal allergies act up at the"
+   ]
+  },
+  "ome": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "After every meal my acid reflux flares something",
+    "My acid reflux flares after every meal, so tonig"
+   ]
+  },
+  "benzo": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "My generalized anxiety keeps racing and I feel j",
+    "My panic attacks flare in crowds, so my counselo"
+   ]
+  },
+  "physio": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "I've had sciatica for days now, so I finally wen",
+    "My osteoarthritis has been giving out on the sta"
+   ]
+  },
+  "temperature": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "The doc says I have hypertension, so every morni"
+   ]
+  },
+  "plastic": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "I always forget my medication adherence in the m"
+   ]
+  },
+  "pride": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "The doc says my hypertension is uncontrolled, so"
+   ]
+  },
+  "deadline": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "I keep having excessive daytime sleepiness all a"
+   ]
+  },
+  "ma": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "He's been having major depression lately and can"
+   ]
+  },
+  "desk": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "His chronic back pain has flared at work, so he "
+   ]
+  },
+  "ox": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "Every time I climb the stairs I get dyspneic, so"
+   ]
+  },
+  "chair": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "His osteoarthritis has been aching in this cold,",
+    "My dyspnea flares and I can't catch my breath on"
+   ]
+  },
+  "blister": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "I always get my morning medications muddled up, "
+   ]
+  },
+  "one": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "I've been having a major depressive episode and ",
+    "When the dust kicks up my asthma flares, so at w"
+   ]
+  },
+  "repeat": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "I always get my morning medications muddled up, ",
+    "My atrial fibrillation keeps skipping beats at t"
+   ]
+  },
+  "pacemaker": {
+   "tier": null,
+   "confidence": "unreviewed",
+   "note": "low-frequency; default excluded",
+   "count": 3,
+   "examples": [
+    "My old man's got heart failure, so at his checku",
+    "The doc says his atrial fibrillation is out of r"
+   ]
+  }
+ }
+}

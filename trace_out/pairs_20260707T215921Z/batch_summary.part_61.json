@@ -1,0 +1,275 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 61,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 61,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My dyspepsia has flared up since that greasy dinner, so before bed I always reach for a",
+        "patient": "My stomach's been in knots since that greasy dinner, so before bed I always reach for a"
+      },
+      "target_token": "Output \" glass\"",
+      "probabilities": {
+        "clinical": 0.208,
+        "patient": 0.197
+      },
+      "language_penalty": -0.010999999999999982,
+      "clinical_mass": {
+        "clinical": 0.2844,
+        "patient": 0.225
+      },
+      "error_share": {
+        "clinical": 0.1438,
+        "patient": 0.1338
+      },
+      "top_path": {
+        "clinical": "[L20\u00b7S]  \u2192 [L22\u00b7O] food items and coffee, especially those related to F \u2192 Output \" cup\" (p=0.103)",
+        "patient": "embedding \u2192 [L19\u00b7O] descriptions of food, drink, and social situations | \u2192 [L20\u00b7O] phrases about having a beverage or a spa experience  \u2192 [L22\u00b7O] food items and coffee, especially those related to F \u2192 Output \" cup\" (p=0.086)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " glass",
+        "observed_clinical": [
+          "Output \" glass\"",
+          0.208
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" glass\"",
+            0.208
+          ],
+          [
+            "Output \" cup\"",
+            0.103
+          ],
+          [
+            "Output \" warm\"",
+            0.036
+          ],
+          [
+            "Output \" bowl\"",
+            0.031
+          ],
+          [
+            "Output \" bottle\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" glass\"",
+            0.197
+          ],
+          [
+            "Output \" cup\"",
+            0.086
+          ],
+          [
+            "Output \" bowl\"",
+            0.046
+          ],
+          [
+            "Output \" warm\"",
+            0.042
+          ],
+          [
+            "Output \" little\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 555,
+        "unique_to_a": 279,
+        "unique_to_b": 305
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_61.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_61.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_61_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_61_diff.png"
+      }
+    },
+    {
+      "index": 62,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's been having reflux after every meal, so the doctor sent him for a",
+        "patient": "He's been bringing his food back up after every meal, so the doctor sent him for a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4656
+      },
+      "error_share": {
+        "clinical": 0.1237
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " scan",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" barium\"",
+            0.218
+          ],
+          [
+            "Output \" gast\"",
+            0.107
+          ],
+          [
+            "Output \" test\"",
+            0.063
+          ],
+          [
+            "Output \" \"",
+            0.049
+          ],
+          [
+            "Output \" chest\"",
+            0.039
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 63,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Whenever I eat, my intestinal cramping starts, so at work I keep a bottle of",
+        "patient": "Whenever I eat, my gut just seizes up, so at work I keep a bottle of"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3695
+      },
+      "error_share": {
+        "clinical": 0.1226
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " water",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" peppermint\"",
+            0.086
+          ],
+          [
+            "Output \" Pep\"",
+            0.079
+          ],
+          [
+            "Output \" Imo\"",
+            0.066
+          ],
+          [
+            "Output \" T\"",
+            0.053
+          ],
+          [
+            "Output \" gas\"",
+            0.042
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 64,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been up all night with insomnia again, so this morning I brewed a",
+        "patient": "I've been up all night counting sheep again, so this morning I brewed a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.0694
+      },
+      "error_share": {
+        "clinical": 0.112
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " coffee",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pot\"",
+            0.312
+          ],
+          [
+            "Output \" cup\"",
+            0.3
+          ],
+          [
+            "Output \" nice\"",
+            0.036
+          ],
+          [
+            "Output \" batch\"",
+            0.027
+          ],
+          [
+            "Output \" big\"",
+            0.026
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}

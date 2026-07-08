@@ -1,0 +1,401 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 53,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 53,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My chronic lumbar pain has flared since the move, so at the clinic they gave me a strong",
+        "patient": "My back's been screaming since the move, so at the clinic they gave me a strong"
+      },
+      "target_token": "Output \" pain\"",
+      "probabilities": {
+        "clinical": 0.128,
+        "patient": 0.136
+      },
+      "language_penalty": 0.008000000000000007,
+      "clinical_mass": {
+        "clinical": 0.575,
+        "patient": 0.4889
+      },
+      "error_share": {
+        "clinical": 0.1176,
+        "patient": 0.1213
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7C] words, phrases and punctuation marks associated with \u2192 Output \" pain\" (p=0.128)",
+        "patient": "embedding \u2192 [L18\u00b7C] experiences, symptoms and treatments related to phys \u2192 [L25\u00b7C] words, phrases and punctuation marks associated with \u2192 Output \" pain\" (p=0.136)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " painkiller",
+        "observed_clinical": [
+          "Output \" pain\"",
+          0.128
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dose\"",
+            0.14
+          ],
+          [
+            "Output \" muscle\"",
+            0.134
+          ],
+          [
+            "Output \" pain\"",
+            0.128
+          ],
+          [
+            "Output \" prescription\"",
+            0.108
+          ],
+          [
+            "Output \" anti\"",
+            0.095
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" muscle\"",
+            0.195
+          ],
+          [
+            "Output \" pain\"",
+            0.136
+          ],
+          [
+            "Output \" anti\"",
+            0.104
+          ],
+          [
+            "Output \" dose\"",
+            0.094
+          ],
+          [
+            "Output \" paink\"",
+            0.093
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 490,
+        "unique_to_a": 267,
+        "unique_to_b": 305
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_53.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_53.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_53_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_53_diff.png"
+      }
+    },
+    {
+      "index": 54,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I always get my morning medications muddled up, so the pharmacist loaded them into a weekly",
+        "patient": "I always get my morning ones muddled up, so the pharmacist loaded them into a weekly"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.216,
+        "patient": 0.076
+      },
+      "language_penalty": -0.14,
+      "clinical_mass": {
+        "clinical": 0.2965,
+        "patient": 0.228
+      },
+      "error_share": {
+        "clinical": 0.1319,
+        "patient": 0.1317
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" pill\" (p=0.216)",
+        "patient": "embedding \u2192 [L19\u00b7C] drug prescriptions and medical treatments | medicine \u2192 Output \" prescription\" (p=0.087)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": [
+          "Output \" pill\"",
+          0.216
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pill\"",
+            0.216
+          ],
+          [
+            "Output \" bag\"",
+            0.111
+          ],
+          [
+            "Output \" blister\"",
+            0.089
+          ],
+          [
+            "Output \" dispenser\"",
+            0.062
+          ],
+          [
+            "Output \" box\"",
+            0.046
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bag\"",
+            0.147
+          ],
+          [
+            "Output \" prescription\"",
+            0.087
+          ],
+          [
+            "Output \" pill\"",
+            0.076
+          ],
+          [
+            "Output \" box\"",
+            0.074
+          ],
+          [
+            "Output \" repeat\"",
+            0.066
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 619,
+        "unique_to_a": 229,
+        "unique_to_b": 287
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_54.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_54.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_54_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_54_diff.png"
+      }
+    },
+    {
+      "index": 55,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The wife says I have sleep apnea, so tonight I'm wearing my sleep",
+        "patient": "The wife says I gasp and stop breathing all night, so tonight I'm wearing my sleep"
+      },
+      "target_token": "Output \" mask\"",
+      "probabilities": {
+        "clinical": 0.155,
+        "patient": 0.179
+      },
+      "language_penalty": 0.023999999999999994,
+      "clinical_mass": {
+        "clinical": 0.2811,
+        "patient": 0.2295
+      },
+      "error_share": {
+        "clinical": 0.123,
+        "patient": 0.1256
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" apnea\" (p=0.734)",
+        "patient": "embedding \u2192 Output \" apnea\" (p=0.758)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " mask",
+        "observed_clinical": [
+          "Output \" mask\"",
+          0.155
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" apnea\"",
+            0.734
+          ],
+          [
+            "Output \" mask\"",
+            0.155
+          ],
+          [
+            "Output \" study\"",
+            0.022
+          ],
+          [
+            "Output \" machine\"",
+            0.012
+          ],
+          [
+            "Output \" monitor\"",
+            0.009
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" apnea\"",
+            0.758
+          ],
+          [
+            "Output \" mask\"",
+            0.179
+          ],
+          [
+            "Output \" machine\"",
+            0.005
+          ],
+          [
+            "Output \"mask\"",
+            0.005
+          ],
+          [
+            "Output \" ap\"",
+            0.005
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 435,
+        "unique_to_a": 281,
+        "unique_to_b": 333
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_55.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_55.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_55_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_55_diff.png"
+      }
+    },
+    {
+      "index": 56,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since the promotion he's had panic disorder, so his GP started him on an",
+        "patient": "Ever since the promotion he's been a nervous wreck, so his GP started him on an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.35,
+        "patient": 0.365
+      },
+      "language_penalty": 0.015000000000000013,
+      "clinical_mass": {
+        "clinical": 0.4831,
+        "patient": 0.412
+      },
+      "error_share": {
+        "clinical": 0.1233,
+        "patient": 0.1326
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L22\u00b7C] sentences related to drug use | medications \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.350)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L22\u00b7C] sentences related to drug use | medications \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.365)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " anti",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.35
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.35
+          ],
+          [
+            "Output \" antidepress\"",
+            0.271
+          ],
+          [
+            "Output \" SS\"",
+            0.23
+          ],
+          [
+            "Output \" anxiety\"",
+            0.025
+          ],
+          [
+            "Output \" anx\"",
+            0.012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.365
+          ],
+          [
+            "Output \" antidepress\"",
+            0.28
+          ],
+          [
+            "Output \" SS\"",
+            0.191
+          ],
+          [
+            "Output \" anxiety\"",
+            0.052
+          ],
+          [
+            "Output \" anx\"",
+            0.025
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 488,
+        "unique_to_a": 249,
+        "unique_to_b": 243
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_56.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_56.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_56_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_56_diff.png"
+      }
+    }
+  ]
+}

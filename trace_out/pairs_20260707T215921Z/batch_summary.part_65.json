@@ -1,0 +1,317 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 65,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 65,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She keeps having apnea episodes every night, so the clinic booked her a",
+        "patient": "She keeps waking up gasping every night, so the clinic booked her a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3721
+      },
+      "error_share": {
+        "clinical": 0.1223
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " bed",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.334
+          ],
+          [
+            "Output \" CP\"",
+            0.057
+          ],
+          [
+            "Output \" night\"",
+            0.045
+          ],
+          [
+            "Output \" \"",
+            0.034
+          ],
+          [
+            "Output \" test\"",
+            0.033
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 66,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The old man has parasomnia, so we finally bought him a",
+        "patient": "The old man wanders the house half-asleep, so we finally bought him a"
+      },
+      "target_token": "Output \" bed\"",
+      "probabilities": {
+        "clinical": 0.191,
+        "patient": 0.126
+      },
+      "language_penalty": -0.065,
+      "clinical_mass": {
+        "clinical": 0.1608,
+        "patient": 0.0967
+      },
+      "error_share": {
+        "clinical": 0.1264,
+        "patient": 0.128
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7O] references to people being in or on a bed | bed \u2192 Output \" bed\" (p=0.191)",
+        "patient": "embedding \u2192 [L24\u00b7O] references to people being in or on a bed | bed \u2192 Output \" bed\" (p=0.126)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " bed",
+        "observed_clinical": [
+          "Output \" bed\"",
+          0.191
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" bed\"",
+            0.191
+          ],
+          [
+            "Output \" new\"",
+            0.101
+          ],
+          [
+            "Output \" mattress\"",
+            0.089
+          ],
+          [
+            "Output \" pillow\"",
+            0.051
+          ],
+          [
+            "Output \" night\"",
+            0.042
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bed\"",
+            0.126
+          ],
+          [
+            "Output \" night\"",
+            0.115
+          ],
+          [
+            "Output \" new\"",
+            0.095
+          ],
+          [
+            "Output \" dog\"",
+            0.049
+          ],
+          [
+            "Output \" pair\"",
+            0.04
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 412,
+        "unique_to_a": 421,
+        "unique_to_b": 487
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_66.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_66.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_66_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_66_diff.png"
+      }
+    },
+    {
+      "index": 67,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since the road trip he's been constipated, so before bed he swallows a",
+        "patient": "Ever since the road trip he's been backed up, so before bed he swallows a"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.039,
+        "patient": 0.146
+      },
+      "language_penalty": 0.10699999999999998,
+      "clinical_mass": {
+        "clinical": 0.3059,
+        "patient": 0.2595
+      },
+      "error_share": {
+        "clinical": 0.1336,
+        "patient": 0.128
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" few\" (p=0.063)",
+        "patient": "embedding \u2192 Output \" few\" (p=0.119)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": [
+          "Output \" pill\"",
+          0.039
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lax\"",
+            0.136
+          ],
+          [
+            "Output \" couple\"",
+            0.09
+          ],
+          [
+            "Output \" handful\"",
+            0.065
+          ],
+          [
+            "Output \" few\"",
+            0.063
+          ],
+          [
+            "Output \" pill\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pill\"",
+            0.146
+          ],
+          [
+            "Output \" few\"",
+            0.119
+          ],
+          [
+            "Output \" couple\"",
+            0.102
+          ],
+          [
+            "Output \" handful\"",
+            0.08
+          ],
+          [
+            "Output \" bunch\"",
+            0.042
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 498,
+        "unique_to_a": 351,
+        "unique_to_b": 309
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_67.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_67.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_67_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_67_diff.png"
+      }
+    },
+    {
+      "index": 68,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After the barbecue I had severe nausea, so on the way home I grabbed some",
+        "patient": "After the barbecue my stomach was doing flips, so on the way home I grabbed some"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2232
+      },
+      "error_share": {
+        "clinical": 0.1237
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " water",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ginger\"",
+            0.09
+          ],
+          [
+            "Output \" crackers\"",
+            0.078
+          ],
+          [
+            "Output \" of\"",
+            0.042
+          ],
+          [
+            "Output \" food\"",
+            0.036
+          ],
+          [
+            "Output \" ice\"",
+            0.034
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}

@@ -1,0 +1,447 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 16,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the coffee shop during a casual chat. She's been having panic attacks lately, so before the meeting she took a",
+        "patient": "This came up at the coffee shop during a casual chat. She's been feeling on edge lately, so before the meeting she took a"
+      },
+      "target_token": "Output \" Xan\"",
+      "probabilities": {
+        "clinical": 0.102,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2455,
+        "patient": 0.1417
+      },
+      "error_share": {
+        "clinical": 0.1002,
+        "patient": 0.0934
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7S] instances of the indefinite article 'a' or 'an' near \u2192 [L24\u00b7S] articles, prepositions, and other common short words \u2192 Output \" couple\" (p=0.102)",
+        "patient": "embedding \u2192 [L20\u00b7S] the article \"a\" and words associated with taking act \u2192 [L21\u00b7S] the verb \"take\" commonly preceded by the article \"a\" \u2192 [L22\u00b7C] phrases involving breathing. | deep \u2192 Output \" deep\" (p=0.127)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" Xan\"",
+            0.102
+          ],
+          [
+            "Output \" couple\"",
+            0.102
+          ],
+          [
+            "Output \" few\"",
+            0.098
+          ],
+          [
+            "Output \" xan\"",
+            0.064
+          ],
+          [
+            "Output \" deep\"",
+            0.057
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" deep\"",
+            0.127
+          ],
+          [
+            "Output \" few\"",
+            0.114
+          ],
+          [
+            "Output \" couple\"",
+            0.073
+          ],
+          [
+            "Output \" nap\"",
+            0.04
+          ],
+          [
+            "Output \" moment\"",
+            0.039
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1129,
+        "unique_to_a": 384,
+        "unique_to_b": 377
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_16.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_16.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_16_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_16_diff.png"
+      }
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the doctor's office during a routine visit. After that greasy diner meal I have acid reflux, so I reached for an",
+        "patient": "This came up at the doctor's office during a routine visit. After that greasy diner meal my stomach's on fire, so I reached for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.615,
+        "patient": 0.461
+      },
+      "language_penalty": -0.15399999999999997,
+      "clinical_mass": {
+        "clinical": 0.3228,
+        "patient": 0.2882
+      },
+      "error_share": {
+        "clinical": 0.1133,
+        "patient": 0.1053
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.134)",
+        "patient": "embedding \u2192 Output \" over\" (p=0.085)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.615
+          ],
+          [
+            "Output \" over\"",
+            0.134
+          ],
+          [
+            "Output \" OTC\"",
+            0.069
+          ],
+          [
+            "Output \" Ant\"",
+            0.033
+          ],
+          [
+            "Output \" anti\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ant\"",
+            0.461
+          ],
+          [
+            "Output \" over\"",
+            0.085
+          ],
+          [
+            "Output \" aspirin\"",
+            0.072
+          ],
+          [
+            "Output \" OTC\"",
+            0.045
+          ],
+          [
+            "Output \" Ad\"",
+            0.041
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1080,
+        "unique_to_a": 325,
+        "unique_to_b": 379
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_17.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_17.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_17_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the coffee shop during a casual chat. After that greasy diner meal I have acid reflux, so I reached for an",
+        "patient": "This came up at the coffee shop during a casual chat. After that greasy diner meal my stomach's on fire, so I reached for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.643,
+        "patient": 0.214
+      },
+      "language_penalty": -0.42900000000000005,
+      "clinical_mass": {
+        "clinical": 0.2389,
+        "patient": 0.1971
+      },
+      "error_share": {
+        "clinical": 0.1146,
+        "patient": 0.1053
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" apple\" (p=0.030)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.132)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.643
+          ],
+          [
+            "Output \" aspirin\"",
+            0.039
+          ],
+          [
+            "Output \" Ant\"",
+            0.032
+          ],
+          [
+            "Output \" apple\"",
+            0.03
+          ],
+          [
+            "Output \" over\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ant\"",
+            0.214
+          ],
+          [
+            "Output \" aspirin\"",
+            0.176
+          ],
+          [
+            "Output \" ice\"",
+            0.132
+          ],
+          [
+            "Output \" Ad\"",
+            0.059
+          ],
+          [
+            "Output \" ibuprofen\"",
+            0.048
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 995,
+        "unique_to_a": 390,
+        "unique_to_b": 482
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_18.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_18.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_18_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the doctor's office during a routine visit. When the dust kicks up my asthma flares, so at work I keep a spare",
+        "patient": "This came up at the doctor's office during a routine visit. When the dust kicks up my chest gets all tight, so at work I keep a spare"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.708,
+        "patient": 0.44
+      },
+      "language_penalty": -0.26799999999999996,
+      "clinical_mass": {
+        "clinical": 0.2804,
+        "patient": 0.2478
+      },
+      "error_share": {
+        "clinical": 0.1148,
+        "patient": 0.1072
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" asthma\" (p=0.015)",
+        "patient": "embedding \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.440)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.708
+          ],
+          [
+            "Output \" mask\"",
+            0.064
+          ],
+          [
+            "Output \" set\"",
+            0.02
+          ],
+          [
+            "Output \" puffer\"",
+            0.018
+          ],
+          [
+            "Output \" asthma\"",
+            0.015
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.44
+          ],
+          [
+            "Output \" mask\"",
+            0.079
+          ],
+          [
+            "Output \" shirt\"",
+            0.061
+          ],
+          [
+            "Output \" pair\"",
+            0.033
+          ],
+          [
+            "Output \" set\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1142,
+        "unique_to_a": 271,
+        "unique_to_b": 375
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_19.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_19.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_19_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_19_diff.png"
+      }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the coffee shop during a casual chat. When the dust kicks up my asthma flares, so at work I keep a spare",
+        "patient": "This came up at the coffee shop during a casual chat. When the dust kicks up my chest gets all tight, so at work I keep a spare"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.653,
+        "patient": 0.068
+      },
+      "language_penalty": -0.585,
+      "clinical_mass": {
+        "clinical": 0.2421,
+        "patient": 0.1519
+      },
+      "error_share": {
+        "clinical": 0.1119,
+        "patient": 0.1074
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" asthma\" (p=0.017)",
+        "patient": "embedding \u2192 [L21\u00b7O] words related to argumentation, sequences and newnes \u2192 Output \" one\" (p=0.056)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.653
+          ],
+          [
+            "Output \" mask\"",
+            0.084
+          ],
+          [
+            "Output \" set\"",
+            0.029
+          ],
+          [
+            "Output \" puffer\"",
+            0.017
+          ],
+          [
+            "Output \" asthma\"",
+            0.017
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" shirt\"",
+            0.178
+          ],
+          [
+            "Output \" inhal\"",
+            0.068
+          ],
+          [
+            "Output \" one\"",
+            0.056
+          ],
+          [
+            "Output \" pair\"",
+            0.048
+          ],
+          [
+            "Output \" t\"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1047,
+        "unique_to_a": 378,
+        "unique_to_b": 519
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_20.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_20.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_20_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_20_diff.png"
+      }
+    }
+  ]
+}

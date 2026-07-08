@@ -1,0 +1,317 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 49,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 49,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been up all night with viral gastroenteritis, so she's been sipping on flat",
+        "patient": "She's been up all night with the tummy bug, so she's been sipping on flat"
+      },
+      "target_token": "Output \" soda\"",
+      "probabilities": {
+        "clinical": 0.068,
+        "patient": 0.085
+      },
+      "language_penalty": 0.017,
+      "clinical_mass": {
+        "clinical": 0.1286,
+        "patient": 0.1334
+      },
+      "error_share": {
+        "clinical": 0.1168,
+        "patient": 0.1123
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7O] the word \"flat\" | flat \u2192 [L19\u00b7O] descriptions of food, drink, and social situations | \u2192 Output \" soda\" (p=0.068)",
+        "patient": "[L23\u00b7S]  \u2192 Output \" white\" (p=0.107)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " soda",
+        "observed_clinical": [
+          "Output \" soda\"",
+          0.068
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cola\"",
+            0.102
+          ],
+          [
+            "Output \" coke\"",
+            0.101
+          ],
+          [
+            "Output \" white\"",
+            0.091
+          ],
+          [
+            "Output \" Coke\"",
+            0.09
+          ],
+          [
+            "Output \" soda\"",
+            0.068
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" coke\"",
+            0.139
+          ],
+          [
+            "Output \" white\"",
+            0.107
+          ],
+          [
+            "Output \" soda\"",
+            0.085
+          ],
+          [
+            "Output \" cola\"",
+            0.079
+          ],
+          [
+            "Output \" lemonade\"",
+            0.074
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 609,
+        "unique_to_a": 98,
+        "unique_to_b": 137
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_49.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_49.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_49_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_49_diff.png"
+      }
+    },
+    {
+      "index": 50,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've had insomnia lately, so tonight I'm finally taking a",
+        "patient": "I've been a real night owl lately, so tonight I'm finally taking a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1064
+      },
+      "error_share": {
+        "clinical": 0.1068
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " sleeping",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" break\"",
+            0.254
+          ],
+          [
+            "Output \" look\"",
+            0.13
+          ],
+          [
+            "Output \" nap\"",
+            0.095
+          ],
+          [
+            "Output \" chance\"",
+            0.064
+          ],
+          [
+            "Output \" stab\"",
+            0.052
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 51,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's been constipated for days, so his doctor told him to eat more",
+        "patient": "He's been all bunged up for days, so his doctor told him to eat more"
+      },
+      "target_token": "Output \" fiber\"",
+      "probabilities": {
+        "clinical": 0.558,
+        "patient": 0.129
+      },
+      "language_penalty": -0.42900000000000005,
+      "clinical_mass": {
+        "clinical": 0.247,
+        "patient": 0.1944
+      },
+      "error_share": {
+        "clinical": 0.121,
+        "patient": 0.1132
+      },
+      "top_path": {
+        "clinical": "[L24\u00b7S]  \u2192 Output \" bran\" (p=0.031)",
+        "patient": "[L18\u00b7S]  \u2192 [L22\u00b7O] words associated with food and light amounts of huma \u2192 Output \" bananas\" (p=0.057)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " fiber",
+        "observed_clinical": [
+          "Output \" fiber\"",
+          0.558
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" fiber\"",
+            0.558
+          ],
+          [
+            "Output \" prunes\"",
+            0.108
+          ],
+          [
+            "Output \" fibre\"",
+            0.057
+          ],
+          [
+            "Output \" bran\"",
+            0.031
+          ],
+          [
+            "Output \" fruit\"",
+            0.024
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" fiber\"",
+            0.129
+          ],
+          [
+            "Output \" bananas\"",
+            0.057
+          ],
+          [
+            "Output \".\"",
+            0.045
+          ],
+          [
+            "Output \" fibre\"",
+            0.044
+          ],
+          [
+            "Output \" fruit\"",
+            0.032
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 455,
+        "unique_to_a": 394,
+        "unique_to_b": 423
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_51.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_51.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_51_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_51_diff.png"
+      }
+    },
+    {
+      "index": 52,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep having chronic insomnia, so my doctor started me on a nightly",
+        "patient": "I keep counting sheep till dawn, so my doctor started me on a nightly"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3901
+      },
+      "error_share": {
+        "clinical": 0.1245
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " pill",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dose\"",
+            0.492
+          ],
+          [
+            "Output \" \"",
+            0.087
+          ],
+          [
+            "Output \" melatonin\"",
+            0.03
+          ],
+          [
+            "Output \" routine\"",
+            0.03
+          ],
+          [
+            "Output \" regimen\"",
+            0.022
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}

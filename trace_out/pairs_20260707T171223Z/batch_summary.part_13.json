@@ -1,0 +1,317 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 13,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My kid has eczema flare-ups, so at the pharmacy I picked up a",
+        "patient": "My kid keeps scratching these dry patches, so at the pharmacy I picked up a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2796
+      },
+      "error_share": {
+        "clinical": 0.1276
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " cream",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" tube\"",
+            0.099
+          ],
+          [
+            "Output \" bottle\"",
+            0.098
+          ],
+          [
+            "Output \" sample\"",
+            0.089
+          ],
+          [
+            "Output \" few\"",
+            0.086
+          ],
+          [
+            "Output \" couple\"",
+            0.04
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My hands have carpal tunnel syndrome all day at the keyboard, so the specialist fitted me with a",
+        "patient": "My hands seize up and burn all day at the keyboard, so the specialist fitted me with a"
+      },
+      "target_token": "Output \" brace\"",
+      "probabilities": {
+        "clinical": 0.066,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2955,
+        "patient": 0.2067
+      },
+      "error_share": {
+        "clinical": 0.1367,
+        "patient": 0.1264
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" keyboard\" (p=0.123)",
+        "patient": "embedding \u2192 Output \" hand\" (p=0.033)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " brace",
+        "observed_clinical": [
+          "Output \" brace\"",
+          0.066
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" keyboard\"",
+            0.123
+          ],
+          [
+            "Output \" wrist\"",
+            0.106
+          ],
+          [
+            "Output \" splint\"",
+            0.085
+          ],
+          [
+            "Output \" brace\"",
+            0.066
+          ],
+          [
+            "Output \" pair\"",
+            0.045
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" keyboard\"",
+            0.128
+          ],
+          [
+            "Output \" new\"",
+            0.064
+          ],
+          [
+            "Output \" special\"",
+            0.048
+          ],
+          [
+            "Output \" wrist\"",
+            0.043
+          ],
+          [
+            "Output \" hand\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 521,
+        "unique_to_a": 315,
+        "unique_to_b": 299
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_14.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_14.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_14_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_14_diff.png"
+      }
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When the pollen hits and I get bronchospasm, I always keep a",
+        "patient": "When the pollen hits and my chest gets tight, I always keep a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3367
+      },
+      "error_share": {
+        "clinical": 0.1372
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " inhaler",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" bottle\"",
+            0.178
+          ],
+          [
+            "Output \" small\"",
+            0.062
+          ],
+          [
+            "Output \" few\"",
+            0.058
+          ],
+          [
+            "Output \" box\"",
+            0.057
+          ],
+          [
+            "Output \" rescue\"",
+            0.044
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The doc says I have hypertension, so every morning I take my",
+        "patient": "The doc says my numbers are too high up top, so every morning I take my"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.04,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3654,
+        "patient": 0.2481
+      },
+      "error_share": {
+        "clinical": 0.1173,
+        "patient": 0.1161
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.483)",
+        "patient": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.333)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pills",
+        "observed_clinical": [
+          "Output \" pill\"",
+          0.04
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.483
+          ],
+          [
+            "Output \" BP\"",
+            0.126
+          ],
+          [
+            "Output \" pill\"",
+            0.04
+          ],
+          [
+            "Output \" \"",
+            0.032
+          ],
+          [
+            "Output \" meds\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.333
+          ],
+          [
+            "Output \" temperature\"",
+            0.052
+          ],
+          [
+            "Output \" temp\"",
+            0.051
+          ],
+          [
+            "Output \" BP\"",
+            0.048
+          ],
+          [
+            "Output \" pulse\"",
+            0.035
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 446,
+        "unique_to_a": 292,
+        "unique_to_b": 393
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T171223Z/index_16.html",
+        "png": "trace_out/pairs_20260707T171223Z/index_16.png",
+        "diff_html": "trace_out/pairs_20260707T171223Z/index_16_diff.html",
+        "diff_png": "trace_out/pairs_20260707T171223Z/index_16_diff.png"
+      }
+    }
+  ]
+}

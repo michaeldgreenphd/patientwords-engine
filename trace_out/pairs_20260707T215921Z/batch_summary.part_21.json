@@ -1,0 +1,317 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 2500
+  },
+  "start_index": 21,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 21,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been constipated for days, so the doctor suggested a",
+        "patient": "She's been feeling gassy and clogged up for days, so the doctor suggested a"
+      },
+      "target_token": "Output \" lax\"",
+      "probabilities": {
+        "clinical": 0.407,
+        "patient": 0.109
+      },
+      "language_penalty": -0.298,
+      "clinical_mass": {
+        "clinical": 0.3814,
+        "patient": 0.397
+      },
+      "error_share": {
+        "clinical": 0.1225,
+        "patient": 0.1287
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L7\u00b7C] terms related to gastrointestinal and digestive heal \u2192 [L21\u00b7C] words and phrases related to gut bacteria, digestion \u2192 Output \" stool\" (p=0.054)",
+        "patient": "embedding \u2192 [L4\u00b7C] medical terminology related to the digestive system  \u2192 [L21\u00b7C] words and phrases related to gut bacteria, digestion \u2192 Output \" colon\" (p=0.299)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " laxative",
+        "observed_clinical": [
+          "Output \" lax\"",
+          0.407
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lax\"",
+            0.407
+          ],
+          [
+            "Output \" sup\"",
+            0.054
+          ],
+          [
+            "Output \" stool\"",
+            0.054
+          ],
+          [
+            "Output \" dose\"",
+            0.033
+          ],
+          [
+            "Output \" warm\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" colon\"",
+            0.299
+          ],
+          [
+            "Output \" lax\"",
+            0.109
+          ],
+          [
+            "Output \" col\"",
+            0.035
+          ],
+          [
+            "Output \" bowel\"",
+            0.035
+          ],
+          [
+            "Output \" stool\"",
+            0.019
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 402,
+        "unique_to_a": 417,
+        "unique_to_b": 450
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_21.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_21.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_21_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_21_diff.png"
+      }
+    },
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The kid keeps having night terrors that scare him awake, so we asked about a",
+        "patient": "The kid keeps having those bad dreams that scare him awake, so we asked about a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1527
+      },
+      "error_share": {
+        "clinical": 0.1253
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " specialist",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.071
+          ],
+          [
+            "Output \" night\"",
+            0.07
+          ],
+          [
+            "Output \" new\"",
+            0.056
+          ],
+          [
+            "Output \" few\"",
+            0.047
+          ],
+          [
+            "Output \" pillow\"",
+            0.027
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's had persistent emesis since the picnic, so at the counter he grabbed some",
+        "patient": "He's been throwing up since the picnic, so at the counter he grabbed some"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3269
+      },
+      "error_share": {
+        "clinical": 0.1223
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " medicine",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ginger\"",
+            0.086
+          ],
+          [
+            "Output \" crackers\"",
+            0.083
+          ],
+          [
+            "Output \" of\"",
+            0.059
+          ],
+          [
+            "Output \" Pep\"",
+            0.045
+          ],
+          [
+            "Output \" anti\"",
+            0.044
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 24,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My abdominal distension is worse after dinner, so tonight I'm taking an",
+        "patient": "My belly's all bloated after dinner, so tonight I'm taking an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.115,
+        "patient": 0.058
+      },
+      "language_penalty": -0.057,
+      "clinical_mass": {
+        "clinical": 0.3123,
+        "patient": 0.1759
+      },
+      "error_share": {
+        "clinical": 0.1158,
+        "patient": 0.1046
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" hour\" (p=0.091)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" hour\" (p=0.104)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antacid",
+        "observed_clinical": [
+          "Output \" ant\"",
+          0.115
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.13
+          ],
+          [
+            "Output \" ant\"",
+            0.115
+          ],
+          [
+            "Output \" early\"",
+            0.096
+          ],
+          [
+            "Output \" hour\"",
+            0.091
+          ],
+          [
+            "Output \" extra\"",
+            0.088
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" early\"",
+            0.157
+          ],
+          [
+            "Output \" hour\"",
+            0.104
+          ],
+          [
+            "Output \" extra\"",
+            0.1
+          ],
+          [
+            "Output \" anti\"",
+            0.058
+          ],
+          [
+            "Output \" evening\"",
+            0.048
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 495,
+        "unique_to_a": 284,
+        "unique_to_b": 291
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T215921Z/index_24.html",
+        "png": "trace_out/pairs_20260707T215921Z/index_24.png",
+        "diff_html": "trace_out/pairs_20260707T215921Z/index_24_diff.html",
+        "diff_png": "trace_out/pairs_20260707T215921Z/index_24_diff.png"
+      }
+    }
+  ]
+}
