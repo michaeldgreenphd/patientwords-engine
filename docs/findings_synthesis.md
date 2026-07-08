@@ -35,15 +35,21 @@ Often the model keeps its top answer and just loses confidence. The dangerous
 case is when the top continuation changes — and when it changes, it goes down
 the care ladder far more often than up:
 
-- gemma-2-2b: 41 downgrades vs 3 upgrades (sign test p ≈ 0)
-- qwen3-4b: 15 vs 2 (p = 0.002)
-- qwen3-1.7b: 14 vs 4 (p = 0.031)
+- gemma-2-2b: 67 downgrades vs 4 upgrades (sign test p ≈ 0)
+- gemma-3-4b-it: 8 vs 1 (p = 0.039) — a newer, instruction-tuned model,
+  same asymmetry
+- qwen3-4b: 16 vs 2 (p = 0.001)
+- qwen3-1.7b: 18 vs 5 (p = 0.011)
+
+These counts use the tier vocabulary the study owner reviewed and approved
+item-by-item (v1, 2026-07-09); the review unblocked previously unclassifiable
+flips, which is why they exceed the draft-era counts.
 
 Concrete cases from live traces: "urinary tract … blocked up" calls a
 urologist at 0.20; "her water was blocked up" calls a **plumber** at 0.68.
 "Constipated … took a" continues with *laxative*; "all bunged up" continues
 with *nap*. The advice object changes, not just its probability.
-(Source: `data/urgency_shift.json`; tier labels draft pending domain review.)
+(Source: `data/urgency_shift.json`; tier vocabulary reviewed v1, 2026-07-09.)
 
 ## 3. Mechanism: the wording swaps which circuit runs
 
@@ -144,7 +150,8 @@ One 2-billion-parameter model carries all circuit evidence; the qwen checks
 are behavior only. Attribution graphs prune heavily and their feature labels
 are machine-written — a mislabeled feature shifts category masses. Steering
 n's are small (5–20). Probabilities are a point-in-time measurement against a
-hosted service. Urgency tiers are a draft vocabulary pending domain review.
+hosted service. The urgency-tier vocabulary is owner-reviewed (v1); its
+residual low-frequency tokens default to excluded.
 None of this measures deployed clinical systems, and nothing here is medical
 advice. The defensible claim: on the models measured, patient phrasing
 measurably suppresses the clinical continuation, the suppression runs through

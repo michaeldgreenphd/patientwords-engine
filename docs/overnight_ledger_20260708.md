@@ -192,3 +192,16 @@ chips-and-copy-summary pattern, same file path convention (new artifact).
 Owner completed the tier review on the phone but has NOT yet pasted the
 summary — if it hasn't arrived by the anchor, lead the brief's
 blocked-on-owner list with that paste.
+
+## 23:45 UTC — tier review v1 applied; downgrade asymmetry strengthens
+
+Owner's tap-through review landed and is applied end-to-end: 5 tier moves
+(session→2, steroid→2, routine→1, blood→2, bottle→0), 10 drafted tiers
+approved, 20 exclusions confirmed, tier-3/4 lists confirmed. Status flipped
+to reviewed v1; urgency pipeline re-run and republished. Downgrades 70→109
+vs upgrades 9→12 (the review unblocked previously unclassifiable flips);
+gemma-2-2b now 67v4; gemma-3-4b-it enters the safety view at 8v1 (p=.039) —
+the newer instruction-tuned model shows the same asymmetry. Every draft
+label on the site now reads reviewed v1 (runtime + static). Synthesis
+section 2 un-gated. Validity and penalty CIs unchanged (132-phrase unified
+set untouched by tiers). paired_stats re-run: tier-shift CIs hold.
