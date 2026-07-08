@@ -1,0 +1,103 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.6,
+    "edge_threshold": 0.9,
+    "max_feature_nodes": 1500
+  },
+  "start_index": 1,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When the dust kicks up my asthma flares, so at work I keep a spare",
+        "patient": "When the dust kicks up my chest gets all tight, so at work I keep a spare"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.692,
+        "patient": 0.043
+      },
+      "language_penalty": -0.6489999999999999,
+      "clinical_mass": {
+        "clinical": 0.522,
+        "patient": 0.184
+      },
+      "error_share": {
+        "clinical": 0.1632,
+        "patient": 0.1793
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.692)",
+        "patient": "embedding \u2192 [L21\u00b7O] words related to argumentation, sequences and newnes \u2192 Output \" one\" (p=0.058)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.692
+          ],
+          [
+            "Output \" mask\"",
+            0.059
+          ],
+          [
+            "Output \" set\"",
+            0.028
+          ],
+          [
+            "Output \" puffer\"",
+            0.026
+          ],
+          [
+            "Output \" pair\"",
+            0.017
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" shirt\"",
+            0.183
+          ],
+          [
+            "Output \" t\"",
+            0.068
+          ],
+          [
+            "Output \" pair\"",
+            0.06
+          ],
+          [
+            "Output \" one\"",
+            0.058
+          ],
+          [
+            "Output \" inhal\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 81,
+        "unique_to_a": 69,
+        "unique_to_b": 124
+      },
+      "outputs": {
+        "html": "trace_out/featured_sim85_r2/index_01.html",
+        "png": "trace_out/featured_sim85_r2/index_01.png",
+        "diff_html": "trace_out/featured_sim85_r2/index_01_diff.html",
+        "diff_png": "trace_out/featured_sim85_r2/index_01_diff.png"
+      }
+    }
+  ]
+}
