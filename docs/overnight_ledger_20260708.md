@@ -109,3 +109,13 @@ cases (`urgency_downgrades_boostgrid.json`): placebo-vs-boost comparison
 (running) and boost dose-response at strength 2.5 (pending); 5.0 and 20.0 chain
 next. Five of six key-example tab edits are live and browser-verified; the
 dialect tab waits on the 8x8 sweep trace (72 graphs, in the queue).
+
+## 20:15 UTC — causal receipts + titration live
+
+Placebo control PASSED: on the 5 boost-recovered cases re-traced independently,
+top-5 clinical-feature boost recovered 4/5; 5 random features at the same
+strength recovered 0/5. Specificity confirmed; recoveries replicate across
+independent traces. Dose-response runs firing (2.5 live, 5 queued; 10 = 4/5;
+20 + rank-6-10 chain next). Translation tab rebuilt around the data: process
+flow with the real translated sentence, 14-case patch gallery, flipbook tabs,
+titration panel with honest pending states that auto-fill from provenance.
