@@ -49,3 +49,24 @@ artifact), censored-pair validity sensitivity (8 hand pairs with patient-side ta
 the top-k floor now reported as bounds instead of dropped).
 
 **Session paid total after experiments: ~$2.12 of $8.00** (adds ladder 4a $0.013 + 4b ~<=$0.02 when it lands).
+
+
+## 08:45 UTC harvest (experiments 1-3 COMPLETE, published)
+
+- **#1 ablation / #2 boost (20 downgrade phrases, all steering calls ok):**
+  boosting the clinical graph's top-5 clinical features on the PATIENT wording
+  recovers the clinical target outright in 5/20 (antacid x2, pills, inhaler,
+  blood test); ablating the patient graph's top-5 off-target features recovers
+  1/20 outright but redirects several toward clinical vocabulary (cardiologist,
+  sleep specialist, meds). Listener-side boost > speaker-side mute.
+- **#3 context inoculation (40/40 traced):** clinical-scene prefix mean penalty
+  -0.059 vs neutral-scene -0.137 vs no-context -0.092; paired clinical-minus-
+  neutral +0.083 (8/14 improved). Casual context AMPLIFIES the penalty; clinical
+  context roughly halves it.
+- **#4 ladders:** both generated; committed traces running (sleep) + pending (digestive).
+- **#5 gemma-3-4b-it:** probe queued in logits chain (awaits HF_TOKEN).
+- **Publish:** gen A joined the site payload - 235 scenarios (160 measured),
+  unified set 132 phrases, penalties gemma -0.070 [-0.098,-0.043] /
+  qwen3-4b -0.099 [-0.149,-0.049] / qwen3-1.7b -0.089 [-0.133,-0.047];
+  organic downgrades-vs-upgrades 19v3 / 15v2 / 14v4; length confound |r|<=0.07.
+  Collaborator archive 961 pairs / 838 traced.
