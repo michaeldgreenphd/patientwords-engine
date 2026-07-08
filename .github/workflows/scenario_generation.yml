@@ -233,6 +233,10 @@ jobs:
               fi
               ARGS=(dialects --seed-pairs "$SWEEP_SEEDS" --num-baselines "$NUM_BASELINES"
                     -n "$NUM" --max-spend "$MAX_SPEND" --out "$OUT")
+              if [ -n "$DIALECT_LABELS" ]; then
+                IFS='|' read -ra LABELS <<< "$DIALECT_LABELS"
+                ARGS+=(--dialects "${LABELS[@]}")
+              fi
             fi
           fi
           if [ -n "$GEN_MODEL" ]; then
