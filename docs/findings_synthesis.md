@@ -1,6 +1,6 @@
 # What we found: patient words make small language models worse at medicine
 
-**Status: draft — two cells pending (strength-20 dose point, rank-6–10 faithfulness arm; runs in queue). Every other number is final and traces to a committed artifact.**
+**Status: near-final — the causal panel is complete. Remaining: the gemma-3-4b-it cross-model column (runs in queue overnight). Every number traces to a committed artifact.**
 
 One-line summary: when the same medical situation is phrased the way patients
 actually talk instead of in clinical terms, small open models become measurably
@@ -81,12 +81,19 @@ downgrade phrases:
 - **Placebo** (5 random features, same strength, same prompts): 0/5. The
   effect is the clinical circuit, not steering itself.
 - **Dose-response** on the recovered subset (recoveries at each boost
-  strength): 2.5 → 4/4 landed, 5 → 5/5, 10 → 4/5, **20 → pending**. Recovery
-  is already near-ceiling at the lowest dose we tried — the circuit needs a
-  nudge, not a shove.
+  strength): 2.5 → 4/4 landed, 5 → 5/5, 10 → 4/5, 20 → **breaks down** (of
+  five calls, three failed server-side and the one measured continuation
+  degenerated into token repetition). The curve is an inverted U: recovery
+  saturates at the lowest dose we tried and collapses into incoherence at the
+  highest. The circuit needs a nudge; a shove breaks the model.
 - **Rank faithfulness**: boosting clinical ranks 6–10 instead of 1–5 at the
-  same strength — **pending**. If attribution rank predicts causal effect,
-  this arm must recover fewer.
+  same strength recovers **3/4 measured — near-parity with the top-5 arm
+  (4/5)**. This revises the naive prediction: attribution rank does not
+  concentrate the causal handle in a privileged top five. The steerable mass
+  is distributed across at least the circuit's top ten features. The placebo
+  (0/5) still rules out "steering anything works" — what is causal is the
+  clinical feature *family*, not any particular handful of it. (A second,
+  independent run of this arm is in flight as a replication.)
 
 Listener-side amplification beats speaker-side muting: you get more back by
 strengthening the medical reading than by suppressing the idiom.

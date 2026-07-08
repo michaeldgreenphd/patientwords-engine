@@ -163,3 +163,20 @@ downgrade probe harvest.
 Chain continues: harvest s20 + low-rank + grandma_r2 slot, ladder +
 paraphrase + sociolect traces, gemma-3 stems 3-4, finalize synthesis
 (SendUserFile), assemble brief by 10:45 UTC.
+
+## 23:00 UTC — causal panel complete; gemma-3 first light
+
+Titration finished and published. Dose-response: 2.5 → 4/4, 5 → 5/5,
+10 → 4/5, 20 → 0/1 measured — at strength 20 three steer calls 500'd and the
+one landed continuation degenerated into token repetition (over-steering;
+read as "breaks down", not "no effect"). Rank faithfulness: clinical ranks
+6–10 at strength 10 recover 3/4 — near-parity with top-5 (4/5), so the causal
+handle is distributed across the circuit, not concentrated in its top five;
+placebo remains 0/5. (Low-rank result arrived via the merge-refire duplicate
+on main — the accidental run delivered the arm early; the branch replication
+is still running.) gemma-3-4b-it works with HF_TOKEN: stem 1/4 + the
+downgrade probe landed; on the 5 stem-1 pairs common to all four models the
+gemma-3 per-pair penalty tracks gemma-2 at r=0.96 — too few pairs to cite,
+full table when stems 2–4 land. Fired: ladder n=10 committed trace
+(5 chunks) + gemma-3 stem 3/4. Sociolect 2b batch harvested. Next slots:
+paraphrase trace, sociolect traces, grandma_r2, s2.5 pair-5 + s20 remeasures.
