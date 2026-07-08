@@ -31,11 +31,17 @@ completed post-flip on free runners.
 
 | # | Experiment | Mechanism | Status | Cost |
 |---|---|---|---|---|
-| 1 | Causal ablation on downgrade flips | `--steer-validate 5` (suppress top off-target features, patient graph) | queued behind gen A remainder | $0 |
-| 2 | Positive clinical steering ("fix the listener") | new `--steer-boost 5` (amplify clinical-graph features on patient prompt) | code + tests + workflow shipped; fires with #1 | $0 |
-| 3 | Context inoculation | 40 derived pairs: {clinical, neutral} scene prefix x 20 downgrade phrases (`scripts/derive_context_pairs.py`) | stimuli committed; trace queued after #1/#2 | $0 |
-| 4 | Dose-response colloquialism ladder | dialects task, 5 graded register rungs, term held fixed; sleep + digestive baselines | 4a generated+tracing ($0.013); 4b fired | ~$0.03 |
-| 5 | gemma-3-4b-it instruct logits | logits path; needs user's HF_TOKEN secret (fails cheap without) | queued in logits chain | $0 |
+| 1 | Causal ablation on downgrade flips | `--steer-validate 5` (suppress top off-target features, patient graph) | RUNNING (01:20 UTC, stem-alias out dir) | $0 |
+| 2 | Positive clinical steering ("fix the listener") | new `--steer-boost 5` (amplify clinical-graph features on patient prompt) | RUNNING (same pass as #1) | $0 |
+| 3 | Context inoculation | 40 derived pairs: {clinical, neutral} scene prefix x 20 downgrade phrases (`scripts/derive_context_pairs.py`) | PENDING behind #1/#2 in the trace queue | $0 |
+| 4 | Dose-response colloquialism ladder | dialects task, 5 graded register rungs, term held fixed; sleep + digestive baselines | both GENERATED (sleep $0.013 + digestive $0.015); committed dialect-mode traces queued in chain | $0.028 |
+| 5 | gemma-3-4b-it instruct logits | logits path; needs user's HF_TOKEN secret (fails cheap without) | queued in logits chain after the two decoded re-runs | $0 |
+
+Chain note (01:25 UTC): gen A gemma trace complete 20/20 chunks. The redundant
+gen A remainder run failed only at its COMMIT step (re-traced bytes differ from
+already-landed parts -> rebase conflict) - no data lost; all parts landed from
+the primary run. Steering pass therefore traces under a stem alias
+(`urgency_downgrades_20260707T1_steer.json`) to guarantee a collision-free out dir.
 
 Hardening shipped alongside: source_set threaded into steering calls (audit fix, regression
 tests), length-confound check (penalty vs word-count diff: |r| <= 0.16, n=91 — not a length
