@@ -135,3 +135,31 @@ Ladder n=10 (`dialects_20260708T201616Z`) and paraphrase
 their traces fire as circuit-trace slots free. Sociolect round 2 generating:
 20 measured baselines x default 8-framing grid, max_spend 4. $0 spent this
 wake outside that ceiling.
+
+## 22:05 UTC — HF_TOKEN landed; gemma-3 fired; merge-button refire contained
+
+Owner added HF_TOKEN and merged PR #2 via the GitHub merge button. The merge
+changed all four trigger files on main and refired every workflow there
+(the documented merge/copy danger; API cancel returns 403 for this app).
+Blast radius, assessed: scenario-generation duplicate is bounded by its own
+max_spend=4 and yields an independent second sociolect batch (kept as a
+replication, "round 2b"); the circuit-trace duplicate re-runs the low-rank
+arm for $0 (kept as a free replication); the logits duplicate IS the
+gemma-3 downgrades probe, now running with the token; the archive duplicate
+just re-zips renders. Branch restarted from merged main per merged-PR
+protocol (trigger-identical, no refire). gemma-3-4b-it unified-set runs
+fired on the branch queue: stems 1/4 (pairs_20260706T201750Z, running) and
+2/4 (pairs_20260707T154345Z, pending); 3/4 + 4/4 chain next, then the
+downgrade probe harvest.
+
+### Morning brief spec (owner's five sections, due when they log on ~11:00 UTC)
+1. Findings delta incl. gemma-3-4b-it vs the other models; flag anything
+   contradicting yesterday's baseline.
+2. Causal verdict: final titration table + one-paragraph interpretation.
+3. UI consequences: ranked, staged-vs-not, sign-off-needed flagged.
+4. Pipeline status: published / harvested-unpublished / running / failed;
+   truncations, re-runs, total ledger cost, blocked-on-owner list.
+5. Synthesis readiness: external-ready claims vs tier-review-gated claims.
+Chain continues: harvest s20 + low-rank + grandma_r2 slot, ladder +
+paraphrase + sociolect traces, gemma-3 stems 3-4, finalize synthesis
+(SendUserFile), assemble brief by 10:45 UTC.
