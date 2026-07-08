@@ -180,3 +180,15 @@ gemma-3 per-pair penalty tracks gemma-2 at r=0.96 — too few pairs to cite,
 full table when stems 2–4 land. Fired: ladder n=10 committed trace
 (5 chunks) + gemma-3 stem 3/4. Sociolect 2b batch harvested. Next slots:
 paraphrase trace, sociolect traces, grandma_r2, s2.5 pair-5 + s20 remeasures.
+
+### Addendum to morning brief spec (owner request, 23:15 UTC)
+The tap-through phone format worked; deliver two decks with the brief:
+(a) stimulus QC deck — DONE, published (blind 20-pair sample, artifact
+'stimulus-qc'); count its verdicts into the methods when the paste arrives.
+(b) morning sign-off deck — build AT the anchor from final overnight data:
+one card per UI change needing sign-off (brief section 3) + one card per
+synthesis claim (section 5, external-ready vs tier-gated), same
+chips-and-copy-summary pattern, same file path convention (new artifact).
+Owner completed the tier review on the phone but has NOT yet pasted the
+summary — if it hasn't arrived by the anchor, lead the brief's
+blocked-on-owner list with that paste.
