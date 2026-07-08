@@ -601,3 +601,65 @@ def test_steer_placebo_boosts_random_features(monkeypatch):
     assert out["ok"] and len(out["placebo_features"]) == 2
     assert all(f["strength"] > 0 for f in sent["body"]["features"])
     assert sent["body"]["features"][0]["layer"].endswith("-s16k")
+
+
+def _multi_clinical_graph():
+    """Three clinical features with strictly decreasing mass (L5 > L6 > L7),
+    for rank-offset slicing tests."""
+    nodes = [
+        {"node_id": "5_200_1", "feature_type": "cross layer transcoder", "layer": "5",
+         "ctx_idx": 1, "feature": 500200, "clerp": "top clinical",
+         "medlang": {"category": "clinical", "description": "rank-1 clinical"}},
+        {"node_id": "6_300_1", "feature_type": "cross layer transcoder", "layer": "6",
+         "ctx_idx": 1, "feature": 600300, "clerp": "mid clinical",
+         "medlang": {"category": "clinical", "description": "rank-2 clinical"}},
+        {"node_id": "7_400_1", "feature_type": "cross layer transcoder", "layer": "7",
+         "ctx_idx": 1, "feature": 700400, "clerp": "low clinical",
+         "medlang": {"category": "clinical", "description": "rank-3 clinical"}},
+        {"node_id": "L_9", "feature_type": "logit", "layer": "9", "ctx_idx": 2,
+         "clerp": "target (p=0.8)"},
+    ]
+    links = [
+        {"source": "5_200_1", "target": "L_9", "weight": 6.0},
+        {"source": "6_300_1", "target": "L_9", "weight": 4.0},
+        {"source": "7_400_1", "target": "L_9", "weight": 2.0},
+    ]
+    return {"metadata": {"scan": "gemma-2-2b"}, "nodes": nodes, "links": links}
+
+
+def test_top_clinical_features_rank_offset_slices_ranking():
+    from medlang_circuits.steering import top_clinical_features
+
+    g = _multi_clinical_graph()
+    assert [f["layer"] for f in top_clinical_features(g, 2)] == [5, 6]
+    assert [f["layer"] for f in top_clinical_features(g, 2, offset=1)] == [6, 7]
+    assert top_clinical_features(g, 2, offset=3) == []  # past the ranking
+
+
+def test_rank_offset_env_override(monkeypatch):
+    from medlang_circuits import steering
+
+    monkeypatch.delenv("NEURONPEDIA_STEER_RANK_OFFSET", raising=False)
+    assert steering.rank_offset() == 0
+    monkeypatch.setenv("NEURONPEDIA_STEER_RANK_OFFSET", "5")
+    assert steering.rank_offset() == 5
+
+
+def test_steer_boost_low_rank_arm_skips_top_features(monkeypatch):
+    from medlang_circuits.batch_eval import _steer_boost
+
+    sent = _capture_steer_post(monkeypatch)
+    monkeypatch.setenv("NEURONPEDIA_STEER_RANK_OFFSET", "1")
+    out = _steer_boost("prompt", _multi_clinical_graph(), 2, source_set="s16k")
+    assert out["ok"] and out["rank_offset"] == 1
+    assert [f["layer"] for f in out["boosted_features"]] == [6, 7]
+    assert sent["body"]["features"][0]["layer"] == "6-s16k"
+
+
+def test_steer_boost_default_arm_records_no_offset(monkeypatch):
+    from medlang_circuits.batch_eval import _steer_boost
+
+    _capture_steer_post(monkeypatch)
+    monkeypatch.delenv("NEURONPEDIA_STEER_RANK_OFFSET", raising=False)
+    out = _steer_boost("prompt", _multi_clinical_graph(), 2, source_set="s16k")
+    assert out["ok"] and "rank_offset" not in out  # schema unchanged for the default arm
