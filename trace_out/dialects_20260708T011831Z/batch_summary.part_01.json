@@ -1,0 +1,205 @@
+{
+  "mode": "dialect",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 1,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 1,
+      "mode": "dialect",
+      "baseline_prompt": "After that greasy fry-up my dyspepsia flared up, so at the counter I grabbed an",
+      "held_fixed": "clinical",
+      "term": "dyspepsia",
+      "target_token": "Output \" apple\"",
+      "baseline_probability": 0.167,
+      "variants": [
+        {
+          "dialect": "Rung 1 - fully formal clinical register",
+          "prompt": "Following ingestion of that greasy fried meal, my dyspepsia became symptomatic, necessitating that I procure at the pharmacy counter an",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "Rung 2 - mostly clinical, one everyday word",
+          "prompt": "After that greasy fry-up, my dyspepsia became symptomatic, so at the counter I purchased an",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "Rung 3 - even mix of clinical and everyday phrasing",
+          "prompt": "After that greasy fry-up my dyspepsia flared up, so at the counter I picked up an",
+          "probability": 0.14,
+          "delta_vs_baseline": -0.026999999999999996
+        },
+        {
+          "dialect": "Rung 4 - mostly casual everyday phrasing",
+          "prompt": "After that greasy fry-up my dyspepsia flared up again, so I grabbed an",
+          "probability": 0.136,
+          "delta_vs_baseline": -0.031
+        },
+        {
+          "dialect": "Rung 5 - maximally casual spoken phrasing with slang",
+          "prompt": "After that greasy fry-up my dyspepsia was acting up somethin' fierce, so I just grabbed an",
+          "probability": 0.194,
+          "delta_vs_baseline": 0.026999999999999996
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" apple\"",
+            0.167
+          ],
+          [
+            "Output \" orange\"",
+            0.134
+          ],
+          [
+            "Output \" egg\"",
+            0.085
+          ],
+          [
+            "Output \" ice\"",
+            0.063
+          ],
+          [
+            "Output \" iced\"",
+            0.042
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" ant\"",
+              0.322
+            ],
+            [
+              "Output \" over\"",
+              0.228
+            ],
+            [
+              "Output \" anti\"",
+              0.104
+            ],
+            [
+              "Output \" OTC\"",
+              0.026
+            ],
+            [
+              "Output \" Ant\"",
+              0.022
+            ]
+          ],
+          [
+            [
+              "Output \" ant\"",
+              0.114
+            ],
+            [
+              "Output \" anti\"",
+              0.098
+            ],
+            [
+              "Output \" over\"",
+              0.049
+            ],
+            [
+              "Output \" aspirin\"",
+              0.036
+            ],
+            [
+              "Output \" orange\"",
+              0.035
+            ]
+          ],
+          [
+            [
+              "Output \" apple\"",
+              0.14
+            ],
+            [
+              "Output \" orange\"",
+              0.103
+            ],
+            [
+              "Output \" egg\"",
+              0.08
+            ],
+            [
+              "Output \" ice\"",
+              0.051
+            ],
+            [
+              "Output \" iced\"",
+              0.036
+            ]
+          ],
+          [
+            [
+              "Output \" apple\"",
+              0.136
+            ],
+            [
+              "Output \" early\"",
+              0.077
+            ],
+            [
+              "Output \" ice\"",
+              0.063
+            ],
+            [
+              "Output \" aspirin\"",
+              0.063
+            ],
+            [
+              "Output \" orange\"",
+              0.052
+            ]
+          ],
+          [
+            [
+              "Output \" apple\"",
+              0.194
+            ],
+            [
+              "Output \" old\"",
+              0.109
+            ],
+            [
+              "Output \" empty\"",
+              0.07
+            ],
+            [
+              "Output \" ice\"",
+              0.068
+            ],
+            [
+              "Output \" orange\"",
+              0.049
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.1105
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.063)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260708T011831Z/index_01.html",
+        "png": "trace_out/dialects_20260708T011831Z/index_01.png"
+      }
+    }
+  ]
+}
