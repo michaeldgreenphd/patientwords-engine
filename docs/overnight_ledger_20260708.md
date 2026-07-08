@@ -70,3 +70,31 @@ the top-k floor now reported as bounds instead of dropped).
   qwen3-4b -0.099 [-0.149,-0.049] / qwen3-1.7b -0.089 [-0.133,-0.047];
   organic downgrades-vs-upgrades 19v3 / 15v2 / 14v4; length confound |r|<=0.07.
   Collaborator archive 961 pairs / 838 traced.
+
+
+## FINAL — 11:10 UTC morning close-out
+
+**Spend by phase (session):** Phase 0 harvest ~$0.03 (mitigation translations) ·
+Phase 1 generation $2.058 (gen A $1.291 + gen B $0.767) · Experiments $0.028
+(ladders; steering/context/logits $0) · **session total ≈ $2.12 of the $8.00
+ceiling.** Lifetime ≈ $8.20.
+
+**Ladder dose-response (case studies, n=1 each):** digestive — with "dyspepsia"
+held verbatim in all five rungs, P(antacid) falls 0.322 (rung 1, formal clinical)
+→ 0.114 (rung 2) → below the top-10 floor (rungs 3-5, where 'apple' takes the
+top); register alone flips the guidance object. Sleep — 'sedative' never
+surfaces at any rung; 'melatonin' appears at rungs 3-4 (0.096→0.195); the
+colloquial basin is too deep for register alone to recover the clinical target.
+
+**Decoding before/after:** gen A shipped with continuations (its qwen rows:
+41 classified flips / 160); the decoded 119-batch rerun (qwen3-1.7b) changed
+NO classifications (83/107 patient tops already tiered) — decoding helps
+wordpiece-heavy batches, and is a no-op where tops were already whole words.
+
+**Tier-shift instrument now has CIs (unified 132):** gemma -0.054
+[-0.098,-0.012]; qwen3-4b -0.048 [-0.099,-0.000]; qwen3-1.7b -0.034
+[-0.096,+0.027]. Paired model differences all straddle zero.
+
+**Still running at close-out:** gen B trace (5 chunks, fired 11:05), 119-batch
+qwen3-4b decoded leg, gemma-3-4b-it probe (pending; needs HF_TOKEN),
+154345Z/201750Z decoded reruns queued next in the logits chain.
