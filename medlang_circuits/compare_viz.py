@@ -69,10 +69,12 @@ FAINT_INK = "#9aa3af"
 TOKEN_INK = "#64748b"
 
 DEFAULT_MAX_EDGES = 400
+LOW_MASS_FADE_THRESHOLD = 0.15  # frac of max mass below which non-clinical nodes fade
+LOW_MASS_FADE_OPACITY = 0.12
 PANEL_WIDTH = 1180
 ROW_HEIGHT = 34
 ELIDED_GAP_ROWS = 1.45  # vertical space for a run of >=1 empty layers
-MARGIN = {"left": 66, "right": 34, "top": 118, "bottom": 66}
+MARGIN = {"left": 66, "right": 178, "top": 118, "bottom": 66}
 PANEL_GAP = 18
 BADGE_GAP = 64  # panel gap when a single-line badge renders in it
 BADGE_LINE_HEIGHT = 34
@@ -452,6 +454,11 @@ def _panel_svg(
         elif category == "structural" and node.get("feature_type") != "logit":
             # logits stay full-ink: their size IS the prediction probability
             dim_attr = f' fill-opacity="{STRUCTURAL_FILL_OPACITY}"'
+        elif (category != "clinical" and node.get("feature_type") != "logit"
+              and frac < LOW_MASS_FADE_THRESHOLD):
+            # a wall of low-mass dots is noise, not signal: fade them so the
+            # high-attribution path is what the eye finds first
+            dim_attr = f' fill-opacity="{LOW_MASS_FADE_OPACITY}"'
         else:
             dim_attr = ""
         if node.get("feature_type") == "embedding":
@@ -468,7 +475,7 @@ def _panel_svg(
             is_top = node_id == prep.get("top_logit_id")
             cls = "llt" if is_top else "ll"
             parts.append(
-                f'<text x="{pos[0] - r - 7:.1f}" y="{pos[1] + (5 if is_top else 4):.1f}" class="{cls}">'
+                f'<text x="{pos[0] + r + 8:.1f}" y="{pos[1] + (5 if is_top else 4):.1f}" class="{cls}">'
                 f"{html.escape(_logit_label(node))}</text>"
             )
             if is_top:
@@ -494,20 +501,36 @@ def _panel_svg(
     # it gets weight, size, and an accent underline that reads even when the
     # text itself is thumbnail-small.
     token_y = prep["panel_height"] - MARGIN["bottom"] + 30
+    # Wordpiece fragments assemble into whole words: a group starts at a
+    # leading-space token (or a special token, which stands alone and fades).
+    # One label per word, centered over its fragment columns - the reader sees
+    # "dyspepsia", not dys/pep/sia.
+    groups: list[dict] = []
     for i, token in enumerate(prep["tokens"]):
-        x = prep["x_of"](i)
-        if i in emphasized_tokens:
-            half = max(16.0, len(token) * 4.8)
+        special = token.startswith("<") and token.endswith(">")
+        starts_word = token.startswith(" ") or special or not groups or groups[-1]["special"]
+        if starts_word:
+            groups.append({"idxs": [i], "text": token.strip(), "special": special})
+        else:
+            groups[-1]["idxs"].append(i)
+            groups[-1]["text"] += token
+    for g in groups:
+        x = sum(prep["x_of"](i) for i in g["idxs"]) / len(g["idxs"])
+        word = g["text"]
+        if g["special"]:
+            parts.append(f'<text x="{x:.1f}" y="{token_y}" class="tk" opacity="0.18">{html.escape(word)}</text>')
+        elif any(i in emphasized_tokens for i in g["idxs"]):
+            half = max(16.0, len(word) * 4.8)
             parts.append(
                 f'<text x="{x:.1f}" y="{token_y}" class="tk tke" '
-                f'style="fill:{emphasis_color}">{html.escape(token)}</text>'
+                f'style="fill:{emphasis_color}">{html.escape(word)}</text>'
             )
             parts.append(
                 f'<rect x="{x - half:.1f}" y="{token_y + 6:.1f}" width="{2 * half:.1f}" '
                 f'height="3.5" fill="{emphasis_color}"/>'
             )
         else:
-            parts.append(f'<text x="{x:.1f}" y="{token_y}" class="tk">{html.escape(token)}</text>')
+            parts.append(f'<text x="{x:.1f}" y="{token_y}" class="tk">{html.escape(word)}</text>')
 
     if prep["dropped_edges"]:
         parts.append(
@@ -541,10 +564,10 @@ _CSS = (
     ".pp{font-size:34px;font-weight:800;fill:" + INK + ";font-family:ui-monospace,Menlo,monospace}"
     ".tk{font-size:13px;text-anchor:middle;fill:#475569;font-family:ui-monospace,'SF Mono',Menlo,monospace}"
     ".tke{font-size:16.5px;font-weight:800}"
-    ".ll{font-size:12.5px;text-anchor:end;fill:#4b5563;font-family:ui-monospace,Menlo,monospace}"
-    ".llt{font-size:20px;font-weight:800;text-anchor:end;fill:" + INK + ";"
+    ".ll{font-size:12.5px;text-anchor:start;fill:#4b5563;font-family:ui-monospace,Menlo,monospace}"
+    ".llt{font-size:20px;font-weight:800;text-anchor:start;fill:" + INK + ";"
     "font-family:ui-monospace,Menlo,monospace}"
-    ".lk{font-size:11.5px;text-anchor:end;fill:#6b7280}"
+    ".lk{font-size:11.5px;text-anchor:end;fill:#cfccc4}"
     ".nv{font-size:11px;text-anchor:middle;fill:#4b5563;font-family:ui-monospace,Menlo,monospace}"
     ".bd{font-size:24px;font-weight:800;text-anchor:middle}"
     ".cl{font-size:13px;font-weight:700}"

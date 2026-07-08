@@ -56,10 +56,11 @@ def test_render_stacked_html_standalone_interactive(tmp_path):
     assert html.count("<path d=\"M") == len(top["links"]) + len(bottom["links"])
     # only the single compared word is emphasized per panel, in the panel accent color;
     # surrounding differenced tokens (" very") stay muted like static tokens
-    assert f'class="tk tke" style="fill:{CATEGORY_COLORS["clinical"]}"> quick<' in html
+    # wordpiece assembly strips the tokenizer's leading space from labels
+    assert f'class="tk tke" style="fill:{CATEGORY_COLORS["clinical"]}">quick<' in html
     # ...and gets an accent underline bar
     assert f'height="3.5" fill="{CATEGORY_COLORS["clinical"]}"' in html
-    assert f'class="tk tke" style="fill:{CATEGORY_COLORS["off_target"]}"> swift<' in html
+    assert f'class="tk tke" style="fill:{CATEGORY_COLORS["off_target"]}">swift<' in html
     assert 'font-weight:600"> very<' not in html
     assert html.count('class="tk tke"') == 2  # exactly one emphasized token per panel
     # inline category labels instead of a detached legend

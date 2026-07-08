@@ -109,3 +109,29 @@ cases (`urgency_downgrades_boostgrid.json`): placebo-vs-boost comparison
 (running) and boost dose-response at strength 2.5 (pending); 5.0 and 20.0 chain
 next. Five of six key-example tab edits are live and browser-verified; the
 dialect tab waits on the 8x8 sweep trace (72 graphs, in the queue).
+
+## 20:15 UTC — causal receipts + titration live
+
+Placebo control PASSED: on the 5 boost-recovered cases re-traced independently,
+top-5 clinical-feature boost recovered 4/5; 5 random features at the same
+strength recovered 0/5. Specificity confirmed; recoveries replicate across
+independent traces. Dose-response runs firing (2.5 live, 5 queued; 10 = 4/5;
+20 + rank-6-10 chain next). Translation tab rebuilt around the data: process
+flow with the real translated sentence, 14-case patch gallery, flipbook tabs,
+titration panel with honest pending states that auto-fill from provenance.
+
+## 21:25 UTC — titration wake: s2.5 harvested, s20 + low-rank armed
+
+Strength 2.5 landed: **4/4 recovered** on the pairs that traced (pair 5 dropped
+to a mid-batch truncation; remeasure queued). Published to the site's
+`steering_titration.strengths['2.5']` — the dose bar fills. Dose-response so
+far: 2.5 → 4/4, 10 → 4/5, placebo 0/5; strength 5 running, strength 20 now
+pending behind it. The low-rank faithfulness arm shipped:
+`NEURONPEDIA_STEER_RANK_OFFSET` skips the top ranks in `_steer_boost`
+(recorded in results when nonzero; 122 tests green), workflow key
+`steer_rank_offset`, alias batches `boostgrid_s20` / `boostgrid_lowrank` staged.
+Ladder n=10 (`dialects_20260708T201616Z`) and paraphrase
+(`dialects_20260708T203111Z`) batches harvested from main onto the branch;
+their traces fire as circuit-trace slots free. Sociolect round 2 generating:
+20 measured baselines x default 8-framing grid, max_spend 4. $0 spent this
+wake outside that ceiling.

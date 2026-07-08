@@ -80,6 +80,7 @@ from medlang_circuits.neuronpedia_features import FeatureFetcher, NullFetcher
 from medlang_circuits.schema_utils import is_feature_node, node_layer_and_index
 from medlang_circuits.steering import (
     boost_strength,
+    rank_offset,
     steer_ablate,
     top_clinical_features,
     top_offtarget_features,
@@ -418,16 +419,19 @@ def _steer_boost(patient_prompt: str, clinical_graph: dict[str, Any], k: int,
     completing the PATIENT prompt - the listener-side mitigation probe. Where
     ablation asks "did the off-target features cause the miss?", boosting asks
     "does forcing the clinical circuit on recover the target without changing
-    the patient's words?". Failures are recorded, never raised."""
-    features = top_clinical_features(clinical_graph, k)
+    the patient's words?". NEURONPEDIA_STEER_RANK_OFFSET skips the top ranks
+    (the low-rank faithfulness arm). Failures are recorded, never raised."""
+    offset = rank_offset()
+    features = top_clinical_features(clinical_graph, k, offset=offset)
+    tag: dict[str, Any] = {"rank_offset": offset} if offset else {}
     if not features:
-        return {"boosted_features": [], "note": "no clinical features to boost"}
+        return {"boosted_features": [], "note": "no clinical features to boost", **tag}
     scan = (clinical_graph.get("metadata") or {}).get("scan", "gemma-2-2b")
     kwargs: dict[str, Any] = {"strength": boost_strength()}
     if source_set:
         kwargs["source_set"] = source_set
     result = steer_ablate(patient_prompt, features, model_id=scan, **kwargs)
-    return {"boosted_features": features, **result}
+    return {"boosted_features": features, **tag, **result}
 
 
 def _steer_placebo(patient_prompt: str, patient_graph: dict[str, Any], k: int,

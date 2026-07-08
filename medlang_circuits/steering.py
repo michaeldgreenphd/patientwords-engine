@@ -46,8 +46,19 @@ def boost_strength() -> float:
     return float(os.environ.get("NEURONPEDIA_STEER_BOOST_STRENGTH", DEFAULT_BOOST_STRENGTH))
 
 
-def top_features_by_category(graph: dict[str, Any], k: int, category: str) -> list[dict[str, Any]]:
-    """The k highest-mass features of one medlang category in a tagged graph.
+def rank_offset() -> int:
+    """How many top-ranked features to skip before taking k (env-overridable).
+
+    0 boosts ranks 1..k (the default arm); 5 boosts ranks 6..5+k - the
+    low-rank faithfulness arm. If attribution rank predicts causal effect,
+    lower-mass features must recover fewer targets at the same strength."""
+    return int(os.environ.get("NEURONPEDIA_STEER_RANK_OFFSET", 0))
+
+
+def top_features_by_category(graph: dict[str, Any], k: int, category: str,
+                             offset: int = 0) -> list[dict[str, Any]]:
+    """The k highest-mass features of one medlang category in a tagged graph,
+    optionally skipping the `offset` highest-ranked first.
 
     Mass is |incident edge weight| summed per node, aggregated over every
     position where the same (layer, feature index) fires.
@@ -72,7 +83,7 @@ def top_features_by_category(graph: dict[str, Any], k: int, category: str) -> li
         mass[key] += weight[node["node_id"]]
         med = node.get("medlang") or {}
         label.setdefault(key, (med.get("description") or node.get("clerp") or "")[:80])
-    ranked = sorted(mass.items(), key=lambda kv: -kv[1])[:k]
+    ranked = sorted(mass.items(), key=lambda kv: -kv[1])[offset:offset + k]
     return [
         {"layer": layer, "index": index, "mass": round(m, 4), "label": label[(layer, index)]}
         for (layer, index), m in ranked
@@ -110,11 +121,12 @@ def top_offtarget_features(graph: dict[str, Any], k: int) -> list[dict[str, Any]
     return top_features_by_category(graph, k, "off_target")
 
 
-def top_clinical_features(graph: dict[str, Any], k: int) -> list[dict[str, Any]]:
+def top_clinical_features(graph: dict[str, Any], k: int, offset: int = 0) -> list[dict[str, Any]]:
     """The k highest-mass clinical features: the boost candidates - the
     circuit the clinical wording recruits, to be amplified on the patient
-    wording (positive strength) as a listener-side mitigation probe."""
-    return top_features_by_category(graph, k, "clinical")
+    wording (positive strength) as a listener-side mitigation probe.
+    `offset` skips the top ranks for the low-rank faithfulness arm."""
+    return top_features_by_category(graph, k, "clinical", offset=offset)
 
 
 def steer_ablate(

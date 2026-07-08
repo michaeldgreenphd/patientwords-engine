@@ -1,0 +1,188 @@
+[
+  {
+    "top_prompt": "My stomach has acid reflux after lunch, so I reached for an",
+    "bottom_prompt": "My stomach's tied up in knots after lunch, so I reached for an",
+    "target_clinical_token": " antacid",
+    "generation": {
+      "patient_term": "tied up in knots",
+      "clinical_term": "has acid reflux",
+      "expected_clinical_continuations": [
+        "antacid",
+        "antiacid"
+      ],
+      "rationale": "'Tied up in knots' suggests nerves/stress; 'acid reflux' plus the article 'an' funnels toward a vowel-initial remedy like 'antacid'.",
+      "topic": "digestive issues",
+      "swap_spans": {
+        "patient_span": "stomach's tied up in knots",
+        "clinical_span": "stomach has acid reflux"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure"
+      ],
+      "downgrade_source": {
+        "batch": "pairs_20260707T154345Z",
+        "index": 2,
+        "models": [
+          "gemma-2-2b",
+          "qwen3-1.7b"
+        ]
+      }
+    }
+  },
+  {
+    "top_prompt": "She's been having panic attacks lately, so before the meeting she took a",
+    "bottom_prompt": "She's been feeling on edge lately, so before the meeting she took a",
+    "target_clinical_token": " pill",
+    "generation": {
+      "patient_term": "feeling on edge",
+      "clinical_term": "having panic attacks",
+      "expected_clinical_continuations": [
+        "pill",
+        "breath",
+        "moment"
+      ],
+      "rationale": "'On edge' reads as ordinary nerves (took a breath/moment), while 'panic attacks' shifts probability toward a medication noun after 'a'.",
+      "topic": "mental health",
+      "swap_spans": {
+        "patient_span": "feeling on edge",
+        "clinical_span": "having panic attacks"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure"
+      ],
+      "downgrade_source": {
+        "batch": "pairs_20260707T154345Z",
+        "index": 5,
+        "models": [
+          "qwen3-4b"
+        ]
+      }
+    }
+  },
+  {
+    "top_prompt": "After that greasy diner meal I have acid reflux, so I reached for an",
+    "bottom_prompt": "After that greasy diner meal my stomach's on fire, so I reached for an",
+    "target_clinical_token": " antacid",
+    "generation": {
+      "patient_term": "stomach's on fire",
+      "clinical_term": "have acid reflux",
+      "expected_clinical_continuations": [
+        "antacid",
+        "acid"
+      ],
+      "rationale": "The 'an' probe before a vowel funnels toward 'antacid' in the clinical reading, while 'stomach's on fire' could continue toward food/drink.",
+      "topic": "digestive issues",
+      "swap_spans": {
+        "patient_span": "my stomach's on fire,",
+        "clinical_span": "I have acid reflux,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ],
+      "downgrade_source": {
+        "batch": "pairs_20260707T171223Z",
+        "index": 12,
+        "models": [
+          "gemma-2-2b"
+        ]
+      }
+    }
+  },
+  {
+    "top_prompt": "When the dust kicks up my asthma flares, so at work I keep a spare",
+    "bottom_prompt": "When the dust kicks up my chest gets all tight, so at work I keep a spare",
+    "target_clinical_token": " inhaler",
+    "generation": {
+      "patient_term": "chest gets all tight",
+      "clinical_term": "asthma flares",
+      "expected_clinical_continuations": [
+        "inhaler",
+        "mask",
+        "puffer"
+      ],
+      "rationale": "Everyday reading might grab a spare shirt/fan; clinical framing steers to a rescue device, 'spare' funneling to 'inhaler'.",
+      "topic": "breathing and allergies",
+      "swap_spans": {
+        "patient_span": "chest gets all tight,",
+        "clinical_span": "asthma flares,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ],
+      "downgrade_source": {
+        "batch": "pairs_20260707T171223Z",
+        "index": 49,
+        "models": [
+          "gemma-2-2b"
+        ]
+      }
+    }
+  },
+  {
+    "top_prompt": "I keep having night sweats every night, so the doctor ordered a",
+    "bottom_prompt": "I keep waking up drenched in sweat every night, so the doctor ordered a",
+    "target_clinical_token": " blood",
+    "generation": {
+      "patient_term": "waking up drenched in sweat",
+      "clinical_term": "having night sweats",
+      "expected_clinical_continuations": [
+        "blood",
+        "test",
+        "scan",
+        "sleep"
+      ],
+      "rationale": "Waking up sweaty could be a warm room; 'night sweats' as a clinical symptom funnels toward a workup, and 'a' before a common noun favors 'blood' (test).",
+      "topic": "sleep problems",
+      "swap_spans": {
+        "patient_span": "waking up drenched in sweat",
+        "clinical_span": "having night sweats"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ],
+      "downgrade_source": {
+        "batch": "pairs_20260707T171223Z",
+        "index": 105,
+        "models": [
+          "qwen3-1.7b"
+        ]
+      }
+    }
+  }
+]
