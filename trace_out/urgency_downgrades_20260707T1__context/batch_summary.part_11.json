@@ -1,0 +1,447 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 11,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the doctor's office during a routine visit. I've got severe dermatitis all over my back, so I should probably see a",
+        "patient": "This came up at the doctor's office during a routine visit. I've got this itchy rash all over my back, so I should probably see a"
+      },
+      "target_token": "Output \" dermatologist\"",
+      "probabilities": {
+        "clinical": 0.714,
+        "patient": 0.529
+      },
+      "language_penalty": -0.18499999999999994,
+      "clinical_mass": {
+        "clinical": 0.438,
+        "patient": 0.441
+      },
+      "error_share": {
+        "clinical": 0.101,
+        "patient": 0.1037
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] technical language related to dermatology and immuno \u2192 Output \" skin\" (p=0.013)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.333)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dermatologist\"",
+            0.714
+          ],
+          [
+            "Output \" specialist\"",
+            0.088
+          ],
+          [
+            "Output \" doctor\"",
+            0.074
+          ],
+          [
+            "Output \" der\"",
+            0.067
+          ],
+          [
+            "Output \" skin\"",
+            0.013
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dermatologist\"",
+            0.529
+          ],
+          [
+            "Output \" doctor\"",
+            0.333
+          ],
+          [
+            "Output \" specialist\"",
+            0.043
+          ],
+          [
+            "Output \" der\"",
+            0.04
+          ],
+          [
+            "Output \" doc\"",
+            0.014
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1062,
+        "unique_to_a": 269,
+        "unique_to_b": 253
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_11.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_11.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_11_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_11_diff.png"
+      }
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the coffee shop during a casual chat. I've got severe dermatitis all over my back, so I should probably see a",
+        "patient": "This came up at the coffee shop during a casual chat. I've got this itchy rash all over my back, so I should probably see a"
+      },
+      "target_token": "Output \" dermatologist\"",
+      "probabilities": {
+        "clinical": 0.544,
+        "patient": 0.227
+      },
+      "language_penalty": -0.31700000000000006,
+      "clinical_mass": {
+        "clinical": 0.3975,
+        "patient": 0.4048
+      },
+      "error_share": {
+        "clinical": 0.0956,
+        "patient": 0.0969
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.278)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.650)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dermatologist\"",
+            0.544
+          ],
+          [
+            "Output \" doctor\"",
+            0.278
+          ],
+          [
+            "Output \" der\"",
+            0.061
+          ],
+          [
+            "Output \" specialist\"",
+            0.034
+          ],
+          [
+            "Output \" doc\"",
+            0.024
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.65
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.227
+          ],
+          [
+            "Output \" doc\"",
+            0.047
+          ],
+          [
+            "Output \" der\"",
+            0.022
+          ],
+          [
+            "Output \" Dr\"",
+            0.012
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1031,
+        "unique_to_a": 340,
+        "unique_to_b": 306
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_12.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_12.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_12_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_12_diff.png"
+      }
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the doctor's office during a routine visit. My stomach has acid reflux after lunch, so I reached for an",
+        "patient": "This came up at the doctor's office during a routine visit. My stomach's tied up in knots after lunch, so I reached for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.669,
+        "patient": 0.367
+      },
+      "language_penalty": -0.30200000000000005,
+      "clinical_mass": {
+        "clinical": 0.3043,
+        "patient": 0.2456
+      },
+      "error_share": {
+        "clinical": 0.1145,
+        "patient": 0.1063
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.082)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" apple\" (p=0.042)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.669
+          ],
+          [
+            "Output \" over\"",
+            0.082
+          ],
+          [
+            "Output \" OTC\"",
+            0.053
+          ],
+          [
+            "Output \" Ant\"",
+            0.04
+          ],
+          [
+            "Output \" anti\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ant\"",
+            0.367
+          ],
+          [
+            "Output \" anti\"",
+            0.08
+          ],
+          [
+            "Output \" aspirin\"",
+            0.047
+          ],
+          [
+            "Output \" Ad\"",
+            0.045
+          ],
+          [
+            "Output \" apple\"",
+            0.042
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1068,
+        "unique_to_a": 298,
+        "unique_to_b": 393
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_13.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_13.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_13_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_13_diff.png"
+      }
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the coffee shop during a casual chat. My stomach has acid reflux after lunch, so I reached for an",
+        "patient": "This came up at the coffee shop during a casual chat. My stomach's tied up in knots after lunch, so I reached for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.652,
+        "patient": 0.077
+      },
+      "language_penalty": -0.5750000000000001,
+      "clinical_mass": {
+        "clinical": 0.2321,
+        "patient": 0.1379
+      },
+      "error_share": {
+        "clinical": 0.1148,
+        "patient": 0.1073
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.025)",
+        "patient": "embedding \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.111)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.652
+          ],
+          [
+            "Output \" apple\"",
+            0.071
+          ],
+          [
+            "Output \" anti\"",
+            0.031
+          ],
+          [
+            "Output \" Ant\"",
+            0.031
+          ],
+          [
+            "Output \" over\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ice\"",
+            0.111
+          ],
+          [
+            "Output \" apple\"",
+            0.11
+          ],
+          [
+            "Output \" ant\"",
+            0.077
+          ],
+          [
+            "Output \" aspirin\"",
+            0.069
+          ],
+          [
+            "Output \" old\"",
+            0.054
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1010,
+        "unique_to_a": 355,
+        "unique_to_b": 439
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_14.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_14.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_14_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_14_diff.png"
+      }
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the doctor's office during a routine visit. She's been having panic attacks lately, so before the meeting she took a",
+        "patient": "This came up at the doctor's office during a routine visit. She's been feeling on edge lately, so before the meeting she took a"
+      },
+      "target_token": "Output \" Xan\"",
+      "probabilities": {
+        "clinical": 0.126,
+        "patient": 0.046
+      },
+      "language_penalty": -0.08,
+      "clinical_mass": {
+        "clinical": 0.3033,
+        "patient": 0.2291
+      },
+      "error_share": {
+        "clinical": 0.1021,
+        "patient": 0.0957
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7S] instances of the indefinite article 'a' or 'an' near \u2192 [L24\u00b7S] articles, prepositions, and other common short words \u2192 Output \" couple\" (p=0.075)",
+        "patient": "embedding \u2192 Output \" \" (p=0.049)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" Xan\"",
+            0.126
+          ],
+          [
+            "Output \" xan\"",
+            0.079
+          ],
+          [
+            "Output \" couple\"",
+            0.075
+          ],
+          [
+            "Output \" few\"",
+            0.064
+          ],
+          [
+            "Output \" little\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" few\"",
+            0.082
+          ],
+          [
+            "Output \" deep\"",
+            0.08
+          ],
+          [
+            "Output \" couple\"",
+            0.076
+          ],
+          [
+            "Output \" \"",
+            0.049
+          ],
+          [
+            "Output \" Xan\"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1175,
+        "unique_to_a": 334,
+        "unique_to_b": 343
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_15.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_15.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_15_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_15_diff.png"
+      }
+    }
+  ]
+}
