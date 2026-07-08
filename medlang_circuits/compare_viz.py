@@ -72,7 +72,7 @@ DEFAULT_MAX_EDGES = 400
 PANEL_WIDTH = 1180
 ROW_HEIGHT = 34
 ELIDED_GAP_ROWS = 1.45  # vertical space for a run of >=1 empty layers
-MARGIN = {"left": 66, "right": 34, "top": 118, "bottom": 66}
+MARGIN = {"left": 66, "right": 178, "top": 118, "bottom": 66}
 PANEL_GAP = 18
 BADGE_GAP = 64  # panel gap when a single-line badge renders in it
 BADGE_LINE_HEIGHT = 34
@@ -468,7 +468,7 @@ def _panel_svg(
             is_top = node_id == prep.get("top_logit_id")
             cls = "llt" if is_top else "ll"
             parts.append(
-                f'<text x="{pos[0] - r - 7:.1f}" y="{pos[1] + (5 if is_top else 4):.1f}" class="{cls}">'
+                f'<text x="{pos[0] + r + 8:.1f}" y="{pos[1] + (5 if is_top else 4):.1f}" class="{cls}">'
                 f"{html.escape(_logit_label(node))}</text>"
             )
             if is_top:
@@ -541,8 +541,8 @@ _CSS = (
     ".pp{font-size:34px;font-weight:800;fill:" + INK + ";font-family:ui-monospace,Menlo,monospace}"
     ".tk{font-size:13px;text-anchor:middle;fill:#475569;font-family:ui-monospace,'SF Mono',Menlo,monospace}"
     ".tke{font-size:16.5px;font-weight:800}"
-    ".ll{font-size:12.5px;text-anchor:end;fill:#4b5563;font-family:ui-monospace,Menlo,monospace}"
-    ".llt{font-size:20px;font-weight:800;text-anchor:end;fill:" + INK + ";"
+    ".ll{font-size:12.5px;text-anchor:start;fill:#4b5563;font-family:ui-monospace,Menlo,monospace}"
+    ".llt{font-size:20px;font-weight:800;text-anchor:start;fill:" + INK + ";"
     "font-family:ui-monospace,Menlo,monospace}"
     ".lk{font-size:11.5px;text-anchor:end;fill:#6b7280}"
     ".nv{font-size:11px;text-anchor:middle;fill:#4b5563;font-family:ui-monospace,Menlo,monospace}"
