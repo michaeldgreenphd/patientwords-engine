@@ -98,3 +98,14 @@ wordpiece-heavy batches, and is a no-op where tops were already whole words.
 **Still running at close-out:** gen B trace (5 chunks, fired 11:05), 119-batch
 qwen3-4b decoded leg, gemma-3-4b-it probe (pending; needs HF_TOKEN),
 154345Z/201750Z decoded reruns queued next in the logits chain.
+
+## 13:40 UTC — rigor chain (a2/a3) fired
+
+Placebo arm shipped: `--steer-placebo K` boosts K seeded-random features at the
+same positive strength as the clinical boost (top_random_features, category-blind,
+auditable labels; 118 tests green). Workflow gains steer_placebo /
+steer_strength / steer_boost_strength keys. Runs fired on the 5 boost-recovered
+cases (`urgency_downgrades_boostgrid.json`): placebo-vs-boost comparison
+(running) and boost dose-response at strength 2.5 (pending); 5.0 and 20.0 chain
+next. Five of six key-example tab edits are live and browser-verified; the
+dialect tab waits on the 8x8 sweep trace (72 graphs, in the queue).
