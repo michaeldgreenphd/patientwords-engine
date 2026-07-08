@@ -1,0 +1,447 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 1,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the doctor's office during a routine visit. She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+        "patient": "This came up at the doctor's office during a routine visit. She just can't switch her brain off at bedtime lately, so before turning in she takes a"
+      },
+      "target_token": "Output \" \"",
+      "probabilities": {
+        "clinical": 0.109,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2972,
+        "patient": 0.22
+      },
+      "error_share": {
+        "clinical": 0.101,
+        "patient": 0.1008
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" \" (p=0.109)",
+        "patient": "embedding \u2192 Output \" \" (p=0.065)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" \"",
+            0.109
+          ],
+          [
+            "Output \" melatonin\"",
+            0.086
+          ],
+          [
+            "Output \" half\"",
+            0.075
+          ],
+          [
+            "Output \" couple\"",
+            0.059
+          ],
+          [
+            "Output \" small\"",
+            0.05
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" couple\"",
+            0.067
+          ],
+          [
+            "Output \" \"",
+            0.065
+          ],
+          [
+            "Output \" half\"",
+            0.055
+          ],
+          [
+            "Output \" glass\"",
+            0.051
+          ],
+          [
+            "Output \" small\"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1058,
+        "unique_to_a": 412,
+        "unique_to_b": 486
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_01.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_01.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_01_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_01_diff.png"
+      }
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the coffee shop during a casual chat. She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+        "patient": "This came up at the coffee shop during a casual chat. She just can't switch her brain off at bedtime lately, so before turning in she takes a"
+      },
+      "target_token": "Output \" \"",
+      "probabilities": {
+        "clinical": 0.086,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2514,
+        "patient": 0.1108
+      },
+      "error_share": {
+        "clinical": 0.1022,
+        "patient": 0.1006
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" \" (p=0.086)",
+        "patient": "embedding \u2192 Output \" \" (p=0.044)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" \"",
+            0.086
+          ],
+          [
+            "Output \" melatonin\"",
+            0.076
+          ],
+          [
+            "Output \" couple\"",
+            0.071
+          ],
+          [
+            "Output \" half\"",
+            0.063
+          ],
+          [
+            "Output \" glass\"",
+            0.045
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" few\"",
+            0.11
+          ],
+          [
+            "Output \" couple\"",
+            0.061
+          ],
+          [
+            "Output \" book\"",
+            0.055
+          ],
+          [
+            "Output \" \"",
+            0.044
+          ],
+          [
+            "Output \" little\"",
+            0.044
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 944,
+        "unique_to_a": 497,
+        "unique_to_b": 581
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_02.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_02.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_02_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_02_diff.png"
+      }
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the doctor's office during a routine visit. Because I've had arrhythmia symptoms lately, I finally went to see a",
+        "patient": "This came up at the doctor's office during a routine visit. Because my ticker's been acting funny lately, I finally went to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.152,
+        "patient": 0.267
+      },
+      "language_penalty": 0.11500000000000002,
+      "clinical_mass": {
+        "clinical": 0.4721,
+        "patient": 0.4022
+      },
+      "error_share": {
+        "clinical": 0.0974,
+        "patient": 0.1033
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7C] terminology related to cardiology and medical resear \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.060)",
+        "patient": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.267)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cardio\"",
+            0.588
+          ],
+          [
+            "Output \" doctor\"",
+            0.152
+          ],
+          [
+            "Output \" specialist\"",
+            0.063
+          ],
+          [
+            "Output \" heart\"",
+            0.06
+          ],
+          [
+            "Output \" new\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cardio\"",
+            0.394
+          ],
+          [
+            "Output \" doctor\"",
+            0.267
+          ],
+          [
+            "Output \" specialist\"",
+            0.064
+          ],
+          [
+            "Output \" doc\"",
+            0.047
+          ],
+          [
+            "Output \" heart\"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 995,
+        "unique_to_a": 321,
+        "unique_to_b": 391
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_03.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_03.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_03_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_03_diff.png"
+      }
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the coffee shop during a casual chat. Because I've had arrhythmia symptoms lately, I finally went to see a",
+        "patient": "This came up at the coffee shop during a casual chat. Because my ticker's been acting funny lately, I finally went to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.201,
+        "patient": 0.404
+      },
+      "language_penalty": 0.203,
+      "clinical_mass": {
+        "clinical": 0.4589,
+        "patient": 0.3418
+      },
+      "error_share": {
+        "clinical": 0.1,
+        "patient": 0.1062
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.047)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.404)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cardio\"",
+            0.559
+          ],
+          [
+            "Output \" doctor\"",
+            0.201
+          ],
+          [
+            "Output \" heart\"",
+            0.047
+          ],
+          [
+            "Output \" specialist\"",
+            0.028
+          ],
+          [
+            "Output \" Cardio\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.404
+          ],
+          [
+            "Output \" cardio\"",
+            0.368
+          ],
+          [
+            "Output \" doc\"",
+            0.056
+          ],
+          [
+            "Output \" heart\"",
+            0.027
+          ],
+          [
+            "Output \" Cardio\"",
+            0.022
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 860,
+        "unique_to_a": 451,
+        "unique_to_b": 501
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_04.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_04.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_04_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_04_diff.png"
+      }
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This came up at the doctor's office during a routine visit. Because I have somniloquy, my roommate says I should see a",
+        "patient": "This came up at the doctor's office during a routine visit. Because I keep talking in my sleep, my roommate says I should see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.147,
+        "patient": 0.221
+      },
+      "language_penalty": 0.07400000000000001,
+      "clinical_mass": {
+        "clinical": 0.3528,
+        "patient": 0.329
+      },
+      "error_share": {
+        "clinical": 0.1102,
+        "patient": 0.1031
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L4\u00b7O] words and phrases related to sleep apnea and snoring \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.299)",
+        "patient": "embedding \u2192 Output \" sleep\" (p=0.559)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.299
+          ],
+          [
+            "Output \" neuro\"",
+            0.167
+          ],
+          [
+            "Output \" doctor\"",
+            0.147
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.078
+          ],
+          [
+            "Output \" speech\"",
+            0.066
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.559
+          ],
+          [
+            "Output \" doctor\"",
+            0.221
+          ],
+          [
+            "Output \" neuro\"",
+            0.05
+          ],
+          [
+            "Output \" specialist\"",
+            0.04
+          ],
+          [
+            "Output \" dentist\"",
+            0.022
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 866,
+        "unique_to_a": 684,
+        "unique_to_b": 482
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1__context/index_05.html",
+        "png": "trace_out/urgency_downgrades_20260707T1__context/index_05.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1__context/index_05_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1__context/index_05_diff.png"
+      }
+    }
+  ]
+}
