@@ -119,3 +119,19 @@ independent traces. Dose-response runs firing (2.5 live, 5 queued; 10 = 4/5;
 20 + rank-6-10 chain next). Translation tab rebuilt around the data: process
 flow with the real translated sentence, 14-case patch gallery, flipbook tabs,
 titration panel with honest pending states that auto-fill from provenance.
+
+## 21:25 UTC — titration wake: s2.5 harvested, s20 + low-rank armed
+
+Strength 2.5 landed: **4/4 recovered** on the pairs that traced (pair 5 dropped
+to a mid-batch truncation; remeasure queued). Published to the site's
+`steering_titration.strengths['2.5']` — the dose bar fills. Dose-response so
+far: 2.5 → 4/4, 10 → 4/5, placebo 0/5; strength 5 running, strength 20 now
+pending behind it. The low-rank faithfulness arm shipped:
+`NEURONPEDIA_STEER_RANK_OFFSET` skips the top ranks in `_steer_boost`
+(recorded in results when nonzero; 122 tests green), workflow key
+`steer_rank_offset`, alias batches `boostgrid_s20` / `boostgrid_lowrank` staged.
+Ladder n=10 (`dialects_20260708T201616Z`) and paraphrase
+(`dialects_20260708T203111Z`) batches harvested from main onto the branch;
+their traces fire as circuit-trace slots free. Sociolect round 2 generating:
+20 measured baselines x default 8-framing grid, max_spend 4. $0 spent this
+wake outside that ceiling.
