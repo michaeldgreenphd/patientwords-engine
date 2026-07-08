@@ -116,6 +116,13 @@ def add(model, name, index, prompts, spread_c, spread_p, topic=None,
         "tier_shift": None if (et_c is None or et_p is None) else round(et_p - et_c, 3),
         "language_penalty": penalty,
         "coverage": [round(cov_c, 2), round(cov_p, 2)],
+        # word counts [clinical, patient] for the length-confound check:
+        # colloquial rewrites tend to run longer, and penalty must not
+        # reduce to prompt length
+        "prompt_words": [
+            len(p.split()) if isinstance(p := (prompts or {}).get(side), str) else None
+            for side in ("clinical", "patient")
+        ],
     })
     # mitigation runs carry a third, translated side: does translating the
     # patient sentence restore the URGENCY, not just the probability?

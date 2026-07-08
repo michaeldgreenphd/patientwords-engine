@@ -27,6 +27,7 @@ import glob
 import json
 import math
 import random
+import re
 from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -117,7 +118,59 @@ for i, a in enumerate(args.models):
                  for v in unified.values()]
         out["paired_differences"][f"{a} - {b}"] = boot_ci(diffs)
 
+# --- length confound: penalty must not reduce to prompt-length difference ---
+# Colloquial rewrites tend to run longer than their clinical originals. If the
+# language penalty were mostly a length artifact, penalty would correlate with
+# (patient words - clinical words) across phrases. Report r per model so the
+# check is auditable rather than asserted.
+out["length_confound"] = {}
+for m in args.models:
+    pts = [(v[m]["prompt_words"][1] - v[m]["prompt_words"][0], v[m]["language_penalty"])
+           for v in unified.values()
+           if isinstance(v[m].get("prompt_words"), list)
+           and all(isinstance(w, int) for w in v[m]["prompt_words"])]
+    if len(pts) >= 3:
+        dw = [p[0] for p in pts]
+        pen = [p[1] for p in pts]
+        out["length_confound"][m] = {
+            "n": len(pts),
+            "mean_word_diff": round(sum(dw) / len(dw), 2),
+            "pearson_r_penalty_vs_word_diff": pearson(dw, pen),
+            "spearman_rho": spearman(dw, pen),
+        }
+    else:
+        out["length_confound"][m] = {"n": len(pts),
+                                     "note": "rows predate prompt_words; re-run the collector"}
+
 # --- validity: live-traced penalty vs hand-measured penalty -----------------
+
+
+def _bare(label):
+    if not isinstance(label, str):
+        return None
+    m = re.match(r'Output "\s*(.*)"$', label)
+    return (m.group(1) if m else label).strip() or None
+
+
+def _spread_prob(spread, intended):
+    """Probability of the intended token in a traced spread, tolerating the
+    casing and wordpiece-fragment mismatches that break strict anchoring
+    (' Meds' vs ' meds', ' prescription' vs ' prescriptio')."""
+    want = (_bare(intended) or "").casefold()
+    if not want:
+        return None, None
+    fragment = None
+    for tok, p in spread or []:
+        b = (_bare(tok) or "").casefold()
+        if not b:
+            continue
+        if b == want:
+            return p, "exact"
+        if fragment is None and len(b) >= 3 and (want.startswith(b) or b.startswith(want)):
+            fragment = (p, "fragment")
+    return fragment or (None, None)
+
+
 hand = Path(args.hand_pairs)
 if hand.is_file():
     stem = hand.stem
@@ -128,24 +181,66 @@ if hand.is_file():
             results[r["index"]] = r
     pairs = json.loads(hand.read_text(encoding="utf-8"))
     live, handv, matched = [], [], []
+    censored, unrecoverable = [], []
     for i, pair in enumerate(pairs, start=1):
         prov = pair.get("provenance") or {}
         po = (prov.get("patient") or {}).get("observed_prob")
         co = (prov.get("clinical") or {}).get("observed_prob")
+        if not (isinstance(po, (int, float)) and isinstance(co, (int, float))):
+            continue
         r = results.get(i)
-        lp = (r or {}).get("language_penalty")
-        if isinstance(po, (int, float)) and isinstance(co, (int, float)) \
-                and isinstance(lp, (int, float)):
+        if r is None:
+            continue
+        lp = r.get("language_penalty")
+        if isinstance(lp, (int, float)):
             live.append(lp)
             handv.append(round(po - co, 4))
             matched.append(i)
+            continue
+        # Strict anchoring failed. Recover both sides with tolerant matching;
+        # when the target is simply absent from the patient top-k spread the
+        # live penalty is CENSORED (true patient prob < the spread floor), and
+        # these are exactly the largest hand-measured effects - dropping them
+        # biases the correlation toward the weak cases.
+        sp = r.get("predictive_spread") or {}
+        intended = pair.get("target_clinical_token")
+        p_c, how_c = _spread_prob(sp.get("clinical"), intended)
+        p_p, how_p = _spread_prob(sp.get("patient"), intended)
+        if p_c is not None and p_p is not None:
+            live.append(round(p_p - p_c, 4))
+            handv.append(round(po - co, 4))
+            matched.append(i)
+        elif p_c is not None and sp.get("patient"):
+            floor = min(p for _, p in sp["patient"])
+            censored.append({"index": i, "p_clinical": p_c, "anchor": how_c,
+                             "patient_floor": round(floor, 4),
+                             "penalty_upper_bound": round(floor - p_c, 4),
+                             "hand_penalty": round(po - co, 4)})
+        else:
+            unrecoverable.append(i)
     out["validity"] = {
         "hand_pairs_file": str(hand), "traced": len(results), "matched": len(matched),
         "pearson_r": pearson(live, handv), "spearman_rho": spearman(live, handv),
         "note": ("live trace of the hand-measured pairs not found in trace_out/ - "
                  "fire a 2panel trace of the file first") if not results else
-                "penalty = patient - clinical on the same target token, both scales",
+                "penalty = patient - clinical on the same target token, both scales; "
+                "matched includes tolerant (case/fragment) anchor recoveries",
     }
+    if censored:
+        # Sensitivity: impute each censored patient prob at its spread floor
+        # (an UPPER bound - the true penalty is more negative), so this r is
+        # the conservative direction and labeled as a bound, not a measurement.
+        live_s = live + [c["penalty_upper_bound"] for c in censored]
+        hand_s = handv + [c["hand_penalty"] for c in censored]
+        out["validity"]["censored"] = censored
+        out["validity"]["censored_sensitivity"] = {
+            "n": len(live_s),
+            "pearson_r": pearson(live_s, hand_s),
+            "spearman_rho": spearman(live_s, hand_s),
+            "imputation": "patient prob set to the top-k spread floor (upper bound)",
+        }
+    if unrecoverable:
+        out["validity"]["unrecoverable_indices"] = unrecoverable
 
 Path(args.out).write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
 print(json.dumps(out, indent=1))
