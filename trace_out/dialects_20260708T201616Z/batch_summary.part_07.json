@@ -1,0 +1,393 @@
+{
+  "mode": "dialect",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 7,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 7,
+      "mode": "dialect",
+      "baseline_prompt": "My stomach has acid reflux after lunch, so I reached for an",
+      "held_fixed": "clinical",
+      "term": "stomach has acid reflux",
+      "target_token": "Output \" ant\"",
+      "baseline_probability": 0.404,
+      "variants": [
+        {
+          "dialect": "rung 1 of 5 - fully formal clinical register",
+          "prompt": "Following the consumption of the midday meal, my stomach has acid reflux, which necessitated that I procure an",
+          "probability": 0.356,
+          "delta_vs_baseline": -0.04800000000000004
+        },
+        {
+          "dialect": "rung 2 of 5 - mostly clinical, one everyday word",
+          "prompt": "Subsequent to lunch, my stomach has acid reflux, so I grabbed for an",
+          "probability": 0.302,
+          "delta_vs_baseline": -0.10200000000000004
+        },
+        {
+          "dialect": "rung 3 of 5 - even mix of clinical and everyday phrasing",
+          "prompt": "After lunch my stomach has acid reflux, so I reached over for an",
+          "probability": 0.678,
+          "delta_vs_baseline": 0.274
+        },
+        {
+          "dialect": "rung 4 of 5 - mostly casual everyday phrasing",
+          "prompt": "Right after lunch my stomach has acid reflux, so I went and grabbed an",
+          "probability": 0.396,
+          "delta_vs_baseline": -0.008000000000000007
+        },
+        {
+          "dialect": "rung 5 of 5 - maximally casual spoken phrasing with slang",
+          "prompt": "Yeah so like right after lunch my stomach has acid reflux, so I just grab an",
+          "probability": 0.31,
+          "delta_vs_baseline": -0.09400000000000003
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" ant\"",
+            0.404
+          ],
+          [
+            "Output \" apple\"",
+            0.096
+          ],
+          [
+            "Output \" over\"",
+            0.095
+          ],
+          [
+            "Output \" OTC\"",
+            0.044
+          ],
+          [
+            "Output \" anti\"",
+            0.043
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" ant\"",
+              0.356
+            ],
+            [
+              "Output \" over\"",
+              0.174
+            ],
+            [
+              "Output \" anti\"",
+              0.105
+            ],
+            [
+              "Output \" acid\"",
+              0.078
+            ],
+            [
+              "Output \" Ant\"",
+              0.024
+            ]
+          ],
+          [
+            [
+              "Output \" ant\"",
+              0.302
+            ],
+            [
+              "Output \" apple\"",
+              0.151
+            ],
+            [
+              "Output \" ice\"",
+              0.053
+            ],
+            [
+              "Output \" anti\"",
+              0.037
+            ],
+            [
+              "Output \" over\"",
+              0.025
+            ]
+          ],
+          [
+            [
+              "Output \" ant\"",
+              0.678
+            ],
+            [
+              "Output \" aspirin\"",
+              0.033
+            ],
+            [
+              "Output \" anti\"",
+              0.032
+            ],
+            [
+              "Output \" Ant\"",
+              0.029
+            ],
+            [
+              "Output \" apple\"",
+              0.028
+            ]
+          ],
+          [
+            [
+              "Output \" ant\"",
+              0.396
+            ],
+            [
+              "Output \" apple\"",
+              0.106
+            ],
+            [
+              "Output \" ice\"",
+              0.065
+            ],
+            [
+              "Output \" anti\"",
+              0.04
+            ],
+            [
+              "Output \" extra\"",
+              0.027
+            ]
+          ],
+          [
+            [
+              "Output \" ant\"",
+              0.31
+            ],
+            [
+              "Output \" apple\"",
+              0.186
+            ],
+            [
+              "Output \" ice\"",
+              0.095
+            ],
+            [
+              "Output \" empty\"",
+              0.042
+            ],
+            [
+              "Output \" aspirin\"",
+              0.041
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.1035
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 Output \" over\" (p=0.095)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260708T201616Z/index_07.html",
+        "png": "trace_out/dialects_20260708T201616Z/index_07.png"
+      }
+    },
+    {
+      "index": 8,
+      "mode": "dialect",
+      "baseline_prompt": "She's been having panic attacks lately, so before the meeting she took a",
+      "held_fixed": "clinical",
+      "term": "having panic attacks",
+      "target_token": "Output \" pill\"",
+      "baseline_probability": 0.063,
+      "variants": [
+        {
+          "dialect": "rung 1 of 5 - fully formal clinical register",
+          "prompt": "The patient reports having panic attacks with increasing frequency; consequently, immediately prior to the meeting, she took a",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "rung 2 of 5 - mostly clinical, one everyday word",
+          "prompt": "She has been having panic attacks lately, so right before the meeting, she took a",
+          "probability": 0.057,
+          "delta_vs_baseline": -0.005999999999999998
+        },
+        {
+          "dialect": "rung 3 of 5 - even mix of clinical and everyday phrasing",
+          "prompt": "She's been having panic attacks lately, so just before the meeting started, she took a",
+          "probability": 0.042,
+          "delta_vs_baseline": -0.020999999999999998
+        },
+        {
+          "dialect": "rung 4 of 5 - mostly casual everyday phrasing",
+          "prompt": "She's been having panic attacks a lot lately, so right before the meeting she grabbed a",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "rung 5 of 5 - maximally casual spoken phrasing with slang",
+          "prompt": "Girl's been having panic attacks like crazy lately, so right before the meeting she popped a",
+          "probability": 0.081,
+          "delta_vs_baseline": 0.018000000000000002
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" Xan\"",
+            0.126
+          ],
+          [
+            "Output \" few\"",
+            0.121
+          ],
+          [
+            "Output \" couple\"",
+            0.083
+          ],
+          [
+            "Output \" pill\"",
+            0.063
+          ],
+          [
+            "Output \" xan\"",
+            0.048
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" \"",
+              0.105
+            ],
+            [
+              "Output \" dose\"",
+              0.101
+            ],
+            [
+              "Output \" small\"",
+              0.063
+            ],
+            [
+              "Output \" Xan\"",
+              0.06
+            ],
+            [
+              "Output \" benzo\"",
+              0.051
+            ]
+          ],
+          [
+            [
+              "Output \" Xan\"",
+              0.152
+            ],
+            [
+              "Output \" few\"",
+              0.099
+            ],
+            [
+              "Output \" couple\"",
+              0.072
+            ],
+            [
+              "Output \" pill\"",
+              0.057
+            ],
+            [
+              "Output \" xan\"",
+              0.053
+            ]
+          ],
+          [
+            [
+              "Output \" deep\"",
+              0.132
+            ],
+            [
+              "Output \" few\"",
+              0.132
+            ],
+            [
+              "Output \" Xan\"",
+              0.082
+            ],
+            [
+              "Output \" couple\"",
+              0.078
+            ],
+            [
+              "Output \" pill\"",
+              0.042
+            ]
+          ],
+          [
+            [
+              "Output \" bottle\"",
+              0.087
+            ],
+            [
+              "Output \" few\"",
+              0.077
+            ],
+            [
+              "Output \" couple\"",
+              0.066
+            ],
+            [
+              "Output \" handful\"",
+              0.055
+            ],
+            [
+              "Output \" Xan\"",
+              0.051
+            ]
+          ],
+          [
+            [
+              "Output \" Xan\"",
+              0.185
+            ],
+            [
+              "Output \" couple\"",
+              0.143
+            ],
+            [
+              "Output \" xan\"",
+              0.099
+            ],
+            [
+              "Output \" few\"",
+              0.088
+            ],
+            [
+              "Output \" pill\"",
+              0.081
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.095
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 [L18\u00b7S] instances of the indefinite article 'a' or 'an' near \u2192 [L24\u00b7S] articles, prepositions, and other common short words \u2192 Output \" couple\" (p=0.083)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260708T201616Z/index_08.html",
+        "png": "trace_out/dialects_20260708T201616Z/index_08.png"
+      }
+    }
+  ]
+}
