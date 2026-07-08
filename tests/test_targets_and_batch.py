@@ -582,3 +582,22 @@ def test_run_batch_rejects_steer_flags_outside_2panel(tmp_path):
         run_batch(str(pairs), out_dir=str(tmp_path / "out"), mode="dialect", steer_validate=2)
     with pytest.raises(ValueError, match="2panel"):
         run_batch(str(pairs), out_dir=str(tmp_path / "out"), mode="translation", steer_boost=2)
+
+
+def test_top_random_features_is_seeded_and_category_blind():
+    from medlang_circuits.steering import top_random_features
+    a = top_random_features(_interp_graph(), 2, seed=7)
+    b = top_random_features(_interp_graph(), 2, seed=7)
+    assert a == b and len(a) == 2  # deterministic draw
+    layers = {f["layer"] for f in a}
+    assert layers == {2, 5}  # both categories eligible
+
+
+def test_steer_placebo_boosts_random_features(monkeypatch):
+    from medlang_circuits.batch_eval import _steer_placebo
+
+    sent = _capture_steer_post(monkeypatch)
+    out = _steer_placebo("prompt", _interp_graph(), 2, source_set="s16k")
+    assert out["ok"] and len(out["placebo_features"]) == 2
+    assert all(f["strength"] > 0 for f in sent["body"]["features"])
+    assert sent["body"]["features"][0]["layer"].endswith("-s16k")

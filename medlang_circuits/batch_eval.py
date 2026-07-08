@@ -83,6 +83,7 @@ from medlang_circuits.steering import (
     steer_ablate,
     top_clinical_features,
     top_offtarget_features,
+    top_random_features,
 )
 from medlang_circuits.targets import (
     display_token,
@@ -429,6 +430,23 @@ def _steer_boost(patient_prompt: str, clinical_graph: dict[str, Any], k: int,
     return {"boosted_features": features, **result}
 
 
+def _steer_placebo(patient_prompt: str, patient_graph: dict[str, Any], k: int,
+                   source_set: str | None = None) -> dict[str, Any]:
+    """EXPERIMENTAL: boost k RANDOM features on the patient prompt - the
+    placebo arm for _steer_boost. Same strength, same prompt, arbitrary
+    features; recoveries here would mean steering itself, not the clinical
+    circuit, drives the effect. Failures are recorded, never raised."""
+    features = top_random_features(patient_graph, k)
+    if not features:
+        return {"placebo_features": [], "note": "no feature nodes to draw from"}
+    scan = (patient_graph.get("metadata") or {}).get("scan", "gemma-2-2b")
+    kwargs: dict[str, Any] = {"strength": boost_strength()}
+    if source_set:
+        kwargs["source_set"] = source_set
+    result = steer_ablate(patient_prompt, features, model_id=scan, **kwargs)
+    return {"placebo_features": features, **result}
+
+
 def evaluate_pair(
     pair: dict[str, Any],
     index: int,
@@ -445,6 +463,7 @@ def evaluate_pair(
     screen_targets: float | None = None,
     steer_validate: int = 0,
     steer_boost: int = 0,
+    steer_placebo: int = 0,
 ) -> dict[str, Any]:
     """Direct lexical swap: clinical top panel vs. patient bottom panel.
 
@@ -588,6 +607,8 @@ def evaluate_pair(
            if steer_validate else {}),
         **({"steering_boost": _steer_boost(prompts[1], graphs[0], steer_boost, source_set)}
            if steer_boost else {}),
+        **({"steering_placebo": _steer_placebo(prompts[1], graphs[1], steer_placebo, source_set)}
+           if steer_placebo else {}),
         **result_screening,
         "mitigation_recovery": (
             (probs[2] - probs[1]) if len(probs) == 3 and probs[1] is not None and probs[2] is not None else None
@@ -947,6 +968,7 @@ def run_batch(
     start_index: int = 1,
     steer_validate: int = 0,
     steer_boost: int = 0,
+    steer_placebo: int = 0,
     screen_targets: float | None = None,
     generate_missing_explanations: int = 0,
 ) -> list[dict[str, Any]]:
@@ -967,7 +989,7 @@ def run_batch(
         raise ValueError(f"start_index must be >= 1; got {start_index}")
     if screen_targets is not None and mode != "2panel":
         raise ValueError("--screen-targets is a 2panel-mode feature")
-    if (steer_validate or steer_boost) and mode != "2panel":
+    if (steer_validate or steer_boost or steer_placebo) and mode != "2panel":
         raise ValueError("--steer-validate/--steer-boost are 2panel-mode features")
     with open(pairs_path, encoding="utf-8") as f:
         pairs = json.load(f)
@@ -1023,6 +1045,7 @@ def run_batch(
                 pair, i, out, backend=backend, show_mitigation=show_mitigation,
                 use_llm_translation=use_llm_translation, llm_model=llm_model,
                 dpi=dpi, fetcher=fetcher, steer_validate=steer_validate, steer_boost=steer_boost,
+                steer_placebo=steer_placebo,
                 graph_model=graph_model, source_set=source_set, generation_params=generation_params,
                 screen_targets=screen_targets,
             )
@@ -1063,6 +1086,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="EXPERIMENTAL (2panel): after measuring a pair, ablate the top K "
                              "off-target features of the patient graph via Neuronpedia steering "
                              "and record the default vs. steered continuations (causal check)")
+    parser.add_argument("--steer-placebo", type=int, default=0, metavar="K",
+                        help="EXPERIMENTAL (2panel): boost K seeded-random features on the patient "
+                             "prompt at the same positive strength - the placebo arm for --steer-boost")
     parser.add_argument("--steer-boost", type=int, default=0, metavar="K",
                         help="EXPERIMENTAL (2panel): amplify the top K clinical features of the "
                              "CLINICAL graph while completing the PATIENT prompt (positive "
@@ -1091,6 +1117,7 @@ def main(argv: list[str] | None = None) -> int:
         screen_targets=args.screen_targets,
         steer_validate=args.steer_validate,
         steer_boost=args.steer_boost,
+        steer_placebo=args.steer_placebo,
         generate_missing_explanations=args.generate_missing_explanations,
     )
     print(json.dumps(results, indent=2))

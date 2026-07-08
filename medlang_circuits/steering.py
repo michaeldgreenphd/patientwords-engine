@@ -79,6 +79,31 @@ def top_features_by_category(graph: dict[str, Any], k: int, category: str) -> li
     ]
 
 
+def top_random_features(graph: dict[str, Any], k: int, seed: int = 16) -> list[dict[str, Any]]:
+    """k feature nodes drawn uniformly at random (seeded) - the placebo arm.
+
+    If boosting arbitrary features recovered targets as often as boosting the
+    top clinical features, the clinical-circuit story would be an artifact of
+    steering itself. Category is ignored on purpose; labels are recorded so
+    the draw is auditable."""
+    import random as _random
+    meta = graph.get("metadata", {})
+    schema_version, scan = meta.get("schema_version"), meta.get("scan", "gemma-2-2b")
+    seen: dict[tuple[int, int], str] = {}
+    for node in graph.get("nodes", []):
+        if not is_feature_node(node):
+            continue
+        key = node_layer_and_index(node, schema_version, scan)
+        if key is None:
+            continue
+        med = node.get("medlang") or {}
+        seen.setdefault(key, (med.get("description") or node.get("clerp") or "")[:80])
+    keys = sorted(seen)
+    _random.Random(seed).shuffle(keys)
+    return [{"layer": layer, "index": index, "mass": None, "label": seen[(layer, index)]}
+            for layer, index in keys[:k]]
+
+
 def top_offtarget_features(graph: dict[str, Any], k: int) -> list[dict[str, Any]]:
     """The k highest-mass off-target features: the ablation candidates -
     the features the colloquial wording dragged in."""

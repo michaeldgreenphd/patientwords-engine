@@ -131,7 +131,8 @@ jobs:
               "max_n_logits": "10", "desired_logit_prob": "0.95",
               "node_threshold": "0.8", "edge_threshold": "0.98",
               "max_feature_nodes": "5000", "generate_explanations": "0",
-              "steer_validate": "0", "steer_boost": "0",
+              "steer_validate": "0", "steer_boost": "0", "steer_placebo": "0",
+              "steer_strength": "", "steer_boost_strength": "",
           }
           params = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
@@ -231,6 +232,9 @@ jobs:
           GEN_EXPL: ${{ fromJson(needs.params.outputs.config).generate_explanations }}
           STEER_VALIDATE: ${{ fromJson(needs.params.outputs.config).steer_validate }}
           STEER_BOOST: ${{ fromJson(needs.params.outputs.config).steer_boost }}
+          STEER_PLACEBO: ${{ fromJson(needs.params.outputs.config).steer_placebo }}
+          NEURONPEDIA_STEER_STRENGTH: ${{ fromJson(needs.params.outputs.config).steer_strength }}
+          NEURONPEDIA_STEER_BOOST_STRENGTH: ${{ fromJson(needs.params.outputs.config).steer_boost_strength }}
         run: |
           ARGS=(ci_pairs.json
             --mode "${{ fromJson(needs.params.outputs.config).mode }}"
@@ -258,6 +262,12 @@ jobs:
           if [ -n "$STEER_BOOST" ] && [ "$STEER_BOOST" != "0" ]; then
             ARGS+=(--steer-boost "$STEER_BOOST")
           fi
+          if [ -n "$STEER_PLACEBO" ] && [ "$STEER_PLACEBO" != "0" ]; then
+            ARGS+=(--steer-placebo "$STEER_PLACEBO")
+          fi
+          # empty strength overrides fall back to module defaults
+          [ -z "$NEURONPEDIA_STEER_STRENGTH" ] && unset NEURONPEDIA_STEER_STRENGTH
+          [ -z "$NEURONPEDIA_STEER_BOOST_STRENGTH" ] && unset NEURONPEDIA_STEER_BOOST_STRENGTH
           medlang-batch-eval "${ARGS[@]}"
 
       - name: Commit trace outputs to the dispatched branch
