@@ -222,3 +222,43 @@ running, stem 4 queued. Paraphrase trace running; sociolect 2a queued
 (offsets corrected to cover all 20 baselines after catching a chunking
 gap that would have silently dropped pairs 19–20). Remaining for later
 slots: grandma_r2 re-render, s2.5 pair-5 + s20 remeasures.
+
+### Morning brief spec, section 6 (owner request, 01:15 UTC): rigor, scale, cost, hosting
+Ground everything in these computed numbers (from paired_stats_out.json and
+urgency_shift.json, 2026-07-09):
+- Effect sizes: penalty cohen_d ≈ 0.43/0.34/0.36 (gemma-2/qwen3-4b/qwen3-1.7b)
+  → 80% power needs n ≈ 42/69/63. Unified set is 132: THE PENALTY IS ALREADY
+  ADEQUATELY POWERED. Scale is for the proportion-level claims:
+- P(downgrade) = 0.118 of 920 measurements. Downgrade rate to ±2% needs
+  n≈1,004; ±1.5% needs 1,784. Detecting a rate DIFFERENCE (.10 vs .05,
+  80% power) needs ≈434 per condition.
+- Tier proposal (behavioral scale decoupled from mechanistic depth — key
+  design point: behavioral n scales via $0 CPU logits for ALL models incl.
+  gemma-2-2b open weights; hosted tracing reserved for a graphed subsample):
+  A) Confirmatory core, n=500 balanced, pre-registered: gen ~$7.50 (opus,
+     observed $0.015/pair) or ~$1.50 (cheaper generator); traces on a ~100
+     stratified subsample; ~3-4 days mostly queue time.
+  B) Condition-resolved, n=1,600 (200×8 conditions): gen ~$24 opus / ~$5
+     cheap; behavioral via CPU in days; hosted tracing subsample only
+     (full 1,600 hosted would take 1-2 weeks on the single queue).
+  C) Dialect grid at power: 50 baselines × 8 framings × 4 models,
+     behavioral-first, same pattern.
+  Recommend a timed 20-pair throughput probe before committing (hosted
+  rate limits at scale are unverified).
+- Additional rigor tests to propose: pre-registration doc committed before
+  generation; second-generator replication batch (different LLM family) to
+  rule out generator artifacts; non-medical register-swap NEGATIVE CONTROL
+  (is the penalty medical-specific or register-general — framing-critical);
+  trace-retrace stability probe (probability jitter, cheap); mixed-effects
+  model with per-topic random intercepts + Holm/BH across conditions;
+  human-reader baseline (do people interpret the patient phrasing where
+  models don't); larger open models via logits for a scale trend; expand
+  the blind stimulus QC beyond n=20.
+- Hosting/presentation at scale (site currently: payload 1.8MB, renders
+  89MB, table 235 rows): shard the payload per batch with a small index +
+  lazy fetch (page JS reads precomputed aggregates first); paginate/
+  virtualize the scenario table (~50 rows/page); KEEP the 25-render cap on
+  Pages — full render sets stay on GitHub Releases via the existing archive
+  workflow (renders are ~1.1MB each; thousands would blow the 1GB Pages
+  budget); CSV/Parquet for collaborators on Releases. GitHub Pages limits:
+  ~1GB site, 100MB/file, 10 builds/hr — sharding keeps everything far under.
