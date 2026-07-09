@@ -3,8 +3,11 @@
 Living document for model/session handoff (owner may transition this
 session from Fable to Claude Opus 4.8 at the 3:00 PM or Friday checkpoint).
 A successor session should be able to take over from this file plus the
-repo. **No secrets live here or anywhere in the repo — API keys exist only
-as GitHub Actions secrets. Keep it that way.**
+repo. **This repository is PUBLIC (owner-confirmed 2026-07-09), as is the
+site repo. No secrets, keys, or tokens may ever be written to this file,
+`ops/dashboard.json`, the ledger, the Rmd artifact, or anywhere else in
+either repo — API keys exist only as GitHub Actions secrets. Keep it that
+way.**
 
 ## The assignment (owner directive, 2026-07-09 midday)
 
@@ -43,7 +46,7 @@ fields.
 | Trigger guard + fire wrapper | `scripts/fire_trigger.py`, journal `ops/trigger_journal.jsonl`, `tests/test_fire_trigger.py` | building |
 | Spend accounting | `scripts/ledger_update.py`, `tests/test_ledger_update.py` | building |
 | 3-section brief + digest | `scripts/daily_brief.py`, `tests/test_daily_brief.py` | building |
-| Site text extraction (.Rmd) | `scripts/extract_site_text.py` → `../patientwords/docs/site_text.Rmd` | building — due at Checkpoint 1 |
+| Site text extraction (.Rmd) | `scripts/extract_site_text.py` → `ops/site_text_outline.Rmd` (owner-corrected: lives in THIS repo, not the site repo) | building — due at Checkpoint 1 |
 | Routine standing prompt | `docs/routine_standing_prompt.md` | **committed** |
 | This file | `HANDOFF.md` | committed, keep current |
 
@@ -125,5 +128,12 @@ Key design decisions and why:
 - `medlang-batch-eval` mid-batch failures truncate `results` with no
   per-pair error records — reconcile counts against the batch file via
   `results[i]["index"]`.
-- Owner's timezone assumption: America/New_York (3:00 PM = 19:00 UTC).
-  Unconfirmed — flagged at Checkpoint 1.
+- Owner's timezone: CONFIRMED America/New_York (EDT, UTC−4; 3:00 PM =
+  19:00 UTC). All Routine crons are written in UTC computed from EDT
+  anchors — the daily Routine fires 11:30 UTC (7:30 AM EDT) so the digest
+  push lands with the owner's morning.
+- Tier B firing authority: owner granted standing approval (2026-07-09) to
+  fire batch 1 tonight ONLY IF the haiku translation verdict is clean —
+  recovery within noise of opus's 8/20 AND equivalence n holding. Any
+  ambiguity or structural failure → HOLD and flag. Either way, the go/no-go
+  rationale must be written to the ledger.
