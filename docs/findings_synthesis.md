@@ -1,9 +1,13 @@
 # What we found: patient words make small language models worse at medicine
 
-**Status: released for external readers by owner sign-off (2026-07-09), with
-one gate: the gemma-3-4b-it row is provisional (n = 56) until its re-fired
-fourth batch lands, and is released only when final. Every number traces to a
-committed artifact.**
+**Status: released for external readers by owner sign-off (2026-07-09). The
+gemma-3-4b-it column is now complete (all four measurement batches landed):
+its mean penalty is significant, but its downgrade asymmetry does NOT reach
+significance — reported as such below. Downgrade counts here are
+phrase-deduped per the pre-registration (`paired_stats_rigor.py`); pooled
+tallies that count re-traced phrases run several-fold higher and are
+pseudoreplicated — do not cite them. Every number traces to a committed
+artifact.**
 
 One-line summary: when the same medical situation is phrased the way patients
 actually talk instead of in clinical terms, small open models become measurably
@@ -24,12 +28,15 @@ wording costs probability on the same target token:
 | gemma-2-2b | −0.070 | [−0.098, −0.043] | 132 |
 | qwen3-4b | −0.099 | [−0.149, −0.049] | 132 |
 | qwen3-1.7b | −0.089 | [−0.133, −0.047] | 132 |
-| gemma-3-4b-it | −0.076 | [−0.152, −0.000] | 56 (provisional) |
+| gemma-3-4b-it | −0.071 | [−0.114, −0.031] | 133 (deduped) |
 
-The gemma-3-4b-it row is a newer, instruction-tuned model measured on the
-subset of pairs landed so far; its CI touches zero and tightens when the
-remaining batch lands this morning. Its per-pair penalties track gemma-2's
-at r = 0.60 (64% sign agreement).
+With all four batches landed, gemma-3-4b-it's penalty CI now excludes zero
+(n = 133 phrases, deduped). Its per-pair penalties track gemma-2's at
+r = 0.60 (64% sign agreement). That row uses the full landed set with the
+pre-registered phrase-dedupe; the other three rows are the unified 132-pair
+cross-model set. Per-model phrase-deduped statistics for all four models —
+mean penalty (cluster bootstrap), downgrade rate (Clopper–Pearson exact),
+and BH-corrected sign tests — are in `paired_stats_rigor.json`.
 
 No CI crosses zero. The models also agree pair by pair, not just on average:
 gemma's per-pair penalty correlates with qwen3-4b's at r = 0.62 and with
@@ -44,15 +51,19 @@ Often the model keeps its top answer and just loses confidence. The dangerous
 case is when the top continuation changes — and when it changes, it goes down
 the care ladder far more often than up:
 
-- gemma-2-2b: 67 downgrades vs 4 upgrades (sign test p ≈ 0)
-- gemma-3-4b-it: 8 vs 1 (p = 0.039) — a newer, instruction-tuned model,
-  same asymmetry
-- qwen3-4b: 16 vs 2 (p = 0.001)
-- qwen3-1.7b: 18 vs 5 (p = 0.011)
+- gemma-2-2b: 25 downgrades vs 4 upgrades (sign test p = 0.0001, BH q = 0.0004)
+- gemma-3-4b-it: 11 vs 4 — the newer instruction-tuned model does **not**
+  reach significance here (p = 0.12, BH q = 0.12); its mean penalty is real
+  (CI excludes zero) but its downgrade asymmetry is not established
+- qwen3-4b: 16 vs 2 (p = 0.001, BH q = 0.003)
+- qwen3-1.7b: 18 vs 5 (p = 0.011, BH q = 0.014)
 
-These counts use the tier vocabulary the study owner reviewed and approved
-item-by-item (v1, 2026-07-09); the review unblocked previously unclassifiable
-flips, which is why they exceed the draft-era counts.
+These are phrase-deduped counts (each clinical phrase once, per the
+pre-registration's dedupe rule; `paired_stats_rigor.py`) on the tier
+vocabulary the study owner reviewed item-by-item (owner-reviewed v1,
+2026-07-09; clinician equivalence review still pending). Pooled tallies that
+count re-traced phrases run several-fold higher and are pseudoreplicated — do
+not cite them.
 
 Concrete cases from live traces: "urinary tract … blocked up" calls a
 urologist at 0.20; "her water was blocked up" calls a **plumber** at 0.68.
