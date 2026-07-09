@@ -67,6 +67,12 @@ def _dict(value):
     return value if isinstance(value, dict) else {}
 
 
+def _flat(value):
+    """One physical line: every newline becomes a space, so an interpolated
+    dashboard string can never break the exactly-three-H2 brief shape."""
+    return str(value).replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+
+
 def _list(value):
     return value if isinstance(value, list) else []
 
@@ -120,15 +126,18 @@ def _tierb_line(tierb):
             f" · {traced} traced · {screened} screened-in")
 
 
-def _spend_line(spend):
+def _spend_line(spend, date):
     if not spend:
         return None
 
     def m(value):
         return "—" if value is None else money(value)
 
+    # Same guard as digest(): a stale spend.today (recorded for another date)
+    # must not render as today's spend; it shows as an em-dash instead.
     today = _dict(spend.get("today"))
-    return (f"Spend: ${m(today.get('spent_usd'))}/{m(spend.get('daily_ceiling_usd'))} today"
+    spent = today.get("spent_usd") if today.get("date") == date else None
+    return (f"Spend: ${m(spent)}/{m(spend.get('daily_ceiling_usd'))} today"
             f" · ${m(spend.get('generation_spent_usd'))}/{m(spend.get('generation_ceiling_usd'))}"
             f" Tier B generation · ${m(spend.get('lifetime_generation_usd'))} lifetime")
 
@@ -140,7 +149,7 @@ def render_brief(dash: dict, date: str, since_hours: int) -> str:
     tierb_line = _tierb_line(_dict(dash.get("tierb")))
     if tierb_line:
         delta.append(tierb_line)
-    spend_line = _spend_line(_dict(dash.get("spend")))
+    spend_line = _spend_line(_dict(dash.get("spend")), date)
     if spend_line:
         delta.append(spend_line)
     moved = 0
@@ -163,11 +172,11 @@ def render_brief(dash: dict, date: str, since_hours: int) -> str:
     blocked.extend(str(b) for b in _list(dash.get("blockers")) if b)
 
     lines = [f"# Daily brief — {date}", "", "## Delta"]
-    lines.extend(f"- {item}" for item in delta)
+    lines.extend(f"- {_flat(item)}" for item in delta)
     lines += ["", "## Verdicts"]
-    lines.extend([f"- {v}" for v in verdicts] or ["- no verdict changes"])
+    lines.extend([f"- {_flat(v)}" for v in verdicts] or ["- no verdict changes"])
     lines += ["", "## Blocked on owner"]
-    lines.extend([f"- {b}" for b in blocked] or ["- nothing blocked on you"])
+    lines.extend([f"- {_flat(b)}" for b in blocked] or ["- nothing blocked on you"])
     return "\n".join(lines) + "\n"
 
 

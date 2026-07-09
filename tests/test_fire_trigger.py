@@ -7,6 +7,7 @@ under tmp_path; nothing here touches git or the network.
 
 import importlib.util
 import json
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -130,11 +131,35 @@ def test_params_must_be_a_dict(repo):
     assert ft.main(argv) == 3
 
 
-def test_underscore_keys_always_allowed_and_unverified_lists_only_warn(repo, capsys):
+def test_underscore_keys_always_allowed(repo):
     assert fire(repo, params={"mode": "2panel", "_note": "x", "_nonce": "y"}) == 0
-    rc = fire(repo, "logits-eval", params={"models": ["m"], "limt": 0})
-    assert rc == 0
-    assert "best-known" in capsys.readouterr().err
+
+
+def test_unknown_keys_hard_error_for_every_trigger(repo):
+    # Finding 6: the warn-only tier is gone - every trigger's key set is
+    # verified against its workflow heredoc and unknown keys exit 3.
+    bad = {
+        "circuit-trace": {"graph_modle": "g"},
+        "logits-eval": {"models": ["m"], "limt": 0},
+        "scenario-generation": {"max_spend": "1", "tsak": "pairs"},
+        "model-evaluation": {"max_spend": "1", "sampel_size": "8"},
+        "archive-renders": {"tag": "t", "runz": "x"},
+    }
+    for trigger, params in bad.items():
+        assert fire(repo, trigger, params) == 3, trigger
+    assert not journal_path(repo).exists()
+
+
+def test_exact_verified_key_sets_accepted(repo):
+    # Finding 6: the full key set each workflow's params heredoc reads must pass.
+    assert fire(repo, "logits-eval", params={
+        "models": "qwen3-4b", "pairs_file": "p.json", "limit": "1",
+        "commit_outputs": True, "_nonce": "k1"}) == 0
+    assert fire(repo, "archive-renders", params={
+        "tag": "t", "runs": "trace_out/x", "no_pngs": False, "prune": False, "_nonce": "k2"}) == 0
+    assert fire(repo, "model-evaluation", params={
+        "model_selection": "claude-haiku-4-5", "scenario": "all",
+        "sample_size": "8", "max_spend": "1", "_nonce": "k3"}) == 0
 
 
 def test_budget_refusal_and_pass(repo):
@@ -188,27 +213,30 @@ def test_journal_round_trip_tolerates_blanks_and_unknown_fields(tmp_path):
     assert ft.load_journal(path) == entries
 
 
-def test_budget_check_pure_function():
-    assert ft.budget_check({"max_spend": "1.0"}, {}, "2026-07-09")[0] is True  # default ceiling 2.0
-    assert ft.budget_check({"max_spend": "2.5"}, {}, "2026-07-09")[0] is False
+def test_budget_check_pure_function_returns_structured_kind():
+    # Finding 3: budget_check reports "ok" | "ceiling" | "invalid", not a bool.
+    assert ft.budget_check({"max_spend": "1.0"}, {}, "2026-07-09")[0] == "ok"  # default ceiling 2.0
+    assert ft.budget_check({"max_spend": "2.5"}, {}, "2026-07-09")[0] == "ceiling"
     dash = {"spend": {"daily_ceiling_usd": 5.0, "today": {"date": "2026-07-09", "spent_usd": 4.5}}}
-    assert ft.budget_check({"max_spend": "1.0"}, dash, "2026-07-09")[0] is False
-    assert ft.budget_check({"max_spend": "1.0"}, dash, "2026-07-10")[0] is True  # stale date -> 0
-    ok, reason = ft.budget_check({}, dash, "2026-07-09")
-    assert ok is False and "max_spend" in reason
-    assert ft.budget_check({"max_spend": "lots"}, dash, "2026-07-09")[0] is False
+    assert ft.budget_check({"max_spend": "1.0"}, dash, "2026-07-09")[0] == "ceiling"
+    assert ft.budget_check({"max_spend": "1.0"}, dash, "2026-07-10")[0] == "ok"  # stale date -> 0
+    kind, reason = ft.budget_check({}, dash, "2026-07-09")
+    assert kind == "invalid" and "max_spend" in reason
+    assert ft.budget_check({"max_spend": "lots"}, dash, "2026-07-09")[0] == "invalid"
+    assert ft.budget_check({"max_spend": float("nan")}, dash, "2026-07-09")[0] == "invalid"
 
 
 def test_validate_params_pure_function():
-    assert ft.validate_params("circuit-trace", {"graph_model": "g", "_note": "n"}) == []
-    with pytest.raises(ValueError):
-        ft.validate_params("circuit-trace", {"graph_modle": "g"})
-    with pytest.raises(ValueError):
-        ft.validate_params("scenario-generation", {"tsak": "pairs"})
+    assert ft.validate_params("circuit-trace", {"graph_model": "g", "_note": "n"}) is None
     with pytest.raises(ValueError):
         ft.validate_params("circuit-trace", "not a dict")
-    warnings = ft.validate_params("archive-renders", {"tag": "t", "surprise": 1})
-    assert len(warnings) == 1 and "surprise" in warnings[0]
+    for trigger, params in [("circuit-trace", {"graph_modle": "g"}),
+                            ("scenario-generation", {"tsak": "pairs"}),
+                            ("logits-eval", {"limt": 0}),
+                            ("model-evaluation", {"sampel_size": 1}),
+                            ("archive-renders", {"tag": "t", "surprise": 1})]:
+        with pytest.raises(ValueError):
+            ft.validate_params(trigger, params)
 
 
 def test_queue_view_shape():
@@ -234,3 +262,161 @@ def test_status_reports_counts(repo, capsys):
     assert "circuit-trace: 1 active" in out
     assert "logits-eval: 0 active" in out
     assert "visible" in out
+
+
+# --- Finding 1: the daily ceiling counts landed + in-flight max_spend ---
+
+def test_inflight_max_spend_blocks_second_paid_fire(repo, capsys):
+    # Two consecutive 1.9 fires both used to pass the $2 ceiling because only
+    # dashboard-landed spend was counted.
+    params = {"task": "pairs", "max_spend": "1.9", "_nonce": "i1"}
+    assert fire(repo, "scenario-generation", params) == 0
+    entries = ft.load_journal(journal_path(repo))
+    assert entries[-1]["max_spend"] == pytest.approx(1.9)  # journaled at fire time
+    capsys.readouterr()
+    params = {"task": "pairs", "max_spend": "1.9", "_nonce": "i2"}
+    assert fire(repo, "scenario-generation", params) == 4  # 1.9 already committed in flight
+    assert "in-flight" in capsys.readouterr().err
+    # resolving the landed run releases the in-flight hold
+    assert ft.main(["resolve", "--repo", str(repo), "--trigger", "scenario-generation"]) == 0
+    assert fire(repo, "scenario-generation", params) == 0
+
+
+def test_inflight_spend_counted_across_both_paid_triggers(repo):
+    assert fire(repo, "model-evaluation",
+                params={"sample_size": "8", "max_spend": "1.5", "_nonce": "m1"}) == 0
+    assert fire(repo, "scenario-generation",
+                params={"task": "pairs", "max_spend": "1.0", "_nonce": "s1"}) == 4
+
+
+def test_budget_check_inflight_counts_only_active_entries_fired_today():
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+
+    def entry(**overrides):
+        base = {"trigger": "scenario-generation", "fired_utc": iso(now), "commit": "",
+                "note": "", "resolved": False, "evicted": False, "max_spend": 1.9}
+        base.update(overrides)
+        return base
+
+    kind, reason = ft.budget_check({"max_spend": "1.9"}, {}, today, entries=[entry()], now=now)
+    assert kind == "ceiling" and "in-flight 1.90" in reason
+    for released in (entry(resolved=True), entry(evicted=True), entry(trigger="circuit-trace")):
+        assert ft.budget_check({"max_spend": "1.9"}, {}, today,
+                               entries=[released], now=now)[0] == "ok"
+    # active (expiry widened) but fired on a previous UTC date: not today's spend
+    stale = entry(fired_utc=iso(now - timedelta(days=1)))
+    assert ft.budget_check({"max_spend": "1.9"}, {}, today,
+                           entries=[stale], now=now, expire_hours=100.0)[0] == "ok"
+
+
+# --- Finding 2: max_spend must be a finite number > 0, never a bool ---
+
+def test_parse_max_spend_pure():
+    assert ft.parse_max_spend("1.5") == 1.5
+    assert ft.parse_max_spend(2) == 2.0
+    assert ft.parse_max_spend(0.25) == 0.25
+    for bad in (True, False, float("nan"), float("inf"), "nan", "inf", "-inf",
+                "-3", -1, 0, "0", None, [1], {"a": 1}, "lots"):
+        assert ft.parse_max_spend(bad) is None, repr(bad)
+
+
+def test_nonfinite_or_nonpositive_max_spend_is_hard_exit_4(repo):
+    for i, bad in enumerate(("nan", "inf", "-inf", "-1", "0", True, False, None, [1])):
+        params = {"task": "pairs", "max_spend": bad, "_nonce": f"bad{i}"}
+        assert fire(repo, "scenario-generation", params) == 4, repr(bad)
+        # never overridable: these are "invalid", not a ceiling refusal
+        assert fire(repo, "scenario-generation", params, extra=["--override-budget"]) == 4, repr(bad)
+    assert not trigger_path(repo, "scenario-generation").exists()
+    assert not journal_path(repo).exists()
+
+
+# --- Finding 3: --override-budget applies only to the "ceiling" kind ---
+
+def test_override_budget_never_fires_unparseable_max_spend(repo):
+    params = {"task": "pairs", "max_spend": "garbage", "_nonce": "g1"}
+    assert fire(repo, "scenario-generation", params, extra=["--override-budget"]) == 4
+    assert not trigger_path(repo, "scenario-generation").exists()
+    assert not journal_path(repo).exists()
+    # a genuine ceiling refusal stays overridable
+    write_dashboard(repo, spent=1.9)
+    params = {"task": "pairs", "max_spend": "1.0", "_nonce": "g2"}
+    assert fire(repo, "scenario-generation", params) == 4
+    assert fire(repo, "scenario-generation", params, extra=["--override-budget"]) == 0
+
+
+# --- Finding 4: corrupt journal lines fail closed; saves are atomic ---
+
+def test_corrupt_journal_line_is_a_hard_stop_with_line_and_content(repo):
+    good = {"trigger": "circuit-trace", "fired_utc": "2026-07-09T00:00:00Z",
+            "commit": "", "note": "ok", "resolved": True, "evicted": False}
+    journal_path(repo).write_text(json.dumps(good) + "\n{not json\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as excinfo:
+        fire(repo, params={"mode": "2panel", "_nonce": "c"})
+    message = str(excinfo.value)
+    assert "line 2" in message and "{not json" in message
+    # the journal is left for the operator to repair, never rewritten
+    assert "{not json" in journal_path(repo).read_text(encoding="utf-8")
+    # parseable-but-not-an-entry lines fail closed too
+    journal_path(repo).write_text('["not", "a", "dict"]\n', encoding="utf-8")
+    with pytest.raises(SystemExit):
+        ft.load_journal(journal_path(repo))
+
+
+def test_save_journal_atomic_write_via_replace(tmp_path, monkeypatch):
+    calls = []
+    real_replace = os.replace
+
+    def spying_replace(src, dst):
+        calls.append((str(src), str(dst)))
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(ft.os, "replace", spying_replace)
+    path = tmp_path / "ops" / "trigger_journal.jsonl"
+    entry = {"trigger": "circuit-trace", "fired_utc": "2026-07-09T00:00:00Z",
+             "commit": "", "note": "", "resolved": False, "evicted": False}
+    ft.save_journal(path, [entry])
+    assert calls and calls[-1][1] == str(path)  # tmp file + os.replace, not in-place truncate
+    assert not list(path.parent.glob("*.tmp"))
+    assert ft.load_journal(path) == [entry]
+
+
+# --- Finding 5: identical trigger-file content is a hard exit 5 ---
+
+def test_identical_params_hard_error_exit_5_no_phantom_slot(repo, capsys):
+    params = {"mode": "2panel", "_nonce": "same"}
+    assert fire(repo, params=params, note="first") == 0
+    capsys.readouterr()
+    assert fire(repo, params=params, note="rerun") == 5
+    err = capsys.readouterr().err
+    assert "_nonce" in err and "NOT fire" in err
+    # no journal append: a fire CI never sees must not hold a queue slot
+    assert len(ft.load_journal(journal_path(repo))) == 1
+    dash = json.loads((repo / "ops" / "dashboard.json").read_text())
+    assert dash["queue"]["circuit-trace"]["pending"] is None
+    assert json.loads(trigger_path(repo).read_text())["_nonce"] == "same"
+
+
+# --- Finding 7: MEDLANG_TRIGGER_EXPIRE_HOURS must be a finite float > 0 ---
+
+def test_expire_hours_env_rejects_nonfinite_and_nonpositive(monkeypatch, capsys):
+    for bad in ("nan", "inf", "-inf", "-3", "0", "wat"):
+        monkeypatch.setenv("MEDLANG_TRIGGER_EXPIRE_HOURS", bad)
+        assert ft.expire_hours_from_env() == ft.DEFAULT_EXPIRE_HOURS, bad
+        assert "MEDLANG_TRIGGER_EXPIRE_HOURS" in capsys.readouterr().err
+    monkeypatch.setenv("MEDLANG_TRIGGER_EXPIRE_HOURS", "2.5")
+    assert ft.expire_hours_from_env() == 2.5
+    monkeypatch.delenv("MEDLANG_TRIGGER_EXPIRE_HOURS", raising=False)
+    assert ft.expire_hours_from_env() == ft.DEFAULT_EXPIRE_HOURS
+    assert capsys.readouterr().err == ""  # valid or unset values warn nothing
+
+
+# --- Finding 8: missing --params-file refuses cleanly ---
+
+def test_missing_params_file_clean_refusal_exit_3(repo, capsys):
+    argv = ["fire", "--repo", str(repo), "--trigger", "circuit-trace",
+            "--params-file", str(repo / "nope.json"), "--no-git"]
+    assert ft.main(argv) == 3
+    err = capsys.readouterr().err
+    assert "refused" in err and "params-file" in err
+    assert not journal_path(repo).exists()

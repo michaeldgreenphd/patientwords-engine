@@ -21,14 +21,18 @@ Usage:
 A journal entry is ACTIVE while resolved and evicted are both false and it is
 younger than MEDLANG_TRIGGER_EXPIRE_HOURS (default 8; chunked workflow runs
 never exceed ~6h, so expiry is a safety valve for entries nobody resolved).
+Paid entries record their max_spend, and the daily ceiling counts committed
+spend = landed (dashboard) + in-flight (active paid entries fired today).
 
 Exit codes: 0 fired/ok, 2 queue refusal, 3 bad params, 4 budget refusal,
-1 git failure. No medical vocabulary lives in this file.
+5 no-op fire (trigger file already holds the params), 1 git failure.
+No medical vocabulary lives in this file.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import subprocess
 import sys
@@ -51,9 +55,16 @@ DASHBOARD_RELPATH = Path("ops") / "dashboard.json"
 TRIGGER_DIR_RELPATH = Path(".github") / "trigger"
 PUSH_BACKOFF_SECONDS = (2, 4, 8, 16)
 
-# Keys verified against the workflow dispatch inputs; unknown keys are a hard error
-# because these two workflows are where typos cost money or evict queued runs.
-VERIFIED_KEYS = {
+# Exact key sets, each verified against its workflow's params-resolution heredoc
+# (the push-path reads of .github/trigger/<name>.json). Unknown non-underscore
+# keys are a hard error for EVERY trigger: CI silently ignores unknown keys, so
+# a typo means a run with defaults that can cost money or evict queued runs.
+KNOWN_KEYS = {
+    # circuit_trace_evaluation.yml `defaults` dict (verified 2026-07-09): graph_model,
+    # graph_models, mode, pairs_file, offsets, sample_size, screen_targets, show_mitigation,
+    # commit_outputs, max_n_logits, desired_logit_prob, node_threshold, edge_threshold,
+    # max_feature_nodes, generate_explanations, steer_validate, steer_boost, steer_placebo,
+    # steer_strength, steer_boost_strength, steer_rank_offset, translation_model.
     "circuit-trace": frozenset({
         "graph_model", "graph_models", "mode", "pairs_file", "offsets", "sample_size",
         "screen_targets", "show_mitigation", "commit_outputs", "max_n_logits",
@@ -61,18 +72,22 @@ VERIFIED_KEYS = {
         "generate_explanations", "steer_validate", "steer_boost", "steer_placebo",
         "steer_strength", "steer_boost_strength", "steer_rank_offset", "translation_model",
     }),
+    # logits_evaluation.yml `defaults` dict (verified 2026-07-09): models, pairs_file,
+    # limit, commit_outputs.
+    "logits-eval": frozenset({"models", "pairs_file", "limit", "commit_outputs"}),
+    # scenario_generation.yml `defaults` dict (verified 2026-07-09): task, num, topics,
+    # seed_pairs, feedback, phrase, term, target_token, num_baselines, dialects,
+    # anthropic_model, max_spend, graph_models, trace_sample_size.
     "scenario-generation": frozenset({
         "task", "num", "topics", "seed_pairs", "feedback", "phrase", "term",
         "target_token", "num_baselines", "dialects", "anthropic_model", "max_spend",
         "graph_models", "trace_sample_size",
     }),
-}
-
-# Best-known key lists for the remaining triggers (unverified against the YAML,
-# so unknown keys only warn).
-BEST_KNOWN_KEYS = {
-    "logits-eval": frozenset({"models", "pairs_file", "limit", "commit_outputs"}),
+    # model_evaluation.yml `defaults` dict (verified 2026-07-09): model_selection,
+    # max_spend, sample_size, scenario.
     "model-evaluation": frozenset({"model_selection", "scenario", "sample_size", "max_spend"}),
+    # archive_renders.yml push path reads exactly cfg["tag"], cfg["runs"],
+    # cfg.get("no_pngs"), cfg.get("prune") (verified 2026-07-09).
     "archive-renders": frozenset({"tag", "runs", "no_pngs", "prune"}),
 }
 
@@ -99,37 +114,61 @@ def parse_utc(stamp):
 
 
 def expire_hours_from_env():
+    """Expiry window in hours: a finite float > 0 from the environment, else the
+    default (with a warning when the variable is set but unusable - a negative
+    or non-finite value must not silently disable the queue guard)."""
     raw = os.environ.get("MEDLANG_TRIGGER_EXPIRE_HOURS", "")
-    try:
-        return float(raw)
-    except ValueError:
+    if not raw:
         return DEFAULT_EXPIRE_HOURS
+    try:
+        hours = float(raw)
+    except ValueError:
+        hours = None
+    if hours is None or not math.isfinite(hours) or hours <= 0:
+        print(
+            f"warning: MEDLANG_TRIGGER_EXPIRE_HOURS={raw!r} is not a finite number > 0; "
+            f"using the default {DEFAULT_EXPIRE_HOURS}",
+            file=sys.stderr,
+        )
+        return DEFAULT_EXPIRE_HOURS
+    return hours
 
 
 def load_journal(path):
     """Journal entries from a JSON Lines file. Blank lines are skipped; unknown
-    fields ride along untouched; malformed lines are dropped."""
+    fields ride along untouched. Any other unparseable line is a hard stop
+    (SystemExit) naming the line: fail closed, because a silently dropped entry
+    undercounts the active queue (admitting an evicting third fire) and the
+    next whole-file rewrite would erase it. The operator repairs by hand."""
     entries = []
     try:
         text = Path(path).read_text(encoding="utf-8")
     except OSError:
         return entries
-    for line in text.splitlines():
+    for lineno, line in enumerate(text.splitlines(), start=1):
         if not line.strip():
             continue
         try:
             entry = json.loads(line)
         except json.JSONDecodeError:
-            continue
-        if isinstance(entry, dict):
-            entries.append(entry)
+            entry = None
+        if not isinstance(entry, dict):
+            raise SystemExit(
+                f"corrupt journal line {lineno} in {path}: {line!r} - fix the journal by hand "
+                "(a dropped entry would undercount the active queue and then be erased on rewrite)"
+            )
+        entries.append(entry)
     return entries
 
 
 def save_journal(path, entries):
+    """Atomic rewrite: serialize to a sibling tmp file, then os.replace over the
+    journal, so a failed write can never leave a truncated file behind."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("".join(json.dumps(e) + "\n" for e in entries), encoding="utf-8")
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text("".join(json.dumps(e) + "\n" for e in entries), encoding="utf-8")
+    os.replace(tmp, path)
 
 
 def entry_is_active(entry, now, expire_hours):
@@ -149,41 +188,77 @@ def active_entries(entries, trigger, now, expire_hours):
 
 
 def validate_params(trigger, params):
-    """Warnings for best-known-only key lists; ValueError on hard errors
-    (non-dict params, unknown key for a verified trigger)."""
+    """ValueError on non-dict params or on any unknown non-underscore key.
+
+    Every trigger's key set in KNOWN_KEYS is verified against its workflow's
+    params-resolution heredoc; there is no warn-only tier."""
     if trigger not in TRIGGERS:
         raise ValueError(f"unknown trigger {trigger!r}; expected one of {', '.join(TRIGGERS)}")
     if not isinstance(params, dict):
         raise ValueError(f"params must be a JSON object (dict), got {type(params).__name__}")
     keys = {str(k) for k in params if not str(k).startswith("_")}
-    if trigger in VERIFIED_KEYS:
-        unknown = sorted(keys - VERIFIED_KEYS[trigger])
-        if unknown:
-            raise ValueError(
-                f"unknown {trigger} key(s) {unknown}: CI silently ignores unknown keys, so a typo "
-                f"means a run with defaults; allowed keys: {sorted(VERIFIED_KEYS[trigger])}"
-            )
-        return []
-    unknown = sorted(keys - BEST_KNOWN_KEYS[trigger])
-    return [
-        f"key {k!r} is not in the best-known {trigger} list (list unverified) - double-check the workflow inputs"
-        for k in unknown
-    ]
+    unknown = sorted(keys - KNOWN_KEYS[trigger])
+    if unknown:
+        raise ValueError(
+            f"unknown {trigger} key(s) {unknown}: CI silently ignores unknown keys, so a typo "
+            f"means a run with defaults; allowed keys: {sorted(KNOWN_KEYS[trigger])}"
+        )
 
 
-def budget_check(params, dashboard, today):
-    """(ok, reason) against the daily spend ceiling for a paid trigger.
+def parse_max_spend(value):
+    """Validated max_spend as a float, or None when unusable.
 
-    Tolerates a missing/partial dashboard: ceiling defaults to
-    DEFAULT_DAILY_CEILING_USD and spend counts only when spend.today.date
-    equals `today` (a YYYY-MM-DD UTC date string).
+    Accepts str/int/float that parse to a finite number > 0. Rejects bool
+    (float(True) == 1.0 would silently pass), NaN (every comparison with NaN
+    is False, so it would sail past the ceiling), +/-inf, zero, and negatives.
+    """
+    if isinstance(value, bool) or not isinstance(value, (str, int, float)):
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(parsed) or parsed <= 0:
+        return None
+    return parsed
+
+
+def inflight_max_spend(entries, today, now, expire_hours):
+    """Sum of max_spend across ACTIVE journal entries of BOTH paid triggers
+    fired on `today` (YYYY-MM-DD UTC): spend already committed to CI but not
+    yet landed on the dashboard."""
+    total = 0.0
+    for entry in entries:
+        if entry.get("trigger") not in PAID_TRIGGERS:
+            continue
+        if not entry_is_active(entry, now, expire_hours):
+            continue
+        fired = parse_utc(entry.get("fired_utc"))
+        if fired is None or fired.astimezone(timezone.utc).strftime("%Y-%m-%d") != today:
+            continue
+        pending = parse_max_spend(entry.get("max_spend"))
+        if pending is not None:
+            total += pending
+    return total
+
+
+def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DEFAULT_EXPIRE_HOURS):
+    """(kind, reason) against the daily spend ceiling for a paid trigger.
+
+    kind is "ok", "ceiling" (over the daily ceiling - the only refusal
+    --override-budget may bypass), or "invalid" (missing/unusable max_spend -
+    never overridable). Committed spend = landed (spend.today.spent_usd when
+    spend.today.date equals `today`) + in-flight (active paid journal entries
+    fired today; see inflight_max_spend). Tolerates a missing/partial
+    dashboard: ceiling defaults to DEFAULT_DAILY_CEILING_USD.
     """
     if "max_spend" not in params:
-        return False, "paid trigger params must include max_spend"
-    try:
-        max_spend = float(params["max_spend"])
-    except (TypeError, ValueError):
-        return False, f"max_spend does not parse as a number: {params['max_spend']!r}"
+        return "invalid", "paid trigger params must include max_spend"
+    max_spend = parse_max_spend(params["max_spend"])
+    if max_spend is None:
+        return "invalid", (
+            f"max_spend must be a finite number > 0 (str/int/float), got {params['max_spend']!r}"
+        )
     spend = dashboard.get("spend") if isinstance(dashboard, dict) else None
     if not isinstance(spend, dict):
         spend = {}
@@ -192,18 +267,26 @@ def budget_check(params, dashboard, today):
     except (TypeError, ValueError):
         ceiling = DEFAULT_DAILY_CEILING_USD
     today_rec = spend.get("today")
-    spent = 0.0
+    landed = 0.0
     if isinstance(today_rec, dict) and today_rec.get("date") == today:
         try:
-            spent = float(today_rec.get("spent_usd", 0.0))
+            landed = float(today_rec.get("spent_usd", 0.0))
         except (TypeError, ValueError):
-            spent = 0.0
-    if max_spend + spent > ceiling:
-        return False, (
-            f"max_spend {max_spend:.2f} + today's spent {spent:.2f} "
+            landed = 0.0
+    if now is None:
+        now = utc_now()
+    inflight = inflight_max_spend(entries, today, now, expire_hours)
+    committed = landed + inflight
+    if max_spend + committed > ceiling:
+        return "ceiling", (
+            f"max_spend {max_spend:.2f} + today's committed {committed:.2f} "
+            f"(landed {landed:.2f} + in-flight {inflight:.2f}) "
             f"would exceed the daily ceiling {ceiling:.2f} USD"
         )
-    return True, f"max_spend {max_spend:.2f} + today's spent {spent:.2f} within the daily ceiling {ceiling:.2f} USD"
+    return "ok", (
+        f"max_spend {max_spend:.2f} + today's committed {committed:.2f} "
+        f"(landed {landed:.2f} + in-flight {inflight:.2f}) within the daily ceiling {ceiling:.2f} USD"
+    )
 
 
 def queue_view(entries, now, expire_hours):
@@ -286,19 +369,24 @@ def cmd_fire(args):
     now = utc_now()
 
     # 1-2. Parse and validate params (trigger name already constrained by argparse choices).
-    raw = Path(args.params_file).read_text(encoding="utf-8") if args.params_file else args.params
+    if args.params_file:
+        try:
+            raw = Path(args.params_file).read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"refused: cannot read --params-file {args.params_file}: {exc}", file=sys.stderr)
+            return 3
+    else:
+        raw = args.params
     try:
         params = json.loads(raw)
     except json.JSONDecodeError as exc:
         print(f"refused: params are not valid JSON ({exc})", file=sys.stderr)
         return 3
     try:
-        warnings = validate_params(args.trigger, params)
+        validate_params(args.trigger, params)
     except ValueError as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 3
-    for warning in warnings:
-        print(f"warning: {warning}", file=sys.stderr)
 
     # 3. Queue guard: one running + one pending; a third push evicts the pending run.
     journal_path = repo / JOURNAL_RELPATH
@@ -319,29 +407,24 @@ def cmd_fire(args):
             return 2
         to_evict = actives[-1]  # newest active = the pending run this push will replace
 
-    # 4. Budget guard for the paid triggers.
+    # 4. Budget guard for the paid triggers: committed = landed + in-flight max_spend.
+    max_spend = None
     if args.trigger in PAID_TRIGGERS:
         dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
-        ok, reason = budget_check(params, dashboard, now.strftime("%Y-%m-%d"))
-        if not ok:
-            overridable = "max_spend" in params and reason.startswith("max_spend ")
-            if args.override_budget and overridable:
-                print(f"warning: budget override in effect ({reason})", file=sys.stderr)
-            else:
-                print(f"refused: {reason}", file=sys.stderr)
-                return 4
-        else:
+        kind, reason = budget_check(params, dashboard, now.strftime("%Y-%m-%d"),
+                                    entries=entries, now=now, expire_hours=expire_hours)
+        if kind == "ok":
             print(reason)
+        elif kind == "ceiling" and args.override_budget:
+            print(f"warning: budget override in effect ({reason})", file=sys.stderr)
+        else:
+            print(f"refused: {reason}", file=sys.stderr)
+            return 4
+        max_spend = parse_max_spend(params["max_spend"])  # valid here: budget_check vetted it
 
-    # 5. Write trigger file + journal entry + dashboard queue (or describe, with --dry-run).
-    entry = {
-        "trigger": args.trigger,
-        "fired_utc": iso_utc(now),
-        "commit": "",
-        "note": args.note,
-        "resolved": False,
-        "evicted": False,
-    }
+    # 5. Refuse a no-op fire: identical trigger-file content means the push would
+    # not change the file, so CI would NOT fire, yet a journal entry would hold a
+    # phantom queue slot. Hard error; nothing is written.
     trigger_path = repo / TRIGGER_DIR_RELPATH / f"{args.trigger}.json"
     content = json.dumps(params, separators=(",", ":")) + "\n"
     try:
@@ -350,10 +433,23 @@ def cmd_fire(args):
         unchanged = False
     if unchanged:
         print(
-            f"warning: {trigger_path} already holds exactly this content - a push will not change the "
-            "file, so the workflow will NOT fire; add a _nonce key to force a change",
+            f"refused: {trigger_path} already holds exactly this content - a push would not change "
+            'the file, so the workflow would NOT fire; add a "_nonce" key to force a change',
             file=sys.stderr,
         )
+        return 5
+
+    # 6. Write trigger file + journal entry + dashboard queue (or describe, with --dry-run).
+    entry = {
+        "trigger": args.trigger,
+        "fired_utc": iso_utc(now),
+        "commit": "",
+        "note": args.note,
+        "resolved": False,
+        "evicted": False,
+    }
+    if max_spend is not None:
+        entry["max_spend"] = max_spend  # in-flight commitment budget_check will count
     if args.dry_run:
         print(f"[dry-run] would write {trigger_path}: {content.strip()}")
         if to_evict is not None:
@@ -373,7 +469,7 @@ def cmd_fire(args):
     save_journal(journal_path, entries)
     update_dashboard_queue(repo / DASHBOARD_RELPATH, args.trigger, entries, now, expire_hours)
 
-    # 6. Publish, unless --no-git.
+    # 7. Publish, unless --no-git.
     if not args.no_git:
         if not git_publish(repo, [trigger_path, journal_path, repo / DASHBOARD_RELPATH],
                            f"Fire {args.trigger}: {args.note}"):
@@ -442,7 +538,8 @@ def build_parser():
     fire.add_argument("--dry-run", action="store_true", help="print what would happen; write nothing")
     fire.add_argument("--no-git", action="store_true", help="write files but skip git add/commit/push")
     fire.add_argument("--override-budget", action="store_true",
-                      help="proceed past a daily-ceiling refusal (max_spend still required)")
+                      help="proceed past a daily-ceiling refusal only; a missing or "
+                           "invalid max_spend is never overridable")
     fire.set_defaults(func=cmd_fire)
 
     resolve = sub.add_parser("resolve", parents=[common], help="mark the oldest active entry resolved")

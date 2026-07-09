@@ -61,9 +61,19 @@ merges to `main`. When merging branches, keep the target branch's trigger files 
 (restore them before committing the merge) or you will re-fire runs and double-spend.
 
 **Cost discipline:** Neuronpedia tracing, Qwen logits, and all analysis are $0. Only
-`medlang-generate` and `medlang-evaluate` spend Anthropic credits (~$0.015/pair on opus);
-every paid run writes a `.report.json` sidecar with its cost. Session ledgers live in
-`docs/` when an overnight run is active.
+`medlang-generate` and `medlang-evaluate` spend Anthropic credits (~$0.015/pair on opus,
+~$0.002 on haiku); every paid run writes a `.report.json` sidecar with its cost. Session
+ledgers live in `docs/` when an overnight run is active.
+
+**Ops tooling (required path):** fire triggers ONLY via `scripts/fire_trigger.py` — it
+journals every fire (`ops/trigger_journal.jsonl`), mechanically enforces the
+one-running + one-pending discipline, hard-errors on unknown trigger keys (CI silently
+ignores them), and refuses paid fires that would breach the $2/day operational ceiling
+counting landed **and in-flight** `max_spend`. `scripts/ledger_update.py` is the only
+writer of spend numbers (`ops/dashboard.json` + the ledger); `scripts/daily_brief.py`
+renders the 3-section brief and the push digest. `ops/dashboard.json` has one writer —
+the daily Routine session (`ops/README.md`, `docs/routine_standing_prompt.md`). Both
+repos are public: never write secrets anywhere.
 
 ## Architecture
 

@@ -23,7 +23,7 @@
       "running": {
         "fired_utc": "2026-07-09T07:02:00Z",
         "commit": "9c21af0",
-        "note": "tierb batch 06, 200 pairs, haiku, max_spend 0.80"
+        "note": "tierb batch 07, 200 pairs, haiku, max_spend 0.80"
       },
       "pending": null
     },
@@ -41,7 +41,13 @@
       "workflow": "scenario_generation",
       "fired_utc": "2026-07-09T07:02:00Z",
       "status": "running",
-      "note": "tierb batch 06, 200 pairs"
+      "note": "tierb batch 07, 200 pairs"
+    },
+    {
+      "workflow": "scenario_generation",
+      "fired_utc": "2026-07-09T04:55:00Z",
+      "status": "success",
+      "note": "tierb batch 06, 200 pairs, $0.55"
     },
     {
       "workflow": "circuit_trace_evaluation",
@@ -76,17 +82,17 @@
   ],
   "spend": {
     "generation_ceiling_usd": 8.0,
-    "generation_spent_usd": 3.41,
-    "lifetime_generation_usd": 12.97,
+    "generation_spent_usd": 3.4,
+    "lifetime_generation_usd": 12.96,
     "daily_ceiling_usd": 2.0,
     "today": {
       "date": "2026-07-09",
-      "spent_usd": 0.86
+      "spent_usd": 0.55
     },
     "by_day": {
-      "2026-07-07": 0.62,
-      "2026-07-08": 1.93,
-      "2026-07-09": 0.86
+      "2026-07-07": 1.12,
+      "2026-07-08": 1.73,
+      "2026-07-09": 0.55
     },
     "entries_seen": [
       "batch_2026-07-07_tierb_01.report.json",
@@ -98,14 +104,14 @@
     ],
     "last_scan_utc": "2026-07-09T09:30:00Z",
     "alerts": [
-      "2026-07-08 daily spend $1.93 came within $0.07 of the $2.00 ceiling; batch 05 fire was deferred to 2026-07-09"
+      "2026-07-08 daily spend $1.73 came within $0.27 of the $2.00 ceiling; batch 06 fire was deferred to 2026-07-09"
     ]
   },
   "tierb": {
     "target_pairs": 1600,
     "generator": "claude-haiku-4-5",
     "start_utc": "2026-07-07T21:00:00Z",
-    "accepted_pairs": 612,
+    "accepted_pairs": 736,
     "traced_pairs": 400,
     "screened_in_pairs": 371,
     "batches": [
@@ -141,6 +147,12 @@
       },
       {
         "file": "batch_2026-07-09_tierb_06.json",
+        "accepted": 124,
+        "cost_usd": 0.55,
+        "status": "landed"
+      },
+      {
+        "file": "batch_2026-07-09_tierb_07.json",
         "accepted": 0,
         "cost_usd": 0.0,
         "status": "generating"

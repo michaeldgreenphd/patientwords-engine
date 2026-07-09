@@ -37,8 +37,8 @@ Top-level fields, and which step of the Routine's cycle writes them:
 | Field | Meaning | Written by |
 |---|---|---|
 | `schema_version` | contract version, currently `1` | fixed |
-| `updated_utc` | UTC timestamp of the last write; the page shows a STALE chip when this is older than 26 h (the Routine has failed) | every Routine write |
-| `updated_by` | `"routine"` or `"session"` | every Routine write |
+| `updated_utc` | UTC timestamp of the last write; the page shows a STALE chip when this is older than 26 h (the Routine has failed) | every Routine write, incl. every `ledger_update.py` dashboard write |
+| `updated_by` | `"routine"` or `"session"`; `ledger_update.py` sets `"session"` only when the field is absent and otherwise preserves the existing value | every Routine write |
 | `queue` | per-concurrency-group running/pending slots (`circuit-trace`, `logits-eval`, `scenario-generation`, `model-evaluation`, `archive-renders`), each `{fired_utc, commit, note}` or `null` | `scripts/fire_trigger.py` (fire/resolve), mirrored by the Routine |
 | `runs_recent` | compact log of recent workflow runs `{workflow, fired_utc, status, note}` | the Routine's own edits |
 | `spend` | generation-run and daily ceilings vs. spend, lifetime total, per-day map, sidecar filenames already counted (`entries_seen`), `last_scan_utc`, ceiling `alerts` | `scripts/ledger_update.py` (idempotent sidecar scan) |
@@ -48,6 +48,29 @@ Top-level fields, and which step of the Routine's cycle writes them:
 | `decisions_pending` | `{id, title, context}` items awaiting the owner | the Routine's own edits |
 | `blockers` | plain strings describing what is stuck | the Routine's own edits |
 | `notes` | standing operational notes (footer) | the Routine's own edits |
+
+## Spend accounting
+
+`scripts/ledger_update.py` folds new cost sidecars into `spend` and appends one
+bullet per sidecar to the human ledger — the lexicographically newest
+`docs/*ledger*.md`, or `docs/spend_ledger.md` (created with a one-line header)
+when no ledger file exists. The ledger append happens **before** the dashboard
+write, so a failed append aborts the run without committing `entries_seen` and
+the next run re-scans the same sidecars — bullets are never lost. `spend.by_day`
+buckets each sidecar by its `run_timestamp` parsed to a UTC date (unparseable
+stamps fall back to the run's `--date`), and every writing run refreshes
+`spend.today` to `{date: <--date>, spent_usd: by_day[<--date>]}`. Tier B rows in
+`tierb.batches` key on the batch archive name (`<batch>.json`) and are upserted,
+never duplicated.
+
+The $2/day ceiling enforced by `scripts/fire_trigger.py` counts **committed**
+spend: landed spend from `spend.today` **plus** the in-flight `max_spend` of
+every ACTIVE trigger-journal entry for either paid trigger
+(`scenario-generation`, `model-evaluation`) fired on the same UTC day. Paid
+journal entries record their `max_spend` at fire time; `resolve` releases the
+in-flight hold once the run's real cost lands via the sidecar scan.
+`--override-budget` can bypass only a ceiling refusal — a missing or invalid
+`max_spend` (non-numeric, boolean, non-finite, or not > 0) always refuses.
 
 ## Single-writer rule
 
