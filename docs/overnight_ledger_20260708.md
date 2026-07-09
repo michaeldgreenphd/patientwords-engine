@@ -551,3 +551,21 @@ KNOWN_KEYS + real transformer-lens patch_and_measure w/ offline-mocked
 tests), B4 experiment designs — then 2 adversarial verifiers (A2 policy).
 Integration at completion notification; site changes browser-verified
 before deploy.
+
+## 21:xx UTC — batch 2 integrated + deployed
+7 Fable agents, 0 errors, verify stage caught 5 real items, all fixed
+before integration: urgency_shift seen-marking now requires a landed row
+(patching outputs can't shadow real summaries); site deduped headline only
+sums when every model has a record; absent deduped fields render em-dash;
+dialect accordion semantics moved to a real <button> (row semantics
+restored); patching yml normalizes layers lists. Synthesis reconciled to
+the committed rigor record: gemma-2 downgrades = 26 v 4 (p 6e-5, BH 2.4e-4).
+SITE now shows phrase-deduped per-model counts everywhere (gemma-2 26v4,
+gemma-3 11v4, qwen1.7 18v5, qwen4 16v2) — the pseudoreplicated 78/124
+tallies are gone from public view. Engine: 9-model logits registry +
+docs/model_matrix.md (HF gate/click-paths), activation-patching CI live
+(real transformer-lens implementation), B4 designs pre-registered
+(docs/feature_experiments_design.md). Suite 228 green. Fired the $0
+1-pair patching smoke via fire_trigger (new group, running slot).
+Owner also enabled promptless artifacts (user settings allow-list) and
+received the headroom deck (H1-H6, pending).
