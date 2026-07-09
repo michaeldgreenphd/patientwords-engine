@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "updated_utc": "2026-07-09T18:47:02Z",
+ "updated_utc": "2026-07-09T19:53:19Z",
  "updated_by": "session",
  "queue": {
   "circuit-trace": {
@@ -146,9 +146,19 @@
   {
    "date": "2026-07-09",
    "text": "Checkpoint 1: infra all green (191 tests), Rmd delivered, gemma-3 4/4 stems in. Run 65 was evicted by a third-push (ops seam, now documented + mitigated), re-fired clean."
+  },
+  {
+   "date": "2026-07-09",
+   "text": "Autonomy batch 1: skeptic audit found a live dialect-page factual contradiction (fixed) and a synthesis overstatement (gemma-3 'p=0.039 significant' was actually p=0.12 NOT significant; gemma-2 downgrades 25 deduped not 67 pooled) — reconciled via new paired_stats_rigor.py. Tier label now discloses owner-review + clinician-pending. Report: docs/skeptic_read_20260709.md."
   }
  ],
- "decisions_pending": [],
+ "decisions_pending": [
+  {
+   "id": "SKEPTIC",
+   "title": "Skeptic audit — voice/framing items + site pseudoreplication",
+   "context": "docs/skeptic_read_20260709.md: single-case caveat, word-diff example mismatch, model-eval softening are yours to phrase; site pooled-count dedupe (lowers headline downgrade numbers) queued for next batch pending your awareness."
+  }
+ ],
  "blockers": [
   "Go/no-go condition (b) equivalence-n pending the run-65 re-fire (evicted, not failed; re-fired ~19:00 UTC). Batch-1 equivalence already holds. HOLD Tier B only if the re-fire genuinely fails."
  ],

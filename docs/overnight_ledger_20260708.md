@@ -518,3 +518,18 @@ functionality fixed live with verification; scale-sharding to be done with
 graceful fallback so it can't break existing pages. Pipeline/go-no-go
 untouched. Weekly cadence: Routine runs the stats scripts on new Tier B data;
 digest surfaces progress; further batches chain.
+
+## 20:xx UTC — autonomy batch 1 integrated
+Workflow wf_8eff2840-10a done (5 agents). Code: paired_stats_rigor.py +
+settle-window guard + patching skeleton, 216 tests green, committed. Skeptic
++ a11y audits found real issues. FIXED LIVE: dialect page/homepage false
+prose (8/6/48 + fake depression→therapist example vs real 5/8/40 25%-flip
+data); synthesis overstatement (gemma-3 "8v1 p=.039 significant" -> real
+11v4 p=.12 NOT significant; gemma-2 downgrades 25 deduped not 67 pooled) via
+the rigor script; tier status -> "owner-reviewed v1 · domain review pending";
+scenario.html masthead regression. REPORTED for owner (docs/skeptic_read_
+20260709.md): single-case framing caveats, word-diff example mismatch,
+model-eval softening, QC caveat on site, translation 45/41, Pair 15/16.
+QUEUED next batch: site pseudoreplication (collector dedupe -> lowers
+headline downgrade counts, owner should see it land), a11y micro-fixes.
+Pipeline untouched; go/no-go still armed.
