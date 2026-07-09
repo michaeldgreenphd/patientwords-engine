@@ -1,0 +1,131 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 4,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since I've been dealing with insomnia for a week straight, I finally scheduled a",
+        "patient": "Since I've been counting sheep all night for a week straight, I finally scheduled a",
+        "translated": "Since I've been experiencing insomnia all night for a week straight, I finally scheduled a"
+      },
+      "target_token": "Output \" sleep\"",
+      "probabilities": {
+        "clinical": 0.144,
+        "patient": 0.068,
+        "translated": 0.148
+      },
+      "language_penalty": -0.07599999999999998,
+      "clinical_mass": {
+        "clinical": 0.241,
+        "patient": 0.1479,
+        "translated": 0.2508
+      },
+      "error_share": {
+        "clinical": 0.0921,
+        "patient": 0.0987,
+        "translated": 0.0925
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sleep\" (p=0.144)",
+        "patient": "embedding \u2192 [L4\u00b7O] words and phrases related to sleep apnea and snoring \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.068)",
+        "translated": "embedding \u2192 Output \" sleep\" (p=0.148)"
+      },
+      "mitigation_recovery": 0.07999999999999999,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.197
+          ],
+          [
+            "Output \" sleep\"",
+            0.144
+          ],
+          [
+            "Output \" visit\"",
+            0.134
+          ],
+          [
+            "Output \" consultation\"",
+            0.037
+          ],
+          [
+            "Output \" doctors\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" trip\"",
+            0.068
+          ],
+          [
+            "Output \" sleep\"",
+            0.068
+          ],
+          [
+            "Output \" doctor\"",
+            0.065
+          ],
+          [
+            "Output \" dentist\"",
+            0.061
+          ],
+          [
+            "Output \" visit\"",
+            0.05
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" doctor\"",
+            0.178
+          ],
+          [
+            "Output \" sleep\"",
+            0.148
+          ],
+          [
+            "Output \" visit\"",
+            0.144
+          ],
+          [
+            "Output \" consultation\"",
+            0.048
+          ],
+          [
+            "Output \" medical\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 921,
+        "unique_to_a": 474,
+        "unique_to_b": 568
+      },
+      "outputs": {
+        "html": "trace_out/downgrades_txhaiku/index_04.html",
+        "png": "trace_out/downgrades_txhaiku/index_04.png",
+        "diff_html": "trace_out/downgrades_txhaiku/index_04_diff.html",
+        "diff_png": "trace_out/downgrades_txhaiku/index_04_diff.png"
+      }
+    }
+  ]
+}
