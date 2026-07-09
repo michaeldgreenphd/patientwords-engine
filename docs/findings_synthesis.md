@@ -1,6 +1,6 @@
 # What we found: patient words make small language models worse at medicine
 
-**Status: near-final — the causal panel is complete. Remaining: the gemma-3-4b-it cross-model column (runs in queue overnight). Every number traces to a committed artifact.**
+**Status: final, one column still tightening — gemma-3-4b-it's fourth measurement batch re-runs this morning; its row below is provisional (n = 56). Every number traces to a committed artifact.**
 
 One-line summary: when the same medical situation is phrased the way patients
 actually talk instead of in clinical terms, small open models become measurably
@@ -8,8 +8,8 @@ less likely to continue toward the clinical action — and we can see, name, and
 causally manipulate the circuit responsible.
 
 Everything below is next-token probability on gemma-2-2b (with attribution
-graphs) and qwen3-4b / qwen3-1.7b (behavior only). Nothing here measures harm
-in deployed systems; see Limits.
+graphs) and qwen3-4b / qwen3-1.7b / gemma-3-4b-it (behavior only). Nothing
+here measures harm in deployed systems; see Limits.
 
 ## 1. The penalty is real, and it is not one model's quirk
 
@@ -21,6 +21,12 @@ wording costs probability on the same target token:
 | gemma-2-2b | −0.070 | [−0.098, −0.043] | 132 |
 | qwen3-4b | −0.099 | [−0.149, −0.049] | 132 |
 | qwen3-1.7b | −0.089 | [−0.133, −0.047] | 132 |
+| gemma-3-4b-it | −0.076 | [−0.152, −0.000] | 56 (provisional) |
+
+The gemma-3-4b-it row is a newer, instruction-tuned model measured on the
+subset of pairs landed so far; its CI touches zero and tightens when the
+remaining batch lands this morning. Its per-pair penalties track gemma-2's
+at r = 0.60 (64% sign agreement).
 
 No CI crosses zero. The models also agree pair by pair, not just on average:
 gemma's per-pair penalty correlates with qwen3-4b's at r = 0.62 and with
@@ -87,19 +93,20 @@ downgrade phrases:
 - **Placebo** (5 random features, same strength, same prompts): 0/5. The
   effect is the clinical circuit, not steering itself.
 - **Dose-response** on the recovered subset (recoveries at each boost
-  strength): 2.5 → 4/4 landed, 5 → 5/5, 10 → 4/5, 20 → **breaks down** (of
-  five calls, three failed server-side and the one measured continuation
-  degenerated into token repetition). The curve is an inverted U: recovery
-  saturates at the lowest dose we tried and collapses into incoherence at the
-  highest. The circuit needs a nudge; a shove breaks the model.
+  strength, all cells final after remeasures): **2.5 → 4/5, 5 → 5/5,
+  10 → 4/5, 20 → 1/4**. Recovery saturates at the lowest dose tried and
+  declines sharply at the highest, where continuations occasionally
+  degenerate. The circuit needs a nudge; a shove hurts. One pair resists
+  at every strength — the same pair, every arm.
 - **Rank faithfulness**: boosting clinical ranks 6–10 instead of 1–5 at the
   same strength recovers **3/4 measured — near-parity with the top-5 arm
-  (4/5)**. This revises the naive prediction: attribution rank does not
-  concentrate the causal handle in a privileged top five. The steerable mass
-  is distributed across at least the circuit's top ten features. The placebo
-  (0/5) still rules out "steering anything works" — what is causal is the
-  clinical feature *family*, not any particular handful of it. (A second,
-  independent run of this arm is in flight as a replication.)
+  (4/5)**, and an independent second run reproduced the identical pattern
+  (same recoveries, same miss). This revises the naive prediction:
+  attribution rank does not concentrate the causal handle in a privileged
+  top five; the steerable mass is distributed across at least the circuit's
+  top ten features. The placebo (0/5) still rules out "steering anything
+  works" — what is causal is the clinical feature *family*, not any
+  particular handful of it.
 
 Listener-side amplification beats speaker-side muting: you get more back by
 strengthening the medical reading than by suppressing the idiom.
