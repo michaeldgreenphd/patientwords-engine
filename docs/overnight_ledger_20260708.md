@@ -262,3 +262,46 @@ urgency_shift.json, 2026-07-09):
   workflow (renders are ~1.1MB each; thousands would blow the 1GB Pages
   budget); CSV/Parquet for collaborators on Releases. GitHub Pages limits:
   ~1GB site, 100MB/file, 10 builds/hr — sharding keeps everything far under.
+
+### Brief additions (owner, 01:55 UTC): power-added, stats audit, interp suggestions, week runway
+OWNER CONTEXT: on vacation ~1 week from Friday; long unattended queue time is
+AVAILABLE and cheap. Recompute recommendations under that runway.
+- Power added by scale (computed): penalty CI half-width 0.028 @132 →
+  0.014 @500 → 0.008 @1600. Downgrade-rate precision ±0.021 @920 →
+  ±0.013 @2500 → ±0.009 @5000. Minimum detectable condition DIFFERENCE
+  (80% power, two-prop): ±0.16 @62/cell (n=500/8) → ±0.09 @200/cell →
+  ±0.06 @434/cell → ±0.05 @625/cell. State plainly: scale buys the
+  proportion claims, penalty already powered.
+- Cost/time at scale: generation $0.015/pair opus ($24 @1600, $75 @5000)
+  or ~$0.003/pair cheaper generator ($5/$15). Hosted tracing ≈8–12
+  pairs/hr single queue (VERIFY with a timed 20-pair probe) → a vacation
+  week ≈ 1,300–2,000 traced pairs unattended; CPU logits: thousands/day,
+  $0, all 4 models. Recommended vacation plan: pre-register, generate
+  Tier B (1,600 balanced), behavioral-complete on CPU all models, hosted
+  traces continuously in the background all week (~full coverage if probe
+  confirms ≥10/hr, else stratified 500), chain wakes manage everything.
+- Stats audit (double-check requested): (1) FLAG pseudoreplication — the
+  920-measurement downgrade tallies pool re-traces of the same phrases
+  (steering/context/alias batches); inferential claims must dedupe by
+  phrase or use mixed-effects; relabel site counts as measurement tallies.
+  (2) Cluster structure (topics/templates) → cluster bootstrap or
+  (1|topic) random intercepts; (3) report Clopper-Pearson CIs on all
+  steering fractions + Fisher exact for boost 4/5 vs placebo 0/5;
+  (4) BH/Holm across per-model tests; (5) paraphrase noise now measured
+  (mean |delta| 0.064 — same order as the penalty): at scale, measure each
+  pair under 2–3 paraphrases and average (halves item noise); single-pair
+  claims are illustrations only. Sign tests + bootstrap CIs themselves:
+  appropriate; keep.
+- Interp-research suggestions to include: activation patching
+  clinical↔patient (layer/position localization; stronger causal standard
+  than API steering); steering-vector (residual mean-diff) vs SAE-feature
+  steering comparison; cross-pair feature transfer (boost pair A's
+  features on pair B — shared circuit or idiosyncratic?); feature
+  universality on gemma-2-9b (Gemma Scope exists; check tracer support);
+  tuned-lens trajectories as $0 depth complement; surface error-node
+  share as graph-faithfulness caveat.
+- Paraphrase robustness landed and published (provenance
+  paraphrase_robustness; synthesis §7 bullet). Include in findings delta.
+- Text-reduction second pass done tonight + fresh full outline
+  (docs/site_text_outline_v2.md) sent to owner for personal slimming;
+  note in brief.

@@ -145,6 +145,12 @@ cure. (Source: `data/provenance.json:translation_cases`.)
   language correlate with the pipeline's traced penalties at r = 0.687
   (n = 14 matched; 8 further pairs are censored bounds that point the same
   way, sensitivity r = 0.370).
+- **Not single-sentence-reliable — by design an aggregate claim**: innocuous
+  paraphrases (meaning preserved, term held fixed) move a single measurement
+  by ~0.064 on average — the same order as the penalty itself. No individual
+  pair is evidence; the penalty is a paired aggregate over 132 pairs, where
+  bidirectional paraphrase noise contributes only ~0.009 to the standard
+  error. Featured examples are illustrations of a distribution, not proofs.
 - The intentional misspellings in the stress set are stimuli, not errors.
 
 ## 8. Limits, plainly
