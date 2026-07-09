@@ -64,12 +64,21 @@ Priority order when slots are free:
    "anthropic_model":"claude-haiku-4-5","max_spend":"0.25",
    "seed_pairs":"medlang_circuits/data/ci_pairs_2panel.json",
    "trace_sample_size":"0","_note":"tierB batch <k>"}'`
+   **Bootstrap:** if `tierb.start_utc` is null when you fire the FIRST Tier B
+   batch, set `tierb.start_utc` to the current UTC time in `ops/dashboard.json`
+   first — `ledger_update.py` attributes batches to Tier B only after that
+   stamp, so an unset stamp silently drops the whole run from the count.
 2. **Tracing** (circuit-trace slots free): fire screened trace chunks of the
    oldest untraced Tier B batch: mode `2panel`, `screen_targets` `0.02`,
    `offsets` in steps of 10 with `sample_size` `10`, `commit_outputs`
    `true`. One batch per fire; chain, never stack a third.
 3. **Behavior** (logits-eval slot free): fire CPU logits for Tier B batches
    not yet measured (all four models, $0).
+4. **Idle-queue filler** (owner-approved 2026-07-09, lowest priority — only
+   when Tier B has no pending generation/tracing work for a slot): trace the
+   already-generated sociolect round-2 batch
+   (`data/simulated/dialects_20260708T215356Z.json`, $0, no generation
+   spend) in `dialect` mode. Pure extra data; never displaces Tier B work.
 
 Stopping rules (from the pre-registration): if two consecutive batches show
 validator yield < 50%, stop firing generation and record a decision for the

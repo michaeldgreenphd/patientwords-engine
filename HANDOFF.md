@@ -25,13 +25,30 @@ re-rendering dialect tiles, translation flow chart, any site text/HTML/figure
 edit. Engine-side **data publishing** (exporter, urgency collector, data
 payload commits) stays in scope.
 
-## Checkpoints (owner-mandated)
+## Checkpoints (owner-mandated) — finalized 2026-07-09 pm
 
-- **Checkpoint 1 — today 3:00 PM** (assumed America/New_York → 19:00 UTC):
-  deliver `site_text.Rmd`, infra status, this file's draft, blockers.
-- **Checkpoint 2 — Friday morning:** dashboard rendering in a browser with
-  simulated + empty data, zero console errors; all script regression tests
-  passing; dry-run of the Routine digest push; final HANDOFF.md.
+Owner switched this session to **Opus 4.8** (Fable weekly cap ~2%); running
+as Opus from here. Timezone confirmed EDT (UTC−4). Away-deck answers
+(AWAY 2026-07-09): Q1 switching now · Q2 fire Tier B tonight if clean ·
+Q3 digest 9:00 AM EDT (13:00 UTC) · Q4→superseded by note · Q5 idle filler
+approved · Q6 blind QC pending (owner will paste later).
+
+- **Checkpoint 1 — today ~3:00 PM EDT (19:00 UTC):** delivered async (owner
+  travelling) — `site_text_outline.Rmd` already in owner's hands; infra
+  status + this file. Prep wake armed 18:40 UTC.
+- **THE HANDOFF — Friday 2026-07-10, 4:00 AM EDT (08:00 UTC):** owner's
+  note moved Checkpoint 2 here (early flight; supersedes Q4's 7 AM). This
+  session wakes, runs the full Checkpoint 2 package (dashboard in browser
+  sample/empty/missing, 191-test suite, Routine digest dry-run, final
+  HANDOFF) and delivers it async before the flight. Owner will NOT sign off
+  live — produce, push, and deliver so it is waiting.
+- **Tonight ~9:00 PM EDT (01:00 UTC 07-10):** Tier B go/no-go wake — check
+  run 65 equivalence + gemma-3 stem 3; if clean, fire Tier B batch 1
+  (set `tierb.start_utc`), create the daily Routine, run the unified
+  gemma-3 + dedupe recompute, publish. Hold + flag on any ambiguity;
+  rationale to the ledger either way.
+- **Daily Routine digest:** 13:00 UTC (9:00 AM EDT), fresh session per fire,
+  push notification, prompt = `docs/routine_standing_prompt.md`.
 
 ## Architecture decided (build in flight)
 

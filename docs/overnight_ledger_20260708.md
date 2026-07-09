@@ -457,3 +457,16 @@ renamed) · rest unchanged. Dialect + translation pages now display all
 probabilities as % (deltas as signed percentage points; attribution mass
 left decimal). Browser-verified incl. dynamic caption paths; deployed to
 main. Outline regenerated.
+
+## 14:5x UTC — owner away-deck answers; session switched to Opus 4.8
+AWAY 2026-07-09: Q1 switching to Opus now (done — session is Opus 4.8);
+Q2 fire Tier B tonight IF haiku equivalence clean (standing, reconfirmed);
+Q3 daily digest 9am EDT = 13:00 UTC; Q4 (Friday 7am) SUPERSEDED by owner
+note -> run the handoff Friday 4am EDT = 08:00 UTC (early flight); Q5 idle
+filler approved (sociolect r2 trace when slack, $0); Q6 blind QC pending
+(owner will paste during travel). Note also: recreate the QC as a phone app
+(done — republished, offline-capable). Standing prompt gained: start_utc
+bootstrap rule (item 1) + sociolect filler (item 4). Scheduled: tonight
+01:00 UTC go/no-go + Routine creation; Friday 08:00 UTC handoff. Both
+this-session durable wakes. Fresh-session Routine created tonight after
+Tier B start so start_utc is clean (matches Thursday-create plan).
