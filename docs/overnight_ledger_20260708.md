@@ -315,3 +315,23 @@ landed; stem 3 was EVICTED overnight by my stem-4 trigger push (queue
 discipline slip — own it in the brief) and is re-fired now. Sociolect 2a:
 6/7 chunks (pairs 10-12 chunk failed; 17/20 baselines measured). Owner is
 awake — brief anchor fires 10:45; use THESE final numbers.
+
+## 11:5x UTC — haiku-generator justification (owner question, daytime)
+Owner asked: retain existing results and use them to justify haiku for
+generation + translation in the week-long run; wants cost + timing.
+Discovery: the 0707 cross-model generator test ALREADY ran haiku twice
+(pairs_20260707T023706Z, pairs_20260707T025842Z; $0.0985/$0.0996 for 50
+accepted each = $0.002/pair vs opus $0.0164-0.0202/pair). Batch 1 was traced
+under screen 0.02: haiku beats opus on validator yield (76% vs 60%), screen-in
+rate (27/49 = 55% vs 24/50 = 48%), and shows the penalty at least as strongly
+(mean -0.046 CI [-0.084,-0.012] n=27 vs opus -0.036 CI [-0.080,+0.006] n=24).
+Actions: (1) added translation_model param to circuit-trace workflow
+(MEDLANG_ANTHROPIC_MODEL passthrough; translate_to_clinical + both result
+schemas now record which model translated; +2 regression tests, 124 green);
+(2) fired run 64 = haiku-translator arm on downgrades_txhaiku (alias of the
+20-downgrade set) to compare against opus 8/20 recovery; (3) queued run 65 =
+trace of the second (untraced) haiku batch, same screening, doubles
+equivalence n. Both $0 tracing + ~$0.01 haiku translation. Circuit-trace
+queue FULL (64 running, 65 pending) — no trace pushes until 64 completes.
+gemma-3 stem-3 logits (run 14) still in progress. Owner plan: Fable
+interactive today; tonight fire the week-long evaluation based on findings.
