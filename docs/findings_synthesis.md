@@ -161,6 +161,16 @@ cure. (Source: `data/provenance.json:translation_cases`.)
   pair is evidence; the penalty is a paired aggregate over 132 pairs, where
   bidirectional paraphrase noise contributes only ~0.009 to the standard
   error. Featured examples are illustrations of a distribution, not proofs.
+- **Human-validated, with a caveat located**: a blind owner review of 20
+  pairs (10 flips / 10 non, unlabeled) rated 15 sound, 2 unsure, 3 flawed.
+  All 3 flawed pairs fell in the flip half — the failure mode is
+  condition-equivalence drift on the patient side ("didn't feel like
+  clinical equivalents"), not register. But those 3 are low-signal flips
+  (penalties −0.02, −0.09, and one unmeasured target; none are confident
+  downgrades at p ≥ 0.2), so the load-bearing downgrade claim — which rests
+  on the confident tier — is largely insulated. The honest reading: a
+  minority of raw flips are stimulus artifacts, concentrated where the
+  measurement is weakest. (Source: `docs/stimulus_qc_v1.json`.)
 - The intentional misspellings in the stress set are stimuli, not errors.
 
 ## 8. Limits, plainly

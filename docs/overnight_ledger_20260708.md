@@ -470,3 +470,17 @@ bootstrap rule (item 1) + sociolect filler (item 4). Scheduled: tonight
 01:00 UTC go/no-go + Routine creation; Friday 08:00 UTC handoff. Both
 this-session durable wakes. Fresh-session Routine created tonight after
 Tier B start so start_utc is clean (matches Thursday-create plan).
+
+## 15:2x UTC — blind stimulus QC returned (Q6)
+Owner tapped the 20-pair blind QC: 15 sound / 2 unsure / 3 flawed (75% sound).
+Note: "flawed ones didn't really feel like clinical equivalents." Crosstab
+vs flip status: ALL 3 flawed are flips (0/10 non-flips flawed) — failure mode
+is condition-equivalence drift on the patient side, concentrated in the flip
+half. BUT the 3 flawed flips are low-signal (pen -0.022, -0.088, one
+unmeasured target; none are confident downgrades p>=0.2), so the load-bearing
+confident-downgrade claim is largely insulated. Recorded docs/stimulus_qc_v1.json;
+added a located-caveat bullet to synthesis §7. Q6 cleared. Soft flag for
+tonight's go/no-go: consider a condition-equivalence screen for Tier B at
+scale — owner-decision, not an autonomous design change. Does NOT change the
+fire-if-clean verdict (that gate is behavioral equivalence of the haiku
+generator, independent of this stimulus-design finding).
