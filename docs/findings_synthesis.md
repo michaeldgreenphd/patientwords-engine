@@ -1,6 +1,9 @@
 # What we found: patient words make small language models worse at medicine
 
-**Status: draft — two cells pending (strength-20 dose point, rank-6–10 faithfulness arm; runs in queue). Every other number is final and traces to a committed artifact.**
+**Status: released for external readers by owner sign-off (2026-07-09), with
+one gate: the gemma-3-4b-it row is provisional (n = 56) until its re-fired
+fourth batch lands, and is released only when final. Every number traces to a
+committed artifact.**
 
 One-line summary: when the same medical situation is phrased the way patients
 actually talk instead of in clinical terms, small open models become measurably
@@ -8,8 +11,8 @@ less likely to continue toward the clinical action — and we can see, name, and
 causally manipulate the circuit responsible.
 
 Everything below is next-token probability on gemma-2-2b (with attribution
-graphs) and qwen3-4b / qwen3-1.7b (behavior only). Nothing here measures harm
-in deployed systems; see Limits.
+graphs) and qwen3-4b / qwen3-1.7b / gemma-3-4b-it (behavior only). Nothing
+here measures harm in deployed systems; see Limits.
 
 ## 1. The penalty is real, and it is not one model's quirk
 
@@ -21,6 +24,12 @@ wording costs probability on the same target token:
 | gemma-2-2b | −0.070 | [−0.098, −0.043] | 132 |
 | qwen3-4b | −0.099 | [−0.149, −0.049] | 132 |
 | qwen3-1.7b | −0.089 | [−0.133, −0.047] | 132 |
+| gemma-3-4b-it | −0.076 | [−0.152, −0.000] | 56 (provisional) |
+
+The gemma-3-4b-it row is a newer, instruction-tuned model measured on the
+subset of pairs landed so far; its CI touches zero and tightens when the
+remaining batch lands this morning. Its per-pair penalties track gemma-2's
+at r = 0.60 (64% sign agreement).
 
 No CI crosses zero. The models also agree pair by pair, not just on average:
 gemma's per-pair penalty correlates with qwen3-4b's at r = 0.62 and with
@@ -35,15 +44,21 @@ Often the model keeps its top answer and just loses confidence. The dangerous
 case is when the top continuation changes — and when it changes, it goes down
 the care ladder far more often than up:
 
-- gemma-2-2b: 41 downgrades vs 3 upgrades (sign test p ≈ 0)
-- qwen3-4b: 15 vs 2 (p = 0.002)
-- qwen3-1.7b: 14 vs 4 (p = 0.031)
+- gemma-2-2b: 67 downgrades vs 4 upgrades (sign test p ≈ 0)
+- gemma-3-4b-it: 8 vs 1 (p = 0.039) — a newer, instruction-tuned model,
+  same asymmetry
+- qwen3-4b: 16 vs 2 (p = 0.001)
+- qwen3-1.7b: 18 vs 5 (p = 0.011)
+
+These counts use the tier vocabulary the study owner reviewed and approved
+item-by-item (v1, 2026-07-09); the review unblocked previously unclassifiable
+flips, which is why they exceed the draft-era counts.
 
 Concrete cases from live traces: "urinary tract … blocked up" calls a
 urologist at 0.20; "her water was blocked up" calls a **plumber** at 0.68.
 "Constipated … took a" continues with *laxative*; "all bunged up" continues
 with *nap*. The advice object changes, not just its probability.
-(Source: `data/urgency_shift.json`; tier labels draft pending domain review.)
+(Source: `data/urgency_shift.json`; tier vocabulary reviewed v1, 2026-07-09.)
 
 ## 3. Mechanism: the wording swaps which circuit runs
 
@@ -81,12 +96,20 @@ downgrade phrases:
 - **Placebo** (5 random features, same strength, same prompts): 0/5. The
   effect is the clinical circuit, not steering itself.
 - **Dose-response** on the recovered subset (recoveries at each boost
-  strength): 2.5 → 4/4 landed, 5 → 5/5, 10 → 4/5, **20 → pending**. Recovery
-  is already near-ceiling at the lowest dose we tried — the circuit needs a
-  nudge, not a shove.
+  strength, all cells final after remeasures): **2.5 → 4/5, 5 → 5/5,
+  10 → 4/5, 20 → 1/4**. Recovery saturates at the lowest dose tried and
+  declines sharply at the highest, where continuations occasionally
+  degenerate. The circuit needs a nudge; a shove hurts. One pair resists
+  at every strength — the same pair, every arm.
 - **Rank faithfulness**: boosting clinical ranks 6–10 instead of 1–5 at the
-  same strength — **pending**. If attribution rank predicts causal effect,
-  this arm must recover fewer.
+  same strength recovers **3/4 measured — near-parity with the top-5 arm
+  (4/5)**, and an independent second run reproduced the identical pattern
+  (same recoveries, same miss). This revises the naive prediction:
+  attribution rank does not concentrate the causal handle in a privileged
+  top five; the steerable mass is distributed across at least the circuit's
+  top ten features. The placebo (0/5) still rules out "steering anything
+  works" — what is causal is the clinical feature *family*, not any
+  particular handful of it.
 
 Listener-side amplification beats speaker-side muting: you get more back by
 strengthening the medical reading than by suppressing the idiom.
@@ -102,14 +125,17 @@ the neutral one by +0.083 (8/14 pairs improved). Where you say it moves the
 number as much as how you say it — casual framing makes patient wording
 *worse*, clinical framing roughly halves the cost.
 
-The register ladder shows the same thing as a staircase: with the clinical
-term held verbatim in every rung, P(antacid-class target) falls 0.322 (formal
-clinical) → 0.114 (one everyday word) → below the top-10 floor by the middle
-rung, where a fruit takes the top slot. Register alone, without touching the
-key term, flips the guidance object. (n = 1 case study; the n = 10 ladder
-batch is traced next.)
-(Sources: ledger `docs/overnight_ledger_20260708.md` 20:15 entry;
-`data/provenance.json:ladder_digestive`.)
+The register ladder complicates this in a useful way. In one case study,
+with the clinical term held verbatim, the target fell 0.322 → 0.114 → below
+the top-10 floor as the sentence slid from formal to casual register. But
+the n = 10 sweep did not replicate the staircase: across ten baselines,
+mean target probability is flat over the five rungs (0.27–0.34), and the
+casual end beats the formal end about as often as not. Register alone —
+with the term held fixed — rarely moves the target. Put together with the
+prefix result above: added clinical *context* helps, but the penalty itself
+concentrates in the vocabulary swap, not the surrounding register. We report
+the single case as an illustration, not a law.
+(Sources: `data/provenance.json:ladder_digestive`, `ladder_n10`.)
 
 ## 6. Translation is a real but imperfect patch
 
@@ -129,6 +155,12 @@ cure. (Source: `data/provenance.json:translation_cases`.)
   language correlate with the pipeline's traced penalties at r = 0.687
   (n = 14 matched; 8 further pairs are censored bounds that point the same
   way, sensitivity r = 0.370).
+- **Not single-sentence-reliable — by design an aggregate claim**: innocuous
+  paraphrases (meaning preserved, term held fixed) move a single measurement
+  by ~0.064 on average — the same order as the penalty itself. No individual
+  pair is evidence; the penalty is a paired aggregate over 132 pairs, where
+  bidirectional paraphrase noise contributes only ~0.009 to the standard
+  error. Featured examples are illustrations of a distribution, not proofs.
 - The intentional misspellings in the stress set are stimuli, not errors.
 
 ## 8. Limits, plainly
@@ -137,7 +169,8 @@ One 2-billion-parameter model carries all circuit evidence; the qwen checks
 are behavior only. Attribution graphs prune heavily and their feature labels
 are machine-written — a mislabeled feature shifts category masses. Steering
 n's are small (5–20). Probabilities are a point-in-time measurement against a
-hosted service. Urgency tiers are a draft vocabulary pending domain review.
+hosted service. The urgency-tier vocabulary is owner-reviewed (v1); its
+residual low-frequency tokens default to excluded.
 None of this measures deployed clinical systems, and nothing here is medical
 advice. The defensible claim: on the models measured, patient phrasing
 measurably suppresses the clinical continuation, the suppression runs through

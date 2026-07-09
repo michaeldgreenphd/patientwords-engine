@@ -1,0 +1,592 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 5,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep having night sweats every night, so the doctor ordered a",
+        "patient": "I keep waking up drenched in sweat every night, so the doctor ordered a"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.232,
+        "patient": 0.094
+      },
+      "language_penalty": -0.138,
+      "clinical_mass": {
+        "clinical": 0.3863,
+        "patient": 0.285
+      },
+      "error_share": {
+        "clinical": 0.0987,
+        "patient": 0.1066
+      },
+      "top_path": {
+        "clinical": "[L14\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 Output \" test\" (p=0.072)",
+        "patient": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.305)"
+      },
+      "steering_boost": {
+        "boosted_features": [
+          {
+            "layer": 17,
+            "index": 2083,
+            "mass": 1258.4211,
+            "label": "terminology related to medical examinations and diagnoses | tests"
+          },
+          {
+            "layer": 19,
+            "index": 2000,
+            "mass": 1156.9804,
+            "label": "words related to radiology and medical imaging | Medical imaging"
+          },
+          {
+            "layer": 19,
+            "index": 13242,
+            "mass": 965.2458,
+            "label": "words related to medical tests and procedures | laboratory"
+          },
+          {
+            "layer": 19,
+            "index": 16276,
+            "mass": 750.0546,
+            "label": "words associated with sleep apnea and medical papers | sleep"
+          },
+          {
+            "layer": 21,
+            "index": 11340,
+            "mass": 677.9289,
+            "label": "scientific or medical terminology, especially related to hormones, growth factor"
+          }
+        ],
+        "ok": true,
+        "status": 200,
+        "request": {
+          "endpoint": "/api/steer",
+          "strength": 2.5,
+          "features": [
+            {
+              "layer": 17,
+              "index": 2083
+            },
+            {
+              "layer": 19,
+              "index": 2000
+            },
+            {
+              "layer": 19,
+              "index": 13242
+            },
+            {
+              "layer": 19,
+              "index": 16276
+            },
+            {
+              "layer": 21,
+              "index": 11340
+            }
+          ]
+        },
+        "response": {
+          "STEERED": "<bos>I keep waking up drenched in sweat every night, so the doctor ordered a sleep test. I had a sleep study",
+          "DEFAULT": "<bos>I keep waking up drenched in sweat every night, so the doctor ordered a sleep study. I was told I have",
+          "steeredLogProbs": [
+            {
+              "token": " sleep",
+              "logprob": -0.85546875,
+              "topLogprobs": [
+                {
+                  "token": " sleep",
+                  "logprob": -0.85546875
+                },
+                {
+                  "token": " blood",
+                  "logprob": -1.4765625
+                },
+                {
+                  "token": " test",
+                  "logprob": -3.109375
+                },
+                {
+                  "token": " full",
+                  "logprob": -3.359375
+                },
+                {
+                  "token": " night",
+                  "logprob": -3.984375
+                }
+              ]
+            },
+            {
+              "token": " test",
+              "logprob": -0.64453125,
+              "topLogprobs": [
+                {
+                  "token": " test",
+                  "logprob": -0.64453125
+                },
+                {
+                  "token": " study",
+                  "logprob": -0.89453125
+                },
+                {
+                  "token": " apnea",
+                  "logprob": -4.40625
+                },
+                {
+                  "token": "-",
+                  "logprob": -4.40625
+                },
+                {
+                  "token": " lab",
+                  "logprob": -4.90625
+                }
+              ]
+            },
+            {
+              "token": ".",
+              "logprob": -0.462890625,
+              "topLogprobs": [
+                {
+                  "token": ".",
+                  "logprob": -0.462890625
+                },
+                {
+                  "token": " to",
+                  "logprob": -2.21875
+                },
+                {
+                  "token": ",",
+                  "logprob": -2.96875
+                },
+                {
+                  "token": " and",
+                  "logprob": -2.96875
+                },
+                {
+                  "token": " for",
+                  "logprob": -3.59375
+                }
+              ]
+            },
+            {
+              "token": " I",
+              "logprob": -1.6640625,
+              "topLogprobs": [
+                {
+                  "token": " I",
+                  "logprob": -1.6640625
+                },
+                {
+                  "token": " The",
+                  "logprob": -2.15625
+                },
+                {
+                  "token": "\n\n",
+                  "logprob": -2.15625
+                },
+                {
+                  "token": "  ",
+                  "logprob": -2.28125
+                },
+                {
+                  "token": " It",
+                  "logprob": -2.78125
+                }
+              ]
+            },
+            {
+              "token": " had",
+              "logprob": -2.171875,
+              "topLogprobs": [
+                {
+                  "token": " had",
+                  "logprob": -2.171875
+                },
+                {
+                  "token": "'",
+                  "logprob": -2.421875
+                },
+                {
+                  "token": " was",
+                  "logprob": -2.421875
+                },
+                {
+                  "token": " have",
+                  "logprob": -2.421875
+                },
+                {
+                  "token": "\u2019",
+                  "logprob": -2.546875
+                }
+              ]
+            },
+            {
+              "token": " a",
+              "logprob": -0.98046875,
+              "topLogprobs": [
+                {
+                  "token": " a",
+                  "logprob": -0.98046875
+                },
+                {
+                  "token": " one",
+                  "logprob": -1.8515625
+                },
+                {
+                  "token": " an",
+                  "logprob": -2.359375
+                },
+                {
+                  "token": " the",
+                  "logprob": -2.484375
+                },
+                {
+                  "token": " it",
+                  "logprob": -2.859375
+                }
+              ]
+            },
+            {
+              "token": " sleep",
+              "logprob": -1.1953125,
+              "topLogprobs": [
+                {
+                  "token": " sleep",
+                  "logprob": -1.1953125
+                },
+                {
+                  "token": " polys",
+                  "logprob": -2.703125
+                },
+                {
+                  "token": " full",
+                  "logprob": -3.078125
+                },
+                {
+                  "token": " ",
+                  "logprob": -3.203125
+                },
+                {
+                  "token": " very",
+                  "logprob": -3.203125
+                }
+              ]
+            },
+            {
+              "token": " study",
+              "logprob": -0.427734375,
+              "topLogprobs": [
+                {
+                  "token": " study",
+                  "logprob": -0.427734375
+                },
+                {
+                  "token": " test",
+                  "logprob": -1.9296875
+                },
+                {
+                  "token": " apnea",
+                  "logprob": -2.796875
+                },
+                {
+                  "token": " lab",
+                  "logprob": -4.1875
+                },
+                {
+                  "token": "-",
+                  "logprob": -4.3125
+                }
+              ]
+            }
+          ],
+          "defaultLogProbs": [
+            {
+              "token": " sleep",
+              "logprob": -1.1796875,
+              "topLogprobs": [
+                {
+                  "token": " sleep",
+                  "logprob": -1.1796875
+                },
+                {
+                  "token": " blood",
+                  "logprob": -2.1875
+                },
+                {
+                  "token": " heart",
+                  "logprob": -3.0625
+                },
+                {
+                  "token": " test",
+                  "logprob": -3.1875
+                },
+                {
+                  "token": " CP",
+                  "logprob": -3.4375
+                }
+              ]
+            },
+            {
+              "token": " study",
+              "logprob": -0.21875,
+              "topLogprobs": [
+                {
+                  "token": " study",
+                  "logprob": -0.21875
+                },
+                {
+                  "token": " test",
+                  "logprob": -1.84375
+                },
+                {
+                  "token": " apnea",
+                  "logprob": -4.21875
+                },
+                {
+                  "token": " monitor",
+                  "logprob": -4.96875
+                },
+                {
+                  "token": " studies",
+                  "logprob": -6.59375
+                }
+              ]
+            },
+            {
+              "token": ".",
+              "logprob": -0.6328125,
+              "topLogprobs": [
+                {
+                  "token": ".",
+                  "logprob": -0.6328125
+                },
+                {
+                  "token": " to",
+                  "logprob": -1.7578125
+                },
+                {
+                  "token": " and",
+                  "logprob": -2.75
+                },
+                {
+                  "token": ",",
+                  "logprob": -2.875
+                },
+                {
+                  "token": " for",
+                  "logprob": -3.5
+                }
+              ]
+            },
+            {
+              "token": " I",
+              "logprob": -1.5625,
+              "topLogprobs": [
+                {
+                  "token": " I",
+                  "logprob": -1.5625
+                },
+                {
+                  "token": " The",
+                  "logprob": -2.3125
+                },
+                {
+                  "token": "\n\n",
+                  "logprob": -2.3125
+                },
+                {
+                  "token": "  ",
+                  "logprob": -2.3125
+                },
+                {
+                  "token": " It",
+                  "logprob": -2.6875
+                }
+              ]
+            },
+            {
+              "token": " was",
+              "logprob": -2.109375,
+              "topLogprobs": [
+                {
+                  "token": " was",
+                  "logprob": -2.109375
+                },
+                {
+                  "token": "'",
+                  "logprob": -2.109375
+                },
+                {
+                  "token": " have",
+                  "logprob": -2.359375
+                },
+                {
+                  "token": "\u2019",
+                  "logprob": -2.484375
+                },
+                {
+                  "token": " had",
+                  "logprob": -2.734375
+                }
+              ]
+            },
+            {
+              "token": " told",
+              "logprob": -2.140625,
+              "topLogprobs": [
+                {
+                  "token": " told",
+                  "logprob": -2.140625
+                },
+                {
+                  "token": " diagnosed",
+                  "logprob": -2.515625
+                },
+                {
+                  "token": " a",
+                  "logprob": -3.015625
+                },
+                {
+                  "token": " given",
+                  "logprob": -3.265625
+                },
+                {
+                  "token": " in",
+                  "logprob": -3.515625
+                }
+              ]
+            },
+            {
+              "token": " I",
+              "logprob": -1.4296875,
+              "topLogprobs": [
+                {
+                  "token": " I",
+                  "logprob": -1.4296875
+                },
+                {
+                  "token": " that",
+                  "logprob": -1.5546875
+                },
+                {
+                  "token": " to",
+                  "logprob": -1.5546875
+                },
+                {
+                  "token": " it",
+                  "logprob": -2.421875
+                },
+                {
+                  "token": " the",
+                  "logprob": -3.171875
+                }
+              ]
+            },
+            {
+              "token": " have",
+              "logprob": -1.015625,
+              "topLogprobs": [
+                {
+                  "token": " have",
+                  "logprob": -1.015625
+                },
+                {
+                  "token": " had",
+                  "logprob": -1.890625
+                },
+                {
+                  "token": " was",
+                  "logprob": -2.265625
+                },
+                {
+                  "token": " might",
+                  "logprob": -3.265625
+                },
+                {
+                  "token": " may",
+                  "logprob": -3.515625
+                }
+              ]
+            }
+          ],
+          "id": "cmrc62ej60010ghf06ejibdd9",
+          "shareUrl": "https://www.neuronpedia.org/steer/cmrc62ej60010ghf06ejibdd9",
+          "limit": "119"
+        }
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.232
+          ],
+          [
+            "Output \" sleep\"",
+            0.121
+          ],
+          [
+            "Output \" test\"",
+            0.072
+          ],
+          [
+            "Output \" hormone\"",
+            0.053
+          ],
+          [
+            "Output \" urine\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.305
+          ],
+          [
+            "Output \" blood\"",
+            0.094
+          ],
+          [
+            "Output \" heart\"",
+            0.069
+          ],
+          [
+            "Output \" test\"",
+            0.036
+          ],
+          [
+            "Output \" CP\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 806,
+        "unique_to_a": 700,
+        "unique_to_b": 596
+      },
+      "outputs": {
+        "html": "trace_out/boostgrid_s2p5/index_05.html",
+        "png": "trace_out/boostgrid_s2p5/index_05.png",
+        "diff_html": "trace_out/boostgrid_s2p5/index_05_diff.html",
+        "diff_png": "trace_out/boostgrid_s2p5/index_05_diff.png"
+      }
+    }
+  ]
+}

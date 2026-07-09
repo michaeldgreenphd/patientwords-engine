@@ -1,0 +1,393 @@
+{
+  "mode": "dialect",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 1,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 1,
+      "mode": "dialect",
+      "baseline_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+      "held_fixed": "clinical",
+      "term": "She's been dealing with sleep-onset insomnia",
+      "target_token": "Output \" few\"",
+      "baseline_probability": 0.066,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording, same register and meaning",
+          "prompt": "She's been dealing with sleep-onset insomnia recently, so right before bed she takes a",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording, same register",
+          "prompt": "She's been dealing with sleep-onset insomnia these days, so just before going to sleep she takes a",
+          "probability": 0.046,
+          "delta_vs_baseline": -0.020000000000000004
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only, same content",
+          "prompt": "She's been dealing with sleep-onset insomnia lately, thus before turning in she takes a",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording, same register",
+          "prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in tonight she takes a",
+          "probability": 0.075,
+          "delta_vs_baseline": 0.008999999999999994
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording, same register",
+          "prompt": "She's been dealing with sleep-onset insomnia lately, so before she turns in she takes a",
+          "probability": 0.07,
+          "delta_vs_baseline": 0.0040000000000000036
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" few\"",
+            0.066
+          ],
+          [
+            "Output \" melatonin\"",
+            0.063
+          ],
+          [
+            "Output \" couple\"",
+            0.054
+          ],
+          [
+            "Output \" \"",
+            0.054
+          ],
+          [
+            "Output \" dose\"",
+            0.047
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" melatonin\"",
+              0.1
+            ],
+            [
+              "Output \" \"",
+              0.077
+            ],
+            [
+              "Output \" couple\"",
+              0.044
+            ],
+            [
+              "Output \" half\"",
+              0.039
+            ],
+            [
+              "Output \" small\"",
+              0.038
+            ]
+          ],
+          [
+            [
+              "Output \" \"",
+              0.07
+            ],
+            [
+              "Output \" melatonin\"",
+              0.064
+            ],
+            [
+              "Output \" glass\"",
+              0.049
+            ],
+            [
+              "Output \" couple\"",
+              0.048
+            ],
+            [
+              "Output \" few\"",
+              0.046
+            ]
+          ],
+          [
+            [
+              "Output \" \"",
+              0.068
+            ],
+            [
+              "Output \" melatonin\"",
+              0.063
+            ],
+            [
+              "Output \" couple\"",
+              0.054
+            ],
+            [
+              "Output \" dose\"",
+              0.049
+            ],
+            [
+              "Output \" half\"",
+              0.046
+            ]
+          ],
+          [
+            [
+              "Output \" few\"",
+              0.075
+            ],
+            [
+              "Output \" couple\"",
+              0.065
+            ],
+            [
+              "Output \" look\"",
+              0.063
+            ],
+            [
+              "Output \" dose\"",
+              0.058
+            ],
+            [
+              "Output \" \"",
+              0.041
+            ]
+          ],
+          [
+            [
+              "Output \" few\"",
+              0.07
+            ],
+            [
+              "Output \" melatonin\"",
+              0.065
+            ],
+            [
+              "Output \" couple\"",
+              0.057
+            ],
+            [
+              "Output \" \"",
+              0.053
+            ],
+            [
+              "Output \" little\"",
+              0.042
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.0975
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 Output \" \" (p=0.054)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260708T203111Z/index_01.html",
+        "png": "trace_out/dialects_20260708T203111Z/index_01.png"
+      }
+    },
+    {
+      "index": 2,
+      "mode": "dialect",
+      "baseline_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+      "held_fixed": "clinical",
+      "term": "I've had arrhythmia symptoms",
+      "target_token": "Output \" doctor\"",
+      "baseline_probability": 0.13,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording, same register and meaning",
+          "prompt": "Since I've had arrhythmia symptoms recently, I finally decided to see a",
+          "probability": 0.122,
+          "delta_vs_baseline": -0.008000000000000007
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording, same register",
+          "prompt": "Given that I've had arrhythmia symptoms these past few weeks, I finally made an appointment to see a",
+          "probability": 0.082,
+          "delta_vs_baseline": -0.048
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses, keep every key word",
+          "prompt": "I've had arrhythmia symptoms lately, so I finally went to see a",
+          "probability": 0.173,
+          "delta_vs_baseline": 0.04299999999999998
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only, same content",
+          "prompt": "Since I've had arrhythmia symptoms lately, I finally went to see a",
+          "probability": 0.138,
+          "delta_vs_baseline": 0.008000000000000007
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording, same register",
+          "prompt": "As I've had arrhythmia symptoms lately, I finally went to see a",
+          "probability": 0.134,
+          "delta_vs_baseline": 0.0040000000000000036
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" cardio\"",
+            0.634
+          ],
+          [
+            "Output \" doctor\"",
+            0.13
+          ],
+          [
+            "Output \" heart\"",
+            0.058
+          ],
+          [
+            "Output \" Cardio\"",
+            0.032
+          ],
+          [
+            "Output \" specialist\"",
+            0.028
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" cardio\"",
+              0.633
+            ],
+            [
+              "Output \" doctor\"",
+              0.122
+            ],
+            [
+              "Output \" heart\"",
+              0.058
+            ],
+            [
+              "Output \" specialist\"",
+              0.039
+            ],
+            [
+              "Output \" Cardio\"",
+              0.026
+            ]
+          ],
+          [
+            [
+              "Output \" cardio\"",
+              0.711
+            ],
+            [
+              "Output \" doctor\"",
+              0.082
+            ],
+            [
+              "Output \" heart\"",
+              0.046
+            ],
+            [
+              "Output \" Cardio\"",
+              0.044
+            ],
+            [
+              "Output \" specialist\"",
+              0.031
+            ]
+          ],
+          [
+            [
+              "Output \" cardio\"",
+              0.627
+            ],
+            [
+              "Output \" doctor\"",
+              0.173
+            ],
+            [
+              "Output \" heart\"",
+              0.042
+            ],
+            [
+              "Output \" Cardio\"",
+              0.029
+            ],
+            [
+              "Output \" specialist\"",
+              0.026
+            ]
+          ],
+          [
+            [
+              "Output \" cardio\"",
+              0.62
+            ],
+            [
+              "Output \" doctor\"",
+              0.138
+            ],
+            [
+              "Output \" heart\"",
+              0.054
+            ],
+            [
+              "Output \" Cardio\"",
+              0.035
+            ],
+            [
+              "Output \" specialist\"",
+              0.03
+            ]
+          ],
+          [
+            [
+              "Output \" cardio\"",
+              0.588
+            ],
+            [
+              "Output \" doctor\"",
+              0.134
+            ],
+            [
+              "Output \" heart\"",
+              0.059
+            ],
+            [
+              "Output \" Cardio\"",
+              0.048
+            ],
+            [
+              "Output \" specialist\"",
+              0.037
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.0971
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.058)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260708T203111Z/index_02.html",
+        "png": "trace_out/dialects_20260708T203111Z/index_02.png"
+      }
+    }
+  ]
+}

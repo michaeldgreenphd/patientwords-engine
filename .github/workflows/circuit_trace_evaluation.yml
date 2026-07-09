@@ -133,6 +133,7 @@ jobs:
               "max_feature_nodes": "5000", "generate_explanations": "0",
               "steer_validate": "0", "steer_boost": "0", "steer_placebo": "0",
               "steer_strength": "", "steer_boost_strength": "", "steer_rank_offset": "",
+              "translation_model": "",
           }
           params = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
@@ -236,6 +237,7 @@ jobs:
           NEURONPEDIA_STEER_STRENGTH: ${{ fromJson(needs.params.outputs.config).steer_strength }}
           NEURONPEDIA_STEER_BOOST_STRENGTH: ${{ fromJson(needs.params.outputs.config).steer_boost_strength }}
           NEURONPEDIA_STEER_RANK_OFFSET: ${{ fromJson(needs.params.outputs.config).steer_rank_offset }}
+          MEDLANG_ANTHROPIC_MODEL: ${{ fromJson(needs.params.outputs.config).translation_model }}
         run: |
           ARGS=(ci_pairs.json
             --mode "${{ fromJson(needs.params.outputs.config).mode }}"
@@ -270,6 +272,8 @@ jobs:
           [ -z "$NEURONPEDIA_STEER_STRENGTH" ] && unset NEURONPEDIA_STEER_STRENGTH
           [ -z "$NEURONPEDIA_STEER_BOOST_STRENGTH" ] && unset NEURONPEDIA_STEER_BOOST_STRENGTH
           [ -z "$NEURONPEDIA_STEER_RANK_OFFSET" ] && unset NEURONPEDIA_STEER_RANK_OFFSET
+          # empty translation_model falls back to llm_client.DEFAULT_MODEL
+          [ -z "$MEDLANG_ANTHROPIC_MODEL" ] && unset MEDLANG_ANTHROPIC_MODEL
           medlang-batch-eval "${ARGS[@]}"
 
       - name: Commit trace outputs to the dispatched branch

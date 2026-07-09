@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "updated_utc": "2026-07-09T09:30:00Z",
+  "updated_by": "routine",
+  "queue": {
+    "circuit-trace": {
+      "running": {
+        "fired_utc": "2026-07-09T08:10:00Z",
+        "commit": "a3f92c1",
+        "note": "tierb chunk offsets 401-600, gemma-2-2b 2panel --screen-targets"
+      },
+      "pending": {
+        "fired_utc": "2026-07-09T08:11:00Z",
+        "commit": "b7e0d44",
+        "note": "tierb chunk offsets 601-800 (chained behind 401-600)"
+      }
+    },
+    "logits-eval": {
+      "running": null,
+      "pending": null
+    },
+    "scenario-generation": {
+      "running": {
+        "fired_utc": "2026-07-09T07:02:00Z",
+        "commit": "9c21af0",
+        "note": "tierb batch 06, 200 pairs, haiku, max_spend 0.80"
+      },
+      "pending": null
+    },
+    "model-evaluation": {
+      "running": null,
+      "pending": null
+    },
+    "archive-renders": {
+      "running": null,
+      "pending": null
+    }
+  },
+  "runs_recent": [
+    {
+      "workflow": "scenario_generation",
+      "fired_utc": "2026-07-09T07:02:00Z",
+      "status": "running",
+      "note": "tierb batch 06, 200 pairs"
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "fired_utc": "2026-07-09T04:40:00Z",
+      "status": "success",
+      "note": "tierb chunk offsets 201-400, landed as batch_summary.part_201"
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "fired_utc": "2026-07-09T01:12:00Z",
+      "status": "success",
+      "note": "tierb chunk offsets 1-200"
+    },
+    {
+      "workflow": "scenario_generation",
+      "fired_utc": "2026-07-08T22:30:00Z",
+      "status": "success",
+      "note": "tierb batch 05, 200 pairs, $0.55"
+    },
+    {
+      "workflow": "logits_evaluation",
+      "fired_utc": "2026-07-08T20:41:00Z",
+      "status": "success",
+      "note": "qwen offsets 120-160 retry at half chunk size, clean"
+    },
+    {
+      "workflow": "logits_evaluation",
+      "fired_utc": "2026-07-08T19:05:00Z",
+      "status": "failure",
+      "note": "qwen chunk ran out of memory at offset 120; refired at half chunk size"
+    }
+  ],
+  "spend": {
+    "generation_ceiling_usd": 8.0,
+    "generation_spent_usd": 3.41,
+    "lifetime_generation_usd": 12.97,
+    "daily_ceiling_usd": 2.0,
+    "today": {
+      "date": "2026-07-09",
+      "spent_usd": 0.86
+    },
+    "by_day": {
+      "2026-07-07": 0.62,
+      "2026-07-08": 1.93,
+      "2026-07-09": 0.86
+    },
+    "entries_seen": [
+      "batch_2026-07-07_tierb_01.report.json",
+      "batch_2026-07-07_tierb_02.report.json",
+      "batch_2026-07-08_tierb_03.report.json",
+      "batch_2026-07-08_tierb_04.report.json",
+      "batch_2026-07-08_tierb_05.report.json",
+      "batch_2026-07-09_tierb_06.report.json"
+    ],
+    "last_scan_utc": "2026-07-09T09:30:00Z",
+    "alerts": [
+      "2026-07-08 daily spend $1.93 came within $0.07 of the $2.00 ceiling; batch 05 fire was deferred to 2026-07-09"
+    ]
+  },
+  "tierb": {
+    "target_pairs": 1600,
+    "generator": "claude-haiku-4-5",
+    "start_utc": "2026-07-07T21:00:00Z",
+    "accepted_pairs": 612,
+    "traced_pairs": 400,
+    "screened_in_pairs": 371,
+    "batches": [
+      {
+        "file": "batch_2026-07-07_tierb_01.json",
+        "accepted": 118,
+        "cost_usd": 0.54,
+        "status": "traced"
+      },
+      {
+        "file": "batch_2026-07-07_tierb_02.json",
+        "accepted": 132,
+        "cost_usd": 0.58,
+        "status": "traced"
+      },
+      {
+        "file": "batch_2026-07-08_tierb_03.json",
+        "accepted": 150,
+        "cost_usd": 0.61,
+        "status": "tracing"
+      },
+      {
+        "file": "batch_2026-07-08_tierb_04.json",
+        "accepted": 121,
+        "cost_usd": 0.57,
+        "status": "queued"
+      },
+      {
+        "file": "batch_2026-07-08_tierb_05.json",
+        "accepted": 91,
+        "cost_usd": 0.55,
+        "status": "queued"
+      },
+      {
+        "file": "batch_2026-07-09_tierb_06.json",
+        "accepted": 0,
+        "cost_usd": 0.0,
+        "status": "generating"
+      }
+    ]
+  },
+  "verdicts": [
+    "Language penalty replicates on Tier B: direction unchanged at n=371 screened-in pairs, bootstrap CI narrower than Tier A.",
+    "Downgrade rate on Tier B tracks Tier A within noise so far; no new flip category has appeared."
+  ],
+  "findings_delta": [
+    {
+      "date": "2026-07-09",
+      "text": "Chunk 201-400 landed: 12 new redirects, 3 downgrades; clinical_mass distribution matches Tier A."
+    },
+    {
+      "date": "2026-07-08",
+      "text": "Screening pass on batches 01-03: 29/400 screened out (clinical side unmeasurable), consistent with the Tier A screen-out rate."
+    },
+    {
+      "date": "2026-07-07",
+      "text": "Tier B generation started; batch 01 acceptance rate 59% on first fire, prompt held from the Tier A recipe."
+    }
+  ],
+  "decisions_pending": [
+    {
+      "id": "D-014",
+      "title": "Approve urgency tier vocabulary v2",
+      "context": "Draft sits in data/urgency_tiers.draft.json; the frontend keeps its draft label until sign-off per docs/tier_review_checklist.md."
+    },
+    {
+      "id": "D-015",
+      "title": "Raise Tier B target from 1600 to 2000 pairs?",
+      "context": "Acceptance rate is above plan; +400 pairs costs about $1.10 and one extra tracing night."
+    }
+  ],
+  "blockers": [
+    "archive_renders release upload needs the owner to confirm the release tag name before the Tier B render set can ship"
+  ],
+  "notes": [
+    "Owner away 2026-07-05 through 2026-07-13; the daily Routine runs the cycle and this dashboard is the single status surface.",
+    "Queue discipline: one running + one pending per group; the Routine chains fires and never stacks a third.",
+    "All Tier B tracing is $0 (Neuronpedia hosted); only scenario generation spends, ~$0.55 per 200-pair haiku batch."
+  ]
+}

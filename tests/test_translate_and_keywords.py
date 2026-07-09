@@ -30,7 +30,7 @@ def test_translate_phrase_table(tmp_path, monkeypatch):
     )
     monkeypatch.setenv("MEDLANG_KEYWORD_CONFIG", str(path))
     result = translate_to_clinical("I said placeholder colloquial yesterday", use_llm=False)
-    assert result == {"text": "I said placeholder standard yesterday", "method": "phrase_table"}
+    assert result == {"text": "I said placeholder standard yesterday", "method": "phrase_table", "model": None}
 
 
 def test_translate_unchanged_without_table(tmp_path, monkeypatch):
@@ -38,3 +38,21 @@ def test_translate_unchanged_without_table(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     result = translate_to_clinical("no table entry matches this", use_llm=False)
     assert result["method"] == "unchanged"
+    assert result["model"] is None
+
+
+def test_translate_llm_records_explicit_model(monkeypatch):
+    monkeypatch.setattr("medlang_circuits.translate.translate_with_llm",
+                        lambda text, model=None: "clinical rewrite")
+    result = translate_to_clinical("some patient phrasing", use_llm=True, model="claude-haiku-4-5")
+    assert result == {"text": "clinical rewrite", "method": "llm", "model": "claude-haiku-4-5"}
+
+
+def test_translate_llm_records_default_model(monkeypatch):
+    from medlang_circuits.translate import DEFAULT_MODEL
+
+    monkeypatch.setattr("medlang_circuits.translate.translate_with_llm",
+                        lambda text, model=None: "clinical rewrite")
+    result = translate_to_clinical("some patient phrasing", use_llm=True)
+    assert result["method"] == "llm"
+    assert result["model"] == DEFAULT_MODEL

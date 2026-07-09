@@ -1,0 +1,587 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 6,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've got severe dermatitis all over my back, so I should probably see a",
+        "patient": "I've got this itchy rash all over my back, so I should probably see a",
+        "translated": "I have a pruritic eruption distributed across my back, so I should probably see a"
+      },
+      "target_token": "Output \" dermatologist\"",
+      "probabilities": {
+        "clinical": 0.536,
+        "patient": 0.221,
+        "translated": 0.683
+      },
+      "language_penalty": -0.31500000000000006,
+      "clinical_mass": {
+        "clinical": 0.428,
+        "patient": 0.4356,
+        "translated": 0.4511
+      },
+      "error_share": {
+        "clinical": 0.092,
+        "patient": 0.0968,
+        "translated": 0.1098
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.312)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.677)",
+        "translated": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.101)"
+      },
+      "mitigation_recovery": 0.4620000000000001,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dermatologist\"",
+            0.536
+          ],
+          [
+            "Output \" doctor\"",
+            0.312
+          ],
+          [
+            "Output \" der\"",
+            0.052
+          ],
+          [
+            "Output \" specialist\"",
+            0.029
+          ],
+          [
+            "Output \" doc\"",
+            0.015
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.677
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.221
+          ],
+          [
+            "Output \" doc\"",
+            0.03
+          ],
+          [
+            "Output \" der\"",
+            0.022
+          ],
+          [
+            "Output \" Dr\"",
+            0.011
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" dermatologist\"",
+            0.683
+          ],
+          [
+            "Output \" der\"",
+            0.122
+          ],
+          [
+            "Output \" doctor\"",
+            0.101
+          ],
+          [
+            "Output \" Dermatologist\"",
+            0.014
+          ],
+          [
+            "Output \" dermat\"",
+            0.013
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 859,
+        "unique_to_a": 382,
+        "unique_to_b": 343
+      },
+      "outputs": {
+        "html": "trace_out/downgrades_txhaiku/index_06.html",
+        "png": "trace_out/downgrades_txhaiku/index_06.png",
+        "diff_html": "trace_out/downgrades_txhaiku/index_06_diff.html",
+        "diff_png": "trace_out/downgrades_txhaiku/index_06_diff.png"
+      }
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My stomach has acid reflux after lunch, so I reached for an",
+        "patient": "My stomach's tied up in knots after lunch, so I reached for an",
+        "translated": "My abdomen is experiencing cramping after lunch, so I reached for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.404,
+        "patient": 0.072,
+        "translated": 0.064
+      },
+      "language_penalty": -0.332,
+      "clinical_mass": {
+        "clinical": 0.2763,
+        "patient": 0.1574,
+        "translated": 0.2618
+      },
+      "error_share": {
+        "clinical": 0.1035,
+        "patient": 0.0979,
+        "translated": 0.1018
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.095)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.110)",
+        "translated": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.100)"
+      },
+      "mitigation_recovery": -0.007999999999999993,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.404
+          ],
+          [
+            "Output \" apple\"",
+            0.096
+          ],
+          [
+            "Output \" over\"",
+            0.095
+          ],
+          [
+            "Output \" OTC\"",
+            0.044
+          ],
+          [
+            "Output \" anti\"",
+            0.043
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" apple\"",
+            0.134
+          ],
+          [
+            "Output \" ice\"",
+            0.11
+          ],
+          [
+            "Output \" old\"",
+            0.096
+          ],
+          [
+            "Output \" ant\"",
+            0.072
+          ],
+          [
+            "Output \" anti\"",
+            0.059
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" apple\"",
+            0.169
+          ],
+          [
+            "Output \" ice\"",
+            0.1
+          ],
+          [
+            "Output \" ant\"",
+            0.064
+          ],
+          [
+            "Output \" old\"",
+            0.062
+          ],
+          [
+            "Output \" anti\"",
+            0.057
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 839,
+        "unique_to_a": 428,
+        "unique_to_b": 528
+      },
+      "outputs": {
+        "html": "trace_out/downgrades_txhaiku/index_07.html",
+        "png": "trace_out/downgrades_txhaiku/index_07.png",
+        "diff_html": "trace_out/downgrades_txhaiku/index_07_diff.html",
+        "diff_png": "trace_out/downgrades_txhaiku/index_07_diff.png"
+      }
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been having panic attacks lately, so before the meeting she took a",
+        "patient": "She's been feeling on edge lately, so before the meeting she took a",
+        "translated": "She's been feeling anxious lately, so before the meeting she took a"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.063,
+        "patient": null,
+        "translated": 0.057
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2467,
+        "patient": 0.1371,
+        "translated": 0.2073
+      },
+      "error_share": {
+        "clinical": 0.095,
+        "patient": 0.0902,
+        "translated": 0.0912
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7S] instances of the indefinite article 'a' or 'an' near \u2192 [L24\u00b7S] articles, prepositions, and other common short words \u2192 Output \" couple\" (p=0.083)",
+        "patient": "embedding \u2192 [L20\u00b7S] the article \"a\" and words associated with taking act \u2192 [L21\u00b7S] the verb \"take\" commonly preceded by the article \"a\" \u2192 [L22\u00b7C] phrases involving breathing. | deep \u2192 Output \" deep\" (p=0.105)",
+        "translated": "embedding \u2192 [L22\u00b7C] phrases involving breathing. | deep \u2192 Output \" deep\" (p=0.103)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" Xan\"",
+            0.126
+          ],
+          [
+            "Output \" few\"",
+            0.121
+          ],
+          [
+            "Output \" couple\"",
+            0.083
+          ],
+          [
+            "Output \" pill\"",
+            0.063
+          ],
+          [
+            "Output \" xan\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" few\"",
+            0.117
+          ],
+          [
+            "Output \" deep\"",
+            0.105
+          ],
+          [
+            "Output \" couple\"",
+            0.058
+          ],
+          [
+            "Output \" nap\"",
+            0.043
+          ],
+          [
+            "Output \" long\"",
+            0.043
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" few\"",
+            0.135
+          ],
+          [
+            "Output \" deep\"",
+            0.103
+          ],
+          [
+            "Output \" Xan\"",
+            0.077
+          ],
+          [
+            "Output \" couple\"",
+            0.071
+          ],
+          [
+            "Output \" pill\"",
+            0.057
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 852,
+        "unique_to_a": 577,
+        "unique_to_b": 529
+      },
+      "outputs": {
+        "html": "trace_out/downgrades_txhaiku/index_08.html",
+        "png": "trace_out/downgrades_txhaiku/index_08.png",
+        "diff_html": "trace_out/downgrades_txhaiku/index_08_diff.html",
+        "diff_png": "trace_out/downgrades_txhaiku/index_08_diff.png"
+      }
+    },
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After that greasy diner meal I have acid reflux, so I reached for an",
+        "patient": "After that greasy diner meal my stomach's on fire, so I reached for an",
+        "translated": "After that fatty diner meal my stomach's burning, so I reached for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.523,
+        "patient": 0.09,
+        "translated": 0.062
+      },
+      "language_penalty": -0.43300000000000005,
+      "clinical_mass": {
+        "clinical": 0.2604,
+        "patient": 0.1736,
+        "translated": 0.1883
+      },
+      "error_share": {
+        "clinical": 0.1096,
+        "patient": 0.1014,
+        "translated": 0.1043
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.072)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.285)",
+        "translated": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.278)"
+      },
+      "mitigation_recovery": -0.027999999999999997,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.523
+          ],
+          [
+            "Output \" over\"",
+            0.072
+          ],
+          [
+            "Output \" anti\"",
+            0.045
+          ],
+          [
+            "Output \" apple\"",
+            0.045
+          ],
+          [
+            "Output \" OTC\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ice\"",
+            0.285
+          ],
+          [
+            "Output \" ant\"",
+            0.09
+          ],
+          [
+            "Output \" apple\"",
+            0.09
+          ],
+          [
+            "Output \" aspirin\"",
+            0.059
+          ],
+          [
+            "Output \" old\"",
+            0.043
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" ice\"",
+            0.278
+          ],
+          [
+            "Output \" apple\"",
+            0.164
+          ],
+          [
+            "Output \" ant\"",
+            0.062
+          ],
+          [
+            "Output \" old\"",
+            0.037
+          ],
+          [
+            "Output \" iced\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 828,
+        "unique_to_a": 428,
+        "unique_to_b": 511
+      },
+      "outputs": {
+        "html": "trace_out/downgrades_txhaiku/index_09.html",
+        "png": "trace_out/downgrades_txhaiku/index_09.png",
+        "diff_html": "trace_out/downgrades_txhaiku/index_09_diff.html",
+        "diff_png": "trace_out/downgrades_txhaiku/index_09_diff.png"
+      }
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When the dust kicks up my asthma flares, so at work I keep a spare",
+        "patient": "When the dust kicks up my chest gets all tight, so at work I keep a spare",
+        "translated": "When dust is aerosolized my chest becomes tight, so at work I keep a spare"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.692,
+        "patient": 0.043,
+        "translated": 0.478
+      },
+      "language_penalty": -0.6489999999999999,
+      "clinical_mass": {
+        "clinical": 0.2681,
+        "patient": 0.1467,
+        "translated": 0.2752
+      },
+      "error_share": {
+        "clinical": 0.112,
+        "patient": 0.1042,
+        "translated": 0.1101
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.692)",
+        "patient": "embedding \u2192 [L21\u00b7O] words related to argumentation, sequences and newnes \u2192 Output \" one\" (p=0.058)",
+        "translated": "embedding \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.478)"
+      },
+      "mitigation_recovery": 0.435,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.692
+          ],
+          [
+            "Output \" mask\"",
+            0.059
+          ],
+          [
+            "Output \" set\"",
+            0.028
+          ],
+          [
+            "Output \" puffer\"",
+            0.026
+          ],
+          [
+            "Output \" pair\"",
+            0.017
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" shirt\"",
+            0.183
+          ],
+          [
+            "Output \" t\"",
+            0.068
+          ],
+          [
+            "Output \" pair\"",
+            0.06
+          ],
+          [
+            "Output \" one\"",
+            0.058
+          ],
+          [
+            "Output \" inhal\"",
+            0.043
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" inhal\"",
+            0.478
+          ],
+          [
+            "Output \" mask\"",
+            0.14
+          ],
+          [
+            "Output \" bottle\"",
+            0.032
+          ],
+          [
+            "Output \" set\"",
+            0.024
+          ],
+          [
+            "Output \" ne\"",
+            0.021
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 903,
+        "unique_to_a": 407,
+        "unique_to_b": 567
+      },
+      "outputs": {
+        "html": "trace_out/downgrades_txhaiku/index_10.html",
+        "png": "trace_out/downgrades_txhaiku/index_10.png",
+        "diff_html": "trace_out/downgrades_txhaiku/index_10_diff.html",
+        "diff_png": "trace_out/downgrades_txhaiku/index_10_diff.png"
+      }
+    }
+  ]
+}

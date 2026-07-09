@@ -1,0 +1,393 @@
+{
+  "mode": "dialect",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 5,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 5,
+      "mode": "dialect",
+      "baseline_prompt": "I've been having irritable bowel syndrome for weeks, so I need to take my",
+      "held_fixed": "clinical",
+      "term": "irritable bowel syndrome",
+      "target_token": "Output \" medication\"",
+      "baseline_probability": 0.142,
+      "variants": [
+        {
+          "dialect": "paraphrase 1",
+          "prompt": "I've had irritable bowel syndrome going on for weeks now, so I need to take my",
+          "probability": 0.102,
+          "delta_vs_baseline": -0.039999999999999994
+        },
+        {
+          "dialect": "paraphrase 2",
+          "prompt": "For a few weeks now I've been dealing with irritable bowel syndrome, so I need to take my",
+          "probability": 0.13,
+          "delta_vs_baseline": -0.011999999999999983
+        },
+        {
+          "dialect": "paraphrase 3",
+          "prompt": "For weeks I've been having irritable bowel syndrome, so I need to take my",
+          "probability": 0.143,
+          "delta_vs_baseline": 0.0010000000000000009
+        },
+        {
+          "dialect": "paraphrase 4",
+          "prompt": "I've been having irritable bowel syndrome for weeks, therefore I need to take my",
+          "probability": 0.165,
+          "delta_vs_baseline": 0.02300000000000002
+        },
+        {
+          "dialect": "paraphrase 5",
+          "prompt": "I have been having irritable bowel syndrome for weeks, so I need to take my",
+          "probability": 0.153,
+          "delta_vs_baseline": 0.01100000000000001
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" medication\"",
+            0.142
+          ],
+          [
+            "Output \" medicine\"",
+            0.107
+          ],
+          [
+            "Output \" meds\"",
+            0.062
+          ],
+          [
+            "Output \" lax\"",
+            0.048
+          ],
+          [
+            "Output \" daily\"",
+            0.041
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" medication\"",
+              0.102
+            ],
+            [
+              "Output \" meds\"",
+              0.072
+            ],
+            [
+              "Output \" medicine\"",
+              0.06
+            ],
+            [
+              "Output \" daily\"",
+              0.047
+            ],
+            [
+              "Output \" lax\"",
+              0.039
+            ]
+          ],
+          [
+            [
+              "Output \" medication\"",
+              0.13
+            ],
+            [
+              "Output \" daily\"",
+              0.065
+            ],
+            [
+              "Output \" medicine\"",
+              0.059
+            ],
+            [
+              "Output \" meds\"",
+              0.058
+            ],
+            [
+              "Output \" probiotics\"",
+              0.043
+            ]
+          ],
+          [
+            [
+              "Output \" medication\"",
+              0.143
+            ],
+            [
+              "Output \" medicine\"",
+              0.105
+            ],
+            [
+              "Output \" meds\"",
+              0.055
+            ],
+            [
+              "Output \" lax\"",
+              0.054
+            ],
+            [
+              "Output \" daily\"",
+              0.047
+            ]
+          ],
+          [
+            [
+              "Output \" medication\"",
+              0.165
+            ],
+            [
+              "Output \" medicine\"",
+              0.112
+            ],
+            [
+              "Output \" meds\"",
+              0.048
+            ],
+            [
+              "Output \" daily\"",
+              0.045
+            ],
+            [
+              "Output \" lax\"",
+              0.04
+            ]
+          ],
+          [
+            [
+              "Output \" medication\"",
+              0.153
+            ],
+            [
+              "Output \" medicine\"",
+              0.139
+            ],
+            [
+              "Output \" meds\"",
+              0.043
+            ],
+            [
+              "Output \" lax\"",
+              0.04
+            ],
+            [
+              "Output \" daily\"",
+              0.034
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.0895
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" medication\" (p=0.142)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260708T203111Z/index_05.html",
+        "png": "trace_out/dialects_20260708T203111Z/index_05.png"
+      }
+    },
+    {
+      "index": 6,
+      "mode": "dialect",
+      "baseline_prompt": "I've got severe dermatitis all over my back, so I should probably see a",
+      "held_fixed": "clinical",
+      "term": "severe dermatitis",
+      "target_token": "Output \" dermatologist\"",
+      "baseline_probability": 0.536,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording, same register and meaning",
+          "prompt": "My back is covered in severe dermatitis, so I really need to make an appointment with a",
+          "probability": 0.592,
+          "delta_vs_baseline": 0.05599999999999994
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording, same register",
+          "prompt": "Since my whole back has severe dermatitis, I think it's time I went to see a",
+          "probability": 0.588,
+          "delta_vs_baseline": 0.051999999999999935
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses, keep every key word",
+          "prompt": "So I should probably see a, because I've got severe dermatitis all over my back, well actually I mean I need to see a",
+          "probability": 0.544,
+          "delta_vs_baseline": 0.008000000000000007
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only, same content",
+          "prompt": "I have got severe dermatitis across my back, thus I should probably go see a",
+          "probability": 0.512,
+          "delta_vs_baseline": -0.02400000000000002
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording, same register",
+          "prompt": "I've got severe dermatitis all over my back, so I probably should see a",
+          "probability": 0.503,
+          "delta_vs_baseline": -0.03300000000000003
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" dermatologist\"",
+            0.536
+          ],
+          [
+            "Output \" doctor\"",
+            0.312
+          ],
+          [
+            "Output \" der\"",
+            0.052
+          ],
+          [
+            "Output \" specialist\"",
+            0.029
+          ],
+          [
+            "Output \" doc\"",
+            0.015
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" dermatologist\"",
+              0.592
+            ],
+            [
+              "Output \" doctor\"",
+              0.191
+            ],
+            [
+              "Output \" der\"",
+              0.044
+            ],
+            [
+              "Output \" specialist\"",
+              0.041
+            ],
+            [
+              "Output \" Dermatologist\"",
+              0.016
+            ]
+          ],
+          [
+            [
+              "Output \" dermatologist\"",
+              0.588
+            ],
+            [
+              "Output \" doctor\"",
+              0.185
+            ],
+            [
+              "Output \" der\"",
+              0.06
+            ],
+            [
+              "Output \" specialist\"",
+              0.054
+            ],
+            [
+              "Output \" Dermatologist\"",
+              0.021
+            ]
+          ],
+          [
+            [
+              "Output \" dermatologist\"",
+              0.544
+            ],
+            [
+              "Output \" doctor\"",
+              0.197
+            ],
+            [
+              "Output \" der\"",
+              0.059
+            ],
+            [
+              "Output \",\"",
+              0.036
+            ],
+            [
+              "Output \" specialist\"",
+              0.03
+            ]
+          ],
+          [
+            [
+              "Output \" dermatologist\"",
+              0.512
+            ],
+            [
+              "Output \" doctor\"",
+              0.292
+            ],
+            [
+              "Output \" der\"",
+              0.057
+            ],
+            [
+              "Output \" specialist\"",
+              0.033
+            ],
+            [
+              "Output \" Dermatologist\"",
+              0.019
+            ]
+          ],
+          [
+            [
+              "Output \" dermatologist\"",
+              0.503
+            ],
+            [
+              "Output \" doctor\"",
+              0.339
+            ],
+            [
+              "Output \" der\"",
+              0.056
+            ],
+            [
+              "Output \" specialist\"",
+              0.024
+            ],
+            [
+              "Output \" doc\"",
+              0.021
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.092
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.312)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260708T203111Z/index_06.html",
+        "png": "trace_out/dialects_20260708T203111Z/index_06.png"
+      }
+    }
+  ]
+}

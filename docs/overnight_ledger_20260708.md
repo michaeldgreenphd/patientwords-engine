@@ -135,3 +135,246 @@ Ladder n=10 (`dialects_20260708T201616Z`) and paraphrase
 their traces fire as circuit-trace slots free. Sociolect round 2 generating:
 20 measured baselines x default 8-framing grid, max_spend 4. $0 spent this
 wake outside that ceiling.
+
+## 22:05 UTC — HF_TOKEN landed; gemma-3 fired; merge-button refire contained
+
+Owner added HF_TOKEN and merged PR #2 via the GitHub merge button. The merge
+changed all four trigger files on main and refired every workflow there
+(the documented merge/copy danger; API cancel returns 403 for this app).
+Blast radius, assessed: scenario-generation duplicate is bounded by its own
+max_spend=4 and yields an independent second sociolect batch (kept as a
+replication, "round 2b"); the circuit-trace duplicate re-runs the low-rank
+arm for $0 (kept as a free replication); the logits duplicate IS the
+gemma-3 downgrades probe, now running with the token; the archive duplicate
+just re-zips renders. Branch restarted from merged main per merged-PR
+protocol (trigger-identical, no refire). gemma-3-4b-it unified-set runs
+fired on the branch queue: stems 1/4 (pairs_20260706T201750Z, running) and
+2/4 (pairs_20260707T154345Z, pending); 3/4 + 4/4 chain next, then the
+downgrade probe harvest.
+
+### Morning brief spec (owner's five sections, due when they log on ~11:00 UTC)
+1. Findings delta incl. gemma-3-4b-it vs the other models; flag anything
+   contradicting yesterday's baseline.
+2. Causal verdict: final titration table + one-paragraph interpretation.
+3. UI consequences: ranked, staged-vs-not, sign-off-needed flagged.
+4. Pipeline status: published / harvested-unpublished / running / failed;
+   truncations, re-runs, total ledger cost, blocked-on-owner list.
+5. Synthesis readiness: external-ready claims vs tier-review-gated claims.
+Chain continues: harvest s20 + low-rank + grandma_r2 slot, ladder +
+paraphrase + sociolect traces, gemma-3 stems 3-4, finalize synthesis
+(SendUserFile), assemble brief by 10:45 UTC.
+
+## 23:00 UTC — causal panel complete; gemma-3 first light
+
+Titration finished and published. Dose-response: 2.5 → 4/4, 5 → 5/5,
+10 → 4/5, 20 → 0/1 measured — at strength 20 three steer calls 500'd and the
+one landed continuation degenerated into token repetition (over-steering;
+read as "breaks down", not "no effect"). Rank faithfulness: clinical ranks
+6–10 at strength 10 recover 3/4 — near-parity with top-5 (4/5), so the causal
+handle is distributed across the circuit, not concentrated in its top five;
+placebo remains 0/5. (Low-rank result arrived via the merge-refire duplicate
+on main — the accidental run delivered the arm early; the branch replication
+is still running.) gemma-3-4b-it works with HF_TOKEN: stem 1/4 + the
+downgrade probe landed; on the 5 stem-1 pairs common to all four models the
+gemma-3 per-pair penalty tracks gemma-2 at r=0.96 — too few pairs to cite,
+full table when stems 2–4 land. Fired: ladder n=10 committed trace
+(5 chunks) + gemma-3 stem 3/4. Sociolect 2b batch harvested. Next slots:
+paraphrase trace, sociolect traces, grandma_r2, s2.5 pair-5 + s20 remeasures.
+
+### Addendum to morning brief spec (owner request, 23:15 UTC)
+The tap-through phone format worked; deliver two decks with the brief:
+(a) stimulus QC deck — DONE, published (blind 20-pair sample, artifact
+'stimulus-qc'); count its verdicts into the methods when the paste arrives.
+(b) morning sign-off deck — build AT the anchor from final overnight data:
+one card per UI change needing sign-off (brief section 3) + one card per
+synthesis claim (section 5, external-ready vs tier-gated), same
+chips-and-copy-summary pattern, same file path convention (new artifact).
+Owner completed the tier review on the phone but has NOT yet pasted the
+summary — if it hasn't arrived by the anchor, lead the brief's
+blocked-on-owner list with that paste.
+
+## 23:45 UTC — tier review v1 applied; downgrade asymmetry strengthens
+
+Owner's tap-through review landed and is applied end-to-end: 5 tier moves
+(session→2, steroid→2, routine→1, blood→2, bottle→0), 10 drafted tiers
+approved, 20 exclusions confirmed, tier-3/4 lists confirmed. Status flipped
+to reviewed v1; urgency pipeline re-run and republished. Downgrades 70→109
+vs upgrades 9→12 (the review unblocked previously unclassifiable flips);
+gemma-2-2b now 67v4; gemma-3-4b-it enters the safety view at 8v1 (p=.039) —
+the newer instruction-tuned model shows the same asymmetry. Every draft
+label on the site now reads reviewed v1 (runtime + static). Synthesis
+section 2 un-gated. Validity and penalty CIs unchanged (132-phrase unified
+set untouched by tiers). paired_stats re-run: tier-shift CIs hold.
+
+## 00:45 UTC — ladder does not generalize; low-rank replicates exactly
+
+Ladder n=10 landed (all 5 chunks): with the clinical term held verbatim,
+mean target probability is FLAT across the five register rungs (0.27–0.34);
+rung 5 beats rung 1 as often as not (3/6). The single-case staircase
+(dyspepsia 0.322→0.114→floor) is real but not representative — register
+alone rarely moves the target; the penalty concentrates in the vocabulary
+swap. Published to provenance (ladder_n10), corrected the syntax-page
+explainer, revised synthesis §5. This is a headline item for the morning
+brief's "contradicts yesterday" list. Low-rank branch replication landed:
+3/4, IDENTICAL pattern to the main run (same recoveries, same miss, same
+500 on pair 2) — recorded in provenance. gemma-3 stem 2 landed; stem 3
+running, stem 4 queued. Paraphrase trace running; sociolect 2a queued
+(offsets corrected to cover all 20 baselines after catching a chunking
+gap that would have silently dropped pairs 19–20). Remaining for later
+slots: grandma_r2 re-render, s2.5 pair-5 + s20 remeasures.
+
+### Morning brief spec, section 6 (owner request, 01:15 UTC): rigor, scale, cost, hosting
+Ground everything in these computed numbers (from paired_stats_out.json and
+urgency_shift.json, 2026-07-09):
+- Effect sizes: penalty cohen_d ≈ 0.43/0.34/0.36 (gemma-2/qwen3-4b/qwen3-1.7b)
+  → 80% power needs n ≈ 42/69/63. Unified set is 132: THE PENALTY IS ALREADY
+  ADEQUATELY POWERED. Scale is for the proportion-level claims:
+- P(downgrade) = 0.118 of 920 measurements. Downgrade rate to ±2% needs
+  n≈1,004; ±1.5% needs 1,784. Detecting a rate DIFFERENCE (.10 vs .05,
+  80% power) needs ≈434 per condition.
+- Tier proposal (behavioral scale decoupled from mechanistic depth — key
+  design point: behavioral n scales via $0 CPU logits for ALL models incl.
+  gemma-2-2b open weights; hosted tracing reserved for a graphed subsample):
+  A) Confirmatory core, n=500 balanced, pre-registered: gen ~$7.50 (opus,
+     observed $0.015/pair) or ~$1.50 (cheaper generator); traces on a ~100
+     stratified subsample; ~3-4 days mostly queue time.
+  B) Condition-resolved, n=1,600 (200×8 conditions): gen ~$24 opus / ~$5
+     cheap; behavioral via CPU in days; hosted tracing subsample only
+     (full 1,600 hosted would take 1-2 weeks on the single queue).
+  C) Dialect grid at power: 50 baselines × 8 framings × 4 models,
+     behavioral-first, same pattern.
+  Recommend a timed 20-pair throughput probe before committing (hosted
+  rate limits at scale are unverified).
+- Additional rigor tests to propose: pre-registration doc committed before
+  generation; second-generator replication batch (different LLM family) to
+  rule out generator artifacts; non-medical register-swap NEGATIVE CONTROL
+  (is the penalty medical-specific or register-general — framing-critical);
+  trace-retrace stability probe (probability jitter, cheap); mixed-effects
+  model with per-topic random intercepts + Holm/BH across conditions;
+  human-reader baseline (do people interpret the patient phrasing where
+  models don't); larger open models via logits for a scale trend; expand
+  the blind stimulus QC beyond n=20.
+- Hosting/presentation at scale (site currently: payload 1.8MB, renders
+  89MB, table 235 rows): shard the payload per batch with a small index +
+  lazy fetch (page JS reads precomputed aggregates first); paginate/
+  virtualize the scenario table (~50 rows/page); KEEP the 25-render cap on
+  Pages — full render sets stay on GitHub Releases via the existing archive
+  workflow (renders are ~1.1MB each; thousands would blow the 1GB Pages
+  budget); CSV/Parquet for collaborators on Releases. GitHub Pages limits:
+  ~1GB site, 100MB/file, 10 builds/hr — sharding keeps everything far under.
+
+### Brief additions (owner, 01:55 UTC): power-added, stats audit, interp suggestions, week runway
+OWNER CONTEXT: on vacation ~1 week from Friday; long unattended queue time is
+AVAILABLE and cheap. Recompute recommendations under that runway.
+- Power added by scale (computed): penalty CI half-width 0.028 @132 →
+  0.014 @500 → 0.008 @1600. Downgrade-rate precision ±0.021 @920 →
+  ±0.013 @2500 → ±0.009 @5000. Minimum detectable condition DIFFERENCE
+  (80% power, two-prop): ±0.16 @62/cell (n=500/8) → ±0.09 @200/cell →
+  ±0.06 @434/cell → ±0.05 @625/cell. State plainly: scale buys the
+  proportion claims, penalty already powered.
+- Cost/time at scale: generation $0.015/pair opus ($24 @1600, $75 @5000)
+  or ~$0.003/pair cheaper generator ($5/$15). Hosted tracing ≈8–12
+  pairs/hr single queue (VERIFY with a timed 20-pair probe) → a vacation
+  week ≈ 1,300–2,000 traced pairs unattended; CPU logits: thousands/day,
+  $0, all 4 models. Recommended vacation plan: pre-register, generate
+  Tier B (1,600 balanced), behavioral-complete on CPU all models, hosted
+  traces continuously in the background all week (~full coverage if probe
+  confirms ≥10/hr, else stratified 500), chain wakes manage everything.
+- Stats audit (double-check requested): (1) FLAG pseudoreplication — the
+  920-measurement downgrade tallies pool re-traces of the same phrases
+  (steering/context/alias batches); inferential claims must dedupe by
+  phrase or use mixed-effects; relabel site counts as measurement tallies.
+  (2) Cluster structure (topics/templates) → cluster bootstrap or
+  (1|topic) random intercepts; (3) report Clopper-Pearson CIs on all
+  steering fractions + Fisher exact for boost 4/5 vs placebo 0/5;
+  (4) BH/Holm across per-model tests; (5) paraphrase noise now measured
+  (mean |delta| 0.064 — same order as the penalty): at scale, measure each
+  pair under 2–3 paraphrases and average (halves item noise); single-pair
+  claims are illustrations only. Sign tests + bootstrap CIs themselves:
+  appropriate; keep.
+- Interp-research suggestions to include: activation patching
+  clinical↔patient (layer/position localization; stronger causal standard
+  than API steering); steering-vector (residual mean-diff) vs SAE-feature
+  steering comparison; cross-pair feature transfer (boost pair A's
+  features on pair B — shared circuit or idiosyncratic?); feature
+  universality on gemma-2-9b (Gemma Scope exists; check tracer support);
+  tuned-lens trajectories as $0 depth complement; surface error-node
+  share as graph-faithfulness caveat.
+- Paraphrase robustness landed and published (provenance
+  paraphrase_robustness; synthesis §7 bullet). Include in findings delta.
+- Text-reduction second pass done tonight + fresh full outline
+  (docs/site_text_outline_v2.md) sent to owner for personal slimming;
+  note in brief.
+
+## 10:42 UTC — final titration cells; stem-3 refire
+Remeasures landed: s2.5 final 4/5 (pair 5 'blood' resists at every strength);
+s20 remeasure shows the three 500s were server flake — final 1/4 with
+occasional degeneration. Final dose-response: 2.5→4/5 · 5→5/5 · 10→4/5 ·
+20→1/4 — a genuine decline curve, not total collapse. gemma-3: stems 1,2,4
+landed; stem 3 was EVICTED overnight by my stem-4 trigger push (queue
+discipline slip — own it in the brief) and is re-fired now. Sociolect 2a:
+6/7 chunks (pairs 10-12 chunk failed; 17/20 baselines measured). Owner is
+awake — brief anchor fires 10:45; use THESE final numbers.
+
+## 11:5x UTC — haiku-generator justification (owner question, daytime)
+Owner asked: retain existing results and use them to justify haiku for
+generation + translation in the week-long run; wants cost + timing.
+Discovery: the 0707 cross-model generator test ALREADY ran haiku twice
+(pairs_20260707T023706Z, pairs_20260707T025842Z; $0.0985/$0.0996 for 50
+accepted each = $0.002/pair vs opus $0.0164-0.0202/pair). Batch 1 was traced
+under screen 0.02: haiku beats opus on validator yield (76% vs 60%), screen-in
+rate (27/49 = 55% vs 24/50 = 48%), and shows the penalty at least as strongly
+(mean -0.046 CI [-0.084,-0.012] n=27 vs opus -0.036 CI [-0.080,+0.006] n=24).
+Actions: (1) added translation_model param to circuit-trace workflow
+(MEDLANG_ANTHROPIC_MODEL passthrough; translate_to_clinical + both result
+schemas now record which model translated; +2 regression tests, 124 green);
+(2) fired run 64 = haiku-translator arm on downgrades_txhaiku (alias of the
+20-downgrade set) to compare against opus 8/20 recovery; (3) queued run 65 =
+trace of the second (untraced) haiku batch, same screening, doubles
+equivalence n. Both $0 tracing + ~$0.01 haiku translation. Circuit-trace
+queue FULL (64 running, 65 pending) — no trace pushes until 64 completes.
+gemma-3 stem-3 logits (run 14) still in progress. Owner plan: Fable
+interactive today; tonight fire the week-long evaluation based on findings.
+
+## 12:2x UTC — owner sign-off received (deck paste)
+SIGN-OFF 2026-07-09: A1 approve; A2 cheaper (haiku); A3 hold; A4 hold;
+B1 approve; B2 approve; B3 after feedback; B4 keep split; C1-C5 release;
+C6 release when final. Consequences: draft Tier B pre-registration today
+(1,600 pairs, haiku generator, 20-pair throughput probe first), fire tonight
+pending the haiku translation arm + equivalence recheck; implement B1
+(pair-17 retrace caption preference) and B2 (dose-curve chart replaces the
+four bars) now; C6 auto-releases when gemma-3 stem 3 lands. A3/A4 stay
+unfired. Owner also asked for a decision-point map to author a new
+process/dashboard improvement prompt.
+
+## 12:5x UTC — PM decision deck returned (17/17 decided)
+DECISIONS 2026-07-09 PM: A1 both-private-first; A2 engine-repo html;
+A3 per-occasion decks; A4 routine + daily digest push; A5 <=$2/day;
+A6 process-as-code approved; B1 lead with one concrete case; B2 add fenced
+why-this-matters; B3 add plain abstract; B4 activation patching is the
+week's primary interp experiment; B5 unify glossary; C1 keep three
+differences pages; C2 fold model-evaluations into methods; C3 re-render
+stale dialect tiles (queue full — chain after run 65); C4 build translation
+flow chart; C5 keep synthesis at 8; C6 cut morning brief to 3 sections.
+Scope split: A section = the owner's NEW prompt (context pack written to
+docs/prompt_context_20260709.md for a second-eyes LLM review); B + C
+execute in THIS session. B4 needs engine work (patching runs via logits-eval
+path or new workflow) — design before vacation.
+
+## 12:3x UTC — owner corrections + Tier B authority
+(1) VISIBILITY: patientwords-engine is PUBLIC (both repos are). Scrubbed
+"private" from HANDOFF, routine standing prompt, prompt context pack, site
+CLAUDE.md; secret-pattern scan of ops/ + docs/ clean; no-secrets rule
+restated in HANDOFF and standing prompt. (2) Rmd artifact moves to THIS
+repo: ops/site_text_outline.Rmd (not the site repo) — highest priority,
+due 19:00 UTC. (3) UI status delivered: five full-page screenshots of main
+(zero console errors), zero open PRs in either repo — all UI changes ship
+by direct push to main. (4) Timezone CONFIRMED America/New_York (EDT);
+Routine crons written in UTC from EDT anchors (daily fire 11:30 UTC =
+07:30 EDT). (5) Tier B: standing approval to fire batch 1 tonight IFF the
+haiku translation verdict is clean (recovery within noise of opus 8/20 AND
+equivalence n holding); any ambiguity → hold and flag; go/no-go rationale
+must be written here either way. Early read of the translator arm (12/20
+landed): translation_model recorded correctly; several strong recoveries
+(inhal 0.04→0.48, derma 0.22→0.68) and misses, pattern resembling opus arm;
+full classification at the 13:45 harvest.

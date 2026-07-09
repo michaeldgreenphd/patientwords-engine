@@ -1,0 +1,198 @@
+{
+ "unified_set": {
+  "models": [
+   "gemma-2-2b",
+   "qwen3-4b",
+   "qwen3-1.7b"
+  ],
+  "phrases": 132
+ },
+ "per_model": {
+  "gemma-2-2b": {
+   "language_penalty": {
+    "mean": -0.0702,
+    "ci95": [
+     -0.0984,
+     -0.0432
+    ],
+    "n": 132
+   },
+   "tier_shift": {
+    "mean": -0.0671,
+    "ci95": [
+     -0.11,
+     -0.0252
+    ],
+    "n": 108
+   },
+   "flip_rate": 0.303
+  },
+  "qwen3-4b": {
+   "language_penalty": {
+    "mean": -0.099,
+    "ci95": [
+     -0.1495,
+     -0.0494
+    ],
+    "n": 132
+   },
+   "tier_shift": {
+    "mean": -0.0504,
+    "ci95": [
+     -0.102,
+     -0.0035
+    ],
+    "n": 110
+   },
+   "flip_rate": 0.303
+  },
+  "qwen3-1.7b": {
+   "language_penalty": {
+    "mean": -0.0893,
+    "ci95": [
+     -0.1326,
+     -0.0465
+    ],
+    "n": 132
+   },
+   "tier_shift": {
+    "mean": -0.0472,
+    "ci95": [
+     -0.1108,
+     0.014
+    ],
+    "n": 109
+   },
+   "flip_rate": 0.447
+  }
+ },
+ "paired_differences": {
+  "gemma-2-2b - qwen3-4b": {
+   "mean": 0.0288,
+   "ci95": [
+    -0.0101,
+    0.0686
+   ],
+   "n": 132
+  },
+  "gemma-2-2b - qwen3-1.7b": {
+   "mean": 0.0191,
+   "ci95": [
+    -0.0179,
+    0.0553
+   ],
+   "n": 132
+  },
+  "qwen3-4b - qwen3-1.7b": {
+   "mean": -0.0097,
+   "ci95": [
+    -0.0549,
+    0.0375
+   ],
+   "n": 132
+  }
+ },
+ "validity": {
+  "hand_pairs_file": "data/measured/imported_pairs.json",
+  "traced": 27,
+  "matched": 14,
+  "pearson_r": 0.6873,
+  "spearman_rho": 0.6652,
+  "note": "penalty = patient - clinical on the same target token, both scales; matched includes tolerant (case/fragment) anchor recoveries",
+  "censored": [
+   {
+    "index": 2,
+    "p_clinical": 0.26,
+    "anchor": "exact",
+    "patient_floor": 0.046,
+    "penalty_upper_bound": -0.214,
+    "hand_penalty": 0.0
+   },
+   {
+    "index": 3,
+    "p_clinical": 0.229,
+    "anchor": "exact",
+    "patient_floor": 0.053,
+    "penalty_upper_bound": -0.176,
+    "hand_penalty": -0.12
+   },
+   {
+    "index": 4,
+    "p_clinical": 0.183,
+    "anchor": "exact",
+    "patient_floor": 0.019,
+    "penalty_upper_bound": -0.164,
+    "hand_penalty": 0.44
+   },
+   {
+    "index": 13,
+    "p_clinical": 0.056,
+    "anchor": "exact",
+    "patient_floor": 0.038,
+    "penalty_upper_bound": -0.018,
+    "hand_penalty": 0.07
+   },
+   {
+    "index": 14,
+    "p_clinical": 0.295,
+    "anchor": "exact",
+    "patient_floor": 0.029,
+    "penalty_upper_bound": -0.266,
+    "hand_penalty": -0.04
+   },
+   {
+    "index": 15,
+    "p_clinical": 0.202,
+    "anchor": "exact",
+    "patient_floor": 0.015,
+    "penalty_upper_bound": -0.187,
+    "hand_penalty": 0.48
+   },
+   {
+    "index": 16,
+    "p_clinical": 0.261,
+    "anchor": "exact",
+    "patient_floor": 0.023,
+    "penalty_upper_bound": -0.238,
+    "hand_penalty": 0.08
+   },
+   {
+    "index": 21,
+    "p_clinical": 0.088,
+    "anchor": "exact",
+    "patient_floor": 0.03,
+    "penalty_upper_bound": -0.058,
+    "hand_penalty": -0.01
+   }
+  ],
+  "censored_sensitivity": {
+   "n": 22,
+   "pearson_r": 0.3699,
+   "spearman_rho": 0.349,
+   "imputation": "patient prob set to the top-k spread floor (upper bound)"
+  },
+  "unrecoverable_indices": [
+   24
+  ]
+ },
+ "length_confound": {
+  "gemma-2-2b": {
+   "n": 132,
+   "mean_word_diff": 0.91,
+   "pearson_r_penalty_vs_word_diff": -0.0388,
+   "spearman_rho": -0.0073
+  },
+  "qwen3-4b": {
+   "n": 132,
+   "mean_word_diff": 0.91,
+   "pearson_r_penalty_vs_word_diff": 0.0668,
+   "spearman_rho": 0.0052
+  },
+  "qwen3-1.7b": {
+   "n": 132,
+   "mean_word_diff": 0.91,
+   "pearson_r_penalty_vs_word_diff": 0.0099,
+   "spearman_rho": 0.0146
+  }
+ }
+}
