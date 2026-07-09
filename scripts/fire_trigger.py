@@ -24,8 +24,17 @@ never exceed ~6h, so expiry is a safety valve for entries nobody resolved).
 Paid entries record their max_spend, and the daily ceiling counts committed
 spend = landed (dashboard) + in-flight (active paid entries fired today).
 
+Resolving stamps resolved_utc. A fire of the SAME trigger within
+MEDLANG_TRIGGER_SETTLE_MINUTES (default 15) of that stamp is refused (exit 6):
+the resolved run may still occupy the GitHub concurrency group even though its
+output landed locally, so firing now can enter the group as a third run and
+silently supersede the still-pending run (the 2026-07-09 queue-eviction seam).
+Pass --ignore-settle once the prior run is confirmed terminal in GitHub.
+
 Exit codes: 0 fired/ok, 2 queue refusal, 3 bad params, 4 budget refusal,
-5 no-op fire (trigger file already holds the params), 1 git failure.
+5 no-op fire (trigger file already holds the params), 6 settle refusal (a
+same-trigger run was resolved inside the settle window and may still hold the
+GitHub concurrency group), 1 git failure.
 No medical vocabulary lives in this file.
 """
 from __future__ import annotations
@@ -49,6 +58,7 @@ TRIGGERS = (
 )
 PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation"})
 DEFAULT_EXPIRE_HOURS = 8.0
+DEFAULT_SETTLE_MINUTES = 15.0
 DEFAULT_DAILY_CEILING_USD = 2.0
 JOURNAL_RELPATH = Path("ops") / "trigger_journal.jsonl"
 DASHBOARD_RELPATH = Path("ops") / "dashboard.json"
@@ -134,6 +144,27 @@ def expire_hours_from_env():
     return hours
 
 
+def settle_minutes_from_env():
+    """Settle window in minutes: a finite float > 0 from the environment, else the
+    default (with a warning when the variable is set but unusable - a negative or
+    non-finite value must not silently disable the settle guard)."""
+    raw = os.environ.get("MEDLANG_TRIGGER_SETTLE_MINUTES", "")
+    if not raw:
+        return DEFAULT_SETTLE_MINUTES
+    try:
+        minutes = float(raw)
+    except ValueError:
+        minutes = None
+    if minutes is None or not math.isfinite(minutes) or minutes <= 0:
+        print(
+            f"warning: MEDLANG_TRIGGER_SETTLE_MINUTES={raw!r} is not a finite number > 0; "
+            f"using the default {DEFAULT_SETTLE_MINUTES}",
+            file=sys.stderr,
+        )
+        return DEFAULT_SETTLE_MINUTES
+    return minutes
+
+
 def load_journal(path):
     """Journal entries from a JSON Lines file. Blank lines are skipped; unknown
     fields ride along untouched. Any other unparseable line is a hard stop
@@ -185,6 +216,24 @@ def active_entries(entries, trigger, now, expire_hours):
     """Active entries for one trigger, oldest first (journal order breaks ties)."""
     active = [e for e in entries if e.get("trigger") == trigger and entry_is_active(e, now, expire_hours)]
     return sorted(active, key=lambda e: parse_utc(e["fired_utc"]))
+
+
+def recently_resolved(entries, trigger, now, settle_minutes):
+    """Entries for `trigger` resolved within the last settle_minutes, newest first.
+
+    A resolved entry's GitHub run may still occupy the concurrency group even
+    after its output lands locally; only entries carrying a parseable resolved_utc
+    count (entries resolved before resolved_utc existed cannot gate a fire)."""
+    hits = []
+    for entry in entries:
+        if entry.get("trigger") != trigger or not entry.get("resolved"):
+            continue
+        stamp = parse_utc(entry.get("resolved_utc"))
+        if stamp is None:
+            continue
+        if (now - stamp) < timedelta(minutes=settle_minutes):
+            hits.append(entry)
+    return sorted(hits, key=lambda e: parse_utc(e["resolved_utc"]), reverse=True)
 
 
 def validate_params(trigger, params):
@@ -407,6 +456,28 @@ def cmd_fire(args):
             return 2
         to_evict = actives[-1]  # newest active = the pending run this push will replace
 
+    # 3b. Settle guard: a same-trigger entry resolved within the settle window may
+    # still occupy the GitHub concurrency group even though its output landed
+    # locally. Firing now can enter the group as a third run and let GitHub silently
+    # supersede the still-pending run (the 2026-07-09 queue-eviction seam). Refuse
+    # unless the operator confirms the prior run is terminal with --ignore-settle.
+    if not args.ignore_settle:
+        settle_minutes = settle_minutes_from_env()
+        recent = recently_resolved(entries, args.trigger, now, settle_minutes)
+        if recent:
+            newest = recent[0]
+            print(
+                f"refused: a {args.trigger} entry was resolved at {newest.get('resolved_utc', '?')}, "
+                f"within the {settle_minutes:g}-minute settle window; that run may still occupy the "
+                "concurrency group in GitHub, so firing now risks entering as a third run and silently "
+                "superseding the pending run (the queue-eviction seam). Wait out the settle window, or "
+                "pass --ignore-settle once you have confirmed the prior run is terminal. Recently resolved:",
+                file=sys.stderr,
+            )
+            for e in recent:
+                print(f"  resolved {e.get('resolved_utc', '?')}  note={e.get('note', '')!r}", file=sys.stderr)
+            return 6
+
     # 4. Budget guard for the paid triggers: committed = landed + in-flight max_spend.
     max_spend = None
     if args.trigger in PAID_TRIGGERS:
@@ -493,6 +564,7 @@ def cmd_resolve(args):
     targets = actives if args.all else actives[:1]
     for entry in targets:
         entry["resolved"] = True
+        entry["resolved_utc"] = iso_utc(now)  # opens the settle window a later fire must respect
         print(f"resolved: fired {entry.get('fired_utc', '?')} note={entry.get('note', '')!r}")
     save_journal(journal_path, entries)
     if (repo / DASHBOARD_RELPATH).exists():
@@ -535,6 +607,9 @@ def build_parser():
     fire.add_argument("--note", default="", help="why this run fires (journal + commit message)")
     fire.add_argument("--force-evict", action="store_true",
                       help="deliberately replace the pending run when two entries are already active")
+    fire.add_argument("--ignore-settle", action="store_true",
+                      help="fire despite a same-trigger resolve inside the settle window, once "
+                           "the prior run is confirmed terminal in GitHub")
     fire.add_argument("--dry-run", action="store_true", help="print what would happen; write nothing")
     fire.add_argument("--no-git", action="store_true", help="write files but skip git add/commit/push")
     fire.add_argument("--override-budget", action="store_true",

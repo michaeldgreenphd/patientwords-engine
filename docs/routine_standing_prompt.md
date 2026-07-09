@@ -58,7 +58,12 @@ to the ledger. Never edit spend numbers by hand.
 
 Fire triggers ONLY via `python scripts/fire_trigger.py fire ...`. It
 enforces the one-running + one-pending queue discipline and the $2/day
-ceiling; if it refuses, you stop and record why. NEVER edit files under
+ceiling; if it refuses, you stop and record why. **Settle window (guards
+the eviction seam):** after you `resolve` an entry, a same-trigger fire
+within 15 min is refused (exit 6). This is intentional — wait out the
+window before the next fire in that group, or pass `--ignore-settle`
+ONLY when you have confirmed the prior run is truly terminal (outputs fully
+landed). Never use `--ignore-settle` to rush a still-running group. NEVER edit files under
 `.github/trigger/` by hand, never use `--force-evict`, never use
 `--override-budget`, and never touch trigger files in any merge or revert.
 
