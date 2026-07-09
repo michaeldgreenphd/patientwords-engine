@@ -69,6 +69,38 @@ fields.
 | CLAUDE.md ops rules | fire-only-via-guard, single-writer, public-repo/no-secrets | committed |
 | This file | `HANDOFF.md` | committed, keep current |
 
+## Checkpoint 1 status (19:00 UTC 2026-07-09) — delivered async
+
+- Suite 191 green, ruff clean; dashboard/guard/ledger/brief all done +
+  hardened + live-seeded; Rmd regenerated (204 blocks, engine `ops/`, none
+  in the site repo), 3 blocks spot-checked verbatim vs live pages; secret
+  scan of HANDOFF/ops/docs clean (repo is public).
+- gemma-3-4b-it: all four stems now have summaries (unified column complete
+  pending the dedupe recompute tonight).
+- **KNOWN SEAM found + worked around (blocker-adjacent):** run 65 (second
+  haiku batch, the equivalence-n trace) concluded "failure" — but the cause
+  was **eviction, not data**: its `params` job was *cancelled* and `trace`
+  *skipped*. Firing the filler (run 66) as a third push while run 64 was
+  still finishing let GitHub's concurrency supersede the still-pending
+  run 65. The guard permitted it because the journal marked run 64 resolved
+  (at the 13:45 harvest, on partial landing) *before GitHub finished it* —
+  so the guard's active-count and GitHub's in-group count diverged. Batch is
+  fine; re-fired cleanly at ~19:00 UTC into the now-free queue; expected to
+  land before the 01:00 UTC go/no-go.
+  - **Mitigation for the autonomous week (added to the standing prompt):**
+    resolve a journal entry only when its outputs have fully landed AND
+    ≥ ~15 min have passed since; fire at most one trace per cycle; never add
+    a third fire while any trace is mid-flight. Harden later: have the guard
+    check the Actions API for terminal state before allowing a fire (deferred
+    — dev-container GitHub API was flaky; not adding untested complexity to
+    the live autonomous path now).
+- **Go/no-go readiness:** condition (a) haiku translation recovery within
+  noise of opus = MET (paired diff −0.031 ± 0.205). Condition (b) equivalence
+  n on the doubled batch = PENDING the run-65 re-fire; batch-1 equivalence
+  already holds as the primary signal. If the re-fire lands clean by 01:00,
+  fire Tier B; if it fails again (a real tracer error this time), HOLD and
+  flag per owner instruction.
+
 Suite: 191 tests green, ruff clean. Adversarial review findings (all fixed):
 budget guard now counts landed + in-flight `max_spend` across both paid
 triggers; `max_spend` must be finite and positive; `--override-budget` only

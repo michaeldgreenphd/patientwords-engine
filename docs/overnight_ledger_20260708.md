@@ -484,3 +484,21 @@ tonight's go/no-go: consider a condition-equivalence screen for Tier B at
 scale — owner-decision, not an autonomous design change. Does NOT change the
 fire-if-clean verdict (that gate is behavioral equivalence of the haiku
 generator, independent of this stimulus-design finding).
+
+## 19:0x UTC — Checkpoint 1 (async) + run-65 eviction recovery
+Infra all green: 191 tests, ruff clean; dashboard/guard/ledger/brief done +
+hardened + live-seeded; Rmd regenerated (204 blocks, engine ops/, verified
+verbatim x3, none in site repo); secret scan clean (public repo). gemma-3
+all 4 stems have summaries. ROOT-CAUSE: run 65 (equivalence-n batch)
+concluded "failure" = EVICTION not data — params job cancelled, trace
+skipped, because the filler (run 66) was a third-push into circuit-trace
+while run 64 was still finishing; the guard allowed it because run 64's
+journal entry was resolved (partial landing) before GitHub finished it.
+Journal-vs-GitHub divergence = documented seam. Fix: resolve only on FULL
+landing + settle; one trace/cycle; never a third fire (added to standing
+prompt). Recovery: resolved stale entries, re-fired batch-2 clean into the
+free queue ~19:00 UTC; expected to land before 01:00 go/no-go. Go/no-go
+readiness: (a) translation recovery within noise = MET; (b) doubled-n
+equivalence = pending the re-fire (batch-1 equivalence holds regardless).
+Standing instruction unchanged: fire if clean, HOLD + flag if the re-fire
+truly fails.

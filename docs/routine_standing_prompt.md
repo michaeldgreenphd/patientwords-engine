@@ -37,8 +37,14 @@ main; trace outputs land on this branch — they interleave).
   branch, new `data/simulated/*.json` + `.report.json` archives on main
   (copy Tier B batch files from main onto this branch when tracing needs
   them — `git checkout origin/main -- <paths>`).
-- Mark each finished fire resolved:
-  `python scripts/fire_trigger.py resolve --trigger <name>`.
+- Mark a fire resolved ONLY when it is truly terminal:
+  `python scripts/fire_trigger.py resolve --trigger <name>`. **Eviction
+  hazard (learned 2026-07-09):** resolving on *partial* landing while the
+  GitHub run is still finishing lets a subsequent fire supersede a
+  still-pending run (queue eviction). Resolve only when ALL expected outputs
+  for that fire have landed; if a trace is still mid-flight (some expected
+  offsets missing), do NOT fire anything new into that group this cycle —
+  wait. Fire at most one trace per group per cycle; never add a third fire.
 - Never assume a silent queue means success; a missing expected output goes
   into `blockers`, not down the memory hole.
 
