@@ -305,3 +305,13 @@ AVAILABLE and cheap. Recompute recommendations under that runway.
 - Text-reduction second pass done tonight + fresh full outline
   (docs/site_text_outline_v2.md) sent to owner for personal slimming;
   note in brief.
+
+## 10:42 UTC — final titration cells; stem-3 refire
+Remeasures landed: s2.5 final 4/5 (pair 5 'blood' resists at every strength);
+s20 remeasure shows the three 500s were server flake — final 1/4 with
+occasional degeneration. Final dose-response: 2.5→4/5 · 5→5/5 · 10→4/5 ·
+20→1/4 — a genuine decline curve, not total collapse. gemma-3: stems 1,2,4
+landed; stem 3 was EVICTED overnight by my stem-4 trigger push (queue
+discipline slip — own it in the brief) and is re-fired now. Sociolect 2a:
+6/7 chunks (pairs 10-12 chunk failed; 17/20 baselines measured). Owner is
+awake — brief anchor fires 10:45; use THESE final numbers.
