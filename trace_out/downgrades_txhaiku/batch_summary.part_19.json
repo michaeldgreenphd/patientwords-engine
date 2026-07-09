@@ -1,0 +1,131 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 19,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having daytime hypersomnia every afternoon, so tonight I skipped my usual",
+        "patient": "I've been catching some z's on the couch every afternoon, so tonight I skipped my usual",
+        "translated": "I've been sleeping on the couch every afternoon, so tonight I skipped my usual"
+      },
+      "target_token": "Output \" \"",
+      "probabilities": {
+        "clinical": 0.174,
+        "patient": null,
+        "translated": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1589,
+        "patient": 0.077,
+        "translated": 0.0779
+      },
+      "error_share": {
+        "clinical": 0.1075,
+        "patient": 0.1033,
+        "translated": 0.0949
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" evening\" (p=0.072)",
+        "patient": "embedding \u2192 Output \" evening\" (p=0.066)",
+        "translated": "embedding \u2192 Output \" evening\" (p=0.044)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" \"",
+            0.174
+          ],
+          [
+            "Output \" bedtime\"",
+            0.113
+          ],
+          [
+            "Output \" dose\"",
+            0.082
+          ],
+          [
+            "Output \" evening\"",
+            0.072
+          ],
+          [
+            "Output \" dinner\"",
+            0.044
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" \"",
+            0.133
+          ],
+          [
+            "Output \" workout\"",
+            0.074
+          ],
+          [
+            "Output \" evening\"",
+            0.066
+          ],
+          [
+            "Output \" bedtime\"",
+            0.066
+          ],
+          [
+            "Output \" routine\"",
+            0.037
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" \"",
+            0.105
+          ],
+          [
+            "Output \" nap\"",
+            0.081
+          ],
+          [
+            "Output \" bedtime\"",
+            0.057
+          ],
+          [
+            "Output \" routine\"",
+            0.05
+          ],
+          [
+            "Output \" evening\"",
+            0.044
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 942,
+        "unique_to_a": 559,
+        "unique_to_b": 614
+      },
+      "outputs": {
+        "html": "trace_out/downgrades_txhaiku/index_19.html",
+        "png": "trace_out/downgrades_txhaiku/index_19.png",
+        "diff_html": "trace_out/downgrades_txhaiku/index_19_diff.html",
+        "diff_png": "trace_out/downgrades_txhaiku/index_19_diff.png"
+      }
+    }
+  ]
+}
