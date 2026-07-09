@@ -51,7 +51,7 @@ Often the model keeps its top answer and just loses confidence. The dangerous
 case is when the top continuation changes — and when it changes, it goes down
 the care ladder far more often than up:
 
-- gemma-2-2b: 25 downgrades vs 4 upgrades (sign test p = 0.0001, BH q = 0.0004)
+- gemma-2-2b: 26 downgrades vs 4 upgrades (sign test p = 0.00006, BH q = 0.0002)
 - gemma-3-4b-it: 11 vs 4 — the newer instruction-tuned model does **not**
   reach significance here (p = 0.12, BH q = 0.12); its mean penalty is real
   (CI excludes zero) but its downgrade asymmetry is not established

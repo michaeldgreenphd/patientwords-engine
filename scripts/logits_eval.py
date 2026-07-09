@@ -32,6 +32,15 @@ HF_IDS = {
     "gemma-3-4b-it": "google/gemma-3-4b-it",
     "qwen3-4b": "Qwen/Qwen3-4B",
     "qwen3-1.7b": "Qwen/Qwen3-1.7B",
+    # Expanded matrix (owner-approved; see docs/model_matrix.md for gate
+    # status, roles, and the limit-3 probe protocol). All run the same
+    # bfloat16-CPU path; the 7B/9B entries are ~2-4x slower per pair, so CI
+    # fires for them must use smaller chunks than the 2-4B models.
+    "llama-3.2-3b": "meta-llama/Llama-3.2-3B",
+    "olmo-2-1b": "allenai/OLMo-2-0425-1B",
+    "biomistral-7b": "BioMistral/BioMistral-7B",
+    "gemma-2-2b-it": "google/gemma-2-2b-it",
+    "gemma-2-9b": "google/gemma-2-9b",
 }
 
 

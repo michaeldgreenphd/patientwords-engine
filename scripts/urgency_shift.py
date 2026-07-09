@@ -22,6 +22,7 @@ import argparse
 import glob
 import json
 import re
+from collections import Counter
 from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -170,11 +171,16 @@ for part in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
             return [[bare(t), p] for t, p in (sp.get(side) or []) if bare(t)]
 
         cont = r.get("continuations") or {}
+        n_before = len(rows)
         add(model, stem, r["index"], r.get("prompts"), clean("clinical"), clean("patient"),
             topic=topics.get((stem, r["index"])),
             penalty=r.get("language_penalty"), spread_t=clean("translated") or None,
             cont_c=cont.get("clinical"), cont_p=cont.get("patient"))
-        seen.add((model, stem, r["index"]))
+        # mark seen only when a row landed: summaries without predictive
+        # spreads (e.g. activation-patching outputs) must not shadow a later
+        # real 2panel summary for the same (model, stem, index)
+        if len(rows) > n_before:
+            seen.add((model, stem, r["index"]))
 
 # site payload fills anything the engine tree lacks
 if site.is_file():
@@ -232,6 +238,40 @@ for model in sorted({r["model"] for r in rows}):
         "sign_test_p": sign_test(d, u),
         "confident_downgrades_p>=0.2": len(conf),
         "mean_tier_shift": round(sum(ms) / len(ms), 4) if ms else None,
+    }
+
+# Phrase-deduped per-model counts (mirrors scripts/paired_stats_rigor.py): a
+# re-traced phrase lands as several rows sharing a clinical_prompt, so the raw
+# per_model tallies above pseudoreplicate. Each phrase collapses to ONE flip
+# label by majority vote over its rows; ties break least-alarming-first so a
+# tie can never manufacture the directional asymmetry the study tests for.
+NONFLIP = "none"
+TIE_ORDER = [NONFLIP, "uninformative", "lateral", "upgrade", "downgrade"]
+summary["per_model_deduped"] = {}
+for model in sorted({r["model"] for r in rows}):
+    groups: dict = {}
+    for r in rows:
+        if r["model"] != model:
+            continue
+        key = r.get("clinical_prompt") or f"{r['batch']}#{r['index']}"
+        groups.setdefault(key, []).append(r)
+    labels, pen_means = [], []
+    for group in groups.values():
+        votes = Counter((g.get("flip_class") or NONFLIP) if g.get("flipped") else NONFLIP
+                        for g in group)
+        top = max(votes.values())
+        tied = [lab for lab, c in votes.items() if c == top]
+        labels.append(next((lab for lab in TIE_ORDER if lab in tied), sorted(tied)[0]))
+        pens = [g["language_penalty"] for g in group
+                if isinstance(g.get("language_penalty"), (int, float))]
+        if pens:
+            pen_means.append(sum(pens) / len(pens))
+    summary["per_model_deduped"][model] = {
+        "n_phrases": len(groups),
+        "flips": sum(1 for lab in labels if lab != NONFLIP),
+        "downgrades": labels.count("downgrade"),
+        "upgrades": labels.count("upgrade"),
+        "mean_penalty": round(sum(pen_means) / len(pen_means), 4) if pen_means else None,
     }
 
 # Cross-model concordance: do the models downgrade on the SAME phrases?
@@ -331,7 +371,8 @@ if args.publish:
         "tiers": vocab_meta.get("tiers"),
         "tier_examples": tier_examples,
         "summary": {k: summary[k] for k in ("measurements", "flips", "flip_classes",
-                                            "per_model", "concordance", "mitigation")
+                                            "per_model", "per_model_deduped",
+                                            "concordance", "mitigation")
                     if k in summary},
         "rows": trimmed,
     }

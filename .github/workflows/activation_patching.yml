@@ -1,0 +1,243 @@
+name: Activation Patching (medlang-circuits)
+
+# WHERE the language penalty lives: copy the clean (clinical) run's residual
+# stream into the corrupt (patient) run one (layer, position) site at a time
+# and measure how much of the target token's probability comes back
+# (docs/activation_patching_design.md). Runs the open weights on CPU with
+# transformer_lens hooks - no Neuronpedia, no paid API, $0 - and writes a
+# batch_eval-compatible batch_summary with a per-result `patching` block.
+#
+# Start it from the Actions tab (workflow_dispatch) or by pushing a params file
+# to .github/trigger/activation-patching.json, e.g.
+#   {"pairs_file":"data/simulated/pairs_20260706T201750Z.json",
+#    "limit":5,"offsets":[0,5],"commit_outputs":true}
+#
+# The full grid is layers x shared-suffix-positions forward passes PER PAIR
+# (roughly 10-15 CPU-minutes per pair on gemma-2-2b), so chunk with `offsets`
+# and keep `limit` around 5 pairs per chunk. gemma weights are gated on
+# Hugging Face - the HF_TOKEN repo secret must be set.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pairs_file:
+        description: "Repo path of the pairs JSON to patch (the downgrade subset)"
+        type: string
+        default: "data/simulated/pairs_20260706T201750Z.json"
+      limit:
+        description: "Patch only the first N pairs of each chunk (0 = all; the grid is expensive - keep ~5)"
+        type: string
+        default: "5"
+      layers:
+        description: "Grid depth: patch layers 0..N-1 ('' = every layer from the model config)"
+        type: string
+        default: ""
+      positions:
+        description: "Comma-separated corrupt-run token positions to patch ('' = every shared-suffix position)"
+        type: string
+        default: ""
+      model:
+        description: "Short model id (gemma-2-2b) or a Hugging Face repo id (must be transformer_lens-supported)"
+        type: string
+        default: "gemma-2-2b"
+      offsets:
+        description: "Comma-separated pair offsets; one matrix patch job per offset (chunking; numbering stays global)"
+        type: string
+        default: "0"
+      commit_outputs:
+        description: "Commit each chunk's batch_summary part back to the dispatched branch"
+        type: boolean
+        default: false
+  push:
+    paths:
+      - ".github/trigger/activation-patching.json"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: activation-patching-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  params:
+    runs-on: ubuntu-latest
+    outputs:
+      pairs_file: ${{ steps.params.outputs.pairs_file }}
+      limit: ${{ steps.params.outputs.limit }}
+      layers: ${{ steps.params.outputs.layers }}
+      positions: ${{ steps.params.outputs.positions }}
+      model: ${{ steps.params.outputs.model }}
+      offsets: ${{ steps.params.outputs.offsets }}
+      commit_outputs: ${{ steps.params.outputs.commit_outputs }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve parameters
+        id: params
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IN_PAIRS_FILE: ${{ inputs.pairs_file }}
+          IN_LIMIT: ${{ inputs.limit }}
+          IN_LAYERS: ${{ inputs.layers }}
+          IN_POSITIONS: ${{ inputs.positions }}
+          IN_MODEL: ${{ inputs.model }}
+          IN_OFFSETS: ${{ inputs.offsets }}
+          IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          defaults = {"pairs_file": "data/simulated/pairs_20260706T201750Z.json",
+                      "limit": "5", "layers": "", "positions": "",
+                      "model": "gemma-2-2b", "offsets": "0", "commit_outputs": "false"}
+          p = dict(defaults)
+          if os.environ["EVENT_NAME"] == "push":
+              with open(".github/trigger/activation-patching.json", encoding="utf-8") as f:
+                  cfg = json.load(f)
+              for key in ("offsets", "positions", "layers"):   # JSON lists -> CSV before str()
+                  if isinstance(cfg.get(key), list):
+                      cfg[key] = ",".join(str(x) for x in cfg[key])
+              p.update({k: (str(v).lower() if isinstance(v, bool) else str(v))
+                        for k, v in cfg.items() if k in defaults})
+          else:
+              for k in defaults:
+                  v = os.environ.get("IN_" + k.upper(), "")
+                  if v:
+                      p[k] = v
+          offsets = sorted({int(x) for x in p["offsets"].replace(",", " ").split()})
+          if not offsets:
+              raise SystemExit("no offsets to patch")
+          out = os.environ["GITHUB_OUTPUT"]
+          with open(out, "a", encoding="utf-8") as f:
+              for k in ("pairs_file", "limit", "layers", "positions", "model", "commit_outputs"):
+                  f.write(k + "=" + p[k] + "\n")
+              f.write("offsets=" + json.dumps(offsets) + "\n")
+          print("model:", p["model"], "| pairs:", p["pairs_file"], "| limit:", p["limit"],
+                "| layers:", p["layers"] or "(all)", "| positions:", p["positions"] or "(shared-suffix)",
+                "| offsets:", offsets)
+          EOF
+
+  patch:
+    needs: params
+    runs-on: ubuntu-latest
+    # The grid is layers x shared-suffix positions forward passes per pair
+    # (~10-15 min/pair for gemma-2-2b on CPU); a 5-pair chunk needs a generous
+    # ceiling.
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        offset: ${{ fromJson(needs.params.outputs.offsets) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install CPU torch + transformers + transformer-lens
+        run: |
+          pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet transformers accelerate transformer-lens
+
+      - name: Resolve output dir
+        env:
+          MODEL: ${{ needs.params.outputs.model }}
+          PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
+        run: |
+          STEM=$(basename "$PAIRS_FILE" .json)
+          if [ "$MODEL" = "gemma-2-2b" ]; then
+            echo "OUT_DIR=trace_out/${STEM}__patch" >> "$GITHUB_ENV"
+          else
+            echo "OUT_DIR=trace_out/${STEM}__patch_${MODEL}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Patch and measure recovery
+        env:
+          MODEL: ${{ needs.params.outputs.model }}
+          PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
+          LIMIT: ${{ needs.params.outputs.limit }}
+          LAYERS: ${{ needs.params.outputs.layers }}
+          POSITIONS: ${{ needs.params.outputs.positions }}
+          OFFSET: ${{ matrix.offset }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}   # gemma weights are gated on Hugging Face
+        run: |
+          ARGS=(--pairs "$PAIRS_FILE" --model "$MODEL" --out "$OUT_DIR"
+            --limit "$LIMIT" --start-index "$((OFFSET + 1))")
+          if [ -n "$LAYERS" ]; then
+            ARGS+=(--layers "$LAYERS")
+          fi
+          if [ -n "$POSITIONS" ]; then
+            ARGS+=(--positions "$POSITIONS")
+          fi
+          python scripts/activation_patch.py "${ARGS[@]}"
+
+      - name: Stamp the chunk part number
+        if: always()
+        env:
+          OFFSET: ${{ matrix.offset }}
+        run: |
+          # part_NN = 1-based start offset, so chunks never clobber and all
+          # consumers can glob batch_summary*.json (repo checkpoint convention)
+          START=$((OFFSET + 1))
+          PART=$(printf 'batch_summary.part_%02d.json' "$START")
+          if [ "$START" -ne 1 ] && [ -f "$OUT_DIR/batch_summary.part_01.json" ]; then
+            mv "$OUT_DIR/batch_summary.part_01.json" "$OUT_DIR/$PART"
+          fi
+          echo "PART=$PART" >> "$GITHUB_ENV"
+
+      - name: Commit the chunk summary to the branch
+        if: ${{ always() && needs.params.outputs.commit_outputs == 'true' }}
+        env:
+          OFFSET: ${{ matrix.offset }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ ! -f "$OUT_DIR/$PART" ]; then
+            echo "No summary to commit"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f "$OUT_DIR/$PART"
+          git commit -m "Activation patching: $OUT_DIR pairs starting at $((OFFSET + 1)) (${{ needs.params.outputs.model }})"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+              exit 0
+            fi
+            sleep $((i * 2))
+          done
+          exit 1
+
+      - name: Job summary
+        if: always()
+        run: |
+          SUMMARY="$OUT_DIR/$PART"
+          if [ -f "$SUMMARY" ]; then
+            {
+              echo "## Activation patching (${{ needs.params.outputs.model }}, offset ${{ matrix.offset }})"
+              echo '```'
+              python - "$SUMMARY" <<'EOF'
+          import json, sys
+          s = json.load(open(sys.argv[1]))
+          for r in s["results"]:
+              cells = [(v, li, pi)
+                       for li, row in enumerate(r["patching"]["recovery"] or [])
+                       for pi, v in enumerate(row) if isinstance(v, (int, float))]
+              if cells:
+                  peak, li, pi = max(cells)
+                  where = f"peak={peak} at layer {r['patching']['layers'][li]} pos {pi}"
+              else:
+                  where = "no measurable cells"
+              print(f"pair {r['index']:2d}  clin={r['probabilities']['clinical']}  "
+                    f"pat={r['probabilities']['patient']}  {where}")
+          EOF
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload patching outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: activation-patch-${{ needs.params.outputs.model }}-${{ github.run_number }}-offset${{ matrix.offset }}
+          path: ${{ env.OUT_DIR }}
+          if-no-files-found: warn

@@ -52,6 +52,7 @@ from pathlib import Path
 TRIGGERS = (
     "circuit-trace",
     "logits-eval",
+    "activation-patching",
     "scenario-generation",
     "model-evaluation",
     "archive-renders",
@@ -85,6 +86,11 @@ KNOWN_KEYS = {
     # logits_evaluation.yml `defaults` dict (verified 2026-07-09): models, pairs_file,
     # limit, commit_outputs.
     "logits-eval": frozenset({"models", "pairs_file", "limit", "commit_outputs"}),
+    # activation_patching.yml `defaults` dict (verified 2026-07-09): pairs_file, limit,
+    # layers, positions, model, offsets, commit_outputs.
+    "activation-patching": frozenset({
+        "pairs_file", "limit", "layers", "positions", "model", "offsets", "commit_outputs",
+    }),
     # scenario_generation.yml `defaults` dict (verified 2026-07-09): task, num, topics,
     # seed_pairs, feedback, phrase, term, target_token, num_baselines, dialects,
     # anthropic_model, max_spend, graph_models, trace_sample_size.

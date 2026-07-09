@@ -142,6 +142,7 @@ def test_unknown_keys_hard_error_for_every_trigger(repo):
     bad = {
         "circuit-trace": {"graph_modle": "g"},
         "logits-eval": {"models": ["m"], "limt": 0},
+        "activation-patching": {"pairs_file": "p.json", "offset": 0},
         "scenario-generation": {"max_spend": "1", "tsak": "pairs"},
         "model-evaluation": {"max_spend": "1", "sampel_size": "8"},
         "archive-renders": {"tag": "t", "runz": "x"},
@@ -161,6 +162,9 @@ def test_exact_verified_key_sets_accepted(repo):
     assert fire(repo, "model-evaluation", params={
         "model_selection": "claude-haiku-4-5", "scenario": "all",
         "sample_size": "8", "max_spend": "1", "_nonce": "k3"}) == 0
+    assert fire(repo, "activation-patching", params={
+        "pairs_file": "p.json", "limit": "5", "layers": "", "positions": "",
+        "model": "gemma-2-2b", "offsets": "0,5", "commit_outputs": True, "_nonce": "k4"}) == 0
 
 
 def test_budget_refusal_and_pass(repo):
@@ -234,6 +238,7 @@ def test_validate_params_pure_function():
     for trigger, params in [("circuit-trace", {"graph_modle": "g"}),
                             ("scenario-generation", {"tsak": "pairs"}),
                             ("logits-eval", {"limt": 0}),
+                            ("activation-patching", {"pair_file": "p.json"}),
                             ("model-evaluation", {"sampel_size": 1}),
                             ("archive-renders", {"tag": "t", "surprise": 1})]:
         with pytest.raises(ValueError):

@@ -171,3 +171,50 @@ are fabricated (consistent with the study's never-invent-a-number rule).
 - **Denominator caveat.** Every per-cell recovery inherits paraphrase noise from
   its pair; report set-level mean maps with bootstrap CIs (cluster = phrase, as
   `paired_stats.py` already does), never a single pair's cell as a finding.
+
+## CI wiring (landed 2026-07-09)
+
+The *CI dependency (new)* caveat above is resolved: `patch_and_measure()` is
+implemented on **transformer_lens** (`HookedTransformer.from_pretrained`,
+clean-run `run_with_cache`, per-cell `run_with_hooks` writes at
+`blocks.<layer>.hook_resid_post`), and the alignment rule shipped is option
+(a): the grid is the corrupt run's token grid, only positions in the longest
+common token suffix of the two prompts (counted from the end) are patched,
+each from its aligned clean position; the rule and every position's
+`aligned_clean_index` are recorded in the output (`patching.align`), and
+unaligned cells stay null. transformer_lens is a **CI-only extra** installed by
+the workflow next to CPU torch — the sandbox install stays without it, the
+guarded import raises a self-explaining ImportError locally, and `--scaffold`
+still works fully offline.
+
+Push-to-run like every other workflow: `.github/workflows/activation_patching.yml`
+fires when `.github/trigger/activation-patching.json` changes on a pushed
+branch (so the push that first lands the trigger file also fires a run). Fire
+ONLY via the ops guard:
+
+```bash
+python scripts/fire_trigger.py fire --trigger activation-patching \
+    --params '{"pairs_file": "data/simulated/pairs_<STAMP>.json",
+               "limit": 5, "offsets": [0, 5], "commit_outputs": true,
+               "_nonce": "ap1"}' \
+    --note "patch the downgrade subset, chunks 1-2"
+```
+
+Trigger keys (= the workflow `defaults` dict; unknown keys hard-error locally
+because CI silently ignores them): `pairs_file`, `limit`, `layers` ('' = every
+layer from the model config), `positions` ('' = every shared-suffix position),
+`model` (default `gemma-2-2b`), `offsets` (comma list or JSON list; one matrix
+job per offset, `--start-index = offset + 1` keeps `results[].index` the global
+join key and names the committed part `batch_summary.part_NN.json`),
+`commit_outputs`.
+
+Runtime budget: the full grid is **layers x shared-suffix positions forward
+passes per pair** — for gemma-2-2b that is 26 layers x a ~10-token suffix
+≈ 260 CPU forward passes, roughly 10-15 minutes per pair on a hosted runner.
+**Keep `limit` at ~5 pairs per chunk** and fan out over `offsets`; the
+per-branch concurrency group holds one running + one pending run, so chain
+chunks, never stack a third fire. Cost is $0 (open weights, CPU, no hosted
+API); gemma weights are gated on Hugging Face, so the run needs the `HF_TOKEN`
+repo secret. Outputs land in `trace_out/<pairs-stem>__patch/` (non-default
+models: `__patch_<model>`), commit to the dispatched branch when
+`commit_outputs` is true, and always upload as a run artifact.
