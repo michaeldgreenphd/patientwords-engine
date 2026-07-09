@@ -502,3 +502,19 @@ readiness: (a) translation recovery within noise = MET; (b) doubled-n
 equivalence = pending the re-fire (batch-1 equivalence holds regardless).
 Standing instruction unchanged: fire if clean, HOLD + flag if the re-fire
 truly fails.
+
+## 19:3x UTC — vacation autonomy batch 1 launched (Fable usage, owner-approved)
+Owner (Fable reset) approved 3 autonomous streams: Functionality & scale,
+Skeptic's read, Analysis depth (NOT Clarity/message — owner owns voice).
+Launched background workflow wf_8eff2840-10a: 2 read-only auditors
+(skeptic claim/number audit of site+synthesis → report+caveats; a11y/
+functionality static audit of 10 pages → fix-list) + 3 sequential builders
+on disjoint files (scripts/paired_stats_rigor.py stats rigor; fire_trigger.py
+SETTLE-window guard hardening vs the run-65 eviction; activation_patch.py +
+design doc). Agents do NOT commit/fire; I integrate + verify (full suite,
+browser before/after) + commit only if green, then fold audits into an
+owner report. Safety: reports/drafts for anything touching voice; objective
+functionality fixed live with verification; scale-sharding to be done with
+graceful fallback so it can't break existing pages. Pipeline/go-no-go
+untouched. Weekly cadence: Routine runs the stats scripts on new Tier B data;
+digest surfaces progress; further batches chain.
