@@ -1,0 +1,393 @@
+{
+  "mode": "dialect",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 3,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 3,
+      "mode": "dialect",
+      "baseline_prompt": "Because I have somniloquy, my roommate says I should see a",
+      "held_fixed": "clinical",
+      "term": "have somniloquy",
+      "target_token": "Output \" doctor\"",
+      "baseline_probability": 0.332,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording, same register and meaning",
+          "prompt": "Since I have somniloquy, my roommate thinks I ought to see a",
+          "probability": 0.345,
+          "delta_vs_baseline": 0.012999999999999956
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording, same register",
+          "prompt": "My roommate says that because I have somniloquy, I should see a",
+          "probability": 0.204,
+          "delta_vs_baseline": -0.12800000000000003
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses, keep every key word",
+          "prompt": "My roommate says, because I have somniloquy, that I should see a",
+          "probability": 0.277,
+          "delta_vs_baseline": -0.05499999999999999
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only, same content",
+          "prompt": "As I have somniloquy, my roommate says I should see a",
+          "probability": 0.409,
+          "delta_vs_baseline": 0.07699999999999996
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording, same register",
+          "prompt": "Because I have somniloquy, my roommate thinks I should see a",
+          "probability": 0.351,
+          "delta_vs_baseline": 0.01899999999999996
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" doctor\"",
+            0.332
+          ],
+          [
+            "Output \" sleep\"",
+            0.227
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.109
+          ],
+          [
+            "Output \" therapist\"",
+            0.09
+          ],
+          [
+            "Output \" neuro\"",
+            0.059
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" doctor\"",
+              0.345
+            ],
+            [
+              "Output \" sleep\"",
+              0.195
+            ],
+            [
+              "Output \" psychiatrist\"",
+              0.134
+            ],
+            [
+              "Output \" therapist\"",
+              0.079
+            ],
+            [
+              "Output \" neuro\"",
+              0.057
+            ]
+          ],
+          [
+            [
+              "Output \" sleep\"",
+              0.207
+            ],
+            [
+              "Output \" doctor\"",
+              0.204
+            ],
+            [
+              "Output \" psychiatrist\"",
+              0.159
+            ],
+            [
+              "Output \" therapist\"",
+              0.081
+            ],
+            [
+              "Output \" neuro\"",
+              0.078
+            ]
+          ],
+          [
+            [
+              "Output \" doctor\"",
+              0.277
+            ],
+            [
+              "Output \" sleep\"",
+              0.182
+            ],
+            [
+              "Output \" psychiatrist\"",
+              0.158
+            ],
+            [
+              "Output \" neuro\"",
+              0.082
+            ],
+            [
+              "Output \" therapist\"",
+              0.071
+            ]
+          ],
+          [
+            [
+              "Output \" doctor\"",
+              0.409
+            ],
+            [
+              "Output \" psychiatrist\"",
+              0.149
+            ],
+            [
+              "Output \" therapist\"",
+              0.095
+            ],
+            [
+              "Output \" sleep\"",
+              0.094
+            ],
+            [
+              "Output \" neuro\"",
+              0.053
+            ]
+          ],
+          [
+            [
+              "Output \" doctor\"",
+              0.351
+            ],
+            [
+              "Output \" sleep\"",
+              0.226
+            ],
+            [
+              "Output \" psychiatrist\"",
+              0.12
+            ],
+            [
+              "Output \" therapist\"",
+              0.099
+            ],
+            [
+              "Output \" neuro\"",
+              0.049
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.1113
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 [L4\u00b7O] words and phrases related to sleep apnea and snoring \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.227)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260708T203111Z/index_03.html",
+        "png": "trace_out/dialects_20260708T203111Z/index_03.png"
+      }
+    },
+    {
+      "index": 4,
+      "mode": "dialect",
+      "baseline_prompt": "Since I've been dealing with insomnia for a week straight, I finally scheduled a",
+      "held_fixed": "clinical",
+      "term": "dealing with insomnia",
+      "target_token": "Output \" sleep\"",
+      "baseline_probability": 0.144,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording, same register and meaning",
+          "prompt": "Because I've been dealing with insomnia for a whole week, I finally set up a",
+          "probability": 0.043,
+          "delta_vs_baseline": -0.10099999999999999
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording, same register",
+          "prompt": "Given that I've been dealing with insomnia for seven days now, I finally booked a",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses, keep every key word",
+          "prompt": "For a week straight, since I've been dealing with insomnia, I finally scheduled a",
+          "probability": 0.082,
+          "delta_vs_baseline": -0.061999999999999986
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only, same content",
+          "prompt": "As I've been dealing with insomnia for one week straight, I finally scheduled a",
+          "probability": 0.12,
+          "delta_vs_baseline": -0.023999999999999994
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording, same register",
+          "prompt": "Since I've been dealing with insomnia for a week now, I finally scheduled a",
+          "probability": 0.137,
+          "delta_vs_baseline": -0.0069999999999999785
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" doctor\"",
+            0.197
+          ],
+          [
+            "Output \" sleep\"",
+            0.144
+          ],
+          [
+            "Output \" visit\"",
+            0.134
+          ],
+          [
+            "Output \" consultation\"",
+            0.037
+          ],
+          [
+            "Output \" doctors\"",
+            0.037
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" time\"",
+              0.075
+            ],
+            [
+              "Output \" new\"",
+              0.067
+            ],
+            [
+              "Output \" schedule\"",
+              0.043
+            ],
+            [
+              "Output \" sleep\"",
+              0.043
+            ],
+            [
+              "Output \" little\"",
+              0.038
+            ]
+          ],
+          [
+            [
+              "Output \" hotel\"",
+              0.18
+            ],
+            [
+              "Output \" flight\"",
+              0.107
+            ],
+            [
+              "Output \" doctor\"",
+              0.08
+            ],
+            [
+              "Output \" room\"",
+              0.073
+            ],
+            [
+              "Output \" night\"",
+              0.049
+            ]
+          ],
+          [
+            [
+              "Output \" doctor\"",
+              0.132
+            ],
+            [
+              "Output \" sleep\"",
+              0.082
+            ],
+            [
+              "Output \" visit\"",
+              0.069
+            ],
+            [
+              "Output \" time\"",
+              0.06
+            ],
+            [
+              "Output \" meeting\"",
+              0.038
+            ]
+          ],
+          [
+            [
+              "Output \" doctor\"",
+              0.204
+            ],
+            [
+              "Output \" visit\"",
+              0.158
+            ],
+            [
+              "Output \" sleep\"",
+              0.12
+            ],
+            [
+              "Output \" consultation\"",
+              0.038
+            ],
+            [
+              "Output \" doctors\"",
+              0.036
+            ]
+          ],
+          [
+            [
+              "Output \" doctor\"",
+              0.18
+            ],
+            [
+              "Output \" visit\"",
+              0.16
+            ],
+            [
+              "Output \" sleep\"",
+              0.137
+            ],
+            [
+              "Output \" consultation\"",
+              0.043
+            ],
+            [
+              "Output \" meeting\"",
+              0.033
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.0921
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 Output \" sleep\" (p=0.144)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260708T203111Z/index_04.html",
+        "png": "trace_out/dialects_20260708T203111Z/index_04.png"
+      }
+    }
+  ]
+}
