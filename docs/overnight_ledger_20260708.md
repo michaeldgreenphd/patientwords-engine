@@ -415,3 +415,16 @@ full classification at the 13:45 harvest.
 - urgency_downgrades_20260707T1__context.report.json · $0.0000 · alias · accepted — · —
 - urgency_downgrades_20260707T1_steer.report.json · $0.0000 · alias · accepted — · —
 - urgency_downgrades_boostgrid.report.json · $0.0000 · alias · accepted — · —
+
+## 13:5x UTC — harvest: haiku-translator verdict (run 64)
+Run 64 complete (15/20 pairs landed; pairs 4,5,15,19,20 lost to hosted-tracer
+chunk truncation — server flake, translations themselves all method=llm).
+Method-identical comparison via urgency_shift on the same phrases/tiers:
+PAIRED (n=12 both classifiable): haiku restored-top-tier 8/12 vs opus 10/12
+(haiku loses idx 2,9,11; WINS idx 14 where opus worsened prescription→topical);
+paired urgency_recovery haiku +0.119 vs opus +0.150, mean diff -0.031
+(sd 0.205, |t|≈0.5) — WITHIN NOISE. Owner condition 1 (recovery within noise
+of opus) = MET on landed data. Fired filler re-trace of the 5 missing pairs
+via scripts/fire_trigger.py (first production use; offsets 3,4,14,18,19).
+Condition 2 (equivalence n holding) awaits run 65, landing this afternoon.
+Go/no-go executes tonight; rationale will be logged here.

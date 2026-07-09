@@ -1,19 +1,15 @@
 {
  "schema_version": 1,
- "updated_utc": "2026-07-09T12:58:15Z",
+ "updated_utc": "2026-07-09T13:51:20Z",
  "updated_by": "session",
  "queue": {
   "circuit-trace": {
    "running": {
-    "fired_utc": "2026-07-09T11:52:00Z",
-    "commit": "0755730",
-    "note": "haiku-translator arm on downgrades_txhaiku (20-downgrade set)"
-   },
-   "pending": {
     "fired_utc": "2026-07-09T11:55:00Z",
     "commit": "2167d79",
     "note": "trace of second haiku batch pairs_20260707T025842Z (equivalence n)"
-   }
+   },
+   "pending": null
   },
   "logits-eval": {
    "running": {
@@ -40,8 +36,8 @@
   {
    "workflow": "circuit_trace_evaluation",
    "fired_utc": "2026-07-09T11:52:00Z",
-   "status": "in_progress",
-   "note": "haiku-translator arm; 12/20 pairs landed by 12:15Z"
+   "status": "success",
+   "note": "haiku-translator arm: 15/20 landed (5 tracer-flake), paired recovery within noise of opus"
   },
   {
    "workflow": "circuit_trace_evaluation",
@@ -119,11 +115,17 @@
   "screened_in_pairs": 0,
   "batches": []
  },
- "verdicts": [],
+ "verdicts": [
+  "haiku-translator arm vs opus, paired on the same 12 classifiable phrases (same collector, same tiers): restored-top-tier 8/12 haiku vs 10/12 opus; mean urgency_recovery +0.119 vs +0.150, paired diff -0.031 (sd 0.205) — within noise. Translation quality is NOT a blocker for haiku."
+ ],
  "findings_delta": [
   {
    "date": "2026-07-09",
    "text": "haiku generator evidence complete: validator yield 76% vs opus 60%, screen-in 55% vs 48%, penalty at least as strong; translator arm tracing now"
+  },
+  {
+   "date": "2026-07-09",
+   "text": "run 64 complete: haiku translation recovery within noise of opus (paired diff -0.031±0.205); 5 pairs lost to tracer flake, filler re-trace fired; awaiting run 65 (equivalence n) + gemma-3 stem 3"
   }
  ],
  "decisions_pending": [],
