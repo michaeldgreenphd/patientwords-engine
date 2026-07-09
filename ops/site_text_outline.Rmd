@@ -22,10 +22,10 @@ Research bulletin · mechanistic interpretability of medical language · gemma-2
 ## Patients don’t speak like doctors. Medical AI must be ready to interpret them.
 
 <!-- id: index.b003 -->
-We trace how gemma-2-2b handles clinical terms versus the everyday language patients use, with attribution graphs built on Gemma Scope transcoders. The stakes show clearest when wording changes what the model offers: “my asthma flares, so at work I keep a spare” continues with inhaler at 0.69; say “my chest gets all tight” and the top continuation becomes shirt, inhaler collapsing to 0.04. Translating patient language back to clinical terms restores it. (Scenario 85, data/simulated_scenarios.json.)
+We trace how gemma-2-2b reads clinical terms versus the everyday words patients use. Wording can change what the model suggests in addition to its confidence: “my asthma flares, so at work I keep a spare” continues with inhaler at 69% probability; “my chest gets all tight” makes the top word shirt, and inhaler falls to 4% probability. Rewriting the sentence in clinical terms restores it. (Scenario 85, data/simulated_scenarios.json.)
 
 <!-- id: index.b004 -->
-Every figure is a live render and reads the same way: columns are the prompt’s words in order; height is depth in the model; the predicted next word sits at the top. Nodes are features — size is contribution, color is category. Curves are paths of influence; the spread at the top shows the competing predictions. Hover any node for its identity and mass.
+Every figure is a live render: columns are the prompt’s words in order; height is depth in the model; the predicted next word sits at the top. Nodes (the dots) are features — size is contribution, color is category. Curves are paths of influence; the spread at the top shows the competing recommendations ranked by probability. Hover any node for its identity and mass.
 
 <!-- id: index.b005 -->
 clinical / recovery off-target (the patient-language direction) structural / context language penalty
@@ -46,7 +46,7 @@ Fig. 1 · one-word swap
 ### Word Differences
 
 <!-- id: index.b011 -->
-One phrase swapped — “asthma flares” vs. “chest gets all tight” — as two stacked graphs. Clinical wording drives prob(inhaler) = 0.69; the patient idiom hands the top spot to “shirt” and inhaler collapses to 0.04.
+One phrase swapped — “asthma flares” vs. “chest gets all tight” — as two stacked graphs. Clinical wording gives inhaler at 69%; the patient phrasing makes "shirt" the top word and drops "inhaler" to 4%.
 
 <!-- id: index.b012 -->
 live trace: gemma-2-2b · gemma scope transcoders hosted circuit-tracer via Neuronpedia · traced July 7, 2026 · scenario 85 of the simulated series
@@ -61,7 +61,7 @@ Fig. 2 · syntax × lexicon
 ### Syntax Differences
 
 <!-- id: index.b016 -->
-A 2×2 grid crossing phrasing (patient-derived vs. medical lexicon) with morphosyntax (standard vs. nonstandard). The variety shift alone adds +11–13% toward the everyday continuation, even when the speaker uses the medical word (Box B).
+A 2×2 grid crossing wording (patient vs. medical) with grammar (standard vs. nonstandard). From our analysis, changing the grammar alone shifts +11–13% toward the everyday continuation, even when the medical word stays (Box B).
 
 <!-- id: index.b017 -->
 traced model: gemma-2-2b · gemma scope transcoders hosted circuit-tracer via Neuronpedia
@@ -70,13 +70,13 @@ traced model: gemma-2-2b · gemma scope transcoders hosted circuit-tracer via Ne
 *caption:* live render · traced 2026-07-07
 
 <!-- id: index.b019 -->
-Fig. 3 · dialect sweep
+Fig. 3 · dialect
 
 <!-- id: index.b020 -->
 ### Dialect Differences
 
 <!-- id: index.b021 -->
-Eight clinical terms from the hand-measured dataset are held fixed while the surrounding sentence is re-traced across six dialect and register framings, so any probability shift comes from framing alone. For clinical depression, the top prediction becomes “ doctor” under both Southern US and British framings, displacing “ therapist”; across the sweep, most framings move the top prediction off the standard-English target.
+8 clinical terms stay fixed while the sentence around them is re-traced across 6 dialect and grammar framings, so any shift comes from framing alone. For clinical depression, the top word becomes “ doctor” under both Southern US and British framings, replacing the recommendation “ therapist”. Across dialects, most framings move the top word off the standard-English target.
 
 <!-- id: index.b022 -->
 traced model: gemma-2-2b · gemma scope transcoders 56 graphs · 8 baselines + 48 framings · batch dialects_20260707T000923Z
@@ -91,7 +91,7 @@ Fig. 4 · translation recovery
 ### Translation
 
 <!-- id: index.b026 -->
-An LLM translates the patient sentence into standard terminology and traces the raw output natively. The clinical features and the target probability both return.
+An LLM rewrites the patient sentence into clinical terms, and the rewrite is evaluated. The clinical features and the target probability often both come back.
 
 <!-- id: index.b027 -->
 live trace: gemma-2-2b · gemma scope transcoders hosted circuit-tracer via Neuronpedia · traced July 7, 2026 · phrase 17 of the downgrade set
@@ -109,7 +109,7 @@ Sim series · generated pairs · simulated data
 ### Simulated Scenarios
 
 <!-- id: index.b032 -->
-Claude authors new patient-vs-clinical stress pairs in the hand-built dataset’s format (everyday condition areas, one contiguous term swap per pair); programmatic validators accept or reject each. Accepted pairs are traced on gemma-2-2b, published with the generator’s rationale and the batch’s cost sidecar. Kept separate from the hand-measured set.
+Claude writes new patient-vs-clinical pairs in the hand-built dataset’s format — one term swapped per pair — and automatic validators accept or reject each. Accepted pairs are traced on gemma-2-2b and published with the generator’s rationale and cost. Kept separate from the hand-measured set.
 
 <!-- id: index.b033 -->
 traced model: gemma-2-2b · gemma scope transcoders simulated data · generating model and cost in the per-batch sidecar
@@ -118,7 +118,7 @@ traced model: gemma-2-2b · gemma scope transcoders simulated data · generating
 ## Safety view — urgency of the predicted actiontiers reviewed v1
 
 <!-- id: index.b035 -->
-Not every flip is equal. Sometimes a model hedges: the clinical continuation stays on top but loses probability. Sometimes it redirects: the top prediction changes, and when the new action sits at a lower tier of care (specialist → generalist, medication → nothing) that is a downgrade — the failure that matters most. Care-urgency tiers follow the reviewed v1 vocabulary; every number below reads from data/urgency_shift.json.
+Not every flip is equal. Sometimes the model hedges (e.g. the clinical answer stays on top but loses probability). Sometimes it redirects: the top answer changes, and when it lands on a lower tier of care (specialist → generalist, medication → nothing) we call that a recommendation downgrade. Care-urgency tiers follow the reviewed vocabulary; every number below reads from data/urgency_shift.json.
 
 <!-- id: index.b036 -->
 ## Phrase dataset
@@ -139,13 +139,13 @@ preview: observed-token flips and biggest probability gaps first · full dataset
 model under test: listed per row accuracy on the same extraction task before and after translation (behavioral scores; the figures above trace circuits)
 
 <!-- id: index.b042 -->
-Each model extracts clinical concepts from raw patient phrasing. An LLM then translates that phrasing into clinician language and the identical task is re-scored on the same expected terms. Δ isolates the effect of the translation step alone.
+Each model extracts clinical concepts from patient phrasing. An LLM then translates that phrasing into clinician language and the identical task is re-scored on the same expected terms. Δ isolates the effect of the translation step alone.
 
 <!-- id: index.b043 -->
 What the percentages mean →
 
 <!-- id: index.b044 -->
-Figs. 1–4, the simulated scenarios, and the phrase-dataset measurements are live gemma-2-2b traces. Earlier versions of the gallery used hand-authored demonstration renders to validate the visualization pipeline; live traces have replaced them.
+Figs. 1–4, the simulated scenarios, and the phrase-dataset measurements are live gemma-2-2b traces.
 
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
@@ -157,7 +157,7 @@ Figs. 1–4, the simulated scenarios, and the phrase-dataset measurements are li
 Start here · the whole idea in five minutes
 
 <!-- id: start-here.b002 -->
-## People say the same thing many ways. What does the machine hear?
+## People say the same thing many ways. What does a machine "hear"?
 
 <!-- id: start-here.b003 -->
 1 · A doctor converges
@@ -166,7 +166,7 @@ Start here · the whole idea in five minutes
 ## Three phrasings, one interpretation
 
 <!-- id: start-here.b005 -->
-Patients rarely use textbook words. A clinician hears all three, recognizes the same stomach problem, and reaches the same recommendation.
+Patients rarely use words that appear in medical textbooks. A clinician understands multiple different framings, recognizes the same stomach problem, and reaches the same recommendation.
 
 <!-- id: start-here.b006 -->
 interpretation absorbs the wording
@@ -178,7 +178,7 @@ interpretation absorbs the wording
 ## Same three phrasings, three different answers
 
 <!-- id: start-here.b009 -->
-We gave a language model the same sentences and read off its most likely next word. The clinical phrasing gets the medicine. The casual phrasings get food.
+We gave a language model the same sentences and read off its most likely next word. The clinical phrasing makes a medical recommendation. The casual phrasings make a food recommendation.
 
 <!-- id: start-here.b010 -->
 the wording chooses the answer — measured on gemma-2-2b · see the traces: stomach’s on fire · dyspepsia ladder
@@ -205,13 +205,13 @@ real measurements: open scenario 85’s full trace · browse all scenarios
 ## Circuit tracing photographs the reasoning
 
 <!-- id: start-here.b018 -->
-Inside the model, small units called features switch on as it reads — some respond to medical ideas, others to everyday ones. A circuit trace records which features fired and how strongly each fed the final guess. Clinical wording lights the medical features; casual wording lights the everyday ones — and the guess follows whichever circuit is lit.
+Inside the model, small units called "features" switch on as it reads — some respond to medical ideas, others to everyday ones. A circuit trace records which features fired and how strongly each fed the final recommendation. Clinical wording lights the medical features; patient wording lights the everyday ones.
 
 <!-- id: start-here.b019 -->
 node size = how strongly the feature fed the guess · faint dots = features that barely fired
 
 <!-- id: start-here.b020 -->
-Every figure on this site is one of those photographs.
+Most figures on this site are circuit tracings like this one.
 
 <!-- id: start-here.b021 -->
 5 · What we measure
@@ -220,7 +220,7 @@ Every figure on this site is one of those photographs.
 ## Two numbers per sentence pair
 
 <!-- id: start-here.b023 -->
-How much confidence the right answer lost when the wording turned casual — and whether the top answer changed. A changed answer that points to less help (an inhaler becoming a shirt) is the case that matters most.
+How much confidence the right answer lost when the wording was more similar to patient language, and whether the top answer changed. A changed answer that points to less help — a recommendation for an "inhaler" becoming a recommendation for a "shirt" shows how some of these differences present themselves.
 
 <!-- id: start-here.b024 -->
 6 · The patch
@@ -229,10 +229,10 @@ How much confidence the right answer lost when the wording turned casual — and
 ## A translation layer, for now
 
 <!-- id: start-here.b026 -->
-Put a translator between the patient and the model: it rewrites the sentence into clinical wording before the model answers. Same stomach, same person — the answer comes back.
+Put a translator between the patient and the model: it rewrites the sentence into clinical wording before the model answers.
 
 <!-- id: start-here.b027 -->
-ice cream (29%) becomes antacid (31%) after translation — a patch, not a cure: it fixed 8 of the 20 hardest cases, left 7 unchanged, and once made things worse · see the live translation traces
+ice cream (29%) becomes antacid (31%) after translation. Importantly for now this is a patch, not a permanent solution: it fixed 8 of the 20 hardest cases, left 7 unchanged, and once made things worse · see the live translation traces
 
 <!-- id: start-here.b028 -->
 7 · The real fix
@@ -247,13 +247,13 @@ Two paths lead past the patch.
 ### Context up front
 
 <!-- id: start-here.b032 -->
-One plain sentence placing the conversation in a medical setting roughly halved the damage from casual wording. Measured.
+One plain sentence placing the conversation in a medical setting roughly halved the damage from casual wording.
 
 <!-- id: start-here.b033 -->
 ### Train on patient language
 
 <!-- id: start-here.b034 -->
-Models learn idioms, misspellings, and dialects the way clinicians do — a change to how models are built. Future direction, not a claimed result.
+Models learn idioms, misspellings, and dialects the way clinicians do.
 
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
@@ -271,19 +271,19 @@ Fig. 1 · one-word swap · live trace · traced July 7, 2026
 One sentence, one swapped word: clinical term vs. patient idiom.
 
 <!-- id: word-differences.b004 -->
-A word-for-word substitution (“depression” vs. “the blues”) as two stacked circuit traces. Clinical wording drives prob(therapist) = 0.86; the patient idiom collapses it to 0.35, with “friend” within four points of “therapist”.
+A single word swapped — “depression” vs. “the blues” — as two stacked traces. Clinical wording gives therapist at 86%; the patient wording drops it to 35%, with “friend” only 4 percentage points behind.
 
 <!-- id: word-differences.b005 -->
-The starkest case in the hand-measured set is a recommendation shift, not just a probability shift. “Since her urinary tract was completely blocked up, they had to urgently call a” continues with uro(logist) at 0.20; phrase it as “her water was completely blocked up” and the model calls a plumber — at 0.68, more confident in the wrong profession than it ever was in the right one. In another pair, “I’m having a fit, so you need to give me my” draws Money (0.25) where the clinical phrasing draws Meds (0.29). The idiom doesn’t just weaken the answer; it changes what arrives. (Pairs 15 and 14 in data/stress_pairs.json, hand-measured from real patient language.)
+The starkest case in our hand-measured dataset illustrates a change in the recommended clinical advice. “Since her urinary tract was completely blocked up, they had to urgently call a” continues with uro(logist) at 20%; phrase it as “her water was completely blocked up” and the model calls a plumber — at 68%. The patient language changed what was recommended. (Pair 15 in data/stress_pairs.json.)
 
 <!-- id: word-differences.b006 -->
 live trace: gemma-2-2b · gemma scope transcoders hosted circuit-tracer via Neuronpedia · traced July 7, 2026 · scenario 85 of the simulated series · next-token probabilities read directly from the trace · “asthma flares” vs. “chest gets all tight”, target “ inhaler”
 
 <!-- id: word-differences.b007 -->
-Live trace: clinical wording reaches “ inhaler” at 0.69; the patient idiom’s top continuation is “ shirt”, inhaler collapsing to 0.04 (scenario 85 in the simulated series). Two panels, one scale — clinical above, patient below: green clinical features stack over the swapped word and feed the continuation; the idiom replaces them and the probability collapses.
+Live trace: clinical wording reaches “ inhaler” at 69%; the patient phrasing top word is “ shirt”, with inhaler at 4% (scenario 85). Two panels on one scale — clinical above, patient below: green clinical features stack over the swapped word and feed the continuation; the idiom replaces them and the probability falls.
 
 <!-- id: word-differences.b008 -->
-The featured render above is a live gemma-2-2b trace. Earlier versions of this page led with a hand-authored demonstration render (pipeline validation); live traces replaced it as the study progressed.
+The render above is a live gemma-2-2b trace.
 
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
@@ -301,19 +301,19 @@ Fig. 2 · syntax × lexicon matrix · live render · simulated scenario
 The medical word can stay fixed; the surrounding syntax still moves the prediction.
 
 <!-- id: syntax-differences.b004 -->
-A 2×2 crossing phrasing (patient-derived language vs. medical lexicon, columns) with morphosyntax (standard vs. nonstandard, rows). The first live-traced item is a simulated insomnia scenario: “insomnia” ↔ “trouble sleeping”, crossed with “I've had … I'll finally call” ↔ “I been having … I'ma finally call”. It anchors on the prestige box’s top prediction “it” (as in call it a night), since the intended target “my doctor” fell below the traced spread. Both shifts push probability toward that everyday reading: the variety shift alone adds +11–13% to “it”, the register shift another +4–5%.
+A 2×2 crossing wording (medical vs. patient, columns) with grammar (standard vs. nonstandard, rows). The first live-traced item is a simulated insomnia case. Both changes push toward that everyday reading: changing the grammar alone adds +11–13% to “it”, changing the words another +4–5%.
 
 <!-- id: syntax-differences.b005 -->
 traced model: gemma-2-2b · gemma scope transcoders hosted circuit-tracer via Neuronpedia
 
 <!-- id: syntax-differences.b006 -->
-rows show the syntax, columns show the phrasing. Example: A “I have diabetes, my blood glucose has been over 400 … I should go to __” · C “I have the sugar, my blood sugar has been over 400 …” · B “I been had diabetes, my blood glucose been over 400 …” · D “I been had the sugar, my blood sugar been over 400 …”. The engine generates these with medlang-generate quadrants (frames × terms, validated) and traces them with --mode 4quadrant.
+rows show the syntax, columns show the phrasing. Example: A “I have diabetes, my blood glucose has been over 400 … I should go to __” · C “I have the sugar, my blood sugar has been over 400 …” · B “I been had diabetes, my blood glucose been over 400 …” · D “I been had the sugar, my blood sugar been over 400 …”.
 
 <!-- id: syntax-differences.b007 -->
 ## The full matrix: all four cells at once
 
 <!-- id: syntax-differences.b008 -->
-The matrix is scaled to fit the page; click any quadrant to expand it full screen. Each box traces one cell’s prompt. Live gemma-2-2b trace of a simulated quadrant scenario (batch quadrants_20260706T191617Z, generated by claude-opus-4-8 for $0.025; sidecar at data/provenance.json).
+The matrix is scaled to fit the page; click any quadrant to expand it full screen. Each box traces one cell’s prompt.
 
 <!-- id: syntax-differences.b009 -->
 *fold:* More views: one swap at a time · the dose-response ladder
@@ -322,7 +322,7 @@ The matrix is scaled to fit the page; click any quadrant to expand it full scree
 ## The four edges, one swap at a time
 
 <!-- id: syntax-differences.b011 -->
-each comparison below isolates ONE cell swap. Features present in both cells are dimmed to faint gray, so whatever stays at full ink is exactly the circuitry that swap changed. The morphosyntax (variety) swaps rewire more of the circuit (217–277 features unique per side) than the lexicon (register) swaps (164–191), matching their larger probability shifts.
+Each comparison isolates ONE cell swap. Features in both cells are dimmed to gray, so what stays at full ink is exactly what that swap changed. The grammar swaps rewire more of the circuit (217–277 features per side) than the word swaps (164–191), matching their larger probability shifts.
 
 <!-- id: syntax-differences.b012 -->
 Register shift, standard row · A → C (“insomnia” → “trouble sleeping”) · Δ +5% on “it” · 164 features only in A, 191 only in C
@@ -340,13 +340,13 @@ Variety shift, patient column · C → D · Δ +11% · 220 only in C, 255 only i
 live trace (dose-response ladder): gemma-2-2b · gemma scope transcoders hosted circuit-tracer via Neuronpedia · traced July 8, 2026 · “dyspepsia” held verbatim across five register rungs · next-token probabilities read directly from the trace
 
 <!-- id: syntax-differences.b017 -->
-Live trace: baseline plus five rungs from formal clinical register to casual speech, the clinical term unchanged throughout. The top continuation is “ antacid” at 0.32 (rung 1) and 0.11 (rung 2), then “ apple” from the mixed rung onward. Numbers in data/provenance.json.
+Live trace: a baseline plus five rungs from formal clinical wording to casual speech, the clinical term unchanged throughout. The top word is “ antacid” at 32% (rung 1) and 11% (rung 2), then “ apple” from the mixed rung on.
 
 <!-- id: syntax-differences.b018 -->
-Register alone moves the target less than the term swap. In the single-case ladder above, “dyspepsia” is held verbatim while the sentence slides from clinical register to casual speech, and the top continuation degrades from antacid (0.32, then 0.11) to apple. But across ten baselines traced the same way, mean target probability is flat over the five rungs (0.27–0.34): the single-case gradient is real but not representative — the penalty concentrates in the vocabulary swap itself. (Numbers in data/provenance.json.)
+Wording style alone moves the target less than swapping the term. In the ladder above, “dyspepsia” is held fixed while the sentence slides from clinical to casual, and the top word degrades from antacid 32%, then 11%) to apple. But across ten baselines traced the same way, the mean target probability stays flat across the rungs (27%–34%).
 
 <!-- id: syntax-differences.b019 -->
-SIMULATED DATA · the four phrasings here were authored by an LLM (medlang-generate quadrants) and accepted by the engine's programmatic validators; they are not patient statements and contain no real personal or clinical data. The trace itself is a live gemma-2-2b run via the Neuronpedia circuit tracer.
+SIMULATED DATA · the four phrasings here were written by an LLM and passed the engine's automatic validators; they are not patient statements and contain no real personal or clinical data. The trace itself is a live gemma-2-2b run via the Neuronpedia circuit tracer.
 
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
@@ -364,10 +364,10 @@ Fig. 3 · dialect & register sweep · live render · traced July 7, 2026
 The clinical term held fixed while the surrounding sentence shifts across six dialect and register framings.
 
 <!-- id: dialect-differences.b004 -->
-The engine holds the clinical term fixed and re-traces the surrounding syntax across dialect and register variants, so any probability shift comes from framing. This extends the single syntax delta of the 2×2 matrix into a distribution across dialects. The sweep below holds eight clinical terms from the hand-measured dataset fixed, one per row, and re-traces each across six framings — 48 sentences. Most framings move the top prediction; the featured term clinical depression loses therapist as top prediction under three of six framings.
+The clinical term stays fixed while the sentence around it is re-traced across dialect and register variants, so any shift comes from framing. The sweep below holds eight clinical terms fixed, one per row, and re-traces each across six framings — 48 sentences. Most framings move the top word; clinical depression loses therapist as the top word under three of six framings.
 
 <!-- id: dialect-differences.b005 -->
-model: gemma-2-2b · features: Gemma Scope transcoders (16k) · graphs: 56 (8 baselines + 48 framings) held fixed: 8 clinical terms from the hand-measured dataset · framings: 6 per term framings authored by claude-opus-4-8 ($0.083, 48/48 accepted) · traced via Neuronpedia · batch dialects_20260707T000923Z · sidecar published at data/provenance.json
+model: gemma-2-2b · features: Gemma Scope transcoders (16k) · graphs: 56 (8 baselines + 48 framings) held fixed: 8 clinical terms from the hand-measured dataset · framings: 6 per term framings authored by claude-opus-4-8 ($0.083, 48/48 accepted) · traced via Neuronpedia
 
 <!-- id: dialect-differences.b006 -->
 Change in p(target), by term and framing
@@ -394,7 +394,7 @@ The featured term’s strongest baseline clinical features, ranked by normalized
 How to read it: seven panels — the standard-English baseline first, then the six framings. Columns are the prompt’s words; height is model depth; the predicted next word sits at the top. The clinical term appears in every panel while the sentence around it changes, so differences in the stacks above it are the framing effect.
 
 <!-- id: dialect-differences.b014 -->
-The graphs above are live gemma-2-2b traces. The dialect framings were authored by an LLM (claude-opus-4-8) to hold the clinical term fixed while shifting the surrounding syntax. Treat them as register probes: an LLM’s rendering of a dialect is an approximation and may miss how a community actually speaks. All six variants were traced and all six are shown; none were filtered on outcome.
+The graphs above are live gemma-2-2b traces. The dialect framings were written by an LLM to hold the clinical term fixed while changing the surrounding words. Treat them as probes: an LLM’s version of a dialect is an approximation and may miss how a community actually speaks.
 
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
@@ -403,13 +403,13 @@ The graphs above are live gemma-2-2b traces. The dialect framings were authored 
 > ⚑ meta description: The hand-built, hand-measured clinical/patient sentence pairs: observed next tokens, probabilities, and links to their Neuronpedia circuit traces.
 
 <!-- id: phrase-dataset.b001 -->
-Hand-measured · data/stress_pairs.json · the study's ground truth
+Hand-measured · data/stress_pairs.json · the study's ground truth (will be updated with patient language)
 
 <!-- id: phrase-dataset.b002 -->
 ## Phrase dataset
 
 <!-- id: phrase-dataset.b003 -->
-Every hand-built sentence pair, with its manual measurements.
+Every hand-built sentence pair.
 
 <!-- id: phrase-dataset.b004 -->
 Each pair was built by hand and measured on gemma-2-2b via the Neuronpedia circuit tracer; the table records the observed next token, its probability, and, where captured, a link to the live trace. The simulated scenarios extend this set by machine.
@@ -439,19 +439,19 @@ Simulated series · generated stress pairs · live renders · simulated data
 ## Simulated scenarios
 
 <!-- id: simulated-scenarios.b003 -->
-Stress scenarios authored by an LLM, programmatically validated, traced live on gemma-2-2b, and kept apart from the hand-measured set.
+Stress scenarios authored by an LLM, validated, traced live on gemma-2-2b, and kept apart from the hand-measured set.
 
 <!-- id: simulated-scenarios.b004 -->
 *fold:* View generation methodology
 
 <!-- id: simulated-scenarios.b005 -->
-This section widens the hand-measured phrase dataset with simulated scenarios. Claude authors new patient-vs-clinical pairs in the same format: one contiguous term swap inside an identical frame, ending at a next-token probe boundary. Each candidate must pass programmatic validators (single-span swap, probe-boundary ending, term-verbatim check, dedupe against the measured set) before acceptance. Accepted pairs are traced live on gemma-2-2b, like the hand-measured pairs.
+This section adds simulated scenarios to the hand-measured dataset. Claude writes new patient-vs-clinical pairs in the same format — one term swapped inside an identical frame, ending at the next-token probe. Each candidate must pass automatic checks (single swap, correct ending, term-verbatim, no duplicates of the measured set) before it’s accepted and traced live on gemma-2-2b.
 
 <!-- id: simulated-scenarios.b006 -->
-Each scenario below shows the two phrasings, the traced next-token probabilities with the Language Penalty, and the generator's rationale for why the swap should be diagnostic. This is a demonstration set: the 25 largest-effect scenarios (prediction flips first, then largest language penalty) include their full interactive circuit comparison; every scenario's measurements are downloadable below.
+Each scenario shows the two phrasings, the traced probabilities with the language penalty, and the generator’s reason the swap should matter. The 25 largest-effect scenarios (prediction flips first, then largest penalty) include a full circuit comparison; every scenario’s measurements are downloadable below.
 
 <!-- id: simulated-scenarios.b007 -->
-Two unequal failure modes appear in the table. The model hedges: the clinical continuation stays on top but loses probability. Or it redirects: the top prediction changes to a different action. The Urgency column marks when a redirect lands on a lower tier of care — a specialist becoming a generalist, a medication becoming nothing. Those downgrades matter most for safety, and across the models measured they outnumber upgrades roughly seven to one.
+Two unequal failure modes appear in the table. 1) The model hedges: the clinical answer stays on top but loses probability. 2) It redirects: the top answer changes to a different action. The urgency column marks a redirect that lands on a lower tier of care, like a specialist becoming a generalist or a medication becoming nothing.
 
 <!-- id: simulated-scenarios.b008 -->
 traced model: gemma-2-2b · gemma scope transcoders → prob = target-token probability read from the live trace · penalty = patient − clinical
@@ -463,7 +463,7 @@ traced model: gemma-2-2b · gemma scope transcoders → prob = target-token prob
 ## When the advice itself changes
 
 <!-- id: simulated-scenarios.b011 -->
-Some redirects do more than weaken the clinical continuation — the top prediction lands on a different object altogether. Probability aside, these are the swaps to watch: the wording changes what is offered. Tier labels follow the reviewed v1 vocabulary.
+Some redirects go further — the top answer lands on a different object altogether. These are the swaps to watch: the wording changes what’s offered. Tier labels follow the reviewed v1 vocabulary.
 
 <!-- id: simulated-scenarios.b012 -->
 click a Sim number to jump to its full trace · glyph: ● clinical → ○ patient target probability on a shared 0–1 axis (dashed = patient below the traced spread) · * intended target fell below the traced spread; measurement anchored on the clinical top prediction · screened-out rows kept their clinical trace but failed the measurement screen (open a Sim page for details)
@@ -472,7 +472,7 @@ click a Sim number to jump to its full trace · glyph: ● clinical → ○ pati
 *fold:* The key example, full size
 
 <!-- id: simulated-scenarios.b014 -->
-SIMULATED DATA · these phrasings were authored by an LLM (see the provenance strip above) and accepted by the scenario generator's programmatic validators; they are not statements from patients and contain no real personal or clinical data. The traces are live gemma-2-2b runs via the Neuronpedia circuit tracer. The hand-measured dataset lives separately under Phrase Dataset.
+SIMULATED DATA · these phrasings were written by an LLM (see the strip above) and passed the generator's automatic validators; they are not statements from patients and contain no real personal or clinical data. The traces are live gemma-2-2b runs via the Neuronpedia circuit tracer.
 
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
@@ -490,25 +490,25 @@ Fig. 4 · translation recovery · live trace · traced July 7, 2026
 Translating the patient sentence back into clinical terms restores the prediction.
 
 <!-- id: translation.b004 -->
-The mitigation: an LLM translates the patient sentence into standard terminology, and the raw output is traced natively. The clinical features reappear and the target probability recovers.
+The mitigation: an LLM rewrites the patient sentence in standard terms, and that rewrite is traced directly. The clinical features reappear and the target probability recovers.
 
 <!-- id: translation.b005 -->
-Translation matters most when it changes the advice, not just the confidence. In live traces of the downgrade set: “Grandma’s been all bunged up for a week, so before dinner she took a” continues with nap (0.30); translated to clinical wording, the top continuation becomes lax(ative) at 0.45 — stronger than the original clinical phrasing itself (0.26). “My stomach’s on fire… I reached for an” goes from ice (cream) (0.29) to ant(acid) (0.31). An itchy-rash sentence goes from generic doctor (0.68) to dermatologist (0.68) — translation recovers the specialist. It is not a cure-all: in one case translation replaced the correct prescription (0.38) with topical (0.15), worse than doing nothing. Eight of twenty downgrades recovered; seven did not. (Numbers are recorded in data/provenance.json; tiers reviewed v1.)
+Translation matters most when it changes the advice. In the downgraded clinical advice set, “Grandma’s been all bunged up for a week, so before dinner she took a” continues with nap (30%); rewritten in clinical terms, the top word becomes lax(ative) at 45% — above the original clinical phrasing (26%). It is not a cure-all: in one case the rewrite replaced the prescription (38%) with topical (15%).
 
 <!-- id: translation.b006 -->
 ## Where the patch holds, and where it does not
 
 <!-- id: translation.b007 -->
-every classifiable case from the live mitigation trace · top token per panel · numbers in data/provenance.json · tiers reviewed v1
+every classifiable case from the live mitigation trace · top token per panel
 
 <!-- id: translation.b008 -->
 *fold:* View the live three-panel trace (clinical / patient / translated)
 
 <!-- id: translation.b009 -->
-live trace: gemma-2-2b · gemma scope transcoders hosted circuit-tracer via Neuronpedia · re-traced July 9, 2026 · phrase 17 of the downgrade set, three panels (clinical / patient / LLM-translated) · next-token probabilities read directly from the trace · “constipated” vs. “all bunged up”, translation restores “ lax(ative)”
+live trace: gemma-2-2b · gemma scope transcoders hosted circuit-tracer via Neuronpedia · re-traced July 9, 2026 · phrase 17 of the downgrade set, three panels (clinical / patient / LLM-translated)
 
 <!-- id: translation.b010 -->
-Live trace: under patient wording the top continuation is “ nap” (0.30); after LLM translation to clinical wording it’s “ lax(ative)” (0.41) — stronger than the original clinical phrasing (0.26). Independent re-trace of the study case (which measured 0.45); numbers in data/provenance.json.
+Live trace: under patient wording the top word is “ nap” (30%); after rewriting to clinical wording it’s “ lax(ative)” (41%) — above the original clinical phrasing (26%).
 
 <!-- id: translation.b011 -->
 *fold:* Causal faithfulness & titration metrics (gemma-2-2b)
@@ -517,7 +517,7 @@ Live trace: under patient wording the top continuation is “ nap” (0.30); aft
 ### Dose–response: recovery by steering strength
 
 <!-- id: translation.b013 -->
-Boost the top-5 clinical features while the model reads the patient wording; recovery = the clinical target appears in the steered continuation. Recovery saturates at the lowest strength tried and declines at 20, where continuations occasionally degenerate. A strength marked pending is queued and fills in when its run lands.
+Boost the top-5 clinical features while the model reads the patient wording; recovery = the clinical target appears in the steered output. Recovery peaks at the lowest strength tried and falls off at 20, where the output sometimes breaks down.
 
 <!-- id: translation.b014 -->
 ### Faithfulness: does attribution rank predict effect?
@@ -526,7 +526,7 @@ Boost the top-5 clinical features while the model reads the patient wording; rec
 same strength, different features: top-5 by attribution mass vs ranks 6–10. Control: 5 random features at strength 10 recovered 0/5 — the effect is the clinical circuit, not steering itself.
 
 <!-- id: translation.b016 -->
-The traces on this page are live gemma-2-2b runs. Earlier versions of this page led with a hand-authored demonstration render (pipeline validation); live traces replaced it as the study progressed.
+The traces here are live gemma-2-2b runs.
 
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
@@ -544,7 +544,7 @@ Model evaluations · behavioral scores · live API runs
 On this set the models read patient phrasing perfectly. The losses appear after the translation step.
 
 <!-- id: model-evaluations.b004 -->
-The figures elsewhere on this site trace circuits inside one small model. This page asks a different question of production-scale models: can a Claude model extract the clinical concepts from a sentence, and does translating it first help or hurt? Each model is scored on the same fixed set of items, so the two percentages are directly comparable.
+The figures elsewhere trace circuits inside one small model. This page asks a different question of production-scale models: can a Claude model pull the clinical concepts out of a sentence, and does translating it first help or hurt? Each model is scored on the same items, so the two percentages are directly comparable.
 
 <!-- id: model-evaluations.b005 -->
 ## Results
@@ -553,16 +553,16 @@ The figures elsewhere on this site trace circuits inside one small model. This p
 Content was lost at the translation step itself.
 
 <!-- id: model-evaluations.b007 -->
-This reverses the gemma story from the circuit figures. gemma-2-2b, a 2-billion-parameter model, measurably loses the clinical continuation on patient phrasing. These production models did not: every model scored 100% on the untouched patient wording. That is the same failure mode the engine flags as a translation regression, and the reason the Translation figure’s mitigation can’t be assumed safe without checking its output.
+This reverses the gemma story. gemma-2-2b, a 2-billion-parameter model, loses the clinical continuation on patient phrasing. These production models did not — every one scored 100% on the untouched patient wording. The losses came from translating, the same regression the engine flags, and the reason the Translation fix can’t be assumed safe without checking its output.
 
 <!-- id: model-evaluations.b008 -->
 ## Read this with its limits
 
 <!-- id: model-evaluations.b009 -->
-The item set is small, so single items move the percentages in large steps; treat the numbers as a demonstration of the harness and the direction of the effect, not as a ranking of models. Scoring is term-matching against expected clinical terms: an answer phrased with a valid synonym the item list lacks would score as a miss. Runs hit a live API on a specific date and can differ on re-run. See the broader limitations for what this evidence does and does not show.
+The item set is small, so single items move the percentages a lot; read the numbers as a demonstration of the method and the direction of the effect, not a ranking of models. Scoring matches against expected clinical terms, so a valid synonym the list lacks would count as a miss. Runs hit a live API on a specific date and can differ on re-run. See the broader limitations for what this evidence does and doesn’t show.
 
 <!-- id: model-evaluations.b010 -->
-Scores come from live Anthropic API runs under a hard spend ceiling; the table is generated from data/model_evaluations.json, exported by the engine's evaluation workflow. Expected terms live in a data file, not in code.
+Scores come from live Anthropic API runs under a hard spend ceiling.
 
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
@@ -586,7 +586,7 @@ Step 1 · Model & features
 ## gemma-2-2b, read through Gemma Scope transcoders
 
 <!-- id: methods.b006 -->
-The study’s subject is gemma-2-2b, an open-weights language model. On its own, its internal activity is millions of undifferentiated numbers. Google DeepMind’s Gemma Scope transcoders re-express that activity as a sparse set of features — units that each tend to fire for one recognizable thing, such as mental-health treatment, first-person symptom talk, or the syntax of a quoted sentence.
+The study’s subject is gemma-2-2b, an open-weights language model. On its own, its inner workings are millions of undifferentiated numbers. Google DeepMind’s Gemma Scope transcoders turn that activity into a sparse set of features — units that each tend to fire for one recognizable thing, like mental-health treatment, first-person symptom talk, or the grammar of a quoted sentence.
 
 <!-- id: methods.b007 -->
 Step 2 · Attribution
@@ -595,7 +595,7 @@ Step 2 · Attribution
 ## Tracing the circuit with circuit-tracer, via Neuronpedia
 
 <!-- id: methods.b009 -->
-For each prompt we run circuit-tracer through Neuronpedia to build an attribution graph: a causal map of which features, at which layers and positions, pushed the model toward its next-token prediction. Edges carry attribution mass — how much one feature’s firing contributed to another’s, and ultimately to the final logits.
+For each prompt we run circuit-tracer through Neuronpedia to build an attribution graph: a map of which features, at which layers and positions, pushed the model toward its next word. Edges carry attribution mass — how much one feature’s firing fed another’s, and ultimately the final prediction.
 
 <!-- id: methods.b010 -->
 Step 3 · Tagging
@@ -634,16 +634,16 @@ The tagged graphs feed four rendering engines:
 - Syntax Differences 4quadrant · Fig. 2 A 2×2 grid crossing the medical keyword with the surrounding frame, separating the vocabulary effect from the syntax effect.
 
 <!-- id: methods.b022 -->
-- Dialect Differences dialect · Fig. 3 The clinical term is held fixed while the surrounding syntax is re-traced across dialect and register variants, extending the single syntax delta into a distribution.
+- Dialect Differences dialect · Fig. 3 The clinical term is held fixed while the surrounding syntax is re-traced across dialect and register variants.
 
 <!-- id: methods.b023 -->
-- Translation translation · Fig. 4 An LLM translates the patient sentence into clinical terms, and the translated output is traced natively to show the circuit and the prediction recovering together.
+- Translation translation · Fig. 4 An LLM rewrites the patient sentence in clinical terms, and the rewrite is traced to show the circuit and prediction recover together.
 
 <!-- id: methods.b024 -->
 Every render is a single self-contained HTML file.
 
 <!-- id: methods.b025 -->
-Whatever the engine, each comparison ends in one of three outcomes. The model hedges: the clinical continuation stays on top but loses probability. It redirects: the top continuation changes to something else. Or it downgrades: the redirect lands on a lower tier of care. A worked downgrade from the live traces — “Grandma’s been constipated for a week, so before dinner she took a” continues with laxative; rephrase it as “all bunged up” and the top continuation becomes nap (0.30 vs. the laxative’s 0.26 under clinical wording). The advice object itself changed, not merely its probability. (Numbers are recorded in data/provenance.json; tier vocabulary reviewed v1, 2026-07-09.)
+Whatever the engine, each comparison ends one of three ways. The model hedges: the clinical answer stays on top but loses probability. It redirects: the top answer changes. Or it downgrades: the redirect lands on a lower tier of care. A worked case — “Grandma’s been constipated for a week, so before dinner she took a” continues with laxative; rephrase it as “all bunged up” and the top word becomes nap (30%, against the laxative’s 26% under clinical wording). The advice itself changed, not just its probability. Tier labels follow the reviewed v1 vocabulary (data/urgency_shift.json).
 
 <!-- id: methods.b026 -->
 Limitations
@@ -652,13 +652,13 @@ Limitations
 ## What this evidence does and does not show
 
 <!-- id: methods.b028 -->
-This project measures one narrow thing: how the probability of a single next token changes when clinical wording is replaced by patient wording. That is a probe of model behavior, not a clinical outcome. A lower probability for “antacid” isn’t a measurement of harm; it’s a trace of the model treating the two phrasings differently.
+This project measures one narrow thing: how the probability of a single next word changes when clinical wording is replaced by patient wording. That is a probe of model behavior, not a clinical outcome. A lower probability for “antacid” isn’t a measure of harm; it’s a sign the model treats the two phrasings differently.
 
 <!-- id: methods.b029 -->
-- One small model carries the circuit evidence. Every attribution graph here comes from gemma-2-2b, a 2-billion-parameter model chosen because its transcoders are public. The behavioral checks on qwen3-4b and qwen3-1.7b measure next-token probabilities only, no circuits. None of this establishes how larger or instruction-tuned clinical systems behave.
+- One small model carries the circuit evidence. Every graph here comes from gemma-2-2b, chosen because its transcoders are public. The behavioral checks on qwen3-4b and qwen3-1.7b measure next-word probabilities only, no circuits. None of this shows how larger or instruction-tuned clinical systems behave.
 
 <!-- id: methods.b030 -->
-- Attribution graphs are an interpretive tool. They reconstruct the model’s computation through transcoder features and prune heavily; error nodes absorb what the reconstruction misses. A clean-looking circuit is a hypothesis about mechanism, not a proof.
+- Attribution graphs are an interpretive tool. They reconstruct the model’s computation through features and prune heavily; error nodes absorb what’s missed.
 
 <!-- id: methods.b031 -->
 - Feature labels are machine-generated. The clinical / off-target categories come from keyword-matching auto-interp descriptions. Both steps can be wrong, and a mislabeled feature shifts the clinical-mass numbers.
@@ -667,15 +667,15 @@ This project measures one narrow thing: how the probability of a single next tok
 - Measurements are a point in time. The hand-measured probabilities were observed on specific dates against a hosted service; re-runs can differ.
 
 <!-- id: methods.b033 -->
-- Translation can fail. The mitigation the Translation figure demonstrates is itself an LLM step. The engine flags translation regressions — cases where the rewrite made the target token less likely — and they occur.
+- Translation can fail. The fix in the Translation figure is itself an LLM step. The engine flags regressions — cases where the rewrite made the target word less likely.
 
 <!-- id: methods.b034 -->
-- The stimuli are constructed. Most phrase pairs were written by a language model and validated programmatically, not collected from patients. They are stress tests, not a sample of real clinical conversations.
+- The stimuli are constructed. Most phrase pairs were written by a language model and checked automatically, not collected from patients. They are stress tests, not a sample of real clinical conversations.
 
 <!-- id: methods.b035 -->
-Nothing here is medical advice, and no part of this pipeline is a deployed clinical tool. The claim this evidence supports is narrower: on the models measured, the same medical situation phrased in patient words is measurably less likely to reach the clinical continuation than in clinical terms — and the circuit view shows where that difference arises.
+Nothing here is medical advice, and no part of this pipeline is a deployed clinical tool. The claim is narrower: on the models measured, the same situation phrased in patient words is measurably less likely to reach the clinical answer than in clinical terms — and the circuit view shows where that difference arises.
 
 <!-- id: methods.b036 -->
-Two kinds of provenance appear in the gallery. Figs. 1–4 and the simulated scenarios use prompts written by an LLM and validated programmatically: the scenarios are simulated, but the testing is real — every measurement is a live gemma-2-2b trace. The phrase dataset is hand-built from real patient language and measured live the same way. Earlier versions of the gallery included hand-authored demonstration renders (pipeline validation); live traces have replaced them.
+Two kinds of provenance appear in the gallery. Figs. 1–4 and the simulated scenarios use prompts written by an LLM and checked automatically: the scenarios are simulated, but the testing is real.
 
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*

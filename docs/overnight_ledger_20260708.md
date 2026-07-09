@@ -428,3 +428,12 @@ of opus) = MET on landed data. Fired filler re-trace of the 5 missing pairs
 via scripts/fire_trigger.py (first production use; offsets 3,4,14,18,19).
 Condition 2 (equivalence n holding) awaits run 65, landing this afternoon.
 Go/no-go executes tonight; rationale will be logged here.
+
+## 14:2x UTC — owner's text trim applied site-wide
+Owner returned the trimmed outline (66 of 203 blocks changed, no deletions).
+Applied block-by-block with markup preserved (links, em, spans, fold-meta/
+flip-cap JS hooks); verified by re-extraction: 192/203 byte-identical, the
+11 exceptions being flagged typo fixes reported to the owner. Added the
+reviewed-v1 tier-vocabulary note to methods.b025 and (owner's own edit)
+sim-scenarios.b011. All 10 pages browser-checked clean; deployed to main.
+ops/site_text_outline.Rmd regenerated to match the live site.
