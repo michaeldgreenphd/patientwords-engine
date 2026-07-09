@@ -546,11 +546,13 @@ def evaluate_pair(
     prompts = [clinical_prompt, patient_prompt]
     roles = ["clinical", "patient"]
     translation_method = None
+    translation_model = None
     if show_mitigation:
         translation = translate_to_clinical(patient_prompt, use_llm=use_llm_translation, model=llm_model)
         prompts.append(translation["text"])
         roles.append("translated")
         translation_method = translation["method"]
+        translation_model = translation.get("model")
 
     graphs = [clinical_graph] + [
         _trace(prompt, role, index, out_dir, backend, params, targets, fetcher)
@@ -618,6 +620,7 @@ def evaluate_pair(
             (probs[2] - probs[1]) if len(probs) == 3 and probs[1] is not None and probs[2] is not None else None
         ),
         "translation_method": translation_method,
+        "translation_model": translation_model,
         "forced_targets": list(force_tokens),
         "predictive_spread": {role: logit_spread(g) for role, g in zip(roles, graphs)},
         "circuit_diff": diff_counts,
@@ -846,6 +849,7 @@ def evaluate_translation(
         "mode": "translation",
         "prompts": {"patient": patient_prompt, "translated": translated_prompt},
         "translation_method": translation["method"],
+        "translation_model": translation.get("model"),
         "target_token": target_token,
         "probabilities": {"patient": p_patient, "translated": p_translated},
         "recovered_probability": (

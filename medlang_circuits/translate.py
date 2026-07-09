@@ -16,7 +16,7 @@ import re
 from typing import Any
 
 from medlang_circuits.keywords import _candidate_paths
-from medlang_circuits.llm_client import translate_with_llm
+from medlang_circuits.llm_client import DEFAULT_MODEL, translate_with_llm
 
 logger = logging.getLogger(__name__)
 
@@ -39,12 +39,13 @@ def _load_phrase_table() -> dict[str, str]:
 def translate_to_clinical(patient_text: str, use_llm: bool = True, model: str | None = None) -> dict[str, Any]:
     """Translate a patient sentence to clinical terminology.
 
-    Returns {"text": <translated>, "method": "llm" | "phrase_table" | "unchanged"}.
+    Returns {"text": <translated>, "method": "llm" | "phrase_table" | "unchanged",
+    "model": <anthropic model id> | None (non-llm methods)}.
     """
     if use_llm:
         translated = translate_with_llm(patient_text, model=model)
         if translated:
-            return {"text": translated, "method": "llm"}
+            return {"text": translated, "method": "llm", "model": model or DEFAULT_MODEL}
 
     table = _load_phrase_table()
     text = patient_text
@@ -55,9 +56,9 @@ def translate_to_clinical(patient_text: str, use_llm: bool = True, model: str | 
             text = pattern.sub(clinical, text)
             applied = True
     if applied:
-        return {"text": text, "method": "phrase_table"}
+        return {"text": text, "method": "phrase_table", "model": None}
 
     logger.warning(
         "No translation available (no ANTHROPIC_API_KEY and no phrase-table match); using input unchanged"
     )
-    return {"text": patient_text, "method": "unchanged"}
+    return {"text": patient_text, "method": "unchanged", "model": None}
