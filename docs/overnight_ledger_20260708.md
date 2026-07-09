@@ -346,3 +346,17 @@ pending the haiku translation arm + equivalence recheck; implement B1
 four bars) now; C6 auto-releases when gemma-3 stem 3 lands. A3/A4 stay
 unfired. Owner also asked for a decision-point map to author a new
 process/dashboard improvement prompt.
+
+## 12:5x UTC — PM decision deck returned (17/17 decided)
+DECISIONS 2026-07-09 PM: A1 both-private-first; A2 engine-repo html;
+A3 per-occasion decks; A4 routine + daily digest push; A5 <=$2/day;
+A6 process-as-code approved; B1 lead with one concrete case; B2 add fenced
+why-this-matters; B3 add plain abstract; B4 activation patching is the
+week's primary interp experiment; B5 unify glossary; C1 keep three
+differences pages; C2 fold model-evaluations into methods; C3 re-render
+stale dialect tiles (queue full — chain after run 65); C4 build translation
+flow chart; C5 keep synthesis at 8; C6 cut morning brief to 3 sections.
+Scope split: A section = the owner's NEW prompt (context pack written to
+docs/prompt_context_20260709.md for a second-eyes LLM review); B + C
+execute in THIS session. B4 needs engine work (patching runs via logits-eval
+path or new workflow) — design before vacation.
