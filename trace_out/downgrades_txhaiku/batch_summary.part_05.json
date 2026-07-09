@@ -1,0 +1,131 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 5,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having irritable bowel syndrome for weeks, so I need to take my",
+        "patient": "I've been having stomach troubles for weeks, so I need to take my",
+        "translated": "I've been having gastrointestinal distress for weeks, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.142,
+        "patient": null,
+        "translated": 0.036
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4331,
+        "patient": 0.3307,
+        "translated": 0.3592
+      },
+      "error_share": {
+        "clinical": 0.0895,
+        "patient": 0.0825,
+        "translated": 0.0907
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" medication\" (p=0.142)",
+        "patient": "embedding \u2192 Output \" stomach\" (p=0.053)",
+        "translated": "embedding \u2192 Output \" first\" (p=0.032)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" medication\"",
+            0.142
+          ],
+          [
+            "Output \" medicine\"",
+            0.107
+          ],
+          [
+            "Output \" meds\"",
+            0.062
+          ],
+          [
+            "Output \" lax\"",
+            0.048
+          ],
+          [
+            "Output \" daily\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dog\"",
+            0.11
+          ],
+          [
+            "Output \" meds\"",
+            0.059
+          ],
+          [
+            "Output \" stomach\"",
+            0.053
+          ],
+          [
+            "Output \" medicine\"",
+            0.045
+          ],
+          [
+            "Output \" blood\"",
+            0.045
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" dog\"",
+            0.082
+          ],
+          [
+            "Output \" meds\"",
+            0.057
+          ],
+          [
+            "Output \" medication\"",
+            0.036
+          ],
+          [
+            "Output \" medicine\"",
+            0.032
+          ],
+          [
+            "Output \" first\"",
+            0.032
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 836,
+        "unique_to_a": 488,
+        "unique_to_b": 548
+      },
+      "outputs": {
+        "html": "trace_out/downgrades_txhaiku/index_05.html",
+        "png": "trace_out/downgrades_txhaiku/index_05.png",
+        "diff_html": "trace_out/downgrades_txhaiku/index_05_diff.html",
+        "diff_png": "trace_out/downgrades_txhaiku/index_05_diff.png"
+      }
+    }
+  ]
+}
