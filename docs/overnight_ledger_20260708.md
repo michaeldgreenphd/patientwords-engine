@@ -360,3 +360,21 @@ Scope split: A section = the owner's NEW prompt (context pack written to
 docs/prompt_context_20260709.md for a second-eyes LLM review); B + C
 execute in THIS session. B4 needs engine work (patching runs via logits-eval
 path or new workflow) — design before vacation.
+
+## 12:3x UTC — owner corrections + Tier B authority
+(1) VISIBILITY: patientwords-engine is PUBLIC (both repos are). Scrubbed
+"private" from HANDOFF, routine standing prompt, prompt context pack, site
+CLAUDE.md; secret-pattern scan of ops/ + docs/ clean; no-secrets rule
+restated in HANDOFF and standing prompt. (2) Rmd artifact moves to THIS
+repo: ops/site_text_outline.Rmd (not the site repo) — highest priority,
+due 19:00 UTC. (3) UI status delivered: five full-page screenshots of main
+(zero console errors), zero open PRs in either repo — all UI changes ship
+by direct push to main. (4) Timezone CONFIRMED America/New_York (EDT);
+Routine crons written in UTC from EDT anchors (daily fire 11:30 UTC =
+07:30 EDT). (5) Tier B: standing approval to fire batch 1 tonight IFF the
+haiku translation verdict is clean (recovery within noise of opus 8/20 AND
+equivalence n holding); any ambiguity → hold and flag; go/no-go rationale
+must be written here either way. Early read of the translator arm (12/20
+landed): translation_model recorded correctly; several strong recoveries
+(inhal 0.04→0.48, derma 0.22→0.68) and misses, pattern resembling opus arm;
+full classification at the 13:45 harvest.
