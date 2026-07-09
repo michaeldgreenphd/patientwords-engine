@@ -533,3 +533,21 @@ model-eval softening, QC caveat on site, translation 45/41, Pair 15/16.
 QUEUED next batch: site pseudoreplication (collector dedupe -> lowers
 headline downgrade counts, owner should see it land), a11y micro-fixes.
 Pipeline untouched; go/no-go still armed.
+
+## 20:5x UTC — FABLE PLAN received; batch 2 launched (Fable agents)
+Owner paste: A1 nightly critic / A2 verify-before-commit / A3 weekly
+synthesis draft / A4 ops stays light / B1-B4 all approved / C: add
+llama-3.2-3b, olmo-2-1b, biomistral-7b (skip phi). Note: Fable through
+Tuesday 2026-07-14 then downshift batches to Opus 4.8 (owner wrote "llama"
+— interpreted as the non-Fable fallback = Opus; flagged for correction).
+Armed: nightly critic 05:00 UTC (self-chaining), Monday synthesis draft
+06:00 UTC, Tuesday downshift 03:30 UTC Wed. Plan doc:
+docs/fable_week_plan.md (incl. HF gate/cost truth: acceptance + downloads
+free, no card, free public-repo CI; probe-first protocol so owner only gets
+pinged for models that actually 401). Batch 2 (wf_92c08dc9-407, Fable):
+site pseudoreplication dedupe (per_model_deduped + cards), 4 a11y fixes,
+HF_IDS expansion (5 models), activation-patching CI (workflow + trigger +
+KNOWN_KEYS + real transformer-lens patch_and_measure w/ offline-mocked
+tests), B4 experiment designs — then 2 adversarial verifiers (A2 policy).
+Integration at completion notification; site changes browser-verified
+before deploy.
