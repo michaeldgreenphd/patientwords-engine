@@ -115,14 +115,17 @@ the neutral one by +0.083 (8/14 pairs improved). Where you say it moves the
 number as much as how you say it — casual framing makes patient wording
 *worse*, clinical framing roughly halves the cost.
 
-The register ladder shows the same thing as a staircase: with the clinical
-term held verbatim in every rung, P(antacid-class target) falls 0.322 (formal
-clinical) → 0.114 (one everyday word) → below the top-10 floor by the middle
-rung, where a fruit takes the top slot. Register alone, without touching the
-key term, flips the guidance object. (n = 1 case study; the n = 10 ladder
-batch is traced next.)
-(Sources: ledger `docs/overnight_ledger_20260708.md` 20:15 entry;
-`data/provenance.json:ladder_digestive`.)
+The register ladder complicates this in a useful way. In one case study,
+with the clinical term held verbatim, the target fell 0.322 → 0.114 → below
+the top-10 floor as the sentence slid from formal to casual register. But
+the n = 10 sweep did not replicate the staircase: across ten baselines,
+mean target probability is flat over the five rungs (0.27–0.34), and the
+casual end beats the formal end about as often as not. Register alone —
+with the term held fixed — rarely moves the target. Put together with the
+prefix result above: added clinical *context* helps, but the penalty itself
+concentrates in the vocabulary swap, not the surrounding register. We report
+the single case as an illustration, not a law.
+(Sources: `data/provenance.json:ladder_digestive`, `ladder_n10`.)
 
 ## 6. Translation is a real but imperfect patch
 

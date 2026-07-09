@@ -205,3 +205,20 @@ the newer instruction-tuned model shows the same asymmetry. Every draft
 label on the site now reads reviewed v1 (runtime + static). Synthesis
 section 2 un-gated. Validity and penalty CIs unchanged (132-phrase unified
 set untouched by tiers). paired_stats re-run: tier-shift CIs hold.
+
+## 00:45 UTC — ladder does not generalize; low-rank replicates exactly
+
+Ladder n=10 landed (all 5 chunks): with the clinical term held verbatim,
+mean target probability is FLAT across the five register rungs (0.27–0.34);
+rung 5 beats rung 1 as often as not (3/6). The single-case staircase
+(dyspepsia 0.322→0.114→floor) is real but not representative — register
+alone rarely moves the target; the penalty concentrates in the vocabulary
+swap. Published to provenance (ladder_n10), corrected the syntax-page
+explainer, revised synthesis §5. This is a headline item for the morning
+brief's "contradicts yesterday" list. Low-rank branch replication landed:
+3/4, IDENTICAL pattern to the main run (same recoveries, same miss, same
+500 on pair 2) — recorded in provenance. gemma-3 stem 2 landed; stem 3
+running, stem 4 queued. Paraphrase trace running; sociolect 2a queued
+(offsets corrected to cover all 20 baselines after catching a chunking
+gap that would have silently dropped pairs 19–20). Remaining for later
+slots: grandma_r2 re-render, s2.5 pair-5 + s20 remeasures.
