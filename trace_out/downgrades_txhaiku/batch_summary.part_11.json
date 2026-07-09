@@ -1,0 +1,473 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 11,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep waking up every hour with my insomnia flaring, so tonight before bed I'm brewing a cup of",
+        "patient": "I keep waking up every hour with my mind buzzing, so tonight before bed I'm brewing a cup of",
+        "translated": "I keep waking up every hour with my mind racing, so tonight before bed I'm brewing a cup of"
+      },
+      "target_token": "Output \" tea\"",
+      "probabilities": {
+        "clinical": 0.109,
+        "patient": 0.247,
+        "translated": 0.259
+      },
+      "language_penalty": 0.138,
+      "clinical_mass": {
+        "clinical": 0.1448,
+        "patient": 0.1086,
+        "translated": 0.109
+      },
+      "error_share": {
+        "clinical": 0.1008,
+        "patient": 0.1013,
+        "translated": 0.1011
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" this\" (p=0.081)",
+        "patient": "embedding \u2192 [L18\u00b7O] mentions of coffee, along with associated words like \u2192 Output \" coffee\" (p=0.058)",
+        "translated": "embedding \u2192 [L18\u00b7O] mentions of coffee, along with associated words like \u2192 [L19\u00b7O] descriptions of food, drink, and social situations | \u2192 [L21\u00b7O] text related to the topic of tea | references to tea \u2192 Output \" tea\" (p=0.259)"
+      },
+      "mitigation_recovery": 0.01200000000000001,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" chamomile\"",
+            0.146
+          ],
+          [
+            "Output \" tea\"",
+            0.109
+          ],
+          [
+            "Output \" this\"",
+            0.081
+          ],
+          [
+            "Output \" Sleepy\"",
+            0.044
+          ],
+          [
+            "Output \" peppermint\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" tea\"",
+            0.247
+          ],
+          [
+            "Output \" chamomile\"",
+            0.13
+          ],
+          [
+            "Output \" coffee\"",
+            0.058
+          ],
+          [
+            "Output \" sleepy\"",
+            0.037
+          ],
+          [
+            "Output \" Sleepy\"",
+            0.033
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" tea\"",
+            0.259
+          ],
+          [
+            "Output \" chamomile\"",
+            0.153
+          ],
+          [
+            "Output \" coffee\"",
+            0.05
+          ],
+          [
+            "Output \" sleepy\"",
+            0.042
+          ],
+          [
+            "Output \" peppermint\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1089,
+        "unique_to_a": 225,
+        "unique_to_b": 247
+      },
+      "outputs": {
+        "html": "trace_out/downgrades_txhaiku/index_11.html",
+        "png": "trace_out/downgrades_txhaiku/index_11.png",
+        "diff_html": "trace_out/downgrades_txhaiku/index_11_diff.html",
+        "diff_png": "trace_out/downgrades_txhaiku/index_11_diff.png"
+      }
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My chronic lower back pain flared since the move, so this morning I took a",
+        "patient": "My back's been killing me since the move, so this morning I took a",
+        "translated": "My back has been causing severe pain since the move, so this morning I took a"
+      },
+      "target_token": "Output \" break\"",
+      "probabilities": {
+        "clinical": 0.103,
+        "patient": 0.135,
+        "translated": 0.138
+      },
+      "language_penalty": 0.032000000000000015,
+      "clinical_mass": {
+        "clinical": 0.2556,
+        "patient": 0.1534,
+        "translated": 0.2019
+      },
+      "error_share": {
+        "clinical": 0.0875,
+        "patient": 0.0839,
+        "translated": 0.0846
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" long\" (p=0.055)",
+        "patient": "embedding \u2192 Output \" few\" (p=0.056)",
+        "translated": "embedding \u2192 Output \" few\" (p=0.071)"
+      },
+      "mitigation_recovery": 0.0030000000000000027,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" break\"",
+            0.103
+          ],
+          [
+            "Output \" walk\"",
+            0.083
+          ],
+          [
+            "Output \" nap\"",
+            0.065
+          ],
+          [
+            "Output \" few\"",
+            0.058
+          ],
+          [
+            "Output \" long\"",
+            0.055
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" break\"",
+            0.135
+          ],
+          [
+            "Output \" nap\"",
+            0.09
+          ],
+          [
+            "Output \" walk\"",
+            0.066
+          ],
+          [
+            "Output \" day\"",
+            0.06
+          ],
+          [
+            "Output \" few\"",
+            0.056
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" break\"",
+            0.138
+          ],
+          [
+            "Output \" day\"",
+            0.078
+          ],
+          [
+            "Output \" few\"",
+            0.071
+          ],
+          [
+            "Output \" nap\"",
+            0.07
+          ],
+          [
+            "Output \" walk\"",
+            0.053
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 886,
+        "unique_to_a": 459,
+        "unique_to_b": 426
+      },
+      "outputs": {
+        "html": "trace_out/downgrades_txhaiku/index_12.html",
+        "png": "trace_out/downgrades_txhaiku/index_12.png",
+        "diff_html": "trace_out/downgrades_txhaiku/index_12_diff.html",
+        "diff_png": "trace_out/downgrades_txhaiku/index_12_diff.png"
+      }
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My hands have carpal tunnel syndrome all day at the keyboard, so the specialist fitted me with a",
+        "patient": "My hands seize up and burn all day at the keyboard, so the specialist fitted me with a",
+        "translated": "My hands have muscle spasms and burning pain all day at the keyboard, so the specialist fitted me with a"
+      },
+      "target_token": "Output \" brace\"",
+      "probabilities": {
+        "clinical": 0.066,
+        "patient": null,
+        "translated": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2898,
+        "patient": 0.1999,
+        "translated": 0.2596
+      },
+      "error_share": {
+        "clinical": 0.1105,
+        "patient": 0.1048,
+        "translated": 0.1044
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" keyboard\" (p=0.123)",
+        "patient": "embedding \u2192 Output \" hand\" (p=0.033)",
+        "translated": "embedding \u2192 Output \" keyboard\" (p=0.147)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" keyboard\"",
+            0.123
+          ],
+          [
+            "Output \" wrist\"",
+            0.106
+          ],
+          [
+            "Output \" splint\"",
+            0.085
+          ],
+          [
+            "Output \" brace\"",
+            0.066
+          ],
+          [
+            "Output \" pair\"",
+            0.045
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" keyboard\"",
+            0.128
+          ],
+          [
+            "Output \" new\"",
+            0.064
+          ],
+          [
+            "Output \" special\"",
+            0.048
+          ],
+          [
+            "Output \" wrist\"",
+            0.043
+          ],
+          [
+            "Output \" hand\"",
+            0.033
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" keyboard\"",
+            0.147
+          ],
+          [
+            "Output \" wrist\"",
+            0.067
+          ],
+          [
+            "Output \" new\"",
+            0.054
+          ],
+          [
+            "Output \" splint\"",
+            0.044
+          ],
+          [
+            "Output \" mouse\"",
+            0.035
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 879,
+        "unique_to_a": 594,
+        "unique_to_b": 505
+      },
+      "outputs": {
+        "html": "trace_out/downgrades_txhaiku/index_13.html",
+        "png": "trace_out/downgrades_txhaiku/index_13.png",
+        "diff_html": "trace_out/downgrades_txhaiku/index_13_diff.html",
+        "diff_png": "trace_out/downgrades_txhaiku/index_13_diff.png"
+      }
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My arms keep breaking out in eczema, so the doctor gave me a",
+        "patient": "My arms keep breaking out in itchy red patches, so the doctor gave me a",
+        "translated": "My arms keep breaking out in pruritic erythematous plaques, so the doctor gave me a"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.161,
+        "patient": 0.144,
+        "translated": 0.059
+      },
+      "language_penalty": -0.017000000000000015,
+      "clinical_mass": {
+        "clinical": 0.4399,
+        "patient": 0.433,
+        "translated": 0.4624
+      },
+      "error_share": {
+        "clinical": 0.1004,
+        "patient": 0.1031,
+        "translated": 0.1097
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" topical\" (p=0.041)",
+        "patient": "embedding \u2192 Output \" new\" (p=0.041)",
+        "translated": "embedding \u2192 Output \" \" (p=0.038)"
+      },
+      "mitigation_recovery": -0.08499999999999999,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.34
+          ],
+          [
+            "Output \" cream\"",
+            0.161
+          ],
+          [
+            "Output \" steroid\"",
+            0.135
+          ],
+          [
+            "Output \" topical\"",
+            0.041
+          ],
+          [
+            "Output \" sample\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" prescription\"",
+            0.384
+          ],
+          [
+            "Output \" cream\"",
+            0.144
+          ],
+          [
+            "Output \" steroid\"",
+            0.099
+          ],
+          [
+            "Output \" topical\"",
+            0.045
+          ],
+          [
+            "Output \" new\"",
+            0.041
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" prescription\"",
+            0.278
+          ],
+          [
+            "Output \" topical\"",
+            0.107
+          ],
+          [
+            "Output \" steroid\"",
+            0.098
+          ],
+          [
+            "Output \" cream\"",
+            0.059
+          ],
+          [
+            "Output \" \"",
+            0.038
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1131,
+        "unique_to_a": 201,
+        "unique_to_b": 212
+      },
+      "outputs": {
+        "html": "trace_out/downgrades_txhaiku/index_14.html",
+        "png": "trace_out/downgrades_txhaiku/index_14.png",
+        "diff_html": "trace_out/downgrades_txhaiku/index_14_diff.html",
+        "diff_png": "trace_out/downgrades_txhaiku/index_14_diff.png"
+      }
+    }
+  ]
+}
