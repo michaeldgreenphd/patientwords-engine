@@ -96,3 +96,32 @@ account, so nothing can be charged; HF bills only optional subscriptions and hos
 inference endpoints, which this pipeline never uses. CI compute is GitHub's free
 public-repo runners. Logits evals spend $0 Anthropic credits — `fire_trigger.py`'s $2/day
 paid ceiling is untouched by any fire in this matrix. Charge risk: none.
+
+## Model vetting policy (supply-chain, added 2026-07-09 on owner request)
+
+Every model in the matrix must satisfy ALL of:
+
+1. **Official organization only.** All nine registry entries resolve to
+   verified first-party orgs: `google` (Gemma), `meta-llama` (Llama),
+   `Qwen`, `allenai` (OLMo), `BioMistral` (the project's own org). No
+   community re-uploads, no fine-tune mirrors, no lookalike names — a
+   registry change means re-checking the org page by hand.
+2. **safetensors only.** `logits_eval.py` loads with `use_safetensors=True`,
+   which HARD-FAILS instead of falling back to pickle `.bin` weights
+   (pickle deserialization is arbitrary code execution). Enforced by a
+   tripwire test (`test_model_loading_supply_chain_posture`).
+3. **No remote code, ever.** `trust_remote_code` is explicitly False in all
+   loaders and the tripwire test fails the suite if any script sets it True.
+   A model that "requires" remote code is rejected from the matrix.
+4. **Ephemeral execution.** Weights are only ever loaded on throwaway GitHub
+   CI runners whose only secret is the read-scoped HF token — never on the
+   owner's machine or a dev container. Worst case for a hostile repo is a
+   burned read token, which is rotatable and grants nothing.
+5. **Pin after probe.** The first successful probe run of each model records
+   the resolved commit SHA in this file; subsequent fires SHOULD pass that
+   revision so a later force-push to the repo cannot silently swap weights.
+   (Nightly critic task: fill the table below as probes land.)
+
+| short id | pinned revision | probe date |
+|---|---|---|
+| (fills in as probes land) | | |

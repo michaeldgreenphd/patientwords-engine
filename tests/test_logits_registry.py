@@ -50,3 +50,20 @@ def test_expansion_maps_to_approved_repos():
     assert logits_eval.HF_IDS["biomistral-7b"] == "BioMistral/BioMistral-7B"
     assert logits_eval.HF_IDS["gemma-2-2b-it"] == "google/gemma-2-2b-it"
     assert logits_eval.HF_IDS["gemma-2-9b"] == "google/gemma-2-9b"
+
+
+def test_model_loading_supply_chain_posture():
+    """Tripwire: model loading must stay safetensors-only with remote code off.
+
+    A compromised or typosquatted HF repo attacks through two doors: pickle
+    .bin weights (arbitrary code on deserialize) and trust_remote_code
+    (arbitrary code on load). Both must stay closed in every loader.
+    """
+    from pathlib import Path
+
+    logits_src = Path(__file__).resolve().parents[1] / "scripts" / "logits_eval.py"
+    src = logits_src.read_text(encoding="utf-8")
+    assert "use_safetensors=True" in src
+    assert "trust_remote_code=False" in src
+    for script in (Path(__file__).resolve().parents[1] / "scripts").glob("*.py"):
+        assert "trust_remote_code=True" not in script.read_text(encoding="utf-8"), script.name

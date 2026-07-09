@@ -156,10 +156,14 @@ def main():
         pairs = pairs[:args.limit]
 
     print(f"Loading {hf_id} (cpu, bfloat16) ...", flush=True)
-    tokenizer = AutoTokenizer.from_pretrained(hf_id)
+    # Supply-chain posture: never execute repo code, never deserialize pickle
+    # weights. use_safetensors=True hard-fails on repos without safetensors
+    # (every registry model ships them) instead of falling back to .bin.
+    tokenizer = AutoTokenizer.from_pretrained(hf_id, trust_remote_code=False)
     # low_cpu_mem_usage keeps a 4B model within a 16 GB runner during load.
     model = AutoModelForCausalLM.from_pretrained(
-        hf_id, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True)
+        hf_id, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True,
+        trust_remote_code=False, use_safetensors=True)
     model.eval()
 
     def measure_fn(prompt, target_id, topk):

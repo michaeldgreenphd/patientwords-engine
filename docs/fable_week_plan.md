@@ -94,3 +94,9 @@ commit applies to all):
   amendment commit).
 - W4 STOP protocol: digest footer tells the owner one word here freezes
   all automation (this session deletes every trigger on "STOP").
+- W5 model supply-chain (owner request 2026-07-09 night): safetensors-only
+  + trust_remote_code=False enforced with a tripwire test; official-org-only
+  registry; ephemeral-runner execution; revision pinning after each model's
+  first probe (critic fills the table in docs/model_matrix.md). Owner's
+  morning digest is the once-daily touchpoint — new ideas surface there,
+  not as extra pings.

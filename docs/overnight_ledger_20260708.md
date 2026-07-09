@@ -569,3 +569,16 @@ docs/model_matrix.md (HF gate/click-paths), activation-patching CI live
 1-pair patching smoke via fire_trigger (new group, running slot).
 Owner also enabled promptless artifacts (user settings allow-list) and
 received the headroom deck (H1-H6, pending).
+
+## 22:xx UTC — HEADROOM approved (H1-H5); model supply-chain hardened (W5)
+Owner approved H1-H5 (H6 held); queue in fable_week_plan.md, critic executes.
+Gaps closed on "anything missing": W3 prereg Amendment 1 (10% confirmatory
+holdout by sha1 hash + seed provenance, committed BEFORE tierb.start_utc was
+set — verified null at commit); W1 Routine watchdog on the orchestrator's
+wake chain; W4 STOP protocol in the digest footer; W2 deployed-site health
+folded into H1. Owner also asked for protection against compromised HF
+models → W5: use_safetensors=True + trust_remote_code=False enforced in
+logits_eval with a source-level tripwire test (suite 229 green); vetting
+policy in model_matrix.md (official orgs only, ephemeral CI execution,
+revision pinning after first probe). Owner's rhythm: ONE morning check-in
+— all new ideas go into the 9am EDT digest, no extra pings.
