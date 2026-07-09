@@ -112,6 +112,17 @@ writer): `updated_utc`, `updated_by: "routine"`, `queue` (from the journal),
 (add an entry ONLY when something genuinely needs the owner),
 `blockers`, `notes`.
 
+## 6b · Watchdog (the fresh-session Routine is the redundancy layer)
+
+The orchestrating session schedules its own nightly work (critic ~05:00 UTC,
+weekly synthesis, handoffs). Verify it is alive: check that
+`docs/critic/critic_<today or yesterday>.md` exists and that
+`ops/dashboard.json:updated_utc` is < 26h old. If either check fails, the
+orchestrator's wake chain has stalled — say so PROMINENTLY in the digest
+("orchestrator stalled since <time>; ops continue via this Routine") and
+carry on with this Routine's own cycle; do not attempt to recreate the
+orchestrator's triggers.
+
 ## 7 · Brief, digest, commit
 
 - `python scripts/daily_brief.py --out docs/briefs/brief_<YYYYMMDD>.md`
@@ -122,7 +133,10 @@ writer): `updated_utc`, `updated_by: "routine"`, `queue` (from the journal),
   `ops/decks/deck_<YYYYMMDD>.html`, commit it, and mention it in the digest.
 - End your session with a final message whose FIRST LINE is exactly the
   output of `python scripts/daily_brief.py --digest` — that line becomes
-  the owner's one daily push notification. Keep the rest of the message to
+  the owner's one daily push notification. Append one fixed footer
+  sentence: "Reply STOP in the main session to freeze all automation."
+  (The main session holds the trigger ids and will delete every Routine
+  and scheduled wake on that word.) Keep the rest of the message to
   a short paragraph. Exactly one cycle per firing: do not schedule further
   work, do not loop.
 

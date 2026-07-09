@@ -61,3 +61,36 @@ CI compute is GitHub's free public-repo runners. Charge risk: none.
 - Monday: A3 synthesis draft.
 - **Tuesday 2026-07-14 end-of-day: downshift** — batch agents pinned to
   Opus 4.8 (per-agent override; the session model itself is owner-controlled).
+
+## H · Headroom streams (owner-approved 2026-07-09 evening; H6 pending)
+
+Execution order (nightly critic works through this queue; verify-before-
+commit applies to all):
+1. **H1 claim-integrity CI** — engine workflow that recomputes every
+   published number from committed artifacts on push and fails on drift;
+   includes a deployed-site health job (fetch the live Pages URL + data
+   files from the CI runner, assert 200 + parseable + spot values).
+2. **H3 circuit-drift monitor** — extend the critic cycle: compare each new
+   Tier B trace's named-feature composition/overlap vs the established set
+   (docs/analyses_20260708.json baseline); digest flags composition shifts.
+3. **H2 logit-lens depth profiles** — rides the patching CI dependency;
+   layer-by-layer target trajectory clinical vs patient on the downgrade
+   set; produces the companion figure to the patching heatmap.
+4. **H4 feature atlas** — data-driven catalog page (label, category,
+   frequency, mean layer, Neuronpedia link) from the analyses bundle;
+   no owner prose needed.
+5. **H5 reproducibility kit** — one-command rebuild script, dataset card,
+   schema docs, CITATION.cff, fresh collaborator exports.
+6. H6 preprint skeleton — HELD pending owner.
+
+## W · Gaps closed 2026-07-09 evening
+
+- W1 watchdog: the fresh-session Routine now verifies the orchestrator's
+  artifacts are fresh and flags a stalled wake chain in the digest.
+- W2 deployed-site health: folded into H1 (CI runners have open egress;
+  the sandbox proxy may block github.io locally).
+- W3 prereg Amendment 1: 10% confirmatory holdout by deterministic hash +
+  seed provenance, committed BEFORE Tier B batch 1 (start_utc null at
+  amendment commit).
+- W4 STOP protocol: digest footer tells the owner one word here freezes
+  all automation (this session deletes every trigger on "STOP").
