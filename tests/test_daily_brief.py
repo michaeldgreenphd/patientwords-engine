@@ -193,3 +193,42 @@ def test_main_missing_dashboard_renders_empty_brief_exit_zero(tmp_path, capsys):
     captured = capsys.readouterr()
     assert "- no changes in the last 26h" in captured.out
     assert "WARNING" in captured.err  # warning goes to stderr, never into the brief
+
+
+# --- Finding 14: a stale spend.today never renders as today's spend ---
+
+def test_spend_line_ignores_stale_today_date():
+    dash = {"spend": {"daily_ceiling_usd": 2.0, "generation_spent_usd": 1.2,
+                      "generation_ceiling_usd": 8.0, "lifetime_generation_usd": 10.76,
+                      "today": {"date": "2026-07-08", "spent_usd": 1.5}}}
+    brief = render(dash)
+    assert "$1.5/2 today" not in brief  # yesterday's figure must not pose as today
+    assert "Spend: $—/2 today" in brief
+    # an absent date field is equally not today
+    dash["spend"]["today"] = {"spent_usd": 1.5}
+    assert "Spend: $—/2 today" in render(dash)
+    # the matching date still renders normally, same guard as digest()
+    dash["spend"]["today"] = {"date": DATE, "spent_usd": 1.5}
+    assert "Spend: $1.5/2 today" in render(dash)
+
+
+# --- Finding 15: embedded newlines cannot break the three-H2 shape ---
+
+def test_render_brief_flattens_newlines_everywhere():
+    dash = {
+        "runs_recent": [{"workflow": "scenario_generation",
+                         "fired_utc": f"{DATE}T09:00:00Z", "status": "success",
+                         "note": "landed\n## Injected run note"}],
+        "verdicts": ["fine\n## Injected verdict"],
+        "findings_delta": [{"date": DATE, "text": "found\n## Injected finding"}],
+        "decisions_pending": [{"id": "d1", "title": "t\n## Injected title",
+                               "context": "c\r\nwindows newline too"}],
+        "blockers": ["blocked\n## Injected blocker"],
+    }
+    brief = daily_brief.render_brief(dash, DATE, 26)
+    lines = brief.splitlines()
+    headings = [ln for ln in lines if ln.startswith("#")]
+    assert headings == [f"# Daily brief — {DATE}", "## Delta", "## Verdicts", "## Blocked on owner"]
+    assert not any(ln.startswith("## Injected") for ln in lines)
+    assert "- fine ## Injected verdict" in lines  # newline collapsed to a space
+    assert "- blocked ## Injected blocker" in lines

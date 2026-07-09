@@ -6,13 +6,18 @@ copies). This is the accounting step of the daily autonomous cycle: scan the
 sidecars, fold anything not yet listed in spend.entries_seen into
 ops/dashboard.json (lifetime and per-day spend, Tier B attribution, ceiling
 alerts), and append one bullet per new sidecar to the ledger markdown under a
-trailing "## Spend log (auto)" heading.
+trailing "## Spend log (auto)" heading (default: the newest docs/*ledger*.md,
+else docs/spend_ledger.md is created). The ledger append happens BEFORE the
+dashboard write, so a failed append aborts the run without committing
+entries_seen - bullets are never lost.
 
 Strictly idempotent: a sidecar filename already in spend.entries_seen is never
-counted twice, and a run that finds nothing new rewrites nothing at all. The
-dashboard is read-modify-write - fields this script does not understand are
-preserved untouched. Ceiling breaches are reported (WARNING + spend.alerts),
-never blocking: the exit code stays 0, enforcement lives in the fire step.
+counted twice, and a run that finds nothing new rewrites nothing at all. Every
+writing run refreshes spend.today and stamps updated_utc (updated_by is set to
+"session" only when absent). The dashboard is read-modify-write - fields this
+script does not understand are preserved untouched. Ceiling breaches are
+reported (WARNING + spend.alerts), never blocking: the exit code stays 0,
+enforcement lives in the fire step.
 
 Usage:
   python scripts/ledger_update.py [--simulated-dir data/simulated]
@@ -23,12 +28,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 from datetime import datetime, timezone
 from pathlib import Path
 
 LEDGER_HEADING = "## Spend log (auto)"
-DAY_PREFIX = re.compile(r"^\d{4}-\d{2}-\d{2}")
+DEFAULT_LEDGER = Path("docs") / "spend_ledger.md"
+DEFAULT_LEDGER_HEADER = "# Spend ledger\n"
 
 
 def parse_args(argv=None):
@@ -37,7 +42,8 @@ def parse_args(argv=None):
                         help="directory holding <batch>.report.json cost sidecars")
     parser.add_argument("--dashboard", default="ops/dashboard.json")
     parser.add_argument("--ledger", default=None,
-                        help="ledger markdown file (default: lexicographically newest docs/*ledger*.md)")
+                        help="ledger markdown file (default: lexicographically newest docs/*ledger*.md, "
+                             "or docs/spend_ledger.md created on first append when none exists)")
     parser.add_argument("--date", default=None,
                         help="UTC day YYYY-MM-DD treated as 'today' (default: actual UTC today)")
     parser.add_argument("--dry-run", action="store_true",
@@ -70,10 +76,13 @@ def load_dashboard(path: Path):
 
 
 def resolve_ledger(arg):
+    """Explicit --ledger, else the newest docs/*ledger*.md, else the default
+    docs/spend_ledger.md (created with a one-line header on first append), so
+    ledger bullets always have somewhere durable to land."""
     if arg:
         return Path(arg)
     matches = sorted(Path("docs").glob("*ledger*.md"))
-    return matches[-1] if matches else None
+    return matches[-1] if matches else DEFAULT_LEDGER
 
 
 def scan_new_sidecars(sim_dir: Path, seen: set):
@@ -92,11 +101,24 @@ def scan_new_sidecars(sim_dir: Path, seen: set):
         yield path, report
 
 
+def batch_file_name(sidecar_name):
+    """Batch archive name for a cost sidecar: <batch>.report.json -> <batch>.json.
+    tierb.batches rows key on the archive name (the sample/Routine convention),
+    so rows stay joinable against data/simulated/<batch>.json."""
+    suffix = ".report.json"
+    if sidecar_name.endswith(suffix):
+        return sidecar_name[: -len(suffix)] + ".json"
+    return sidecar_name
+
+
 def attribute_tierb(dashboard, spend, report, filename, cost):
     """Count a sidecar toward the Tier B campaign when it belongs to it.
 
     Gate: tierb.start_utc set, task == 'pairs', model == tierb.generator, and
     run_timestamp at or after start_utc. Everything else is background spend.
+    Rows key on the batch archive name (<batch>.json) and UPSERT: a row the
+    Routine pre-registered for the batch is updated in place
+    (accepted/cost_usd/status='landed'), never duplicated.
     """
     tierb = dashboard.get("tierb")
     if not isinstance(tierb, dict) or not tierb.get("start_utc"):
@@ -113,8 +135,14 @@ def attribute_tierb(dashboard, spend, report, filename, cost):
     accepted = int(report.get("accepted") or 0)
     tierb["accepted_pairs"] = int(tierb.get("accepted_pairs") or 0) + accepted
     spend["generation_spent_usd"] = round(float(spend.get("generation_spent_usd") or 0.0) + cost, 4)
-    tierb.setdefault("batches", []).append(
-        {"file": filename, "accepted": accepted, "cost_usd": cost, "status": "landed"})
+    batch_file = batch_file_name(filename)
+    batches = tierb.setdefault("batches", [])
+    for row in batches:
+        if isinstance(row, dict) and row.get("file") == batch_file:
+            row.update({"accepted": accepted, "cost_usd": cost, "status": "landed"})
+            break
+    else:
+        batches.append({"file": batch_file, "accepted": accepted, "cost_usd": cost, "status": "landed"})
     return True
 
 
@@ -151,7 +179,7 @@ def check_ceilings(spend):
 
 
 def append_ledger(path: Path, bullets):
-    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    text = path.read_text(encoding="utf-8") if path.exists() else DEFAULT_LEDGER_HEADER
     if text and not text.endswith("\n"):
         text += "\n"
     if LEDGER_HEADING not in text:
@@ -180,8 +208,11 @@ def main(argv=None):
     bullets = []
     for path, report in scan_new_sidecars(Path(args.simulated_dir), set(entries_seen)):
         cost = float(report.get("cost_usd") or 0.0)
-        stamp = report.get("run_timestamp")
-        day = stamp[:10] if isinstance(stamp, str) and DAY_PREFIX.match(stamp) else date
+        run_ts = parse_ts(report.get("run_timestamp"))
+        # Bucket by the actual UTC day: offset timestamps book to the day they
+        # land in UTC, and an unparseable stamp falls back to --date instead of
+        # minting a garbage key.
+        day = run_ts.astimezone(timezone.utc).date().isoformat() if run_ts else date
         spend["lifetime_generation_usd"] = round(float(spend.get("lifetime_generation_usd") or 0.0) + cost, 4)
         by_day[day] = round(float(by_day.get(day) or 0.0) + cost, 4)
         entries_seen.append(path.name)
@@ -200,13 +231,16 @@ def main(argv=None):
         for bullet in bullets:
             print(f"DRY RUN: would append to {ledger_path}: {bullet}")
     else:
-        if dashboard_dirty:
-            write_dashboard(dashboard_path, dashboard)
+        # Ledger append comes FIRST: if it fails, we abort before entries_seen
+        # commits, so the next run re-scans the same sidecars instead of losing
+        # the bullets forever.
         if bullets:
-            if ledger_path is None:
-                print("WARNING: no docs/*ledger*.md found; ledger append skipped")
-            else:
-                append_ledger(ledger_path, bullets)
+            append_ledger(ledger_path, bullets)
+        if dashboard_dirty:
+            spend["today"] = {"date": date, "spent_usd": float(by_day.get(date) or 0.0)}
+            dashboard["updated_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            dashboard.setdefault("updated_by", "session")  # preserve e.g. "routine" when present
+            write_dashboard(dashboard_path, dashboard)
 
     gen_ceiling = spend.get("generation_ceiling_usd")
     daily_ceiling = spend.get("daily_ceiling_usd")

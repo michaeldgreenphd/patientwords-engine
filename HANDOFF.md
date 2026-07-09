@@ -42,13 +42,26 @@ fields.
 
 | Piece | Path | State |
 |---|---|---|
-| Mission-control UI | `ops/dashboard.html` (+ `ops/dashboard.sample.json`, `ops/README.md`) | building (workflow `wf_44d8afae-d7b`) |
-| Trigger guard + fire wrapper | `scripts/fire_trigger.py`, journal `ops/trigger_journal.jsonl`, `tests/test_fire_trigger.py` | building |
-| Spend accounting | `scripts/ledger_update.py`, `tests/test_ledger_update.py` | building |
-| 3-section brief + digest | `scripts/daily_brief.py`, `tests/test_daily_brief.py` | building |
-| Site text extraction (.Rmd) | `scripts/extract_site_text.py` → `ops/site_text_outline.Rmd` (owner-corrected: lives in THIS repo, not the site repo) | building — due at Checkpoint 1 |
-| Routine standing prompt | `docs/routine_standing_prompt.md` | **committed** |
+| Mission-control UI | `ops/dashboard.html` (+ `ops/dashboard.sample.json`, `ops/README.md`) | **done** — browser-verified (sample / empty / missing data, zero console errors) |
+| Trigger guard + fire wrapper | `scripts/fire_trigger.py`, journal `ops/trigger_journal.jsonl`, `tests/test_fire_trigger.py` | **done + hardened** (16 adversarial-review findings fixed with regression tests) |
+| Spend accounting | `scripts/ledger_update.py`, `tests/test_ledger_update.py` | **done + hardened**; live-seeded (34 sidecars, $9.5632 lifetime) |
+| 3-section brief + digest | `scripts/daily_brief.py`, `tests/test_daily_brief.py` | **done + hardened**; digest smoke-tested on live data |
+| Live ops state | `ops/dashboard.json`, `ops/trigger_journal.jsonl` | **seeded** with real queue/spend/Tier B state |
+| Site text extraction (.Rmd) | `scripts/extract_site_text.py` → `ops/site_text_outline.Rmd` | **done + delivered to owner** (203 blocks, ~6.5h ahead of Checkpoint 1) |
+| Routine standing prompt | `docs/routine_standing_prompt.md` | committed |
+| CLAUDE.md ops rules | fire-only-via-guard, single-writer, public-repo/no-secrets | committed |
 | This file | `HANDOFF.md` | committed, keep current |
+
+Suite: 191 tests green, ruff clean. Adversarial review findings (all fixed):
+budget guard now counts landed + in-flight `max_spend` across both paid
+triggers; `max_spend` must be finite and positive; `--override-budget` only
+overrides ceiling refusals; corrupt journal lines fail closed and journal
+writes are atomic; identical-params fires hard-error (exit 5, `_nonce`);
+all five trigger key sets verified against workflow heredocs and strict;
+ledger appends before `entries_seen` commits (default `docs/spend_ledger.md`
+when no ledger exists); tierb batches upsert by batch `.json` name; by_day
+buckets by UTC; `updated_utc` stamped on writes; brief guards stale
+`spend.today` and flattens newlines (3-H2 guarantee).
 
 Key design decisions and why:
 
@@ -93,21 +106,20 @@ Key design decisions and why:
 
 ## Remaining work (ordered)
 
-1. Integrate workflow output: fix review findings, run full pytest + ruff,
-   finalize KNOWN_KEYS for logits-eval/model-evaluation/archive-renders
-   against their workflow YAML defaults, seed `ops/dashboard.json` with the
-   real live state above, commit everything.
-2. Add ops rules to `CLAUDE.md` (fire only via `fire_trigger.py`; dashboard
-   single-writer rule).
-3. Checkpoint 1 (19:00 UTC): send `site_text.Rmd` + status + this file.
-4. 13:45 UTC wake: harvest runs 64/65/14; haiku translation verdict feeds
-   tonight's Tier B go/no-go; then unified gemma-3 recompute + data publish.
-5. Tonight: fire Tier B batch 1 via `fire_trigger.py` (sets
-   `tierb.start_utc`), begin chaining.
-6. Thursday: create the daily Routine (fresh-session cron, prompt =
-   `docs/routine_standing_prompt.md` body, notifications {push:true});
-   dry-run one firing; verify digest push arrives.
-7. Friday morning: Checkpoint 2 package.
+1. 13:45 UTC wake: harvest runs 64/65/14 (`fire_trigger.py resolve` each);
+   classify the haiku-translator arm vs opus 8/20; equivalence recheck with
+   batch-2 n; unified gemma-3 recompute + data publish when stem 3 lands.
+2. Checkpoint 1 (19:00 UTC): status report + this file (Rmd already
+   delivered at ~12:40 UTC).
+3. Tonight: Tier B go/no-go per owner conditions (clean translation verdict
+   AND equivalence holding → fire batch 1 via `fire_trigger.py`, set
+   `tierb.start_utc`; otherwise hold and flag). Rationale to the ledger
+   either way.
+4. Thursday: create the daily Routine (fresh-session cron 11:30 UTC =
+   07:30 EDT, prompt = `docs/routine_standing_prompt.md` body,
+   notifications push); dry-run one firing; verify digest push arrives.
+5. Friday morning: Checkpoint 2 package (dashboard in browser, 191-test
+   suite, digest dry-run output, final HANDOFF).
 
 ## Gotchas a successor must not relearn
 

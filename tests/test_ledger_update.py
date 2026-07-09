@@ -6,6 +6,7 @@ deterministic and offline. Idempotency is asserted on file hashes.
 import hashlib
 import importlib.util
 import json
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -111,8 +112,9 @@ def test_tierb_gate_start_time_and_model(tree):
 
     dash = load_dash(tree)
     assert dash["tierb"]["accepted_pairs"] == 50
+    # rows key on the batch archive name (<batch>.json), not the sidecar name
     assert dash["tierb"]["batches"] == [
-        {"file": "pairs_tierb.report.json", "accepted": 50, "cost_usd": 0.0985, "status": "landed"}]
+        {"file": "pairs_tierb.json", "accepted": 50, "cost_usd": 0.0985, "status": "landed"}]
     assert dash["spend"]["generation_spent_usd"] == pytest.approx(0.0985)
     # all three still count toward lifetime spend
     assert dash["spend"]["lifetime_generation_usd"] == pytest.approx(0.5885)
@@ -224,3 +226,169 @@ def test_dry_run_writes_nothing(tree, capsys):
     out = capsys.readouterr().out
     assert "DRY RUN" in out
     assert "pairs_a.report.json" in out
+
+
+# --- Finding 9: bullets are never lost - ledger before entries_seen ---
+
+def test_no_ledger_file_creates_default_spend_ledger(tmp_path, monkeypatch):
+    # Previously: WARNING, bullets skipped, entries_seen committed anyway -
+    # the bullets were gone forever.
+    monkeypatch.chdir(tmp_path)
+    sim = tmp_path / "data" / "simulated"
+    sim.mkdir(parents=True)
+    write_sidecar(sim, "pairs_a.report.json",
+                  run_timestamp="2026-07-09T02:00:00+00:00", task="pairs",
+                  model="claude-haiku-4-5", accepted=50, cost_usd=0.0985)
+    dash = tmp_path / "ops" / "dashboard.json"
+
+    assert ledger_update.main(["--simulated-dir", str(sim), "--dashboard", str(dash),
+                               "--date", TODAY]) == 0
+
+    ledger = tmp_path / "docs" / "spend_ledger.md"
+    assert ledger.exists()
+    text = ledger.read_text(encoding="utf-8")
+    assert text.startswith("# Spend ledger\n")
+    assert text.count("## Spend log (auto)") == 1
+    assert "- pairs_a.report.json" in text
+    assert json.loads(dash.read_text())["spend"]["entries_seen"] == ["pairs_a.report.json"]
+
+
+def test_failed_ledger_append_aborts_before_entries_seen_commit(tree):
+    write_sidecar(tree["sim"], "pairs_a.report.json",
+                  run_timestamp="2026-07-09T02:00:00+00:00", task="pairs",
+                  model="claude-haiku-4-5", accepted=50, cost_usd=0.0985)
+    bad_ledger = tree["ledger"].parent / "broken_ledger_dir.md"
+    bad_ledger.mkdir()  # reading a directory raises OSError inside append_ledger
+
+    with pytest.raises(OSError):
+        ledger_update.main(["--simulated-dir", str(tree["sim"]), "--dashboard", str(tree["dash"]),
+                            "--ledger", str(bad_ledger), "--date", TODAY])
+
+    # entries_seen never committed: the dashboard write must not have happened
+    assert not tree["dash"].exists()
+    # so a later run with a working ledger recovers the same bullet
+    assert run(tree) == 0
+    assert "- pairs_a.report.json" in tree["ledger"].read_text(encoding="utf-8")
+    assert load_dash(tree)["spend"]["entries_seen"] == ["pairs_a.report.json"]
+
+
+# --- Finding 10: tierb rows key on the batch .json name and upsert ---
+
+def test_tierb_upsert_updates_preregistered_row_no_duplicates(tree):
+    seed_dash(tree, {"schema_version": 1, "tierb": {
+        "target_pairs": 1600, "generator": "claude-haiku-4-5",
+        "start_utc": "2026-07-09T00:00:00Z", "accepted_pairs": 40,
+        "batches": [
+            {"file": "pairs_done.json", "accepted": 40, "cost_usd": 0.08, "status": "traced"},
+            {"file": "pairs_tierb.json", "accepted": 0, "cost_usd": 0.0, "status": "generating"},
+        ]}})
+    write_sidecar(tree["sim"], "pairs_tierb.report.json",
+                  run_timestamp="2026-07-09T02:00:00+00:00", task="pairs",
+                  model="claude-haiku-4-5", accepted=50, cost_usd=0.0985)
+
+    run(tree)
+
+    dash = load_dash(tree)
+    # the pre-registered row was updated in place - no duplicate, joinable name
+    assert dash["tierb"]["batches"] == [
+        {"file": "pairs_done.json", "accepted": 40, "cost_usd": 0.08, "status": "traced"},
+        {"file": "pairs_tierb.json", "accepted": 50, "cost_usd": 0.0985, "status": "landed"},
+    ]
+    assert dash["tierb"]["accepted_pairs"] == 90
+    assert dash["spend"]["generation_spent_usd"] == pytest.approx(0.0985)
+
+
+def test_batch_file_name_strips_report_suffix():
+    assert ledger_update.batch_file_name("batch_x.report.json") == "batch_x.json"
+    assert ledger_update.batch_file_name("odd_name.json") == "odd_name.json"
+
+
+# --- Finding 11: by_day buckets by parsed UTC date, not string prefix ---
+
+def test_by_day_buckets_by_utc_date_not_string_prefix(tree):
+    write_sidecar(tree["sim"], "pairs_offset.report.json",
+                  run_timestamp="2026-07-08T23:30:00-05:00",  # = 2026-07-09T04:30Z
+                  task="pairs", model="claude-haiku-4-5", accepted=10, cost_usd=0.05)
+    write_sidecar(tree["sim"], "pairs_garbage_stamp.report.json",
+                  run_timestamp="2026-99-99T00:00:00Z",  # unparseable -> falls back to --date
+                  task="pairs", model="claude-haiku-4-5", accepted=10, cost_usd=0.03)
+
+    run(tree)
+
+    spend = load_dash(tree)["spend"]
+    assert "2026-07-08" not in spend["by_day"]  # offset stamp books to its UTC day
+    assert "2026-99-99" not in spend["by_day"]  # garbage never becomes a key
+    assert spend["by_day"][TODAY] == pytest.approx(0.08)
+    # Finding 13: spend.today still mirrors by_day for --date on a writing run
+    assert spend["today"] == {"date": TODAY, "spent_usd": pytest.approx(0.08)}
+
+
+# --- Finding 12: updated_utc stamped on writes; updated_by preserved ---
+
+def test_updated_utc_stamped_and_existing_updated_by_preserved(tree):
+    seed_dash(tree, {"schema_version": 1, "updated_utc": "2026-07-01T00:00:00Z",
+                     "updated_by": "routine"})
+    write_sidecar(tree["sim"], "pairs_a.report.json",
+                  run_timestamp="2026-07-09T02:00:00+00:00", task="pairs",
+                  model="claude-haiku-4-5", accepted=50, cost_usd=0.0985)
+
+    run(tree)
+
+    dash = load_dash(tree)
+    assert dash["updated_utc"] != "2026-07-01T00:00:00Z"
+    datetime.strptime(dash["updated_utc"], "%Y-%m-%dT%H:%M:%SZ")  # contract format
+    assert dash["updated_by"] == "routine"  # existing writer label preserved
+
+
+def test_updated_by_defaults_to_session_only_when_absent(tree):
+    write_sidecar(tree["sim"], "pairs_a.report.json",
+                  run_timestamp="2026-07-09T02:00:00+00:00", task="pairs",
+                  model="claude-haiku-4-5", accepted=50, cost_usd=0.0985)
+
+    run(tree)
+
+    dash = load_dash(tree)
+    assert dash["updated_by"] == "session"
+    assert "updated_utc" in dash
+
+
+# --- Finding 13: spend.today refreshed on every writing run ---
+
+def test_stale_spend_today_replaced_on_next_writing_run(tree):
+    seed_dash(tree, {"schema_version": 1,
+                     "spend": {"today": {"date": "2026-07-08", "spent_usd": 1.5},
+                               "by_day": {"2026-07-08": 1.5}}})
+    write_sidecar(tree["sim"], "pairs_a.report.json",
+                  run_timestamp="2026-07-08T02:00:00+00:00", task="pairs",
+                  model="claude-haiku-4-5", accepted=50, cost_usd=0.10)
+
+    run(tree)
+
+    spend = load_dash(tree)["spend"]
+    assert spend["by_day"]["2026-07-08"] == pytest.approx(1.6)
+    assert spend["today"] == {"date": TODAY, "spent_usd": 0.0}  # nothing landed on --date itself
+
+
+# --- Finding 16: the sample dashboard's arithmetic is internally consistent ---
+
+def test_sample_dashboard_arithmetic_consistent():
+    sample_path = Path(__file__).resolve().parents[1] / "ops" / "dashboard.sample.json"
+    sample = json.loads(sample_path.read_text(encoding="utf-8"))
+    spend, tierb = sample["spend"], sample["tierb"]
+    batches = tierb["batches"]
+    # rows key on batch archive names, never on cost sidecars
+    assert all(b["file"].endswith(".json") and not b["file"].endswith(".report.json")
+               for b in batches)
+    # tierb attribution sums exactly
+    assert round(sum(b["cost_usd"] for b in batches), 4) == spend["generation_spent_usd"]
+    assert sum(b["accepted"] for b in batches) == tierb["accepted_pairs"]
+    # each by_day bucket equals the batch costs booked to that UTC day
+    # (batch file names carry their run day)
+    for day, total in spend["by_day"].items():
+        assert round(sum(b["cost_usd"] for b in batches if day in b["file"]), 4) == total, day
+    # spend.today mirrors by_day for its date
+    assert spend["by_day"][spend["today"]["date"]] == spend["today"]["spent_usd"]
+    # every landed batch's sidecar is in entries_seen; unlanded ones are not
+    landed_sidecars = {b["file"][:-len(".json")] + ".report.json"
+                       for b in batches if b["status"] != "generating"}
+    assert landed_sidecars == set(spend["entries_seen"])

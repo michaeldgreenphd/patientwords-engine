@@ -378,3 +378,40 @@ must be written here either way. Early read of the translator arm (12/20
 landed): translation_model recorded correctly; several strong recoveries
 (inhal 0.04→0.48, derma 0.22→0.68) and misses, pattern resembling opus arm;
 full classification at the 13:45 harvest.
+
+## Spend log (auto)
+
+- boostgrid_lowrank.report.json · $0.0000 · alias · accepted — · —
+- boostgrid_s20.report.json · $0.0000 · alias · accepted — · —
+- boostgrid_s2p5.report.json · $0.0000 · alias · accepted — · —
+- boostgrid_s5.report.json · $0.0000 · alias · accepted — · —
+- dialects_20260706T232102Z.report.json · $0.0099 · claude-opus-4-8 · accepted 6 · 2026-07-06T23:21:08.764022+00:00
+- dialects_20260707T000923Z.report.json · $0.0831 · claude-opus-4-8 · accepted 48 · 2026-07-07T00:10:21.352373+00:00
+- dialects_20260707T023223Z.report.json · $0.0836 · claude-opus-4-8 · accepted 48 · 2026-07-07T02:33:12.593104+00:00
+- dialects_20260707T155124Z.report.json · $0.0536 · claude-opus-4-8 · accepted 24 · 2026-07-07T15:51:59.740778+00:00
+- dialects_20260707T235906Z.report.json · $0.0134 · claude-sonnet-5 · accepted 5 · 2026-07-07T23:59:14.457187+00:00
+- dialects_20260708T011831Z.report.json · $0.0149 · claude-sonnet-5 · accepted 5 · 2026-07-08T01:18:40.804492+00:00
+- dialects_20260708T120729Z.report.json · $0.1893 · claude-sonnet-5 · accepted 64 · 2026-07-08T12:09:26.638462+00:00
+- dialects_20260708T201616Z.report.json · $0.1498 · claude-sonnet-5 · accepted 50 · 2026-07-08T20:17:52.110848+00:00
+- dialects_20260708T203111Z.report.json · $0.2521 · claude-sonnet-5 · accepted 46 · 2026-07-08T20:33:50.267654+00:00
+- dialects_20260708T212709Z.report.json · $0.4651 · claude-sonnet-5 · accepted 158 · 2026-07-08T21:31:55.552073+00:00
+- dialects_20260708T215356Z.report.json · $0.4131 · claude-sonnet-5 · accepted 160 · 2026-07-08T21:57:57.785683+00:00
+- downgrades_txhaiku.report.json · $0.0000 · alias · accepted — · —
+- featured_sim85.report.json · $0.0000 · alias · accepted — · —
+- featured_sim85_r2.report.json · $0.0000 · alias · accepted — · —
+- grandma_r2.report.json · $0.0000 · alias · accepted — · —
+- pairs_20260706T175614Z.report.json · $0.1238 · claude-opus-4-8 · accepted 10 · 2026-07-06T17:56:54.001287+00:00
+- pairs_20260706T201750Z.report.json · $0.1940 · claude-opus-4-8 · accepted 13 · 2026-07-06T20:18:40.180501+00:00
+- pairs_20260706T210703Z.report.json · $0.1635 · claude-opus-4-8 · accepted 6 · 2026-07-06T21:07:32.593245+00:00
+- pairs_20260707T023656Z.report.json · $0.8207 · claude-opus-4-8 · accepted 50 · 2026-07-07T02:40:59.823842+00:00
+- pairs_20260707T023704Z.report.json · $1.4362 · claude-sonnet-5 · accepted 28 · 2026-07-07T02:50:44.600929+00:00
+- pairs_20260707T023706Z.report.json · $0.0985 · claude-haiku-4-5 · accepted 50 · 2026-07-07T02:38:37.713618+00:00
+- pairs_20260707T025842Z.report.json · $0.0996 · claude-haiku-4-5 · accepted 50 · 2026-07-07T03:00:16.620540+00:00
+- pairs_20260707T154345Z.report.json · $0.4099 · claude-opus-4-8 · accepted 23 · 2026-07-07T15:45:42.691193+00:00
+- pairs_20260707T171223Z.report.json · $2.4055 · claude-opus-4-8 · accepted 119 · 2026-07-07T17:23:02.607590+00:00
+- pairs_20260707T215921Z.report.json · $1.2911 · claude-opus-4-8 · accepted 80 · 2026-07-07T22:05:49.231826+00:00
+- pairs_20260707T221438Z.report.json · $0.7671 · claude-opus-4-8 · accepted 60 · 2026-07-07T22:18:39.713960+00:00
+- quadrants_20260706T191617Z.report.json · $0.0254 · claude-opus-4-8 · accepted 4 · 2026-07-06T19:16:32.333244+00:00
+- urgency_downgrades_20260707T1__context.report.json · $0.0000 · alias · accepted — · —
+- urgency_downgrades_20260707T1_steer.report.json · $0.0000 · alias · accepted — · —
+- urgency_downgrades_boostgrid.report.json · $0.0000 · alias · accepted — · —
