@@ -22,7 +22,7 @@ Research bulletin · mechanistic interpretability of medical language · gemma-2
 ## Patients don’t speak like doctors. Medical AI must be ready to interpret them.
 
 <!-- id: index.b003 -->
-We trace how gemma-2-2b reads clinical terms versus the everyday words patients use. Wording can change what the model suggests in addition to its confidence: “my asthma flares, so at work I keep a spare” continues with inhaler at 69% probability; “my chest gets all tight” makes the top word shirt, and inhaler falls to 4% probability. Rewriting the sentence in clinical terms restores it. (Scenario 85, data/simulated_scenarios.json.)
+We trace how gemma-2-2b reads clinical terms versus the everyday words patients use. Wording can change what the model suggests in addition to its confidence: “my asthma flares, so at work I keep a spare” continues with inhaler at 69% probability; “my chest gets all tight” makes the top word shirt, and inhaler falls to 4% probability. Rewriting the sentence in clinical terms restores it. (Scenario 85 of the simulated series.)
 
 <!-- id: index.b004 -->
 Every figure is a live render: columns are the prompt’s words in order; height is depth in the model; the predicted next word sits at the top. Nodes (the dots) are features — size is contribution, color is category. Curves are paths of influence; the spread at the top shows the competing recommendations ranked by probability. Hover any node for its identity and mass.
@@ -118,33 +118,36 @@ traced model: gemma-2-2b · gemma scope transcoders simulated data · generating
 ## Safety view — urgency of the predicted actiontiers reviewed v1
 
 <!-- id: index.b035 -->
-Not every flip is equal. Sometimes the model hedges (e.g. the clinical answer stays on top but loses probability). Sometimes it redirects: the top answer changes, and when it lands on a lower tier of care (specialist → generalist, medication → nothing) we call that a recommendation downgrade. Care-urgency tiers follow the reviewed vocabulary; every number below reads from data/urgency_shift.json.
+Not every flip is equal. Sometimes the model hedges (e.g. the clinical answer stays on top but loses probability). Sometimes it redirects: the top answer changes, and when it lands on a lower tier of care (specialist → generalist, medication → nothing) we call that a recommendation downgrade. The tiers, with example words from the model’s measured predictions:
 
 <!-- id: index.b036 -->
-## Phrase dataset
+care-urgency tiers, reviewed v1 · predicted words with no urgency information are excluded · a redirect that lands on a lower tier is a downgrade
 
 <!-- id: index.b037 -->
-measured on: gemma-2-2b · gemma scope transcoders → observed next token · p = observed next-token probability · via the neuronpedia circuit tracer
+## Phrase dataset
 
 <!-- id: index.b038 -->
-Hand-measured on gemma-2-2b (Gemma Scope transcoders) via the Neuronpedia circuit tracer; next-token probabilities as observed at measurement time.
+measured on: gemma-2-2b · gemma scope transcoders → observed next token · p = observed next-token probability · via the neuronpedia circuit tracer
 
 <!-- id: index.b039 -->
-preview: observed-token flips and biggest probability gaps first · full dataset (all pairs) →
+Hand-measured on gemma-2-2b (Gemma Scope transcoders) via the Neuronpedia circuit tracer; next-token probabilities as observed at measurement time.
 
 <!-- id: index.b040 -->
-## Model evaluations
+preview: observed-token flips and biggest probability gaps first · full dataset (all pairs) →
 
 <!-- id: index.b041 -->
-model under test: listed per row accuracy on the same extraction task before and after translation (behavioral scores; the figures above trace circuits)
+## Model evaluations
 
 <!-- id: index.b042 -->
-Each model extracts clinical concepts from patient phrasing. An LLM then translates that phrasing into clinician language and the identical task is re-scored on the same expected terms. Δ isolates the effect of the translation step alone.
+model under test: listed per row accuracy on the same extraction task before and after translation (behavioral scores; the figures above trace circuits)
 
 <!-- id: index.b043 -->
-What the percentages mean →
+Each model extracts clinical concepts from patient phrasing. An LLM then translates that phrasing into clinician language and the identical task is re-scored on the same expected terms. Δ isolates the effect of the translation step alone.
 
 <!-- id: index.b044 -->
+What the percentages mean →
+
+<!-- id: index.b045 -->
 Figs. 1–4, the simulated scenarios, and the phrase-dataset measurements are live gemma-2-2b traces.
 
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
@@ -274,7 +277,7 @@ One sentence, one swapped word: clinical term vs. patient idiom.
 A single word swapped — “depression” vs. “the blues” — as two stacked traces. Clinical wording gives therapist at 86%; the patient wording drops it to 35%, with “friend” only 4 percentage points behind.
 
 <!-- id: word-differences.b005 -->
-The starkest case in our hand-measured dataset illustrates a change in the recommended clinical advice. “Since her urinary tract was completely blocked up, they had to urgently call a” continues with uro(logist) at 20%; phrase it as “her water was completely blocked up” and the model calls a plumber — at 68%. The patient language changed what was recommended. (Pair 15 in data/stress_pairs.json.)
+The starkest case in our hand-measured dataset illustrates a change in the recommended clinical advice. “Since her urinary tract was completely blocked up, they had to urgently call a” continues with uro(logist) at 20%; phrase it as “her water was completely blocked up” and the model calls a plumber — at 68%. The patient language changed what was recommended. (Pair 15 of the phrase dataset.)
 
 <!-- id: word-differences.b006 -->
 live trace: gemma-2-2b · gemma scope transcoders hosted circuit-tracer via Neuronpedia · traced July 7, 2026 · scenario 85 of the simulated series · next-token probabilities read directly from the trace · “asthma flares” vs. “chest gets all tight”, target “ inhaler”
@@ -403,7 +406,7 @@ The graphs above are live gemma-2-2b traces. The dialect framings were written b
 > ⚑ meta description: The hand-built, hand-measured clinical/patient sentence pairs: observed next tokens, probabilities, and links to their Neuronpedia circuit traces.
 
 <!-- id: phrase-dataset.b001 -->
-Hand-measured · data/stress_pairs.json · the study's ground truth (will be updated with patient language)
+Hand-measured · the study's ground truth (will be updated with patient language)
 
 <!-- id: phrase-dataset.b002 -->
 ## Phrase dataset
@@ -424,7 +427,7 @@ measured on: gemma-2-2b · gemma scope transcoders → observed next token · p 
 Next-token probabilities as observed at measurement time.
 
 <!-- id: phrase-dataset.b008 -->
-source: data/stress_pairs.json · prompts shown verbatim, including intentional misspellings
+prompts shown verbatim, including intentional misspellings
 
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
@@ -643,7 +646,7 @@ The tagged graphs feed four rendering engines:
 Every render is a single self-contained HTML file.
 
 <!-- id: methods.b025 -->
-Whatever the engine, each comparison ends one of three ways. The model hedges: the clinical answer stays on top but loses probability. It redirects: the top answer changes. Or it downgrades: the redirect lands on a lower tier of care. A worked case — “Grandma’s been constipated for a week, so before dinner she took a” continues with laxative; rephrase it as “all bunged up” and the top word becomes nap (30%, against the laxative’s 26% under clinical wording). The advice itself changed, not just its probability. Tier labels follow the reviewed v1 vocabulary (data/urgency_shift.json).
+Whatever the engine, each comparison ends one of three ways. The model hedges: the clinical answer stays on top but loses probability. It redirects: the top answer changes. Or it downgrades: the redirect lands on a lower tier of care. A worked case — “Grandma’s been constipated for a week, so before dinner she took a” continues with laxative; rephrase it as “all bunged up” and the top word becomes nap (30%, against the laxative’s 26% under clinical wording). The advice itself changed, not just its probability. Tier labels follow the reviewed v1 vocabulary; the tier table in the home page’s safety view lists each tier with measured examples.
 
 <!-- id: methods.b026 -->
 Limitations

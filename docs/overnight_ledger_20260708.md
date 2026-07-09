@@ -437,3 +437,16 @@ flip-cap JS hooks); verified by re-extraction: 192/203 byte-identical, the
 reviewed-v1 tier-vocabulary note to methods.b025 and (owner's own edit)
 sim-scenarios.b011. All 10 pages browser-checked clean; deployed to main.
 ops/site_text_outline.Rmd regenerated to match the live site.
+
+## 14:4x UTC — tier table + plain-language references (owner request)
+Publisher now emits tier_examples (measured example words per tier, base
+model only, vocabulary-note fragment filter, top 3); homepage safety view
+renders a tier table (tier · meaning · measured examples) from the fetched
+data. All reader-visible file paths replaced with plain language across the
+10 pages; JS fetches untouched. Browser-verified, deployed to main.
+FLAG for tonight's unified recompute: republished urgency data now pools
+the alias re-traces (txhaiku etc.) into per-model measurement counts —
+gemma-2 downgrades read 78 (was 67) at measurement level. Prereg analysis
+rule "dedupe by phrase before any pooled count" must land in the collector
+with the gemma-3 recompute; site cards say "measurements" so they are
+accurate as labeled, but phrase-level counts are the claim-grade numbers.

@@ -301,9 +301,35 @@ if args.publish:
                                       "tier_top_patient", "flip_class", "tier_shift",
                                       "urgency_recovery")}
                for r in rows if r["flipped"] or r.get("tier_shift") is not None]
+    # measured example words per tier, so the site can explain the tiers in
+    # plain language without linking readers to a data file; base model only,
+    # readable whole-word tokens, most frequent first. Wordpiece fragments are
+    # excluded via the vocabulary's own review notes (data-driven, no
+    # vocabulary in source).
+    vocab_tokens = vocab_meta.get("tokens", {})
+    tier_counts: dict = {}
+    for r in rows:
+        if r.get("model") != "gemma-2-2b":
+            continue
+        for tok_key, tier_key in (("top_clinical", "tier_top_clinical"),
+                                  ("top_patient", "tier_top_patient")):
+            tok, tr_ = r.get(tok_key), r.get(tier_key)
+            if tr_ is None or not isinstance(tok, str):
+                continue
+            tok = tok.strip()
+            if len(tok) < 3 or not tok.replace("-", "").isalpha():
+                continue
+            note = (vocab_tokens.get(tok) or {}).get("note", "")
+            if "fragment" in note:
+                continue
+            tier_counts.setdefault(str(tr_), {})
+            tier_counts[str(tr_)][tok] = tier_counts[str(tr_)].get(tok, 0) + 1
+    tier_examples = {t: [w for w, _ in sorted(c.items(), key=lambda kv: -kv[1])[:3]]
+                     for t, c in tier_counts.items()}
     site_payload = {
         "vocabulary_status": vocab_meta.get("status", "draft pending domain review"),
         "tiers": vocab_meta.get("tiers"),
+        "tier_examples": tier_examples,
         "summary": {k: summary[k] for k in ("measurements", "flips", "flip_classes",
                                             "per_model", "concordance", "mitigation")
                     if k in summary},
