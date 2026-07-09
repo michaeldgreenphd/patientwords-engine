@@ -450,3 +450,10 @@ gemma-2 downgrades read 78 (was 67) at measurement level. Prereg analysis
 rule "dedupe by phrase before any pooled count" must land in the collector
 with the gemma-3 recompute; site cards say "measurements" so they are
 accurate as labeled, but phrase-level counts are the claim-grade numbers.
+
+## 15:0x UTC — nav reorder + percentage display (owner request)
+Masthead order on all 11 pages: Start Here · Methods · Overview (Home
+renamed) · rest unchanged. Dialect + translation pages now display all
+probabilities as % (deltas as signed percentage points; attribution mass
+left decimal). Browser-verified incl. dynamic caption paths; deployed to
+main. Outline regenerated.
