@@ -1,0 +1,858 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 41,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been tossing around all night because I have racing thoughts, so I need to see a",
+        "patient": "I've been tossing around all night because my mind won't shut up, so I need to see a"
+      },
+      "target_token": "Output \" psychiatrist\"",
+      "probabilities": {
+        "clinical": 0.121,
+        "patient": 0.075
+      },
+      "language_penalty": -0.046,
+      "clinical_mass": {
+        "clinical": 0.2036,
+        "patient": 0.1189
+      },
+      "error_share": {
+        "clinical": 0.093,
+        "patient": 0.0948
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 [L23\u00b7C] the end of sentences, lists of names and locations,  \u2192 Output \" Dr\" (p=0.031)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] words related to leisure activities, especially watc \u2192 Output \" movie\" (p=0.038)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " psychiatrist",
+        "observed_clinical": [
+          "Output \" psychiatrist\"",
+          0.121
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.265
+          ],
+          [
+            "Output \" therapist\"",
+            0.187
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.121
+          ],
+          [
+            "Output \" professional\"",
+            0.088
+          ],
+          [
+            "Output \" Dr\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.265
+          ],
+          [
+            "Output \" therapist\"",
+            0.172
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.075
+          ],
+          [
+            "Output \" professional\"",
+            0.069
+          ],
+          [
+            "Output \" movie\"",
+            0.038
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 979,
+        "unique_to_a": 409,
+        "unique_to_b": 452
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T025842Z/index_41.html",
+        "png": "trace_out/pairs_20260707T025842Z/index_41.png",
+        "diff_html": "trace_out/pairs_20260707T025842Z/index_41_diff.html",
+        "diff_png": "trace_out/pairs_20260707T025842Z/index_41_diff.png"
+      }
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My digestive system has been making weird noises and I feel bloated, so I should grab some",
+        "patient": "My guts have been making weird noises and I feel bloated, so I should grab some"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2964
+      },
+      "error_share": {
+        "clinical": 0.1002
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " antacids",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" probiotics\"",
+            0.157
+          ],
+          [
+            "Output \" gas\"",
+            0.094
+          ],
+          [
+            "Output \" of\"",
+            0.052
+          ],
+          [
+            "Output \" fiber\"",
+            0.038
+          ],
+          [
+            "Output \" more\"",
+            0.035
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I woke up with profuse diaphoresis last night, so my doctor thinks I might have a",
+        "patient": "I woke up sweating buckets last night, so my doctor thinks I might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4145
+      },
+      "error_share": {
+        "clinical": 0.1126
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " fever",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" viral\"",
+            0.091
+          ],
+          [
+            "Output \" sinus\"",
+            0.087
+          ],
+          [
+            "Output \" virus\"",
+            0.073
+          ],
+          [
+            "Output \" thyroid\"",
+            0.042
+          ],
+          [
+            "Output \" UTI\"",
+            0.041
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 44,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been scratching myself raw with this eczema, so I should probably see a",
+        "patient": "I've been scratching myself raw with this itchy skin, so I should probably see a"
+      },
+      "target_token": "Output \" dermatologist\"",
+      "probabilities": {
+        "clinical": 0.255,
+        "patient": 0.268
+      },
+      "language_penalty": 0.013000000000000012,
+      "clinical_mass": {
+        "clinical": 0.3837,
+        "patient": 0.3687
+      },
+      "error_share": {
+        "clinical": 0.0966,
+        "patient": 0.0958
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.600)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.598)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " dermatologist",
+        "observed_clinical": [
+          "Output \" dermatologist\"",
+          0.255
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.6
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.255
+          ],
+          [
+            "Output \" doc\"",
+            0.031
+          ],
+          [
+            "Output \" der\"",
+            0.027
+          ],
+          [
+            "Output \" specialist\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.598
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.268
+          ],
+          [
+            "Output \" der\"",
+            0.034
+          ],
+          [
+            "Output \" doc\"",
+            0.032
+          ],
+          [
+            "Output \" Dr\"",
+            0.013
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 990,
+        "unique_to_a": 223,
+        "unique_to_b": 190
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T025842Z/index_44.html",
+        "png": "trace_out/pairs_20260707T025842Z/index_44.png",
+        "diff_html": "trace_out/pairs_20260707T025842Z/index_44_diff.html",
+        "diff_png": "trace_out/pairs_20260707T025842Z/index_44_diff.png"
+      }
+    },
+    {
+      "index": 45,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I can't seem to get a decent night's sleep, so my sleep specialist wants me to try a",
+        "patient": "I can't seem to get a decent night's sleep, so my doctor wants me to try a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3051
+      },
+      "error_share": {
+        "clinical": 0.098
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " CPAP",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.148
+          ],
+          [
+            "Output \" melatonin\"",
+            0.113
+          ],
+          [
+            "Output \" new\"",
+            0.086
+          ],
+          [
+            "Output \" sleeping\"",
+            0.04
+          ],
+          [
+            "Output \" CP\"",
+            0.037
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 46,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been feeling really out of it and experiencing anhedonia, so maybe I should reach out to a",
+        "patient": "I've been feeling really out of it and empty inside, so maybe I should reach out to a"
+      },
+      "target_token": "Output \" psychiatrist\"",
+      "probabilities": {
+        "clinical": 0.081,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.306,
+        "patient": 0.1488
+      },
+      "error_share": {
+        "clinical": 0.0987,
+        "patient": 0.0947
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L19\u00b7C] language about therapy and counseling | therapy and  \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" mental\" (p=0.040)",
+        "patient": "embedding \u2192 [L17\u00b7O] phrases that include the words \"recommend\" and \"frie \u2192 [L19\u00b7O] words associated with friendship and relationships b \u2192 [L25\u00b7O] conversations about forming friendships | Discussing \u2192 Output \" friend\" (p=0.212)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " psychiatrist",
+        "observed_clinical": [
+          "Output \" psychiatrist\"",
+          0.081
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" therapist\"",
+            0.411
+          ],
+          [
+            "Output \" doctor\"",
+            0.107
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.081
+          ],
+          [
+            "Output \" professional\"",
+            0.077
+          ],
+          [
+            "Output \" mental\"",
+            0.04
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" therapist\"",
+            0.252
+          ],
+          [
+            "Output \" friend\"",
+            0.212
+          ],
+          [
+            "Output \" professional\"",
+            0.127
+          ],
+          [
+            "Output \" few\"",
+            0.079
+          ],
+          [
+            "Output \" counselor\"",
+            0.06
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 934,
+        "unique_to_a": 514,
+        "unique_to_b": 472
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T025842Z/index_46.html",
+        "png": "trace_out/pairs_20260707T025842Z/index_46.png",
+        "diff_html": "trace_out/pairs_20260707T025842Z/index_46_diff.html",
+        "diff_png": "trace_out/pairs_20260707T025842Z/index_46_diff.png"
+      }
+    },
+    {
+      "index": 47,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been sleeping excessively, so my wife thinks I might have a",
+        "patient": "I've been sleeping like the dead, so my wife thinks I might have a"
+      },
+      "target_token": "Output \" problem\"",
+      "probabilities": {
+        "clinical": 0.08,
+        "patient": 0.102
+      },
+      "language_penalty": 0.021999999999999992,
+      "clinical_mass": {
+        "clinical": 0.2568,
+        "patient": 0.2282
+      },
+      "error_share": {
+        "clinical": 0.0889,
+        "patient": 0.0945
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sleeping\" (p=0.114)",
+        "patient": "embedding \u2192 Output \" sleeping\" (p=0.112)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " problem",
+        "observed_clinical": [
+          "Output \" problem\"",
+          0.08
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.446
+          ],
+          [
+            "Output \" sleeping\"",
+            0.114
+          ],
+          [
+            "Output \" problem\"",
+            0.08
+          ],
+          [
+            "Output \" medical\"",
+            0.048
+          ],
+          [
+            "Output \" thyroid\"",
+            0.021
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.202
+          ],
+          [
+            "Output \" sleeping\"",
+            0.112
+          ],
+          [
+            "Output \" problem\"",
+            0.102
+          ],
+          [
+            "Output \" medical\"",
+            0.033
+          ],
+          [
+            "Output \" serious\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 773,
+        "unique_to_a": 411,
+        "unique_to_b": 459
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T025842Z/index_47.html",
+        "png": "trace_out/pairs_20260707T025842Z/index_47.png",
+        "diff_html": "trace_out/pairs_20260707T025842Z/index_47_diff.html",
+        "diff_png": "trace_out/pairs_20260707T025842Z/index_47_diff.png"
+      }
+    },
+    {
+      "index": 48,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since I started taking that new antihypertensive, I've developed palpitations with premature ventricular contractions, so I should call my",
+        "patient": "Since I started taking that new blood pressure med, my heart feels like it's skipping beats, so I should call my"
+      },
+      "target_token": "Output \" cardio\"",
+      "probabilities": {
+        "clinical": 0.156,
+        "patient": 0.048
+      },
+      "language_penalty": -0.108,
+      "clinical_mass": {
+        "clinical": 0.3931,
+        "patient": 0.3786
+      },
+      "error_share": {
+        "clinical": 0.1045,
+        "patient": 0.0945
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.579)",
+        "patient": "[L11\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.602)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cardiologist",
+        "observed_clinical": [
+          "Output \" cardio\"",
+          0.156
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.579
+          ],
+          [
+            "Output \" cardio\"",
+            0.156
+          ],
+          [
+            "Output \" doc\"",
+            0.082
+          ],
+          [
+            "Output \" physician\"",
+            0.029
+          ],
+          [
+            "Output \" GP\"",
+            0.016
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.602
+          ],
+          [
+            "Output \" doc\"",
+            0.141
+          ],
+          [
+            "Output \" Dr\"",
+            0.064
+          ],
+          [
+            "Output \" cardio\"",
+            0.048
+          ],
+          [
+            "Output \" dr\"",
+            0.044
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 829,
+        "unique_to_a": 406,
+        "unique_to_b": 408
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T025842Z/index_48.html",
+        "png": "trace_out/pairs_20260707T025842Z/index_48.png",
+        "diff_html": "trace_out/pairs_20260707T025842Z/index_48_diff.html",
+        "diff_png": "trace_out/pairs_20260707T025842Z/index_48_diff.png"
+      }
+    },
+    {
+      "index": 49,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My digestive tract's been making a racket, so I should probably see a",
+        "patient": "My gut's been making a racket, so I should probably see a"
+      },
+      "target_token": "Output \" gastroenter\"",
+      "probabilities": {
+        "clinical": 0.066,
+        "patient": 0.057
+      },
+      "language_penalty": -0.009000000000000001,
+      "clinical_mass": {
+        "clinical": 0.3667,
+        "patient": 0.2973
+      },
+      "error_share": {
+        "clinical": 0.0983,
+        "patient": 0.1027
+      },
+      "top_path": {
+        "clinical": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.718)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.736)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " gastroenterologist",
+        "observed_clinical": [
+          "Output \" gastroenter\"",
+          0.066
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.718
+          ],
+          [
+            "Output \" doc\"",
+            0.07
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.066
+          ],
+          [
+            "Output \" specialist\"",
+            0.025
+          ],
+          [
+            "Output \" GI\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.736
+          ],
+          [
+            "Output \" doc\"",
+            0.077
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.057
+          ],
+          [
+            "Output \" specialist\"",
+            0.025
+          ],
+          [
+            "Output \" gastro\"",
+            0.015
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 806,
+        "unique_to_a": 419,
+        "unique_to_b": 385
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T025842Z/index_49.html",
+        "png": "trace_out/pairs_20260707T025842Z/index_49.png",
+        "diff_html": "trace_out/pairs_20260707T025842Z/index_49_diff.html",
+        "diff_png": "trace_out/pairs_20260707T025842Z/index_49_diff.png"
+      }
+    },
+    {
+      "index": 50,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been feeling hypertension in my chest, so I need to get my",
+        "patient": "I've been feeling the pressure in my chest, so I need to get my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.621,
+        "patient": 0.198
+      },
+      "language_penalty": -0.423,
+      "clinical_mass": {
+        "clinical": 0.3584,
+        "patient": 0.282
+      },
+      "error_share": {
+        "clinical": 0.0912,
+        "patient": 0.0869
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.621)",
+        "patient": "embedding \u2192 Output \" chest\" (p=0.093)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.621
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.621
+          ],
+          [
+            "Output \" BP\"",
+            0.151
+          ],
+          [
+            "Output \" heart\"",
+            0.063
+          ],
+          [
+            "Output \" bp\"",
+            0.032
+          ],
+          [
+            "Output \" pressure\"",
+            0.018
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" heart\"",
+            0.299
+          ],
+          [
+            "Output \" blood\"",
+            0.198
+          ],
+          [
+            "Output \" chest\"",
+            0.093
+          ],
+          [
+            "Output \" lungs\"",
+            0.029
+          ],
+          [
+            "Output \" mind\"",
+            0.017
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 860,
+        "unique_to_a": 366,
+        "unique_to_b": 449
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T025842Z/index_50.html",
+        "png": "trace_out/pairs_20260707T025842Z/index_50.png",
+        "diff_html": "trace_out/pairs_20260707T025842Z/index_50_diff.html",
+        "diff_png": "trace_out/pairs_20260707T025842Z/index_50_diff.png"
+      }
+    }
+  ]
+}
