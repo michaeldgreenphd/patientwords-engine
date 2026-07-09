@@ -335,3 +335,14 @@ equivalence n. Both $0 tracing + ~$0.01 haiku translation. Circuit-trace
 queue FULL (64 running, 65 pending) — no trace pushes until 64 completes.
 gemma-3 stem-3 logits (run 14) still in progress. Owner plan: Fable
 interactive today; tonight fire the week-long evaluation based on findings.
+
+## 12:2x UTC — owner sign-off received (deck paste)
+SIGN-OFF 2026-07-09: A1 approve; A2 cheaper (haiku); A3 hold; A4 hold;
+B1 approve; B2 approve; B3 after feedback; B4 keep split; C1-C5 release;
+C6 release when final. Consequences: draft Tier B pre-registration today
+(1,600 pairs, haiku generator, 20-pair throughput probe first), fire tonight
+pending the haiku translation arm + equivalence recheck; implement B1
+(pair-17 retrace caption preference) and B2 (dose-curve chart replaces the
+four bars) now; C6 auto-releases when gemma-3 stem 3 lands. A3/A4 stay
+unfired. Owner also asked for a decision-point map to author a new
+process/dashboard improvement prompt.
