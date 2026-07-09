@@ -1,6 +1,9 @@
 # What we found: patient words make small language models worse at medicine
 
-**Status: final, one column still tightening — gemma-3-4b-it's fourth measurement batch re-runs this morning; its row below is provisional (n = 56). Every number traces to a committed artifact.**
+**Status: released for external readers by owner sign-off (2026-07-09), with
+one gate: the gemma-3-4b-it row is provisional (n = 56) until its re-fired
+fourth batch lands, and is released only when final. Every number traces to a
+committed artifact.**
 
 One-line summary: when the same medical situation is phrased the way patients
 actually talk instead of in clinical terms, small open models become measurably
