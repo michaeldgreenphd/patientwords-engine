@@ -1,0 +1,416 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 31,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have a tension headache since this morning, so I should probably take an",
+        "patient": "My head's been pounding since this morning, so I should probably take an"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3274
+      },
+      "error_share": {
+        "clinical": 0.0893
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " analgesic",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" aspirin\"",
+            0.429
+          ],
+          [
+            "Output \" Ad\"",
+            0.144
+          ],
+          [
+            "Output \" ibuprofen\"",
+            0.126
+          ],
+          [
+            "Output \" adv\"",
+            0.048
+          ],
+          [
+            "Output \" Asp\"",
+            0.039
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I experience paresthesia, so I might need a",
+        "patient": "I feel like something's crawling under my skin, so I might need a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1983
+      },
+      "error_share": {
+        "clinical": 0.0926
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" little\"",
+            0.104
+          ],
+          [
+            "Output \" different\"",
+            0.076
+          ],
+          [
+            "Output \" new\"",
+            0.044
+          ],
+          [
+            "Output \" higher\"",
+            0.034
+          ],
+          [
+            "Output \" better\"",
+            0.034
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep getting these awful headaches, so I should take my",
+        "patient": "I keep getting these awful migraines, so I should take my"
+      },
+      "target_token": "Output \" medicine\"",
+      "probabilities": {
+        "clinical": 0.228,
+        "patient": 0.205
+      },
+      "language_penalty": -0.02300000000000002,
+      "clinical_mass": {
+        "clinical": 0.3345,
+        "patient": 0.3457
+      },
+      "error_share": {
+        "clinical": 0.0898,
+        "patient": 0.0939
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.054)",
+        "patient": "embedding \u2192 Output \" migraine\" (p=0.059)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medicine",
+        "observed_clinical": [
+          "Output \" medicine\"",
+          0.228
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" medicine\"",
+            0.228
+          ],
+          [
+            "Output \" medication\"",
+            0.124
+          ],
+          [
+            "Output \" meds\"",
+            0.111
+          ],
+          [
+            "Output \" blood\"",
+            0.054
+          ],
+          [
+            "Output \" pills\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" medicine\"",
+            0.205
+          ],
+          [
+            "Output \" meds\"",
+            0.16
+          ],
+          [
+            "Output \" medication\"",
+            0.135
+          ],
+          [
+            "Output \" migraine\"",
+            0.059
+          ],
+          [
+            "Output \" pills\"",
+            0.041
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1026,
+        "unique_to_a": 264,
+        "unique_to_b": 186
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_33.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_33.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_33_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_33_diff.png"
+      }
+    },
+    {
+      "index": 34,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm getting angina in my chest, so I'm worried about my",
+        "patient": "I'm getting these sharp shooting pains in my chest, so I'm worried about my"
+      },
+      "target_token": "Output \" heart\"",
+      "probabilities": {
+        "clinical": 0.391,
+        "patient": 0.597
+      },
+      "language_penalty": 0.20599999999999996,
+      "clinical_mass": {
+        "clinical": 0.3829,
+        "patient": 0.4266
+      },
+      "error_share": {
+        "clinical": 0.0948,
+        "patient": 0.0982
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.391)",
+        "patient": "embedding \u2192 [L21\u00b7C] terminology related to cardiology and medical resear \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.597)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " heart",
+        "observed_clinical": [
+          "Output \" heart\"",
+          0.391
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" heart\"",
+            0.391
+          ],
+          [
+            "Output \" health\"",
+            0.184
+          ],
+          [
+            "Output \" blood\"",
+            0.062
+          ],
+          [
+            "Output \" cholesterol\"",
+            0.02
+          ],
+          [
+            "Output \" future\"",
+            0.018
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" heart\"",
+            0.597
+          ],
+          [
+            "Output \" health\"",
+            0.074
+          ],
+          [
+            "Output \" liver\"",
+            0.031
+          ],
+          [
+            "Output \" gallbladder\"",
+            0.024
+          ],
+          [
+            "Output \" baby\"",
+            0.022
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 708,
+        "unique_to_a": 541,
+        "unique_to_b": 550
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_34.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_34.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_34_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_34_diff.png"
+      }
+    },
+    {
+      "index": 35,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My stomach's been showing signs of reflux after I eat greasy food, so I probably have an",
+        "patient": "My stomach's been acting weird after I eat greasy food, so I probably have an"
+      },
+      "target_token": "Output \" ulcer\"",
+      "probabilities": {
+        "clinical": 0.321,
+        "patient": 0.466
+      },
+      "language_penalty": 0.14500000000000002,
+      "clinical_mass": {
+        "clinical": 0.3927,
+        "patient": 0.3495
+      },
+      "error_share": {
+        "clinical": 0.1025,
+        "patient": 0.1022
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.058)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" issue\" (p=0.067)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ulcer",
+        "observed_clinical": [
+          "Output \" ulcer\"",
+          0.321
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ulcer\"",
+            0.321
+          ],
+          [
+            "Output \" acid\"",
+            0.136
+          ],
+          [
+            "Output \" issue\"",
+            0.125
+          ],
+          [
+            "Output \" over\"",
+            0.058
+          ],
+          [
+            "Output \" intolerance\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ulcer\"",
+            0.466
+          ],
+          [
+            "Output \" upset\"",
+            0.098
+          ],
+          [
+            "Output \" issue\"",
+            0.067
+          ],
+          [
+            "Output \" acid\"",
+            0.06
+          ],
+          [
+            "Output \" intolerance\"",
+            0.045
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 903,
+        "unique_to_a": 452,
+        "unique_to_b": 419
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_35.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_35.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_35_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_35_diff.png"
+      }
+    }
+  ]
+}
