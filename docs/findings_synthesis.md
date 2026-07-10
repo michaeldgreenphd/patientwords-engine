@@ -1,11 +1,11 @@
 # What we found: patient words make small language models worse at medicine
 
 **Status: released for external readers by owner sign-off (2026-07-09). The
-gemma-3-4b-it column covers three of the four pair batches plus the downgrade
-set (n = 133 phrases; the largest batch's gemma-3 run exceeded its CI timeout
-and is being re-run in chunks — correction 2026-07-10, numbers unchanged):
-its mean penalty is significant, but its downgrade asymmetry does NOT reach
-significance — reported as such below. Downgrade counts here are
+gemma-3-4b-it column completed on 2026-07-10 (its largest batch's run had
+exceeded a CI timeout; re-run in chunks and landed): with the full set
+(n = 240 phrases, deduped) both its mean penalty AND its downgrade asymmetry
+are significant — the asymmetry was not established at the earlier n = 133,
+and this update is reported as such below. Downgrade counts here are
 phrase-deduped per the pre-registration (`paired_stats_rigor.py`); pooled
 tallies that count re-traced phrases run several-fold higher and are
 pseudoreplicated — do not cite them. Every number traces to a committed
@@ -30,13 +30,15 @@ wording costs probability on the same target token:
 | gemma-2-2b | −0.070 | [−0.098, −0.043] | 132 |
 | qwen3-4b | −0.099 | [−0.149, −0.049] | 132 |
 | qwen3-1.7b | −0.089 | [−0.133, −0.047] | 132 |
-| gemma-3-4b-it | −0.071 | [−0.114, −0.031] | 133 (deduped) |
+| gemma-3-4b-it | −0.044 | [−0.073, −0.016] | 240 (deduped) |
 
-On the landed gemma-3-4b-it set (three of four pair batches + the downgrade
-set), its penalty CI excludes zero (n = 133 phrases, deduped). Its per-pair penalties track gemma-2's at
-r = 0.60 (64% sign agreement). That row uses the full landed set with the
-pre-registered phrase-dedupe; the other three rows are the unified 132-pair
-cross-model set. Per-model phrase-deduped statistics for all four models —
+With every gemma-3-4b-it batch landed (all four pair batches + the downgrade
+set, completed 2026-07-10), its penalty CI excludes zero (n = 240 phrases,
+deduped); the point estimate came down from −0.071 at n = 133 as the largest
+batch was added, and the conclusion is unchanged. Its per-pair penalties
+track gemma-2's at r = 0.60 (64% sign agreement, computed on the earlier
+n = 133 subset). That row uses the full landed set with the pre-registered
+phrase-dedupe; the other three rows are the unified 132-pair cross-model set. Per-model phrase-deduped statistics for all four models —
 mean penalty (cluster bootstrap), downgrade rate (Clopper–Pearson exact),
 and BH-corrected sign tests — are in `paired_stats_rigor.json`.
 
@@ -53,12 +55,13 @@ Often the model keeps its top answer and just loses confidence. The dangerous
 case is when the top continuation changes — and when it changes, it goes down
 the care ladder far more often than up:
 
-- gemma-2-2b: 26 downgrades vs 4 upgrades (sign test p = 0.00006, BH q = 0.0002)
-- gemma-3-4b-it: 11 vs 4 — the newer instruction-tuned model does **not**
-  reach significance here (p = 0.12, BH q = 0.12); its mean penalty is real
-  (CI excludes zero) but its downgrade asymmetry is not established
-- qwen3-4b: 16 vs 2 (p = 0.001, BH q = 0.003)
-- qwen3-1.7b: 18 vs 5 (p = 0.011, BH q = 0.014)
+- gemma-2-2b: 27 downgrades vs 5 upgrades (sign test p = 0.00011, BH q = 0.0004)
+- gemma-3-4b-it: 22 vs 5 (p = 0.0015, BH q = 0.002) — at n = 133 this did not
+  reach significance (11 vs 4, p = 0.12); with its largest batch landed
+  (2026-07-10, n = 240) the newer instruction-tuned model shows the same
+  asymmetry as the others
+- qwen3-4b: 16 vs 2 (p = 0.0013, BH q = 0.002)
+- qwen3-1.7b: 18 vs 5 (p = 0.011, BH q = 0.011)
 
 These are phrase-deduped counts (each clinical phrase once, per the
 pre-registration's dedupe rule; `paired_stats_rigor.py`) on the tier

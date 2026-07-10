@@ -12,67 +12,67 @@
  "dedupe": "one record per (model, clinical_prompt); mean penalty, majority flip label",
  "per_model": {
   "gemma-2-2b": {
-   "n_rows": 431,
-   "n_unique_phrases": 348,
+   "n_rows": 452,
+   "n_unique_phrases": 369,
    "pseudoreplication_gap": 83,
    "penalty": {
-    "n_rows_with_penalty": 340,
-    "n_phrases_with_penalty": 277,
-    "mean": -0.0563,
+    "n_rows_with_penalty": 355,
+    "n_phrases_with_penalty": 292,
+    "mean": -0.056,
     "ci95": [
-     -0.0744,
-     -0.0394
+     -0.0736,
+     -0.039
     ],
-    "n_phrases": 277
+    "n_phrases": 292
    },
    "flips": {
-    "n_flips": 136,
-    "downgrades": 26,
-    "upgrades": 4,
-    "downgrade_rate": 0.1912,
+    "n_flips": 144,
+    "downgrades": 27,
+    "upgrades": 5,
+    "downgrade_rate": 0.1875,
     "downgrade_rate_ci95": [
-     0.1288,
-     0.2674
+     0.1273,
+     0.261
     ],
     "ci_method": "clopper-pearson"
    },
    "sign_test": {
-    "downgrades": 26,
-    "upgrades": 4,
-    "p_raw": 6e-05,
-    "p_bh": 0.00024
+    "downgrades": 27,
+    "upgrades": 5,
+    "p_raw": 0.00011,
+    "p_bh": 0.00044
    }
   },
   "gemma-3-4b-it": {
-   "n_rows": 136,
-   "n_unique_phrases": 133,
-   "pseudoreplication_gap": 3,
+   "n_rows": 255,
+   "n_unique_phrases": 240,
+   "pseudoreplication_gap": 15,
    "penalty": {
-    "n_rows_with_penalty": 136,
-    "n_phrases_with_penalty": 133,
-    "mean": -0.0706,
+    "n_rows_with_penalty": 255,
+    "n_phrases_with_penalty": 240,
+    "mean": -0.044,
     "ci95": [
-     -0.1139,
-     -0.0307
+     -0.0731,
+     -0.016
     ],
-    "n_phrases": 133
+    "n_phrases": 240
    },
    "flips": {
-    "n_flips": 66,
-    "downgrades": 11,
-    "upgrades": 4,
-    "downgrade_rate": 0.1667,
+    "n_flips": 110,
+    "downgrades": 22,
+    "upgrades": 5,
+    "downgrade_rate": 0.2,
     "downgrade_rate_ci95": [
-     0.0862,
-     0.2787
+     0.1298,
+     0.287
     ],
     "ci_method": "clopper-pearson"
    },
    "sign_test": {
-    "downgrades": 11,
-    "upgrades": 4,
-    "p_raw": 0.11847,
-    "p_bh": 0.11847
+    "downgrades": 22,
+    "upgrades": 5,
+    "p_raw": 0.00151,
+    "p_bh": 0.00201
    }
   },
   "qwen3-1.7b": {
@@ -84,8 +84,8 @@
     "n_phrases_with_penalty": 235,
     "mean": -0.0666,
     "ci95": [
-     -0.0938,
-     -0.04
+     -0.0943,
+     -0.039
     ],
     "n_phrases": 235
    },
@@ -104,7 +104,7 @@
     "downgrades": 18,
     "upgrades": 5,
     "p_raw": 0.01062,
-    "p_bh": 0.01416
+    "p_bh": 0.01062
    }
   },
   "qwen3-4b": {
@@ -116,8 +116,8 @@
     "n_phrases_with_penalty": 235,
     "mean": -0.0771,
     "ci95": [
-     -0.1105,
-     -0.0444
+     -0.1112,
+     -0.0446
     ],
     "n_phrases": 235
    },
@@ -136,7 +136,7 @@
     "downgrades": 16,
     "upgrades": 2,
     "p_raw": 0.00131,
-    "p_bh": 0.00262
+    "p_bh": 0.00201
    }
   }
  },
@@ -149,10 +149,10 @@
   ],
   "n_tests": 4,
   "adjusted": {
-   "gemma-2-2b": 0.00024,
-   "gemma-3-4b-it": 0.11847,
-   "qwen3-1.7b": 0.01416,
-   "qwen3-4b": 0.00262
+   "gemma-2-2b": 0.00044,
+   "gemma-3-4b-it": 0.00201,
+   "qwen3-1.7b": 0.01062,
+   "qwen3-4b": 0.00201
   }
  },
  "source": "urgency_shift.json"

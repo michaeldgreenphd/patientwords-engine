@@ -52,9 +52,20 @@ _TIE_ORDER = [_NONFLIP, "uninformative", "lateral", "upgrade", "downgrade"]
 
 
 def load_rows(path):
-    """Read the collector bundle and return its flat row list."""
+    """Read the collector bundle and return its flat row list.
+
+    Amendment 1 (pre-registered): rows the collector flagged as Tier B
+    confirmatory holdout are excluded from every interim analysis this
+    script produces. The holdout is analyzed exactly once, after the
+    collection week, against the pre-registered endpoints.
+    """
     data = json.loads(Path(path).read_text(encoding="utf-8"))
-    return data["rows"]
+    rows = data["rows"]
+    kept = [r for r in rows if r.get("tierb_split") != "holdout"]
+    excluded = len(rows) - len(kept)
+    if excluded:
+        print(f"Amendment 1: excluded {excluded} Tier B holdout rows from interim analysis")
+    return kept
 
 
 def _phrase_label(group):

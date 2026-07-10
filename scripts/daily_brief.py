@@ -211,7 +211,11 @@ def digest(dash: dict, date: str) -> str:
         segments.append(f"{len(decisions)} decision(s) waiting")
 
     findings = _list(dash.get("findings_delta"))
-    text = str(_dict(findings[0] if findings else None).get("text") or "").replace("\n", " ").strip()
+    # newest entry wins: the dashboard appends chronologically, so pick the
+    # max date and, within a date, the last-appended entry - findings[0] was
+    # surfacing the OLDEST delta as the push line (caught 2026-07-10)
+    newest = max(reversed(findings), key=lambda e: str(_dict(e).get("date") or "")) if findings else None
+    text = str(_dict(newest).get("text") or "").replace("\n", " ").strip()
     if text:
         budget = DIGEST_MAX_CHARS - len(SEP.join(segments)) - (len(SEP) if segments else 0)
         if len(text) > budget:

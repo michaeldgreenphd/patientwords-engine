@@ -195,13 +195,22 @@ if site.is_file():
                 topic=s.get("topic") or topics.get((s.get("batch"), s.get("batch_index"))),
                 penalty=m.get("language_penalty"))
 
-flips = [r for r in rows if r["flipped"]]
+# Amendment 1 (pre-registered): stamp Tier B rows with their analysis split.
+# Aggregates below use ONLY the exploration split (arows); the row files keep
+# every row, flagged, so the holdout stays auditable and is analyzed exactly
+# once after collection ends.
+from tierb_split import stamp_rows  # noqa: E402  (script-style module)
+n_holdout = stamp_rows(rows)
+arows = [r for r in rows if r.get("tierb_split") != "holdout"]
+
+flips = [r for r in arows if r["flipped"]]
 down = [r for r in flips if r["flip_class"] == "downgrade"]
 up = [r for r in flips if r["flip_class"] == "upgrade"]
-shifts = [r["tier_shift"] for r in rows if r["tier_shift"] is not None]
+shifts = [r["tier_shift"] for r in arows if r["tier_shift"] is not None]
 
 summary = {
-    "measurements": len(rows),
+    "measurements": len(arows),
+    "tierb_holdout_rows_excluded": n_holdout,
     "flips": len(flips),
     "flip_classes": {
         "downgrade": len(down), "upgrade": len(up),
@@ -223,8 +232,8 @@ def sign_test(k_down, k_up):
     return round(min(1.0, 2 * p), 5)
 
 
-for model in sorted({r["model"] for r in rows}):
-    mr = [r for r in rows if r["model"] == model]
+for model in sorted({r["model"] for r in arows}):
+    mr = [r for r in arows if r["model"] == model]
     ms = [r["tier_shift"] for r in mr if r["tier_shift"] is not None]
     mf = [r for r in mr if r["flipped"]]
     d = sum(1 for r in mf if r["flip_class"] == "downgrade")
@@ -248,9 +257,9 @@ for model in sorted({r["model"] for r in rows}):
 NONFLIP = "none"
 TIE_ORDER = [NONFLIP, "uninformative", "lateral", "upgrade", "downgrade"]
 summary["per_model_deduped"] = {}
-for model in sorted({r["model"] for r in rows}):
+for model in sorted({r["model"] for r in arows}):
     groups: dict = {}
-    for r in rows:
+    for r in arows:
         if r["model"] != model:
             continue
         key = r.get("clinical_prompt") or f"{r['batch']}#{r['index']}"
@@ -277,7 +286,7 @@ for model in sorted({r["model"] for r in rows}):
 # Cross-model concordance: do the models downgrade on the SAME phrases?
 # Correlated downgrades point at the language; uncorrelated ones at the model.
 by_phrase = {}
-for r in rows:
+for r in arows:
     by_phrase.setdefault((r["batch"], r["index"]), {})[r["model"]] = r
 multi = {k: v for k, v in by_phrase.items() if len(v) >= 2}
 conc = {
@@ -295,7 +304,7 @@ for k, v in multi.items():
         conc["downgrade_on_2plus_models"] += 1
     if len(fl) >= 2:
         conc["flip_on_2plus_models"] += 1
-models_seen = sorted({r["model"] for r in rows})
+models_seen = sorted({r["model"] for r in arows})
 for i, a in enumerate(models_seen):
     for b in models_seen[i + 1:]:
         both = [v for v in multi.values() if a in v and b in v]
@@ -310,10 +319,10 @@ summary["concordance"] = conc
 
 # Per-condition breakdown: where do the downgrades live?
 by_topic = {}
-for r in rows:
+for r in arows:
     t = r.get("topic") or "(unlabeled)"
     by_topic.setdefault(t, []).append(r)
-translated = [r for r in rows if r.get("urgency_recovery") is not None]
+translated = [r for r in arows if r.get("urgency_recovery") is not None]
 if translated:
     summary["mitigation"] = {
         "n": len(translated),

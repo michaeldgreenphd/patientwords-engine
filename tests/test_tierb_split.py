@@ -1,0 +1,97 @@
+"""Amendment 1 holdout split (scripts/tierb_split.py) - the pre-registered
+90/10 exploration/holdout assignment for Tier B pairs.
+
+The split must be deterministic and stable across sessions: a pair's split
+membership is part of the pre-registration, so an algorithm drift (different
+hash, different modulus, different encoding) would silently unblind the
+holdout. The pinned examples below fail loudly on any such drift.
+"""
+
+import importlib.util
+import json
+from pathlib import Path
+
+_MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "tierb_split.py"
+_SPEC = importlib.util.spec_from_file_location("tierb_split", _MODULE_PATH)
+tierb_split = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(tierb_split)
+
+_RIGOR_PATH = Path(__file__).resolve().parents[1] / "scripts" / "paired_stats_rigor.py"
+_RSPEC = importlib.util.spec_from_file_location("paired_stats_rigor", _RIGOR_PATH)
+rigor = importlib.util.module_from_spec(_RSPEC)
+_RSPEC.loader.exec_module(rigor)
+
+
+def test_holdout_membership_is_pinned():
+    # Values computed once at implementation time (2026-07-10). If any of
+    # these flip, the assignment algorithm changed and the pre-registered
+    # split is broken - do NOT update the expectations without flagging a
+    # pre-registration amendment.
+    assert tierb_split.is_holdout("The patient reports symptom 4.")
+    assert tierb_split.is_holdout("The patient reports symptom 13.")
+    assert not tierb_split.is_holdout("The patient reports symptom 0.")
+    assert not tierb_split.is_holdout("The patient reports symptom 1.")
+
+
+def test_holdout_rate_near_ten_percent():
+    n = sum(tierb_split.is_holdout(f"phrase {i}") for i in range(10000))
+    assert 0.08 <= n / 10000 <= 0.12
+
+
+def test_empty_prompt_stays_explore():
+    assert not tierb_split.is_holdout(None)
+    assert not tierb_split.is_holdout("")
+
+
+def test_batch_gating_by_start_stamp():
+    start = "20260710T011438Z"
+    assert tierb_split.is_tierb_batch("pairs_20260710T011743Z", start)      # after start
+    assert not tierb_split.is_tierb_batch("pairs_20260707T025842Z", start)  # Tier A
+    assert not tierb_split.is_tierb_batch("dialects_20260708T215356Z", start)
+    assert not tierb_split.is_tierb_batch("downgrades_txhaiku", start)
+    assert not tierb_split.is_tierb_batch("pairs_20260710T011743Z", None)   # pre-start
+
+
+def test_stamp_rows_flags_only_tierb(tmp_path):
+    dash = tmp_path / "dashboard.json"
+    dash.write_text(json.dumps({"tierb": {"start_utc": "2026-07-10T01:14:38Z"}}))
+    rows = [
+        {"batch": "pairs_20260710T011743Z", "clinical_prompt": "The patient reports symptom 4."},
+        {"batch": "pairs_20260710T011743Z", "clinical_prompt": "The patient reports symptom 0."},
+        {"batch": "pairs_20260707T025842Z", "clinical_prompt": "The patient reports symptom 4."},
+    ]
+    n = tierb_split.stamp_rows(rows, dashboard_path=str(dash))
+    assert n == 1
+    assert rows[0]["tierb_split"] == "holdout"
+    assert rows[1]["tierb_split"] == "explore"
+    assert "tierb_split" not in rows[2]  # Tier A rows carry no flag
+
+
+def test_stamp_rows_noop_before_tierb_start(tmp_path):
+    dash = tmp_path / "dashboard.json"
+    dash.write_text(json.dumps({"tierb": {"start_utc": None}}))
+    rows = [{"batch": "pairs_20260710T011743Z", "clinical_prompt": "x"}]
+    assert tierb_split.stamp_rows(rows, dashboard_path=str(dash)) == 0
+    assert "tierb_split" not in rows[0]
+
+
+def test_rigor_loader_excludes_holdout_rows(tmp_path):
+    bundle = tmp_path / "rows.json"
+    bundle.write_text(json.dumps({"rows": [
+        {"model": "m", "tierb_split": "holdout"},
+        {"model": "m", "tierb_split": "explore"},
+        {"model": "m"},
+    ]}))
+    kept = rigor.load_rows(str(bundle))
+    assert len(kept) == 2
+    assert all(r.get("tierb_split") != "holdout" for r in kept)
+
+
+def test_collector_stamps_and_aggregates_on_exploration_split():
+    # urgency_shift.py runs argparse at import, so tripwire on source: the
+    # stamping call must exist and aggregates must run on the filtered rows.
+    src = (Path(__file__).resolve().parents[1] / "scripts" / "urgency_shift.py").read_text(
+        encoding="utf-8")
+    assert "stamp_rows(rows)" in src
+    assert 'arows = [r for r in rows if r.get("tierb_split") != "holdout"]' in src
+    assert '"measurements": len(arows)' in src

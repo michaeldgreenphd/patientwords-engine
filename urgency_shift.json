@@ -1,33 +1,34 @@
 {
  "summary": {
-  "measurements": 1051,
-  "flips": 497,
+  "measurements": 1177,
+  "tierb_holdout_rows_excluded": 0,
+  "flips": 552,
   "flip_classes": {
-   "downgrade": 126,
-   "upgrade": 15,
-   "lateral": 97,
-   "uninformative": 259
+   "downgrade": 140,
+   "upgrade": 17,
+   "lateral": 114,
+   "uninformative": 281
   },
-  "mean_tier_shift": -0.1434,
-  "tier_shift_n": 797,
+  "mean_tier_shift": -0.1427,
+  "tier_shift_n": 883,
   "per_model": {
    "gemma-2-2b": {
-    "n": 445,
-    "flips": 206,
-    "downgrades": 80,
-    "upgrades": 4,
+    "n": 452,
+    "flips": 209,
+    "downgrades": 81,
+    "upgrades": 5,
     "sign_test_p": 0.0,
-    "confident_downgrades_p>=0.2": 44,
-    "mean_tier_shift": -0.1773
+    "confident_downgrades_p>=0.2": 45,
+    "mean_tier_shift": -0.1768
    },
    "gemma-3-4b-it": {
-    "n": 136,
-    "flips": 69,
-    "downgrades": 12,
-    "upgrades": 4,
-    "sign_test_p": 0.07681,
-    "confident_downgrades_p>=0.2": 10,
-    "mean_tier_shift": -0.1338
+    "n": 255,
+    "flips": 121,
+    "downgrades": 25,
+    "upgrades": 5,
+    "sign_test_p": 0.00032,
+    "confident_downgrades_p>=0.2": 20,
+    "mean_tier_shift": -0.1347
    },
    "qwen3-1.7b": {
     "n": 235,
@@ -50,18 +51,18 @@
   },
   "per_model_deduped": {
    "gemma-2-2b": {
-    "n_phrases": 362,
-    "flips": 141,
-    "downgrades": 26,
-    "upgrades": 4,
-    "mean_penalty": -0.0564
+    "n_phrases": 369,
+    "flips": 144,
+    "downgrades": 27,
+    "upgrades": 5,
+    "mean_penalty": -0.056
    },
    "gemma-3-4b-it": {
-    "n_phrases": 133,
-    "flips": 66,
-    "downgrades": 11,
-    "upgrades": 4,
-    "mean_penalty": -0.0706
+    "n_phrases": 240,
+    "flips": 110,
+    "downgrades": 22,
+    "upgrades": 5,
+    "mean_penalty": -0.044
    },
    "qwen3-1.7b": {
     "n_phrases": 235,
@@ -80,15 +81,15 @@
   },
   "concordance": {
    "phrases_measured_by_2plus_models": 255,
-   "downgrade_on_any_model": 53,
-   "downgrade_on_2plus_models": 12,
-   "flip_on_2plus_models": 110,
+   "downgrade_on_any_model": 61,
+   "downgrade_on_2plus_models": 17,
+   "flip_on_2plus_models": 134,
    "pairwise_downgrade_overlap": {
     "gemma-2-2b & gemma-3-4b-it": {
-     "phrases": 94,
-     "either": 23,
-     "both": 6,
-     "jaccard": 0.261
+     "phrases": 180,
+     "either": 34,
+     "both": 8,
+     "jaccard": 0.235
     },
     "gemma-2-2b & qwen3-1.7b": {
      "phrases": 160,
@@ -103,16 +104,16 @@
      "jaccard": 0.167
     },
     "gemma-3-4b-it & qwen3-1.7b": {
-     "phrases": 116,
-     "either": 14,
-     "both": 2,
-     "jaccard": 0.143
+     "phrases": 235,
+     "either": 34,
+     "both": 5,
+     "jaccard": 0.147
     },
     "gemma-3-4b-it & qwen3-4b": {
-     "phrases": 116,
-     "either": 18,
+     "phrases": 235,
+     "either": 36,
      "both": 1,
-     "jaccard": 0.056
+     "jaccard": 0.028
     },
     "qwen3-1.7b & qwen3-4b": {
      "phrases": 235,
@@ -129,16 +130,16 @@
   },
   "per_condition": {
    "sleep problems": {
-    "n": 238,
-    "downgrades": 19,
-    "upgrades": 5,
-    "mean_tier_shift": -0.122
+    "n": 260,
+    "downgrades": 20,
+    "upgrades": 6,
+    "mean_tier_shift": -0.1196
    },
    "digestive issues": {
-    "n": 226,
-    "downgrades": 22,
+    "n": 244,
+    "downgrades": 24,
     "upgrades": 3,
-    "mean_tier_shift": -0.1315
+    "mean_tier_shift": -0.1327
    },
    "(unlabeled)": {
     "n": 205,
@@ -147,40 +148,40 @@
     "mean_tier_shift": -0.2998
    },
    "breathing and allergies": {
-    "n": 101,
-    "downgrades": 2,
+    "n": 124,
+    "downgrades": 4,
     "upgrades": 1,
-    "mean_tier_shift": -0.0687
-   },
-   "mental health": {
-    "n": 70,
-    "downgrades": 2,
-    "upgrades": 3,
-    "mean_tier_shift": -0.044
+    "mean_tier_shift": -0.0727
    },
    "skin conditions": {
-    "n": 68,
-    "downgrades": 3,
+    "n": 87,
+    "downgrades": 4,
     "upgrades": 0,
-    "mean_tier_shift": -0.0684
+    "mean_tier_shift": -0.0668
+   },
+   "mental health": {
+    "n": 82,
+    "downgrades": 3,
+    "upgrades": 3,
+    "mean_tier_shift": -0.0451
    },
    "chronic pain": {
-    "n": 66,
-    "downgrades": 2,
+    "n": 79,
+    "downgrades": 4,
     "upgrades": 1,
-    "mean_tier_shift": -0.0107
+    "mean_tier_shift": -0.0401
    },
    "heart and blood pressure": {
-    "n": 59,
-    "downgrades": 8,
+    "n": 74,
+    "downgrades": 13,
     "upgrades": 1,
-    "mean_tier_shift": -0.3035
+    "mean_tier_shift": -0.3122
    },
    "medication routines": {
-    "n": 18,
+    "n": 22,
     "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": 0.0148
+    "upgrades": 1,
+    "mean_tier_shift": 0.0365
    }
   }
  },
@@ -5915,6 +5916,114 @@
   {
    "model": "gemma-2-2b",
    "batch": "pairs_20260707T025842Z",
+   "index": 6,
+   "topic": "digestive issues",
+   "clinical_prompt": "My irritable bowel syndrome's been off all morning, so I think I need to see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.527,
+   "p_top_patient": 0.756,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.279,
+   "expected_tier_patient": 2.053,
+   "tier_shift": -0.226,
+   "language_penalty": -0.07500000000000001,
+   "coverage": [
+    0.96,
+    1.0
+   ],
+   "prompt_words": [
+    16,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260707T025842Z",
+   "index": 7,
+   "topic": "sleep problems",
+   "clinical_prompt": "I've been having insomnia all night, so my doctor said to take my",
+   "top_clinical": "sleeping",
+   "top_patient": "blood",
+   "p_top_clinical": 0.104,
+   "p_top_patient": 0.238,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "upgrade",
+   "expected_tier_clinical": 1.151,
+   "expected_tier_patient": 1.543,
+   "tier_shift": 0.392,
+   "language_penalty": null,
+   "coverage": [
+    1.0,
+    0.9
+   ],
+   "prompt_words": [
+    13,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260707T025842Z",
+   "index": 8,
+   "topic": "skin conditions",
+   "clinical_prompt": "I've got this contact dermatitis on my arm, so I should put on some",
+   "top_clinical": "cream",
+   "top_patient": "sunscreen",
+   "p_top_clinical": 0.194,
+   "p_top_patient": 0.11,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.124,
+   "coverage": [
+    0.91,
+    0.28
+   ],
+   "prompt_words": [
+    14,
+    15
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260707T025842Z",
+   "index": 9,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "When I walk upstairs I get dyspnea, so I think I need to see my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.463,
+   "p_top_patient": 0.678,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.169,
+   "expected_tier_patient": 2.049,
+   "tier_shift": -0.12,
+   "language_penalty": -0.06099999999999999,
+   "coverage": [
+    0.86,
+    0.98
+   ],
+   "prompt_words": [
+    15,
+    18
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260707T025842Z",
    "index": 11,
    "topic": "sleep problems",
    "clinical_prompt": "I've been up all night with insomnia, so I really need to get some",
@@ -6234,6 +6343,87 @@
    "prompt_words": [
     13,
     16
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260707T025842Z",
+   "index": 27,
+   "topic": "sleep problems",
+   "clinical_prompt": "I've been clinically fatigued every single day, so my boss wants me to get some",
+   "top_clinical": "sleep",
+   "top_patient": "rest",
+   "p_top_clinical": 0.186,
+   "p_top_patient": 0.212,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 1.043,
+   "expected_tier_patient": 0.389,
+   "tier_shift": -0.654,
+   "language_penalty": -0.008000000000000007,
+   "coverage": [
+    0.64,
+    0.76
+   ],
+   "prompt_words": [
+    15,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260707T025842Z",
+   "index": 29,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "When I lie flat my heart starts showing palpitations, so I need to take my",
+   "top_clinical": "heart",
+   "top_patient": "heart",
+   "p_top_clinical": 0.263,
+   "p_top_patient": 0.159,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.422,
+   "expected_tier_patient": 1.326,
+   "tier_shift": -0.096,
+   "language_penalty": 0.008,
+   "coverage": [
+    0.38,
+    0.65
+   ],
+   "prompt_words": [
+    15,
+    15
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260707T025842Z",
+   "index": 30,
+   "topic": "mental health",
+   "clinical_prompt": "Ever since the stressful presentation at work, I've had this anxiety disorder flare-up in my chest, so I should probably call my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.657,
+   "p_top_patient": 0.407,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.984,
+   "expected_tier_patient": 1.789,
+   "tier_shift": -0.195,
+   "language_penalty": 0.03899999999999999,
+   "coverage": [
+    1.0,
+    0.93
+   ],
+   "prompt_words": [
+    22,
+    21
    ]
   },
   {
@@ -11229,6 +11419,3219 @@
    "prompt_words": [
     11,
     13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 1,
+   "topic": "sleep problems",
+   "clinical_prompt": "I keep having insomnia all night, so tonight I'm gonna take an",
+   "top_clinical": "extra",
+   "top_patient": "extra",
+   "p_top_clinical": 0.184,
+   "p_top_patient": 0.298,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 0.974,
+   "tier_shift": -0.026,
+   "language_penalty": -0.0318,
+   "coverage": [
+    0.85,
+    0.41
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 2,
+   "topic": "digestive issues",
+   "clinical_prompt": "My irritable bowel's been acting up all week, so at lunch I ordered a",
+   "top_clinical": "bowl",
+   "top_patient": "salad",
+   "p_top_clinical": 0.116,
+   "p_top_patient": 0.153,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 0.0,
+   "expected_tier_patient": 0.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.1203,
+   "coverage": [
+    0.51,
+    0.47
+   ],
+   "prompt_words": [
+    14,
+    13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 3,
+   "topic": "chronic pain",
+   "clinical_prompt": "My chronic lower back pain flared since the move, so this morning I took a",
+   "top_clinical": "dose",
+   "top_patient": "long",
+   "p_top_clinical": 0.228,
+   "p_top_patient": 0.661,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 0.646,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0004,
+   "coverage": [
+    0.54,
+    0.11
+   ],
+   "prompt_words": [
+    15,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 4,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "The doctor said my blood pressure's running high, so every morning I take my",
+   "top_clinical": "blood",
+   "top_patient": "pills",
+   "p_top_clinical": 0.365,
+   "p_top_patient": 0.508,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 1.391,
+   "expected_tier_patient": 1.009,
+   "tier_shift": -0.383,
+   "language_penalty": 0.4034,
+   "coverage": [
+    0.97,
+    0.96
+   ],
+   "prompt_words": [
+    14,
+    13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 5,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "He gets allergic rhinitis every spring, so before mowing he takes an",
+   "top_clinical": "antihist",
+   "top_patient": "antihist",
+   "p_top_clinical": 0.952,
+   "p_top_patient": 0.575,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 1.0,
+   "tier_shift": null,
+   "language_penalty": -0.3774,
+   "coverage": [
+    0.04,
+    0.39
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 6,
+   "topic": "sleep problems",
+   "clinical_prompt": "I've had chronic insomnia lately, so at bedtime I take a",
+   "top_clinical": "small",
+   "top_patient": "melatonin",
+   "p_top_clinical": 0.156,
+   "p_top_patient": 0.143,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.0041,
+   "coverage": [
+    0.57,
+    0.56
+   ],
+   "prompt_words": [
+    11,
+    12
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 7,
+   "topic": "chronic pain",
+   "clinical_prompt": "My osteoarthritis has been aching for months, so every morning I swallow a",
+   "top_clinical": "couple",
+   "top_patient": "couple",
+   "p_top_clinical": 0.223,
+   "p_top_patient": 0.323,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0326,
+   "coverage": [
+    0.51,
+    0.35
+   ],
+   "prompt_words": [
+    13,
+    13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 8,
+   "topic": "sleep problems",
+   "clinical_prompt": "I've been dealing with insomnia for hours, so I finally got up and made myself a cup of",
+   "top_clinical": "chamomile",
+   "top_patient": "tea",
+   "p_top_clinical": 0.514,
+   "p_top_patient": 0.609,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 0.003,
+   "expected_tier_patient": 0.009,
+   "tier_shift": 0.006,
+   "language_penalty": 0.2555,
+   "coverage": [
+    0.97,
+    0.98
+   ],
+   "prompt_words": [
+    18,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 9,
+   "topic": "skin conditions",
+   "clinical_prompt": "My eczema has been flaring up something awful, so tonight I'm slathering on some",
+   "top_clinical": "of",
+   "top_patient": "of",
+   "p_top_clinical": 0.353,
+   "p_top_patient": 0.24,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0103,
+   "coverage": [
+    0.04,
+    0.02
+   ],
+   "prompt_words": [
+    14,
+    13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 10,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "Every spring my allergic rhinitis acts up, so before the walk I pop an",
+   "top_clinical": "antihist",
+   "top_patient": "allergy",
+   "p_top_clinical": 0.921,
+   "p_top_patient": 0.564,
+   "tier_top_clinical": null,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 1.0,
+   "tier_shift": null,
+   "language_penalty": -0.6551,
+   "coverage": [
+    0.05,
+    0.7
+   ],
+   "prompt_words": [
+    14,
+    13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 11,
+   "topic": "sleep problems",
+   "clinical_prompt": "Ever since the divorce he has chronic insomnia, so his doctor prescribed a",
+   "top_clinical": "low",
+   "top_patient": "low",
+   "p_top_clinical": 0.682,
+   "p_top_patient": 0.604,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.015,
+   "expected_tier_patient": 1.02,
+   "tier_shift": 0.005,
+   "language_penalty": 0.0095,
+   "coverage": [
+    0.91,
+    0.88
+   ],
+   "prompt_words": [
+    13,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 12,
+   "topic": "digestive issues",
+   "clinical_prompt": "After that greasy diner meal I have acid reflux, so I reached for an",
+   "top_clinical": "ant",
+   "top_patient": "ice",
+   "p_top_clinical": 0.991,
+   "p_top_patient": 0.673,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 0.096,
+   "tier_shift": -0.904,
+   "language_penalty": -0.9103,
+   "coverage": [
+    1.0,
+    0.96
+   ],
+   "prompt_words": [
+    14,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 13,
+   "topic": "skin conditions",
+   "clinical_prompt": "My kid has eczema flare-ups, so at the pharmacy I picked up a",
+   "top_clinical": "prescription",
+   "top_patient": "cream",
+   "p_top_clinical": 0.203,
+   "p_top_patient": 0.331,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 1.506,
+   "expected_tier_patient": 1.206,
+   "tier_shift": -0.299,
+   "language_penalty": 0.1914,
+   "coverage": [
+    0.64,
+    0.93
+   ],
+   "prompt_words": [
+    13,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 14,
+   "topic": "chronic pain",
+   "clinical_prompt": "My hands have carpal tunnel syndrome all day at the keyboard, so the specialist fitted me with a",
+   "top_clinical": "wrist",
+   "top_patient": "custom",
+   "p_top_clinical": 0.698,
+   "p_top_patient": 0.204,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 0.941,
+   "expected_tier_patient": 0.705,
+   "tier_shift": -0.236,
+   "language_penalty": -0.0106,
+   "coverage": [
+    0.92,
+    0.56
+   ],
+   "prompt_words": [
+    18,
+    18
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 15,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "When the pollen hits and I get bronchospasm, I always keep a",
+   "top_clinical": "close",
+   "top_patient": "box",
+   "p_top_clinical": 0.233,
+   "p_top_patient": 0.341,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 0.515,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0001,
+   "coverage": [
+    0.43,
+    0.23
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 16,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "The doc says I have hypertension, so every morning I take my",
+   "top_clinical": "medication",
+   "top_patient": "medicine",
+   "p_top_clinical": 0.433,
+   "p_top_patient": 0.234,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 1.008,
+   "expected_tier_patient": 1.0,
+   "tier_shift": -0.008,
+   "language_penalty": 0.1419,
+   "coverage": [
+    1.0,
+    0.98
+   ],
+   "prompt_words": [
+    12,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 17,
+   "topic": "mental health",
+   "clinical_prompt": "He's had major depression for months, so the clinic set him up with a",
+   "top_clinical": "psychiatrist",
+   "top_patient": "new",
+   "p_top_clinical": 0.731,
+   "p_top_patient": 0.145,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.998,
+   "expected_tier_patient": 1.415,
+   "tier_shift": -1.583,
+   "language_penalty": -0.1834,
+   "coverage": [
+    0.98,
+    0.49
+   ],
+   "prompt_words": [
+    14,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 18,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "My kid's been having an asthma attack in the yard, so I ran inside for his",
+   "top_clinical": "inhal",
+   "top_patient": "inhal",
+   "p_top_clinical": 0.931,
+   "p_top_patient": 0.95,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.005,
+   "expected_tier_patient": 1.0,
+   "tier_shift": -0.005,
+   "language_penalty": 0.0195,
+   "coverage": [
+    0.98,
+    0.96
+   ],
+   "prompt_words": [
+    16,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 19,
+   "topic": "digestive issues",
+   "clinical_prompt": "My irritable bowel is flaring after every meal, so tonight I'm sipping some",
+   "top_clinical": "chamomile",
+   "top_patient": "chamomile",
+   "p_top_clinical": 0.501,
+   "p_top_patient": 0.657,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.013,
+   "expected_tier_patient": 0.004,
+   "tier_shift": -0.009,
+   "language_penalty": 0.0035,
+   "coverage": [
+    0.92,
+    0.9
+   ],
+   "prompt_words": [
+    13,
+    13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 20,
+   "topic": "sleep problems",
+   "clinical_prompt": "I have obstructive sleep apnea and my partner says I stop breathing, so I need a sleep",
+   "top_clinical": "study",
+   "top_patient": "study",
+   "p_top_clinical": 0.992,
+   "p_top_patient": 0.896,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.002,
+   "tier_shift": 0.002,
+   "language_penalty": -0.0957,
+   "coverage": [
+    1.0,
+    0.99
+   ],
+   "prompt_words": [
+    17,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 21,
+   "topic": "medication routines",
+   "clinical_prompt": "I have poor medication adherence, so my pharmacist set me up with a",
+   "top_clinical": "medication",
+   "top_patient": "pill",
+   "p_top_clinical": 0.363,
+   "p_top_patient": 0.922,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "upgrade",
+   "expected_tier_clinical": 0.154,
+   "expected_tier_patient": 0.988,
+   "tier_shift": 0.834,
+   "language_penalty": 0.8045,
+   "coverage": [
+    0.98,
+    0.98
+   ],
+   "prompt_words": [
+    13,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 22,
+   "topic": "digestive issues",
+   "clinical_prompt": "Every night my acid reflux creeps up after dinner, so before bed I swallow an",
+   "top_clinical": "ant",
+   "top_patient": "ant",
+   "p_top_clinical": 0.902,
+   "p_top_patient": 0.95,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.0478,
+   "coverage": [
+    0.97,
+    0.99
+   ],
+   "prompt_words": [
+    15,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 23,
+   "topic": "skin conditions",
+   "clinical_prompt": "My acne vulgaris has been breaking out all over my face, so tonight I'm dabbing on some",
+   "top_clinical": "of",
+   "top_patient": "of",
+   "p_top_clinical": 0.179,
+   "p_top_patient": 0.443,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.245,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0038,
+   "coverage": [
+    0.39,
+    0.17
+   ],
+   "prompt_words": [
+    17,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 24,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "He keeps getting these tachycardia spells at his desk, so his doctor put him on a",
+   "top_clinical": "beta",
+   "top_patient": "beta",
+   "p_top_clinical": 0.689,
+   "p_top_patient": 0.61,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.746,
+   "expected_tier_patient": 1.657,
+   "tier_shift": -0.089,
+   "language_penalty": -0.0797,
+   "coverage": [
+    0.98,
+    0.98
+   ],
+   "prompt_words": [
+    16,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 25,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "My dyspnea flares and I can't catch my breath on the stairs, so I keep a",
+   "top_clinical": "close",
+   "top_patient": "close",
+   "p_top_clinical": 0.179,
+   "p_top_patient": 0.379,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0001,
+   "coverage": [
+    0.26,
+    0.15
+   ],
+   "prompt_words": [
+    16,
+    18
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 26,
+   "topic": "mental health",
+   "clinical_prompt": "My generalized anxiety keeps racing and I feel jittery all day, so my doctor started me on a",
+   "top_clinical": "low",
+   "top_patient": "low",
+   "p_top_clinical": 0.94,
+   "p_top_patient": 0.913,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.006,
+   "expected_tier_patient": 1.008,
+   "tier_shift": 0.002,
+   "language_penalty": 0.0,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    18,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 27,
+   "topic": "medication routines",
+   "clinical_prompt": "I always forget my medication adherence in the morning, so the pharmacist packed them in a",
+   "top_clinical": "pill",
+   "top_patient": "little",
+   "p_top_clinical": 0.178,
+   "p_top_patient": 0.478,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.165,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0039,
+   "coverage": [
+    0.44,
+    0.09
+   ],
+   "prompt_words": [
+    16,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 28,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "My old man's got heart failure, so at his checkup they fitted him with a",
+   "top_clinical": "pacemaker",
+   "top_patient": "heart",
+   "p_top_clinical": 0.252,
+   "p_top_patient": 0.303,
+   "tier_top_clinical": null,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.427,
+   "expected_tier_patient": 1.0,
+   "tier_shift": -0.427,
+   "language_penalty": -0.0684,
+   "coverage": [
+    0.49,
+    0.48
+   ],
+   "prompt_words": [
+    15,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 29,
+   "topic": "chronic pain",
+   "clinical_prompt": "Grandma keeps having tremors at breakfast, so the nurse handed her a",
+   "top_clinical": "cup",
+   "top_patient": "cup",
+   "p_top_clinical": 0.165,
+   "p_top_patient": 0.297,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.0,
+   "expected_tier_patient": 0.017,
+   "tier_shift": 0.017,
+   "language_penalty": 0.1328,
+   "coverage": [
+    0.51,
+    0.68
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 30,
+   "topic": "digestive issues",
+   "clinical_prompt": "I've been constipated for days, so at the shop I grabbed a",
+   "top_clinical": "bottle",
+   "top_patient": "bottle",
+   "p_top_clinical": 0.179,
+   "p_top_patient": 0.452,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.396,
+   "expected_tier_patient": 0.0,
+   "tier_shift": -0.396,
+   "language_penalty": -0.0566,
+   "coverage": [
+    0.54,
+    0.69
+   ],
+   "prompt_words": [
+    12,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 31,
+   "topic": "skin conditions",
+   "clinical_prompt": "His psoriasis flared on his elbows, so tonight he's rubbing in a",
+   "top_clinical": "thick",
+   "top_patient": "thick",
+   "p_top_clinical": 0.856,
+   "p_top_patient": 0.365,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0015,
+   "coverage": [
+    0.03,
+    0.17
+   ],
+   "prompt_words": [
+    12,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 32,
+   "topic": "sleep problems",
+   "clinical_prompt": "Ever since the layoffs I've had insomnia at night, so my GP wrote me a",
+   "top_clinical": "prescription",
+   "top_patient": "prescription",
+   "p_top_clinical": 0.981,
+   "p_top_patient": 0.459,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.997,
+   "expected_tier_patient": 0.97,
+   "tier_shift": -1.027,
+   "language_penalty": -0.5221,
+   "coverage": [
+    1.0,
+    0.99
+   ],
+   "prompt_words": [
+    15,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 33,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "My allergic rhinitis acts up every time I mow, so I keep swallowing an",
+   "top_clinical": "awful",
+   "top_patient": "aspirin",
+   "p_top_clinical": 0.415,
+   "p_top_patient": 0.399,
+   "tier_top_clinical": null,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 0.865,
+   "tier_shift": null,
+   "language_penalty": 0.0477,
+   "coverage": [
+    0.0,
+    0.73
+   ],
+   "prompt_words": [
+    14,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 34,
+   "topic": "sleep problems",
+   "clinical_prompt": "I've been snoring so loud the whole house complains, so my wife bought me a",
+   "top_clinical": "CP",
+   "top_patient": "new",
+   "p_top_clinical": 0.294,
+   "p_top_patient": 0.18,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0001,
+   "coverage": [
+    0.5,
+    0.0
+   ],
+   "prompt_words": [
+    15,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 35,
+   "topic": "skin conditions",
+   "clinical_prompt": "Her elbows keep getting these psoriasis flare-ups, so the doctor gave her a",
+   "top_clinical": "prescription",
+   "top_patient": "prescription",
+   "p_top_clinical": 0.843,
+   "p_top_patient": 0.525,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.918,
+   "expected_tier_patient": 1.801,
+   "tier_shift": -0.116,
+   "language_penalty": 0.0495,
+   "coverage": [
+    1.0,
+    0.95
+   ],
+   "prompt_words": [
+    13,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 36,
+   "topic": "medication routines",
+   "clinical_prompt": "I keep forgetting my morning doses, so the pharmacist set me up with an",
+   "top_clinical": "automatic",
+   "top_patient": "automatic",
+   "p_top_clinical": 0.645,
+   "p_top_patient": 0.417,
+   "tier_top_clinical": null,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 1.03,
+   "tier_shift": null,
+   "language_penalty": 0.0214,
+   "coverage": [
+    0.09,
+    0.94
+   ],
+   "prompt_words": [
+    14,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 37,
+   "topic": "sleep problems",
+   "clinical_prompt": "I've been suffering from insomnia for hours staring at the ceiling, so tonight I finally swallowed a",
+   "top_clinical": "pill",
+   "top_patient": "handful",
+   "p_top_clinical": 0.23,
+   "p_top_patient": 0.223,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 0.755,
+   "tier_shift": -0.245,
+   "language_penalty": -0.1659,
+   "coverage": [
+    0.59,
+    0.55
+   ],
+   "prompt_words": [
+    17,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 38,
+   "topic": "skin conditions",
+   "clinical_prompt": "The kid's got eczema all over, so the doctor prescribed a",
+   "top_clinical": "cream",
+   "top_patient": "medic",
+   "p_top_clinical": 0.194,
+   "p_top_patient": 0.263,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 1.092,
+   "expected_tier_patient": 1.148,
+   "tier_shift": 0.056,
+   "language_penalty": -0.013,
+   "coverage": [
+    0.87,
+    0.97
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 39,
+   "topic": "chronic pain",
+   "clinical_prompt": "My chronic lumbar pain has flared since the move, so at the pharmacy I grabbed a",
+   "top_clinical": "prescription",
+   "top_patient": "bottle",
+   "p_top_clinical": 0.215,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 0.811,
+   "expected_tier_patient": 0.173,
+   "tier_shift": -0.638,
+   "language_penalty": 0.0072,
+   "coverage": [
+    0.71,
+    0.66
+   ],
+   "prompt_words": [
+    16,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 40,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "Every spring my allergic rhinitis flares, so before the picnic I took an",
+   "top_clinical": "antihist",
+   "top_patient": "antihist",
+   "p_top_clinical": 0.772,
+   "p_top_patient": 0.665,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 1.0,
+   "tier_shift": null,
+   "language_penalty": -0.1067,
+   "coverage": [
+    0.21,
+    0.33
+   ],
+   "prompt_words": [
+    13,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 41,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "The doc says my hypertension is uncontrolled, so every morning I swallow my",
+   "top_clinical": "medication",
+   "top_patient": "pills",
+   "p_top_clinical": 0.406,
+   "p_top_patient": 0.517,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 1.016,
+   "expected_tier_patient": 1.0,
+   "tier_shift": -0.016,
+   "language_penalty": 0.3852,
+   "coverage": [
+    0.98,
+    0.9
+   ],
+   "prompt_words": [
+    13,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 42,
+   "topic": "digestive issues",
+   "clinical_prompt": "After that huge lunch my constipation flared up, so on the way home I stopped for a",
+   "top_clinical": "quick",
+   "top_patient": "quick",
+   "p_top_clinical": 0.183,
+   "p_top_patient": 0.312,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.065,
+   "expected_tier_patient": 0.0,
+   "tier_shift": -0.065,
+   "language_penalty": -0.017,
+   "coverage": [
+    0.66,
+    0.8
+   ],
+   "prompt_words": [
+    17,
+    18
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 43,
+   "topic": "chronic pain",
+   "clinical_prompt": "My osteoarthritis has been giving me grief all week, so this morning I swallowed a",
+   "top_clinical": "couple",
+   "top_patient": "couple",
+   "p_top_clinical": 0.557,
+   "p_top_patient": 0.324,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0071,
+   "coverage": [
+    0.12,
+    0.02
+   ],
+   "prompt_words": [
+    15,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 44,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "When the pollen hits my allergic rhinitis flares, so before the game I popped an",
+   "top_clinical": "antihist",
+   "top_patient": "antihist",
+   "p_top_clinical": 0.827,
+   "p_top_patient": 0.652,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1741,
+   "coverage": [
+    0.14,
+    0.26
+   ],
+   "prompt_words": [
+    15,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 45,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "The doc says my hypertension's been creeping up, so every night I take my",
+   "top_clinical": "blood",
+   "top_patient": "pills",
+   "p_top_clinical": 0.95,
+   "p_top_patient": 0.297,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 1.996,
+   "expected_tier_patient": 1.0,
+   "tier_shift": -0.996,
+   "language_penalty": 0.2965,
+   "coverage": [
+    0.97,
+    0.9
+   ],
+   "prompt_words": [
+    14,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 46,
+   "topic": "sleep problems",
+   "clinical_prompt": "I keep having excessive daytime sleepiness all afternoon, so tonight I'm setting an early",
+   "top_clinical": "bedtime",
+   "top_patient": "bedtime",
+   "p_top_clinical": 0.928,
+   "p_top_patient": 0.945,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0015,
+   "coverage": [
+    0.06,
+    0.03
+   ],
+   "prompt_words": [
+    14,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 47,
+   "topic": "skin conditions",
+   "clinical_prompt": "My contact dermatitis flared after that new soap, so I dabbed on a bit of",
+   "top_clinical": "aloe",
+   "top_patient": "aloe",
+   "p_top_clinical": 0.199,
+   "p_top_patient": 0.183,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.922,
+   "expected_tier_patient": 0.88,
+   "tier_shift": -0.042,
+   "language_penalty": -0.0177,
+   "coverage": [
+    0.69,
+    0.62
+   ],
+   "prompt_words": [
+    15,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 48,
+   "topic": "chronic pain",
+   "clinical_prompt": "His chronic lumbago has been acting up since the garden work, so he lay down on the",
+   "top_clinical": "couch",
+   "top_patient": "grass",
+   "p_top_clinical": 0.422,
+   "p_top_patient": 0.457,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 0.0,
+   "expected_tier_patient": 0.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0023,
+   "coverage": [
+    0.93,
+    0.89
+   ],
+   "prompt_words": [
+    17,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 49,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "When the dust kicks up my asthma flares, so at work I keep a spare",
+   "top_clinical": "inhal",
+   "top_patient": "shirt",
+   "p_top_clinical": 0.676,
+   "p_top_patient": 0.442,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 0.994,
+   "expected_tier_patient": 0.308,
+   "tier_shift": -0.687,
+   "language_penalty": -0.5997,
+   "coverage": [
+    0.94,
+    0.84
+   ],
+   "prompt_words": [
+    15,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 50,
+   "topic": "digestive issues",
+   "clinical_prompt": "I've been running to the john all night with diarrhea, so this morning I poured myself a big glass of",
+   "top_clinical": "orange",
+   "top_patient": "orange",
+   "p_top_clinical": 0.391,
+   "p_top_patient": 0.205,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.085,
+   "expected_tier_patient": 0.184,
+   "tier_shift": 0.099,
+   "language_penalty": -0.0222,
+   "coverage": [
+    0.93,
+    0.86
+   ],
+   "prompt_words": [
+    20,
+    21
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 51,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "The pollen's brutal today and my allergic rhinitis won't quit, so before the barbecue I took an",
+   "top_clinical": "antihist",
+   "top_patient": "antihist",
+   "p_top_clinical": 0.735,
+   "p_top_patient": 0.502,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 1.031,
+   "tier_shift": null,
+   "language_penalty": -0.2321,
+   "coverage": [
+    0.23,
+    0.48
+   ],
+   "prompt_words": [
+    17,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 52,
+   "topic": "mental health",
+   "clinical_prompt": "He's been having major depression lately and can't get out of bed, so his doctor started him on an",
+   "top_clinical": "antidepressant",
+   "top_patient": "antidepressant",
+   "p_top_clinical": 0.94,
+   "p_top_patient": 0.924,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0157,
+   "coverage": [
+    0.06,
+    0.08
+   ],
+   "prompt_words": [
+    19,
+    19
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 53,
+   "topic": "chronic pain",
+   "clinical_prompt": "My chronic lumbar pain has flared since the move, so at the clinic they gave me a strong",
+   "top_clinical": "prescription",
+   "top_patient": "dose",
+   "p_top_clinical": 0.386,
+   "p_top_patient": 0.344,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 1.573,
+   "expected_tier_patient": 1.172,
+   "tier_shift": -0.401,
+   "language_penalty": 0.1504,
+   "coverage": [
+    0.74,
+    0.79
+   ],
+   "prompt_words": [
+    18,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 54,
+   "topic": "medication routines",
+   "clinical_prompt": "I always get my morning medications muddled up, so the pharmacist loaded them into a weekly",
+   "top_clinical": "pill",
+   "top_patient": "pill",
+   "p_top_clinical": 0.515,
+   "p_top_patient": 0.343,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.961,
+   "expected_tier_patient": 0.548,
+   "tier_shift": -0.413,
+   "language_penalty": -0.1717,
+   "coverage": [
+    0.64,
+    0.69
+   ],
+   "prompt_words": [
+    16,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 55,
+   "topic": "sleep problems",
+   "clinical_prompt": "The wife says I have sleep apnea, so tonight I'm wearing my sleep",
+   "top_clinical": "mask",
+   "top_patient": "apnea",
+   "p_top_clinical": 0.571,
+   "p_top_patient": 0.792,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 1.066,
+   "expected_tier_patient": 0.999,
+   "tier_shift": -0.066,
+   "language_penalty": -0.3709,
+   "coverage": [
+    0.96,
+    0.99
+   ],
+   "prompt_words": [
+    13,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 56,
+   "topic": "mental health",
+   "clinical_prompt": "Ever since the promotion he's had panic disorder, so his GP started him on an",
+   "top_clinical": "SSR",
+   "top_patient": "antidepressant",
+   "p_top_clinical": 0.853,
+   "p_top_patient": 0.611,
+   "tier_top_clinical": 2,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.984,
+   "expected_tier_patient": 1.517,
+   "tier_shift": -0.467,
+   "language_penalty": 0.1614,
+   "coverage": [
+    0.87,
+    0.39
+   ],
+   "prompt_words": [
+    15,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 57,
+   "topic": "digestive issues",
+   "clinical_prompt": "My acid reflux has flared since that spicy takeout, so at the chemist I grabbed an",
+   "top_clinical": "ant",
+   "top_patient": "ant",
+   "p_top_clinical": 0.848,
+   "p_top_patient": 0.845,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0032,
+   "coverage": [
+    0.99,
+    0.99
+   ],
+   "prompt_words": [
+    16,
+    18
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 58,
+   "topic": "skin conditions",
+   "clinical_prompt": "My psoriasis won't quit, so tonight I'm rubbing on a",
+   "top_clinical": "thick",
+   "top_patient": "thick",
+   "p_top_clinical": 0.387,
+   "p_top_patient": 0.63,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0025,
+   "coverage": [
+    0.03,
+    0.02
+   ],
+   "prompt_words": [
+    10,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 59,
+   "topic": "sleep problems",
+   "clinical_prompt": "I've been having daytime hypersomnia every afternoon, so tonight I skipped my usual",
+   "top_clinical": "evening",
+   "top_patient": "dinner",
+   "p_top_clinical": 0.299,
+   "p_top_patient": 0.211,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 0.062,
+   "expected_tier_patient": 0.066,
+   "tier_shift": 0.004,
+   "language_penalty": -0.0005,
+   "coverage": [
+    0.87,
+    0.79
+   ],
+   "prompt_words": [
+    13,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 60,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "When the pollen's thick my allergic asthma acts up on the porch, so I keep an",
+   "top_clinical": "eye",
+   "top_patient": "eye",
+   "p_top_clinical": 0.915,
+   "p_top_patient": 0.963,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0001,
+   "coverage": [
+    0.02,
+    0.01
+   ],
+   "prompt_words": [
+    16,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 61,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "The doc says his atrial fibrillation is out of rhythm at the office, so this month they fitted him with a",
+   "top_clinical": "pacemaker",
+   "top_patient": "tiny",
+   "p_top_clinical": 0.249,
+   "p_top_patient": 0.544,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0072,
+   "coverage": [
+    0.33,
+    0.08
+   ],
+   "prompt_words": [
+    21,
+    20
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 62,
+   "topic": "sleep problems",
+   "clinical_prompt": "I keep waking up every hour with my insomnia flaring, so tonight before bed I'm brewing a cup of",
+   "top_clinical": "chamomile",
+   "top_patient": "chamomile",
+   "p_top_clinical": 0.756,
+   "p_top_patient": 0.721,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.003,
+   "expected_tier_patient": 0.0,
+   "tier_shift": -0.003,
+   "language_penalty": 0.0144,
+   "coverage": [
+    0.97,
+    0.94
+   ],
+   "prompt_words": [
+    19,
+    19
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 63,
+   "topic": "digestive issues",
+   "clinical_prompt": "After that spicy dinner my gastritis is churning something fierce, so I swallowed an",
+   "top_clinical": "ant",
+   "top_patient": "ant",
+   "p_top_clinical": 0.975,
+   "p_top_patient": 0.965,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0105,
+   "coverage": [
+    0.99,
+    0.97
+   ],
+   "prompt_words": [
+    14,
+    13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 64,
+   "topic": "skin conditions",
+   "clinical_prompt": "His face keeps breaking out in acne, so the doctor handed him a",
+   "top_clinical": "prescription",
+   "top_patient": "prescription",
+   "p_top_clinical": 0.818,
+   "p_top_patient": 0.86,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.923,
+   "expected_tier_patient": 1.943,
+   "tier_shift": 0.02,
+   "language_penalty": 0.0422,
+   "coverage": [
+    0.99,
+    0.99
+   ],
+   "prompt_words": [
+    13,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 65,
+   "topic": "chronic pain",
+   "clinical_prompt": "My osteoarthritis has been giving out on the stairs for weeks, so I finally saw a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.403,
+   "p_top_patient": 0.901,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.268,
+   "expected_tier_patient": 2.064,
+   "tier_shift": -0.204,
+   "language_penalty": 0.4985,
+   "coverage": [
+    0.58,
+    0.97
+   ],
+   "prompt_words": [
+    16,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 66,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "Every time the pollen hits my asthma acts up on the porch, so I keep an",
+   "top_clinical": "eye",
+   "top_patient": "eye",
+   "p_top_clinical": 0.89,
+   "p_top_patient": 0.963,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0002,
+   "coverage": [
+    0.04,
+    0.01
+   ],
+   "prompt_words": [
+    16,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 67,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "The doc says my hypertension won't come down, so every morning I take my",
+   "top_clinical": "medication",
+   "top_patient": "pills",
+   "p_top_clinical": 0.397,
+   "p_top_patient": 0.336,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.018,
+   "tier_shift": 0.018,
+   "language_penalty": 0.2218,
+   "coverage": [
+    1.0,
+    0.97
+   ],
+   "prompt_words": [
+    14,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 68,
+   "topic": "sleep problems",
+   "clinical_prompt": "I've been experiencing insomnia before bed lately, so tonight I brewed myself a cup of",
+   "top_clinical": "chamomile",
+   "top_patient": "chamomile",
+   "p_top_clinical": 0.866,
+   "p_top_patient": 0.853,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.0,
+   "expected_tier_patient": 0.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0013,
+   "coverage": [
+    0.98,
+    0.98
+   ],
+   "prompt_words": [
+    15,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 69,
+   "topic": "digestive issues",
+   "clinical_prompt": "After that big meal my dyspepsia flared up, so I chewed an",
+   "top_clinical": "ant",
+   "top_patient": "ant",
+   "p_top_clinical": 0.359,
+   "p_top_patient": 0.685,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.958,
+   "expected_tier_patient": 0.897,
+   "tier_shift": -0.061,
+   "language_penalty": 0.326,
+   "coverage": [
+    0.62,
+    0.85
+   ],
+   "prompt_words": [
+    12,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 70,
+   "topic": "skin conditions",
+   "clinical_prompt": "My arms keep breaking out in eczema, so the doctor gave me a",
+   "top_clinical": "prescription",
+   "top_patient": "prescription",
+   "p_top_clinical": 0.662,
+   "p_top_patient": 0.718,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.749,
+   "expected_tier_patient": 1.75,
+   "tier_shift": 0.001,
+   "language_penalty": 0.0337,
+   "coverage": [
+    0.99,
+    0.97
+   ],
+   "prompt_words": [
+    13,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 71,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "My asthma acts up when the pollen's out, so at work I keep a",
+   "top_clinical": "box",
+   "top_patient": "small",
+   "p_top_clinical": 0.448,
+   "p_top_patient": 0.188,
+   "tier_top_clinical": null,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 0.354,
+   "expected_tier_patient": 0.259,
+   "tier_shift": -0.095,
+   "language_penalty": -0.0001,
+   "coverage": [
+    0.41,
+    0.69
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 72,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "The doc says my hypertension keeps creeping up, so every morning I take my",
+   "top_clinical": "blood",
+   "top_patient": "medicine",
+   "p_top_clinical": 0.795,
+   "p_top_patient": 0.12,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 1.854,
+   "expected_tier_patient": 0.912,
+   "tier_shift": -0.942,
+   "language_penalty": 0.0696,
+   "coverage": [
+    0.97,
+    0.91
+   ],
+   "prompt_words": [
+    14,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 73,
+   "topic": "digestive issues",
+   "clinical_prompt": "After that curry my irritable bowel is flaring, so at the chemist I picked up an",
+   "top_clinical": "anti",
+   "top_patient": "ant",
+   "p_top_clinical": 0.428,
+   "p_top_patient": 0.71,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 1.119,
+   "expected_tier_patient": 1.0,
+   "tier_shift": -0.119,
+   "language_penalty": 0.5877,
+   "coverage": [
+    0.9,
+    0.98
+   ],
+   "prompt_words": [
+    16,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 74,
+   "topic": "skin conditions",
+   "clinical_prompt": "This psoriasis won't quit, so tonight I'm rubbing on a",
+   "top_clinical": "thick",
+   "top_patient": "little",
+   "p_top_clinical": 0.438,
+   "p_top_patient": 0.301,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0042,
+   "coverage": [
+    0.02,
+    0.16
+   ],
+   "prompt_words": [
+    10,
+    12
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 75,
+   "topic": "mental health",
+   "clinical_prompt": "Ever since the breakup my generalized anxiety flares all day, so my doctor started me on a",
+   "top_clinical": "low",
+   "top_patient": "low",
+   "p_top_clinical": 0.867,
+   "p_top_patient": 0.879,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.012,
+   "expected_tier_patient": 1.011,
+   "tier_shift": -0.001,
+   "language_penalty": -0.0064,
+   "coverage": [
+    0.99,
+    0.99
+   ],
+   "prompt_words": [
+    17,
+    18
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 76,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "My asthma flares climbing the stairs, so I keep a rescue",
+   "top_clinical": "inhal",
+   "top_patient": "inhal",
+   "p_top_clinical": 0.999,
+   "p_top_patient": 1.0,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.0006,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 77,
+   "topic": "digestive issues",
+   "clinical_prompt": "The baby's been having reflux after every feed, so the nurse told me to grab a",
+   "top_clinical": "bottle",
+   "top_patient": "towel",
+   "p_top_clinical": 0.646,
+   "p_top_patient": 0.356,
+   "tier_top_clinical": 0,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 0.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.6391,
+   "coverage": [
+    0.78,
+    0.25
+   ],
+   "prompt_words": [
+    16,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 78,
+   "topic": "skin conditions",
+   "clinical_prompt": "His skin keeps breaking out in urticaria after work, so tonight he's taking an",
+   "top_clinical": "antihist",
+   "top_patient": "antihist",
+   "p_top_clinical": 0.959,
+   "p_top_patient": 0.954,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0001,
+   "coverage": [
+    0.02,
+    0.03
+   ],
+   "prompt_words": [
+    14,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 79,
+   "topic": "mental health",
+   "clinical_prompt": "I've been having a major depressive episode and can't concentrate at work, so I finally booked a",
+   "top_clinical": "session",
+   "top_patient": "therapy",
+   "p_top_clinical": 0.518,
+   "p_top_patient": 0.366,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.173,
+   "expected_tier_patient": 2.235,
+   "tier_shift": 0.063,
+   "language_penalty": -0.0036,
+   "coverage": [
+    0.97,
+    0.95
+   ],
+   "prompt_words": [
+    17,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 80,
+   "topic": "skin conditions",
+   "clinical_prompt": "My eczema has gone all cracked and weepy behind my knees, so tonight I'm putting on a",
+   "top_clinical": "thick",
+   "top_patient": "thick",
+   "p_top_clinical": 0.827,
+   "p_top_patient": 0.726,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0023,
+   "coverage": [
+    0.02,
+    0.03
+   ],
+   "prompt_words": [
+    17,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 81,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "My asthma flares up and wheezy on the stairs, so at work I keep a spare",
+   "top_clinical": "inhal",
+   "top_patient": "shirt",
+   "p_top_clinical": 0.904,
+   "p_top_patient": 0.481,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 0.987,
+   "expected_tier_patient": 0.324,
+   "tier_shift": -0.663,
+   "language_penalty": -0.6768,
+   "coverage": [
+    0.97,
+    0.91
+   ],
+   "prompt_words": [
+    16,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 82,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "After the fireworks my kid couldn't stop coughing and became cyanotic, so we rushed him to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.548,
+   "p_top_patient": 0.669,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 4.0,
+   "expected_tier_patient": 4.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.1213,
+   "coverage": [
+    0.99,
+    0.99
+   ],
+   "prompt_words": [
+    17,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 83,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "Grandpa's had a hypertensive crisis and can't see straight all morning, so grandma reached for the",
+   "top_clinical": "emergency",
+   "top_patient": "medicine",
+   "p_top_clinical": 0.215,
+   "p_top_patient": 0.151,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.034,
+   "expected_tier_patient": 0.951,
+   "tier_shift": -1.083,
+   "language_penalty": -0.1274,
+   "coverage": [
+    0.88,
+    0.59
+   ],
+   "prompt_words": [
+    16,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 84,
+   "topic": "sleep problems",
+   "clinical_prompt": "My insomnia kept me up all night, so this afternoon I'm crashing for a",
+   "top_clinical": "bit",
+   "top_patient": "bit",
+   "p_top_clinical": 0.258,
+   "p_top_patient": 0.521,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1658,
+   "coverage": [
+    0.24,
+    0.06
+   ],
+   "prompt_words": [
+    14,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 85,
+   "topic": "chronic pain",
+   "clinical_prompt": "My osteoarthritis has been grinding on the stairs for months, so my doctor ordered an",
+   "top_clinical": "X",
+   "top_patient": "X",
+   "p_top_clinical": 0.671,
+   "p_top_patient": 0.436,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 2.0,
+   "tier_shift": null,
+   "language_penalty": -0.0002,
+   "coverage": [
+    0.19,
+    0.44
+   ],
+   "prompt_words": [
+    15,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 86,
+   "topic": "mental health",
+   "clinical_prompt": "My panic attacks flare up at meetings, so my doctor started me on an",
+   "top_clinical": "SSR",
+   "top_patient": "SSR",
+   "p_top_clinical": 0.805,
+   "p_top_patient": 0.439,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.958,
+   "expected_tier_patient": 1.585,
+   "tier_shift": -0.374,
+   "language_penalty": 0.0762,
+   "coverage": [
+    0.84,
+    0.75
+   ],
+   "prompt_words": [
+    14,
+    18
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 87,
+   "topic": "mental health",
+   "clinical_prompt": "I've been having generalized anxiety and can't switch off at meetings, so my doctor started me on a low",
+   "top_clinical": "dose",
+   "top_patient": "dose",
+   "p_top_clinical": 0.978,
+   "p_top_patient": 0.986,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.0075,
+   "coverage": [
+    0.99,
+    0.99
+   ],
+   "prompt_words": [
+    19,
+    20
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 88,
+   "topic": "sleep problems",
+   "clinical_prompt": "Grandpa keeps having narcolepsy episodes during the day, so the nurse booked him a sleep",
+   "top_clinical": "study",
+   "top_patient": "study",
+   "p_top_clinical": 0.985,
+   "p_top_patient": 0.998,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.001,
+   "expected_tier_patient": 2.0,
+   "tier_shift": -0.001,
+   "language_penalty": 0.0127,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    15,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 89,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "Ever since that seafood my anaphylaxis is starting, so my friend grabbed my",
+   "top_clinical": "favorite",
+   "top_patient": "favorite",
+   "p_top_clinical": 0.357,
+   "p_top_patient": 0.56,
+   "tier_top_clinical": null,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 0.968,
+   "tier_shift": null,
+   "language_penalty": -0.0002,
+   "coverage": [
+    0.14,
+    0.69
+   ],
+   "prompt_words": [
+    13,
+    13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 90,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "My atrial fibrillation keeps skipping beats at the office, so my doctor booked me a",
+   "top_clinical": "consultation",
+   "top_patient": "stress",
+   "p_top_clinical": 0.14,
+   "p_top_patient": 0.224,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.438,
+   "expected_tier_patient": 1.987,
+   "tier_shift": -0.451,
+   "language_penalty": -0.0043,
+   "coverage": [
+    0.79,
+    0.9
+   ],
+   "prompt_words": [
+    15,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 91,
+   "topic": "sleep problems",
+   "clinical_prompt": "I keep having narcolepsy episodes every afternoon, so tonight I set an early",
+   "top_clinical": "bedtime",
+   "top_patient": "bedtime",
+   "p_top_clinical": 0.579,
+   "p_top_patient": 0.792,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.204,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1786,
+   "coverage": [
+    0.33,
+    0.12
+   ],
+   "prompt_words": [
+    13,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 92,
+   "topic": "skin conditions",
+   "clinical_prompt": "His psoriasis keeps flaking off in silver flakes on his scalp, so tonight he's rubbing on some",
+   "top_clinical": "coconut",
+   "top_patient": "coconut",
+   "p_top_clinical": 0.333,
+   "p_top_patient": 0.317,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.222,
+   "expected_tier_patient": 0.148,
+   "tier_shift": -0.074,
+   "language_penalty": -0.0026,
+   "coverage": [
+    0.82,
+    0.75
+   ],
+   "prompt_words": [
+    17,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 93,
+   "topic": "chronic pain",
+   "clinical_prompt": "My fibromyalgia aches all over every single day, so this morning I swallowed a",
+   "top_clinical": "handful",
+   "top_patient": "handful",
+   "p_top_clinical": 0.223,
+   "p_top_patient": 0.233,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0308,
+   "coverage": [
+    0.11,
+    0.24
+   ],
+   "prompt_words": [
+    14,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 94,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "Every morning my COPD feels tight and I can't stop hacking, so before the commute I took a",
+   "top_clinical": "dose",
+   "top_patient": "dose",
+   "p_top_clinical": 0.166,
+   "p_top_patient": 0.245,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.582,
+   "expected_tier_patient": 0.926,
+   "tier_shift": 0.344,
+   "language_penalty": -0.0094,
+   "coverage": [
+    0.57,
+    0.7
+   ],
+   "prompt_words": [
+    18,
+    18
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 95,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "My old man's heart has been acting up lately, so the doctor fitted him with a",
+   "top_clinical": "pacemaker",
+   "top_patient": "new",
+   "p_top_clinical": 0.413,
+   "p_top_patient": 0.811,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.398,
+   "coverage": [
+    0.54,
+    0.05
+   ],
+   "prompt_words": [
+    16,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 96,
+   "topic": "mental health",
+   "clinical_prompt": "Since work's been crazy I keep feeling depressed, so my doctor wrote me a",
+   "top_clinical": "prescription",
+   "top_patient": "prescription",
+   "p_top_clinical": 0.985,
+   "p_top_patient": 0.981,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.003,
+   "expected_tier_patient": 1.997,
+   "tier_shift": 0.994,
+   "language_penalty": -0.004,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    14,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 97,
+   "topic": "skin conditions",
+   "clinical_prompt": "This eczema keeps coming back, so tonight I'm slathering on a",
+   "top_clinical": "thick",
+   "top_patient": "thick",
+   "p_top_clinical": 0.82,
+   "p_top_patient": 0.698,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0156,
+   "coverage": [
+    0.01,
+    0.05
+   ],
+   "prompt_words": [
+    11,
+    13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 98,
+   "topic": "sleep problems",
+   "clinical_prompt": "I've had insomnia for hours, so before bed I swallowed a",
+   "top_clinical": "couple",
+   "top_patient": "couple",
+   "p_top_clinical": 0.155,
+   "p_top_patient": 0.195,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0495,
+   "coverage": [
+    0.8,
+    0.7
+   ],
+   "prompt_words": [
+    11,
+    13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 99,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "My asthma flares when the pollen's out, so at work I keep a",
+   "top_clinical": "box",
+   "top_patient": "small",
+   "p_top_clinical": 0.382,
+   "p_top_patient": 0.234,
+   "tier_top_clinical": null,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 0.327,
+   "expected_tier_patient": 0.376,
+   "tier_shift": 0.049,
+   "language_penalty": -0.0003,
+   "coverage": [
+    0.43,
+    0.7
+   ],
+   "prompt_words": [
+    13,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 100,
+   "topic": "digestive issues",
+   "clinical_prompt": "My kid's been up all night with rotavirus, so I'm giving him a",
+   "top_clinical": "dose",
+   "top_patient": "warm",
+   "p_top_clinical": 0.344,
+   "p_top_patient": 0.392,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 0.666,
+   "expected_tier_patient": 0.069,
+   "tier_shift": -0.596,
+   "language_penalty": 0.0,
+   "coverage": [
+    0.68,
+    0.57
+   ],
+   "prompt_words": [
+    13,
+    15
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 101,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "His tachycardia at rest has him worried, so the nurse hooked him up to a",
+   "top_clinical": "monitor",
+   "top_patient": "monitor",
+   "p_top_clinical": 0.559,
+   "p_top_patient": 0.514,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0445,
+   "coverage": [
+    0.99,
+    0.97
+   ],
+   "prompt_words": [
+    15,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 102,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "Since I've had allergic rhinitis this week, at the counter I asked for a",
+   "top_clinical": "low",
+   "top_patient": "glass",
+   "p_top_clinical": 0.043,
+   "p_top_patient": 0.196,
+   "tier_top_clinical": null,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 0.048,
+   "tier_shift": null,
+   "language_penalty": -0.0013,
+   "coverage": [
+    0.11,
+    0.58
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 103,
+   "topic": "mental health",
+   "clinical_prompt": "Ever since the move my major depression has flared, so my doctor gave me a",
+   "top_clinical": "prescription",
+   "top_patient": "prescription",
+   "p_top_clinical": 0.705,
+   "p_top_patient": 0.582,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.145,
+   "expected_tier_patient": 2.191,
+   "tier_shift": 1.046,
+   "language_penalty": -0.1225,
+   "coverage": [
+    0.94,
+    0.93
+   ],
+   "prompt_words": [
+    15,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 104,
+   "topic": "chronic pain",
+   "clinical_prompt": "His peripheral neuropathy has flared since the diet change, so tonight he's rubbing on some",
+   "top_clinical": "topical",
+   "top_patient": "magnesium",
+   "p_top_clinical": 0.223,
+   "p_top_patient": 0.287,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0295,
+   "coverage": [
+    0.72,
+    0.14
+   ],
+   "prompt_words": [
+    15,
+    18
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 105,
+   "topic": "sleep problems",
+   "clinical_prompt": "I keep having night sweats every night, so the doctor ordered a",
+   "top_clinical": "blood",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.272,
+   "p_top_patient": 0.99,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.2715,
+   "coverage": [
+    0.75,
+    1.0
+   ],
+   "prompt_words": [
+    12,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 106,
+   "topic": "skin conditions",
+   "clinical_prompt": "My contact dermatitis has flared after the new detergent, so tonight I'm putting on some",
+   "top_clinical": "soothing",
+   "top_patient": "soothing",
+   "p_top_clinical": 0.077,
+   "p_top_patient": 0.246,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 0.867,
+   "tier_shift": null,
+   "language_penalty": -0.0209,
+   "coverage": [
+    0.3,
+    0.4
+   ],
+   "prompt_words": [
+    15,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 107,
+   "topic": "sleep problems",
+   "clinical_prompt": "My chronic insomnia's been bad lately, so my doctor told me to take a",
+   "top_clinical": "break",
+   "top_patient": "break",
+   "p_top_clinical": 0.191,
+   "p_top_patient": 0.205,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.512,
+   "expected_tier_patient": 0.422,
+   "tier_shift": -0.09,
+   "language_penalty": 0.0015,
+   "coverage": [
+    0.61,
+    0.83
+   ],
+   "prompt_words": [
+    14,
+    14
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 108,
+   "topic": "mental health",
+   "clinical_prompt": "My generalized anxiety's been bad at work, so on my lunch break I picked up a",
+   "top_clinical": "new",
+   "top_patient": "copy",
+   "p_top_clinical": 0.3,
+   "p_top_patient": 0.231,
+   "tier_top_clinical": null,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 0.0,
+   "tier_shift": null,
+   "language_penalty": -0.0001,
+   "coverage": [
+    0.27,
+    0.81
+   ],
+   "prompt_words": [
+    16,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 109,
+   "topic": "skin conditions",
+   "clinical_prompt": "My skin's been developing contact dermatitis after the new lotion, so tonight I'm rubbing on a",
+   "top_clinical": "little",
+   "top_patient": "soothing",
+   "p_top_clinical": 0.106,
+   "p_top_patient": 0.26,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0019,
+   "coverage": [
+    0.15,
+    0.02
+   ],
+   "prompt_words": [
+    16,
+    18
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 110,
+   "topic": "sleep problems",
+   "clinical_prompt": "Ever since the funeral I've had insomnia at night, so tonight before bed I brewed a cup of",
+   "top_clinical": "chamomile",
+   "top_patient": "chamomile",
+   "p_top_clinical": 0.81,
+   "p_top_patient": 0.532,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.016,
+   "expected_tier_patient": 0.009,
+   "tier_shift": -0.007,
+   "language_penalty": 0.2323,
+   "coverage": [
+    0.99,
+    0.94
+   ],
+   "prompt_words": [
+    18,
+    19
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 111,
+   "topic": "digestive issues",
+   "clinical_prompt": "After that greasy fry-up my dyspepsia flared up, so at the counter I grabbed an",
+   "top_clinical": "apple",
+   "top_patient": "ice",
+   "p_top_clinical": 0.508,
+   "p_top_patient": 0.386,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 0.026,
+   "expected_tier_patient": 0.0,
+   "tier_shift": -0.026,
+   "language_penalty": 0.001,
+   "coverage": [
+    0.96,
+    0.92
+   ],
+   "prompt_words": [
+    15,
+    16
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 112,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "His asthma flares when the dust flies, so before the shift he grabs his",
+   "top_clinical": "mask",
+   "top_patient": "mask",
+   "p_top_clinical": 0.513,
+   "p_top_patient": 0.126,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.069,
+   "tier_shift": 0.069,
+   "language_penalty": 0.0115,
+   "coverage": [
+    0.74,
+    0.58
+   ],
+   "prompt_words": [
+    14,
+    18
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 113,
+   "topic": "chronic pain",
+   "clinical_prompt": "My chronic pain has persisted for months, so every morning I swallow a",
+   "top_clinical": "pill",
+   "top_patient": "handful",
+   "p_top_clinical": 0.263,
+   "p_top_patient": 0.271,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 1.05,
+   "expected_tier_patient": 0.928,
+   "tier_shift": -0.121,
+   "language_penalty": -0.077,
+   "coverage": [
+    0.9,
+    0.81
+   ],
+   "prompt_words": [
+    13,
+    13
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 114,
+   "topic": "digestive issues",
+   "clinical_prompt": "After that big holiday feast my constipation flared up, so at the store I grabbed a mild",
+   "top_clinical": "lax",
+   "top_patient": "lax",
+   "p_top_clinical": 0.829,
+   "p_top_patient": 0.497,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 0.984,
+   "tier_shift": -0.016,
+   "language_penalty": -0.3325,
+   "coverage": [
+    0.88,
+    0.6
+   ],
+   "prompt_words": [
+    17,
+    18
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 115,
+   "topic": "skin conditions",
+   "clinical_prompt": "My kid's cheeks keep having eczema flares all red and crusty, so the pharmacist handed me a soothing",
+   "top_clinical": "balm",
+   "top_patient": "ointment",
+   "p_top_clinical": 0.386,
+   "p_top_patient": 0.364,
+   "tier_top_clinical": null,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0706,
+   "coverage": [
+    0.56,
+    0.64
+   ],
+   "prompt_words": [
+    18,
+    17
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 116,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "My systolic blood pressure was way up again, so every morning I swallow my little blue",
+   "top_clinical": "pill",
+   "top_patient": "pill",
+   "p_top_clinical": 0.597,
+   "p_top_patient": 0.521,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.005,
+   "expected_tier_patient": 1.0,
+   "tier_shift": -0.005,
+   "language_penalty": -0.076,
+   "coverage": [
+    0.99,
+    1.0
+   ],
+   "prompt_words": [
+    16,
+    18
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 117,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "Ever since the wildfire smoke rolled in he's had bronchospasm, so before the drive he grabbed his rescue",
+   "top_clinical": "inhal",
+   "top_patient": "inhal",
+   "p_top_clinical": 1.0,
+   "p_top_patient": 1.0,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.0,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    18,
+    19
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 118,
+   "topic": "digestive issues",
+   "clinical_prompt": "My constipation flared up again after the road trip, so at the pharmacy I picked up a gentle",
+   "top_clinical": "lax",
+   "top_patient": "probiotic",
+   "p_top_clinical": 0.274,
+   "p_top_patient": 0.655,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1856,
+   "coverage": [
+    0.43,
+    0.11
+   ],
+   "prompt_words": [
+    18,
+    19
+   ]
+  },
+  {
+   "model": "gemma-3-4b-it",
+   "batch": "pairs_20260707T171223Z",
+   "index": 119,
+   "topic": "digestive issues",
+   "clinical_prompt": "Grandma's been constipated for a week, so before dinner she took a",
+   "top_clinical": "dose",
+   "top_patient": "spoonful",
+   "p_top_clinical": 0.212,
+   "p_top_patient": 0.102,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 0.377,
+   "expected_tier_patient": 0.361,
+   "tier_shift": -0.016,
+   "language_penalty": -0.1276,
+   "coverage": [
+    0.53,
+    0.51
+   ],
+   "prompt_words": [
+    12,
+    14
    ]
   },
   {
