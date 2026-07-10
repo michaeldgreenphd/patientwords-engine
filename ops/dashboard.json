@@ -1,196 +1,188 @@
 {
- "schema_version": 1,
- "updated_utc": "2026-07-10T01:44:39Z",
- "updated_by": "session",
- "queue": {
-  "circuit-trace": {
-   "running": {
-    "fired_utc": "2026-07-10T01:15:01Z",
-    "commit": "",
-    "note": "batch-2 gap-fill (indices 6-10, 26-30), chunked at 5 to dodge the 45-min step timeout"
-   },
-   "pending": null
+  "schema_version": 1,
+  "updated_utc": "2026-07-10T05:04:13Z",
+  "updated_by": "session",
+  "queue": {
+    "circuit-trace": {
+      "running": null,
+      "pending": null
+    },
+    "logits-eval": {
+      "running": null,
+      "pending": null
+    },
+    "scenario-generation": {
+      "running": {
+        "fired_utc": "2026-07-10T05:04:13Z",
+        "commit": "",
+        "note": "tierB batch 2"
+      },
+      "pending": null
+    },
+    "model-evaluation": {
+      "running": null,
+      "pending": null
+    },
+    "archive-renders": {
+      "running": null,
+      "pending": null
+    },
+    "activation-patching": {
+      "running": {
+        "fired_utc": "2026-07-10T01:44:05Z",
+        "commit": "",
+        "note": "patching smoke w/ swap provision (runs 1-2 died to runner OOM)"
+      },
+      "pending": null
+    }
   },
-  "logits-eval": {
-   "running": {
-    "fired_utc": "2026-07-10T01:23:32Z",
-    "commit": "",
-    "note": "gemma-3 stem-3 refire chunk 1/2 (pairs 1-60)"
-   },
-   "pending": {
-    "fired_utc": "2026-07-10T01:23:36Z",
-    "commit": "",
-    "note": "gemma-3 stem-3 refire chunk 2/2 (pairs 61-119)"
-   }
-  },
-  "scenario-generation": {
-   "running": null,
-   "pending": null
-  },
-  "model-evaluation": {
-   "running": null,
-   "pending": null
-  },
-  "archive-renders": {
-   "running": null,
-   "pending": null
-  },
-  "activation-patching": {
-   "running": {
-    "fired_utc": "2026-07-10T01:44:05Z",
-    "commit": "",
-    "note": "patching smoke w/ swap provision (runs 1-2 died to runner OOM)"
-   },
-   "pending": null
-  }
- },
- "runs_recent": [
-  {
-   "workflow": "circuit_trace_evaluation",
-   "fired_utc": "2026-07-09T18:47:02Z",
-   "status": "in_progress",
-   "note": "haiku batch-2 re-fire after eviction; equivalence n for tonight's go/no-go"
-  },
-  {
-   "workflow": "circuit_trace_evaluation",
-   "fired_utc": "2026-07-09T13:51:00Z",
-   "status": "success",
-   "note": "haiku-arm filler: 5 flaked pairs landed (downgrades_txhaiku complete)"
-  },
-  {
-   "workflow": "circuit_trace_evaluation",
-   "fired_utc": "2026-07-09T11:55:00Z",
-   "status": "failure",
-   "note": "second haiku batch EVICTED by the filler third-push (queue-discipline seam); re-fired"
-  },
-  {
-   "workflow": "circuit_trace_evaluation",
-   "fired_utc": "2026-07-09T11:52:00Z",
-   "status": "success",
-   "note": "haiku-translator arm: 15/20 landed (5 tracer-flake), paired recovery within noise of opus"
-  },
-  {
-   "workflow": "circuit_trace_evaluation",
-   "fired_utc": "2026-07-09T11:55:00Z",
-   "status": "pending",
-   "note": "second haiku batch trace, screened 0.02"
-  }
- ],
- "spend": {
-  "generation_ceiling_usd": 8.0,
-  "generation_spent_usd": 0.0816,
-  "lifetime_generation_usd": 9.6448,
-  "daily_ceiling_usd": 2.0,
-  "today": {
-   "date": "2026-07-10",
-   "spent_usd": 0.0816
-  },
-  "by_day": {
-   "2026-07-09": 0.0,
-   "2026-07-06": 0.5166,
-   "2026-07-07": 7.5623,
-   "2026-07-08": 1.4843,
-   "2026-07-10": 0.0816
-  },
-  "entries_seen": [
-   "boostgrid_lowrank.report.json",
-   "boostgrid_s20.report.json",
-   "boostgrid_s2p5.report.json",
-   "boostgrid_s5.report.json",
-   "dialects_20260706T232102Z.report.json",
-   "dialects_20260707T000923Z.report.json",
-   "dialects_20260707T023223Z.report.json",
-   "dialects_20260707T155124Z.report.json",
-   "dialects_20260707T235906Z.report.json",
-   "dialects_20260708T011831Z.report.json",
-   "dialects_20260708T120729Z.report.json",
-   "dialects_20260708T201616Z.report.json",
-   "dialects_20260708T203111Z.report.json",
-   "dialects_20260708T212709Z.report.json",
-   "dialects_20260708T215356Z.report.json",
-   "downgrades_txhaiku.report.json",
-   "featured_sim85.report.json",
-   "featured_sim85_r2.report.json",
-   "grandma_r2.report.json",
-   "pairs_20260706T175614Z.report.json",
-   "pairs_20260706T201750Z.report.json",
-   "pairs_20260706T210703Z.report.json",
-   "pairs_20260707T023656Z.report.json",
-   "pairs_20260707T023704Z.report.json",
-   "pairs_20260707T023706Z.report.json",
-   "pairs_20260707T025842Z.report.json",
-   "pairs_20260707T154345Z.report.json",
-   "pairs_20260707T171223Z.report.json",
-   "pairs_20260707T215921Z.report.json",
-   "pairs_20260707T221438Z.report.json",
-   "quadrants_20260706T191617Z.report.json",
-   "urgency_downgrades_20260707T1__context.report.json",
-   "urgency_downgrades_20260707T1_steer.report.json",
-   "urgency_downgrades_boostgrid.report.json",
-   "pairs_20260710T011743Z.report.json"
+  "runs_recent": [
+    {
+      "workflow": "circuit_trace_evaluation",
+      "fired_utc": "2026-07-09T18:47:02Z",
+      "status": "in_progress",
+      "note": "haiku batch-2 re-fire after eviction; equivalence n for tonight's go/no-go"
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "fired_utc": "2026-07-09T13:51:00Z",
+      "status": "success",
+      "note": "haiku-arm filler: 5 flaked pairs landed (downgrades_txhaiku complete)"
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "fired_utc": "2026-07-09T11:55:00Z",
+      "status": "failure",
+      "note": "second haiku batch EVICTED by the filler third-push (queue-discipline seam); re-fired"
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "fired_utc": "2026-07-09T11:52:00Z",
+      "status": "success",
+      "note": "haiku-translator arm: 15/20 landed (5 tracer-flake), paired recovery within noise of opus"
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "fired_utc": "2026-07-09T11:55:00Z",
+      "status": "pending",
+      "note": "second haiku batch trace, screened 0.02"
+    }
   ],
-  "last_scan_utc": "2026-07-10T01:43:06Z",
-  "alerts": []
- },
- "tierb": {
-  "target_pairs": 1600,
-  "generator": "claude-haiku-4-5",
-  "start_utc": "2026-07-10T01:14:38Z",
-  "accepted_pairs": 50,
-  "traced_pairs": 0,
-  "screened_in_pairs": 0,
-  "batches": [
-   {
-    "file": "pairs_20260710T011743Z.json",
-    "accepted": 50,
-    "cost_usd": 0.081596,
-    "status": "landed"
-   }
-  ]
- },
- "verdicts": [
-  "TIER B GO (2026-07-10 01:14 UTC). Condition (a) translator arm FINAL, all 20 haiku records: paired n=17 both-classifiable, restored-top-tier 11/17 haiku vs 12/17 opus; urgency_recovery diff -0.082 (sd 0.219, |t|~1.55, n.s.) - within noise. Condition (b) equivalence on doubled n: batch-2 yield 75.8% (== batch-1 75.8%, opus 60.2%); measurable rate 55.0% (== batch-1 55.1%, opus 48%); pooled haiku penalty -0.043 CI[-0.077,-0.012] n=49 - excludes zero, overlaps opus CI[-0.080,+0.007] n=24. No structural failure. Rationale in the ledger (01:1x entry).",
-  "Tier B batch 1 landed 01:23 UTC: 50 accepted, 67.6% yield (stopping rule >50% clear), $0.0816."
- ],
- "findings_delta": [
-  {
-   "date": "2026-07-09",
-   "text": "haiku generator evidence complete: validator yield 76% vs opus 60%, screen-in 55% vs 48%, penalty at least as strong; translator arm tracing now"
+  "spend": {
+    "generation_ceiling_usd": 8.0,
+    "generation_spent_usd": 0.0816,
+    "lifetime_generation_usd": 9.6448,
+    "daily_ceiling_usd": 2.0,
+    "today": {
+      "date": "2026-07-10",
+      "spent_usd": 0.0816
+    },
+    "by_day": {
+      "2026-07-09": 0.0,
+      "2026-07-06": 0.5166,
+      "2026-07-07": 7.5623,
+      "2026-07-08": 1.4843,
+      "2026-07-10": 0.0816
+    },
+    "entries_seen": [
+      "boostgrid_lowrank.report.json",
+      "boostgrid_s20.report.json",
+      "boostgrid_s2p5.report.json",
+      "boostgrid_s5.report.json",
+      "dialects_20260706T232102Z.report.json",
+      "dialects_20260707T000923Z.report.json",
+      "dialects_20260707T023223Z.report.json",
+      "dialects_20260707T155124Z.report.json",
+      "dialects_20260707T235906Z.report.json",
+      "dialects_20260708T011831Z.report.json",
+      "dialects_20260708T120729Z.report.json",
+      "dialects_20260708T201616Z.report.json",
+      "dialects_20260708T203111Z.report.json",
+      "dialects_20260708T212709Z.report.json",
+      "dialects_20260708T215356Z.report.json",
+      "downgrades_txhaiku.report.json",
+      "featured_sim85.report.json",
+      "featured_sim85_r2.report.json",
+      "grandma_r2.report.json",
+      "pairs_20260706T175614Z.report.json",
+      "pairs_20260706T201750Z.report.json",
+      "pairs_20260706T210703Z.report.json",
+      "pairs_20260707T023656Z.report.json",
+      "pairs_20260707T023704Z.report.json",
+      "pairs_20260707T023706Z.report.json",
+      "pairs_20260707T025842Z.report.json",
+      "pairs_20260707T154345Z.report.json",
+      "pairs_20260707T171223Z.report.json",
+      "pairs_20260707T215921Z.report.json",
+      "pairs_20260707T221438Z.report.json",
+      "quadrants_20260706T191617Z.report.json",
+      "urgency_downgrades_20260707T1__context.report.json",
+      "urgency_downgrades_20260707T1_steer.report.json",
+      "urgency_downgrades_boostgrid.report.json",
+      "pairs_20260710T011743Z.report.json"
+    ],
+    "last_scan_utc": "2026-07-10T01:43:06Z",
+    "alerts": []
   },
-  {
-   "date": "2026-07-09",
-   "text": "run 64 complete: haiku translation recovery within noise of opus (paired diff -0.031\u00b10.205); 5 pairs lost to tracer flake, filler re-trace fired; awaiting run 65 (equivalence n) + gemma-3 stem 3"
+  "tierb": {
+    "target_pairs": 1600,
+    "generator": "claude-haiku-4-5",
+    "start_utc": "2026-07-10T01:14:38Z",
+    "accepted_pairs": 50,
+    "traced_pairs": 0,
+    "screened_in_pairs": 0,
+    "batches": [
+      {
+        "file": "pairs_20260710T011743Z.json",
+        "accepted": 50,
+        "cost_usd": 0.081596,
+        "status": "landed"
+      }
+    ]
   },
-  {
-   "date": "2026-07-09",
-   "text": "Blind owner QC (20 pairs): 15 sound / 2 unsure / 3 flawed. All flaws are flips (condition-drift on patient side) but all low-signal (pen -0.02/-0.09/unmeasured, none confident downgrades) \u2014 headline downgrade claim insulated. Recorded docs/stimulus_qc_v1.json."
-  },
-  {
-   "date": "2026-07-09",
-   "text": "Checkpoint 1: infra all green (191 tests), Rmd delivered, gemma-3 4/4 stems in. Run 65 was evicted by a third-push (ops seam, now documented + mitigated), re-fired clean."
-  },
-  {
-   "date": "2026-07-09",
-   "text": "Autonomy batch 1: skeptic audit found a live dialect-page factual contradiction (fixed) and a synthesis overstatement (gemma-3 'p=0.039 significant' was actually p=0.12 NOT significant; gemma-2 downgrades 25 deduped not 67 pooled) \u2014 reconciled via new paired_stats_rigor.py. Tier label now discloses owner-review + clinician-pending. Report: docs/skeptic_read_20260709.md."
-  },
-  {
-   "date": "2026-07-09",
-   "text": "Batch 2 live: site shows phrase-deduped counts (gemma-2 26v4 replaces pooled 78); 9-model registry ready; activation-patching CI wired + smoke fired; B4 designs pre-registered. Synthesis reconciled to committed record (26v4, p 6e-5)."
-  },
-  {
-   "date": "2026-07-10",
-   "text": "GO executed: start_utc stamped, batch 1 fired+landed (50 pairs, 67.6%, $0.0816). Run-67 harvest found 2 chunks truncated by a ~45-min step timeout (10 of 50 batch-2 pairs); $0 gap-fill fired chunked at 5 (part_26 already landed). Run 14 (gemma-3 stem-3, 119 pairs) died to the 4h workflow timeout - logits_eval now supports --offset chunking; two chunks in flight. Synthesis header corrected: gemma-3 n=133 covers 3 of 4 pair batches, not 'all four' (committed numbers unchanged). Patching smoke OOM chain diagnosed: TL fp32 conversion peak; loader hardened (bf16 hf_model + no_processing) + 12G swap in workflow; smoke attempt 3 in flight. Daily Routine created (trig_01VXhhGaCorFodHP4bicKpSM, 13:00 UTC)."
-  }
- ],
- "decisions_pending": [
-  {
-   "id": "SKEPTIC",
-   "title": "Skeptic audit - voice/framing items (owner's lane, no rush)",
-   "context": "docs/skeptic_read_20260709.md: single-case caveat, word-diff example mismatch, model-eval softening are yours to phrase when back. (The pooled-count dedupe half of this item is DONE - deduped stats published site-wide 2026-07-09.)"
-  }
- ],
- "blockers": [
-  "Go/no-go condition (b) equivalence-n pending the run-65 re-fire (evicted, not failed; re-fired ~19:00 UTC). Batch-1 equivalence already holds. HOLD Tier B only if the re-fire genuinely fails."
- ],
- "notes": "In flight 01:5x UTC: circuit-trace gap-fill (part_06 pending, part_26 landed); logits gemma-3 stem-3 chunks 1/2 running + 2/2 pending; patching smoke #3 (swap fix). Next Tier B trace fires after gap-fill resolves (batch pairs_20260710T011743Z, screened 2panel). Wakes armed: critic 05:00, handoff 08:00, Routine 13:00 daily, synthesis Mon, downshift Tue."
+  "verdicts": [
+    "TIER B GO (2026-07-10 01:14 UTC). Condition (a) translator arm FINAL, all 20 haiku records: paired n=17 both-classifiable, restored-top-tier 11/17 haiku vs 12/17 opus; urgency_recovery diff -0.082 (sd 0.219, |t|~1.55, n.s.) - within noise. Condition (b) equivalence on doubled n: batch-2 yield 75.8% (== batch-1 75.8%, opus 60.2%); measurable rate 55.0% (== batch-1 55.1%, opus 48%); pooled haiku penalty -0.043 CI[-0.077,-0.012] n=49 - excludes zero, overlaps opus CI[-0.080,+0.007] n=24. No structural failure. Rationale in the ledger (01:1x entry).",
+    "Tier B batch 1 landed 01:23 UTC: 50 accepted, 67.6% yield (stopping rule >50% clear), $0.0816."
+  ],
+  "findings_delta": [
+    {
+      "date": "2026-07-09",
+      "text": "haiku generator evidence complete: validator yield 76% vs opus 60%, screen-in 55% vs 48%, penalty at least as strong; translator arm tracing now"
+    },
+    {
+      "date": "2026-07-09",
+      "text": "run 64 complete: haiku translation recovery within noise of opus (paired diff -0.031\u00b10.205); 5 pairs lost to tracer flake, filler re-trace fired; awaiting run 65 (equivalence n) + gemma-3 stem 3"
+    },
+    {
+      "date": "2026-07-09",
+      "text": "Blind owner QC (20 pairs): 15 sound / 2 unsure / 3 flawed. All flaws are flips (condition-drift on patient side) but all low-signal (pen -0.02/-0.09/unmeasured, none confident downgrades) \u2014 headline downgrade claim insulated. Recorded docs/stimulus_qc_v1.json."
+    },
+    {
+      "date": "2026-07-09",
+      "text": "Checkpoint 1: infra all green (191 tests), Rmd delivered, gemma-3 4/4 stems in. Run 65 was evicted by a third-push (ops seam, now documented + mitigated), re-fired clean."
+    },
+    {
+      "date": "2026-07-09",
+      "text": "Autonomy batch 1: skeptic audit found a live dialect-page factual contradiction (fixed) and a synthesis overstatement (gemma-3 'p=0.039 significant' was actually p=0.12 NOT significant; gemma-2 downgrades 25 deduped not 67 pooled) \u2014 reconciled via new paired_stats_rigor.py. Tier label now discloses owner-review + clinician-pending. Report: docs/skeptic_read_20260709.md."
+    },
+    {
+      "date": "2026-07-09",
+      "text": "Batch 2 live: site shows phrase-deduped counts (gemma-2 26v4 replaces pooled 78); 9-model registry ready; activation-patching CI wired + smoke fired; B4 designs pre-registered. Synthesis reconciled to committed record (26v4, p 6e-5)."
+    },
+    {
+      "date": "2026-07-10",
+      "text": "GO executed: start_utc stamped, batch 1 fired+landed (50 pairs, 67.6%, $0.0816). Run-67 harvest found 2 chunks truncated by a ~45-min step timeout (10 of 50 batch-2 pairs); $0 gap-fill fired chunked at 5 (part_26 already landed). Run 14 (gemma-3 stem-3, 119 pairs) died to the 4h workflow timeout - logits_eval now supports --offset chunking; two chunks in flight. Synthesis header corrected: gemma-3 n=133 covers 3 of 4 pair batches, not 'all four' (committed numbers unchanged). Patching smoke OOM chain diagnosed: TL fp32 conversion peak; loader hardened (bf16 hf_model + no_processing) + 12G swap in workflow; smoke attempt 3 in flight. Daily Routine created (trig_01VXhhGaCorFodHP4bicKpSM, 13:00 UTC)."
+    }
+  ],
+  "decisions_pending": [
+    {
+      "id": "SKEPTIC",
+      "title": "Skeptic audit - voice/framing items (owner's lane, no rush)",
+      "context": "docs/skeptic_read_20260709.md: single-case caveat, word-diff example mismatch, model-eval softening are yours to phrase when back. (The pooled-count dedupe half of this item is DONE - deduped stats published site-wide 2026-07-09.)"
+    }
+  ],
+  "blockers": [
+    "Go/no-go condition (b) equivalence-n pending the run-65 re-fire (evicted, not failed; re-fired ~19:00 UTC). Batch-1 equivalence already holds. HOLD Tier B only if the re-fire genuinely fails."
+  ],
+  "notes": "In flight 01:5x UTC: circuit-trace gap-fill (part_06 pending, part_26 landed); logits gemma-3 stem-3 chunks 1/2 running + 2/2 pending; patching smoke #3 (swap fix). Next Tier B trace fires after gap-fill resolves (batch pairs_20260710T011743Z, screened 2panel). Wakes armed: critic 05:00, handoff 08:00, Routine 13:00 daily, synthesis Mon, downshift Tue."
 }
