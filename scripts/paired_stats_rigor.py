@@ -355,6 +355,9 @@ def parse_args(argv=None):
                         help="fixed RNG seed (deterministic; not system entropy)")
     parser.add_argument("--out", default="paired_stats_rigor.json",
                         help="path for the JSON bundle")
+    parser.add_argument("--site", default="../patientwords",
+                        help="frontend repo root: also write data/model_stats.json for the "
+                             "cross-model comparison page ('' skips)")
     return parser.parse_args(argv)
 
 
@@ -364,6 +367,20 @@ def main(argv=None):
     bundle = analyze(rows, models=args.models, boot=args.boot, seed=args.seed)
     bundle["source"] = str(args.rows)
     Path(args.out).write_text(json.dumps(bundle, indent=1) + "\n", encoding="utf-8")
+    if args.site:
+        # site copy for model-evaluations/: same claim-grade numbers plus the
+        # models_meta block (backend/features flags) from the exporter payload,
+        # so the comparison page renders entirely from committed data
+        site_bundle = dict(bundle)
+        payload_path = Path(args.site) / "data" / "simulated_scenarios.json"
+        try:
+            payload = json.loads(payload_path.read_text(encoding="utf-8"))
+            site_bundle["models_meta"] = payload.get("models_meta")
+        except (OSError, ValueError):
+            site_bundle["models_meta"] = None
+        site_path = Path(args.site) / "data" / "model_stats.json"
+        site_path.write_text(json.dumps(site_bundle, indent=1) + "\n", encoding="utf-8")
+        print(f"site copy -> {site_path}")
     print(format_summary(bundle))
     return 0
 
