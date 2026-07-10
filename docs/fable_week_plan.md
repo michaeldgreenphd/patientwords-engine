@@ -159,3 +159,11 @@ methods Steps 5-6, the comparison page, timeline strip, Fig. 5 captions),
 emit it as MARKDOWN with stable block ids (owner edits and returns it as
 markdown; apply block-by-block like the 07-09 Rmd round), SendUserFile +
 flag in that morning's digest.
+
+ADDED 07-10 pm (owner): the same Friday wake also delivers the ANTHROPIC
+MEETING DECK (ops/decks/meeting_deck_20260717.html): 5 artifact cards
+(plumber hook, asymmetry dumbbells, steering table, convergence figure,
+translation-audit slopegraph) + a talking-points card (person-centered
+inversion, disparity-gradient bridge, dialect framework + validation
+roadmap, limits to preempt), fresh Tier B numbers only.
+Wake: trig_01RH47ogfzk48SoLR4SpAVdz (replaces trig_01CsrvJeckBXFwfvq7yjBAUc).
