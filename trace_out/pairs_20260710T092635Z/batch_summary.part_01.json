@@ -1,0 +1,416 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 1,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have gastritis, so I should take some",
+        "patient": "My stomach's been killing me all week, so I should take some"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.09,
+        "patient": 0.049
+      },
+      "language_penalty": -0.040999999999999995,
+      "clinical_mass": {
+        "clinical": 0.3918,
+        "patient": 0.2934
+      },
+      "error_share": {
+        "clinical": 0.0963,
+        "patient": 0.0904
+      },
+      "top_path": {
+        "clinical": "[L24\u00b7S]  \u2192 Output \" ant\" (p=0.090)",
+        "patient": "embedding \u2192 Output \" time\" (p=0.184)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antacids",
+        "observed_clinical": [
+          "Output \" ant\"",
+          0.09
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" medicine\"",
+            0.115
+          ],
+          [
+            "Output \" ant\"",
+            0.09
+          ],
+          [
+            "Output \" medication\"",
+            0.088
+          ],
+          [
+            "Output \" probiotics\"",
+            0.044
+          ],
+          [
+            "Output \" care\"",
+            0.044
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" time\"",
+            0.184
+          ],
+          [
+            "Output \" T\"",
+            0.105
+          ],
+          [
+            "Output \" medicine\"",
+            0.083
+          ],
+          [
+            "Output \" ant\"",
+            0.049
+          ],
+          [
+            "Output \" meds\"",
+            0.049
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 502,
+        "unique_to_a": 710,
+        "unique_to_b": 784
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_01.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_01.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_01_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_01_diff.png"
+      }
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have central obesity, so my doctor warned me about my",
+        "patient": "I'm getting fat around my middle, so my doctor warned me about my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3342
+      },
+      "error_share": {
+        "clinical": 0.0978
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " cardiovascular",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" risk\"",
+            0.249
+          ],
+          [
+            "Output \" weight\"",
+            0.063
+          ],
+          [
+            "Output \" chances\"",
+            0.063
+          ],
+          [
+            "Output \" high\"",
+            0.054
+          ],
+          [
+            "Output \" waist\"",
+            0.05
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have lower-limb weakness, so I'll need to use a",
+        "patient": "My leg keeps giving out on me, so I'll need to use a"
+      },
+      "target_token": "Output \" cane\"",
+      "probabilities": {
+        "clinical": 0.127,
+        "patient": 0.273
+      },
+      "language_penalty": 0.14600000000000002,
+      "clinical_mass": {
+        "clinical": 0.2789,
+        "patient": 0.2037
+      },
+      "error_share": {
+        "clinical": 0.0922,
+        "patient": 0.0927
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L7\u00b7O] HTML or other similar markup code, especially code r \u2192 [L8\u00b7O] words related to accessibility for disabled people | \u2192 [L16\u00b7O] words and phrases related to disabilities and/or acc \u2192 [L18\u00b7C] phrases about health or disability | Wheelchairs and \u2192 [L21\u00b7O] words related to website usability and legal require \u2192 [L24\u00b7O] words related to inventions, disabilities, and marve \u2192 Output \" wheelchair\" (p=0.186)",
+        "patient": "embedding \u2192 [L18\u00b7C] phrases about health or disability | Wheelchairs and \u2192 [L21\u00b7O] words related to website usability and legal require \u2192 [L24\u00b7O] words related to inventions, disabilities, and marve \u2192 Output \" wheelchair\" (p=0.168)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cane",
+        "observed_clinical": [
+          "Output \" cane\"",
+          0.127
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" walker\"",
+            0.197
+          ],
+          [
+            "Output \" wheelchair\"",
+            0.186
+          ],
+          [
+            "Output \" cane\"",
+            0.127
+          ],
+          [
+            "Output \" walking\"",
+            0.054
+          ],
+          [
+            "Output \" scooter\"",
+            0.034
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cane\"",
+            0.273
+          ],
+          [
+            "Output \" wheelchair\"",
+            0.168
+          ],
+          [
+            "Output \" walker\"",
+            0.157
+          ],
+          [
+            "Output \" cr\"",
+            0.081
+          ],
+          [
+            "Output \" walking\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 526,
+        "unique_to_a": 784,
+        "unique_to_b": 687
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_03.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_03.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_03_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_03_diff.png"
+      }
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have burnout syndrome, so I need to talk to a",
+        "patient": "I'm always burnt out at work, so I need to talk to a"
+      },
+      "target_token": "Output \" psychiatrist\"",
+      "probabilities": {
+        "clinical": 0.054,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2518,
+        "patient": 0.1261
+      },
+      "error_share": {
+        "clinical": 0.0913,
+        "patient": 0.0909
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.230)",
+        "patient": "embedding \u2192 Output \" professional\" (p=0.086)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " psychiatrist",
+        "observed_clinical": [
+          "Output \" psychiatrist\"",
+          0.054
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.23
+          ],
+          [
+            "Output \" therapist\"",
+            0.154
+          ],
+          [
+            "Output \" professional\"",
+            0.107
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.054
+          ],
+          [
+            "Output \" psychologist\"",
+            0.053
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" therapist\"",
+            0.168
+          ],
+          [
+            "Output \" doctor\"",
+            0.117
+          ],
+          [
+            "Output \" friend\"",
+            0.101
+          ],
+          [
+            "Output \" professional\"",
+            0.086
+          ],
+          [
+            "Output \" psychologist\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 682,
+        "unique_to_a": 598,
+        "unique_to_b": 683
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_04.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_04.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_04_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_04_diff.png"
+      }
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have night sweats, so I should get my",
+        "patient": "I've been sweating buckets in the evenings, so I should get my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.204
+      },
+      "error_share": {
+        "clinical": 0.0891
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " thyroid",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" period\"",
+            0.155
+          ],
+          [
+            "Output \" own\"",
+            0.093
+          ],
+          [
+            "Output \" blood\"",
+            0.052
+          ],
+          [
+            "Output \" money\"",
+            0.051
+          ],
+          [
+            "Output \" sleep\"",
+            0.044
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}
