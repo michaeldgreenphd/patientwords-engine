@@ -156,7 +156,7 @@ def test_exact_verified_key_sets_accepted(repo):
     # Finding 6: the full key set each workflow's params heredoc reads must pass.
     assert fire(repo, "logits-eval", params={
         "models": "qwen3-4b", "pairs_file": "p.json", "limit": "1",
-        "commit_outputs": True, "_nonce": "k1"}) == 0
+        "offset": "60", "commit_outputs": True, "_nonce": "k1"}) == 0
     assert fire(repo, "archive-renders", params={
         "tag": "t", "runs": "trace_out/x", "no_pngs": False, "prune": False, "_nonce": "k2"}) == 0
     assert fire(repo, "model-evaluation", params={

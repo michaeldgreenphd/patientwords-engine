@@ -122,14 +122,14 @@ def build_result(index, pair, tokenizer, measure_fn, topk):
     }
 
 
-def build_summary(model_id, hf_id, results):
+def build_summary(model_id, hf_id, results, start_index=1):
     return {
         "mode": "2panel",
         "backend": "logits",          # not the hosted graph backend
         "graph_model": model_id,      # export keys models_meta off this
         "source_set": None,           # no transcoder -> features=False downstream
         "generation_params": {},
-        "start_index": 1,
+        "start_index": start_index,
         "screen_targets": None,
         "inference": {"method": "logits", "hf_id": hf_id, "dtype": "bfloat16"},
         "results": results,
@@ -143,6 +143,10 @@ def main():
                         help="short model id (%s) or a Hugging Face repo id" % "/".join(HF_IDS))
     parser.add_argument("--out", required=True, help="output dir, e.g. trace_out/pairs_<STAMP>__<model>")
     parser.add_argument("--limit", type=int, default=0, help="measure only the first N pairs (0 = all)")
+    parser.add_argument("--offset", type=int, default=0,
+                        help="skip the first N pairs before applying --limit (chunking for models "
+                             "too slow to finish a big batch inside the CI timeout; result indices "
+                             "and the part filename stay global, matching the trace path)")
     parser.add_argument("--topk", type=int, default=10, help="spread size per phrasing")
     args = parser.parse_args()
 
@@ -152,6 +156,8 @@ def main():
     model_id = args.model
     hf_id = HF_IDS.get(model_id, model_id)
     pairs = json.loads(Path(args.pairs).read_text(encoding="utf-8"))
+    if args.offset:
+        pairs = pairs[args.offset:]
     if args.limit:
         pairs = pairs[:args.limit]
 
@@ -169,18 +175,20 @@ def main():
     def measure_fn(prompt, target_id, topk):
         return measure(model, tokenizer, prompt, target_id, topk)
 
+    start_index = args.offset + 1  # global 1-based join key, matching the trace path
     results = []
-    for i, pair in enumerate(pairs, start=1):
+    for i, pair in enumerate(pairs, start=start_index):
         results.append(build_result(i, pair, tokenizer, measure_fn, args.topk))
         r = results[-1]
-        print(f"  [{i}/{len(pairs)}] clin={r['probabilities']['clinical']} "
+        print(f"  [{i}/{args.offset + len(pairs)}] clin={r['probabilities']['clinical']} "
               f"pat={r['probabilities']['patient']} pen={r['language_penalty']}", flush=True)
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    summary_path = out / "batch_summary.part_01.json"
+    summary_path = out / f"batch_summary.part_{start_index:02d}.json"
     summary_path.write_text(
-        json.dumps(build_summary(model_id, hf_id, results), indent=2) + "\n", encoding="utf-8")
+        json.dumps(build_summary(model_id, hf_id, results, start_index), indent=2) + "\n",
+        encoding="utf-8")
     print(f"Wrote {len(results)} results -> {summary_path}")
 
 

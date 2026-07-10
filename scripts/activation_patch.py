@@ -259,13 +259,29 @@ def load_model(model_name):
     transformer_lens resolves both official short names ('gemma-2-2b') and the
     Hugging Face repo ids HF_IDS maps to. bfloat16 on CPU matches the logits
     path; gated weights (gemma) need HF_TOKEN in the environment.
+
+    The Hugging Face model is loaded here (same hardened posture as
+    logits_eval.py) and handed to transformer_lens, because letting
+    ``HookedTransformer.from_pretrained`` fetch it internally loads fp32 and
+    materializes extra full-size processing copies (fold_ln / centering) —
+    on a 16 GB CI runner that killed the smoke run (run 1: runner OOM, step
+    frozen in_progress). ``from_pretrained_no_processing`` keeps peak memory
+    at ~2x bf16 weights; the un-folded basis is measurement-equivalent for
+    the recovery ratio since cache and patch happen in the same basis.
     """
     try:
         import torch
         from transformer_lens import HookedTransformer
+        from transformers import AutoModelForCausalLM, AutoTokenizer
     except ImportError as exc:
         raise ImportError(_TL_IMPORT_ERROR) from exc
-    model = HookedTransformer.from_pretrained(model_name, dtype=torch.bfloat16)
+    hf_id = HF_IDS.get(model_name, model_name)
+    tokenizer = AutoTokenizer.from_pretrained(hf_id, trust_remote_code=False)
+    hf_model = AutoModelForCausalLM.from_pretrained(
+        hf_id, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True,
+        trust_remote_code=False, use_safetensors=True)
+    model = HookedTransformer.from_pretrained_no_processing(
+        model_name, hf_model=hf_model, tokenizer=tokenizer, dtype=torch.bfloat16)
     model.eval()
     return model
 
@@ -316,11 +332,7 @@ def patch_and_measure(model, clean_prompt, corrupt_prompt, target_id,
     (null = outside the shared suffix, so never patched).
     """
     if isinstance(model, str):
-        try:
-            from transformer_lens import HookedTransformer
-        except ImportError as exc:
-            raise ImportError(_TL_IMPORT_ERROR) from exc
-        model = HookedTransformer.from_pretrained(model)
+        model = load_model(model)
 
     clean_strs = model.to_str_tokens(clean_prompt)
     corrupt_strs = model.to_str_tokens(corrupt_prompt)

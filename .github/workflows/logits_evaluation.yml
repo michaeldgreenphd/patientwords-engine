@@ -30,6 +30,10 @@ on:
         description: "Measure only the first N pairs (0 = all)"
         type: string
         default: "0"
+      offset:
+        description: "Skip the first N pairs before limit (chunking; part number = offset+1)"
+        type: string
+        default: "0"
       commit_outputs:
         description: "Commit the per-model batch_summary back to the branch"
         type: boolean
@@ -52,6 +56,7 @@ jobs:
       models: ${{ steps.params.outputs.models }}
       pairs_file: ${{ steps.params.outputs.pairs_file }}
       limit: ${{ steps.params.outputs.limit }}
+      offset: ${{ steps.params.outputs.offset }}
       commit_outputs: ${{ steps.params.outputs.commit_outputs }}
     steps:
       - uses: actions/checkout@v4
@@ -62,13 +67,14 @@ jobs:
           IN_MODELS: ${{ inputs.models }}
           IN_PAIRS_FILE: ${{ inputs.pairs_file }}
           IN_LIMIT: ${{ inputs.limit }}
+          IN_OFFSET: ${{ inputs.offset }}
           IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
         run: |
           python - <<'EOF'
           import json, os
           defaults = {"models": "qwen3-4b qwen3-1.7b",
                       "pairs_file": "data/simulated/pairs_20260706T201750Z.json",
-                      "limit": "0", "commit_outputs": "false"}
+                      "limit": "0", "offset": "0", "commit_outputs": "false"}
           p = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/logits-eval.json", encoding="utf-8") as f:
@@ -90,8 +96,10 @@ jobs:
               f.write("models=" + json.dumps(models) + "\n")
               f.write("pairs_file=" + p["pairs_file"] + "\n")
               f.write("limit=" + p["limit"] + "\n")
+              f.write("offset=" + p["offset"] + "\n")
               f.write("commit_outputs=" + p["commit_outputs"] + "\n")
-          print("models:", models, "| pairs:", p["pairs_file"], "| limit:", p["limit"])
+          print("models:", models, "| pairs:", p["pairs_file"],
+                "| limit:", p["limit"], "| offset:", p["offset"])
           EOF
 
   eval:
@@ -120,19 +128,22 @@ jobs:
         env:
           MODEL: ${{ matrix.model }}
           PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
+          OFFSET: ${{ needs.params.outputs.offset }}
         run: |
           STEM=$(basename "$PAIRS_FILE" .json)
           echo "OUT_DIR=trace_out/${STEM}__${MODEL}" >> "$GITHUB_ENV"
+          echo "PART=$(printf 'part_%02d' $((OFFSET + 1)))" >> "$GITHUB_ENV"
 
       - name: Measure next-token behavior
         env:
           MODEL: ${{ matrix.model }}
           PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
           LIMIT: ${{ needs.params.outputs.limit }}
+          OFFSET: ${{ needs.params.outputs.offset }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}   # only needed for gated models (gemma)
         run: |
           python scripts/logits_eval.py --pairs "$PAIRS_FILE" --model "$MODEL" \
-            --out "$OUT_DIR" --limit "$LIMIT"
+            --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET"
 
       - name: Commit the per-model summary to the branch
         if: ${{ always() && needs.params.outputs.commit_outputs == 'true' }}
@@ -140,12 +151,12 @@ jobs:
           BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          if [ ! -f "$OUT_DIR/batch_summary.part_01.json" ]; then
+          if [ ! -f "$OUT_DIR/batch_summary.$PART.json" ]; then
             echo "No summary to commit"; exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f "$OUT_DIR/batch_summary.part_01.json"
+          git add -f "$OUT_DIR/batch_summary.$PART.json"
           git commit -m "Logits eval: $OUT_DIR (${{ matrix.model }}, next-token behavior)"
           for i in 1 2 3 4 5; do
             if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
@@ -158,7 +169,7 @@ jobs:
       - name: Job summary
         if: always()
         run: |
-          SUMMARY="$OUT_DIR/batch_summary.part_01.json"
+          SUMMARY="$OUT_DIR/batch_summary.$PART.json"
           if [ -f "$SUMMARY" ]; then
             {
               echo "## Logits eval (${{ matrix.model }})"

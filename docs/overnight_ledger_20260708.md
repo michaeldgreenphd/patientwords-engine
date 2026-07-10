@@ -582,3 +582,45 @@ logits_eval with a source-level tripwire test (suite 229 green); vetting
 policy in model_matrix.md (official orgs only, ephemeral CI execution,
 revision pinning after first probe). Owner's rhythm: ONE morning check-in
 — all new ideas go into the 9am EDT digest, no extra pings.
+
+## 2026-07-10 01:1x UTC — TIER B GO/NO-GO: **GO** (rationale)
+Standing approval condition (owner, 2026-07-09): fire Tier B batch 1 tonight
+ONLY IF the haiku translation verdict is clean (recovery within the noise of
+opus AND equivalence n holding); any ambiguity or structural failure = HOLD.
+
+**Condition (a) — translator recovery, FINALIZED with the filler landed
+(all 20 txhaiku records, translation_model=claude-haiku-4-5):**
+paired n=17 (both arms classifiable): haiku restored-top-tier 11/17 vs opus
+12/17 (haiku-only restores idx 14,16; opus-only idx 2,9,11 — same
+win/loss pattern as the 13:5x interim read, plus new haiku win at 16).
+Paired urgency_recovery haiku +0.127 vs opus +0.209, mean diff −0.082
+(sd 0.219, |t|≈1.55, n.s. at n=17). Verdict: WITHIN NOISE — near-parity on
+tier restoration; haiku recovers somewhat less probability mass on average
+but the difference is not statistically distinguishable. Condition MET.
+
+**Condition (b) — haiku equivalence on doubled n (run 67 harvest,
+pairs_20260707T025842Z, 40/50 traced — indices 6–10 & 26–30 lost to a
+~45-min CI step timeout on two matrix jobs, mechanical missingness only):**
+- validator yield: batch-2 50/66 = 75.8% — IDENTICAL to batch-1 75.8%
+  (opus comparator 60.2%). Stopping rule (<50% twice) nowhere near tripped.
+- measurable-pair rate: batch-2 22/40 = 55.0% vs batch-1 27/49 = 55.1%
+  (opus 48%). (Screening-passed rate: 75% vs 71% vs opus 64%.)
+- penalty, screened-in pairs, pair bootstrap seed 7×5000:
+  batch-2 alone −0.039 CI[−0.100,+0.014] n=22 (wide at this n, crosses zero);
+  haiku POOLED −0.043 CI[−0.077,−0.012] n=49 — excludes zero and overlaps
+  opus −0.036 CI[−0.080,+0.007] n=24. Condition MET; no structural failure
+  (rejection reasons same category as batch 1; screening normal).
+
+**VERDICT: GO.** tierb.start_utc stamped; batch 1 fired via fire_trigger
+(haiku, num=50, max_spend=$0.25). The 10 untraced batch-2 indices get a $0
+gap-fill trace (offsets 5,25 × sample 5) — chunked smaller because the two
+lost jobs were ~45-min step timeouts at sample_size 10.
+
+**Also found at harvest (queued fixes, $0):** (1) logits run 14
+(gemma-3-4b-it on 119-pair stem 171223Z) hit the 4h workflow timeout with
+no partial output — logits_eval.py needs offset support to chunk big
+batches; until it lands, the released synthesis header's "all four
+measurement batches landed" for gemma-3 is WRONG (its n=133 rests on
+201750Z/154345Z/215921Z + downgrade set; the committed numbers themselves
+are correct as computed) — header corrected this session. (2) activation-
+patching smoke run 1 = failure; diagnosis below after log pull.

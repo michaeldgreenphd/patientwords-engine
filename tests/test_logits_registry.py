@@ -61,9 +61,35 @@ def test_model_loading_supply_chain_posture():
     """
     from pathlib import Path
 
-    logits_src = Path(__file__).resolve().parents[1] / "scripts" / "logits_eval.py"
-    src = logits_src.read_text(encoding="utf-8")
-    assert "use_safetensors=True" in src
-    assert "trust_remote_code=False" in src
-    for script in (Path(__file__).resolve().parents[1] / "scripts").glob("*.py"):
+    scripts_dir = Path(__file__).resolve().parents[1] / "scripts"
+    for loader in ("logits_eval.py", "activation_patch.py"):
+        src = (scripts_dir / loader).read_text(encoding="utf-8")
+        assert "use_safetensors=True" in src, loader
+        assert "trust_remote_code=False" in src, loader
+    for script in scripts_dir.glob("*.py"):
         assert "trust_remote_code=True" not in script.read_text(encoding="utf-8"), script.name
+
+def test_build_summary_start_index_default_and_offset():
+    # Chunked runs (--offset) must keep the global 1-based join key: the
+    # summary's start_index and each result's index are what downstream
+    # consumers (urgency collector, exporter) join back to the batch file.
+    s = logits_eval.build_summary("qwen3-4b", "Qwen/Qwen3-4B", [])
+    assert s["start_index"] == 1
+    s = logits_eval.build_summary("qwen3-4b", "Qwen/Qwen3-4B", [], start_index=61)
+    assert s["start_index"] == 61
+
+
+def test_offset_chunking_wiring_matches_trace_convention():
+    """Regression for the run-14 timeout: a 119-pair gemma-3 batch cannot
+    finish inside the 4h CI timeout, so logits_eval chunks via --offset.
+    The part filename is 1-based (part_NN = offset+1) like the trace path,
+    so two chunks of one batch never clobber each other, and the workflow
+    heredoc must carry the key or push-path fires silently drop it."""
+    src = _MODULE_PATH.read_text(encoding="utf-8")
+    assert '"--offset"' in src or "'--offset'" in src
+    assert 'batch_summary.part_{start_index:02d}' in src
+    wf = (_MODULE_PATH.parents[1] / ".github" / "workflows" / "logits_evaluation.yml")
+    text = wf.read_text(encoding="utf-8")
+    assert '"offset": "0"' in text          # push-path defaults carry the key
+    assert '--offset "$OFFSET"' in text     # CLI pass-through
+    assert "part_%02d' $((OFFSET + 1))" in text  # part naming from offset

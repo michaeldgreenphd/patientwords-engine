@@ -83,9 +83,9 @@ KNOWN_KEYS = {
         "generate_explanations", "steer_validate", "steer_boost", "steer_placebo",
         "steer_strength", "steer_boost_strength", "steer_rank_offset", "translation_model",
     }),
-    # logits_evaluation.yml `defaults` dict (verified 2026-07-09): models, pairs_file,
-    # limit, commit_outputs.
-    "logits-eval": frozenset({"models", "pairs_file", "limit", "commit_outputs"}),
+    # logits_evaluation.yml `defaults` dict (verified 2026-07-10): models, pairs_file,
+    # limit, offset, commit_outputs.
+    "logits-eval": frozenset({"models", "pairs_file", "limit", "offset", "commit_outputs"}),
     # activation_patching.yml `defaults` dict (verified 2026-07-09): pairs_file, limit,
     # layers, positions, model, offsets, commit_outputs.
     "activation-patching": frozenset({
