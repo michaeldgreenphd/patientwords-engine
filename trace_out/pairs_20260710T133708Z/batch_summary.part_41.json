@@ -1,0 +1,416 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 41,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep getting these erythematous lesions on my arms, so I might have a",
+        "patient": "I keep getting these red, itchy patches on my arms, so I might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4261
+      },
+      "error_share": {
+        "clinical": 0.1063
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " dermatitis",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \"topic\"",
+            0.212
+          ],
+          [
+            "Output \" rash\"",
+            0.06
+          ],
+          [
+            "Output \" reaction\"",
+            0.057
+          ],
+          [
+            "Output \" fungal\"",
+            0.045
+          ],
+          [
+            "Output \" skin\"",
+            0.04
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have early morning nausea and vomiting, so my partner thinks I might be",
+        "patient": "I've been throwing up almost every morning, so my partner thinks I might be"
+      },
+      "target_token": "Output \" pregnant\"",
+      "probabilities": {
+        "clinical": 0.78,
+        "patient": 0.799
+      },
+      "language_penalty": 0.019000000000000017,
+      "clinical_mass": {
+        "clinical": 0.3076,
+        "patient": 0.284
+      },
+      "error_share": {
+        "clinical": 0.1063,
+        "patient": 0.0976
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L7\u00b7O] words associated with pregnancy, birth, and abortion \u2192 [L18\u00b7C] pregnancy | technical jargon used in scientific publ \u2192 [L24\u00b7O] discussion of ethics, morality, and/or family polici \u2192 Output \" pregnant\" (p=0.780)",
+        "patient": "[L2\u00b7S]  \u2192 [L3\u00b7C] mentions of bodily fluids and physical distress | me \u2192 [L4\u00b7C] words and phrases related to sickness, especially vo \u2192 [L18\u00b7C] pregnancy | technical jargon used in scientific publ \u2192 [L24\u00b7O] discussion of ethics, morality, and/or family polici \u2192 Output \" pregnant\" (p=0.799)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pregnant",
+        "observed_clinical": [
+          "Output \" pregnant\"",
+          0.78
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pregnant\"",
+            0.78
+          ],
+          [
+            "Output \" having\"",
+            0.025
+          ],
+          [
+            "Output \" pg\"",
+            0.017
+          ],
+          [
+            "Output \" sick\"",
+            0.015
+          ],
+          [
+            "Output \" expecting\"",
+            0.012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pregnant\"",
+            0.799
+          ],
+          [
+            "Output \" sick\"",
+            0.022
+          ],
+          [
+            "Output \" preg\"",
+            0.019
+          ],
+          [
+            "Output \" having\"",
+            0.016
+          ],
+          [
+            "Output \" pg\"",
+            0.011
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 680,
+        "unique_to_a": 555,
+        "unique_to_b": 607
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_42.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_42.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_42_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_42_diff.png"
+      }
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After I eat dairy, I experience lactose intolerance, so I probably need to avoid my",
+        "patient": "After I eat dairy, my stomach gets all messed up, so I probably need to avoid my"
+      },
+      "target_token": "Output \" milk\"",
+      "probabilities": {
+        "clinical": 0.03,
+        "patient": 0.037
+      },
+      "language_penalty": 0.006999999999999999,
+      "clinical_mass": {
+        "clinical": 0.1595,
+        "patient": 0.178
+      },
+      "error_share": {
+        "clinical": 0.0945,
+        "patient": 0.0935
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" dairy\" (p=0.037)",
+        "patient": "embedding \u2192 Output \" dairy\" (p=0.086)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " milk",
+        "observed_clinical": [
+          "Output \" milk\"",
+          0.03
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" favorite\"",
+            0.168
+          ],
+          [
+            "Output \" dairy\"",
+            0.037
+          ],
+          [
+            "Output \" food\"",
+            0.03
+          ],
+          [
+            "Output \" milk\"",
+            0.03
+          ],
+          [
+            "Output \" usual\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" favorite\"",
+            0.135
+          ],
+          [
+            "Output \" dairy\"",
+            0.086
+          ],
+          [
+            "Output \" milk\"",
+            0.037
+          ],
+          [
+            "Output \" cheese\"",
+            0.03
+          ],
+          [
+            "Output \" food\"",
+            0.027
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1049,
+        "unique_to_a": 229,
+        "unique_to_b": 264
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_43.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_43.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_43_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_43_diff.png"
+      }
+    },
+    {
+      "index": 44,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been getting these paresthesias in my fingers, so my doctor wants me to check my",
+        "patient": "I've been getting these weird numbness spells in my fingers, so my doctor wants me to check my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.14,
+        "patient": 0.168
+      },
+      "language_penalty": 0.027999999999999997,
+      "clinical_mass": {
+        "clinical": 0.4359,
+        "patient": 0.4419
+      },
+      "error_share": {
+        "clinical": 0.1111,
+        "patient": 0.1057
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L19\u00b7C] words related to medical tests and procedures | labo \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.140)",
+        "patient": "[L23\u00b7S]  \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.168)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.14
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" thyroid\"",
+            0.204
+          ],
+          [
+            "Output \" vitamin\"",
+            0.157
+          ],
+          [
+            "Output \" blood\"",
+            0.14
+          ],
+          [
+            "Output \" calcium\"",
+            0.051
+          ],
+          [
+            "Output \" Vitamin\"",
+            0.049
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" vitamin\"",
+            0.191
+          ],
+          [
+            "Output \" blood\"",
+            0.168
+          ],
+          [
+            "Output \" thyroid\"",
+            0.168
+          ],
+          [
+            "Output \" calcium\"",
+            0.066
+          ],
+          [
+            "Output \" Vitamin\"",
+            0.058
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1072,
+        "unique_to_a": 408,
+        "unique_to_b": 394
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_44.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_44.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_44_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_44_diff.png"
+      }
+    },
+    {
+      "index": 45,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have dry eye syndrome, so I need to use my",
+        "patient": "My eyes are all scratchy and watery, so I need to use my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2849
+      },
+      "error_share": {
+        "clinical": 0.0949
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " drops",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" eye\"",
+            0.384
+          ],
+          [
+            "Output \" contact\"",
+            0.071
+          ],
+          [
+            "Output \" artificial\"",
+            0.053
+          ],
+          [
+            "Output \" contacts\"",
+            0.052
+          ],
+          [
+            "Output \" eyes\"",
+            0.041
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}
