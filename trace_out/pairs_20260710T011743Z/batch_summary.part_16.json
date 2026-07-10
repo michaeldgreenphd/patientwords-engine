@@ -1,0 +1,459 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 16,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have vertigo, so my",
+        "patient": "I've been feeling like the room is spinning around me, so my"
+      },
+      "target_token": "Output \" balance\"",
+      "probabilities": {
+        "clinical": 0.119,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2823,
+        "patient": 0.1388
+      },
+      "error_share": {
+        "clinical": 0.0804,
+        "patient": 0.0791
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L23\u00b7O] the concept of balance, or weighing multiple options \u2192 Output \" balance\" (p=0.119)",
+        "patient": "embedding \u2192 Output \" mind\" (p=0.041)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " balance",
+        "observed_clinical": [
+          "Output \" balance\"",
+          0.119
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" head\"",
+            0.129
+          ],
+          [
+            "Output \" balance\"",
+            0.119
+          ],
+          [
+            "Output \" eyes\"",
+            0.074
+          ],
+          [
+            "Output \" ears\"",
+            0.068
+          ],
+          [
+            "Output \" doctor\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" eyes\"",
+            0.118
+          ],
+          [
+            "Output \" head\"",
+            0.108
+          ],
+          [
+            "Output \" vision\"",
+            0.067
+          ],
+          [
+            "Output \" brain\"",
+            0.051
+          ],
+          [
+            "Output \" mind\"",
+            0.041
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 439,
+        "unique_to_a": 524,
+        "unique_to_b": 819
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_16.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_16.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_16_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_16_diff.png"
+      }
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have pleurisy when I bend down, so I should talk to a",
+        "patient": "I keep getting these sharp pains in my chest when I bend down, so I should talk to a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.457,
+        "patient": 0.774
+      },
+      "language_penalty": 0.317,
+      "clinical_mass": {
+        "clinical": 0.3512,
+        "patient": 0.3682
+      },
+      "error_share": {
+        "clinical": 0.1076,
+        "patient": 0.1009
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 [L21\u00b7C] language offering or seeking medical advice from doc \u2192 [L24\u00b7C] words related to medical treatment or legal cases |  \u2192 Output \" physical\" (p=0.040)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.774)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.457
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.457
+          ],
+          [
+            "Output \" specialist\"",
+            0.066
+          ],
+          [
+            "Output \" physio\"",
+            0.064
+          ],
+          [
+            "Output \" physical\"",
+            0.04
+          ],
+          [
+            "Output \" chi\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.774
+          ],
+          [
+            "Output \" cardio\"",
+            0.04
+          ],
+          [
+            "Output \" doc\"",
+            0.021
+          ],
+          [
+            "Output \" Dr\"",
+            0.019
+          ],
+          [
+            "Output \" specialist\"",
+            0.017
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 570,
+        "unique_to_a": 738,
+        "unique_to_b": 606
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_17.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_17.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_17_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have paresthesia in my fingers, so I should see a",
+        "patient": "I'm getting these weird tingling feelings in my fingers, so I should see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.394,
+        "patient": 0.134
+      },
+      "language_penalty": -0.26,
+      "clinical_mass": {
+        "clinical": 0.4053,
+        "patient": 0.3594
+      },
+      "error_share": {
+        "clinical": 0.1073,
+        "patient": 0.0995
+      },
+      "top_path": {
+        "clinical": "[L11\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.271)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.718)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.394
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neuro\"",
+            0.394
+          ],
+          [
+            "Output \" doctor\"",
+            0.271
+          ],
+          [
+            "Output \" hand\"",
+            0.059
+          ],
+          [
+            "Output \" specialist\"",
+            0.046
+          ],
+          [
+            "Output \" Neuro\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.718
+          ],
+          [
+            "Output \" neuro\"",
+            0.134
+          ],
+          [
+            "Output \" doc\"",
+            0.033
+          ],
+          [
+            "Output \" Dr\"",
+            0.016
+          ],
+          [
+            "Output \" specialist\"",
+            0.012
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 667,
+        "unique_to_a": 652,
+        "unique_to_b": 558
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_18.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_18.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_18_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After eating dairy, I have lactose intolerance, so I might need to avoid my",
+        "patient": "After eating dairy, my stomach gets all weird and gurgles, so I might need to avoid my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1536
+      },
+      "error_share": {
+        "clinical": 0.0949
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " intake",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" favorite\"",
+            0.252
+          ],
+          [
+            "Output \" favourite\"",
+            0.073
+          ],
+          [
+            "Output \" usual\"",
+            0.048
+          ],
+          [
+            "Output \" beloved\"",
+            0.041
+          ],
+          [
+            "Output \" food\"",
+            0.03
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I eat too fast, I experience reflux, so I need to take an",
+        "patient": "When I eat too fast, my food just sits in my chest like a rock, so I need to take an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.491,
+        "patient": 0.068
+      },
+      "language_penalty": -0.423,
+      "clinical_mass": {
+        "clinical": 0.2831,
+        "patient": 0.1631
+      },
+      "error_share": {
+        "clinical": 0.089,
+        "patient": 0.0884
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" hour\" (p=0.094)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" hour\" (p=0.147)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antacid",
+        "observed_clinical": [
+          "Output \" ant\"",
+          0.491
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.491
+          ],
+          [
+            "Output \" anti\"",
+            0.182
+          ],
+          [
+            "Output \" hour\"",
+            0.094
+          ],
+          [
+            "Output \" extra\"",
+            0.075
+          ],
+          [
+            "Output \" acid\"",
+            0.019
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" extra\"",
+            0.448
+          ],
+          [
+            "Output \" hour\"",
+            0.147
+          ],
+          [
+            "Output \" anti\"",
+            0.068
+          ],
+          [
+            "Output \" ant\"",
+            0.041
+          ],
+          [
+            "Output \" aspirin\"",
+            0.026
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 836,
+        "unique_to_a": 458,
+        "unique_to_b": 514
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_20.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_20.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_20_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_20_diff.png"
+      }
+    }
+  ]
+}
