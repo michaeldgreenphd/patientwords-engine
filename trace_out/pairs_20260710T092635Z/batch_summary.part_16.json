@@ -1,0 +1,405 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 16,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I experience dyspnea on exertion, so I should probably take my",
+        "patient": "I get really short of breath when I climb stairs, so I should probably take my"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.104,
+        "patient": 0.085
+      },
+      "language_penalty": -0.01899999999999999,
+      "clinical_mass": {
+        "clinical": 0.3627,
+        "patient": 0.2278
+      },
+      "error_share": {
+        "clinical": 0.0985,
+        "patient": 0.0891
+      },
+      "top_path": {
+        "clinical": "[L19\u00b7S]  \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.103)",
+        "patient": "[L19\u00b7S]  \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.067)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " inhaler",
+        "observed_clinical": [
+          "Output \" inhal\"",
+          0.104
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.104
+          ],
+          [
+            "Output \" blood\"",
+            0.103
+          ],
+          [
+            "Output \" asthma\"",
+            0.065
+          ],
+          [
+            "Output \" medication\"",
+            0.057
+          ],
+          [
+            "Output \" meds\"",
+            0.056
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" asthma\"",
+            0.103
+          ],
+          [
+            "Output \" inhal\"",
+            0.085
+          ],
+          [
+            "Output \" meds\"",
+            0.084
+          ],
+          [
+            "Output \" medication\"",
+            0.068
+          ],
+          [
+            "Output \" blood\"",
+            0.067
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 687,
+        "unique_to_a": 582,
+        "unique_to_b": 680
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_16.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_16.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_16_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_16_diff.png"
+      }
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing nausea and vomiting at mealtimes, so I need to see a",
+        "patient": "I've been having trouble keeping food down at mealtimes, so I need to see a"
+      },
+      "target_token": "Output \" gastroenter\"",
+      "probabilities": {
+        "clinical": 0.101,
+        "patient": 0.058
+      },
+      "language_penalty": -0.043000000000000003,
+      "clinical_mass": {
+        "clinical": 0.4102,
+        "patient": 0.3031
+      },
+      "error_share": {
+        "clinical": 0.1011,
+        "patient": 0.095
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.410)",
+        "patient": "[L12\u00b7S]  \u2192 [L16\u00b7C] doctors | disclaimers and statements about medical a \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.340)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " gastroenterologist",
+        "observed_clinical": [
+          "Output \" gastroenter\"",
+          0.101
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.41
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.101
+          ],
+          [
+            "Output \" specialist\"",
+            0.077
+          ],
+          [
+            "Output \" gastro\"",
+            0.068
+          ],
+          [
+            "Output \" die\"",
+            0.054
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.34
+          ],
+          [
+            "Output \" die\"",
+            0.159
+          ],
+          [
+            "Output \" nutrition\"",
+            0.102
+          ],
+          [
+            "Output \" specialist\"",
+            0.064
+          ],
+          [
+            "Output \" gastro\"",
+            0.058
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 784,
+        "unique_to_a": 468,
+        "unique_to_b": 551
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_17.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_17.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_17_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have tachycardia, so I need to check my",
+        "patient": "I feel like my heart's racing all the time, so I need to check my"
+      },
+      "target_token": "Output \" pulse\"",
+      "probabilities": {
+        "clinical": 0.23,
+        "patient": 0.299
+      },
+      "language_penalty": 0.06899999999999998,
+      "clinical_mass": {
+        "clinical": 0.3946,
+        "patient": 0.29
+      },
+      "error_share": {
+        "clinical": 0.0943,
+        "patient": 0.0863
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] rate | configurations with numbers \u2192 [L19\u00b7C] words and phrases related to health, especially the  \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.574)",
+        "patient": "embedding \u2192 [L19\u00b7C] words and phrases related to health, especially the  \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.291)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pulse",
+        "observed_clinical": [
+          "Output \" pulse\"",
+          0.23
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" heart\"",
+            0.574
+          ],
+          [
+            "Output \" pulse\"",
+            0.23
+          ],
+          [
+            "Output \" HR\"",
+            0.042
+          ],
+          [
+            "Output \" blood\"",
+            0.037
+          ],
+          [
+            "Output \" resting\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pulse\"",
+            0.299
+          ],
+          [
+            "Output \" heart\"",
+            0.291
+          ],
+          [
+            "Output \" blood\"",
+            0.195
+          ],
+          [
+            "Output \" BP\"",
+            0.038
+          ],
+          [
+            "Output \" heartbeat\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 472,
+        "unique_to_a": 600,
+        "unique_to_b": 759
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_18.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_18.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_18_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep getting these erythematous lesions, so my dermatologist thinks it might be",
+        "patient": "I keep getting these red, angry patches on my skin, so my dermatologist thinks it might be"
+      },
+      "target_token": "Output \" eczema\"",
+      "probabilities": {
+        "clinical": 0.078,
+        "patient": 0.095
+      },
+      "language_penalty": 0.017,
+      "clinical_mass": {
+        "clinical": 0.4026,
+        "patient": 0.3462
+      },
+      "error_share": {
+        "clinical": 0.1027,
+        "patient": 0.0985
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" a\" (p=0.184)",
+        "patient": "embedding \u2192 Output \" a\" (p=0.177)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " eczema",
+        "observed_clinical": [
+          "Output \" eczema\"",
+          0.078
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" a\"",
+            0.184
+          ],
+          [
+            "Output \" ros\"",
+            0.105
+          ],
+          [
+            "Output \" eczema\"",
+            0.078
+          ],
+          [
+            "Output \" lichen\"",
+            0.075
+          ],
+          [
+            "Output \" psoriasis\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ros\"",
+            0.253
+          ],
+          [
+            "Output \" a\"",
+            0.177
+          ],
+          [
+            "Output \" eczema\"",
+            0.095
+          ],
+          [
+            "Output \" psoriasis\"",
+            0.054
+          ],
+          [
+            "Output \" an\"",
+            0.052
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 955,
+        "unique_to_a": 408,
+        "unique_to_b": 437
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_19.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_19.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_19_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_19_diff.png"
+      }
+    }
+  ]
+}
