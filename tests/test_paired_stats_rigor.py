@@ -159,8 +159,10 @@ def test_main_writes_bundle_and_summary(rows, tmp_path, capsys):
     rows_path = tmp_path / "urgency_shift.json"
     rows_path.write_text(json.dumps({"summary": {}, "rows": rows}), encoding="utf-8")
     out_path = tmp_path / "rigor.json"
+    # --site '' : the default writes the REAL frontend's data/model_stats.json,
+    # which a test run must never clobber with fixture data (bit us 2026-07-10)
     rc = psr.main(["--rows", str(rows_path), "--out", str(out_path),
-                   "--boot", "300", "--seed", "7"])
+                   "--boot", "300", "--seed", "7", "--site", ""])
     assert rc == 0
     bundle = json.loads(out_path.read_text(encoding="utf-8"))
     assert bundle["source"] == str(rows_path)
@@ -168,3 +170,16 @@ def test_main_writes_bundle_and_summary(rows, tmp_path, capsys):
     out = capsys.readouterr().out
     assert "paired-stats rigor" in out
     assert "pseudoreplication gap" in out
+
+
+def test_main_site_copy_goes_to_given_root(rows, tmp_path):
+    rows_path = tmp_path / "urgency_shift.json"
+    rows_path.write_text(json.dumps({"summary": {}, "rows": rows}), encoding="utf-8")
+    site = tmp_path / "site"
+    (site / "data").mkdir(parents=True)
+    rc = psr.main(["--rows", str(rows_path), "--out", str(tmp_path / "rigor.json"),
+                   "--boot", "300", "--seed", "7", "--site", str(site)])
+    assert rc == 0
+    copy = json.loads((site / "data" / "model_stats.json").read_text(encoding="utf-8"))
+    assert set(copy["models"]) == {"m1", "m2"}
+    assert "models_meta" in copy  # None when the payload is absent, never missing
