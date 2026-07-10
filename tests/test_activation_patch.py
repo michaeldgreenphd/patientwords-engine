@@ -158,12 +158,19 @@ class FakeHookedModel:
         self.patched_logits = patched_logits or {}   # (layer, corrupt_pos) -> logit
         self.writes = []                             # (layer, corrupt_pos, value written)
 
-    def to_str_tokens(self, prompt):
-        return ["<bos>"] + prompt.split()
+    def to_str_tokens(self, tokens):
+        # Mirror the CI-installed transformer_lens: a raw-string argument dies
+        # in `int(t) for t in tokens.tolist()` because the [1, seq] batch dim
+        # survives (smoke run 3, 2026-07-10). Production must pass a 1-D token
+        # sequence (to_tokens(...)[0]); this fake enforces that contract.
+        if isinstance(tokens, str):
+            raise TypeError("int() argument must be a string, a bytes-like object "
+                            "or a real number, not 'list'")
+        return list(tokens)
 
     def to_tokens(self, prompt, prepend_bos=True):
-        toks = self.to_str_tokens(prompt) if prepend_bos else prompt.split()
-        return [toks]   # [1, seq] "tensor"
+        toks = (["<bos>"] if prepend_bos else []) + prompt.split()
+        return [toks]   # [1, seq] "tensor"; fake token ids ARE the strings
 
     @staticmethod
     def _logits(logit):

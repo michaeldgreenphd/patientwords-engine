@@ -334,10 +334,14 @@ def patch_and_measure(model, clean_prompt, corrupt_prompt, target_id,
     if isinstance(model, str):
         model = load_model(model)
 
-    clean_strs = model.to_str_tokens(clean_prompt)
-    corrupt_strs = model.to_str_tokens(corrupt_prompt)
     clean_tokens = model.to_tokens(clean_prompt)
     corrupt_tokens = model.to_tokens(corrupt_prompt)
+    # Derive str tokens from the SAME tokenization as the forward pass, and
+    # pass a 1-D token sequence: transformer_lens to_str_tokens chokes on raw
+    # strings in the CI-installed version (the [1, seq] batch dim survives
+    # .tolist(), so int() receives a list - smoke run 3, 2026-07-10).
+    clean_strs = model.to_str_tokens(clean_tokens[0])
+    corrupt_strs = model.to_str_tokens(corrupt_tokens[0])
 
     clean_logits, clean_cache = model.run_with_cache(clean_tokens)
     corrupt_logits = model.run_with_hooks(corrupt_tokens, fwd_hooks=[])
