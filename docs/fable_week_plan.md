@@ -100,3 +100,33 @@ commit applies to all):
   first probe (critic fills the table in docs/model_matrix.md). Owner's
   morning digest is the once-daily touchpoint — new ideas surface there,
   not as extra pings.
+
+## P · Presentation & provenance queue (owner request 2026-07-10, in-flight)
+
+Owner asked what the new findings justify adding for (1) interpretability,
+(2) practical explanation, (3) communicating the study's timing to readers.
+Data artifacts only — site text/HTML stays the owner's lane.
+
+- **P1 convergence tracker** (`scripts/convergence_tracker.py`): per-model
+  cumulative penalty CI + downgrade/upgrade counts batch-by-batch (ordered
+  by batch stamp, exploration split only, seed 7). Writes
+  `data/convergence.json` + site copy. Re-run each critic cycle. The
+  gemma-3 n.s.→significant arc (11v4 p=0.12 @133 → 22v5 q=0.002 @240) is
+  the worked example a reader should be able to see.
+- **P2 study timeline** (`scripts/study_timeline.py`): reconstruct the
+  study from committed artifacts — batch sidecars (run_timestamp, model,
+  accepted, cost), trace-part commit times, prereg/amendment commit dates,
+  tierb.start_utc — into `data/timeline.json` + site copy, plus a
+  methods-endnote DRAFT in docs/ for the owner's voice. Honest answer to
+  "how long did this take": days, with receipts; generation < $10 total;
+  tracing/inference $0 public CI.
+- **P3 recovery-map aggregation** (after B1 grid runs land): per-layer
+  recovery profile + term-site vs elsewhere recovery share across the
+  downgrade set. The claim it can earn: the penalty is carried by the
+  wording-swap site, at named layers — the second causal leg beside
+  steering. Feeds a future heatmap figure (H2 logit-lens companion).
+- Owner-lane suggestion (parked): one-line methods stamp "measured <range>,
+  N pairs, $X API credits, all runs public" sourced from timeline.json.
+
+Critic: build P1+P2 tonight (2026-07-11 05:00 cycle), keep both fresh each
+cycle; P3 activates when the first grid batch lands.
