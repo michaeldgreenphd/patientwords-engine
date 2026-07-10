@@ -1,0 +1,459 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 46,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 46,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have orthostatic hypotension when I stand up, so I should get my",
+        "patient": "I've been feeling kind of woozy when I stand up, so I should get my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.503,
+        "patient": 0.559
+      },
+      "language_penalty": 0.05600000000000005,
+      "clinical_mass": {
+        "clinical": 0.3094,
+        "patient": 0.2488
+      },
+      "error_share": {
+        "clinical": 0.1077,
+        "patient": 0.0954
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.503)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.559)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.503
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.503
+          ],
+          [
+            "Output \" BP\"",
+            0.105
+          ],
+          [
+            "Output \" heart\"",
+            0.063
+          ],
+          [
+            "Output \" feet\"",
+            0.023
+          ],
+          [
+            "Output \" bp\"",
+            0.022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.559
+          ],
+          [
+            "Output \" eyes\"",
+            0.04
+          ],
+          [
+            "Output \" BP\"",
+            0.034
+          ],
+          [
+            "Output \" hearing\"",
+            0.029
+          ],
+          [
+            "Output \" head\"",
+            0.021
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 562,
+        "unique_to_a": 654,
+        "unique_to_b": 904
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_46.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_46.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_46_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_46_diff.png"
+      }
+    },
+    {
+      "index": 47,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have attention deficit, so I probably need to take my",
+        "patient": "I've been having trouble focusing at work, so I probably need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.131,
+        "patient": 0.072
+      },
+      "language_penalty": -0.05900000000000001,
+      "clinical_mass": {
+        "clinical": 0.1902,
+        "patient": 0.1417
+      },
+      "error_share": {
+        "clinical": 0.0893,
+        "patient": 0.0857
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.118)",
+        "patient": "[L21\u00b7S]  \u2192 [L22\u00b7O] ophthalmology and optometry related terms | Eyeglass \u2192 Output \" eye\" (p=0.035)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.131
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.261
+          ],
+          [
+            "Output \" medication\"",
+            0.131
+          ],
+          [
+            "Output \" own\"",
+            0.118
+          ],
+          [
+            "Output \" medicine\"",
+            0.07
+          ],
+          [
+            "Output \" vitamins\"",
+            0.051
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.149
+          ],
+          [
+            "Output \" eyes\"",
+            0.11
+          ],
+          [
+            "Output \" medication\"",
+            0.072
+          ],
+          [
+            "Output \" mind\"",
+            0.059
+          ],
+          [
+            "Output \" eye\"",
+            0.035
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 626,
+        "unique_to_a": 657,
+        "unique_to_b": 752
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_47.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_47.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_47_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_47_diff.png"
+      }
+    },
+    {
+      "index": 48,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have cardiac arrhythmia, so I need to get my",
+        "patient": "I feel like my heart is doing flip-flops in my chest, so I need to get my"
+      },
+      "target_token": "Output \" heart\"",
+      "probabilities": {
+        "clinical": 0.61,
+        "patient": 0.173
+      },
+      "language_penalty": -0.437,
+      "clinical_mass": {
+        "clinical": 0.4311,
+        "patient": 0.1673
+      },
+      "error_share": {
+        "clinical": 0.0994,
+        "patient": 0.0906
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] words and phrases related to health, especially the  \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.610)",
+        "patient": "embedding \u2192 Output \" heart\" (p=0.173)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " heart",
+        "observed_clinical": [
+          "Output \" heart\"",
+          0.61
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" heart\"",
+            0.61
+          ],
+          [
+            "Output \" blood\"",
+            0.094
+          ],
+          [
+            "Output \" pulse\"",
+            0.038
+          ],
+          [
+            "Output \" ECG\"",
+            0.034
+          ],
+          [
+            "Output \" EKG\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" heart\"",
+            0.173
+          ],
+          [
+            "Output \" thoughts\"",
+            0.141
+          ],
+          [
+            "Output \" mind\"",
+            0.119
+          ],
+          [
+            "Output \" head\"",
+            0.078
+          ],
+          [
+            "Output \" hands\"",
+            0.04
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 458,
+        "unique_to_a": 591,
+        "unique_to_b": 811
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_48.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_48.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_48_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_48_diff.png"
+      }
+    },
+    {
+      "index": 49,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After I sit for a while, I experience venous stasis, so my",
+        "patient": "After I sit for a while, my legs feel like dead weight, so my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.32
+      },
+      "error_share": {
+        "clinical": 0.097
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" legs\"",
+            0.371
+          ],
+          [
+            "Output \" feet\"",
+            0.129
+          ],
+          [
+            "Output \" doctor\"",
+            0.085
+          ],
+          [
+            "Output \" leg\"",
+            0.043
+          ],
+          [
+            "Output \" calves\"",
+            0.031
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 50,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I bend my neck, I have cervical spondylosis, so I should see a",
+        "patient": "When I bend my neck, I get this weird clicking sound and stiffness, so I should see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.053,
+        "patient": 0.05
+      },
+      "language_penalty": -0.0029999999999999957,
+      "clinical_mass": {
+        "clinical": 0.4118,
+        "patient": 0.3676
+      },
+      "error_share": {
+        "clinical": 0.117,
+        "patient": 0.1028
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L16\u00b7C] doctors | disclaimers and statements about medical a \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.693)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.659)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.053
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.693
+          ],
+          [
+            "Output \" neuro\"",
+            0.053
+          ],
+          [
+            "Output \" specialist\"",
+            0.04
+          ],
+          [
+            "Output \" chi\"",
+            0.035
+          ],
+          [
+            "Output \" good\"",
+            0.022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.659
+          ],
+          [
+            "Output \" chi\"",
+            0.085
+          ],
+          [
+            "Output \" neuro\"",
+            0.05
+          ],
+          [
+            "Output \" specialist\"",
+            0.043
+          ],
+          [
+            "Output \" physio\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 792,
+        "unique_to_a": 375,
+        "unique_to_b": 415
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_50.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_50.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_50_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_50_diff.png"
+      }
+    }
+  ]
+}
