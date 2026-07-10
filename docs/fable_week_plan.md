@@ -133,3 +133,29 @@ placements same day: Fig. 5 convergence small-multiples on methods.html,
 timeline strip on simulated-scenarios; both runtime-drawn from data files,
 browser-verified, fallback-safe). Critic: re-run both generators each cycle
 for freshness; P3 activates when the first grid batch lands.
+
+## New-model incorporation checklist (owner request 2026-07-10 pm)
+
+When llama-3.2-3b, biomistral-7b (medical-tuned), olmo-2-1b, or the gemma
+variants land logits for the unified stems, the chain is automatic EXCEPT
+two manual steps the critic owns:
+1. Re-run the exporter with the extended model list so models_meta + the
+   simulated-page selector include them:
+   `--models gemma-2-2b,gemma-3-4b-it,qwen3-4b,qwen3-1.7b,llama-3.2-3b,olmo-2-1b,biomistral-7b,gemma-2-2b-it,gemma-2-9b`
+   (a model's trace dir is used only where present).
+2. Verify the comparison page (model-evaluations/) renders the new rows
+   (forest, dumbbells, evidence table pick up d.models automatically;
+   labels come from models_meta) and republish site data.
+Everything else already flows: collector reads any trace_out/<stem>__<model>
+dir; rigor computes per_model for all models present; model_stats.json site
+copy carries them; convergence_tracker appends new models automatically
+(PREFERRED_ORDER first, then alphabetical).
+
+## Friday 2026-07-17 AM: full site-text outline for the owner
+
+Owner hand-edits prose after vacation. Wake armed for 12:45 UTC Fri 07-17:
+regenerate the site-text extraction from the LIVE pages (this week added
+methods Steps 5-6, the comparison page, timeline strip, Fig. 5 captions),
+emit it as MARKDOWN with stable block ids (owner edits and returns it as
+markdown; apply block-by-block like the 07-09 Rmd round), SendUserFile +
+flag in that morning's digest.

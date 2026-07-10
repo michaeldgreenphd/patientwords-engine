@@ -34,7 +34,10 @@ from pathlib import Path
 BATCH_RE = re.compile(r"pairs_(\d{8}T\d{6}Z)")
 NONFLIP = "none"
 TIE_ORDER = [NONFLIP, "uninformative", "lateral", "upgrade", "downgrade"]
-MODELS = ["gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b"]
+# display order: established models first, then any newly measured model
+# (llama, biomistral, olmo, gemma variants) appended automatically as its
+# rows land - nothing here needs editing when the matrix grows
+PREFERRED_ORDER = ["gemma-2-2b", "gemma-3-4b-it", "qwen3-4b", "qwen3-1.7b"]
 
 
 def phrase_groups(rows):
@@ -117,7 +120,10 @@ def main(argv=None):
                   f"bootstrap 95 pct CI seed {args.seed} x {args.boot}"),
         "models": {},
     }
-    for model in MODELS:
+    present = sorted({r["model"] for r in rows})
+    models = ([m for m in PREFERRED_ORDER if m in present]
+              + [m for m in present if m not in PREFERRED_ORDER])
+    for model in models:
         mrows = [r for r in rows if r["model"] == model]
         pts = cumulative_points(mrows, stamps, args.seed, args.boot)
         if pts:
