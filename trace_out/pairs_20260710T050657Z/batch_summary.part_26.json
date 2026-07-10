@@ -1,0 +1,404 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 26,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have paresthesia when I type at my desk, so I'm thinking about getting my",
+        "patient": "My fingers are tingling when I type at my desk, so I'm thinking about getting my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1443
+      },
+      "error_share": {
+        "clinical": 0.1051
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " nerves",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" desk\"",
+            0.188
+          ],
+          [
+            "Output \" own\"",
+            0.181
+          ],
+          [
+            "Output \" laptop\"",
+            0.075
+          ],
+          [
+            "Output \" computer\"",
+            0.072
+          ],
+          [
+            "Output \" keyboard\"",
+            0.052
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 27,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have fatigue, so I'm worried about my",
+        "patient": "I've been feeling really sluggish, so I'm worried about my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2334
+      },
+      "error_share": {
+        "clinical": 0.0797
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " energy",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" health\"",
+            0.124
+          ],
+          [
+            "Output \" baby\"",
+            0.038
+          ],
+          [
+            "Output \" blood\"",
+            0.038
+          ],
+          [
+            "Output \" body\"",
+            0.038
+          ],
+          [
+            "Output \" heart\"",
+            0.032
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 28,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have gastroesophageal reflux, so I should probably take an",
+        "patient": "My stomach's been in knots all morning, so I should probably take an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.607,
+        "patient": 0.4
+      },
+      "language_penalty": -0.20699999999999996,
+      "clinical_mass": {
+        "clinical": 0.3718,
+        "patient": 0.2461
+      },
+      "error_share": {
+        "clinical": 0.0996,
+        "patient": 0.0893
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7O] the word \"taken\" and words/phrases around it, especi \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L22\u00b7C] sentences related to drug use | medications \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.068)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" Ad\" (p=0.051)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antacid",
+        "observed_clinical": [
+          "Output \" ant\"",
+          0.607
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.607
+          ],
+          [
+            "Output \" acid\"",
+            0.178
+          ],
+          [
+            "Output \" anti\"",
+            0.068
+          ],
+          [
+            "Output \" over\"",
+            0.026
+          ],
+          [
+            "Output \" OTC\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ant\"",
+            0.4
+          ],
+          [
+            "Output \" aspirin\"",
+            0.127
+          ],
+          [
+            "Output \" anti\"",
+            0.097
+          ],
+          [
+            "Output \" Ad\"",
+            0.051
+          ],
+          [
+            "Output \" Ant\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 531,
+        "unique_to_a": 655,
+        "unique_to_b": 752
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T050657Z/index_28.html",
+        "png": "trace_out/pairs_20260710T050657Z/index_28.png",
+        "diff_html": "trace_out/pairs_20260710T050657Z/index_28_diff.html",
+        "diff_png": "trace_out/pairs_20260710T050657Z/index_28_diff.png"
+      }
+    },
+    {
+      "index": 29,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have myopia, so I need to book an",
+        "patient": "My vision's been all blurry lately, so I need to book an"
+      },
+      "target_token": "Output \" appointment\"",
+      "probabilities": {
+        "clinical": 0.616,
+        "patient": 0.596
+      },
+      "language_penalty": -0.020000000000000018,
+      "clinical_mass": {
+        "clinical": 0.2104,
+        "patient": 0.2448
+      },
+      "error_share": {
+        "clinical": 0.0933,
+        "patient": 0.0957
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] scheduling an appointment | appointment \u2192 Output \" appointment\" (p=0.616)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L19\u00b7C] scheduling an appointment | appointment \u2192 Output \" appointment\" (p=0.596)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " appointment",
+        "observed_clinical": [
+          "Output \" appointment\"",
+          0.616
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" appointment\"",
+            0.616
+          ],
+          [
+            "Output \" eye\"",
+            0.299
+          ],
+          [
+            "Output \" annual\"",
+            0.012
+          ],
+          [
+            "Output \" opto\"",
+            0.008
+          ],
+          [
+            "Output \" exam\"",
+            0.007
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" appointment\"",
+            0.596
+          ],
+          [
+            "Output \" eye\"",
+            0.355
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 566,
+        "unique_to_a": 544,
+        "unique_to_b": 577
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T050657Z/index_29.html",
+        "png": "trace_out/pairs_20260710T050657Z/index_29.png",
+        "diff_html": "trace_out/pairs_20260710T050657Z/index_29_diff.html",
+        "diff_png": "trace_out/pairs_20260710T050657Z/index_29_diff.png"
+      }
+    },
+    {
+      "index": 30,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have sciatica, so my PT thinks I should try some",
+        "patient": "I keep getting these sharp pains down my leg, so my PT thinks I should try some"
+      },
+      "target_token": "Output \" stretches\"",
+      "probabilities": {
+        "clinical": 0.039,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3413,
+        "patient": 0.4367
+      },
+      "error_share": {
+        "clinical": 0.0995,
+        "patient": 0.0993
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7O] words associated with education, physical fitness, a \u2192 [L22\u00b7C] words related to medicine, illness, and treatment |  \u2192 [L24\u00b7C] phrases related to studies relating to exercise and  \u2192 Output \" exercises\" (p=0.073)",
+        "patient": "embedding \u2192 [L24\u00b7C] words related to medical treatment or legal cases |  \u2192 Output \" physical\" (p=0.043)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " stretches",
+        "observed_clinical": [
+          "Output \" stretches\"",
+          0.039
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" yoga\"",
+            0.123
+          ],
+          [
+            "Output \" of\"",
+            0.093
+          ],
+          [
+            "Output \" exercises\"",
+            0.073
+          ],
+          [
+            "Output \" stretching\"",
+            0.04
+          ],
+          [
+            "Output \" stretches\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" exercises\"",
+            0.074
+          ],
+          [
+            "Output \" acupuncture\"",
+            0.059
+          ],
+          [
+            "Output \" stretching\"",
+            0.051
+          ],
+          [
+            "Output \" of\"",
+            0.051
+          ],
+          [
+            "Output \" physical\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 714,
+        "unique_to_a": 631,
+        "unique_to_b": 705
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T050657Z/index_30.html",
+        "png": "trace_out/pairs_20260710T050657Z/index_30.png",
+        "diff_html": "trace_out/pairs_20260710T050657Z/index_30_diff.html",
+        "diff_png": "trace_out/pairs_20260710T050657Z/index_30_diff.png"
+      }
+    }
+  ]
+}
