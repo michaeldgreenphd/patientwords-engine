@@ -1,0 +1,416 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 16,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have posterior vitreous detachment, so I need to take my",
+        "patient": "I see floaters and flashes in my vision, so I need to take my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3206
+      },
+      "error_share": {
+        "clinical": 0.11
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " vitamins",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" eyes\"",
+            0.316
+          ],
+          [
+            "Output \" eye\"",
+            0.193
+          ],
+          [
+            "Output \" glasses\"",
+            0.097
+          ],
+          [
+            "Output \" contacts\"",
+            0.032
+          ],
+          [
+            "Output \" time\"",
+            0.023
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have dermatitis, so I should use my",
+        "patient": "My skin is all red and angry-looking, so I should use my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2231
+      },
+      "error_share": {
+        "clinical": 0.0864
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " cream",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" own\"",
+            0.156
+          ],
+          [
+            "Output \" skin\"",
+            0.062
+          ],
+          [
+            "Output \" moisturizer\"",
+            0.054
+          ],
+          [
+            "Output \" hands\"",
+            0.052
+          ],
+          [
+            "Output \" face\"",
+            0.047
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have cognitive impairment, so I need to take my",
+        "patient": "I've been feeling foggy in the head, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.139,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2433,
+        "patient": 0.2718
+      },
+      "error_share": {
+        "clinical": 0.0896,
+        "patient": 0.0878
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.066)",
+        "patient": "embedding \u2192 [L25\u00b7O] the word \"mind\" or the letter 't' following an apost \u2192 Output \" brain\" (p=0.073)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.139
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" time\"",
+            0.224
+          ],
+          [
+            "Output \" meds\"",
+            0.145
+          ],
+          [
+            "Output \" medication\"",
+            0.139
+          ],
+          [
+            "Output \" medications\"",
+            0.075
+          ],
+          [
+            "Output \" own\"",
+            0.066
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.123
+          ],
+          [
+            "Output \" mind\"",
+            0.096
+          ],
+          [
+            "Output \" vitamins\"",
+            0.092
+          ],
+          [
+            "Output \" medicine\"",
+            0.09
+          ],
+          [
+            "Output \" brain\"",
+            0.073
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 598,
+        "unique_to_a": 643,
+        "unique_to_b": 745
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_18.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_18.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_18_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I have hypertension, my blood pressure goes way up, so I've been taking a",
+        "patient": "When I'm stressed out, my blood pressure goes way up, so I've been taking a"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.101,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3675,
+        "patient": 0.271
+      },
+      "error_share": {
+        "clinical": 0.0935,
+        "patient": 0.0861
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.096)",
+        "patient": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.073)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.101
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lot\"",
+            0.112
+          ],
+          [
+            "Output \" medication\"",
+            0.101
+          ],
+          [
+            "Output \" blood\"",
+            0.096
+          ],
+          [
+            "Output \" beta\"",
+            0.061
+          ],
+          [
+            "Output \" drug\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" lot\"",
+            0.128
+          ],
+          [
+            "Output \" daily\"",
+            0.092
+          ],
+          [
+            "Output \" blood\"",
+            0.073
+          ],
+          [
+            "Output \" few\"",
+            0.044
+          ],
+          [
+            "Output \" little\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 855,
+        "unique_to_a": 423,
+        "unique_to_b": 481
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_19.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_19.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_19_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_19_diff.png"
+      }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have tinnitus, so my doctor wants me to get my",
+        "patient": "I've got this ringing in my ears, so my doctor wants me to get my"
+      },
+      "target_token": "Output \" hearing\"",
+      "probabilities": {
+        "clinical": 0.521,
+        "patient": 0.506
+      },
+      "language_penalty": -0.015000000000000013,
+      "clinical_mass": {
+        "clinical": 0.3285,
+        "patient": 0.2722
+      },
+      "error_share": {
+        "clinical": 0.0993,
+        "patient": 0.0999
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L20\u00b7O] words and concepts about the inner ear | ear and hea \u2192 Output \" hearing\" (p=0.521)",
+        "patient": "embedding \u2192 [L18\u00b7O] words about the inner ear, hearing and balance | hea \u2192 [L20\u00b7O] words and concepts about the inner ear | ear and hea \u2192 Output \" hearing\" (p=0.506)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " hearing",
+        "observed_clinical": [
+          "Output \" hearing\"",
+          0.521
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hearing\"",
+            0.521
+          ],
+          [
+            "Output \" blood\"",
+            0.149
+          ],
+          [
+            "Output \" ears\"",
+            0.132
+          ],
+          [
+            "Output \" eyes\"",
+            0.021
+          ],
+          [
+            "Output \" thyroid\"",
+            0.018
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hearing\"",
+            0.506
+          ],
+          [
+            "Output \" ears\"",
+            0.262
+          ],
+          [
+            "Output \" blood\"",
+            0.079
+          ],
+          [
+            "Output \" eyes\"",
+            0.015
+          ],
+          [
+            "Output \" ear\"",
+            0.014
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 701,
+        "unique_to_a": 491,
+        "unique_to_b": 556
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_20.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_20.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_20_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_20_diff.png"
+      }
+    }
+  ]
+}
