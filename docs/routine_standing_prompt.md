@@ -163,3 +163,8 @@ cycle above and delivers the digest as (a) a PushNotification carrying the
 `daily_brief.py --digest` line and (b) a chat message in that session. The
 watchdog in §6b loses its independent-session redundancy as a consequence;
 the nightly critic wake (05:00 UTC) is the remaining second pulse.
+
+**Timezone note (2026-07-10):** owner is on Pacific time through Thursday
+2026-07-16. The 13:00 UTC firing is 6:00 AM PDT — the owner's requested
+delivery time — and reads as 9:00 AM EDT once they are back east. Same
+instant; the cron stays `0 13 * * *`. Do not "correct" it.
