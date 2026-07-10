@@ -128,5 +128,8 @@ Data artifacts only — site text/HTML stays the owner's lane.
 - Owner-lane suggestion (parked): one-line methods stamp "measured <range>,
   N pairs, $X API credits, all runs public" sourced from timeline.json.
 
-Critic: build P1+P2 tonight (2026-07-11 05:00 cycle), keep both fresh each
-cycle; P3 activates when the first grid batch lands.
+STATUS 2026-07-10 pm: P1+P2 BUILT and live (owner delegated the site
+placements same day: Fig. 5 convergence small-multiples on methods.html,
+timeline strip on simulated-scenarios; both runtime-drawn from data files,
+browser-verified, fallback-safe). Critic: re-run both generators each cycle
+for freshness; P3 activates when the first grid batch lands.
