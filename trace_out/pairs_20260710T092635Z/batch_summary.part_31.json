@@ -1,0 +1,362 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 31,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having neuropathic pain radiating down my leg, so my doctor wants to order an",
+        "patient": "I've been having these tingling sensations down my leg, so my doctor wants to order an"
+      },
+      "target_token": "Output \" MRI\"",
+      "probabilities": {
+        "clinical": 0.465,
+        "patient": 0.221
+      },
+      "language_penalty": -0.24400000000000002,
+      "clinical_mass": {
+        "clinical": 0.5167,
+        "patient": 0.4496
+      },
+      "error_share": {
+        "clinical": 0.1038,
+        "patient": 0.103
+      },
+      "top_path": {
+        "clinical": "[L14\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 [L19\u00b7C] words related to radiology and medical imaging | Med \u2192 Output \" MRI\" (p=0.465)",
+        "patient": "[L14\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 [L19\u00b7C] words related to radiology and medical imaging | Med \u2192 Output \" MRI\" (p=0.221)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " MRI",
+        "observed_clinical": [
+          "Output \" MRI\"",
+          0.465
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" MRI\"",
+            0.465
+          ],
+          [
+            "Output \" EMG\"",
+            0.33
+          ],
+          [
+            "Output \" m\"",
+            0.047
+          ],
+          [
+            "Output \" M\"",
+            0.029
+          ],
+          [
+            "Output \" elect\"",
+            0.021
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" EMG\"",
+            0.392
+          ],
+          [
+            "Output \" MRI\"",
+            0.221
+          ],
+          [
+            "Output \" EKG\"",
+            0.103
+          ],
+          [
+            "Output \" m\"",
+            0.048
+          ],
+          [
+            "Output \" M\"",
+            0.042
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 942,
+        "unique_to_a": 351,
+        "unique_to_b": 450
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_31.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_31.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_31_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_31_diff.png"
+      }
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've developed urticaria, so I should probably avoid my",
+        "patient": "My skin's been breaking out in hives, so I should probably avoid my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1688
+      },
+      "error_share": {
+        "clinical": 0.0878
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " allergen",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" usual\"",
+            0.189
+          ],
+          [
+            "Output \" favourite\"",
+            0.085
+          ],
+          [
+            "Output \" favorite\"",
+            0.071
+          ],
+          [
+            "Output \" normal\"",
+            0.039
+          ],
+          [
+            "Output \" beloved\"",
+            0.037
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have anxiety, so I need to talk to a",
+        "patient": "I've been feeling really wound up and jittery, so I need to talk to a"
+      },
+      "target_token": "Output \" therapist\"",
+      "probabilities": {
+        "clinical": 0.234,
+        "patient": 0.197
+      },
+      "language_penalty": -0.037000000000000005,
+      "clinical_mass": {
+        "clinical": 0.2327,
+        "patient": 0.1389
+      },
+      "error_share": {
+        "clinical": 0.0889,
+        "patient": 0.0954
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" professional\" (p=0.136)",
+        "patient": "embedding \u2192 Output \" professional\" (p=0.191)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " therapist",
+        "observed_clinical": [
+          "Output \" therapist\"",
+          0.234
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" therapist\"",
+            0.234
+          ],
+          [
+            "Output \" doctor\"",
+            0.165
+          ],
+          [
+            "Output \" professional\"",
+            0.136
+          ],
+          [
+            "Output \" counselor\"",
+            0.067
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.035
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" therapist\"",
+            0.197
+          ],
+          [
+            "Output \" professional\"",
+            0.191
+          ],
+          [
+            "Output \" doctor\"",
+            0.103
+          ],
+          [
+            "Output \" friend\"",
+            0.087
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.028
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 674,
+        "unique_to_a": 445,
+        "unique_to_b": 696
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_33.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_33.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_33_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_33_diff.png"
+      }
+    },
+    {
+      "index": 34,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing widespread myalgia, so my doctor thinks I might have",
+        "patient": "I've been getting terrible aches all over my body, so my doctor thinks I might have"
+      },
+      "target_token": "Output \" fib\"",
+      "probabilities": {
+        "clinical": 0.076,
+        "patient": 0.171
+      },
+      "language_penalty": 0.09500000000000001,
+      "clinical_mass": {
+        "clinical": 0.4218,
+        "patient": 0.4477
+      },
+      "error_share": {
+        "clinical": 0.0947,
+        "patient": 0.0875
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" a\" (p=0.187)",
+        "patient": "embedding \u2192 Output \" a\" (p=0.158)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " fibromyalgia",
+        "observed_clinical": [
+          "Output \" fib\"",
+          0.076
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" a\"",
+            0.187
+          ],
+          [
+            "Output \" Lyme\"",
+            0.091
+          ],
+          [
+            "Output \" an\"",
+            0.083
+          ],
+          [
+            "Output \" some\"",
+            0.078
+          ],
+          [
+            "Output \" fib\"",
+            0.076
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" fib\"",
+            0.171
+          ],
+          [
+            "Output \" a\"",
+            0.158
+          ],
+          [
+            "Output \" Fib\"",
+            0.075
+          ],
+          [
+            "Output \" an\"",
+            0.068
+          ],
+          [
+            "Output \" some\"",
+            0.067
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 825,
+        "unique_to_a": 625,
+        "unique_to_b": 643
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_34.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_34.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_34_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_34_diff.png"
+      }
+    }
+  ]
+}
