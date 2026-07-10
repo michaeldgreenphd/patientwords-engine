@@ -1,7 +1,9 @@
 # What we found: patient words make small language models worse at medicine
 
 **Status: released for external readers by owner sign-off (2026-07-09). The
-gemma-3-4b-it column is now complete (all four measurement batches landed):
+gemma-3-4b-it column covers three of the four pair batches plus the downgrade
+set (n = 133 phrases; the largest batch's gemma-3 run exceeded its CI timeout
+and is being re-run in chunks — correction 2026-07-10, numbers unchanged):
 its mean penalty is significant, but its downgrade asymmetry does NOT reach
 significance — reported as such below. Downgrade counts here are
 phrase-deduped per the pre-registration (`paired_stats_rigor.py`); pooled
@@ -30,8 +32,8 @@ wording costs probability on the same target token:
 | qwen3-1.7b | −0.089 | [−0.133, −0.047] | 132 |
 | gemma-3-4b-it | −0.071 | [−0.114, −0.031] | 133 (deduped) |
 
-With all four batches landed, gemma-3-4b-it's penalty CI now excludes zero
-(n = 133 phrases, deduped). Its per-pair penalties track gemma-2's at
+On the landed gemma-3-4b-it set (three of four pair batches + the downgrade
+set), its penalty CI excludes zero (n = 133 phrases, deduped). Its per-pair penalties track gemma-2's at
 r = 0.60 (64% sign agreement). That row uses the full landed set with the
 pre-registered phrase-dedupe; the other three rows are the unified 132-pair
 cross-model set. Per-model phrase-deduped statistics for all four models —

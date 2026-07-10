@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-07-10T01:23:56Z",
+  "updated_utc": "2026-07-10T01:43:40Z",
   "updated_by": "session",
   "queue": {
     "circuit-trace": {
@@ -24,11 +24,7 @@
       }
     },
     "scenario-generation": {
-      "running": {
-        "fired_utc": "2026-07-10T01:14:46Z",
-        "commit": "",
-        "note": "tierB batch 1"
-      },
+      "running": null,
       "pending": null
     },
     "model-evaluation": {
@@ -40,11 +36,7 @@
       "pending": null
     },
     "activation-patching": {
-      "running": {
-        "fired_utc": "2026-07-10T01:23:56Z",
-        "commit": "",
-        "note": "patching smoke retry after memory-safe loader fix"
-      },
+      "running": null,
       "pending": null
     }
   },
@@ -82,18 +74,19 @@
   ],
   "spend": {
     "generation_ceiling_usd": 8.0,
-    "generation_spent_usd": 0.0,
-    "lifetime_generation_usd": 9.5632,
+    "generation_spent_usd": 0.0816,
+    "lifetime_generation_usd": 9.6448,
     "daily_ceiling_usd": 2.0,
     "today": {
-      "date": "2026-07-09",
-      "spent_usd": 0.0
+      "date": "2026-07-10",
+      "spent_usd": 0.0816
     },
     "by_day": {
       "2026-07-09": 0.0,
       "2026-07-06": 0.5166,
       "2026-07-07": 7.5623,
-      "2026-07-08": 1.4843
+      "2026-07-08": 1.4843,
+      "2026-07-10": 0.0816
     },
     "entries_seen": [
       "boostgrid_lowrank.report.json",
@@ -129,19 +122,27 @@
       "quadrants_20260706T191617Z.report.json",
       "urgency_downgrades_20260707T1__context.report.json",
       "urgency_downgrades_20260707T1_steer.report.json",
-      "urgency_downgrades_boostgrid.report.json"
+      "urgency_downgrades_boostgrid.report.json",
+      "pairs_20260710T011743Z.report.json"
     ],
-    "last_scan_utc": "2026-07-09T12:58:15Z",
+    "last_scan_utc": "2026-07-10T01:43:06Z",
     "alerts": []
   },
   "tierb": {
     "target_pairs": 1600,
     "generator": "claude-haiku-4-5",
     "start_utc": "2026-07-10T01:14:38Z",
-    "accepted_pairs": 0,
+    "accepted_pairs": 50,
     "traced_pairs": 0,
     "screened_in_pairs": 0,
-    "batches": []
+    "batches": [
+      {
+        "file": "pairs_20260710T011743Z.json",
+        "accepted": 50,
+        "cost_usd": 0.081596,
+        "status": "landed"
+      }
+    ]
   },
   "verdicts": [
     "haiku-translator arm vs opus, paired on the same 12 classifiable phrases (same collector, same tiers): restored-top-tier 8/12 haiku vs 10/12 opus; mean urgency_recovery +0.119 vs +0.150, paired diff -0.031 (sd 0.205) \u2014 within noise. Translation quality is NOT a blocker for haiku."

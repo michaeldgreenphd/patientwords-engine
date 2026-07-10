@@ -139,6 +139,19 @@ jobs:
           pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
           pip install --quiet transformers accelerate transformer-lens
 
+      # transformer-lens builds its HookedTransformer in fp32 before casting,
+      # so conversion peaks past the 16 GB runner even with a bf16 hf_model
+      # (run 2: "runner has received a shutdown signal" 38s after the HF load
+      # finished). Swap on the /mnt SSD absorbs the one-time peak; steady-state
+      # inference stays in RAM.
+      - name: Provision swap for the conversion peak
+        run: |
+          sudo fallocate -l 12G /mnt/tl-swapfile
+          sudo chmod 600 /mnt/tl-swapfile
+          sudo mkswap /mnt/tl-swapfile
+          sudo swapon /mnt/tl-swapfile
+          free -h
+
       - name: Resolve output dir
         env:
           MODEL: ${{ needs.params.outputs.model }}
