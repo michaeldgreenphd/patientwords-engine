@@ -135,40 +135,50 @@ Key design decisions and why:
    (`<!-- id: <page>.b<NNN> -->`) so the owner's edits map back to
    page+position mechanically. No rewording by us, ever.
 
-## Current live state (update at every handoff)
+## Current live state (THE HANDOFF, 2026-07-10 ~11:30 UTC — owner in flight)
 
-- Branch (both repos): `claude/gemma-clinical-colloquial-interp-mavx04`.
-  Site deploys from `main` (sanctioned: push branch, then branch:main).
-- Runs in flight: circuit-trace run 64 = haiku-translator arm on the
-  20-downgrade set (compare vs opus 8/20 recovery); run 65 pending = trace
-  of second haiku batch (equivalence n). Logits run 14 = gemma-3-4b-it
-  stem 3/4 (final unified column). Harvest check-in armed 13:45 UTC
-  (trigger `trig_018p7kMkVW3c7E6pUyppX7nc`).
-- Tonight: fire Tier B start per the pre-registration if the haiku
-  translation arm and equivalence recheck hold (owner: "based on feedback
-  and findings trigger the week long evaluation").
-- Spend to date: $9.56 lifetime generation by sidecars (~$10.4 remaining of
-  the $20 envelope); Tier B budget $8 sits inside that.
-- Haiku evidence (basis of generator choice): validator yield 76% vs opus
-  60%; screen-in 55% vs 48%; penalty −0.046 [−0.084, −0.012] (n=27) vs
-  opus −0.036 [−0.080, +0.006]; $0.002/accepted pair vs $0.0164.
+- **Tier B is RUNNING** (GO 2026-07-10 01:14 UTC; rationale in the ledger).
+  100/1,600 accepted (batches 1+2, yields 67.6%/78.1%); batch 3 generating.
+  Batch-1 trace complete (50/50, screened 42 in); batch-2 trace running;
+  batch-1+2 logits (all four models) running + pending. Spend: $0.15 today
+  / $2 ceiling; $0.15 / $8 Tier B; $9.72 lifetime.
+- **Daily Routine LIVE**: `trig_01VXhhGaCorFodHP4bicKpSM`, fresh session,
+  cron 13:00 UTC (9 AM EDT), push notification on — the owner's one daily
+  touchpoint. Watchdog in its prompt checks this session's pulse.
+- **Wake chain armed**: critic nightly 05:00 UTC (run 2 =
+  `trig_01Xtg1znNDJnfab1DvEq6ZKZ`; re-chains itself), Monday synthesis
+  draft 06:00, Tuesday downshift 03:30. STOP in this session deletes all.
+- **Science since the owner left**: gemma-3-4b-it column completed → its
+  downgrade asymmetry flipped to SIGNIFICANT (22v5, BH q=0.002, n=240
+  phrases); ALL FOUR models now show the asymmetry. Synthesis + site data
+  updated from `paired_stats_rigor.json`. Pooled haiku equivalence held on
+  complete batch-2 (−0.043 [−0.073, −0.015], n=55).
+- **Amendment-1 holdout ENFORCED in code** (`scripts/tierb_split.py`):
+  collector stamps Tier B rows explore/holdout (~10% by phrase hash);
+  all aggregates + rigor use exploration only. Verified live: 42 Tier B
+  rows, 7 held out. The holdout analyzes ONCE at week's end.
+- **B1 patching**: runs 1–2 died to runner OOM (fixed: hardened bf16
+  loader + 12G swap); run 3 proved the load path, exposed a
+  transformer-lens raw-string tokens bug (fixed + tested); smoke #4 in
+  flight. Suite 240 green, ruff clean, dashboard browser-verified 3 ways.
+- Permission allow-list committed (`.claude/settings.json` + user-level)
+  so autonomous cycles run without phone prompts; guards unaffected.
 
-## Remaining work (ordered)
+## Remaining work (ordered — the automation owns all of it)
 
-1. 13:45 UTC wake: harvest runs 64/65/14 (`fire_trigger.py resolve` each);
-   classify the haiku-translator arm vs opus 8/20; equivalence recheck with
-   batch-2 n; unified gemma-3 recompute + data publish when stem 3 lands.
-2. Checkpoint 1 (19:00 UTC): status report + this file (Rmd already
-   delivered at ~12:40 UTC).
-3. Tonight: Tier B go/no-go per owner conditions (clean translation verdict
-   AND equivalence holding → fire batch 1 via `fire_trigger.py`, set
-   `tierb.start_utc`; otherwise hold and flag). Rationale to the ledger
-   either way.
-4. Thursday: create the daily Routine (fresh-session cron 11:30 UTC =
-   07:30 EDT, prompt = `docs/routine_standing_prompt.md` body,
-   notifications push); dry-run one firing; verify digest push arrives.
-5. Friday morning: Checkpoint 2 package (dashboard in browser, 191-test
-   suite, digest dry-run output, final HANDOFF).
+1. Routine (13:00 UTC daily): harvest, account, advance Tier B (fire
+   generation ~4-5x/day when slots free — pace for 1,600), publish data,
+   digest push.
+2. Critic (05:00 UTC nightly): collector-then-rigor recompute, hostile
+   review, queue actions; next: 5-model probe fire (llama-3.2-3b, olmo-2-1b,
+   biomistral-7b, gemma-2-2b-it, gemma-2-9b — limit 3, gated 401s become
+   owner click-path items) + patching smoke #4 harvest.
+3. Monday: synthesis DRAFT (never overwrites the released doc). Tuesday:
+   downshift batch agents to Opus 4.8.
+4. Week's end: holdout analysis (once, against pre-registered endpoints),
+   welcome-back consolidation package.
+5. Owner-return items parked in `decisions_pending` (skeptic voice/framing)
+   and H6 preprint (held).
 
 ## Gotchas a successor must not relearn
 

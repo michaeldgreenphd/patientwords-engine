@@ -625,3 +625,4 @@ measurement batches landed" for gemma-3 is WRONG (its n=133 rests on
 are correct as computed) — header corrected this session. (2) activation-
 patching smoke run 1 = failure; diagnosis below after log pull.
 - pairs_20260710T011743Z.report.json · $0.0816 · claude-haiku-4-5 · accepted 50 · 2026-07-10T01:19:25.620281+00:00
+- pairs_20260710T050657Z.report.json · $0.0718 · claude-haiku-4-5 · accepted 50 · 2026-07-10T05:08:26.072914+00:00
