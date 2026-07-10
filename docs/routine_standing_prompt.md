@@ -152,3 +152,14 @@ orchestrator's triggers.
 - When anything is ambiguous, do LESS: record it in `decisions_pending`
   instead of acting. A missed day of generation is recoverable; a polluted
   archive is not.
+
+---
+
+**Mode change (2026-07-10, owner request):** the daily Routine no longer
+spawns a fresh session — its push notification deep-linked the owner to an
+empty session without the repos. It now fires INTO the main orchestrator
+session (`trig_01Qczu2cNAsk1gYodan6auHb`, cron 13:00 UTC), which runs the
+cycle above and delivers the digest as (a) a PushNotification carrying the
+`daily_brief.py --digest` line and (b) a chat message in that session. The
+watchdog in §6b loses its independent-session redundancy as a consequence;
+the nightly critic wake (05:00 UTC) is the remaining second pulse.
