@@ -1,25 +1,25 @@
 {
  "summary": {
-  "measurements": 1474,
-  "tierb_holdout_rows_excluded": 53,
-  "flips": 671,
+  "measurements": 1550,
+  "tierb_holdout_rows_excluded": 64,
+  "flips": 702,
   "flip_classes": {
-   "downgrade": 155,
-   "upgrade": 19,
-   "lateral": 129,
-   "uninformative": 368
+   "downgrade": 156,
+   "upgrade": 21,
+   "lateral": 133,
+   "uninformative": 392
   },
-  "mean_tier_shift": -0.1429,
-  "tier_shift_n": 1048,
+  "mean_tier_shift": -0.1398,
+  "tier_shift_n": 1093,
   "per_model": {
    "gemma-2-2b": {
-    "n": 537,
-    "flips": 238,
+    "n": 570,
+    "flips": 251,
     "downgrades": 85,
-    "upgrades": 6,
+    "upgrades": 7,
     "sign_test_p": 0.0,
     "confident_downgrades_p>=0.2": 48,
-    "mean_tier_shift": -0.175
+    "mean_tier_shift": -0.1702
    },
    "gemma-3-4b-it": {
     "n": 340,
@@ -40,22 +40,22 @@
     "mean_tier_shift": -0.1093
    },
    "qwen3-4b": {
-    "n": 277,
-    "flips": 126,
-    "downgrades": 22,
-    "upgrades": 2,
-    "sign_test_p": 4e-05,
-    "confident_downgrades_p>=0.2": 15,
-    "mean_tier_shift": -0.1203
+    "n": 320,
+    "flips": 144,
+    "downgrades": 23,
+    "upgrades": 3,
+    "sign_test_p": 9e-05,
+    "confident_downgrades_p>=0.2": 16,
+    "mean_tier_shift": -0.1139
    }
   },
   "per_model_deduped": {
    "gemma-2-2b": {
-    "n_phrases": 454,
-    "flips": 173,
+    "n_phrases": 487,
+    "flips": 186,
     "downgrades": 31,
-    "upgrades": 6,
-    "mean_penalty": -0.0506
+    "upgrades": 7,
+    "mean_penalty": -0.0472
    },
    "gemma-3-4b-it": {
     "n_phrases": 325,
@@ -72,18 +72,18 @@
     "mean_penalty": -0.0626
    },
    "qwen3-4b": {
-    "n_phrases": 277,
-    "flips": 126,
-    "downgrades": 22,
-    "upgrades": 2,
-    "mean_penalty": -0.0851
+    "n_phrases": 320,
+    "flips": 144,
+    "downgrades": 23,
+    "upgrades": 3,
+    "mean_penalty": -0.0796
    }
   },
   "concordance": {
    "phrases_measured_by_2plus_models": 340,
-   "downgrade_on_any_model": 73,
+   "downgrade_on_any_model": 74,
    "downgrade_on_2plus_models": 19,
-   "flip_on_2plus_models": 170,
+   "flip_on_2plus_models": 177,
    "pairwise_downgrade_overlap": {
     "gemma-2-2b & gemma-3-4b-it": {
      "phrases": 265,
@@ -98,10 +98,10 @@
      "jaccard": 0.185
     },
     "gemma-2-2b & qwen3-4b": {
-     "phrases": 202,
-     "either": 24,
+     "phrases": 245,
+     "either": 27,
      "both": 5,
-     "jaccard": 0.208
+     "jaccard": 0.185
     },
     "gemma-3-4b-it & qwen3-1.7b": {
      "phrases": 320,
@@ -110,16 +110,16 @@
      "jaccard": 0.128
     },
     "gemma-3-4b-it & qwen3-4b": {
-     "phrases": 277,
-     "either": 42,
+     "phrases": 320,
+     "either": 45,
      "both": 1,
-     "jaccard": 0.024
+     "jaccard": 0.022
     },
     "qwen3-1.7b & qwen3-4b": {
-     "phrases": 277,
-     "either": 34,
+     "phrases": 320,
+     "either": 37,
      "both": 7,
-     "jaccard": 0.206
+     "jaccard": 0.189
     }
    }
   },
@@ -184,28 +184,46 @@
     "mean_tier_shift": 0.0365
    },
    "neurological": {
-    "n": 16,
+    "n": 21,
     "downgrades": 2,
     "upgrades": 0,
-    "mean_tier_shift": -0.0852
+    "mean_tier_shift": -0.0814
    },
-   "gastrointestinal": {
-    "n": 11,
+   "cardiovascular": {
+    "n": 13,
     "downgrades": 1,
     "upgrades": 0,
-    "mean_tier_shift": 0.0184
+    "mean_tier_shift": 0.0046
+   },
+   "gastrointestinal": {
+    "n": 12,
+    "downgrades": 1,
+    "upgrades": 1,
+    "mean_tier_shift": 0.0571
    },
    "fatigue": {
-    "n": 10,
+    "n": 12,
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": -1.547
    },
-   "cardiovascular": {
+   "neuropathy": {
     "n": 10,
-    "downgrades": 1,
+    "downgrades": 3,
     "upgrades": 0,
-    "mean_tier_shift": 0.005
+    "mean_tier_shift": -0.292
+   },
+   "neurology": {
+    "n": 9,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.0393
+   },
+   "gastrointestinal disorder": {
+    "n": 9,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.1797
    },
    "cardiac": {
     "n": 8,
@@ -213,47 +231,71 @@
     "upgrades": 0,
     "mean_tier_shift": -0.0361
    },
+   "cognitive impairment": {
+    "n": 8,
+    "downgrades": 2,
+    "upgrades": 0,
+    "mean_tier_shift": -0.384
+   },
    "gastroesophageal reflux": {
     "n": 8,
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": 0.0
    },
-   "neuropathy": {
-    "n": 8,
-    "downgrades": 3,
-    "upgrades": 0,
-    "mean_tier_shift": -0.292
-   },
-   "neurology": {
-    "n": 8,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": 0.0137
-   },
-   "cognitive impairment": {
-    "n": 7,
-    "downgrades": 1,
-    "upgrades": 0,
-    "mean_tier_shift": -0.3614
-   },
    "arthritis": {
-    "n": 7,
+    "n": 8,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": -0.0613
-   },
-   "gastrointestinal disorder": {
-    "n": 6,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": -0.2423
+    "mean_tier_shift": -0.052
    },
    "respiratory": {
-    "n": 4,
+    "n": 5,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": -0.05
+    "mean_tier_shift": 0.058
+   },
+   "urinary tract infection": {
+    "n": 5,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.155
+   },
+   "orthostatic hypotension": {
+    "n": 5,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.074
+   },
+   "headache/migraine": {
+    "n": 5,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": 0.022
+   },
+   "anxiety": {
+    "n": 5,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.443
+   },
+   "dermatitis": {
+    "n": 5,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": null
+   },
+   "dermatology": {
+    "n": 5,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": 0.0
+   },
+   "neurological disorder": {
+    "n": 5,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": null
    },
    "otologic": {
     "n": 4,
@@ -316,12 +358,6 @@
     "mean_tier_shift": null
    },
    "vision disorders": {
-    "n": 4,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": null
-   },
-   "urinary tract infection": {
     "n": 4,
     "downgrades": 0,
     "upgrades": 0,
@@ -411,182 +447,260 @@
     "upgrades": 0,
     "mean_tier_shift": null
    },
-   "orthostatic hypotension": {
-    "n": 3,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": 0.0
-   },
    "tachycardia": {
-    "n": 3,
+    "n": 4,
     "downgrades": 1,
     "upgrades": 0,
-    "mean_tier_shift": -0.3385
+    "mean_tier_shift": -0.262
    },
    "dyspnea": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": null
    },
-   "headache/migraine": {
-    "n": 3,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": 0.0
-   },
    "excessive perspiration": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": null
    },
    "respiratory pathology": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": 0.0237
+    "mean_tier_shift": 0.018
    },
    "headache": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": -0.1763
+    "mean_tier_shift": -0.1487
    },
    "sensory sensitivity": {
-    "n": 3,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": null
-   },
-   "anxiety": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": null
    },
    "tinnitus": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": null
    },
    "reflux": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": 0.0053
    },
    "vision": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": 0.0037
-   },
-   "dermatitis": {
-    "n": 3,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": null
+    "mean_tier_shift": 0.0025
    },
    "autonomic symptom": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": -0.3043
-   },
-   "dermatology": {
-    "n": 3,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": null
+    "mean_tier_shift": -0.2325
    },
    "sleep": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": 0.0003
+    "mean_tier_shift": 0.0005
    },
    "neurological disorders": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": -0.0973
+    "mean_tier_shift": -0.0875
    },
    "lymphatic disorders": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": -0.001
+    "mean_tier_shift": -0.0008
    },
    "respiratory/pleurisy": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": null
+    "mean_tier_shift": -0.348
    },
    "cognitive dysfunction": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": null
    },
    "tremor": {
-    "n": 3,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": null
-   },
-   "neurological disorder": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": null
    },
    "obstetric complication": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": -0.3223
+    "mean_tier_shift": -0.2595
    },
    "neurological symptom": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": -0.0523
+    "mean_tier_shift": -0.0393
    },
    "myopathy": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": null
    },
    "neurological pain": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": null
    },
    "gastrointestinal disorders": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
-    "mean_tier_shift": -0.1405
+    "mean_tier_shift": -0.0937
    },
    "neuropathic pain": {
-    "n": 3,
+    "n": 4,
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": null
    },
    "pediatric/neurodevelopmental": {
-    "n": 3,
+    "n": 4,
     "downgrades": 1,
     "upgrades": 0,
-    "mean_tier_shift": -0.2647
+    "mean_tier_shift": -0.2802
    },
    "auditory symptoms": {
-    "n": 3,
+    "n": 4,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": null
+   },
+   "mental health disorder": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 1,
+    "mean_tier_shift": -0.436
+   },
+   "vision disorder": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": 0.104
+   },
+   "urology": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.085
+   },
+   "dyspnea/cardiac or pulmonary disease": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.101
+   },
+   "nausea/vomiting": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.111
+   },
+   "nocturia": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.031
+   },
+   "neurological/vestibular disorder": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.088
+   },
+   "rheumatological disorder": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": null
+   },
+   "asthma": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": 0.0
+   },
+   "myalgia": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": null
+   },
+   "musculoskeletal": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.092
+   },
+   "psychiatric": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": null
+   },
+   "sexual medicine": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.312
+   },
+   "endocrine": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.139
+   },
+   "joint disorder": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": null
+   },
+   "substance use disorder": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": null
+   },
+   "fasciculations": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": 0.149
+   },
+   "lower-limb weakness": {
+    "n": 1,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": null
+   },
+   "cardiovascular disease": {
+    "n": 1,
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": null
@@ -39959,6 +40073,2442 @@
    "prompt_words": [
     9,
     15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 1,
+   "topic": "angina",
+   "clinical_prompt": "I have angina, so I need to take my",
+   "top_clinical": "medication",
+   "top_patient": "medication",
+   "p_top_clinical": 0.298,
+   "p_top_patient": 0.264,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.215,
+   "expected_tier_patient": 1.0,
+   "tier_shift": -0.215,
+   "language_penalty": -0.0339,
+   "coverage": [
+    0.71,
+    0.95
+   ],
+   "prompt_words": [
+    9,
+    10
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 2,
+   "topic": "orthostatic hypotension",
+   "clinical_prompt": "I have orthostatic hypotension, so my doctor wants to check my",
+   "top_clinical": "blood",
+   "top_patient": "blood",
+   "p_top_clinical": 0.777,
+   "p_top_patient": 0.955,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.007,
+   "expected_tier_patient": 1.998,
+   "tier_shift": -0.009,
+   "language_penalty": 0.178,
+   "coverage": [
+    0.9,
+    0.98
+   ],
+   "prompt_words": [
+    11,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 3,
+   "topic": "arthritis",
+   "clinical_prompt": "I have arthritis, so I'm thinking about taking an",
+   "top_clinical": "herbal",
+   "top_patient": "NSA",
+   "p_top_clinical": 0.322,
+   "p_top_patient": 0.399,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 0.987,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.013,
+   "language_penalty": 0.0612,
+   "coverage": [
+    0.86,
+    0.91
+   ],
+   "prompt_words": [
+    9,
+    11
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 4,
+   "topic": "dermatitis",
+   "clinical_prompt": "I have dermatitis, so I should probably get some",
+   "top_clinical": "help",
+   "top_patient": "help",
+   "p_top_clinical": 0.137,
+   "p_top_patient": 0.308,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0003,
+   "coverage": [
+    0.04,
+    0.14
+   ],
+   "prompt_words": [
+    9,
+    11
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 5,
+   "topic": "tachycardia",
+   "clinical_prompt": "I have tachycardia, so I need to see a",
+   "top_clinical": "cardi",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.552,
+   "p_top_patient": 0.86,
+   "tier_top_clinical": null,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 2.114,
+   "expected_tier_patient": 2.005,
+   "tier_shift": -0.109,
+   "language_penalty": -0.4355,
+   "coverage": [
+    0.45,
+    0.88
+   ],
+   "prompt_words": [
+    9,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 6,
+   "topic": "dyspnea",
+   "clinical_prompt": "I have dyspnea on exertion, so I'm worried about my",
+   "top_clinical": "heart",
+   "top_patient": "heart",
+   "p_top_clinical": 0.816,
+   "p_top_patient": 0.489,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.1105,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    10,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 7,
+   "topic": "headache/migraine",
+   "clinical_prompt": "I have migraines, so I need to take some",
+   "top_clinical": "medication",
+   "top_patient": "time",
+   "p_top_clinical": 0.369,
+   "p_top_patient": 0.396,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 0.984,
+   "tier_shift": -0.016,
+   "language_penalty": -0.3277,
+   "coverage": [
+    0.9,
+    0.5
+   ],
+   "prompt_words": [
+    9,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 8,
+   "topic": "gastrointestinal disorder",
+   "clinical_prompt": "I have gastritis, so I should probably see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.809,
+   "p_top_patient": 0.977,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.167,
+   "expected_tier_patient": 2.01,
+   "tier_shift": -0.157,
+   "language_penalty": -0.1156,
+   "coverage": [
+    0.99,
+    1.0
+   ],
+   "prompt_words": [
+    9,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 9,
+   "topic": "excessive perspiration",
+   "clinical_prompt": "I have hyperhidrosis, so my doctor thinks I might have a",
+   "top_clinical": "problem",
+   "top_patient": "thyroid",
+   "p_top_clinical": 0.175,
+   "p_top_patient": 0.912,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1742,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 10,
+   "topic": "cognitive dysfunction",
+   "clinical_prompt": "I have brain fog, so I'm worried about my",
+   "top_clinical": "memory",
+   "top_patient": "brain",
+   "p_top_clinical": 0.151,
+   "p_top_patient": 0.448,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0006,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    9,
+    11
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 11,
+   "topic": "tremor",
+   "clinical_prompt": "I have tremor, so I need to get my",
+   "top_clinical": "hands",
+   "top_patient": "hands",
+   "p_top_clinical": 0.522,
+   "p_top_patient": 0.912,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0005,
+   "coverage": [
+    0.02,
+    0.01
+   ],
+   "prompt_words": [
+    9,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 12,
+   "topic": "fatigue",
+   "clinical_prompt": "I have fatigue, so I should probably take some",
+   "top_clinical": "time",
+   "top_patient": "time",
+   "p_top_clinical": 0.435,
+   "p_top_patient": 0.951,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.055,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0049,
+   "coverage": [
+    0.45,
+    0.03
+   ],
+   "prompt_words": [
+    9,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 13,
+   "topic": "neurological disorder",
+   "clinical_prompt": "I've been experiencing ataxia and dropping things, so I'm worried about my",
+   "top_clinical": "balance",
+   "top_patient": "balance",
+   "p_top_clinical": 0.439,
+   "p_top_patient": 0.523,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0041,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    12,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 14,
+   "topic": "obstetric complication",
+   "clinical_prompt": "I have ruptured membranes at work, so I need to call my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.804,
+   "p_top_patient": 0.695,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.008,
+   "expected_tier_patient": 1.937,
+   "tier_shift": -0.071,
+   "language_penalty": -0.0042,
+   "coverage": [
+    0.82,
+    0.75
+   ],
+   "prompt_words": [
+    12,
+    11
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 15,
+   "topic": "gastrointestinal disorder",
+   "clinical_prompt": "I have persistent vomiting, so I should probably see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.961,
+   "p_top_patient": 0.983,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.021,
+   "expected_tier_patient": 2.015,
+   "tier_shift": -0.006,
+   "language_penalty": -0.0041,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    10,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 16,
+   "topic": "neurological symptom",
+   "clinical_prompt": "I have diplopia when I look at things, so my boss thinks I need to take",
+   "top_clinical": "a",
+   "top_patient": "a",
+   "p_top_clinical": 0.725,
+   "p_top_patient": 0.875,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.0,
+   "expected_tier_patient": 0.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0024,
+   "coverage": [
+    0.76,
+    0.88
+   ],
+   "prompt_words": [
+    16,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 17,
+   "topic": "respiratory pathology",
+   "clinical_prompt": "I have hemoptysis when I cough, so I really ought to book an",
+   "top_clinical": "appointment",
+   "top_patient": "appointment",
+   "p_top_clinical": 0.992,
+   "p_top_patient": 0.978,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.001,
+   "tier_shift": 0.001,
+   "language_penalty": -0.0137,
+   "coverage": [
+    1.0,
+    0.98
+   ],
+   "prompt_words": [
+    13,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 18,
+   "topic": "headache",
+   "clinical_prompt": "I keep getting these awful headaches, so I need to take my",
+   "top_clinical": "medication",
+   "top_patient": "medication",
+   "p_top_clinical": 0.21,
+   "p_top_patient": 0.422,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.066,
+   "expected_tier_patient": 1.0,
+   "tier_shift": -0.066,
+   "language_penalty": 0.2119,
+   "coverage": [
+    0.66,
+    0.9
+   ],
+   "prompt_words": [
+    12,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 19,
+   "topic": "sensory sensitivity",
+   "clinical_prompt": "My kid's been complaining of sensory sensitivities, so we should get his",
+   "top_clinical": "ears",
+   "top_patient": "ears",
+   "p_top_clinical": 0.314,
+   "p_top_patient": 0.663,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.059,
+   "coverage": [
+    0.2,
+    0.0
+   ],
+   "prompt_words": [
+    12,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 20,
+   "topic": "joint stiffness",
+   "clinical_prompt": "I feel like my joints are stiffening, so my doctor thinks I should take an",
+   "top_clinical": "anti",
+   "top_patient": "anti",
+   "p_top_clinical": 0.459,
+   "p_top_patient": 0.577,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.059,
+   "tier_shift": 0.059,
+   "language_penalty": 0.118,
+   "coverage": [
+    0.89,
+    0.88
+   ],
+   "prompt_words": [
+    15,
+    16
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 21,
+   "topic": "anxiety",
+   "clinical_prompt": "I've been feeling anxious lately, so I'm thinking about taking some",
+   "top_clinical": "anti",
+   "top_patient": "time",
+   "p_top_clinical": 0.163,
+   "p_top_patient": 0.777,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.056,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1514,
+   "coverage": [
+    0.67,
+    0.09
+   ],
+   "prompt_words": [
+    11,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 22,
+   "topic": "tinnitus",
+   "clinical_prompt": "I have tinnitus at work, so I'm worried about my",
+   "top_clinical": "hearing",
+   "top_patient": "hearing",
+   "p_top_clinical": 0.653,
+   "p_top_patient": 0.726,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0728,
+   "coverage": [
+    0.09,
+    0.0
+   ],
+   "prompt_words": [
+    10,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 23,
+   "topic": "neurological",
+   "clinical_prompt": "I have cognitive impairment that won't go away, so I need to check my",
+   "top_clinical": "memory",
+   "top_patient": "symptoms",
+   "p_top_clinical": 0.161,
+   "p_top_patient": 0.082,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1271,
+   "coverage": [
+    0.04,
+    0.16
+   ],
+   "prompt_words": [
+    14,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 24,
+   "topic": "neurological",
+   "clinical_prompt": "I keep experiencing vertigo episodes, so my wife thinks I should take some",
+   "top_clinical": "time",
+   "top_patient": "time",
+   "p_top_clinical": 0.194,
+   "p_top_patient": 0.285,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0133,
+   "coverage": [
+    0.54,
+    0.45
+   ],
+   "prompt_words": [
+    13,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 25,
+   "topic": "gastrointestinal",
+   "clinical_prompt": "I have anorexia lately, so I should probably take an",
+   "top_clinical": "ant",
+   "top_patient": "exam",
+   "p_top_clinical": 0.163,
+   "p_top_patient": 0.132,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "upgrade",
+   "expected_tier_clinical": 1.111,
+   "expected_tier_patient": 1.478,
+   "tier_shift": 0.367,
+   "language_penalty": -0.0806,
+   "coverage": [
+    0.51,
+    0.57
+   ],
+   "prompt_words": [
+    10,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 26,
+   "topic": "neurological",
+   "clinical_prompt": "I have paresthesia when I type at my desk, so I'm thinking about getting my",
+   "top_clinical": "chair",
+   "top_patient": "hands",
+   "p_top_clinical": 0.202,
+   "p_top_patient": 0.928,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0246,
+   "coverage": [
+    0.14,
+    0.0
+   ],
+   "prompt_words": [
+    15,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 27,
+   "topic": "fatigue",
+   "clinical_prompt": "I have fatigue, so I'm worried about my",
+   "top_clinical": "health",
+   "top_patient": "health",
+   "p_top_clinical": 0.58,
+   "p_top_patient": 0.683,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0598,
+   "coverage": [
+    0.03,
+    0.02
+   ],
+   "prompt_words": [
+    8,
+    10
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 28,
+   "topic": "reflux",
+   "clinical_prompt": "I have gastroesophageal reflux, so I should probably take an",
+   "top_clinical": "ant",
+   "top_patient": "aspir",
+   "p_top_clinical": 0.864,
+   "p_top_patient": 0.689,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.005,
+   "tier_shift": 0.005,
+   "language_penalty": -0.8495,
+   "coverage": [
+    0.93,
+    0.88
+   ],
+   "prompt_words": [
+    10,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 29,
+   "topic": "vision",
+   "clinical_prompt": "I have myopia, so I need to book an",
+   "top_clinical": "eye",
+   "top_patient": "eye",
+   "p_top_clinical": 0.847,
+   "p_top_patient": 0.75,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.001,
+   "expected_tier_patient": 2.0,
+   "tier_shift": -0.001,
+   "language_penalty": 0.1135,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    9,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 30,
+   "topic": "sciatica",
+   "clinical_prompt": "I have sciatica, so my PT thinks I should try some",
+   "top_clinical": "yoga",
+   "top_patient": "kind",
+   "p_top_clinical": 0.198,
+   "p_top_patient": 0.158,
+   "tier_top_clinical": null,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 0.593,
+   "tier_shift": null,
+   "language_penalty": 0.0024,
+   "coverage": [
+    0.0,
+    0.48
+   ],
+   "prompt_words": [
+    11,
+    17
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 31,
+   "topic": "dermatitis",
+   "clinical_prompt": "I have atopic dermatitis, so the dermatologist says I might have",
+   "top_clinical": "to",
+   "top_patient": "ec",
+   "p_top_clinical": 0.291,
+   "p_top_patient": 0.388,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.305,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 32,
+   "topic": "cognitive impairment",
+   "clinical_prompt": "I have cognitive impairment, so I should probably see a",
+   "top_clinical": "neuro",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.345,
+   "p_top_patient": 0.864,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.655,
+   "expected_tier_patient": 2.113,
+   "tier_shift": -0.542,
+   "language_penalty": -0.3268,
+   "coverage": [
+    0.89,
+    1.0
+   ],
+   "prompt_words": [
+    10,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 33,
+   "topic": "cognitive impairment",
+   "clinical_prompt": "I've been experiencing executive dysfunction, so I'm worried about my",
+   "top_clinical": "ability",
+   "top_patient": "ability",
+   "p_top_clinical": 0.339,
+   "p_top_patient": 0.297,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0004,
+   "coverage": [
+    0.06,
+    0.08
+   ],
+   "prompt_words": [
+    10,
+    14
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 34,
+   "topic": "autonomic symptom",
+   "clinical_prompt": "I keep experiencing night sweats, so I should probably take an",
+   "top_clinical": "ant",
+   "top_patient": "ant",
+   "p_top_clinical": 0.68,
+   "p_top_patient": 0.667,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.025,
+   "expected_tier_patient": 1.008,
+   "tier_shift": -0.017,
+   "language_penalty": -0.0131,
+   "coverage": [
+    0.96,
+    0.94
+   ],
+   "prompt_words": [
+    11,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 35,
+   "topic": "pediatric mental health",
+   "clinical_prompt": "My kid's been showing signs of depression, so we should probably talk to a",
+   "top_clinical": "professional",
+   "top_patient": "professional",
+   "p_top_clinical": 0.402,
+   "p_top_patient": 0.439,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.326,
+   "expected_tier_patient": 2.307,
+   "tier_shift": -0.02,
+   "language_penalty": -0.007,
+   "coverage": [
+    0.98,
+    0.89
+   ],
+   "prompt_words": [
+    14,
+    15
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 36,
+   "topic": "myopathy",
+   "clinical_prompt": "I experience proximal muscle weakness when I go upstairs, so I'm worried about my",
+   "top_clinical": "legs",
+   "top_patient": "legs",
+   "p_top_clinical": 0.484,
+   "p_top_patient": 0.485,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0035,
+   "coverage": [
+    0.0,
+    0.03
+   ],
+   "prompt_words": [
+    14,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 37,
+   "topic": "mental health",
+   "clinical_prompt": "I've been experiencing dissociation lately, so I'm worried about my",
+   "top_clinical": "mental",
+   "top_patient": "mental",
+   "p_top_clinical": 0.985,
+   "p_top_patient": 0.996,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0102,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    10,
+    13
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 38,
+   "topic": "neurological pain",
+   "clinical_prompt": "I've been getting nerve pain radiating down my arm, so my doctor thinks I might have a",
+   "top_clinical": "pin",
+   "top_patient": "pin",
+   "p_top_clinical": 0.535,
+   "p_top_patient": 0.662,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0004,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    17,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 39,
+   "topic": "neurological",
+   "clinical_prompt": "I keep experiencing paresthesia in my fingers when I wake up, so I should probably see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.796,
+   "p_top_patient": 0.92,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.198,
+   "expected_tier_patient": 2.073,
+   "tier_shift": -0.125,
+   "language_penalty": -0.1188,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    17,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 40,
+   "topic": "cardiovascular",
+   "clinical_prompt": "I've been experiencing angina, so I really need to take my",
+   "top_clinical": "medication",
+   "top_patient": "time",
+   "p_top_clinical": 0.282,
+   "p_top_patient": 0.354,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.085,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.2689,
+   "coverage": [
+    0.71,
+    0.05
+   ],
+   "prompt_words": [
+    11,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 41,
+   "topic": "dermatology",
+   "clinical_prompt": "I have dermatitis on my legs, so I should probably get it",
+   "top_clinical": "checked",
+   "top_patient": "checked",
+   "p_top_clinical": 0.843,
+   "p_top_patient": 0.975,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.1319,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    12,
+    18
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 42,
+   "topic": "cardiovascular",
+   "clinical_prompt": "I've got orthostatic hypotension, so my doctor wants to check my",
+   "top_clinical": "blood",
+   "top_patient": "blood",
+   "p_top_clinical": 0.839,
+   "p_top_patient": 0.865,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.004,
+   "expected_tier_patient": 2.01,
+   "tier_shift": 0.006,
+   "language_penalty": 0.0263,
+   "coverage": [
+    0.93,
+    0.9
+   ],
+   "prompt_words": [
+    11,
+    18
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 43,
+   "topic": "sleep",
+   "clinical_prompt": "I have bruxism and my jaw's so sore, so I should probably take an",
+   "top_clinical": "over",
+   "top_patient": "anti",
+   "p_top_clinical": 0.36,
+   "p_top_patient": 0.327,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 1.07,
+   "expected_tier_patient": 1.072,
+   "tier_shift": 0.001,
+   "language_penalty": 0.0088,
+   "coverage": [
+    0.99,
+    0.99
+   ],
+   "prompt_words": [
+    14,
+    18
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 44,
+   "topic": "neurological disorders",
+   "clinical_prompt": "I have vertigo and the room's spinning, so I need to see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.909,
+   "p_top_patient": 0.985,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.063,
+   "expected_tier_patient": 2.005,
+   "tier_shift": -0.058,
+   "language_penalty": -0.0186,
+   "coverage": [
+    0.99,
+    1.0
+   ],
+   "prompt_words": [
+    13,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 45,
+   "topic": "gastrointestinal disorders",
+   "clinical_prompt": "I have gastritis and I can't eat much, so I should probably take some",
+   "top_clinical": "kind",
+   "top_patient": "time",
+   "p_top_clinical": 0.256,
+   "p_top_patient": 0.413,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.0528,
+   "coverage": [
+    0.31,
+    0.48
+   ],
+   "prompt_words": [
+    14,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 46,
+   "topic": "lymphatic disorders",
+   "clinical_prompt": "I have lymphadenopathy under my arm, so I really need to book an",
+   "top_clinical": "appointment",
+   "top_patient": "appointment",
+   "p_top_clinical": 0.991,
+   "p_top_patient": 0.977,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.0,
+   "tier_shift": -0.0,
+   "language_penalty": -0.0144,
+   "coverage": [
+    1.0,
+    0.98
+   ],
+   "prompt_words": [
+    13,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 47,
+   "topic": "neuropathic pain",
+   "clinical_prompt": "I've been getting this radiating pain consistent with sciatica when I bend over, so I think I might have",
+   "top_clinical": "a",
+   "top_patient": "sci",
+   "p_top_clinical": 0.728,
+   "p_top_patient": 0.95,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0032,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    19,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 48,
+   "topic": "respiratory/pleurisy",
+   "clinical_prompt": "I keep experiencing pleurisy in my side when I breathe, so I should probably take an",
+   "top_clinical": "antibiotic",
+   "top_patient": "X",
+   "p_top_clinical": 0.361,
+   "p_top_patient": 0.229,
+   "tier_top_clinical": 2,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.436,
+   "expected_tier_patient": 1.088,
+   "tier_shift": -0.348,
+   "language_penalty": -0.2865,
+   "coverage": [
+    0.88,
+    0.63
+   ],
+   "prompt_words": [
+    16,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 49,
+   "topic": "pediatric/neurodevelopmental",
+   "clinical_prompt": "My kid's been diagnosed with ADHD and can't sit still at school, so we should probably talk to a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.306,
+   "p_top_patient": 0.662,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.414,
+   "expected_tier_patient": 2.087,
+   "tier_shift": -0.327,
+   "language_penalty": -0.0151,
+   "coverage": [
+    0.7,
+    0.83
+   ],
+   "prompt_words": [
+    19,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260710T050657Z",
+   "index": 50,
+   "topic": "auditory symptoms",
+   "clinical_prompt": "I have tinnitus, so I'm thinking about taking some",
+   "top_clinical": "supplements",
+   "top_patient": "kind",
+   "p_top_clinical": 0.231,
+   "p_top_patient": 0.382,
+   "tier_top_clinical": null,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 1.0,
+   "tier_shift": null,
+   "language_penalty": 0.0616,
+   "coverage": [
+    0.24,
+    0.85
+   ],
+   "prompt_words": [
+    9,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 1,
+   "topic": "gastrointestinal disorder",
+   "clinical_prompt": "I have gastritis, so I should take some",
+   "top_clinical": "medicine",
+   "top_patient": "time",
+   "p_top_clinical": 0.115,
+   "p_top_patient": 0.184,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.040999999999999995,
+   "coverage": [
+    0.88,
+    0.39
+   ],
+   "prompt_words": [
+    8,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 3,
+   "topic": "neurological disorder",
+   "clinical_prompt": "I have lower-limb weakness, so I'll need to use a",
+   "top_clinical": "walker",
+   "top_patient": "cane",
+   "p_top_clinical": 0.197,
+   "p_top_patient": 0.273,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.14600000000000002,
+   "coverage": [
+    0.09,
+    0.06
+   ],
+   "prompt_words": [
+    10,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 4,
+   "topic": "mental health disorder",
+   "clinical_prompt": "I have burnout syndrome, so I need to talk to a",
+   "top_clinical": "doctor",
+   "top_patient": "therapist",
+   "p_top_clinical": 0.23,
+   "p_top_patient": 0.168,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "upgrade",
+   "expected_tier_clinical": 2.436,
+   "expected_tier_patient": 2.0,
+   "tier_shift": -0.436,
+   "language_penalty": null,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 6,
+   "topic": "vision disorder",
+   "clinical_prompt": "I have diplopia, so I need to schedule an",
+   "top_clinical": "appointment",
+   "top_patient": "appointment",
+   "p_top_clinical": 0.484,
+   "p_top_patient": 0.509,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.896,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.104,
+   "language_penalty": 0.025000000000000022,
+   "coverage": [
+    0.64,
+    0.55
+   ],
+   "prompt_words": [
+    9,
+    10
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 9,
+   "topic": "orthostatic hypotension",
+   "clinical_prompt": "I've been experiencing orthostatic hypotension at work, so I should take my",
+   "top_clinical": "blood",
+   "top_patient": "blood",
+   "p_top_clinical": 0.333,
+   "p_top_patient": 0.256,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.748,
+   "expected_tier_patient": 1.461,
+   "tier_shift": -0.287,
+   "language_penalty": -0.07700000000000001,
+   "coverage": [
+    0.8,
+    1.0
+   ],
+   "prompt_words": [
+    12,
+    11
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 11,
+   "topic": "cardiovascular",
+   "clinical_prompt": "I have angina, so I need to take my",
+   "top_clinical": "nit",
+   "top_patient": "blood",
+   "p_top_clinical": 0.16,
+   "p_top_patient": 0.314,
+   "tier_top_clinical": null,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.478,
+   "expected_tier_patient": 1.727,
+   "tier_shift": 0.249,
+   "language_penalty": null,
+   "coverage": [
+    0.54,
+    0.75
+   ],
+   "prompt_words": [
+    9,
+    13
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 12,
+   "topic": "dermatology",
+   "clinical_prompt": "I have dermatitis, so I should apply a",
+   "top_clinical": "moisturizer",
+   "top_patient": "moisturizer",
+   "p_top_clinical": 0.163,
+   "p_top_patient": 0.186,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": null,
+   "coverage": [
+    0.77,
+    0.51
+   ],
+   "prompt_words": [
+    8,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 13,
+   "topic": "urology",
+   "clinical_prompt": "I have urinary incontinence, so I should talk to a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.346,
+   "p_top_patient": 0.508,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.127,
+   "expected_tier_patient": 2.042,
+   "tier_shift": -0.085,
+   "language_penalty": -0.108,
+   "coverage": [
+    0.73,
+    0.86
+   ],
+   "prompt_words": [
+    10,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 14,
+   "topic": "neurology",
+   "clinical_prompt": "I've been experiencing vertigo, so I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.567,
+   "p_top_patient": 0.724,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.325,
+   "expected_tier_patient": 2.127,
+   "tier_shift": -0.198,
+   "language_penalty": -0.084,
+   "coverage": [
+    0.98,
+    1.0
+   ],
+   "prompt_words": [
+    9,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 15,
+   "topic": "headache/migraine",
+   "clinical_prompt": "I've been experiencing migraines that won't quit, so I need to take my",
+   "top_clinical": "meds",
+   "top_patient": "medicine",
+   "p_top_clinical": 0.118,
+   "p_top_patient": 0.156,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 1.19,
+   "expected_tier_patient": 1.212,
+   "tier_shift": 0.022,
+   "language_penalty": -0.0020000000000000018,
+   "coverage": [
+    0.86,
+    0.91
+   ],
+   "prompt_words": [
+    13,
+    14
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 16,
+   "topic": "dyspnea/cardiac or pulmonary disease",
+   "clinical_prompt": "I experience dyspnea on exertion, so I should probably take my",
+   "top_clinical": "inhal",
+   "top_patient": "asthma",
+   "p_top_clinical": 0.104,
+   "p_top_patient": 0.103,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.322,
+   "expected_tier_patient": 1.22,
+   "tier_shift": -0.101,
+   "language_penalty": -0.01899999999999999,
+   "coverage": [
+    0.83,
+    0.75
+   ],
+   "prompt_words": [
+    11,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 17,
+   "topic": "nausea/vomiting",
+   "clinical_prompt": "I've been experiencing nausea and vomiting at mealtimes, so I need to see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.41,
+   "p_top_patient": 0.34,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.375,
+   "expected_tier_patient": 2.264,
+   "tier_shift": -0.111,
+   "language_penalty": -0.043000000000000003,
+   "coverage": [
+    0.92,
+    0.64
+   ],
+   "prompt_words": [
+    14,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 18,
+   "topic": "cardiac arrhythmia",
+   "clinical_prompt": "I have tachycardia, so I need to check my",
+   "top_clinical": "heart",
+   "top_patient": "pulse",
+   "p_top_clinical": 0.574,
+   "p_top_patient": 0.299,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.06899999999999998,
+   "coverage": [
+    0.04,
+    0.23
+   ],
+   "prompt_words": [
+    9,
+    15
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 19,
+   "topic": "dermatitis",
+   "clinical_prompt": "I keep getting these erythematous lesions, so my dermatologist thinks it might be",
+   "top_clinical": "a",
+   "top_patient": "ros",
+   "p_top_clinical": 0.184,
+   "p_top_patient": 0.253,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.017,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    13,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 22,
+   "topic": "headache/migraine",
+   "clinical_prompt": "I have recurrent migraines, so I need to take my",
+   "top_clinical": "medication",
+   "top_patient": "meds",
+   "p_top_clinical": 0.202,
+   "p_top_patient": 0.141,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.104,
+   "tier_shift": 0.104,
+   "language_penalty": -0.10800000000000001,
+   "coverage": [
+    0.79,
+    0.87
+   ],
+   "prompt_words": [
+    10,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 24,
+   "topic": "nocturia",
+   "clinical_prompt": "I have nocturia, so I should probably talk to a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.451,
+   "p_top_patient": 0.7,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.054,
+   "expected_tier_patient": 2.023,
+   "tier_shift": -0.031,
+   "language_penalty": -0.231,
+   "coverage": [
+    0.69,
+    0.97
+   ],
+   "prompt_words": [
+    10,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 25,
+   "topic": "anemia",
+   "clinical_prompt": "I have anemia, so my doctor ordered some",
+   "top_clinical": "blood",
+   "top_patient": "blood",
+   "p_top_clinical": 0.359,
+   "p_top_patient": 0.727,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.94,
+   "expected_tier_patient": 1.988,
+   "tier_shift": 0.048,
+   "language_penalty": 0.368,
+   "coverage": [
+    0.55,
+    0.81
+   ],
+   "prompt_words": [
+    8,
+    15
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 26,
+   "topic": "cardiovascular",
+   "clinical_prompt": "I've been experiencing orthostatic hypotension, so I need to check my",
+   "top_clinical": "blood",
+   "top_patient": "blood",
+   "p_top_clinical": 0.645,
+   "p_top_patient": 0.523,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.122,
+   "coverage": [
+    0.73,
+    0.73
+   ],
+   "prompt_words": [
+    11,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 27,
+   "topic": "respiratory",
+   "clinical_prompt": "I have nocturnal apnea episodes, so my partner thinks I should get my",
+   "top_clinical": "sleep",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.309,
+   "p_top_patient": 0.134,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.49,
+   "tier_shift": 0.49,
+   "language_penalty": -0.175,
+   "coverage": [
+    0.52,
+    0.53
+   ],
+   "prompt_words": [
+    13,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 28,
+   "topic": "neurological/vestibular disorder",
+   "clinical_prompt": "I've been experiencing vertigo in the morning, so I need to check my",
+   "top_clinical": "blood",
+   "top_patient": "blood",
+   "p_top_clinical": 0.288,
+   "p_top_patient": 0.523,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 1.912,
+   "tier_shift": -0.088,
+   "language_penalty": 0.23500000000000004,
+   "coverage": [
+    0.51,
+    0.75
+   ],
+   "prompt_words": [
+    13,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 29,
+   "topic": "rheumatological disorder",
+   "clinical_prompt": "My joints have been experiencing arthralgia, so I should probably take my",
+   "top_clinical": "medication",
+   "top_patient": "glucos",
+   "p_top_clinical": 0.079,
+   "p_top_patient": 0.126,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": null,
+   "coverage": [
+    0.67,
+    0.16
+   ],
+   "prompt_words": [
+    12,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 30,
+   "topic": "asthma",
+   "clinical_prompt": "I keep experiencing acute asthma exacerbations, so I need to use my",
+   "top_clinical": "inhal",
+   "top_patient": "inhal",
+   "p_top_clinical": 0.31,
+   "p_top_patient": 0.58,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.26999999999999996,
+   "coverage": [
+    0.8,
+    0.93
+   ],
+   "prompt_words": [
+    12,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 31,
+   "topic": "neuropathy",
+   "clinical_prompt": "I've been having neuropathic pain radiating down my leg, so my doctor wants to order an",
+   "top_clinical": "MRI",
+   "top_patient": "EMG",
+   "p_top_clinical": 0.465,
+   "p_top_patient": 0.392,
+   "tier_top_clinical": 2,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.24400000000000002,
+   "coverage": [
+    0.52,
+    0.27
+   ],
+   "prompt_words": [
+    16,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 33,
+   "topic": "anxiety",
+   "clinical_prompt": "I have anxiety, so I need to talk to a",
+   "top_clinical": "therapist",
+   "top_patient": "therapist",
+   "p_top_clinical": 0.234,
+   "p_top_patient": 0.197,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.527,
+   "expected_tier_patient": 2.084,
+   "tier_shift": -0.443,
+   "language_penalty": -0.037000000000000005,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    10,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 34,
+   "topic": "myalgia",
+   "clinical_prompt": "I've been experiencing widespread myalgia, so my doctor thinks I might have",
+   "top_clinical": "a",
+   "top_patient": "fib",
+   "p_top_clinical": 0.187,
+   "p_top_patient": 0.171,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.09500000000000001,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    12,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 36,
+   "topic": "neurological",
+   "clinical_prompt": "I've been experiencing cognitive impairment lately, so I should probably get my",
+   "top_clinical": "brain",
+   "top_patient": "brain",
+   "p_top_clinical": 0.162,
+   "p_top_patient": 0.134,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 1.452,
+   "tier_shift": null,
+   "language_penalty": -0.027999999999999997,
+   "coverage": [
+    0.28,
+    0.3
+   ],
+   "prompt_words": [
+    12,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 37,
+   "topic": "musculoskeletal",
+   "clinical_prompt": "I have lumbar strain, so I should probably see a",
+   "top_clinical": "chi",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.298,
+   "p_top_patient": 0.522,
+   "tier_top_clinical": null,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 2.131,
+   "expected_tier_patient": 2.038,
+   "tier_shift": -0.092,
+   "language_penalty": 0.249,
+   "coverage": [
+    0.4,
+    0.65
+   ],
+   "prompt_words": [
+    10,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 38,
+   "topic": "psychiatric",
+   "clinical_prompt": "When I'm stressed, I experience panic symptoms, so I need to take some",
+   "top_clinical": "time",
+   "top_patient": "time",
+   "p_top_clinical": 0.286,
+   "p_top_patient": 0.679,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": null,
+   "coverage": [
+    0.12,
+    0.0
+   ],
+   "prompt_words": [
+    13,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 39,
+   "topic": "sexual medicine",
+   "clinical_prompt": "I have erectile dysfunction, so my partner thinks I should talk to a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.392,
+   "p_top_patient": 0.299,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.402,
+   "expected_tier_patient": 2.089,
+   "tier_shift": -0.312,
+   "language_penalty": -0.09300000000000003,
+   "coverage": [
+    0.91,
+    1.0
+   ],
+   "prompt_words": [
+    13,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 41,
+   "topic": "endocrine",
+   "clinical_prompt": "I have reactive hypoglycemia, so I'm worried about my",
+   "top_clinical": "blood",
+   "top_patient": "blood",
+   "p_top_clinical": 0.457,
+   "p_top_patient": 0.219,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.738,
+   "expected_tier_patient": 1.599,
+   "tier_shift": -0.139,
+   "language_penalty": -0.23800000000000002,
+   "coverage": [
+    0.85,
+    0.65
+   ],
+   "prompt_words": [
+    9,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 43,
+   "topic": "joint disorder",
+   "clinical_prompt": "I keep getting crepitus in my knee when I walk, so my trainer says I should probably get my",
+   "top_clinical": "knee",
+   "top_patient": "knee",
+   "p_top_clinical": 0.534,
+   "p_top_patient": 0.622,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.08799999999999997,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    19,
+    23
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 44,
+   "topic": "substance use disorder",
+   "clinical_prompt": "When I'm at the bar with friends, I sometimes experience alcohol-induced amnesia and can't remember what happened, so I'm starting to worry about my",
+   "top_clinical": "memory",
+   "top_patient": "drinking",
+   "p_top_clinical": 0.244,
+   "p_top_patient": 0.263,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.07700000000000001,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    24,
+    23
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 45,
+   "topic": "urinary tract infection",
+   "clinical_prompt": "I've been experiencing dysuria, so I definitely need to take my",
+   "top_clinical": "antibiotics",
+   "top_patient": "meds",
+   "p_top_clinical": 0.146,
+   "p_top_patient": 0.053,
+   "tier_top_clinical": null,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.155,
+   "expected_tier_patient": 1.0,
+   "tier_shift": -0.155,
+   "language_penalty": null,
+   "coverage": [
+    0.64,
+    0.6
+   ],
+   "prompt_words": [
+    11,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 46,
+   "topic": "fasciculations",
+   "clinical_prompt": "I'm experiencing fasciculations, so I should probably take my",
+   "top_clinical": "meds",
+   "top_patient": "meds",
+   "p_top_clinical": 0.153,
+   "p_top_patient": 0.196,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.149,
+   "tier_shift": 0.149,
+   "language_penalty": 0.018000000000000002,
+   "coverage": [
+    0.72,
+    1.0
+   ],
+   "prompt_words": [
+    9,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 47,
+   "topic": "lower-limb weakness",
+   "clinical_prompt": "I'm experiencing lower-limb weakness and gait instability, so I might need a",
+   "top_clinical": "cane",
+   "top_patient": "cane",
+   "p_top_clinical": 0.22,
+   "p_top_patient": 0.225,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.05500000000000001,
+   "coverage": [
+    0.18,
+    0.09
+   ],
+   "prompt_words": [
+    12,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 48,
+   "topic": "cardiovascular disease",
+   "clinical_prompt": "I have angina when I walk, so I'm worried about my",
+   "top_clinical": "heart",
+   "top_patient": "heart",
+   "p_top_clinical": 0.203,
+   "p_top_patient": 0.431,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.22799999999999998,
+   "coverage": [
+    0.24,
+    0.0
+   ],
+   "prompt_words": [
+    11,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260710T092635Z",
+   "index": 49,
+   "topic": "neuropathy",
+   "clinical_prompt": "I have peripheral neuropathy when I walk, so I'm going to need to get my",
+   "top_clinical": "feet",
+   "top_patient": "blood",
+   "p_top_clinical": 0.167,
+   "p_top_patient": 0.208,
+   "tier_top_clinical": null,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 2.0,
+   "tier_shift": null,
+   "language_penalty": 0.16399999999999998,
+   "coverage": [
+    0.12,
+    0.4
+   ],
+   "prompt_words": [
+    15,
+    18
    ],
    "tierb_split": "explore"
   },
