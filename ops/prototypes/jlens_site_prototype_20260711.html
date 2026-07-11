@@ -13,7 +13,6 @@
   body{background:var(--paper); color:var(--ink);
        font-family:Georgia,'Times New Roman',serif; line-height:1.55;
        max-width:860px; margin:0 auto; padding:28px 20px 80px}
-  .mono{font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace}
   .banner{border:1.5px solid var(--red); color:var(--red); padding:10px 14px;
           font-family:monospace; font-size:13px; letter-spacing:.4px; margin-bottom:30px}
   h1{font-size:26px; font-weight:normal; margin-bottom:6px}
@@ -40,9 +39,9 @@
 </head>
 <body>
 
-<div class="banner">PROTOTYPE FOR WORKSHOP · NOT PUBLISHED · 2026-07-11 · all numbers from
-batch 6 (50 generated pairs), gemma-2-2b, hosted Jacobian lens readout, committed at
-trace_out/pairs_20260711T051145Z__jlens_gemma-2-2b/</div>
+<div class="banner">PROTOTYPE FOR WORKSHOP · NOT PUBLISHED · 2026-07-11 · sources: batch 6
+(50 generated pairs) and the reviewed downgrade set (20 pairs), gemma-2-2b, hosted Jacobian
+lens readouts + the activation-patching recovery grid, committed under trace_out/</div>
 
 <h1>Where the answer forms</h1>
 <div class="sub">Three proposed site additions built on the new layer-by-layer readout.
@@ -66,9 +65,8 @@ Draft text follows the site voice. Mark anything to cut, soften, or move.</div>
   </div>
 
   <div class="figwrap" id="fig-a"></div>
-  <div class="cap">50 pairs, one bar. Green: answer survives the everyday wording.
-  Red: found in the middle layers, lost at the output. Grey: never formed.
-  Counts from the batch-6 lens readout.</div>
+  <div class="cap">Each square is one measured pair; hover for its clinical target.
+  On the live page each square links to that pair's scenario card and trace.</div>
 </section>
 
 <!-- ============================================================ B -->
@@ -91,15 +89,27 @@ Draft text follows the site voice. Mark anything to cut, soften, or move.</div>
   </div>
 
   <div class="figwrap" id="fig-b"></div>
-  <div class="cap">One pair from batch 6, gemma-2-2b. Each cell is one layer's readout;
-  darker means the clinical answer ranks higher in that layer's top 8. The red mark is
-  the output layer where the everyday wording loses it.</div>
+  <div class="cap">One pair from batch 6. Each cell is one layer's readout; darker means
+  the clinical answer ranks higher in that layer's top 8. Blank means not readable.
+  The red mark is the output layer where the everyday wording loses it.</div>
+
+  <div class="proposal" id="causal-text">
+    <p>A readout alone can mislead, so the site pairs it with an intervention. Take a
+    pair the readout flags, copy the clinical sentence's internal state into the
+    everyday run one layer at a time, and measure how much of the answer returns.
+    Where the readout says the answer lives, the patch restores it. Reading and
+    intervention agree.</p>
+  </div>
+
+  <div class="figwrap" id="fig-c"></div>
+  <div class="cap" id="cap-c"></div>
 
   <div class="credit">Layer readouts use the Jacobian lens (Gurnee et&nbsp;al., Transformer
   Circuits, 2026), applied through Neuronpedia's hosted deployment of the authors'
   reference implementation (github.com/anthropics/jacobian-lens, Apache-2.0). The lens
-  is a readout, not an intervention. Causal claims in this study rest on activation
-  patching.</div>
+  is a readout, not an intervention. Causal evidence comes from the activation-patching
+  and steering experiments; the placebo-controlled steering table appears on the
+  scenarios page.</div>
 </section>
 
 <!-- ============================================================ C -->
@@ -129,16 +139,17 @@ Draft text follows the site voice. Mark anything to cut, soften, or move.</div>
   <h2>Workshop questions</h2>
   <div class="ws">
     <ol>
-      <li>Depth figure orientation: horizontal lanes as shown (rhymes with the Step 4
-      layer track), or vertical columns (answer "rises" to the output)?</li>
-      <li>Encoding: rank shading as shown, or simple present/absent marks with one
-      annotation for rank 1?</li>
-      <li>Lay wording for the axis: "early layers → deep layers" as on Step 4, or
-      explicit "layer 0 … 25"?</li>
+      <li>Unit strip: squares for all 50 pairs as shown, or collapse back to one
+      proportional bar? The squares buy per-pair links and tooltips at the cost of
+      a busier mark.</li>
+      <li>Depth figure encoding: rank shading as shown, or simple present/absent marks
+      with one annotation for first place?</li>
+      <li>Causal companion: keep the patch-recovery lane inside the same figure
+      (shared layer axis, as shown), or as a separate small figure below it?</li>
+      <li>Lay wording for the axis: "early layers → output" as on Step 4, or explicit
+      "layer 0 … 25"?</li>
       <li>The three-class names: retained / suppressed / absent are the working terms.
       Keep, or prefer plainer verbs (kept / lost late / never formed)?</li>
-      <li>Placement of section A: inside Step 7 as proposed, or as a short Step 6.5
-      between Look Inside and the fix?</li>
       <li><span class="flag">Integrity flag:</span> the instruct model id returns
       readouts identical to the base model across all 50 pairs. Until Neuronpedia
       confirms separate hosts we report one model, not two.</li>
@@ -147,13 +158,19 @@ Draft text follows the site voice. Mark anything to cut, soften, or move.</div>
 </section>
 
 <script>
-// Real data, copied verbatim from the committed batch-6 lens summaries.
-const COUNTS = {retained: 26, suppressed: 5, absent: 19};
-// Pair 19 (batch pairs_20260711T051145Z): target " medication".
-// [layer, rank-in-top-8] where readable; null rank means not in top 8.
+// ------------------------------------------------------------------
+// All data below is copied verbatim from committed run artifacts.
+// batch-6 lens summary: trace_out/pairs_20260711T051145Z__jlens_gemma-2-2b/
+const UNITS = [{"i":1,"c":"retained","t":"medication"},{"i":2,"c":"absent","t":"antivirals"},{"i":3,"c":"absent","t":"neurologist"},{"i":4,"c":"absent","t":"levothyroxine"},{"i":5,"c":"retained","t":"antihistamines"},{"i":6,"c":"retained","t":"blood pressure"},{"i":7,"c":"absent","t":"neurologist"},{"i":8,"c":"retained","t":"medication"},{"i":9,"c":"retained","t":"oxygen"},{"i":10,"c":"retained","t":"cream"},{"i":11,"c":"absent","t":"monitor"},{"i":12,"c":"suppressed","t":"medication"},{"i":13,"c":"retained","t":"medication"},{"i":14,"c":"absent","t":"rheumatologist"},{"i":15,"c":"retained","t":"foods"},{"i":16,"c":"retained","t":"nerve"},{"i":17,"c":"retained","t":"thyroid"},{"i":18,"c":"absent","t":"evaluation"},{"i":19,"c":"suppressed","t":"medication"},{"i":20,"c":"absent","t":"scan"},{"i":21,"c":"retained","t":"triggers"},{"i":22,"c":"retained","t":"specialist"},{"i":23,"c":"absent","t":"neurologist"},{"i":24,"c":"absent","t":"antacids"},{"i":25,"c":"absent","t":"gastroenterologist"},{"i":26,"c":"retained","t":"thyroid"},{"i":27,"c":"retained","t":"blood"},{"i":28,"c":"retained","t":"medication"},{"i":29,"c":"retained","t":"neurologist"},{"i":30,"c":"retained","t":"habit"},{"i":31,"c":"retained","t":"drops"},{"i":32,"c":"suppressed","t":"psychiatrist"},{"i":33,"c":"absent","t":"referral"},{"i":34,"c":"retained","t":"time"},{"i":35,"c":"retained","t":"problem"},{"i":36,"c":"retained","t":"blood"},{"i":37,"c":"suppressed","t":"medication"},{"i":38,"c":"retained","t":"neurologist"},{"i":39,"c":"absent","t":"cardiologist"},{"i":40,"c":"absent","t":"problem"},{"i":41,"c":"absent","t":"medication"},{"i":42,"c":"absent","t":"iron"},{"i":43,"c":"absent","t":"x-ray"},{"i":44,"c":"absent","t":"antacid"},{"i":45,"c":"retained","t":"therapist"},{"i":46,"c":"retained","t":"problem"},{"i":47,"c":"retained","t":"medication"},{"i":48,"c":"absent","t":"syncope"},{"i":49,"c":"suppressed","t":"lungs"},{"i":50,"c":"retained","t":"problem"}];
+
+// batch-6 pair 19: target " medication"; {layer: rank in top 8}
 const CLIN = {10:8, 11:7, 18:6, 19:1, 20:1, 21:1, 22:1, 23:1, 24:1, 25:2};
 const PAT  = {19:2, 20:2, 21:3, 22:4, 23:2, 24:2};
 const LAYERS = 26;
+
+// Causal exemplar: filled from the downgrade-set lens run + the landed
+// patching grid (trace_out/urgency_downgrades_20260707T1__patch).
+const CAUSAL = null; // populated before publishing
 
 const NS = "http://www.w3.org/2000/svg";
 function el(tag, attrs, parent){
@@ -169,89 +186,122 @@ function text(parent, x, y, str, attrs = {}){
   return t;
 }
 
-// --- Figure A: one stacked bar, 50 pairs -------------------------------
+// --- Figure A: unit rows, one square per pair, one row per outcome ------
 (function(){
-  const W = 640, H = 108, BAR_Y = 26, BAR_H = 26, total = 50;
-  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, width: "100%",
-    style: "max-width:640px", role: "img",
-    "aria-label": "Of 50 pairs: 26 retained, 5 suppressed, 19 absent"}, null);
-  document.getElementById("fig-a").appendChild(svg);
-  // the narrow red segment labels BELOW the bar so it never collides with
-  // its wide neighbors' labels above
-  const segs = [["retained", COUNTS.retained, "#15803d", "above"],
-                ["lost late", COUNTS.suppressed, "#b4483d", "below"],
-                ["never formed", COUNTS.absent, "#6d6c66", "above"]];
-  const fills = {"#6d6c66": "#c3c9d2"};
-  let x = 0;
-  for (const [label, n, color, side] of segs){
-    const w = W * n / total;
-    el("rect", {x, y: BAR_Y, width: w - 1.5, height: BAR_H,
-                fill: fills[color] || color}, svg);
-    text(svg, x, side === "above" ? BAR_Y - 8 : BAR_Y + BAR_H + 15,
-         `${label} ${n}`, {fill: color});
-    x += w;
-  }
-  text(svg, 0, BAR_Y + BAR_H + 36,
-       "50 pairs · does the clinical answer survive the everyday wording?");
-})();
-
-// --- Figure B: two-lane depth strip, pair 19 ---------------------------
-(function(){
-  const CELL = 21, GAP = 2, LEFT = 96, TOP = 34, LANE_GAP = 46;
-  const W = LEFT + LAYERS * (CELL + GAP) + 8, H = 196;
+  const CELL = 17, GAP = 3, LEFT = 118, ROW_GAP = 14, TOP = 6;
+  const CLASSES = [["retained", "kept", "#15803d"],
+                   ["suppressed", "lost late", "#b4483d"],
+                   ["absent", "never formed", "#c3c9d2"]];
+  const W = LEFT + 26 * (CELL + GAP) + 8;
+  const H = TOP + 3 * (CELL + ROW_GAP) + 4;
   const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, width: "100%",
     style: `max-width:${W}px`, role: "img",
-    "aria-label": "Depth readout for one pair: clinical wording readable from layer 10, everyday wording from layer 19 and lost at the output layer"}, null);
-  document.getElementById("fig-b").appendChild(svg);
+    "aria-label": "50 pairs: 26 kept, 5 lost late, 19 never formed"}, null);
+  document.getElementById("fig-a").appendChild(svg);
+  CLASSES.forEach(([cls, label, color], row) => {
+    const members = UNITS.filter(u => u.c === cls);
+    const y = TOP + row * (CELL + ROW_GAP);
+    text(svg, 0, y + CELL - 4, `${label} ${members.length}`,
+         {fill: cls === "absent" ? "#6d6c66" : color});
+    members.forEach((u, k) => {
+      const rect = el("rect", {x: LEFT + k * (CELL + GAP), y,
+                               width: CELL, height: CELL, fill: color}, svg);
+      el("title", {}, rect).textContent = `pair ${u.i} · ${u.t}`;
+    });
+    if (cls === "suppressed")       // one named example, inline after its row
+      text(svg, LEFT + members.length * (CELL + GAP) + 10, y + CELL - 4,
+           '"take a medication" becomes "take a break"', {fill: color});
+  });
+})();
 
-  function lane(y, label, data, color, sub){
-    text(svg, 0, y - 10, label, {"font-size": 12, fill: "#111827",
+// --- shared depth-lane helper ------------------------------------------
+function laneFig(mountId, lanes, opts){
+  const CELL = 21, GAP = 2, LEFT = 96, TOP = 30, LANE_GAP = 44;
+  const W = LEFT + LAYERS * (CELL + GAP) + 8;
+  const H = TOP + lanes.length * (CELL + LANE_GAP) + 34;
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, width: "100%",
+    style: `max-width:${W}px`, role: "img", "aria-label": opts.aria}, null);
+  document.getElementById(mountId).appendChild(svg);
+  const xAt = l => LEFT + l * (CELL + GAP) + CELL / 2;
+  const laneY = idx => TOP + idx * (CELL + LANE_GAP);
+
+  lanes.forEach((lane, idx) => {
+    const y = laneY(idx);
+    text(svg, 0, y - 10, lane.label, {"font-size": 12, fill: "#111827",
          "font-family": "Georgia,serif"});
-    if (sub) text(svg, 0, y + 4, sub, {"font-size": 10});
+    if (lane.sub) text(svg, 0, y + 4, lane.sub, {"font-size": 10});
     el("line", {x1: LEFT, y1: y + CELL / 2, x2: LEFT + LAYERS * (CELL + GAP) - GAP,
                 y2: y + CELL / 2, stroke: "#dcdad2", "stroke-width": 1}, svg);
-    for (let l = 0; l < LAYERS; l++){
-      const cx = LEFT + l * (CELL + GAP);
-      const rank = data[l];
-      if (rank){
-        const op = 1.05 - rank * 0.115;   // rank 1 solid, rank 8 faint
-        el("rect", {x: cx, y, width: CELL, height: CELL, fill: color,
-                    "fill-opacity": op.toFixed(2)}, svg);
-        if (rank === 1)
-          el("rect", {x: cx, y, width: CELL, height: CELL, fill: "none",
-                      stroke: color, "stroke-width": 1.5}, svg);
-      } else {
-        el("circle", {cx: cx + CELL / 2, cy: y + CELL / 2, r: 1.4,
-                      fill: "#c3c9d2"}, svg);
+    if (lane.kind === "rank"){
+      for (let l = 0; l < LAYERS; l++){
+        const rank = lane.data[l];
+        if (!rank) continue;               // blank = not readable (no ink)
+        el("rect", {x: LEFT + l * (CELL + GAP), y, width: CELL, height: CELL,
+                    fill: lane.color,
+                    "fill-opacity": (1.05 - rank * 0.115).toFixed(2)}, svg);
+      }
+    } else if (lane.kind === "bars"){      // per-layer recovery, clamped to [0,1]
+      for (let l = 0; l < LAYERS; l++){
+        const v = lane.data[l];
+        if (v == null) continue;
+        const h = Math.max(1.5, Math.min(v, 1) * CELL);
+        el("rect", {x: LEFT + l * (CELL + GAP) + CELL * 0.18, y: y + CELL - h,
+                    width: CELL * 0.64, height: h, fill: lane.color,
+                    "fill-opacity": 0.85}, svg);
       }
     }
-  }
+    if (lane.lost){                        // red x at the output layer
+      const lx = xAt(25), cy = y + CELL / 2;
+      el("line", {x1: lx - 6, y1: cy - 6, x2: lx + 6, y2: cy + 6,
+                  stroke: "#b4483d", "stroke-width": 2}, svg);
+      el("line", {x1: lx - 6, y1: cy + 6, x2: lx + 6, y2: cy - 6,
+                  stroke: "#b4483d", "stroke-width": 2}, svg);
+    }
+    (lane.notes || []).forEach(n => {
+      text(svg, n.anchor === "end" ? xAt(n.layer) + 8 : xAt(n.layer) - 8,
+           y + (n.dy || -8), n.str,
+           Object.assign({fill: n.color || "#6d6c66"},
+                         n.anchor === "end" ? {"text-anchor": "end"} : {}));
+    });
+  });
 
-  const y1 = TOP, y2 = TOP + CELL + LANE_GAP;
-  lane(y1, "clinical wording", CLIN, "#15803d", '"essential tremor"');
-  lane(y2, "everyday wording", PAT, "#111827", '"hands won’t stop shaking"');
-
-  // direct annotations
-  const xAt = l => LEFT + l * (CELL + GAP) + CELL / 2;
-  text(svg, xAt(10) - 8, y1 - 10, "readable from layer 10", {fill: "#15803d"});
-  text(svg, xAt(19) - 30, y1 + CELL + 14, "rank 1", {fill: "#15803d"});
-  text(svg, xAt(19) - 56, y2 - 8, "appears 9 layers later", {fill: "#111827"});
-  // the loss at the output layer
-  const lx = xAt(25);
-  el("line", {x1: lx - 6, y1: y2 + CELL / 2 - 6, x2: lx + 6, y2: y2 + CELL / 2 + 6,
-              stroke: "#b4483d", "stroke-width": 2}, svg);
-  el("line", {x1: lx - 6, y1: y2 + CELL / 2 + 6, x2: lx + 6, y2: y2 + CELL / 2 - 6,
-              stroke: "#b4483d", "stroke-width": 2}, svg);
-  text(svg, lx + 8, y2 + CELL + 16, 'gone at the output · "take a break" wins',
-       {fill: "#b4483d", "text-anchor": "end"});
-
-  // axis
-  const axisY = y2 + CELL + 30;
+  const axisY = laneY(lanes.length - 1) + CELL + 26;
   text(svg, LEFT, axisY + 12, "early layers");
   text(svg, LEFT + (LAYERS - 3.2) * (CELL + GAP), axisY + 12, "output →");
   for (const l of [0, 5, 10, 15, 20, 25])
     text(svg, xAt(l) - 4, axisY, String(l), {"font-size": 9.5});
-})();
+  return svg;
+}
+
+// --- Figure B: pair 19, two lanes ---------------------------------------
+laneFig("fig-b", [
+  {kind: "rank", label: "clinical wording", sub: '"essential tremor"',
+   color: "#15803d", data: CLIN,
+   notes: [{layer: 10, str: "readable from layer 10", color: "#15803d"},
+           {layer: 22, dy: 35, str: "first place, layers 19 to 24", color: "#15803d", anchor: "end"}]},
+  {kind: "rank", label: "everyday wording", sub: '"hands won’t stop shaking"',
+   color: "#111827", data: PAT, lost: true,
+   notes: [{layer: 19, str: "appears 9 layers later", color: "#111827", anchor: "end"},
+           {layer: 25, dy: 37, str: 'gone at the output · "take a break" wins',
+            color: "#b4483d", anchor: "end"}]},
+], {aria: "Depth readout for one pair: clinical wording readable from layer 10, everyday wording from layer 19 and lost at the output layer"});
+
+// --- Figure C: causal join (downgrade set) ------------------------------
+if (CAUSAL){
+  laneFig("fig-c", [
+    {kind: "rank", label: "clinical wording", sub: CAUSAL.clinSub,
+     color: "#15803d", data: CAUSAL.clin, notes: CAUSAL.clinNotes},
+    {kind: "rank", label: "everyday wording", sub: CAUSAL.patSub,
+     color: "#111827", data: CAUSAL.pat, lost: CAUSAL.lost, notes: CAUSAL.patNotes},
+    {kind: "bars", label: "patch each layer", sub: "causal check",
+     color: "#15803d", data: CAUSAL.recovery, notes: CAUSAL.recNotes},
+  ], {aria: CAUSAL.aria});
+  document.getElementById("cap-c").textContent = CAUSAL.caption;
+} else {
+  document.getElementById("fig-c").textContent = "";
+  document.getElementById("cap-c").textContent =
+    "Causal join pending: the lens run on the downgrade set is in flight.";
+}
 </script>
 </body>
 </html>
