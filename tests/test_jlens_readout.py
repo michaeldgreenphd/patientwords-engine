@@ -78,6 +78,119 @@ def test_depth_profile_no_tokens():
     assert profile == [] and status == "no tokens[] in response"
 
 
+def test_confirmed_hosted_schema_results_top_tokens_with_meta_layers():
+    """The REAL response shape, pinned 2026-07-11 against a committed
+    gemma-2-2b raw response: tokens[i].results = [{type, top_tokens:
+    [[strings] per layer]}], layer numbering from meta.layers_by_type."""
+    resp = {
+        "meta": {"kind": "meta", "model": "gemma-2-2b",
+                 "layers_by_type": {"JACOBIAN_LENS": [0, 1, 2]},
+                 "top_n": 8, "prompt_len": 2},
+        "tokens": [
+            {"kind": "token", "position": 0, "token": "x", "results": []},
+            {"kind": "token", "position": 1, "token": " y", "is_generated": False,
+             "results": [{"type": "JACOBIAN_LENS",
+                          "top_tokens": [["</em>", " junk"],
+                                         [" tgt", " other"],
+                                         [" other", " tgt"]]}]},
+        ],
+        "done": {},
+    }
+    profile, status = jlens.depth_profile(resp, "tgt", topn=8)
+    assert status == "ok"
+    assert [(e["layer"], e["target_rank"], e["match"]) for e in profile] == [
+        (0, None, None), (1, 1, "exact"), (2, 2, "exact")]
+
+
+def test_confirmed_schema_layer_numbers_fall_back_positional_on_meta_mismatch():
+    resp = {
+        "meta": {"layers_by_type": {"JACOBIAN_LENS": [5]}},  # wrong length
+        "tokens": [{"results": [{"type": "JACOBIAN_LENS",
+                                 "top_tokens": [[" tgt"], [" x"]]}]}],
+    }
+    profile, status = jlens.depth_profile(resp, "tgt", topn=8)
+    assert status == "ok"
+    assert [e["layer"] for e in profile] == [0, 1]
+
+
+def test_prefix_match_catches_wordpiece_and_singular_forms():
+    # Observed on the batch-6 probe: target ' antivirals' surfaces in the lens
+    # as ' antiviral' (singular / leading wordpiece). Prefix matches count;
+    # short function words never do.
+    variants = jlens.target_variants("antivirals")
+    assert jlens.target_match(" antivirals", variants) == "exact"
+    assert jlens.target_match(" antiviral", variants) == "prefix"
+    assert jlens.target_match(" anti", variants) == "prefix"
+    assert jlens.target_match(" ant", variants) is None      # under MIN_PREFIX_CHARS
+    assert jlens.target_match(" the", jlens.target_variants("therapy")) is None  # strip floor
+    assert jlens.target_match(" ther", jlens.target_variants("therapy")) == "prefix"
+    assert jlens.target_match(" unrelated", variants) is None
+
+
+def test_exhausted_500_retries_is_probe_negative_before_any_success(tmp_path, monkeypatch):
+    """Observed 2026-07-11: the endpoint answers persistent 500s for unserved
+    models. Before any successful measurement that records supported=false and
+    exits 0; after a success it must abort loudly (a truncated batch is a
+    failure, not evidence of non-support)."""
+    pairs = [{"top_prompt": "clin", "bottom_prompt": "pat",
+              "target_clinical_token": "tgt", "generation": {}}]
+    pairs_path = tmp_path / "pairs_z.json"
+    pairs_path.write_text(json.dumps(pairs), encoding="utf-8")
+
+    class Fake500:
+        status_code = 500
+        text = "internal"
+
+    class FakeSession:
+        headers = {}
+
+        def post(self, *a, **k):
+            return Fake500()
+
+    import sys
+    import types
+    fake_requests = types.SimpleNamespace(
+        Session=lambda: FakeSession(),
+        exceptions=types.SimpleNamespace(ConnectionError=OSError, Timeout=OSError),
+    )
+    monkeypatch.setitem(sys.modules, "requests", fake_requests)
+    monkeypatch.setenv("NEURONPEDIA_API_KEY", "test-key")
+    monkeypatch.setattr(jlens.time, "sleep", lambda s: None)
+    out = tmp_path / "out"
+    rc = jlens.main(["--pairs", str(pairs_path), "--model", "maybe-1b",
+                     "--out", str(out), "--limit", "1"])
+    assert rc == 0
+    probe = json.loads((out / "jlens_probe.json").read_text(encoding="utf-8"))
+    assert probe["supported"] is False
+    assert "500" in probe["detail"] and "re-probe" in probe["detail"]
+
+    # mid-batch: first prompt succeeds, second 500s forever -> must raise
+    class FlakySession:
+        headers = {}
+        calls = 0
+
+        def post(self, *a, **k):
+            FlakySession.calls += 1
+            if FlakySession.calls == 1:
+                class OK:
+                    status_code = 200
+                    text = ""
+
+                    def raise_for_status(self):
+                        pass
+
+                    def json(self):
+                        return {"meta": {}, "tokens": [{"results": []}], "done": {}}
+                return OK()
+            return Fake500()
+
+    fake_requests.Session = lambda: FlakySession()
+    import pytest
+    with pytest.raises(RuntimeError):
+        jlens.main(["--pairs", str(pairs_path), "--model", "maybe-1b",
+                    "--out", str(tmp_path / "out2"), "--limit", "1"])
+
+
 def test_target_variants_cover_space_and_case_but_not_substrings():
     v = jlens.target_variants("sleep")
     assert {"sleep", " sleep", "Sleep", " Sleep"} == v

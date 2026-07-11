@@ -140,6 +140,22 @@ Response token schema is undocumented — first probe runs use --save-raw and
 a defensive parser (parse_status per pair), then the parser gets pinned
 against the real artifact.
 
+**Probe results (run 1, 2026-07-11 14:24-14:49 UTC, batch-6 pairs 1-2):**
+SERVED: **gemma-2-2b** and **gemma-2-2b-it** (probe supported=true, raw
+committed, schema pinned: tokens[i].results = [{type, top_tokens: [[top-8
+strings] per layer]}], layers from meta.layers_by_type; gemma-2-2b exposes
+layers 0-25). NOT served (persistent HTTP 500 through the retry ladder —
+the same unserved-model signature the graph endpoint shows): gemma-2-9b,
+gemma-3-4b-it, qwen3-4b, qwen3-1.7b, llama-3.2-3b, olmo-2-1b,
+biomistral-7b. The qwen3-1.7b 500 despite fitted weights on HF suggests the
+inference host is not deployed yet; re-probe as Neuronpedia expands.
+First real profiles (pair 1, target readable rank-1 by layer 19 clinical,
+delayed 2 layers under patient phrasing; pair 2, concept readable
+layers 19-24 under clinical then lost at the output layer, never readable
+under patient phrasing) already exhibit the depth classes the design
+anticipated. Multi-wordpiece targets match by prefix (MIN_PREFIX_CHARS=4),
+mirroring the behavioral path's first-wordpiece measurement.
+
 ## 6. Gated plan (no fires yet; critic queue owns sequencing)
 
 - **J0 verify (free, next CI touch):** from a runner with open egress — list

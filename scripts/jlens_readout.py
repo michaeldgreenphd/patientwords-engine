@@ -105,8 +105,58 @@ def target_variants(target):
     return variants
 
 
+MIN_PREFIX_CHARS = 4  # stripped length floor so ' a'/' the' never count as the target
+
+
+def target_match(token_str, variants):
+    """'exact', 'prefix', or None for one lens top token against the target.
+
+    Multi-wordpiece targets never appear verbatim in a single-token readout;
+    the behavioral path measures the target's FIRST wordpiece
+    (logits_eval.build_result target_ids[0]), so a top token that is a leading
+    substring of the target (e.g. a singular form or first wordpiece, observed
+    2026-07-11 on the batch-6 probe) counts as a prefix match."""
+    if not isinstance(token_str, str) or not variants:
+        return None
+    if token_str in variants:
+        return "exact"
+    stripped = token_str.strip()
+    if len(stripped) >= MIN_PREFIX_CHARS:
+        for v in variants:
+            if v.strip().startswith(stripped):
+                return "prefix"
+    return None
+
+
 def _as_list(value):
     return value if isinstance(value, list) else []
+
+
+def _layer_entries_from_results(token_entry, response, lens_type="JACOBIAN_LENS"):
+    """The CONFIRMED hosted schema (pinned 2026-07-11 against a committed
+    gemma-2-2b raw response): each token entry is {kind, position, token, id,
+    is_generated, results}, where results is a list of per-lens-type entries
+    {"type": "JACOBIAN_LENS", "top_tokens": [[topN strings] per layer]} and
+    layer numbers come from response["meta"]["layers_by_type"][type]."""
+    results = token_entry.get("results") if isinstance(token_entry, dict) else None
+    if not isinstance(results, list):
+        return
+    entry = next((r for r in results if isinstance(r, dict) and r.get("type") == lens_type),
+                 next((r for r in results if isinstance(r, dict)), None))
+    if not isinstance(entry, dict):
+        return
+    per_layer = entry.get("top_tokens")
+    if not isinstance(per_layer, list) or not per_layer:
+        return
+    meta = response.get("meta") if isinstance(response, dict) else None
+    layers = None
+    if isinstance(meta, dict):
+        by_type = meta.get("layers_by_type")
+        if isinstance(by_type, dict):
+            layers = by_type.get(entry.get("type"))
+    if not isinstance(layers, list) or len(layers) != len(per_layer):
+        layers = list(range(len(per_layer)))  # positional fallback
+    yield from zip(layers, per_layer)
 
 
 def _iter_layer_entries(node):
@@ -170,11 +220,17 @@ def depth_profile(response, target, topn):
     if not tokens:
         return [], "no tokens[] in response"
     final = tokens[-1]
+    entries = list(_layer_entries_from_results(final, response)) or list(_iter_layer_entries(final))
     profile = []
-    for layer, tops in _iter_layer_entries(final):
+    for layer, tops in entries:
         strings = [_token_string(item) for item in tops[:topn]]
-        rank = next((i + 1 for i, s in enumerate(strings) if s in variants), None)
-        profile.append({"layer": layer, "target_rank": rank,
+        rank, mode = None, None
+        for i, s in enumerate(strings):
+            mode = target_match(s, variants)
+            if mode:
+                rank = i + 1
+                break
+        profile.append({"layer": layer, "target_rank": rank, "match": mode,
                         "top1": strings[0] if strings else None})
     if not profile:
         return [], f"unrecognized layer shape; final-position keys: {sorted(final)[:12]}"
@@ -285,7 +341,24 @@ def main(argv=None):
         for side, prompt in (("clinical", pair["top_prompt"]),
                              ("patient", pair["bottom_prompt"])):
             body = lens_request_body(args.model, prompt, args.topn)
-            response, unsupported = post_lens(session, body)
+            try:
+                response, unsupported = post_lens(session, body)
+            except RuntimeError as err:
+                # Observed 2026-07-11: the endpoint answers persistent 500s for
+                # models it does not serve (same behavior as the graph endpoint,
+                # docs/cross-model.md). Before ANY successful measurement that is
+                # probe-negative evidence, not a batch failure; mid-batch it is a
+                # real failure and must abort loudly.
+                if results or responses:
+                    raise
+                probe = {"model": args.model, "supported": False,
+                         "detail": f"{err} (500-on-unserved pattern; could also be a "
+                                   "transient outage - re-probe before concluding)",
+                         "checked_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+                (out_dir / "jlens_probe.json").write_text(
+                    json.dumps(probe, indent=1) + "\n", encoding="utf-8")
+                print(f"model {args.model}: {probe['detail']}")
+                return 0
             if unsupported:
                 probe = {"model": args.model, "supported": False, "detail": unsupported,
                          "checked_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
