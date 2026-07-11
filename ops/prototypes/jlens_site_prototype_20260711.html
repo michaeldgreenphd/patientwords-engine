@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototype · Depth readouts on the site</title>
+<style>
+  :root{
+    --green:#15803d; --ink:#111827; --red:#b4483d; --paper:#faf9f5;
+    --muted:#6d6c66; --grey:#c3c9d2; --hair:#dcdad2;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{background:var(--paper); color:var(--ink);
+       font-family:Georgia,'Times New Roman',serif; line-height:1.55;
+       max-width:860px; margin:0 auto; padding:28px 20px 80px}
+  .mono{font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace}
+  .banner{border:1.5px solid var(--red); color:var(--red); padding:10px 14px;
+          font-family:monospace; font-size:13px; letter-spacing:.4px; margin-bottom:30px}
+  h1{font-size:26px; font-weight:normal; margin-bottom:6px}
+  .sub{color:var(--muted); font-size:15px; margin-bottom:34px}
+  section{margin-bottom:52px}
+  .chip{display:inline-block; font-family:monospace; font-size:11.5px; color:var(--muted);
+        border:1px solid var(--hair); padding:3px 9px; border-radius:3px; margin-bottom:14px}
+  h2{font-size:13px; font-family:monospace; font-weight:normal; letter-spacing:1.2px;
+     text-transform:uppercase; color:var(--muted); margin-bottom:10px}
+  .proposal{border-left:2px solid var(--hair); padding:4px 0 4px 18px; margin:14px 0}
+  .proposal h3{font-size:19px; font-weight:normal; margin-bottom:10px}
+  .proposal p{font-size:15.5px; margin-bottom:10px}
+  .figwrap{margin:18px 0 6px; overflow-x:auto}
+  svg{display:block}
+  .cap{font-size:13px; color:var(--muted); margin-top:8px; max-width:640px}
+  .credit{font-size:12.5px; color:var(--muted); border-top:1px solid var(--hair);
+          padding-top:8px; margin-top:14px; max-width:640px}
+  .note{background:#f3f1ec; padding:12px 16px; font-size:13.5px; color:var(--muted); margin-top:16px}
+  .ws{border:1px solid var(--hair); padding:18px 20px; margin-top:8px}
+  .ws li{margin:0 0 10px 18px; font-size:15px}
+  .flag{color:var(--red)}
+  a{color:inherit}
+</style>
+</head>
+<body>
+
+<div class="banner">PROTOTYPE FOR WORKSHOP · NOT PUBLISHED · 2026-07-11 · all numbers from
+batch 6 (50 generated pairs), gemma-2-2b, hosted Jacobian lens readout, committed at
+trace_out/pairs_20260711T051145Z__jlens_gemma-2-2b/</div>
+
+<h1>Where the answer forms</h1>
+<div class="sub">Three proposed site additions built on the new layer-by-layer readout.
+Draft text follows the site voice. Mark anything to cut, soften, or move.</div>
+
+<!-- ============================================================ A -->
+<section id="a">
+  <h2>A · Start here page</h2>
+  <span class="chip">placement: start-here/index.html · inside Step 7, directly under the MEND bullet</span>
+
+  <div class="proposal">
+    <h3>Two kinds of loss, two kinds of fix</h3>
+    <p>A new instrument shows where the answer is lost, layer by layer. We ran it across
+    all 50 sentence pairs in the newest batch. In 26 pairs the model reaches the same
+    answer under either wording. In 19 pairs the everyday wording never produces the
+    clinical answer at any depth. In 5 pairs the model finds the answer in its middle
+    layers and loses it again before it speaks.</p>
+    <p>Those 5 pairs matter most for the fix. The knowledge is present. Only the last
+    step fails. Translation does not teach the model anything new; it re-asks the
+    question in the form the final layers expect.</p>
+  </div>
+
+  <div class="figwrap" id="fig-a"></div>
+  <div class="cap">50 pairs, one bar. Green: answer survives the everyday wording.
+  Red: found in the middle layers, lost at the output. Grey: never formed.
+  Counts from the batch-6 lens readout.</div>
+</section>
+
+<!-- ============================================================ B -->
+<section id="b">
+  <h2>B · Methods page</h2>
+  <span class="chip">placement: methods.html · unnumbered block after Step 4 (keeps "six steps" intact)</span>
+
+  <div class="proposal">
+    <h3>Reading the layers</h3>
+    <p>The circuit view names which features fire. A second instrument reads what the
+    sentence is on its way to saying. The Jacobian lens takes the model's internal
+    state at each of its 26 layers and decodes it into ranked words: what the model
+    would say if it had to answer at that depth. One question per pair: at which layer
+    does the clinical answer become readable, and does it survive to the output?</p>
+    <p>The pair below asks for a word after "so I might need to take a". Under the
+    clinical wording the answer is readable from layer 10 and holds first place from
+    layer 19. Under the everyday wording it surfaces 9 layers later, never rises past
+    second place, and is gone at the output layer. The model drifts to "take a break".
+    It had the answer. The wording taxed the last step.</p>
+  </div>
+
+  <div class="figwrap" id="fig-b"></div>
+  <div class="cap">One pair from batch 6, gemma-2-2b. Each cell is one layer's readout;
+  darker means the clinical answer ranks higher in that layer's top 8. The red mark is
+  the output layer where the everyday wording loses it.</div>
+
+  <div class="credit">Layer readouts use the Jacobian lens (Gurnee et&nbsp;al., Transformer
+  Circuits, 2026), applied through Neuronpedia's hosted deployment of the authors'
+  reference implementation (github.com/anthropics/jacobian-lens, Apache-2.0). The lens
+  is a readout, not an intervention. Causal claims in this study rest on activation
+  patching.</div>
+</section>
+
+<!-- ============================================================ C -->
+<section id="c">
+  <h2>C · Solution narrative</h2>
+  <span class="chip">placement: index.html mitigation teaser · start-here Step 7 NOW/NEXT bullets · methods translation panel</span>
+
+  <div class="proposal">
+    <h3>What translation fixes, stated precisely</h3>
+    <p>The depth readout splits the penalty into two failure kinds with different
+    remedies. When the answer never forms, the system lacks signal; translation
+    supplies the missing clinical frame before the model starts. When the answer forms
+    and is lost, the system has the knowledge and drops it at the end; translation
+    recovers work the model already did. Batch 6: 19 of the first kind, 5 of the
+    second, 26 unaffected.</p>
+    <p>For a deployed medical system this suggests a cheap monitoring loop. Read the
+    layers to see which failure kind dominates. Mend with translation. Verify the mend
+    causally with patching. Re-measure as language drifts.</p>
+  </div>
+
+  <div class="note">Fits the existing cycle: MEASURE gains the depth readout, MEND gains
+  the two-kinds distinction, MAINTAIN is unchanged. No new step needed.</div>
+</section>
+
+<!-- ============================================================ workshop -->
+<section>
+  <h2>Workshop questions</h2>
+  <div class="ws">
+    <ol>
+      <li>Depth figure orientation: horizontal lanes as shown (rhymes with the Step 4
+      layer track), or vertical columns (answer "rises" to the output)?</li>
+      <li>Encoding: rank shading as shown, or simple present/absent marks with one
+      annotation for rank 1?</li>
+      <li>Lay wording for the axis: "early layers → deep layers" as on Step 4, or
+      explicit "layer 0 … 25"?</li>
+      <li>The three-class names: retained / suppressed / absent are the working terms.
+      Keep, or prefer plainer verbs (kept / lost late / never formed)?</li>
+      <li>Placement of section A: inside Step 7 as proposed, or as a short Step 6.5
+      between Look Inside and the fix?</li>
+      <li><span class="flag">Integrity flag:</span> the instruct model id returns
+      readouts identical to the base model across all 50 pairs. Until Neuronpedia
+      confirms separate hosts we report one model, not two.</li>
+    </ol>
+  </div>
+</section>
+
+<script>
+// Real data, copied verbatim from the committed batch-6 lens summaries.
+const COUNTS = {retained: 26, suppressed: 5, absent: 19};
+// Pair 19 (batch pairs_20260711T051145Z): target " medication".
+// [layer, rank-in-top-8] where readable; null rank means not in top 8.
+const CLIN = {10:8, 11:7, 18:6, 19:1, 20:1, 21:1, 22:1, 23:1, 24:1, 25:2};
+const PAT  = {19:2, 20:2, 21:3, 22:4, 23:2, 24:2};
+const LAYERS = 26;
+
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent){
+  const node = document.createElementNS(NS, tag);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+  if (parent) parent.appendChild(node);
+  return node;
+}
+function text(parent, x, y, str, attrs = {}){
+  const t = el("text", Object.assign({x, y, "font-size": 11,
+    "font-family": "Consolas,Menlo,monospace", fill: "#6d6c66"}, attrs), parent);
+  t.textContent = str;
+  return t;
+}
+
+// --- Figure A: one stacked bar, 50 pairs -------------------------------
+(function(){
+  const W = 640, H = 108, BAR_Y = 26, BAR_H = 26, total = 50;
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, width: "100%",
+    style: "max-width:640px", role: "img",
+    "aria-label": "Of 50 pairs: 26 retained, 5 suppressed, 19 absent"}, null);
+  document.getElementById("fig-a").appendChild(svg);
+  // the narrow red segment labels BELOW the bar so it never collides with
+  // its wide neighbors' labels above
+  const segs = [["retained", COUNTS.retained, "#15803d", "above"],
+                ["lost late", COUNTS.suppressed, "#b4483d", "below"],
+                ["never formed", COUNTS.absent, "#6d6c66", "above"]];
+  const fills = {"#6d6c66": "#c3c9d2"};
+  let x = 0;
+  for (const [label, n, color, side] of segs){
+    const w = W * n / total;
+    el("rect", {x, y: BAR_Y, width: w - 1.5, height: BAR_H,
+                fill: fills[color] || color}, svg);
+    text(svg, x, side === "above" ? BAR_Y - 8 : BAR_Y + BAR_H + 15,
+         `${label} ${n}`, {fill: color});
+    x += w;
+  }
+  text(svg, 0, BAR_Y + BAR_H + 36,
+       "50 pairs · does the clinical answer survive the everyday wording?");
+})();
+
+// --- Figure B: two-lane depth strip, pair 19 ---------------------------
+(function(){
+  const CELL = 21, GAP = 2, LEFT = 96, TOP = 34, LANE_GAP = 46;
+  const W = LEFT + LAYERS * (CELL + GAP) + 8, H = 196;
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, width: "100%",
+    style: `max-width:${W}px`, role: "img",
+    "aria-label": "Depth readout for one pair: clinical wording readable from layer 10, everyday wording from layer 19 and lost at the output layer"}, null);
+  document.getElementById("fig-b").appendChild(svg);
+
+  function lane(y, label, data, color, sub){
+    text(svg, 0, y - 10, label, {"font-size": 12, fill: "#111827",
+         "font-family": "Georgia,serif"});
+    if (sub) text(svg, 0, y + 4, sub, {"font-size": 10});
+    el("line", {x1: LEFT, y1: y + CELL / 2, x2: LEFT + LAYERS * (CELL + GAP) - GAP,
+                y2: y + CELL / 2, stroke: "#dcdad2", "stroke-width": 1}, svg);
+    for (let l = 0; l < LAYERS; l++){
+      const cx = LEFT + l * (CELL + GAP);
+      const rank = data[l];
+      if (rank){
+        const op = 1.05 - rank * 0.115;   // rank 1 solid, rank 8 faint
+        el("rect", {x: cx, y, width: CELL, height: CELL, fill: color,
+                    "fill-opacity": op.toFixed(2)}, svg);
+        if (rank === 1)
+          el("rect", {x: cx, y, width: CELL, height: CELL, fill: "none",
+                      stroke: color, "stroke-width": 1.5}, svg);
+      } else {
+        el("circle", {cx: cx + CELL / 2, cy: y + CELL / 2, r: 1.4,
+                      fill: "#c3c9d2"}, svg);
+      }
+    }
+  }
+
+  const y1 = TOP, y2 = TOP + CELL + LANE_GAP;
+  lane(y1, "clinical wording", CLIN, "#15803d", '"essential tremor"');
+  lane(y2, "everyday wording", PAT, "#111827", '"hands won’t stop shaking"');
+
+  // direct annotations
+  const xAt = l => LEFT + l * (CELL + GAP) + CELL / 2;
+  text(svg, xAt(10) - 8, y1 - 10, "readable from layer 10", {fill: "#15803d"});
+  text(svg, xAt(19) - 30, y1 + CELL + 14, "rank 1", {fill: "#15803d"});
+  text(svg, xAt(19) - 56, y2 - 8, "appears 9 layers later", {fill: "#111827"});
+  // the loss at the output layer
+  const lx = xAt(25);
+  el("line", {x1: lx - 6, y1: y2 + CELL / 2 - 6, x2: lx + 6, y2: y2 + CELL / 2 + 6,
+              stroke: "#b4483d", "stroke-width": 2}, svg);
+  el("line", {x1: lx - 6, y1: y2 + CELL / 2 + 6, x2: lx + 6, y2: y2 + CELL / 2 - 6,
+              stroke: "#b4483d", "stroke-width": 2}, svg);
+  text(svg, lx + 8, y2 + CELL + 16, 'gone at the output · "take a break" wins',
+       {fill: "#b4483d", "text-anchor": "end"});
+
+  // axis
+  const axisY = y2 + CELL + 30;
+  text(svg, LEFT, axisY + 12, "early layers");
+  text(svg, LEFT + (LAYERS - 3.2) * (CELL + GAP), axisY + 12, "output →");
+  for (const l of [0, 5, 10, 15, 20, 25])
+    text(svg, xAt(l) - 4, axisY, String(l), {"font-size": 9.5});
+})();
+</script>
+</body>
+</html>
