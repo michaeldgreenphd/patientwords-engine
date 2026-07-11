@@ -372,6 +372,15 @@ def main(argv=None):
         # models_meta block (backend/features flags) from the exporter payload,
         # so the comparison page renders entirely from committed data
         site_bundle = dict(bundle)
+        # public floor: a model enters the comparison page once it has a real
+        # measurement set, not a 3-pair probe (probe rows stay in the full
+        # engine bundle above)
+        MIN_SITE_PHRASES = 30
+        site_bundle["per_model"] = {
+            m: v for m, v in bundle["per_model"].items()
+            if v["penalty"]["n_phrases"] >= MIN_SITE_PHRASES}
+        site_bundle["models"] = sorted(site_bundle["per_model"])
+        site_bundle["site_floor_n_phrases"] = MIN_SITE_PHRASES
         payload_path = Path(args.site) / "data" / "simulated_scenarios.json"
         try:
             payload = json.loads(payload_path.read_text(encoding="utf-8"))

@@ -181,5 +181,10 @@ def test_main_site_copy_goes_to_given_root(rows, tmp_path):
                    "--boot", "300", "--seed", "7", "--site", str(site)])
     assert rc == 0
     copy = json.loads((site / "data" / "model_stats.json").read_text(encoding="utf-8"))
-    assert set(copy["models"]) == {"m1", "m2"}
+    # the fixture models carry fewer than MIN_SITE_PHRASES phrases, so the
+    # public copy floors them out while the engine bundle keeps them
+    assert copy["models"] == []
+    assert copy["site_floor_n_phrases"] == 30
+    full = json.loads((tmp_path / "rigor.json").read_text(encoding="utf-8"))
+    assert set(full["models"]) == {"m1", "m2"}
     assert "models_meta" in copy  # None when the payload is absent, never missing

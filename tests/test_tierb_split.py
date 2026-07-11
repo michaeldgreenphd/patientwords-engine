@@ -95,3 +95,11 @@ def test_collector_stamps_and_aggregates_on_exploration_split():
     assert "stamp_rows(rows)" in src
     assert 'arows = [r for r in rows if r.get("tierb_split") != "holdout"]' in src
     assert '"measurements": len(arows)' in src
+
+
+def test_site_copy_floors_probe_models():
+    # 3-pair probe models must not reach the public comparison page until a
+    # real measurement set lands (owner: incorporate models "when results land")
+    src = _RIGOR_PATH.read_text(encoding="utf-8")
+    assert "MIN_SITE_PHRASES = 30" in src
+    assert 'v["penalty"]["n_phrases"] >= MIN_SITE_PHRASES' in src
