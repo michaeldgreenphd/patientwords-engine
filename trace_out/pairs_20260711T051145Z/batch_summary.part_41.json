@@ -1,0 +1,373 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 41,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been feeling dysphoric lately, so I think I should take my",
+        "patient": "I've been feeling out of sorts lately, so I think I should take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.073,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2154,
+        "patient": 0.0667
+      },
+      "error_share": {
+        "clinical": 0.0916,
+        "patient": 0.076
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.096)",
+        "patient": "[L19\u00b7S]  \u2192 [L20\u00b7O] instances where someone changes their mind or story  \u2192 Output \" mind\" (p=0.144)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.073
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.221
+          ],
+          [
+            "Output \" own\"",
+            0.096
+          ],
+          [
+            "Output \" medication\"",
+            0.073
+          ],
+          [
+            "Output \" hormones\"",
+            0.055
+          ],
+          [
+            "Output \" medicine\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" own\"",
+            0.479
+          ],
+          [
+            "Output \" mind\"",
+            0.144
+          ],
+          [
+            "Output \" meds\"",
+            0.03
+          ],
+          [
+            "Output \" medicine\"",
+            0.026
+          ],
+          [
+            "Output \" time\"",
+            0.017
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 769,
+        "unique_to_a": 644,
+        "unique_to_b": 533
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z/index_41.html",
+        "png": "trace_out/pairs_20260711T051145Z/index_41.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z/index_41_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z/index_41_diff.png"
+      }
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have fatigue, so I think I need to take some",
+        "patient": "I've been feeling really sluggish in the afternoons, so I think I need to take some"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.237
+      },
+      "error_share": {
+        "clinical": 0.0841
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " iron",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" time\"",
+            0.334
+          ],
+          [
+            "Output \" rest\"",
+            0.104
+          ],
+          [
+            "Output \" naps\"",
+            0.037
+          ],
+          [
+            "Output \" days\"",
+            0.036
+          ],
+          [
+            "Output \" supplements\"",
+            0.035
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I experience pleurisy, so my doctor wants to order an",
+        "patient": "I keep getting these weird sharp pains in my chest when I laugh, so my doctor wants to order an"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4306
+      },
+      "error_share": {
+        "clinical": 0.1007
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " x-ray",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" x\"",
+            0.434
+          ],
+          [
+            "Output \" X\"",
+            0.195
+          ],
+          [
+            "Output \" ultrasound\"",
+            0.086
+          ],
+          [
+            "Output \" MRI\"",
+            0.076
+          ],
+          [
+            "Output \" EKG\"",
+            0.06
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 44,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have globus pharyngitis, so I should probably take my",
+        "patient": "I keep feeling like there's a lump stuck in my throat, so I should probably take my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3184
+      },
+      "error_share": {
+        "clinical": 0.1016
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " antacid",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" own\"",
+            0.109
+          ],
+          [
+            "Output \" meds\"",
+            0.098
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.058
+          ],
+          [
+            "Output \" medicine\"",
+            0.054
+          ],
+          [
+            "Output \" vitamins\"",
+            0.037
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 45,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have anxiety, so I think I need to see a",
+        "patient": "I've been feeling really wound up and jittery, so I think I need to see a"
+      },
+      "target_token": "Output \" therapist\"",
+      "probabilities": {
+        "clinical": 0.281,
+        "patient": 0.119
+      },
+      "language_penalty": -0.16200000000000003,
+      "clinical_mass": {
+        "clinical": 0.3606,
+        "patient": 0.3043
+      },
+      "error_share": {
+        "clinical": 0.0855,
+        "patient": 0.0929
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.227)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.546)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " therapist",
+        "observed_clinical": [
+          "Output \" therapist\"",
+          0.281
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" therapist\"",
+            0.281
+          ],
+          [
+            "Output \" doctor\"",
+            0.227
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.13
+          ],
+          [
+            "Output \" psychologist\"",
+            0.079
+          ],
+          [
+            "Output \" counselor\"",
+            0.053
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.546
+          ],
+          [
+            "Output \" therapist\"",
+            0.119
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.062
+          ],
+          [
+            "Output \" doc\"",
+            0.032
+          ],
+          [
+            "Output \" GP\"",
+            0.025
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 607,
+        "unique_to_a": 476,
+        "unique_to_b": 659
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z/index_45.html",
+        "png": "trace_out/pairs_20260711T051145Z/index_45.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z/index_45_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z/index_45_diff.png"
+      }
+    }
+  ]
+}
