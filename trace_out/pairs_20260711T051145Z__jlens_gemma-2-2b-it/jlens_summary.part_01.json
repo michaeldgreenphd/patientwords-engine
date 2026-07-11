@@ -1,0 +1,62 @@
+{
+ "mode": "jlens",
+ "backend": "jlens-hosted",
+ "graph_model": "gemma-2-2b-it",
+ "lens_type": "JACOBIAN_LENS",
+ "top_n": 8,
+ "start_index": 1,
+ "endpoint": "/api/lens/prompt",
+ "method_credit": "Jacobian lens: Gurnee et al., Transformer Circuits 2026; reference implementation github.com/anthropics/jacobian-lens; hosted by neuronpedia.org",
+ "results": [
+  {
+   "index": 1,
+   "prompts": {
+    "clinical": "I have angina, so I need to take my",
+    "patient": "My chest is acting up, so I need to take my"
+   },
+   "target_token": " medication",
+   "depth": {
+    "clinical": [],
+    "patient": []
+   },
+   "parse_status": {
+    "clinical": "unrecognized layer shape; final-position keys: ['id', 'is_generated', 'kind', 'position', 'results', 'token']",
+    "patient": "unrecognized layer shape; final-position keys: ['id', 'is_generated', 'kind', 'position', 'results', 'token']"
+   },
+   "first_layer": {
+    "clinical": null,
+    "patient": null
+   },
+   "last_layer_rank": {
+    "clinical": null,
+    "patient": null
+   },
+   "patient_depth_class": null
+  },
+  {
+   "index": 2,
+   "prompts": {
+    "clinical": "I suspect I have influenza, so I should get some",
+    "patient": "I think I'm coming down with something, so I should get some"
+   },
+   "target_token": " antivirals",
+   "depth": {
+    "clinical": [],
+    "patient": []
+   },
+   "parse_status": {
+    "clinical": "unrecognized layer shape; final-position keys: ['id', 'is_generated', 'kind', 'position', 'results', 'token']",
+    "patient": "unrecognized layer shape; final-position keys: ['id', 'is_generated', 'kind', 'position', 'results', 'token']"
+   },
+   "first_layer": {
+    "clinical": null,
+    "patient": null
+   },
+   "last_layer_rank": {
+    "clinical": null,
+    "patient": null
+   },
+   "patient_depth_class": null
+  }
+ ]
+}
