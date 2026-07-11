@@ -56,8 +56,14 @@ def contrast_labels(clinical, patient, width=34):
         if op != "equal":
             a_span.extend(clinical.split()[a0:a1])
             b_span.extend(patient.split()[b0:b1])
-    a_str, b_str = " ".join(a_span), " ".join(b_span)
-    return a_str[:width] or clinical[:width], b_str[:width] or patient[:width]
+    def trim(s, fallback):
+        s = s or fallback
+        if len(s) <= width:
+            return s
+        cut = s[:width]
+        return cut.rsplit(" ", 1)[0] if " " in cut else cut  # word boundary
+    return (trim(" ".join(a_span), clinical).rstrip(",;:"),
+            trim(" ".join(b_span), patient).rstrip(",;:"))
 
 
 def rank_map(profile):
