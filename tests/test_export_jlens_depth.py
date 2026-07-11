@@ -75,6 +75,36 @@ def test_main_exit_3_on_degenerate_exemplar(tmp_path, monkeypatch):
     assert not (tmp_path / "out.json").exists()
 
 
+def test_pick_examples_rule_order_caps_and_fields(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    lens_dir = tmp_path / "trace_out" / "s__jlens_gemma-2-2b"
+    lens_dir.mkdir(parents=True)
+
+    def result(idx, cls, clin_last, pat_layers):
+        return {"index": idx, "patient_depth_class": cls, "target_token": " tgt",
+                "prompts": {"clinical": "was clinical wording", "patient": "was everyday words"},
+                "depth": {"clinical": [{"layer": 25, "target_rank": clin_last, "top1": " x"}],
+                          "patient": [{"layer": lay, "target_rank": 2, "top1": " won"}
+                                      for lay in pat_layers]}}
+    results = [
+        result(1, "suppressed", 2, [19, 20]),
+        result(2, "suppressed", 1, [18]),      # stronger hold -> first
+        result(3, "absent", 1, []),
+        result(4, "absent", None, []),          # no clinical hold -> excluded
+        result(5, "retained", 1, [25]),         # wrong class -> excluded
+        result(6, "absent", 3, []),
+    ]
+    (lens_dir / "jlens_summary.part_01.json").write_text(json.dumps({"results": results}))
+    ex = exporter.pick_examples([("s", "set s · 6 pairs")], max_suppressed=1, max_absent=2)
+    assert [(e["index"], e["class"]) for e in ex] == [
+        (2, "suppressed"),                       # cap 1, strongest hold
+        (3, "absent"), (6, "absent")]            # rank 1 then rank 3; index 4 excluded
+    assert ex[0]["set"] == "set s"
+    assert ex[0]["winner"] == "won"
+    assert ex[0]["clin_last_rank"] == 1
+    assert "pat_ranks" in ex[0] and "prompts" in ex[0]
+
+
 def test_translation_split_joins_class_and_recovery(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     lens_dir = tmp_path / "trace_out" / "s__jlens_gemma-2-2b"

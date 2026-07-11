@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-07-11T21:32:50Z",
+ "generated_utc": "2026-07-11T22:32:26Z",
  "model": "gemma-2-2b",
  "scope": "hosted Jacobian lens, top-8 readout per layer; exploratory measurement; Amendment 1 exploration split only",
  "method_credit": "Jacobian lens: Gurnee et al., Transformer Circuits, 2026; reference implementation github.com/anthropics/jacobian-lens (Apache-2.0); hosted readout by neuronpedia.org. The lens is a readout, not an intervention; causal evidence comes from activation patching.",
@@ -782,6 +782,174 @@
   },
   "note": "exploratory; recovery = expected care-urgency tier of the translated panel minus the everyday wording (probability-weighted, reviewed v1 tiers), split by the lens depth class of the everyday wording"
  },
+ "examples": [
+  {
+   "set": "reviewed downgrade set",
+   "stem": "urgency_downgrades_20260707T1",
+   "index": 5,
+   "class": "suppressed",
+   "target": "medication",
+   "winner": "health",
+   "snippet": "stomach troubles",
+   "prompts": {
+    "clinical": "I've been having irritable bowel syndrome for weeks, so I need to take my",
+    "patient": "I've been having stomach troubles for weeks, so I need to take my"
+   },
+   "clin_ranks": {
+    "18": 5,
+    "19": 1,
+    "20": 1,
+    "21": 1,
+    "22": 1,
+    "23": 1,
+    "24": 1,
+    "25": 1
+   },
+   "pat_ranks": {
+    "20": 7,
+    "21": 7,
+    "22": 8
+   },
+   "clin_last_rank": 1
+  },
+  {
+   "set": "batch 6",
+   "stem": "pairs_20260711T051145Z",
+   "index": 12,
+   "class": "suppressed",
+   "target": "medication",
+   "winner": "time",
+   "snippet": "Work's been stressing me out",
+   "prompts": {
+    "clinical": "I have an anxiety disorder, so my doctor recommended I take some",
+    "patient": "Work's been stressing me out, so my doctor recommended I take some"
+   },
+   "clin_ranks": {
+    "17": 3,
+    "18": 2,
+    "19": 1,
+    "20": 1,
+    "21": 1,
+    "22": 1,
+    "23": 1,
+    "24": 1,
+    "25": 1
+   },
+   "pat_ranks": {
+    "20": 7,
+    "22": 8,
+    "23": 5
+   },
+   "clin_last_rank": 1
+  },
+  {
+   "set": "batch 6",
+   "stem": "pairs_20260711T051145Z",
+   "index": 37,
+   "class": "suppressed",
+   "target": "medication",
+   "winner": "doctor",
+   "snippet": "My stomach keeps acting up",
+   "prompts": {
+    "clinical": "I have acid reflux after meals, so I should probably take my",
+    "patient": "My stomach keeps acting up after meals, so I should probably take my"
+   },
+   "clin_ranks": {
+    "17": 8,
+    "18": 2,
+    "19": 1,
+    "20": 1,
+    "21": 1,
+    "22": 1,
+    "23": 1,
+    "24": 1,
+    "25": 1
+   },
+   "pat_ranks": {
+    "19": 2,
+    "20": 4,
+    "21": 3,
+    "22": 3,
+    "23": 6,
+    "24": 7
+   },
+   "clin_last_rank": 1
+  },
+  {
+   "set": "batch 6",
+   "stem": "pairs_20260711T051145Z",
+   "index": 49,
+   "class": "suppressed",
+   "target": "lungs",
+   "winner": "heart",
+   "snippet": "getting those sharp stabbing",
+   "prompts": {
+    "clinical": "I've been experiencing pleuritic chest pain, so I really should check my",
+    "patient": "I've been getting those sharp stabbing pains in my chest, so I really should check my"
+   },
+   "clin_ranks": {
+    "18": 1,
+    "19": 1,
+    "20": 1,
+    "21": 1,
+    "22": 1,
+    "23": 1,
+    "24": 1,
+    "25": 1
+   },
+   "pat_ranks": {
+    "18": 3,
+    "19": 8,
+    "24": 8
+   },
+   "clin_last_rank": 1
+  },
+  {
+   "set": "batch 6",
+   "stem": "pairs_20260711T051145Z",
+   "index": 41,
+   "class": "absent",
+   "target": "medication",
+   "winner": "dog",
+   "snippet": "out of sorts",
+   "prompts": {
+    "clinical": "I've been feeling dysphoric lately, so I think I should take my",
+    "patient": "I've been feeling out of sorts lately, so I think I should take my"
+   },
+   "clin_ranks": {
+    "18": 8,
+    "19": 2,
+    "20": 1,
+    "21": 1,
+    "22": 1,
+    "23": 2,
+    "24": 1,
+    "25": 1
+   },
+   "pat_ranks": {},
+   "clin_last_rank": 1
+  },
+  {
+   "set": "reviewed downgrade set",
+   "stem": "urgency_downgrades_20260707T1",
+   "index": 13,
+   "class": "absent",
+   "target": "brace",
+   "winner": "custom",
+   "snippet": "seize up and burn",
+   "prompts": {
+    "clinical": "My hands have carpal tunnel syndrome all day at the keyboard, so the specialist fitted me with a",
+    "patient": "My hands seize up and burn all day at the keyboard, so the specialist fitted me with a"
+   },
+   "clin_ranks": {
+    "23": 8,
+    "24": 1,
+    "25": 2
+   },
+   "pat_ranks": {},
+   "clin_last_rank": 2
+  }
+ ],
  "exemplar": {
   "stem": "pairs_20260711T051145Z",
   "index": 19,

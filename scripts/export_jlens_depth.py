@@ -165,6 +165,41 @@ def translation_split(stems, rows_path="urgency_shift.json", model="gemma-2-2b")
     }
 
 
+def pick_examples(blocks_spec, max_suppressed=4, max_absent=2):
+    """Worked examples for the site, selected by rule rather than by hand:
+    every lost-late (suppressed) pair, capped, strongest clinical hold first;
+    plus the never-formed pairs whose clinical wording holds best at the
+    output - the sharpest contrasts the readout can show."""
+    candidates = []
+    for stem, label in blocks_spec:
+        summary, _ = load_summary(stem)
+        for r in summary["results"]:
+            cls = r.get("patient_depth_class")
+            if cls not in ("suppressed", "absent"):
+                continue
+            clin = r["depth"]["clinical"]
+            pat = r["depth"]["patient"]
+            clin_last = clin[-1]["target_rank"] if clin else None
+            winner = next((e["top1"] for e in reversed(pat) if e.get("top1")), None)
+            _, snippet = contrast_labels(r["prompts"]["clinical"], r["prompts"]["patient"])
+            candidates.append({
+                "set": label.split("·")[0].strip(), "stem": stem, "index": r["index"],
+                "class": cls,
+                "target": (r["target_token"] or "").strip(),
+                "winner": (winner or "").strip() or None,
+                "snippet": snippet,
+                "prompts": r["prompts"],
+                "clin_ranks": rank_map(clin), "pat_ranks": rank_map(pat),
+                "clin_last_rank": clin_last,
+            })
+    def hold(c):  # smaller = stronger clinical hold at the output
+        return (c["clin_last_rank"] if c["clin_last_rank"] is not None else 99, c["index"])
+    suppressed = sorted([c for c in candidates if c["class"] == "suppressed"], key=hold)
+    absent = sorted([c for c in candidates if c["class"] == "absent"
+                     and c["clin_last_rank"] is not None], key=hold)
+    return suppressed[:max_suppressed] + absent[:max_absent]
+
+
 def build_payload(blocks_spec, exemplar_stem, exemplar_index, annotate=None):
     """blocks_spec: list of (stem, label); annotate: (stem, index) or None."""
     blocks = []
@@ -188,6 +223,7 @@ def build_payload(blocks_spec, exemplar_stem, exemplar_index, annotate=None):
         "blocks": blocks,
         "units": blocks[0],  # back-compat alias: first block is the newest batch
         "translation": translation_split([b["id"] for b in blocks]),
+        "examples": pick_examples(blocks_spec),
         "exemplar": {
             "stem": exemplar_stem,
             "index": exemplar_index,
