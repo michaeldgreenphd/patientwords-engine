@@ -53,6 +53,7 @@ TRIGGERS = (
     "circuit-trace",
     "logits-eval",
     "activation-patching",
+    "jlens-readout",
     "scenario-generation",
     "model-evaluation",
     "archive-renders",
@@ -90,6 +91,11 @@ KNOWN_KEYS = {
     # layers, positions, model, offsets, commit_outputs.
     "activation-patching": frozenset({
         "pairs_file", "limit", "layers", "positions", "model", "offsets", "commit_outputs",
+    }),
+    # jlens_readout.yml `defaults` dict (verified 2026-07-11): models, pairs_file,
+    # limit, offset, topn, save_raw, commit_outputs.
+    "jlens-readout": frozenset({
+        "models", "pairs_file", "limit", "offset", "topn", "save_raw", "commit_outputs",
     }),
     # scenario_generation.yml `defaults` dict (verified 2026-07-09): task, num, topics,
     # seed_pairs, feedback, phrase, term, target_token, num_baselines, dialects,

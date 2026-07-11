@@ -121,6 +121,25 @@ no causal evidence (stays B1 patching); no multi-token concept readout; no
 hosted API we can call today (the Neuronpedia demo is interactive-only as far
 as verifiable from here — re-check from CI, J0).
 
+## 5b. Update 2026-07-11 pm: hosted endpoint found — fitting unnecessary
+
+Owner surfaced the Neuronpedia launch blog: 13 models served (Gemma, Llama,
+GPT-OSS, Qwen families) at neuronpedia.org/[modelId]/jlens, plus a "swap"
+steering capability. Reading the open-source webapp confirmed a programmatic
+endpoint: **POST /api/lens/prompt** (modelId, prompt, type
+["JACOBIAN_LENS","LOGIT_LENS"], topN 1-8, numCompletionTokens, stream,
+steerTokens/steerLayers/steerStrength/swapToken). Non-streaming returns
+{meta, tokens, done} with per-position readouts. This retires the local-fit
+plan (J1) for any served model: same $0 hosted pattern as our tracing, same
+NEURONPEDIA_API_KEY, no third-party .pt weights, no CPU Jacobians. The
+served-model list is deployment config (not in the code), so the overlap
+with our matrix is discovered empirically: `scripts/jlens_readout.py`
+records supported=false per model via `jlens_readout.yml` probe fires.
+Known from their HF lens repo: qwen3-1.7b (in our matrix) has a fitted lens.
+Response token schema is undocumented — first probe runs use --save-raw and
+a defensive parser (parse_status per pair), then the parser gets pinned
+against the real artifact.
+
 ## 6. Gated plan (no fires yet; critic queue owns sequencing)
 
 - **J0 verify (free, next CI touch):** from a runner with open egress — list

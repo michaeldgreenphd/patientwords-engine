@@ -1,0 +1,200 @@
+name: Jacobian Lens Readout (medlang-circuits)
+
+# Depth-resolved lens readouts per stress pair via Neuronpedia's hosted
+# Jacobian-lens endpoint (POST /api/lens/prompt). $0: hosted inference, no
+# weights, no Anthropic calls. A model the endpoint does not serve is recorded
+# as supported=false in jlens_probe.json and the matrix leg stays green, so a
+# probe fire across the whole model matrix doubles as support discovery.
+# Method credit: Gurnee et al., Transformer Circuits 2026
+# (github.com/anthropics/jacobian-lens); see docs/jlens_evaluation.md.
+#
+# Start it from the Actions tab (workflow_dispatch) or by pushing a params file
+# to .github/trigger/jlens-readout.json, e.g.
+#   {"models":"qwen3-1.7b gemma-2-2b",
+#    "pairs_file":"data/simulated/pairs_20260711T051145Z.json",
+#    "limit":"2","save_raw":"true","commit_outputs":"true"}
+
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: "Space/comma-separated Neuronpedia model ids to read out"
+        type: string
+        default: "qwen3-1.7b"
+      pairs_file:
+        description: "Repo path of the pairs JSON to read out"
+        type: string
+        default: "data/simulated/pairs_20260711T051145Z.json"
+      limit:
+        description: "Read only the first N pairs after offset (0 = all)"
+        type: string
+        default: "0"
+      offset:
+        description: "Skip the first N pairs (chunking; part number = offset+1)"
+        type: string
+        default: "0"
+      topn:
+        description: "Lens top-N tokens per layer (1-8)"
+        type: string
+        default: "8"
+      save_raw:
+        description: "Also commit gzipped raw API responses (schema work; small runs only)"
+        type: boolean
+        default: false
+      commit_outputs:
+        description: "Commit jlens_summary/probe outputs back to the branch"
+        type: boolean
+        default: false
+  push:
+    paths:
+      - ".github/trigger/jlens-readout.json"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: jlens-readout-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  params:
+    runs-on: ubuntu-latest
+    outputs:
+      models: ${{ steps.params.outputs.models }}
+      pairs_file: ${{ steps.params.outputs.pairs_file }}
+      limit: ${{ steps.params.outputs.limit }}
+      offset: ${{ steps.params.outputs.offset }}
+      topn: ${{ steps.params.outputs.topn }}
+      save_raw: ${{ steps.params.outputs.save_raw }}
+      commit_outputs: ${{ steps.params.outputs.commit_outputs }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve parameters
+        id: params
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IN_MODELS: ${{ inputs.models }}
+          IN_PAIRS_FILE: ${{ inputs.pairs_file }}
+          IN_LIMIT: ${{ inputs.limit }}
+          IN_OFFSET: ${{ inputs.offset }}
+          IN_TOPN: ${{ inputs.topn }}
+          IN_SAVE_RAW: ${{ inputs.save_raw }}
+          IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          defaults = {"models": "qwen3-1.7b",
+                      "pairs_file": "data/simulated/pairs_20260711T051145Z.json",
+                      "limit": "0", "offset": "0", "topn": "8",
+                      "save_raw": "false", "commit_outputs": "false"}
+          p = dict(defaults)
+          if os.environ["EVENT_NAME"] == "push":
+              with open(".github/trigger/jlens-readout.json", encoding="utf-8") as f:
+                  cfg = json.load(f)
+              if isinstance(cfg.get("models"), list):
+                  cfg["models"] = " ".join(str(m) for m in cfg["models"])
+              p.update({k: (str(v).lower() if isinstance(v, bool) else str(v))
+                        for k, v in cfg.items() if k in defaults})
+          else:
+              for k in defaults:
+                  v = os.environ.get("IN_" + k.upper(), "")
+                  if v:
+                      p[k] = v
+          models = [m.strip() for m in p["models"].replace(",", " ").split() if m.strip()]
+          if not models:
+              raise SystemExit("no models to read out")
+          out = os.environ["GITHUB_OUTPUT"]
+          with open(out, "a", encoding="utf-8") as f:
+              f.write("models=" + json.dumps(models) + "\n")
+              for k in ("pairs_file", "limit", "offset", "topn", "save_raw", "commit_outputs"):
+                  f.write(k + "=" + p[k] + "\n")
+          print("models:", models, "| pairs:", p["pairs_file"], "| limit:", p["limit"],
+                "| offset:", p["offset"], "| topn:", p["topn"], "| save_raw:", p["save_raw"])
+          EOF
+
+  readout:
+    needs: params
+    runs-on: ubuntu-latest
+    # Hosted calls only: two POSTs per pair, ~seconds each plus retries.
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 2   # be polite to the hosted endpoint
+      matrix:
+        model: ${{ fromJson(needs.params.outputs.models) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install requests
+        run: pip install --quiet requests
+
+      - name: Resolve output dir
+        env:
+          MODEL: ${{ matrix.model }}
+          PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
+          OFFSET: ${{ needs.params.outputs.offset }}
+        run: |
+          STEM=$(basename "$PAIRS_FILE" .json)
+          echo "OUT_DIR=trace_out/${STEM}__jlens_${MODEL}" >> "$GITHUB_ENV"
+          echo "PART=$(printf 'part_%02d' $((OFFSET + 1)))" >> "$GITHUB_ENV"
+
+      - name: Hosted lens readout
+        env:
+          MODEL: ${{ matrix.model }}
+          PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
+          LIMIT: ${{ needs.params.outputs.limit }}
+          OFFSET: ${{ needs.params.outputs.offset }}
+          TOPN: ${{ needs.params.outputs.topn }}
+          SAVE_RAW: ${{ needs.params.outputs.save_raw }}
+          NEURONPEDIA_API_KEY: ${{ secrets.NEURONPEDIA_API_KEY }}
+        run: |
+          EXTRA=""
+          if [ "$SAVE_RAW" = "true" ]; then EXTRA="--save-raw"; fi
+          python scripts/jlens_readout.py --pairs "$PAIRS_FILE" --model "$MODEL" \
+            --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET" --topn "$TOPN" $EXTRA
+
+      - name: Commit outputs to the branch
+        if: ${{ always() && needs.params.outputs.commit_outputs == 'true' }}
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          FOUND=0
+          for f in "$OUT_DIR/jlens_summary.$PART.json" "$OUT_DIR/jlens_probe.json"; do
+            if [ -f "$f" ]; then git add -f "$f"; FOUND=1; fi
+          done
+          if [ -d "$OUT_DIR/jlens_raw" ]; then git add -f "$OUT_DIR/jlens_raw"; FOUND=1; fi
+          if [ "$FOUND" = "0" ]; then echo "No outputs to commit"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Jlens readout: $OUT_DIR (${{ matrix.model }}, hosted lens depth profiles)"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+              exit 0
+            fi
+            sleep $((i * 2))
+          done
+          exit 1
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## Jlens readout (${{ matrix.model }})"
+            echo '```'
+            if [ -f "$OUT_DIR/jlens_probe.json" ]; then cat "$OUT_DIR/jlens_probe.json"; fi
+            SUMMARY="$OUT_DIR/jlens_summary.$PART.json"
+            if [ -f "$SUMMARY" ]; then
+              python - "$SUMMARY" <<'EOF'
+          import json, sys
+          s = json.load(open(sys.argv[1]))
+          for r in s["results"]:
+              print(f"pair {r['index']:2d}  first_layer={r['first_layer']}  "
+                    f"class={r['patient_depth_class']}  parse={r['parse_status']}")
+          EOF
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

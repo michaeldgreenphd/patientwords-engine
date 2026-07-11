@@ -140,12 +140,17 @@ Anthropic's J-lens (paper 2026-07-06 + anthropics/jacobian-lens, Apache-2.0)
 evaluated in `docs/jlens_evaluation.md`: strong fit for the translation
 mechanism (absence vs. suppression of the clinical target through depth) and
 for the most legible "answer forming through the layers" public figure.
-Gated queue for the critic, idle slots only, Tier B cycle keeps priority:
-J0 CI-verify (HF lens files, original paper page, API check, pin SHAs) →
-J1 smoke fit gemma-2-2b ($0, chunk+merge) → J2 readout script (exploratory,
+UPDATE 07-11 pm (owner surfaced the 13-model launch blog): Neuronpedia
+serves a hosted lens API (POST /api/lens/prompt) — local fitting retired.
+Built: scripts/jlens_readout.py + jlens_readout.yml + jlens-readout trigger
+(own concurrency group, $0, NEURONPEDIA_API_KEY). Queue now: J1' probe
+smoke across all 9 matrix ids (limit 2, save_raw) → pin parser against the
+raw artifact → J2 full readout on supported models (exploratory,
 exploration split only) → J3 exemplar figure + credit → J4 prereg'd
-follow-up. Supersedes H2 (logit-lens profiles) if J1 passes. Site framing:
-cite the method, never the workspace/consciousness press angle.
+follow-up. Supersedes H2 (the endpoint also returns LOGIT_LENS readouts —
+one call covers both). Site framing: cite the method, never the
+workspace/consciousness press angle. Owner is considering a dedicated site
+tab for depth readouts (name pending owner choice).
 
 ## New-model incorporation checklist (owner request 2026-07-10 pm)
 
