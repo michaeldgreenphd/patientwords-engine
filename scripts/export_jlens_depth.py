@@ -159,8 +159,9 @@ def translation_split(stems, rows_path="urgency_shift.json", model="gemma-2-2b")
         "pairs": joined,
         "by_class": {c: {"n": len(v), "mean_recovery": round(sum(v) / len(v), 3)}
                      for c, v in sorted(by_class.items())},
-        "note": ("exploratory; urgency recovery of the translated third panel, "
-                 "split by the lens depth class of the everyday wording"),
+        "note": ("exploratory; recovery = expected care-urgency tier of the translated "
+                 "panel minus the everyday wording (probability-weighted, reviewed v1 "
+                 "tiers), split by the lens depth class of the everyday wording"),
     }
 
 
