@@ -1,0 +1,502 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 41,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My skin gets all red and itchy when I use certain beauty products, so I think I might have contact dermatitis on my",
+        "patient": "My skin gets all red and itchy when I use certain beauty products, so I think I might have a"
+      },
+      "target_token": "Output \" face\"",
+      "probabilities": {
+        "clinical": 0.394,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3395,
+        "patient": 0.3111
+      },
+      "error_share": {
+        "clinical": 0.1061,
+        "patient": 0.0983
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] technical language related to dermatology and immuno \u2192 Output \" skin\" (p=0.197)",
+        "patient": "[L19\u00b7S]  \u2192 [L20\u00b7C] words that describe likelihood, sensitivity, or risk \u2192 [L25\u00b7C] sentences that reference medical devices and electro \u2192 Output \" sensitivity\" (p=0.112)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " face",
+        "observed_clinical": [
+          "Output \" face\"",
+          0.394
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" face\"",
+            0.394
+          ],
+          [
+            "Output \" skin\"",
+            0.197
+          ],
+          [
+            "Output \" hands\"",
+            0.142
+          ],
+          [
+            "Output \" scalp\"",
+            0.032
+          ],
+          [
+            "Output \" arms\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sensitive\"",
+            0.165
+          ],
+          [
+            "Output \" skin\"",
+            0.134
+          ],
+          [
+            "Output \" sensitivity\"",
+            0.112
+          ],
+          [
+            "Output \" reaction\"",
+            0.078
+          ],
+          [
+            "Output \" problem\"",
+            0.047
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 808,
+        "unique_to_a": 453,
+        "unique_to_b": 536
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_41.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_41.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_41_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_41_diff.png"
+      }
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having trouble with my heart lately, so I think I need to see a",
+        "patient": "I've been having trouble with my ticker lately, so I think I need to see a"
+      },
+      "target_token": "Output \" cardio\"",
+      "probabilities": {
+        "clinical": 0.233,
+        "patient": 0.083
+      },
+      "language_penalty": -0.15000000000000002,
+      "clinical_mass": {
+        "clinical": 0.3638,
+        "patient": 0.281
+      },
+      "error_share": {
+        "clinical": 0.0836,
+        "patient": 0.0991
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" heart\" (p=0.033)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.612)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cardiologist",
+        "observed_clinical": [
+          "Output \" cardio\"",
+          0.233
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.565
+          ],
+          [
+            "Output \" cardio\"",
+            0.233
+          ],
+          [
+            "Output \" specialist\"",
+            0.049
+          ],
+          [
+            "Output \" heart\"",
+            0.033
+          ],
+          [
+            "Output \" Cardio\"",
+            0.014
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.612
+          ],
+          [
+            "Output \" cardio\"",
+            0.083
+          ],
+          [
+            "Output \" specialist\"",
+            0.052
+          ],
+          [
+            "Output \" new\"",
+            0.025
+          ],
+          [
+            "Output \" doc\"",
+            0.019
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 841,
+        "unique_to_a": 319,
+        "unique_to_b": 438
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_42.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_42.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_42_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_42_diff.png"
+      }
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing paresthesia in my extremities, so I should probably take my",
+        "patient": "I've been getting this weird tingling sensation that won't go away, so I should probably take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.05,
+        "patient": 0.065
+      },
+      "language_penalty": 0.015,
+      "clinical_mass": {
+        "clinical": 0.2915,
+        "patient": 0.2157
+      },
+      "error_share": {
+        "clinical": 0.0994,
+        "patient": 0.0973
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.052)",
+        "patient": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.112)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.05
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.149
+          ],
+          [
+            "Output \" blood\"",
+            0.089
+          ],
+          [
+            "Output \" vitamins\"",
+            0.059
+          ],
+          [
+            "Output \" own\"",
+            0.052
+          ],
+          [
+            "Output \" medication\"",
+            0.05
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.159
+          ],
+          [
+            "Output \" blood\"",
+            0.112
+          ],
+          [
+            "Output \" medication\"",
+            0.065
+          ],
+          [
+            "Output \" medicine\"",
+            0.039
+          ],
+          [
+            "Output \" vitamins\"",
+            0.039
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 811,
+        "unique_to_a": 604,
+        "unique_to_b": 640
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_43.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_43.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_43_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_43_diff.png"
+      }
+    },
+    {
+      "index": 44,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have sciatica, so I think I need to see a",
+        "patient": "I keep getting these shooting pains down my leg when I sit too long, so I think I need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.158,
+        "patient": 0.462
+      },
+      "language_penalty": 0.30400000000000005,
+      "clinical_mass": {
+        "clinical": 0.4373,
+        "patient": 0.4092
+      },
+      "error_share": {
+        "clinical": 0.0925,
+        "patient": 0.0978
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.158)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.462)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.158
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" chi\"",
+            0.38
+          ],
+          [
+            "Output \" doctor\"",
+            0.158
+          ],
+          [
+            "Output \" specialist\"",
+            0.075
+          ],
+          [
+            "Output \" neuro\"",
+            0.074
+          ],
+          [
+            "Output \" physio\"",
+            0.055
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.462
+          ],
+          [
+            "Output \" chi\"",
+            0.134
+          ],
+          [
+            "Output \" neuro\"",
+            0.071
+          ],
+          [
+            "Output \" physio\"",
+            0.04
+          ],
+          [
+            "Output \" specialist\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 587,
+        "unique_to_a": 690,
+        "unique_to_b": 810
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_44.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_44.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_44_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_44_diff.png"
+      }
+    },
+    {
+      "index": 45,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have arrhythmia, so I really should get my",
+        "patient": "I've been feeling like my heart is skipping beats randomly, so I really should get my"
+      },
+      "target_token": "Output \" heart\"",
+      "probabilities": {
+        "clinical": 0.378,
+        "patient": 0.661
+      },
+      "language_penalty": 0.28300000000000003,
+      "clinical_mass": {
+        "clinical": 0.3684,
+        "patient": 0.341
+      },
+      "error_share": {
+        "clinical": 0.0979,
+        "patient": 0.0973
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.378)",
+        "patient": "embedding \u2192 [L19\u00b7C] words and phrases related to health, especially the  \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.661)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " heart",
+        "observed_clinical": [
+          "Output \" heart\"",
+          0.378
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" heart\"",
+            0.378
+          ],
+          [
+            "Output \" blood\"",
+            0.177
+          ],
+          [
+            "Output \" sleep\"",
+            0.05
+          ],
+          [
+            "Output \" pulse\"",
+            0.018
+          ],
+          [
+            "Output \" own\"",
+            0.016
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" heart\"",
+            0.661
+          ],
+          [
+            "Output \" blood\"",
+            0.122
+          ],
+          [
+            "Output \" hear\"",
+            0.023
+          ],
+          [
+            "Output \" thyroid\"",
+            0.015
+          ],
+          [
+            "Output \" pulse\"",
+            0.013
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 499,
+        "unique_to_a": 673,
+        "unique_to_b": 689
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_45.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_45.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_45_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_45_diff.png"
+      }
+    }
+  ]
+}
