@@ -1,0 +1,314 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 16,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep getting sciatica down my leg, so my doctor thinks I might have a her",
+        "patient": "I keep getting these shooting pains down my leg, so my doctor thinks I might have a her"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3502
+      },
+      "error_share": {
+        "clinical": 0.0994
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " nerve",
+        "observed_clinical": null,
+        "probe_extension": "her",
+        "reason": "intended target not in the traced clinical spread (even after probe extension by 'her')"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \"ni\"",
+            0.995
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have night sweats, so I should probably get my",
+        "patient": "I've been sweating buckets at night, so I should probably get my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2099
+      },
+      "error_share": {
+        "clinical": 0.0926
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " thyroid",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" own\"",
+            0.149
+          ],
+          [
+            "Output \" blood\"",
+            0.121
+          ],
+          [
+            "Output \" period\"",
+            0.073
+          ],
+          [
+            "Output \" sleep\"",
+            0.042
+          ],
+          [
+            "Output \" doctor\"",
+            0.037
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have chronic fatigue syndrome, so I think I might need an",
+        "patient": "I've been feeling really worn out all the time, so I think I might need an"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.24
+      },
+      "error_share": {
+        "clinical": 0.0791
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " evaluation",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" extra\"",
+            0.1
+          ],
+          [
+            "Output \" electric\"",
+            0.094
+          ],
+          [
+            "Output \" energy\"",
+            0.056
+          ],
+          [
+            "Output \" explanation\"",
+            0.053
+          ],
+          [
+            "Output \" alarm\"",
+            0.025
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have essential tremor, so I might need to take a",
+        "patient": "My hands won't stop shaking when I'm nervous, so I might need to take a"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.112,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3126,
+        "patient": 0.1445
+      },
+      "error_share": {
+        "clinical": 0.0909,
+        "patient": 0.0834
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7O] the word \"taken\" and words/phrases around it, especi \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" medication\" (p=0.112)",
+        "patient": "embedding \u2192 [L18\u00b7O] phrases and words related to legal proceedings, brea \u2192 [L21\u00b7O] the starting and stopping points of activities | men \u2192 Output \" break\" (p=0.310)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.112
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" medication\"",
+            0.112
+          ],
+          [
+            "Output \" look\"",
+            0.094
+          ],
+          [
+            "Output \" pill\"",
+            0.072
+          ],
+          [
+            "Output \" break\"",
+            0.052
+          ],
+          [
+            "Output \" few\"",
+            0.04
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" break\"",
+            0.31
+          ],
+          [
+            "Output \" few\"",
+            0.075
+          ],
+          [
+            "Output \" nap\"",
+            0.055
+          ],
+          [
+            "Output \" deep\"",
+            0.042
+          ],
+          [
+            "Output \" moment\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 525,
+        "unique_to_a": 760,
+        "unique_to_b": 790
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z/index_19.html",
+        "png": "trace_out/pairs_20260711T051145Z/index_19.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z/index_19_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z/index_19_diff.png"
+      }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have hemoptysis, so my doctor said I might have a",
+        "patient": "I've been coughing up blood in the mornings, so my doctor said I might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4699
+      },
+      "error_share": {
+        "clinical": 0.1039
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " scan",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lung\"",
+            0.121
+          ],
+          [
+            "Output \" blood\"",
+            0.09
+          ],
+          [
+            "Output \" small\"",
+            0.07
+          ],
+          [
+            "Output \" pulmonary\"",
+            0.066
+          ],
+          [
+            "Output \" cough\"",
+            0.041
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}
