@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-07-11T15:18:53Z",
+  "updated_utc": "2026-07-11T15:20:10Z",
   "updated_by": "session",
   "queue": {
     "circuit-trace": {
@@ -249,6 +249,10 @@
     {
       "date": "2026-07-11",
       "text": "Routine cycle (13:1x): PROBE 3/5 LANDED - llama-3.2-3b, olmo-2-1b, gemma-2-2b-it all measure cleanly (pipeline validated; full runs are the critic's next queue); biomistral-7b + gemma-2-9b missing (likely RAM/timeout - critic triages, swap fix candidate). RECOVERY GRID chunk 1 landed: pairs 1,3,4 peak recovery 1.0-1.9 at layers 25/7/21; pair 2 exposed the anticipated inverted-denominator case - aggregator gets the screen rule. Tier B 300/1600 (batch 6: 74.6%), $0.48/$8, 1009 rows (128 sealed). Site copy now floors probe models (n>=30) off the public comparison page."
+    },
+    {
+      "date": "2026-07-11",
+      "finding": "J-lens hosted readout live (owner request 07-11): Neuronpedia serves the Jacobian lens for gemma-2-2b and gemma-2-2b-it (other 7 matrix ids 500/unserved; re-probe as they expand). Probe pair 1: patient phrasing delays the target reaching rank-1 readout by 2 layers. Probe pair 2: concept readable layers 19-24 under clinical phrasing then lost at the output layer; never readable under patient phrasing. Full batch-6 pull (50 pairs, both models) fired 15:25 UTC. Draft owner visual due 18:20 UTC wake. See docs/jlens_evaluation.md 5b."
     }
   ],
   "decisions_pending": [
