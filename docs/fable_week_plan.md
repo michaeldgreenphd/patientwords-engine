@@ -147,9 +147,21 @@ Built: scripts/jlens_readout.py + jlens_readout.yml + jlens-readout trigger
 served = gemma-2-2b + gemma-2-2b-it; other 7 ids 500 (unserved signature;
 re-probe as Neuronpedia expands). Parser pinned to the real schema, prefix
 matching for multi-wordpiece targets. J2 full batch-6 pull (50 pairs, both
-served models) FIRED 07-11 ~15:25 UTC. Next: J2 across remaining unified
-batches (critic, idle slots) → J3 exemplar figure + credit (owner feedback
-via the 18:20 UTC 07-11 draft visual) → J4 prereg'd follow-up. Supersedes H2 (the endpoint also returns LOGIT_LENS readouts —
+served models) FIRED 07-11 ~15:25 UTC. SHIPPED 07-11 night (owner-approved): methods "Reading the layers" +
+combined lens/patch figure (exemplar batch-6 pair 19), start-here "Two
+kinds of loss", Answer Depth tab (answer-depth/, nav on all 12 pages),
+translation-page depth summary, gallery depth badges (dormant until the
+payload ingests a lens-measured batch), data/jlens_depth.json exporter v2
+(multi-set blocks + translation-by-class join; first split: kept 0.267 vs
+never-formed 0.124 mean urgency recovery, n=17, downgrade set).
+Critic queue now: J5 batch-6 mitigation arm (OWNER-APPROVED ~$0.10 haiku,
+circuit-trace 2panel show_mitigation, chunked, fire when the trace slot is
+free after Tier B needs; grows the translation-by-class table, esp. the
+lost-late class at n=1) → J2 lens on remaining unified batches + re-run
+export_jlens_depth each cycle (block per batch) → J6 payload republish
+decision (adding Tier B batches to simulated_scenarios.json lights the
+gallery badges; expands the public gallery, flag in digest before doing
+it) → J4 prereg'd absence-vs-suppression endpoints on future batches. Supersedes H2 (the endpoint also returns LOGIT_LENS readouts —
 one call covers both). Site framing: cite the method, never the
 workspace/consciousness press angle. Owner is considering a dedicated site
 tab for depth readouts (name pending owner choice).

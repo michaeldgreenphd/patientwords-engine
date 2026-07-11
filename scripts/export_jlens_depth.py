@@ -107,15 +107,69 @@ def units_annotation(results, index):
             "text": f"“{tail} {target}” becomes “{tail} {winner}”"}
 
 
-def build_payload(units_batch, exemplar_stem, exemplar_index, annotate_index=19):
-    units_summary, units_path = load_summary(units_batch)
-    units = [{"index": r["index"], "class": r["patient_depth_class"],
+def build_block(stem, label, annotate_index=None):
+    """One unit-rows block for a lens-measured set."""
+    summary, path = load_summary(stem)
+    pairs = [{"index": r["index"], "class": r["patient_depth_class"],
               "target": (r["target_token"] or "").strip()}
-             for r in units_summary["results"]]
+             for r in summary["results"]]
     counts = {}
-    for u in units:
+    for u in pairs:
         counts[u["class"]] = counts.get(u["class"], 0) + 1
-    annotation = units_annotation(units_summary["results"], annotate_index)
+    return {
+        "id": stem, "label": label, "counts": counts, "pairs": pairs,
+        "annotation": (units_annotation(summary["results"], annotate_index)
+                       if annotate_index else None),
+        "source": path,
+    }
+
+
+def translation_split(stems, rows_path="urgency_shift.json", model="gemma-2-2b"):
+    """Depth class x translation recovery, joined per pair on lens-measured
+    sets whose collector rows carry the translated third panel. Exploratory;
+    one row per (set, index), preferring the row that has a recovery value."""
+    bundle = json.loads(Path(rows_path).read_text(encoding="utf-8"))
+    joined = []
+    for stem in stems:
+        try:
+            summary, _ = load_summary(stem)
+        except OSError:
+            continue
+        classes = {r["index"]: r["patient_depth_class"] for r in summary["results"]}
+        best = {}
+        for row in bundle.get("rows", []):
+            if row.get("batch") != stem or row.get("model") != model:
+                continue
+            idx = row.get("index")
+            if idx not in classes:
+                continue
+            rec = row.get("urgency_recovery")
+            if idx not in best or (rec is not None and best[idx] is None):
+                best[idx] = rec
+        for idx, rec in sorted(best.items()):
+            if rec is not None:
+                joined.append({"set": stem, "index": idx,
+                               "class": classes[idx], "recovery": rec})
+    by_class = {}
+    for j in joined:
+        by_class.setdefault(j["class"], []).append(j["recovery"])
+    return {
+        "source_rows": rows_path,
+        "sets": stems,
+        "pairs": joined,
+        "by_class": {c: {"n": len(v), "mean_recovery": round(sum(v) / len(v), 3)}
+                     for c, v in sorted(by_class.items())},
+        "note": ("exploratory; urgency recovery of the translated third panel, "
+                 "split by the lens depth class of the everyday wording"),
+    }
+
+
+def build_payload(blocks_spec, exemplar_stem, exemplar_index, annotate=None):
+    """blocks_spec: list of (stem, label); annotate: (stem, index) or None."""
+    blocks = []
+    for stem, label in blocks_spec:
+        ann_idx = annotate[1] if annotate and annotate[0] == stem else None
+        blocks.append(build_block(stem, label, ann_idx))
 
     ex_summary, ex_lens_path = load_summary(exemplar_stem)
     ex = next(r for r in ex_summary["results"] if r["index"] == exemplar_index)
@@ -130,13 +184,9 @@ def build_payload(units_batch, exemplar_stem, exemplar_index, annotate_index=19)
         "method_credit": METHOD_CREDIT,
         "integrity_note": INTEGRITY_NOTE,
         "class_labels": CLASS_LABELS,
-        "units": {
-            "batch": units_batch,
-            "counts": counts,
-            "pairs": units,
-            "annotation": annotation,
-            "source": units_path,
-        },
+        "blocks": blocks,
+        "units": blocks[0],  # back-compat alias: first block is the newest batch
+        "translation": translation_split([b["id"] for b in blocks]),
         "exemplar": {
             "stem": exemplar_stem,
             "index": exemplar_index,
@@ -156,15 +206,28 @@ def build_payload(units_batch, exemplar_stem, exemplar_index, annotate_index=19)
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--units-batch", required=True, help="stem of the unit-rows batch")
+    parser.add_argument("--block", action="append", required=True, metavar="STEM=LABEL",
+                        help="lens-measured set to include, newest first (repeatable)")
     parser.add_argument("--exemplar-stem", required=True)
     parser.add_argument("--exemplar-index", type=int, required=True)
+    parser.add_argument("--annotate", default=None, metavar="STEM:INDEX",
+                        help="pair whose data derives the unit-rows example line")
     parser.add_argument("--out", default="data/jlens_depth.json")
     parser.add_argument("--site", default="../patientwords", help="'' skips the site copy")
     args = parser.parse_args(argv)
 
+    blocks_spec = []
+    for spec in args.block:
+        stem, _, label = spec.partition("=")
+        blocks_spec.append((stem, label or stem))
+    annotate = None
+    if args.annotate:
+        stem, _, idx = args.annotate.partition(":")
+        annotate = (stem, int(idx))
+
     try:
-        payload = build_payload(args.units_batch, args.exemplar_stem, args.exemplar_index)
+        payload = build_payload(blocks_spec, args.exemplar_stem, args.exemplar_index,
+                                annotate=annotate)
     except ValueError as exc:
         print(f"refused: {exc}")
         return 3

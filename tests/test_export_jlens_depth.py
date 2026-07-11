@@ -68,7 +68,33 @@ def test_main_exit_3_on_degenerate_exemplar(tmp_path, monkeypatch):
               "depth": {"clinical": [], "patient": []}}
     (lens_dir / "jlens_summary.part_01.json").write_text(json.dumps({"results": [result]}))
     _write_patch_part(tmp_path, "s", 1, clean=0.1, corrupt=0.4, matrix=[[0.2]])
-    rc = exporter.main(["--units-batch", "s", "--exemplar-stem", "s",
+    (tmp_path / "urgency_shift.json").write_text(json.dumps({"rows": []}))
+    rc = exporter.main(["--block", "s=set s", "--exemplar-stem", "s",
                         "--exemplar-index", "1", "--out", "out.json", "--site", ""])
     assert rc == 3
     assert not (tmp_path / "out.json").exists()
+
+
+def test_translation_split_joins_class_and_recovery(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    lens_dir = tmp_path / "trace_out" / "s__jlens_gemma-2-2b"
+    lens_dir.mkdir(parents=True)
+    results = [
+        {"index": 1, "patient_depth_class": "retained", "target_token": " a",
+         "prompts": {"clinical": "c", "patient": "p"}, "depth": {"clinical": [], "patient": []}},
+        {"index": 2, "patient_depth_class": "absent", "target_token": " b",
+         "prompts": {"clinical": "c", "patient": "p"}, "depth": {"clinical": [], "patient": []}},
+    ]
+    (lens_dir / "jlens_summary.part_01.json").write_text(json.dumps({"results": results}))
+    rows = [
+        {"batch": "s", "model": "gemma-2-2b", "index": 1, "urgency_recovery": 0.4},
+        {"batch": "s", "model": "gemma-2-2b", "index": 1, "urgency_recovery": None},  # re-trace dupe
+        {"batch": "s", "model": "gemma-2-2b", "index": 2, "urgency_recovery": 0.1},
+        {"batch": "s", "model": "other-model", "index": 2, "urgency_recovery": 0.9},  # wrong model
+        {"batch": "t", "model": "gemma-2-2b", "index": 2, "urgency_recovery": 0.9},   # wrong set
+    ]
+    (tmp_path / "urgency_shift.json").write_text(json.dumps({"rows": rows}))
+    split = exporter.translation_split(["s"])
+    assert split["by_class"] == {"retained": {"n": 1, "mean_recovery": 0.4},
+                                 "absent": {"n": 1, "mean_recovery": 0.1}}
+    assert len(split["pairs"]) == 2  # duplicate row with None recovery never wins
