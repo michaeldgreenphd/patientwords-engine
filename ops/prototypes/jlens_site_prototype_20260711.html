@@ -94,11 +94,14 @@ Draft text follows the site voice. Mark anything to cut, soften, or move.</div>
   The red mark is the output layer where the everyday wording loses it.</div>
 
   <div class="proposal" id="causal-text">
-    <p>A readout alone can mislead, so the site pairs it with an intervention. Take a
-    pair the readout flags, copy the clinical sentence's internal state into the
-    everyday run one layer at a time, and measure how much of the answer returns.
-    Where the readout says the answer lives, the patch restores it. Reading and
-    intervention agree.</p>
+    <p>A readout alone can mislead, so the site pairs it with an intervention. The
+    lens ranks locate the answer; probabilities decide behavior; the causal check
+    works in probabilities. Take a pair from the reviewed downgrade set: "dealing
+    with insomnia" gives the clinical answer 15 percent of the next-word
+    probability, "counting sheep all night" gives it 6. Copy the clinical
+    sentence's internal state into the everyday run one layer at a time and
+    measure the answer again. Patched at layers 20 to 22, the everyday sentence
+    recovers the full clinical level. Those layers carry the difference.</p>
   </div>
 
   <div class="figwrap" id="fig-c"></div>
@@ -168,9 +171,16 @@ const CLIN = {10:8, 11:7, 18:6, 19:1, 20:1, 21:1, 22:1, 23:1, 24:1, 25:2};
 const PAT  = {19:2, 20:2, 21:3, 22:4, 23:2, 24:2};
 const LAYERS = 26;
 
-// Causal exemplar: filled from the downgrade-set lens run + the landed
-// patching grid (trace_out/urgency_downgrades_20260707T1__patch).
-const CAUSAL = null; // populated before publishing
+// Causal exemplar: downgrade-set pair 4 (target " sleep"), from the landed
+// patching grid (trace_out/urgency_downgrades_20260707T1__patch, part_04):
+// per-layer MAX patched probability of the target when the clinical run's
+// activations are copied into the everyday run at that layer.
+const CAUSAL = {
+  clean: 0.1488, corrupt: 0.0640,
+  patched: [0.0664,0.0677,0.069,0.0705,0.0721,0.0706,0.0741,0.0937,0.1122,
+            0.1149,0.1101,0.0915,0.0851,0.0905,0.0956,0.0946,0.1128,0.1117,
+            0.1265,0.1227,0.1558,0.1673,0.1645,0.1472,0.1522,0.1488],
+};
 
 const NS = "http://www.w3.org/2000/svg";
 function el(tag, attrs, parent){
@@ -286,22 +296,46 @@ laneFig("fig-b", [
             color: "#b4483d", anchor: "end"}]},
 ], {aria: "Depth readout for one pair: clinical wording readable from layer 10, everyday wording from layer 19 and lost at the output layer"});
 
-// --- Figure C: causal join (downgrade set) ------------------------------
-if (CAUSAL){
-  laneFig("fig-c", [
-    {kind: "rank", label: "clinical wording", sub: CAUSAL.clinSub,
-     color: "#15803d", data: CAUSAL.clin, notes: CAUSAL.clinNotes},
-    {kind: "rank", label: "everyday wording", sub: CAUSAL.patSub,
-     color: "#111827", data: CAUSAL.pat, lost: CAUSAL.lost, notes: CAUSAL.patNotes},
-    {kind: "bars", label: "patch each layer", sub: "causal check",
-     color: "#15803d", data: CAUSAL.recovery, notes: CAUSAL.recNotes},
-  ], {aria: CAUSAL.aria});
-  document.getElementById("cap-c").textContent = CAUSAL.caption;
-} else {
-  document.getElementById("fig-c").textContent = "";
-  document.getElementById("cap-c").textContent =
-    "Causal join pending: the lens run on the downgrade set is in flight.";
-}
+// --- Figure C: causal check, probability scale ---------------------------
+(function(){
+  const CELL = 21, GAP = 2, LEFT = 96, TOP = 30, PLOT_H = 110;
+  const W = LEFT + LAYERS * (CELL + GAP) + 8, H = TOP + PLOT_H + 44;
+  const PMAX = 0.18;
+  const y = p => TOP + PLOT_H * (1 - p / PMAX);
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, width: "100%",
+    style: `max-width:${W}px`, role: "img",
+    "aria-label": "Patched at layers 20 to 22 the everyday sentence recovers the clinical probability of the answer"}, null);
+  document.getElementById("fig-c").appendChild(svg);
+  const xAt = l => LEFT + l * (CELL + GAP);
+
+  // bars: probability of the answer after patching each layer
+  CAUSAL.patched.forEach((p, l) => {
+    el("rect", {x: xAt(l) + CELL * 0.14, y: y(p), width: CELL * 0.72,
+                height: TOP + PLOT_H - y(p), fill: "#15803d",
+                "fill-opacity": 0.8}, svg);
+  });
+  // the two reference levels, direct-labeled
+  for (const [p, str, color] of [[CAUSAL.clean, ["clinical", "0.149"], "#15803d"],
+                                  [CAUSAL.corrupt, ["everyday", "0.064"], "#111827"]]){
+    el("line", {x1: LEFT, y1: y(p), x2: LEFT + LAYERS * (CELL + GAP) - GAP, y2: y(p),
+                stroke: color, "stroke-width": 1, "stroke-dasharray": "1 3"}, svg);
+    text(svg, 0, y(p) - 2, str[0], {fill: color});
+    text(svg, 0, y(p) + 10, str[1], {fill: color});
+  }
+  text(svg, xAt(21) + CELL / 2, y(0.1673) - 8, "patched here, the answer returns",
+       {fill: "#15803d", "text-anchor": "end"});
+  // axis
+  const axisY = TOP + PLOT_H + 16;
+  text(svg, LEFT, axisY + 12, "early layers");
+  text(svg, LEFT + (LAYERS - 3.2) * (CELL + GAP), axisY + 12, "output →");
+  for (const l of [0, 5, 10, 15, 20, 25])
+    text(svg, xAt(l) + CELL / 2 - 4, axisY, String(l), {"font-size": 9.5});
+})();
+document.getElementById("cap-c").textContent =
+  "Causal check on one downgrade pair. Each bar: the probability of the clinical " +
+  "answer when the clinical sentence's activations are copied into the everyday " +
+  "run at that single layer (best position per layer). The intervention works " +
+  "where the deep layers are; the wording difference is carried there.";
 </script>
 </body>
 </html>
