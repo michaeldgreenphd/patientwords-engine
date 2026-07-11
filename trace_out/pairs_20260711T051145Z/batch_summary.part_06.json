@@ -1,0 +1,405 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 6,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have orthostatic hypotension, so I should check my",
+        "patient": "I've been feeling lightheaded lately, so I should check my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.544,
+        "patient": 0.512
+      },
+      "language_penalty": -0.03200000000000003,
+      "clinical_mass": {
+        "clinical": 0.3364,
+        "patient": 0.2812
+      },
+      "error_share": {
+        "clinical": 0.1069,
+        "patient": 0.0926
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.544)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.512)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood pressure",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.544
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.544
+          ],
+          [
+            "Output \" BP\"",
+            0.169
+          ],
+          [
+            "Output \" pulse\"",
+            0.049
+          ],
+          [
+            "Output \" bp\"",
+            0.048
+          ],
+          [
+            "Output \" heart\"",
+            0.033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.512
+          ],
+          [
+            "Output \" BP\"",
+            0.094
+          ],
+          [
+            "Output \" iron\"",
+            0.056
+          ],
+          [
+            "Output \" thyroid\"",
+            0.027
+          ],
+          [
+            "Output \" vit\"",
+            0.025
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 529,
+        "unique_to_a": 695,
+        "unique_to_b": 904
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z/index_06.html",
+        "png": "trace_out/pairs_20260711T051145Z/index_06.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z/index_06_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z/index_06_diff.png"
+      }
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have tremor, so I need to see a",
+        "patient": "I've got a bad case of the shakes, so I need to see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.295,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3806,
+        "patient": 0.2142
+      },
+      "error_share": {
+        "clinical": 0.0926,
+        "patient": 0.0945
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.121)",
+        "patient": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.509)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.295
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neuro\"",
+            0.295
+          ],
+          [
+            "Output \" specialist\"",
+            0.126
+          ],
+          [
+            "Output \" doctor\"",
+            0.121
+          ],
+          [
+            "Output \" hand\"",
+            0.051
+          ],
+          [
+            "Output \" Neuro\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.509
+          ],
+          [
+            "Output \" movie\"",
+            0.077
+          ],
+          [
+            "Output \" doc\"",
+            0.047
+          ],
+          [
+            "Output \" therapist\"",
+            0.024
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 567,
+        "unique_to_a": 639,
+        "unique_to_b": 721
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z/index_07.html",
+        "png": "trace_out/pairs_20260711T051145Z/index_07.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z/index_07_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z/index_07_diff.png"
+      }
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have gastroenteritis, so I should probably take my",
+        "patient": "My stomach's been acting weird, so I should probably take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.06,
+        "patient": 0.067
+      },
+      "language_penalty": 0.007000000000000006,
+      "clinical_mass": {
+        "clinical": 0.2704,
+        "patient": 0.2999
+      },
+      "error_share": {
+        "clinical": 0.0882,
+        "patient": 0.0912
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.184)",
+        "patient": "embedding \u2192 [L19\u00b7C] terminology related to medicine, health, and nutriti \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.041)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.06
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" own\"",
+            0.184
+          ],
+          [
+            "Output \" meds\"",
+            0.085
+          ],
+          [
+            "Output \" medicine\"",
+            0.074
+          ],
+          [
+            "Output \" medication\"",
+            0.06
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.05
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.231
+          ],
+          [
+            "Output \" medicine\"",
+            0.116
+          ],
+          [
+            "Output \" medication\"",
+            0.067
+          ],
+          [
+            "Output \" vitamins\"",
+            0.043
+          ],
+          [
+            "Output \" blood\"",
+            0.041
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 617,
+        "unique_to_a": 685,
+        "unique_to_b": 635
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z/index_08.html",
+        "png": "trace_out/pairs_20260711T051145Z/index_08.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z/index_08_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z/index_08_diff.png"
+      }
+    },
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have dyspnea on exertion, so I should check my",
+        "patient": "I keep getting winded going up stairs, so I should check my"
+      },
+      "target_token": "Output \" oxygen\"",
+      "probabilities": {
+        "clinical": 0.082,
+        "patient": 0.061
+      },
+      "language_penalty": -0.021000000000000005,
+      "clinical_mass": {
+        "clinical": 0.4365,
+        "patient": 0.2698
+      },
+      "error_share": {
+        "clinical": 0.1043,
+        "patient": 0.0958
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L21\u00b7C] terminology related to cardiology and medical resear \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.100)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7C] words and phrases related to health, especially the  \u2192 [L21\u00b7C] terminology related to cardiology and medical resear \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.137)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " oxygen",
+        "observed_clinical": [
+          "Output \" oxygen\"",
+          0.082
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" heart\"",
+            0.1
+          ],
+          [
+            "Output \" lung\"",
+            0.09
+          ],
+          [
+            "Output \" blood\"",
+            0.089
+          ],
+          [
+            "Output \" oxygen\"",
+            0.082
+          ],
+          [
+            "Output \" lungs\"",
+            0.082
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.221
+          ],
+          [
+            "Output \" heart\"",
+            0.137
+          ],
+          [
+            "Output \" lungs\"",
+            0.109
+          ],
+          [
+            "Output \" oxygen\"",
+            0.061
+          ],
+          [
+            "Output \" lung\"",
+            0.041
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 536,
+        "unique_to_a": 674,
+        "unique_to_b": 882
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z/index_09.html",
+        "png": "trace_out/pairs_20260711T051145Z/index_09.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z/index_09_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z/index_09_diff.png"
+      }
+    }
+  ]
+}
