@@ -1,0 +1,416 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 46,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 46,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My joints have inflammatory markers on labs, so the doctor says I might have a",
+        "patient": "My joints have been stiff and sore when I wake up, so the doctor says I might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4807
+      },
+      "error_share": {
+        "clinical": 0.099
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " condition",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" form\"",
+            0.139
+          ],
+          [
+            "Output \" genetic\"",
+            0.108
+          ],
+          [
+            "Output \" connective\"",
+            0.053
+          ],
+          [
+            "Output \" chronic\"",
+            0.045
+          ],
+          [
+            "Output \" autoimmune\"",
+            0.04
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 47,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing cognitive impairment, so I wonder if I need an",
+        "patient": "I've been having trouble focusing at work and keeping track of conversations, so I wonder if I need an"
+      },
+      "target_token": "Output \" evaluation\"",
+      "probabilities": {
+        "clinical": 0.032,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2955,
+        "patient": 0.197
+      },
+      "error_share": {
+        "clinical": 0.0896,
+        "patient": 0.0973
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" update\" (p=0.062)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] words about vision, especially those that use lenses \u2192 [L22\u00b7O] ophthalmology and optometry related terms | Eyeglass \u2192 Output \" eye\" (p=0.389)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " evaluation",
+        "observed_clinical": [
+          "Output \" evaluation\"",
+          0.032
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" MRI\"",
+            0.143
+          ],
+          [
+            "Output \" anti\"",
+            0.062
+          ],
+          [
+            "Output \" update\"",
+            0.062
+          ],
+          [
+            "Output \" IQ\"",
+            0.046
+          ],
+          [
+            "Output \" evaluation\"",
+            0.032
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" eye\"",
+            0.389
+          ],
+          [
+            "Output \" ADHD\"",
+            0.045
+          ],
+          [
+            "Output \" anti\"",
+            0.031
+          ],
+          [
+            "Output \" upgrade\"",
+            0.028
+          ],
+          [
+            "Output \" intervention\"",
+            0.026
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 626,
+        "unique_to_a": 816,
+        "unique_to_b": 777
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_47.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_47.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_47_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_47_diff.png"
+      }
+    },
+    {
+      "index": 48,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After I eat, I experience postprandial abdominal pain, so I think I need to take an",
+        "patient": "After I eat, I get this painful stabbing feeling in my belly that lasts for hours, so I think I need to take an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.41,
+        "patient": 0.55
+      },
+      "language_penalty": 0.14000000000000007,
+      "clinical_mass": {
+        "clinical": 0.3859,
+        "patient": 0.3037
+      },
+      "error_share": {
+        "clinical": 0.1021,
+        "patient": 0.0989
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" en\" (p=0.024)",
+        "patient": "embedding \u2192 Output \" over\" (p=0.027)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antacid",
+        "observed_clinical": [
+          "Output \" ant\"",
+          0.41
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.41
+          ],
+          [
+            "Output \" anti\"",
+            0.351
+          ],
+          [
+            "Output \" enzyme\"",
+            0.054
+          ],
+          [
+            "Output \" en\"",
+            0.024
+          ],
+          [
+            "Output \" acid\"",
+            0.022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ant\"",
+            0.55
+          ],
+          [
+            "Output \" anti\"",
+            0.165
+          ],
+          [
+            "Output \" acid\"",
+            0.052
+          ],
+          [
+            "Output \" enzyme\"",
+            0.037
+          ],
+          [
+            "Output \" over\"",
+            0.027
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 766,
+        "unique_to_a": 459,
+        "unique_to_b": 471
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_48.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_48.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_48_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_48_diff.png"
+      }
+    },
+    {
+      "index": 49,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing vertigo and the room won't stop spinning, so I might need to take an",
+        "patient": "I've been feeling really dizzy and the room won't stop spinning, so I might need to take an"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.187
+      },
+      "error_share": {
+        "clinical": 0.0938
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " antihistamine",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" extended\"",
+            0.227
+          ],
+          [
+            "Output \" hour\"",
+            0.145
+          ],
+          [
+            "Output \" early\"",
+            0.092
+          ],
+          [
+            "Output \" indefinite\"",
+            0.051
+          ],
+          [
+            "Output \" extra\"",
+            0.04
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 50,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing cognitive impairment lately, so I wonder if I need to take my",
+        "patient": "I've been feeling all foggy and out of it lately, so I wonder if I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.153,
+        "patient": 0.083
+      },
+      "language_penalty": -0.06999999999999999,
+      "clinical_mass": {
+        "clinical": 0.2989,
+        "patient": 0.2608
+      },
+      "error_share": {
+        "clinical": 0.0915,
+        "patient": 0.0949
+      },
+      "top_path": {
+        "clinical": "[L20\u00b7S]  \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 Output \" medication\" (p=0.153)",
+        "patient": "[L20\u00b7S]  \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 Output \" medication\" (p=0.083)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.153
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.184
+          ],
+          [
+            "Output \" medication\"",
+            0.153
+          ],
+          [
+            "Output \" medicine\"",
+            0.059
+          ],
+          [
+            "Output \" medications\"",
+            0.032
+          ],
+          [
+            "Output \" blood\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.21
+          ],
+          [
+            "Output \" medication\"",
+            0.083
+          ],
+          [
+            "Output \" vitamins\"",
+            0.08
+          ],
+          [
+            "Output \" medicine\"",
+            0.045
+          ],
+          [
+            "Output \" thyroid\"",
+            0.044
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 857,
+        "unique_to_a": 508,
+        "unique_to_b": 549
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_50.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_50.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_50_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_50_diff.png"
+      }
+    }
+  ]
+}
