@@ -134,6 +134,19 @@ timeline strip on simulated-scenarios; both runtime-drawn from data files,
 browser-verified, fallback-safe). Critic: re-run both generators each cycle
 for freshness; P3 activates when the first grid batch lands.
 
+## J · Jacobian-lens track (owner request 2026-07-11; evaluation done)
+
+Anthropic's J-lens (paper 2026-07-06 + anthropics/jacobian-lens, Apache-2.0)
+evaluated in `docs/jlens_evaluation.md`: strong fit for the translation
+mechanism (absence vs. suppression of the clinical target through depth) and
+for the most legible "answer forming through the layers" public figure.
+Gated queue for the critic, idle slots only, Tier B cycle keeps priority:
+J0 CI-verify (HF lens files, original paper page, API check, pin SHAs) →
+J1 smoke fit gemma-2-2b ($0, chunk+merge) → J2 readout script (exploratory,
+exploration split only) → J3 exemplar figure + credit → J4 prereg'd
+follow-up. Supersedes H2 (logit-lens profiles) if J1 passes. Site framing:
+cite the method, never the workspace/consciousness press angle.
+
 ## New-model incorporation checklist (owner request 2026-07-10 pm)
 
 When llama-3.2-3b, biomistral-7b (medical-tuned), olmo-2-1b, or the gemma
