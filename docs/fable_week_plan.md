@@ -143,11 +143,13 @@ for the most legible "answer forming through the layers" public figure.
 UPDATE 07-11 pm (owner surfaced the 13-model launch blog): Neuronpedia
 serves a hosted lens API (POST /api/lens/prompt) — local fitting retired.
 Built: scripts/jlens_readout.py + jlens_readout.yml + jlens-readout trigger
-(own concurrency group, $0, NEURONPEDIA_API_KEY). Queue now: J1' probe
-smoke across all 9 matrix ids (limit 2, save_raw) → pin parser against the
-raw artifact → J2 full readout on supported models (exploratory,
-exploration split only) → J3 exemplar figure + credit → J4 prereg'd
-follow-up. Supersedes H2 (the endpoint also returns LOGIT_LENS readouts —
+(own concurrency group, $0, NEURONPEDIA_API_KEY). Probe run 1 DONE 07-11:
+served = gemma-2-2b + gemma-2-2b-it; other 7 ids 500 (unserved signature;
+re-probe as Neuronpedia expands). Parser pinned to the real schema, prefix
+matching for multi-wordpiece targets. J2 full batch-6 pull (50 pairs, both
+served models) FIRED 07-11 ~15:25 UTC. Next: J2 across remaining unified
+batches (critic, idle slots) → J3 exemplar figure + credit (owner feedback
+via the 18:20 UTC 07-11 draft visual) → J4 prereg'd follow-up. Supersedes H2 (the endpoint also returns LOGIT_LENS readouts —
 one call covers both). Site framing: cite the method, never the
 workspace/consciousness press angle. Owner is considering a dedicated site
 tab for depth readouts (name pending owner choice).
