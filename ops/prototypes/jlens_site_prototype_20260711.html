@@ -44,8 +44,9 @@
 lens readouts + the activation-patching recovery grid, committed under trace_out/</div>
 
 <h1>Where the answer forms</h1>
-<div class="sub">Three proposed site additions built on the new layer-by-layer readout.
-Draft text follows the site voice. Mark anything to cut, soften, or move.</div>
+<div class="sub">Three proposed site additions built on the layer-by-layer readout.
+Revision 2: unit squares and rank shading kept, causal lane moved into the figure,
+prose cut to size.</div>
 
 <!-- ============================================================ A -->
 <section id="a">
@@ -54,14 +55,11 @@ Draft text follows the site voice. Mark anything to cut, soften, or move.</div>
 
   <div class="proposal">
     <h3>Two kinds of loss, two kinds of fix</h3>
-    <p>A new instrument shows where the answer is lost, layer by layer. We ran it across
-    all 50 sentence pairs in the newest batch. In 26 pairs the model reaches the same
-    answer under either wording. In 19 pairs the everyday wording never produces the
-    clinical answer at any depth. In 5 pairs the model finds the answer in its middle
-    layers and loses it again before it speaks.</p>
-    <p>Those 5 pairs matter most for the fix. The knowledge is present. Only the last
-    step fails. Translation does not teach the model anything new; it re-asks the
-    question in the form the final layers expect.</p>
+    <p>The new readout shows where the answer is lost. Of the 50 pairs in the newest
+    batch, 26 keep the clinical answer under everyday wording, 19 never form it at
+    any layer, and 5 form it in the middle layers and lose it by the output.</p>
+    <p>The 5 matter most. The model did the work and dropped the result at the last
+    step. Translation adds no knowledge; it recovers work already done.</p>
   </div>
 
   <div class="figwrap" id="fig-a"></div>
@@ -76,36 +74,25 @@ Draft text follows the site voice. Mark anything to cut, soften, or move.</div>
 
   <div class="proposal">
     <h3>Reading the layers</h3>
-    <p>The circuit view names which features fire. A second instrument reads what the
-    sentence is on its way to saying. The Jacobian lens takes the model's internal
-    state at each of its 26 layers and decodes it into ranked words: what the model
-    would say if it had to answer at that depth. One question per pair: at which layer
-    does the clinical answer become readable, and does it survive to the output?</p>
-    <p>The pair below asks for a word after "so I might need to take a". Under the
-    clinical wording the answer is readable from layer 10 and holds first place from
-    layer 19. Under the everyday wording it surfaces 9 layers later, never rises past
-    second place, and is gone at the output layer. The model drifts to "take a break".
-    It had the answer. The wording taxed the last step.</p>
+    <p>The circuit view names which features fire. The Jacobian lens reads what the
+    model would say if forced to answer at each of its 26 layers: ranked words, one
+    list per layer. Two questions per pair: where does the clinical answer become
+    readable, and does it survive to the output.</p>
+    <p>The pair below contrasts "dealing with insomnia" with "counting sheep all
+    night". Both wordings make the answer readable in the deep layers. Probability
+    disagrees: 0.149 under the clinical wording, 0.064 under the everyday one.
+    Ranks locate; probabilities decide. So the causal check runs in probabilities:
+    copy the clinical run's internal state into the everyday run one layer at a
+    time and re-measure. Patched at layers 20 to 22, the everyday sentence recovers
+    the clinical level. Those layers carry the difference.</p>
   </div>
 
   <div class="figwrap" id="fig-b"></div>
-  <div class="cap">One pair from batch 6. Each cell is one layer's readout; darker means
-  the clinical answer ranks higher in that layer's top 8. Blank means not readable.
-  The red mark is the output layer where the everyday wording loses it.</div>
-
-  <div class="proposal" id="causal-text">
-    <p>A readout alone can mislead, so the site pairs it with an intervention. The
-    lens ranks locate the answer; probabilities decide behavior; the causal check
-    works in probabilities. Take a pair from the reviewed downgrade set: "dealing
-    with insomnia" gives the clinical answer 15 percent of the next-word
-    probability, "counting sheep all night" gives it 6. Copy the clinical
-    sentence's internal state into the everyday run one layer at a time and
-    measure the answer again. Patched at layers 20 to 22, the everyday sentence
-    recovers the full clinical level. Those layers carry the difference.</p>
-  </div>
-
-  <div class="figwrap" id="fig-c"></div>
-  <div class="cap" id="cap-c"></div>
+  <div class="cap">One downgrade-set pair, one layer axis. Top lanes: the lens
+  readout; darker cells rank the clinical answer higher in that layer's top 8;
+  blank means not readable. Bottom lane: the answer's probability when the everyday
+  run is patched with the clinical state at that single layer, best position per
+  layer, against the two measured levels.</div>
 
   <div class="credit">Layer readouts use the Jacobian lens (Gurnee et&nbsp;al., Transformer
   Circuits, 2026), applied through Neuronpedia's hosted deployment of the authors'
@@ -121,16 +108,13 @@ Draft text follows the site voice. Mark anything to cut, soften, or move.</div>
   <span class="chip">placement: index.html mitigation teaser · start-here Step 7 NOW/NEXT bullets · methods translation panel</span>
 
   <div class="proposal">
-    <h3>What translation fixes, stated precisely</h3>
-    <p>The depth readout splits the penalty into two failure kinds with different
-    remedies. When the answer never forms, the system lacks signal; translation
-    supplies the missing clinical frame before the model starts. When the answer forms
-    and is lost, the system has the knowledge and drops it at the end; translation
-    recovers work the model already did. Batch 6: 19 of the first kind, 5 of the
-    second, 26 unaffected.</p>
-    <p>For a deployed medical system this suggests a cheap monitoring loop. Read the
-    layers to see which failure kind dominates. Mend with translation. Verify the mend
-    causally with patching. Re-measure as language drifts.</p>
+    <h3>What translation fixes</h3>
+    <p>The readout splits the penalty into two failure kinds. When the answer never
+    forms, translation supplies the clinical wording up front. When the answer forms
+    and is lost, translation recovers work the model already did. Batch 6: 19 of the
+    first kind, 5 of the second, 26 unaffected.</p>
+    <p>The loop for a deployed system: read the layers to see which kind dominates,
+    mend with translation, verify with patching, re-measure as language drifts.</p>
   </div>
 
   <div class="note">Fits the existing cycle: MEASURE gains the depth readout, MEND gains
@@ -139,23 +123,18 @@ Draft text follows the site voice. Mark anything to cut, soften, or move.</div>
 
 <!-- ============================================================ workshop -->
 <section>
-  <h2>Workshop questions</h2>
+  <h2>Workshop notes</h2>
   <div class="ws">
     <ol>
-      <li>Unit strip: squares for all 50 pairs as shown, or collapse back to one
-      proportional bar? The squares buy per-pair links and tooltips at the cost of
-      a busier mark.</li>
-      <li>Depth figure encoding: rank shading as shown, or simple present/absent marks
-      with one annotation for first place?</li>
-      <li>Causal companion: keep the patch-recovery lane inside the same figure
-      (shared layer axis, as shown), or as a separate small figure below it?</li>
-      <li>Lay wording for the axis: "early layers → output" as on Step 4, or explicit
-      "layer 0 … 25"?</li>
-      <li>The three-class names: retained / suppressed / absent are the working terms.
-      Keep, or prefer plainer verbs (kept / lost late / never formed)?</li>
+      <li>Settled this revision, per owner: unit squares, rank shading, causal lane
+      inside the figure. Chosen here: plain class names (kept, lost late, never
+      formed) and the Step 4 axis wording with sparse layer numbers.</li>
       <li><span class="flag">Integrity flag:</span> the instruct model id returns
-      readouts identical to the base model across all 50 pairs. Until Neuronpedia
-      confirms separate hosts we report one model, not two.</li>
+      readouts identical to the base model across all 50 pairs. One model is
+      reported until Neuronpedia confirms separate hosts.</li>
+      <li>A patch grid for the "take a break" pair is running. If it is clean, that
+      pair replaces the one shown, keeping the strongest example across both
+      instruments.</li>
     </ol>
   </div>
 </section>
@@ -166,21 +145,19 @@ Draft text follows the site voice. Mark anything to cut, soften, or move.</div>
 // batch-6 lens summary: trace_out/pairs_20260711T051145Z__jlens_gemma-2-2b/
 const UNITS = [{"i":1,"c":"retained","t":"medication"},{"i":2,"c":"absent","t":"antivirals"},{"i":3,"c":"absent","t":"neurologist"},{"i":4,"c":"absent","t":"levothyroxine"},{"i":5,"c":"retained","t":"antihistamines"},{"i":6,"c":"retained","t":"blood pressure"},{"i":7,"c":"absent","t":"neurologist"},{"i":8,"c":"retained","t":"medication"},{"i":9,"c":"retained","t":"oxygen"},{"i":10,"c":"retained","t":"cream"},{"i":11,"c":"absent","t":"monitor"},{"i":12,"c":"suppressed","t":"medication"},{"i":13,"c":"retained","t":"medication"},{"i":14,"c":"absent","t":"rheumatologist"},{"i":15,"c":"retained","t":"foods"},{"i":16,"c":"retained","t":"nerve"},{"i":17,"c":"retained","t":"thyroid"},{"i":18,"c":"absent","t":"evaluation"},{"i":19,"c":"suppressed","t":"medication"},{"i":20,"c":"absent","t":"scan"},{"i":21,"c":"retained","t":"triggers"},{"i":22,"c":"retained","t":"specialist"},{"i":23,"c":"absent","t":"neurologist"},{"i":24,"c":"absent","t":"antacids"},{"i":25,"c":"absent","t":"gastroenterologist"},{"i":26,"c":"retained","t":"thyroid"},{"i":27,"c":"retained","t":"blood"},{"i":28,"c":"retained","t":"medication"},{"i":29,"c":"retained","t":"neurologist"},{"i":30,"c":"retained","t":"habit"},{"i":31,"c":"retained","t":"drops"},{"i":32,"c":"suppressed","t":"psychiatrist"},{"i":33,"c":"absent","t":"referral"},{"i":34,"c":"retained","t":"time"},{"i":35,"c":"retained","t":"problem"},{"i":36,"c":"retained","t":"blood"},{"i":37,"c":"suppressed","t":"medication"},{"i":38,"c":"retained","t":"neurologist"},{"i":39,"c":"absent","t":"cardiologist"},{"i":40,"c":"absent","t":"problem"},{"i":41,"c":"absent","t":"medication"},{"i":42,"c":"absent","t":"iron"},{"i":43,"c":"absent","t":"x-ray"},{"i":44,"c":"absent","t":"antacid"},{"i":45,"c":"retained","t":"therapist"},{"i":46,"c":"retained","t":"problem"},{"i":47,"c":"retained","t":"medication"},{"i":48,"c":"absent","t":"syncope"},{"i":49,"c":"suppressed","t":"lungs"},{"i":50,"c":"retained","t":"problem"}];
 
-// batch-6 pair 19: target " medication"; {layer: rank in top 8}
-const CLIN = {10:8, 11:7, 18:6, 19:1, 20:1, 21:1, 22:1, 23:1, 24:1, 25:2};
-const PAT  = {19:2, 20:2, 21:3, 22:4, 23:2, 24:2};
-const LAYERS = 26;
-
-// Causal exemplar: downgrade-set pair 4 (target " sleep"), from the landed
-// patching grid (trace_out/urgency_downgrades_20260707T1__patch, part_04):
-// per-layer MAX patched probability of the target when the clinical run's
-// activations are copied into the everyday run at that layer.
-const CAUSAL = {
+// Combined-figure pair: downgrade set pair 4, target " sleep".
+// Lens ranks: trace_out/urgency_downgrades_20260707T1__jlens_gemma-2-2b/
+// Patched probability (max over positions per layer), reference levels:
+// trace_out/urgency_downgrades_20260707T1__patch/batch_summary.part_04.json
+const PAIR = {
+  clin: {18:8, 22:7, 23:3, 24:2, 25:3},
+  pat:  {17:7, 18:1, 19:7, 20:3, 21:3, 22:3, 23:1, 24:1, 25:1},
   clean: 0.1488, corrupt: 0.0640,
   patched: [0.0664,0.0677,0.069,0.0705,0.0721,0.0706,0.0741,0.0937,0.1122,
             0.1149,0.1101,0.0915,0.0851,0.0905,0.0956,0.0946,0.1128,0.1117,
             0.1265,0.1227,0.1558,0.1673,0.1645,0.1472,0.1522,0.1488],
 };
+const LAYERS = 26;
 
 const NS = "http://www.w3.org/2000/svg";
 function el(tag, attrs, parent){
@@ -224,118 +201,73 @@ function text(parent, x, y, str, attrs = {}){
   });
 })();
 
-// --- shared depth-lane helper ------------------------------------------
-function laneFig(mountId, lanes, opts){
-  const CELL = 21, GAP = 2, LEFT = 96, TOP = 30, LANE_GAP = 44;
-  const W = LEFT + LAYERS * (CELL + GAP) + 8;
-  const H = TOP + lanes.length * (CELL + LANE_GAP) + 34;
-  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, width: "100%",
-    style: `max-width:${W}px`, role: "img", "aria-label": opts.aria}, null);
-  document.getElementById(mountId).appendChild(svg);
-  const xAt = l => LEFT + l * (CELL + GAP) + CELL / 2;
-  const laneY = idx => TOP + idx * (CELL + LANE_GAP);
-
-  lanes.forEach((lane, idx) => {
-    const y = laneY(idx);
-    text(svg, 0, y - 10, lane.label, {"font-size": 12, fill: "#111827",
-         "font-family": "Georgia,serif"});
-    if (lane.sub) text(svg, 0, y + 4, lane.sub, {"font-size": 10});
-    el("line", {x1: LEFT, y1: y + CELL / 2, x2: LEFT + LAYERS * (CELL + GAP) - GAP,
-                y2: y + CELL / 2, stroke: "#dcdad2", "stroke-width": 1}, svg);
-    if (lane.kind === "rank"){
-      for (let l = 0; l < LAYERS; l++){
-        const rank = lane.data[l];
-        if (!rank) continue;               // blank = not readable (no ink)
-        el("rect", {x: LEFT + l * (CELL + GAP), y, width: CELL, height: CELL,
-                    fill: lane.color,
-                    "fill-opacity": (1.05 - rank * 0.115).toFixed(2)}, svg);
-      }
-    } else if (lane.kind === "bars"){      // per-layer recovery, clamped to [0,1]
-      for (let l = 0; l < LAYERS; l++){
-        const v = lane.data[l];
-        if (v == null) continue;
-        const h = Math.max(1.5, Math.min(v, 1) * CELL);
-        el("rect", {x: LEFT + l * (CELL + GAP) + CELL * 0.18, y: y + CELL - h,
-                    width: CELL * 0.64, height: h, fill: lane.color,
-                    "fill-opacity": 0.85}, svg);
-      }
-    }
-    if (lane.lost){                        // red x at the output layer
-      const lx = xAt(25), cy = y + CELL / 2;
-      el("line", {x1: lx - 6, y1: cy - 6, x2: lx + 6, y2: cy + 6,
-                  stroke: "#b4483d", "stroke-width": 2}, svg);
-      el("line", {x1: lx - 6, y1: cy + 6, x2: lx + 6, y2: cy - 6,
-                  stroke: "#b4483d", "stroke-width": 2}, svg);
-    }
-    (lane.notes || []).forEach(n => {
-      text(svg, n.anchor === "end" ? xAt(n.layer) + 8 : xAt(n.layer) - 8,
-           y + (n.dy || -8), n.str,
-           Object.assign({fill: n.color || "#6d6c66"},
-                         n.anchor === "end" ? {"text-anchor": "end"} : {}));
-    });
-  });
-
-  const axisY = laneY(lanes.length - 1) + CELL + 26;
-  text(svg, LEFT, axisY + 12, "early layers");
-  text(svg, LEFT + (LAYERS - 3.2) * (CELL + GAP), axisY + 12, "output →");
-  for (const l of [0, 5, 10, 15, 20, 25])
-    text(svg, xAt(l) - 4, axisY, String(l), {"font-size": 9.5});
-  return svg;
-}
-
-// --- Figure B: pair 19, two lanes ---------------------------------------
-laneFig("fig-b", [
-  {kind: "rank", label: "clinical wording", sub: '"essential tremor"',
-   color: "#15803d", data: CLIN,
-   notes: [{layer: 10, str: "readable from layer 10", color: "#15803d"},
-           {layer: 22, dy: 35, str: "first place, layers 19 to 24", color: "#15803d", anchor: "end"}]},
-  {kind: "rank", label: "everyday wording", sub: '"hands won’t stop shaking"',
-   color: "#111827", data: PAT, lost: true,
-   notes: [{layer: 19, str: "appears 9 layers later", color: "#111827", anchor: "end"},
-           {layer: 25, dy: 37, str: 'gone at the output · "take a break" wins',
-            color: "#b4483d", anchor: "end"}]},
-], {aria: "Depth readout for one pair: clinical wording readable from layer 10, everyday wording from layer 19 and lost at the output layer"});
-
-// --- Figure C: causal check, probability scale ---------------------------
+// --- Figure B: one pair, one axis, lens lanes + causal lane -------------
 (function(){
-  const CELL = 21, GAP = 2, LEFT = 96, TOP = 30, PLOT_H = 110;
-  const W = LEFT + LAYERS * (CELL + GAP) + 8, H = TOP + PLOT_H + 44;
-  const PMAX = 0.18;
-  const y = p => TOP + PLOT_H * (1 - p / PMAX);
+  const CELL = 21, GAP = 2, LEFT = 96, TOP = 30, LANE_GAP = 40, PLOT_H = 96;
+  const W = LEFT + LAYERS * (CELL + GAP) + 8;
+  const xAt = l => LEFT + l * (CELL + GAP);
+  const laneY = [TOP, TOP + CELL + LANE_GAP];
+  const probTop = laneY[1] + CELL + LANE_GAP + 4;
+  const H = probTop + PLOT_H + 44;
   const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, width: "100%",
     style: `max-width:${W}px`, role: "img",
-    "aria-label": "Patched at layers 20 to 22 the everyday sentence recovers the clinical probability of the answer"}, null);
-  document.getElementById("fig-c").appendChild(svg);
-  const xAt = l => LEFT + l * (CELL + GAP);
+    "aria-label": "Lens readout for both wordings and, on the same layer axis, the probability of the answer when the everyday run is patched at each layer; layers 20 to 22 restore the clinical level"}, null);
+  document.getElementById("fig-b").appendChild(svg);
 
-  // bars: probability of the answer after patching each layer
-  CAUSAL.patched.forEach((p, l) => {
-    el("rect", {x: xAt(l) + CELL * 0.14, y: y(p), width: CELL * 0.72,
-                height: TOP + PLOT_H - y(p), fill: "#15803d",
+  // two rank lanes
+  const lanes = [
+    ["clinical wording", '"dealing with insomnia"', PAIR.clin, "#15803d",
+     [{layer: 25, str: "probability 0.149", anchor: "end", dy: 35, color: "#15803d"}]],
+    ["everyday wording", '"counting sheep all night"', PAIR.pat, "#111827",
+     [{layer: 25, str: "probability 0.064", anchor: "end", dy: 35, color: "#111827"}]],
+  ];
+  lanes.forEach(([label, sub, data, color, notes], idx) => {
+    const y = laneY[idx];
+    text(svg, 0, y - 10, label, {"font-size": 12, fill: "#111827",
+         "font-family": "Georgia,serif"});
+    text(svg, 0, y + 4, sub, {"font-size": 10});
+    el("line", {x1: LEFT, y1: y + CELL / 2, x2: LEFT + LAYERS * (CELL + GAP) - GAP,
+                y2: y + CELL / 2, stroke: "#dcdad2", "stroke-width": 1}, svg);
+    for (let l = 0; l < LAYERS; l++){
+      const rank = data[l];
+      if (!rank) continue;               // blank = not readable
+      el("rect", {x: xAt(l), y, width: CELL, height: CELL, fill: color,
+                  "fill-opacity": (1.05 - rank * 0.115).toFixed(2)}, svg);
+    }
+    notes.forEach(n => text(svg,
+      n.anchor === "end" ? xAt(n.layer) + CELL / 2 + 8 : xAt(n.layer) - 8,
+      y + (n.dy || -8), n.str,
+      Object.assign({fill: n.color}, n.anchor === "end" ? {"text-anchor": "end"} : {})));
+  });
+
+  // causal lane: patched probability per layer
+  const PMAX = 0.18;
+  const py = p => probTop + PLOT_H * (1 - p / PMAX);
+  text(svg, 0, probTop - 24, "patch each layer", {"font-size": 12, fill: "#111827",
+       "font-family": "Georgia,serif"});
+  text(svg, 0, probTop - 11, "causal check", {"font-size": 10});
+  PAIR.patched.forEach((p, l) => {
+    el("rect", {x: xAt(l) + CELL * 0.14, y: py(p), width: CELL * 0.72,
+                height: probTop + PLOT_H - py(p), fill: "#15803d",
                 "fill-opacity": 0.8}, svg);
   });
-  // the two reference levels, direct-labeled
-  for (const [p, str, color] of [[CAUSAL.clean, ["clinical", "0.149"], "#15803d"],
-                                  [CAUSAL.corrupt, ["everyday", "0.064"], "#111827"]]){
-    el("line", {x1: LEFT, y1: y(p), x2: LEFT + LAYERS * (CELL + GAP) - GAP, y2: y(p),
+  for (const [p, lines, color] of [[PAIR.clean, ["clinical", "0.149"], "#15803d"],
+                                    [PAIR.corrupt, ["everyday", "0.064"], "#111827"]]){
+    el("line", {x1: LEFT, y1: py(p), x2: LEFT + LAYERS * (CELL + GAP) - GAP, y2: py(p),
                 stroke: color, "stroke-width": 1, "stroke-dasharray": "1 3"}, svg);
-    text(svg, 0, y(p) - 2, str[0], {fill: color});
-    text(svg, 0, y(p) + 10, str[1], {fill: color});
+    text(svg, LEFT - 6, py(p) - 2, lines[0], {fill: color, "text-anchor": "end"});
+    text(svg, LEFT - 6, py(p) + 10, lines[1], {fill: color, "text-anchor": "end"});
   }
-  text(svg, xAt(21) + CELL / 2, y(0.1673) - 8, "patched here, the answer returns",
+  text(svg, xAt(21) + CELL / 2, py(0.1673) - 8, "patched here, the answer returns",
        {fill: "#15803d", "text-anchor": "end"});
-  // axis
-  const axisY = TOP + PLOT_H + 16;
+
+  // shared axis
+  const axisY = probTop + PLOT_H + 16;
   text(svg, LEFT, axisY + 12, "early layers");
   text(svg, LEFT + (LAYERS - 3.2) * (CELL + GAP), axisY + 12, "output →");
   for (const l of [0, 5, 10, 15, 20, 25])
     text(svg, xAt(l) + CELL / 2 - 4, axisY, String(l), {"font-size": 9.5});
 })();
-document.getElementById("cap-c").textContent =
-  "Causal check on one downgrade pair. Each bar: the probability of the clinical " +
-  "answer when the clinical sentence's activations are copied into the everyday " +
-  "run at that single layer (best position per layer). The intervention works " +
-  "where the deep layers are; the wording difference is carried there.";
 </script>
 </body>
 </html>
