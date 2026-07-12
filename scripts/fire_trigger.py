@@ -105,9 +105,9 @@ KNOWN_KEYS = {
         "target_token", "num_baselines", "dialects", "anthropic_model", "max_spend",
         "graph_models", "trace_sample_size",
     }),
-    # model_evaluation.yml `defaults` dict (verified 2026-07-09): model_selection,
-    # max_spend, sample_size, scenario.
-    "model-evaluation": frozenset({"model_selection", "scenario", "sample_size", "max_spend"}),
+    # model_evaluation.yml `defaults` dict (verified 2026-07-12): model_selection,
+    # max_spend, sample_size, scenario, pairs_file.
+    "model-evaluation": frozenset({"model_selection", "scenario", "sample_size", "max_spend", "pairs_file"}),
     # archive_renders.yml push path reads exactly cfg["tag"], cfg["runs"],
     # cfg.get("no_pngs"), cfg.get("prune") (verified 2026-07-09).
     "archive-renders": frozenset({"tag", "runs", "no_pngs", "prune"}),

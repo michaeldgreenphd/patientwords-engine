@@ -161,7 +161,8 @@ def test_exact_verified_key_sets_accepted(repo):
         "tag": "t", "runs": "trace_out/x", "no_pngs": False, "prune": False, "_nonce": "k2"}) == 0
     assert fire(repo, "model-evaluation", params={
         "model_selection": "claude-haiku-4-5", "scenario": "all",
-        "sample_size": "8", "max_spend": "1", "_nonce": "k3"}) == 0
+        "sample_size": "8", "max_spend": "1", "pairs_file": "p.json",
+        "_nonce": "k3"}) == 0
     assert fire(repo, "activation-patching", params={
         "pairs_file": "p.json", "limit": "5", "layers": "", "positions": "",
         "model": "gemma-2-2b", "offsets": "0,5", "commit_outputs": True, "_nonce": "k4"}) == 0

@@ -27,6 +27,10 @@ on:
         description: "Items per scenario (5-10 recommended)"
         type: string
         default: "8"
+      pairs_file:
+        description: "Repo path of a pairs JSON to evaluate (empty = packaged eval set)"
+        type: string
+        default: ""
       scenario:
         description: "Which pipeline step to evaluate (two_step = patient baseline -> clinician conversion -> re-evaluation; all = everything)"
         type: choice
@@ -63,11 +67,12 @@ jobs:
           IN_MAX_SPEND: ${{ inputs.max_spend }}
           IN_SAMPLE_SIZE: ${{ inputs.sample_size }}
           IN_SCENARIO: ${{ inputs.scenario }}
+          IN_PAIRS_FILE: ${{ inputs.pairs_file }}
         run: |
           python - <<'EOF'
           import json, os
           defaults = {"model_selection": "claude-haiku-4-5", "max_spend": "5",
-                      "sample_size": "8", "scenario": "all"}
+                      "sample_size": "8", "scenario": "all", "pairs_file": ""}
           params = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/model-evaluation.json", encoding="utf-8") as f:
@@ -91,12 +96,15 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          python -m medlang_circuits.evaluate_models \
-            --models ${{ steps.params.outputs.list }} \
-            --scenario "${{ steps.params.outputs.scenario }}" \
-            --sample-size "${{ steps.params.outputs.sample_size }}" \
-            --max-spend "${{ steps.params.outputs.max_spend }}" \
-            --out eval_out
+          ARGS=(--models ${{ steps.params.outputs.list }}
+            --scenario "${{ steps.params.outputs.scenario }}"
+            --sample-size "${{ steps.params.outputs.sample_size }}"
+            --max-spend "${{ steps.params.outputs.max_spend }}"
+            --out eval_out)
+          if [ -n "${{ steps.params.outputs.pairs_file }}" ]; then
+            ARGS+=(--pairs "${{ steps.params.outputs.pairs_file }}")
+          fi
+          python -m medlang_circuits.evaluate_models "${ARGS[@]}"
 
       - name: Export frontend table + commit to the dispatched branch
         if: always()
