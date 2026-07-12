@@ -1,0 +1,373 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 46,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 46,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been feeling unwell for weeks, so I think I need to see a",
+        "patient": "I've been feeling under the weather for weeks, so I think I need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.78,
+        "patient": 0.846
+      },
+      "language_penalty": 0.06599999999999995,
+      "clinical_mass": {
+        "clinical": 0.4076,
+        "patient": 0.3502
+      },
+      "error_share": {
+        "clinical": 0.0844,
+        "patient": 0.085
+      },
+      "top_path": {
+        "clinical": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.780)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.846)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.78
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.78
+          ],
+          [
+            "Output \" GP\"",
+            0.091
+          ],
+          [
+            "Output \" Dr\"",
+            0.018
+          ],
+          [
+            "Output \" doc\"",
+            0.016
+          ],
+          [
+            "Output \" Doctor\"",
+            0.015
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.846
+          ],
+          [
+            "Output \" specialist\"",
+            0.017
+          ],
+          [
+            "Output \" doc\"",
+            0.016
+          ],
+          [
+            "Output \" Dr\"",
+            0.016
+          ],
+          [
+            "Output \" Doctor\"",
+            0.016
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 839,
+        "unique_to_a": 331,
+        "unique_to_b": 306
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_46.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_46.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_46_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_46_diff.png"
+      }
+    },
+    {
+      "index": 47,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have acute lumbar strain after lifting at the gym, so I should probably get my",
+        "patient": "My back's been killing me after lifting at the gym, so I should probably get my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3101
+      },
+      "error_share": {
+        "clinical": 0.0953
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " imaging",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ass\"",
+            0.192
+          ],
+          [
+            "Output \" butt\"",
+            0.135
+          ],
+          [
+            "Output \" back\"",
+            0.125
+          ],
+          [
+            "Output \" body\"",
+            0.034
+          ],
+          [
+            "Output \" doctor\"",
+            0.03
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 48,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have odynophagia with each swallow, so I'm worried I might have a",
+        "patient": "I keep getting these sharp pains when I swallow, so I'm worried I might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4155
+      },
+      "error_share": {
+        "clinical": 0.1138
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " pharyngitis",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hi\"",
+            0.128
+          ],
+          [
+            "Output \" tumor\"",
+            0.065
+          ],
+          [
+            "Output \" strict\"",
+            0.062
+          ],
+          [
+            "Output \" problem\"",
+            0.061
+          ],
+          [
+            "Output \" hernia\"",
+            0.039
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 49,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have tinnitus, so I should probably see a",
+        "patient": "I've been getting this nasty ringing in my ears, so I should probably see a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3374
+      },
+      "error_share": {
+        "clinical": 0.0935
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " audiologist",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.444
+          ],
+          [
+            "Output \" specialist\"",
+            0.188
+          ],
+          [
+            "Output \" neuro\"",
+            0.088
+          ],
+          [
+            "Output \" hearing\"",
+            0.063
+          ],
+          [
+            "Output \" ENT\"",
+            0.029
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 50,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have paresthesia, so I wonder if I need to take my",
+        "patient": "My hands keep getting all tingly and numb, so I wonder if I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.09,
+        "patient": 0.075
+      },
+      "language_penalty": -0.015,
+      "clinical_mass": {
+        "clinical": 0.3165,
+        "patient": 0.3072
+      },
+      "error_share": {
+        "clinical": 0.0974,
+        "patient": 0.0943
+      },
+      "top_path": {
+        "clinical": "[L20\u00b7S]  \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" medication\" (p=0.090)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] words related to cell biology experiments | antibiot \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 Output \" medication\" (p=0.075)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.09
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.183
+          ],
+          [
+            "Output \" medication\"",
+            0.09
+          ],
+          [
+            "Output \" blood\"",
+            0.053
+          ],
+          [
+            "Output \" medicine\"",
+            0.04
+          ],
+          [
+            "Output \" vitamins\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.157
+          ],
+          [
+            "Output \" blood\"",
+            0.121
+          ],
+          [
+            "Output \" medication\"",
+            0.075
+          ],
+          [
+            "Output \" thyroid\"",
+            0.038
+          ],
+          [
+            "Output \" medicine\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 617,
+        "unique_to_a": 719,
+        "unique_to_b": 731
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_50.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_50.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_50_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_50_diff.png"
+      }
+    }
+  ]
+}
