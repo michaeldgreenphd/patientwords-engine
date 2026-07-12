@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-07-12T05:15:03Z",
+  "updated_utc": "2026-07-12T05:16:59Z",
   "updated_by": "session",
   "queue": {
     "circuit-trace": {
@@ -203,7 +203,8 @@
   "verdicts": [
     "Tier B interim (exploration split; 128 holdout rows sealed): all four models hold the asymmetry at n>=453 - gemma-2 39v8 q=4e-05 (n=479), gemma-3 30v7 q=0.0003, qwen3-4b 30v5 q=4e-05, qwen3-1.7b 27v8 q=0.002; every penalty CI excludes zero. Source: paired_stats_rigor.json.",
     "B1 activation patching pipeline VALIDATED: smoke #4 success (run 4, 55 min) after the OOM + tokens fixes. Recovery-grid runs on the downgrade set can proceed.",
-    "Amendment-1 holdout live at scale: 350 Tier B rows, 53 excluded from every interim number."
+    "Amendment-1 holdout live at scale: 350 Tier B rows, 53 excluded from every interim number.",
+    "2026-07-12 critic run 3: on track scientifically; generation pace under target (1 batch/day finishes ~07-24) - decision item filed"
   ],
   "findings_delta": [
     {
@@ -261,6 +262,10 @@
     {
       "date": "2026-07-11",
       "finding": "J-lens hosted readout live (owner request 07-11): Neuronpedia serves the Jacobian lens for gemma-2-2b and gemma-2-2b-it (other 7 matrix ids 500/unserved; re-probe as they expand). Probe pair 1: patient phrasing delays the target reaching rank-1 readout by 2 layers. Probe pair 2: concept readable layers 19-24 under clinical phrasing then lost at the output layer; never readable under patient phrasing. Full batch-6 pull (50 pairs, both models) fired 15:25 UTC. Draft owner visual due 18:20 UTC wake. See docs/jlens_evaluation.md 5b."
+    },
+    {
+      "date": "2026-07-12",
+      "finding": "Critic run 3: batch 6 fully joined (four models n~500, all penalty CIs exclude zero; downgrades 35 vs 5, q~0). P3 patching aggregation live: recovery concentrates in deep layers (0.15@L0 to ~1.0@L22-25, n=3, inverted pair auto-screened). Probes: llama/olmo/gemma-it landed; biomistral/9B retry fired with new swap step. Fired: batch-8 gen, batch-7 trace+logits+lens, J5 mitigation arm, patch chunk 2. See docs/critic/critic_20260712.md."
     }
   ],
   "decisions_pending": [
@@ -268,6 +273,10 @@
       "id": "SKEPTIC",
       "title": "Skeptic audit - voice/framing items (owner's lane, no rush)",
       "context": "docs/skeptic_read_20260709.md: single-case caveat, word-diff example mismatch, model-eval softening are yours to phrase when back. (The pooled-count dedupe half of this item is DONE - deduped stats published site-wide 2026-07-09.)"
+    },
+    {
+      "date": "2026-07-12",
+      "item": "Tier B generation pace: 1 batch/day finishes ~07-24, past the pre-registered week. Recommend num=100 per daily fire (~$0.50/day) from 07-13. Reply 'pace ok' to keep 50s or 'go 100' to double."
     }
   ],
   "blockers": [],

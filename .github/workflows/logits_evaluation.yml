@@ -124,6 +124,16 @@ jobs:
           pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
           pip install --quiet transformers accelerate
 
+      # 7B/9B models exceed runner RAM during load (exit 137 on the 07-11
+      # probe); the same swap provision that fixed the patching workflow.
+      - name: Provision swap for large-model load
+        run: |
+          sudo fallocate -l 12G /mnt/logits-swapfile
+          sudo chmod 600 /mnt/logits-swapfile
+          sudo mkswap /mnt/logits-swapfile
+          sudo swapon /mnt/logits-swapfile
+          free -h
+
       - name: Resolve output dir
         env:
           MODEL: ${{ matrix.model }}

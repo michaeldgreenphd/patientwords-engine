@@ -122,7 +122,7 @@ def build_result(index, pair, tokenizer, measure_fn, topk):
     }
 
 
-def build_summary(model_id, hf_id, results, start_index=1):
+def build_summary(model_id, hf_id, results, start_index=1, revision=None):
     return {
         "mode": "2panel",
         "backend": "logits",          # not the hosted graph backend
@@ -131,7 +131,9 @@ def build_summary(model_id, hf_id, results, start_index=1):
         "generation_params": {},
         "start_index": start_index,
         "screen_targets": None,
-        "inference": {"method": "logits", "hf_id": hf_id, "dtype": "bfloat16"},
+        # revision = the resolved HF commit hash, for the W5 pin table
+        "inference": {"method": "logits", "hf_id": hf_id, "dtype": "bfloat16",
+                      "revision": revision},
         "results": results,
     }
 
@@ -187,7 +189,8 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     summary_path = out / f"batch_summary.part_{start_index:02d}.json"
     summary_path.write_text(
-        json.dumps(build_summary(model_id, hf_id, results, start_index), indent=2) + "\n",
+        json.dumps(build_summary(model_id, hf_id, results, start_index,
+                                revision=getattr(model.config, "_commit_hash", None)), indent=2) + "\n",
         encoding="utf-8")
     print(f"Wrote {len(results)} results -> {summary_path}")
 
