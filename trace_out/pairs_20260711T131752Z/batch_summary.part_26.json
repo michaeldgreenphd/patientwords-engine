@@ -1,0 +1,502 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 26,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having urinary dysfunction down there, so I should probably see a",
+        "patient": "I've been having trouble with my waterworks down there, so I should probably see a"
+      },
+      "target_token": "Output \" uro\"",
+      "probabilities": {
+        "clinical": 0.276,
+        "patient": 0.175
+      },
+      "language_penalty": -0.10100000000000003,
+      "clinical_mass": {
+        "clinical": 0.4113,
+        "patient": 0.2713
+      },
+      "error_share": {
+        "clinical": 0.0949,
+        "patient": 0.0984
+      },
+      "top_path": {
+        "clinical": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.461)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.561)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " urologist",
+        "observed_clinical": [
+          "Output \" uro\"",
+          0.276
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.461
+          ],
+          [
+            "Output \" uro\"",
+            0.276
+          ],
+          [
+            "Output \" specialist\"",
+            0.047
+          ],
+          [
+            "Output \" doc\"",
+            0.038
+          ],
+          [
+            "Output \" Uro\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.561
+          ],
+          [
+            "Output \" uro\"",
+            0.175
+          ],
+          [
+            "Output \" doc\"",
+            0.059
+          ],
+          [
+            "Output \" specialist\"",
+            0.033
+          ],
+          [
+            "Output \" Dr\"",
+            0.022
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 753,
+        "unique_to_a": 493,
+        "unique_to_b": 592
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_26.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_26.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_26_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_26_diff.png"
+      }
+    },
+    {
+      "index": 27,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My dad's been experiencing aphasia lately, so we're concerned he might be having a",
+        "patient": "My dad's been mixing up his words lately, so we're concerned he might be having a"
+      },
+      "target_token": "Output \" stroke\"",
+      "probabilities": {
+        "clinical": 0.856,
+        "patient": 0.651
+      },
+      "language_penalty": -0.20499999999999996,
+      "clinical_mass": {
+        "clinical": 0.3756,
+        "patient": 0.2357
+      },
+      "error_share": {
+        "clinical": 0.1111,
+        "patient": 0.0983
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7C] medical procedures | medical procedures, especially  \u2192 [L19\u00b7C] words and phrases related to medical issues and elec \u2192 [L20\u00b7C] passages discussing medical studies related to strok \u2192 Output \" stroke\" (p=0.856)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical words and phrases, especially those related  \u2192 [L25\u00b7O] the word \"mind\" or the letter 't' following an apost \u2192 Output \" brain\" (p=0.015)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " stroke",
+        "observed_clinical": [
+          "Output \" stroke\"",
+          0.856
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" stroke\"",
+            0.856
+          ],
+          [
+            "Output \" mini\"",
+            0.054
+          ],
+          [
+            "Output \" mild\"",
+            0.016
+          ],
+          [
+            "Output \" TIA\"",
+            0.014
+          ],
+          [
+            "Output \" minor\"",
+            0.009
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" stroke\"",
+            0.651
+          ],
+          [
+            "Output \" little\"",
+            0.074
+          ],
+          [
+            "Output \" bit\"",
+            0.042
+          ],
+          [
+            "Output \" mini\"",
+            0.036
+          ],
+          [
+            "Output \" brain\"",
+            0.015
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 759,
+        "unique_to_a": 577,
+        "unique_to_b": 558
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_27.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_27.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_27_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_27_diff.png"
+      }
+    },
+    {
+      "index": 28,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing orthostatic hypotension when I stand up too fast, so I might need to take my",
+        "patient": "I've been feeling dizzy when I stand up too fast, so I might need to take my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.383,
+        "patient": 0.308
+      },
+      "language_penalty": -0.07500000000000001,
+      "clinical_mass": {
+        "clinical": 0.3206,
+        "patient": 0.3
+      },
+      "error_share": {
+        "clinical": 0.1031,
+        "patient": 0.0931
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.383)",
+        "patient": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.308)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.383
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.383
+          ],
+          [
+            "Output \" meds\"",
+            0.09
+          ],
+          [
+            "Output \" BP\"",
+            0.087
+          ],
+          [
+            "Output \" medication\"",
+            0.072
+          ],
+          [
+            "Output \" beta\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.308
+          ],
+          [
+            "Output \" meds\"",
+            0.125
+          ],
+          [
+            "Output \" medication\"",
+            0.061
+          ],
+          [
+            "Output \" BP\"",
+            0.057
+          ],
+          [
+            "Output \" medicine\"",
+            0.035
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 836,
+        "unique_to_a": 552,
+        "unique_to_b": 597
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_28.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_28.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_28_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_28_diff.png"
+      }
+    },
+    {
+      "index": 29,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have pharyngitis, so I think I should get some",
+        "patient": "My throat's been scratchy and raw, so I think I should get some"
+      },
+      "target_token": "Output \" antibiotics\"",
+      "probabilities": {
+        "clinical": 0.173,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3782,
+        "patient": 0.3189
+      },
+      "error_share": {
+        "clinical": 0.0974,
+        "patient": 0.0944
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" throat\" (p=0.022)",
+        "patient": "embedding \u2192 Output \" throat\" (p=0.079)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antibiotics",
+        "observed_clinical": [
+          "Output \" antibiotics\"",
+          0.173
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" rest\"",
+            0.229
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.173
+          ],
+          [
+            "Output \" sleep\"",
+            0.026
+          ],
+          [
+            "Output \" throat\"",
+            0.022
+          ],
+          [
+            "Output \" medicine\"",
+            0.022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" rest\"",
+            0.165
+          ],
+          [
+            "Output \" throat\"",
+            0.079
+          ],
+          [
+            "Output \" honey\"",
+            0.066
+          ],
+          [
+            "Output \" cough\"",
+            0.059
+          ],
+          [
+            "Output \" more\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 619,
+        "unique_to_a": 750,
+        "unique_to_b": 773
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_29.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_29.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_29_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_29_diff.png"
+      }
+    },
+    {
+      "index": 30,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing postprandial malaise after eating fatty foods, so I wonder if I should see a",
+        "patient": "I've been feeling out of it after eating fatty foods, so I wonder if I should see a"
+      },
+      "target_token": "Output \" gastroenter\"",
+      "probabilities": {
+        "clinical": 0.099,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4034,
+        "patient": 0.3133
+      },
+      "error_share": {
+        "clinical": 0.1044,
+        "patient": 0.0957
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.349)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.568)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " gastroenterologist",
+        "observed_clinical": [
+          "Output \" gastroenter\"",
+          0.099
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.349
+          ],
+          [
+            "Output \" GI\"",
+            0.103
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.099
+          ],
+          [
+            "Output \" nutrition\"",
+            0.08
+          ],
+          [
+            "Output \" die\"",
+            0.079
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.568
+          ],
+          [
+            "Output \" die\"",
+            0.063
+          ],
+          [
+            "Output \" nutrition\"",
+            0.056
+          ],
+          [
+            "Output \" doc\"",
+            0.049
+          ],
+          [
+            "Output \" GI\"",
+            0.024
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 798,
+        "unique_to_a": 539,
+        "unique_to_b": 519
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_30.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_30.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_30_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_30_diff.png"
+      }
+    }
+  ]
+}
