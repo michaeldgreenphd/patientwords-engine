@@ -196,3 +196,24 @@ def test_packaged_pairs_load_and_shape():
     assert all(p["patient"] and p["expected"] for p in pairs["translation"])
     labels = {c["label"] for c in pairs["classification"]}
     assert labels == {"clinical", "off_target", "structural"}
+
+
+def test_load_pairs_adapts_generated_batch(tmp_path):
+    batch = [
+        {"top_prompt": "clinical A", "bottom_prompt": "everyday A",
+         "generation": {"clinical_term": "term-a"}},
+        {"top_prompt": "clinical B", "bottom_prompt": "everyday B",
+         "generation": {}},  # no clinical term: skipped
+    ]
+    path = tmp_path / "batch.json"
+    path.write_text(json.dumps(batch), encoding="utf-8")
+    pairs = em.load_pairs(path)
+    assert pairs["classification"] == []
+    assert pairs["translation"] == [{"patient": "everyday A", "expected": ["term-a"]}]
+
+
+def test_load_pairs_generated_batch_all_unusable_raises(tmp_path):
+    path = tmp_path / "batch.json"
+    path.write_text(json.dumps([{"top_prompt": "x"}]), encoding="utf-8")
+    with pytest.raises(ValueError):
+        em.load_pairs(path)
