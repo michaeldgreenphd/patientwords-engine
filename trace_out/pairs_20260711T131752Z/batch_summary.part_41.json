@@ -1,0 +1,416 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 41,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I can barely walk because I have osteoarthritis, so I need to see a",
+        "patient": "I can barely walk because my knees are killing me, so I need to see a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3447
+      },
+      "error_share": {
+        "clinical": 0.0894
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " rheumatologist",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.305
+          ],
+          [
+            "Output \" specialist\"",
+            0.133
+          ],
+          [
+            "Output \" po\"",
+            0.084
+          ],
+          [
+            "Output \" physio\"",
+            0.081
+          ],
+          [
+            "Output \" chi\"",
+            0.063
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing tension headaches, so I need to take my",
+        "patient": "I've been getting these awful migraines, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.072,
+        "patient": 0.122
+      },
+      "language_penalty": 0.05,
+      "clinical_mass": {
+        "clinical": 0.3189,
+        "patient": 0.3614
+      },
+      "error_share": {
+        "clinical": 0.0868,
+        "patient": 0.0904
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.112)",
+        "patient": "embedding \u2192 Output \" migraine\" (p=0.066)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.072
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.112
+          ],
+          [
+            "Output \" medication\"",
+            0.072
+          ],
+          [
+            "Output \" medicine\"",
+            0.072
+          ],
+          [
+            "Output \" meds\"",
+            0.061
+          ],
+          [
+            "Output \" daily\"",
+            0.047
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" medicine\"",
+            0.167
+          ],
+          [
+            "Output \" meds\"",
+            0.138
+          ],
+          [
+            "Output \" medication\"",
+            0.122
+          ],
+          [
+            "Output \" migraine\"",
+            0.066
+          ],
+          [
+            "Output \" pain\"",
+            0.03
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 863,
+        "unique_to_a": 527,
+        "unique_to_b": 387
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_42.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_42.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_42_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_42_diff.png"
+      }
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having trouble keeping my food down, so my doctor thinks I might have dysphagia",
+        "patient": "I've been having trouble keeping my food down, so my doctor thinks I might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3009
+      },
+      "error_share": {
+        "clinical": 0.0935
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " problem",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \".\"",
+            0.565
+          ],
+          [
+            "Output \",\"",
+            0.145
+          ],
+          [
+            "Output \" (\"",
+            0.12
+          ],
+          [
+            "Output \" and\"",
+            0.028
+          ],
+          [
+            "Output \" or\"",
+            0.028
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 44,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have borborygmus, so I wonder if I should see a",
+        "patient": "My stomach keeps making weird noises, so I wonder if I should see a"
+      },
+      "target_token": "Output \" gastroenter\"",
+      "probabilities": {
+        "clinical": 0.104,
+        "patient": 0.021
+      },
+      "language_penalty": -0.08299999999999999,
+      "clinical_mass": {
+        "clinical": 0.4077,
+        "patient": 0.3845
+      },
+      "error_share": {
+        "clinical": 0.1033,
+        "patient": 0.0979
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.432)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.834)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " gastroenterologist",
+        "observed_clinical": [
+          "Output \" gastroenter\"",
+          0.104
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.432
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.104
+          ],
+          [
+            "Output \" GI\"",
+            0.089
+          ],
+          [
+            "Output \" doc\"",
+            0.055
+          ],
+          [
+            "Output \" gastro\"",
+            0.045
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.834
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.021
+          ],
+          [
+            "Output \" doc\"",
+            0.021
+          ],
+          [
+            "Output \" gastro\"",
+            0.015
+          ],
+          [
+            "Output \" Dr\"",
+            0.012
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 575,
+        "unique_to_a": 658,
+        "unique_to_b": 590
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_44.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_44.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_44_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_44_diff.png"
+      }
+    },
+    {
+      "index": 45,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I bend over I experience orthostatic hypotension, so I think I might need to take my",
+        "patient": "When I bend over I see stars and get lightheaded, so I think I might need to take my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.349,
+        "patient": 0.2
+      },
+      "language_penalty": -0.14899999999999997,
+      "clinical_mass": {
+        "clinical": 0.3071,
+        "patient": 0.2497
+      },
+      "error_share": {
+        "clinical": 0.1046,
+        "patient": 0.0977
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.349)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.200)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood pressure medication",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.349
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.349
+          ],
+          [
+            "Output \" BP\"",
+            0.099
+          ],
+          [
+            "Output \" meds\"",
+            0.085
+          ],
+          [
+            "Output \" medication\"",
+            0.069
+          ],
+          [
+            "Output \" beta\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.2
+          ],
+          [
+            "Output \" meds\"",
+            0.1
+          ],
+          [
+            "Output \" glasses\"",
+            0.094
+          ],
+          [
+            "Output \" medication\"",
+            0.054
+          ],
+          [
+            "Output \" BP\"",
+            0.035
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 786,
+        "unique_to_a": 544,
+        "unique_to_b": 703
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_45.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_45.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_45_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_45_diff.png"
+      }
+    }
+  ]
+}
