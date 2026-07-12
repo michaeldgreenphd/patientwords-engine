@@ -6,6 +6,11 @@ C3 OLMo-2 add · C4 medical-tuned 7B add.
 Owner note: Fable runs through **Tuesday 2026-07-14**, then heavy batches
 downshift (agents pinned to Opus 4.8 via per-agent model override) unless
 Fable access increases. Ops Routine stays on the light path throughout (A4).
+**Update 2026-07-12: Fable access extended through 2026-07-19 (owner). The
+Tuesday downshift becomes a mid-week health check; full cadence holds through
+07-19. Owner framing for the week: this run is a demonstration on generated
+stimuli; patient-sourced exemplars and colleague/Anthropic feedback come
+before any final confirmatory run, so prereg Amendment 2 stays DRAFT.**
 
 ## A · Autonomous streams (this session)
 
@@ -59,8 +64,9 @@ CI compute is GitHub's free public-repo runners. Charge risk: none.
 - Friday 08:00 UTC: pre-flight handoff (unchanged).
 - Daily 05:00 UTC: A1 critic · 13:00 UTC: ops digest.
 - Monday: A3 synthesis draft.
-- **Tuesday 2026-07-14 end-of-day: downshift** — batch agents pinned to
-  Opus 4.8 (per-agent override; the session model itself is owner-controlled).
+- **Tuesday 2026-07-14 end-of-day: downshift** — SUPERSEDED 2026-07-12:
+  access extended through 07-19; the Tuesday wake is now a health check
+  (queue state, spend, drift sentinel), no model changes.
 
 ## H · Headroom streams (owner-approved 2026-07-09 evening; H6 pending)
 

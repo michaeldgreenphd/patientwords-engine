@@ -32,6 +32,25 @@ _TRANSLATE_SYSTEM = (
     "Respond with only the translated sentence."
 )
 
+# Placebo control for the mitigation arm: rewrite without introducing clinical
+# vocabulary. If recovery tracks clinical terminology specifically, the placebo
+# should show none; if it tracks any rewording, the placebo matches the real
+# translation. Selected by MEDLANG_TRANSLATION_PLACEBO=1 (threaded from the
+# circuit-trace workflow's translation_placebo param).
+_PLACEBO_SYSTEM = (
+    "Rewrite this statement in different everyday words with the same meaning. "
+    "Do not introduce medical or clinical terminology - keep the same casual register. "
+    "Preserve the sentence structure and length as closely as possible, keep everything "
+    "else (including any trailing incomplete phrasing) intact. "
+    "Respond with only the rewritten sentence."
+)
+
+
+def _translate_system():
+    if os.environ.get("MEDLANG_TRANSLATION_PLACEBO", "") in ("1", "true"):
+        return _PLACEBO_SYSTEM
+    return _TRANSLATE_SYSTEM
+
 
 def _get_client():
     if not os.environ.get("ANTHROPIC_API_KEY"):
@@ -75,7 +94,7 @@ def translate_with_llm(patient_text: str, model: str | None = None) -> str | Non
         response = client.messages.create(
             model=model or DEFAULT_MODEL,
             max_tokens=256,
-            system=_TRANSLATE_SYSTEM,
+            system=_translate_system(),
             messages=[{"role": "user", "content": patient_text}],
         )
     except Exception as e:

@@ -90,6 +90,13 @@ Priority order when slots are free:
    branch. All three batch-7 measurement runs failed on this on 2026-07-12.
 3. **Behavior** (logits-eval slot free): fire CPU logits for Tier B batches
    not yet measured (all four models, $0).
+3b. **Drift sentinel** ($0, daily, owner-approved 2026-07-12): copy
+   `data/simulated/drift_sentinel.json` to
+   `data/simulated/drift_sentinel_<YYYYMMDD>.json` (no sidecar - $0 alias),
+   commit, and fire circuit-trace on it when a slot is free: mode `2panel`,
+   `sample_size` `3`, `offsets` `0`, `commit_outputs` `true`. After it lands,
+   run `python scripts/drift_sentinel.py` and carry its verdict line into the
+   brief. DRIFT verdicts go in the digest headline, not just the brief body.
 4. **Idle-queue filler** (owner-approved 2026-07-09, lowest priority — only
    when Tier B has no pending generation/tracing work for a slot): trace the
    already-generated sociolect round-2 batch

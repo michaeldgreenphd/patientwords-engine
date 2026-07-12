@@ -83,6 +83,7 @@ KNOWN_KEYS = {
         "desired_logit_prob", "node_threshold", "edge_threshold", "max_feature_nodes",
         "generate_explanations", "steer_validate", "steer_boost", "steer_placebo",
         "steer_strength", "steer_boost_strength", "steer_rank_offset", "translation_model",
+        "translation_placebo",
     }),
     # logits_evaluation.yml `defaults` dict (verified 2026-07-10): models, pairs_file,
     # limit, offset, commit_outputs.

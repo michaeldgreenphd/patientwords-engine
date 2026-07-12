@@ -11,6 +11,7 @@ lives in source.
 from __future__ import annotations
 
 import json
+import os
 import logging
 import re
 from typing import Any
@@ -45,7 +46,12 @@ def translate_to_clinical(patient_text: str, use_llm: bool = True, model: str | 
     if use_llm:
         translated = translate_with_llm(patient_text, model=model)
         if translated:
-            return {"text": translated, "method": "llm", "model": model or DEFAULT_MODEL}
+            # the placebo arm reroutes the prompt inside translate_with_llm;
+            # record it as a distinct method so the two arms can never be
+            # pooled by accident downstream
+            placebo = os.environ.get("MEDLANG_TRANSLATION_PLACEBO", "") in ("1", "true")
+            method = "llm_placebo" if placebo else "llm"
+            return {"text": translated, "method": method, "model": model or DEFAULT_MODEL}
 
     table = _load_phrase_table()
     text = patient_text
