@@ -164,25 +164,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I have essential tremor, so I might need to take a",
-        "patient": "My hands won't stop shaking when I'm nervous, so I might need to take a"
+        "patient": "My hands won't stop shaking when I'm nervous, so I might need to take a",
+        "translated": "My hands exhibit persistent tremor when I experience anxiety, so I might need to take a"
       },
       "target_token": "Output \" medication\"",
       "probabilities": {
         "clinical": 0.112,
-        "patient": null
+        "patient": null,
+        "translated": 0.053
       },
       "language_penalty": null,
       "clinical_mass": {
         "clinical": 0.3126,
-        "patient": 0.1445
+        "patient": 0.1445,
+        "translated": 0.2294
       },
       "error_share": {
         "clinical": 0.0909,
-        "patient": 0.0834
+        "patient": 0.0834,
+        "translated": 0.0929
       },
       "top_path": {
         "clinical": "embedding \u2192 [L17\u00b7O] the word \"taken\" and words/phrases around it, especi \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" medication\" (p=0.112)",
-        "patient": "embedding \u2192 [L18\u00b7O] phrases and words related to legal proceedings, brea \u2192 [L21\u00b7O] the starting and stopping points of activities | men \u2192 Output \" break\" (p=0.310)"
+        "patient": "embedding \u2192 [L18\u00b7O] phrases and words related to legal proceedings, brea \u2192 [L21\u00b7O] the starting and stopping points of activities | men \u2192 Output \" break\" (p=0.310)",
+        "translated": "[L19\u00b7S]  \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" medication\" (p=0.053)"
       },
       "screening": {
         "status": "passed",
@@ -195,8 +200,8 @@
         "probe_extension": null
       },
       "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -241,6 +246,28 @@
           [
             "Output \" moment\"",
             0.031
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" look\"",
+            0.129
+          ],
+          [
+            "Output \" break\"",
+            0.127
+          ],
+          [
+            "Output \" medication\"",
+            0.053
+          ],
+          [
+            "Output \" closer\"",
+            0.049
+          ],
+          [
+            "Output \" deep\"",
+            0.046
           ]
         ]
       },
