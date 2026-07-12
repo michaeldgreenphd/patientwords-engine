@@ -83,6 +83,11 @@ Priority order when slots are free:
    oldest untraced Tier B batch: mode `2panel`, `screen_targets` `0.02`,
    `offsets` in steps of 10 with `sample_size` `10`, `commit_outputs`
    `true`. One batch per fire; chain, never stack a third.
+   **Before ANY measurement fire (trace, logits, lens): confirm the batch's
+   pairs file exists on the working branch and `git checkout origin/main -- 
+   data/simulated/<batch>.json data/simulated/<batch>.report.json` if not.**
+   Generation archives land on main; measurement workflows check out the
+   branch. All three batch-7 measurement runs failed on this on 2026-07-12.
 3. **Behavior** (logits-eval slot free): fire CPU logits for Tier B batches
    not yet measured (all four models, $0).
 4. **Idle-queue filler** (owner-approved 2026-07-09, lowest priority — only
