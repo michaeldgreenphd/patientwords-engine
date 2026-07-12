@@ -18,25 +18,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I have urticaria, so I need to avoid my",
-        "patient": "My skin's been breaking out in hives all over, so I need to avoid my"
+        "patient": "My skin's been breaking out in hives all over, so I need to avoid my",
+        "translated": "My skin's been breaking out in urticaria all over, so I need to avoid my"
       },
       "target_token": "Output \" triggers\"",
       "probabilities": {
         "clinical": 0.096,
-        "patient": null
+        "patient": null,
+        "translated": null
       },
       "language_penalty": null,
       "clinical_mass": {
         "clinical": 0.303,
-        "patient": 0.238
+        "patient": 0.238,
+        "translated": 0.2532
       },
       "error_share": {
         "clinical": 0.0929,
-        "patient": 0.0923
+        "patient": 0.0923,
+        "translated": 0.0981
       },
       "top_path": {
         "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7O] words relating to uncertainty, possibility and small \u2192 [L24\u00b7S] common words such as pronouns, prepositions, conjunc \u2192 Output \" normal\" (p=0.031)",
-        "patient": "[L14\u00b7S]  \u2192 [L18\u00b7O] words relating to uncertainty, possibility and small \u2192 [L24\u00b7S] common words such as pronouns, prepositions, conjunc \u2192 Output \" normal\" (p=0.106)"
+        "patient": "[L14\u00b7S]  \u2192 [L18\u00b7O] words relating to uncertainty, possibility and small \u2192 [L24\u00b7S] common words such as pronouns, prepositions, conjunc \u2192 Output \" normal\" (p=0.106)",
+        "translated": "[L14\u00b7S]  \u2192 [L18\u00b7O] words relating to uncertainty, possibility and small \u2192 [L24\u00b7S] common words such as pronouns, prepositions, conjunc \u2192 Output \" normal\" (p=0.095)"
       },
       "screening": {
         "status": "passed",
@@ -49,8 +54,8 @@
         "probe_extension": null
       },
       "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -96,6 +101,28 @@
             "Output \" current\"",
             0.028
           ]
+        ],
+        "translated": [
+          [
+            "Output \" usual\"",
+            0.261
+          ],
+          [
+            "Output \" normal\"",
+            0.095
+          ],
+          [
+            "Output \" regular\"",
+            0.044
+          ],
+          [
+            "Output \" current\"",
+            0.041
+          ],
+          [
+            "Output \" favorite\"",
+            0.038
+          ]
         ]
       },
       "circuit_diff": {
@@ -115,25 +142,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I have attention deficit hyperactivity disorder, so I might need to see a",
-        "patient": "I keep having a hard time concentrating at work, so I might need to see a"
+        "patient": "I keep having a hard time concentrating at work, so I might need to see a",
+        "translated": "I keep having difficulty with concentration at work, so I might need to see a"
       },
       "target_token": "Output \" specialist\"",
       "probabilities": {
         "clinical": 0.061,
-        "patient": null
+        "patient": null,
+        "translated": null
       },
       "language_penalty": null,
       "clinical_mass": {
         "clinical": 0.3461,
-        "patient": 0.2613
+        "patient": 0.2613,
+        "translated": 0.3003
       },
       "error_share": {
         "clinical": 0.0935,
-        "patient": 0.0899
+        "patient": 0.0899,
+        "translated": 0.0912
       },
       "top_path": {
         "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.344)",
-        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.571)"
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.571)",
+        "translated": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.551)"
       },
       "screening": {
         "status": "passed",
@@ -146,8 +178,8 @@
         "probe_extension": null
       },
       "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -193,6 +225,28 @@
             "Output \" counselor\"",
             0.026
           ]
+        ],
+        "translated": [
+          [
+            "Output \" doctor\"",
+            0.551
+          ],
+          [
+            "Output \" GP\"",
+            0.07
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.052
+          ],
+          [
+            "Output \" therapist\"",
+            0.04
+          ],
+          [
+            "Output \" psychologist\"",
+            0.038
+          ]
         ]
       },
       "circuit_diff": {
@@ -212,25 +266,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I've been experiencing vertigo and the room won't stop spinning, so I should probably see a",
-        "patient": "I've been feeling really dizzy and the room won't stop spinning, so I should probably see a"
+        "patient": "I've been feeling really dizzy and the room won't stop spinning, so I should probably see a",
+        "translated": "I've been experiencing vertigo and dizziness with the sensation that the room is spinning, so I should probably see a"
       },
       "target_token": "Output \" neuro\"",
       "probabilities": {
         "clinical": 0.035,
-        "patient": 0.013
+        "patient": 0.013,
+        "translated": 0.101
       },
       "language_penalty": -0.022000000000000006,
       "clinical_mass": {
         "clinical": 0.392,
-        "patient": 0.3707
+        "patient": 0.3707,
+        "translated": 0.405
       },
       "error_share": {
         "clinical": 0.0973,
-        "patient": 0.0984
+        "patient": 0.0984,
+        "translated": 0.0973
       },
       "top_path": {
         "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.869)",
-        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.893)"
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.893)",
+        "translated": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.759)"
       },
       "screening": {
         "status": "passed",
@@ -242,9 +301,9 @@
         ],
         "probe_extension": null
       },
-      "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "mitigation_recovery": 0.08800000000000001,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -289,6 +348,28 @@
           [
             "Output \" dr\"",
             0.009
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" doctor\"",
+            0.759
+          ],
+          [
+            "Output \" neuro\"",
+            0.101
+          ],
+          [
+            "Output \" specialist\"",
+            0.039
+          ],
+          [
+            "Output \" physician\"",
+            0.014
+          ],
+          [
+            "Output \" Doctor\"",
+            0.014
           ]
         ]
       },
