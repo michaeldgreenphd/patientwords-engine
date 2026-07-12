@@ -1,0 +1,567 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 46,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 46,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep experiencing dissociative episodes during meetings at work, so my boss thinks I have a",
+        "patient": "I keep spacing out during meetings at work, so my boss thinks I have a",
+        "translated": "I keep experiencing episodes of inattention during meetings at work, so my supervisor thinks I have a"
+      },
+      "target_token": "Output \" problem\"",
+      "probabilities": {
+        "clinical": 0.093,
+        "patient": 0.186,
+        "translated": 0.251
+      },
+      "language_penalty": 0.093,
+      "clinical_mass": {
+        "clinical": 0.3387,
+        "patient": 0.1777,
+        "translated": 0.2623
+      },
+      "error_share": {
+        "clinical": 0.1078,
+        "patient": 0.105,
+        "translated": 0.0984
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" mental\" (p=0.419)",
+        "patient": "embedding \u2192 Output \" short\" (p=0.051)",
+        "translated": "embedding \u2192 Output \" short\" (p=0.049)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " problem",
+        "observed_clinical": [
+          "Output \" problem\"",
+          0.093
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": 0.065,
+      "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" mental\"",
+            0.419
+          ],
+          [
+            "Output \" problem\"",
+            0.093
+          ],
+          [
+            "Output \" serious\"",
+            0.037
+          ],
+          [
+            "Output \" medical\"",
+            0.032
+          ],
+          [
+            "Output \" psychological\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" problem\"",
+            0.186
+          ],
+          [
+            "Output \" bad\"",
+            0.061
+          ],
+          [
+            "Output \" learning\"",
+            0.059
+          ],
+          [
+            "Output \" short\"",
+            0.051
+          ],
+          [
+            "Output \" mental\"",
+            0.046
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" problem\"",
+            0.251
+          ],
+          [
+            "Output \" learning\"",
+            0.085
+          ],
+          [
+            "Output \" short\"",
+            0.049
+          ],
+          [
+            "Output \" medical\"",
+            0.047
+          ],
+          [
+            "Output \" mild\"",
+            0.042
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 864,
+        "unique_to_a": 527,
+        "unique_to_b": 643
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z_txopus/index_46.html",
+        "png": "trace_out/pairs_20260711T051145Z_txopus/index_46.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z_txopus/index_46_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z_txopus/index_46_diff.png"
+      }
+    },
+    {
+      "index": 47,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing cognitive impairment in the mornings, so I should probably take my",
+        "patient": "I've been having these awful brain fog in the mornings, so I should probably take my",
+        "translated": "I've been having these awful cognitive impairment in the mornings, so I should probably take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.132,
+        "patient": 0.085,
+        "translated": 0.161
+      },
+      "language_penalty": -0.047,
+      "clinical_mass": {
+        "clinical": 0.3098,
+        "patient": 0.2822,
+        "translated": 0.3132
+      },
+      "error_share": {
+        "clinical": 0.0921,
+        "patient": 0.0958,
+        "translated": 0.0975
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" morning\" (p=0.036)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] text related to vitamins and nutritional deficiencie \u2192 [L19\u00b7C] terminology related to medicine, health, and nutriti \u2192 Output \" supplements\" (p=0.057)",
+        "translated": "[L20\u00b7S]  \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 Output \" medication\" (p=0.161)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.132
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": 0.076,
+      "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.16
+          ],
+          [
+            "Output \" medication\"",
+            0.132
+          ],
+          [
+            "Output \" vitamins\"",
+            0.066
+          ],
+          [
+            "Output \" supplements\"",
+            0.05
+          ],
+          [
+            "Output \" morning\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.174
+          ],
+          [
+            "Output \" vitamins\"",
+            0.103
+          ],
+          [
+            "Output \" medication\"",
+            0.085
+          ],
+          [
+            "Output \" supplements\"",
+            0.057
+          ],
+          [
+            "Output \" vitamin\"",
+            0.036
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" meds\"",
+            0.239
+          ],
+          [
+            "Output \" medication\"",
+            0.161
+          ],
+          [
+            "Output \" medicine\"",
+            0.059
+          ],
+          [
+            "Output \" vitamins\"",
+            0.043
+          ],
+          [
+            "Output \" supplements\"",
+            0.024
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 868,
+        "unique_to_a": 541,
+        "unique_to_b": 599
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z_txopus/index_47.html",
+        "png": "trace_out/pairs_20260711T051145Z_txopus/index_47.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z_txopus/index_47_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z_txopus/index_47_diff.png"
+      }
+    },
+    {
+      "index": 48,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I see blood, I experience vasovagal syncope, so my doctor said I might have a",
+        "patient": "When I see blood, I get all weird and lightheaded, so my doctor said I might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3952
+      },
+      "error_share": {
+        "clinical": 0.1214
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " syncope",
+        "observed_clinical": null,
+        "probe_extension": "a",
+        "reason": "intended target not in the traced clinical spread (even after probe extension by 'a')"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" problem\"",
+            0.115
+          ],
+          [
+            "Output \" low\"",
+            0.092
+          ],
+          [
+            "Output \" heart\"",
+            0.067
+          ],
+          [
+            "Output \" blood\"",
+            0.038
+          ],
+          [
+            "Output \" condition\"",
+            0.033
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 49,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing pleuritic chest pain, so I really should check my",
+        "patient": "I've been getting those sharp stabbing pains in my chest, so I really should check my",
+        "translated": "I've been experiencing acute stabbing chest pain, so I really should check my"
+      },
+      "target_token": "Output \" lungs\"",
+      "probabilities": {
+        "clinical": 0.288,
+        "patient": null,
+        "translated": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3733,
+        "patient": 0.3564,
+        "translated": 0.4117
+      },
+      "error_share": {
+        "clinical": 0.1034,
+        "patient": 0.0948,
+        "translated": 0.0933
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L25\u00b7C] medical terminology related to pulmonology. | lungs  \u2192 Output \" lung\" (p=0.071)",
+        "patient": "embedding \u2192 [L19\u00b7C] words and phrases related to health, especially the  \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.148)",
+        "translated": "embedding \u2192 [L19\u00b7C] words and phrases related to health, especially the  \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.156)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " lungs",
+        "observed_clinical": [
+          "Output \" lungs\"",
+          0.288
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lungs\"",
+            0.288
+          ],
+          [
+            "Output \" chest\"",
+            0.115
+          ],
+          [
+            "Output \" lung\"",
+            0.071
+          ],
+          [
+            "Output \" heart\"",
+            0.051
+          ],
+          [
+            "Output \" blood\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.295
+          ],
+          [
+            "Output \" heart\"",
+            0.148
+          ],
+          [
+            "Output \" cholesterol\"",
+            0.115
+          ],
+          [
+            "Output \" BP\"",
+            0.035
+          ],
+          [
+            "Output \" health\"",
+            0.027
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" blood\"",
+            0.196
+          ],
+          [
+            "Output \" heart\"",
+            0.156
+          ],
+          [
+            "Output \" cholesterol\"",
+            0.079
+          ],
+          [
+            "Output \" chest\"",
+            0.039
+          ],
+          [
+            "Output \" BP\"",
+            0.037
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 676,
+        "unique_to_a": 756,
+        "unique_to_b": 733
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z_txopus/index_49.html",
+        "png": "trace_out/pairs_20260711T051145Z_txopus/index_49.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z_txopus/index_49_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z_txopus/index_49_diff.png"
+      }
+    },
+    {
+      "index": 50,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing dyspnea, so I might have a",
+        "patient": "I've been feeling really out of breath, so I might have a",
+        "translated": "I've been experiencing significant dyspnea, so I might have a"
+      },
+      "target_token": "Output \" problem\"",
+      "probabilities": {
+        "clinical": 0.051,
+        "patient": 0.049,
+        "translated": null
+      },
+      "language_penalty": -0.001999999999999995,
+      "clinical_mass": {
+        "clinical": 0.3967,
+        "patient": 0.2861,
+        "translated": 0.367
+      },
+      "error_share": {
+        "clinical": 0.0954,
+        "patient": 0.0829,
+        "translated": 0.0951
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" pulmonary\" (p=0.047)",
+        "patient": "embedding \u2192 Output \" little\" (p=0.087)",
+        "translated": "embedding \u2192 Output \" pulmonary\" (p=0.069)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " problem",
+        "observed_clinical": [
+          "Output \" problem\"",
+          0.051
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" little\"",
+            0.078
+          ],
+          [
+            "Output \" heart\"",
+            0.069
+          ],
+          [
+            "Output \" lung\"",
+            0.066
+          ],
+          [
+            "Output \" problem\"",
+            0.051
+          ],
+          [
+            "Output \" pulmonary\"",
+            0.047
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cold\"",
+            0.088
+          ],
+          [
+            "Output \" little\"",
+            0.087
+          ],
+          [
+            "Output \" heart\"",
+            0.068
+          ],
+          [
+            "Output \" problem\"",
+            0.049
+          ],
+          [
+            "Output \" bit\"",
+            0.044
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" pulmonary\"",
+            0.069
+          ],
+          [
+            "Output \" new\"",
+            0.061
+          ],
+          [
+            "Output \" heart\"",
+            0.057
+          ],
+          [
+            "Output \" little\"",
+            0.057
+          ],
+          [
+            "Output \" lung\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 689,
+        "unique_to_a": 600,
+        "unique_to_b": 692
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z_txopus/index_50.html",
+        "png": "trace_out/pairs_20260711T051145Z_txopus/index_50.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z_txopus/index_50_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z_txopus/index_50_diff.png"
+      }
+    }
+  ]
+}
