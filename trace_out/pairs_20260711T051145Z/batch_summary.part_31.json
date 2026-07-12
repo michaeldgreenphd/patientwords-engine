@@ -18,25 +18,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I have xerophthalmia with corneal irritation, so I should probably get some",
-        "patient": "I've been noticing my eyes feel really dry and scratchy, so I should probably get some"
+        "patient": "I've been noticing my eyes feel really dry and scratchy, so I should probably get some",
+        "translated": "I've been noticing my eyes feel really xerotic and have a foreign body sensation, so I should probably get some"
       },
       "target_token": "Output \" drops\"",
       "probabilities": {
         "clinical": 0.109,
-        "patient": 0.11
+        "patient": 0.11,
+        "translated": 0.134
       },
       "language_penalty": 0.0010000000000000009,
       "clinical_mass": {
         "clinical": 0.3199,
-        "patient": 0.2555
+        "patient": 0.2555,
+        "translated": 0.2784
       },
       "error_share": {
         "clinical": 0.1145,
-        "patient": 0.0955
+        "patient": 0.0955,
+        "translated": 0.1091
       },
       "top_path": {
         "clinical": "embedding \u2192 [L25\u00b7C] mentions of eyes, studies, patients, and medical ana \u2192 Output \" eye\" (p=0.123)",
-        "patient": "embedding \u2192 Output \" eye\" (p=0.355)"
+        "patient": "embedding \u2192 Output \" eye\" (p=0.355)",
+        "translated": "embedding \u2192 Output \" eye\" (p=0.162)"
       },
       "screening": {
         "status": "passed",
@@ -48,9 +53,9 @@
         ],
         "probe_extension": null
       },
-      "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "mitigation_recovery": 0.024000000000000007,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -96,6 +101,28 @@
             "Output \" more\"",
             0.05
           ]
+        ],
+        "translated": [
+          [
+            "Output \" artificial\"",
+            0.272
+          ],
+          [
+            "Output \" eye\"",
+            0.162
+          ],
+          [
+            "Output \" drops\"",
+            0.134
+          ],
+          [
+            "Output \" lubricating\"",
+            0.055
+          ],
+          [
+            "Output \" lubricant\"",
+            0.04
+          ]
         ]
       },
       "circuit_diff": {
@@ -115,25 +142,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I've been experiencing dissociation, so I should probably see a",
-        "patient": "I've been feeling really spacey and out of it, so I should probably see a"
+        "patient": "I've been feeling really spacey and out of it, so I should probably see a",
+        "translated": "I've been experiencing dizziness and altered mental status, so I should probably see a"
       },
       "target_token": "Output \" psychiatrist\"",
       "probabilities": {
         "clinical": 0.114,
-        "patient": 0.033
+        "patient": 0.033,
+        "translated": 0.026
       },
       "language_penalty": -0.081,
       "clinical_mass": {
         "clinical": 0.3587,
-        "patient": 0.2778
+        "patient": 0.2778,
+        "translated": 0.4583
       },
       "error_share": {
         "clinical": 0.0953,
-        "patient": 0.0931
+        "patient": 0.0931,
+        "translated": 0.0977
       },
       "top_path": {
         "clinical": "embedding \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" psychologist\" (p=0.044)",
-        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.753)"
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.753)",
+        "translated": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.578)"
       },
       "screening": {
         "status": "passed",
@@ -145,9 +177,9 @@
         ],
         "probe_extension": null
       },
-      "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "mitigation_recovery": -0.007000000000000003,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -192,6 +224,28 @@
           [
             "Output \" Dr\"",
             0.023
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" doctor\"",
+            0.578
+          ],
+          [
+            "Output \" neuro\"",
+            0.217
+          ],
+          [
+            "Output \" doc\"",
+            0.033
+          ],
+          [
+            "Output \" physician\"",
+            0.026
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.026
           ]
         ]
       },
@@ -266,25 +320,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I have dysphagia, so I should probably take my",
-        "patient": "I've been having trouble swallowing my food lately, so I should probably take my"
+        "patient": "I've been having trouble swallowing my food lately, so I should probably take my",
+        "translated": "I've been having trouble with dysphagia lately, so I should probably take my"
       },
       "target_token": "Output \" time\"",
       "probabilities": {
         "clinical": 0.144,
-        "patient": null
+        "patient": null,
+        "translated": 0.058
       },
       "language_penalty": null,
       "clinical_mass": {
         "clinical": 0.231,
-        "patient": 0.3123
+        "patient": 0.3123,
+        "translated": 0.2817
       },
       "error_share": {
         "clinical": 0.0979,
-        "patient": 0.0922
+        "patient": 0.0922,
+        "translated": 0.1013
       },
       "top_path": {
         "clinical": "embedding \u2192 Output \" own\" (p=0.084)",
-        "patient": "[L18\u00b7S]  \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.078)"
+        "patient": "[L18\u00b7S]  \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.078)",
+        "translated": "embedding \u2192 Output \" own\" (p=0.100)"
       },
       "screening": {
         "status": "passed",
@@ -297,8 +356,8 @@
         "probe_extension": null
       },
       "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -344,6 +403,28 @@
             "Output \" medicine\"",
             0.049
           ]
+        ],
+        "translated": [
+          [
+            "Output \" meds\"",
+            0.214
+          ],
+          [
+            "Output \" own\"",
+            0.1
+          ],
+          [
+            "Output \" medication\"",
+            0.079
+          ],
+          [
+            "Output \" time\"",
+            0.058
+          ],
+          [
+            "Output \" medicine\"",
+            0.038
+          ]
         ]
       },
       "circuit_diff": {
@@ -356,103 +437,6 @@
         "png": "trace_out/pairs_20260711T051145Z/index_34.png",
         "diff_html": "trace_out/pairs_20260711T051145Z/index_34_diff.html",
         "diff_png": "trace_out/pairs_20260711T051145Z/index_34_diff.png"
-      }
-    },
-    {
-      "index": 35,
-      "mode": "2panel",
-      "prompts": {
-        "clinical": "When I stand up too fast I experience orthostatic hypotension, so I might have a",
-        "patient": "When I stand up too fast I get these weird sensations, so I might have a"
-      },
-      "target_token": "Output \" problem\"",
-      "probabilities": {
-        "clinical": 0.109,
-        "patient": 0.129
-      },
-      "language_penalty": 0.020000000000000004,
-      "clinical_mass": {
-        "clinical": 0.1998,
-        "patient": 0.2754
-      },
-      "error_share": {
-        "clinical": 0.1015,
-        "patient": 0.0966
-      },
-      "top_path": {
-        "clinical": "embedding \u2192 [L23\u00b7O] small talk words that don't mean a lot, like \"a litt \u2192 [L25\u00b7O] phrases of the form \"a little\" | little \u2192 Output \" little\" (p=0.077)",
-        "patient": "embedding \u2192 Output \" little\" (p=0.065)"
-      },
-      "screening": {
-        "status": "passed",
-        "min_prob": 0.02,
-        "intended_target": " problem",
-        "observed_clinical": [
-          "Output \" problem\"",
-          0.109
-        ],
-        "probe_extension": null
-      },
-      "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
-      "forced_targets": [],
-      "predictive_spread": {
-        "clinical": [
-          [
-            "Output \" problem\"",
-            0.109
-          ],
-          [
-            "Output \" little\"",
-            0.077
-          ],
-          [
-            "Output \" low\"",
-            0.047
-          ],
-          [
-            "Output \" similar\"",
-            0.046
-          ],
-          [
-            "Output \" slight\"",
-            0.043
-          ]
-        ],
-        "patient": [
-          [
-            "Output \" problem\"",
-            0.129
-          ],
-          [
-            "Output \" blood\"",
-            0.07
-          ],
-          [
-            "Output \" heart\"",
-            0.067
-          ],
-          [
-            "Output \" little\"",
-            0.065
-          ],
-          [
-            "Output \" bit\"",
-            0.032
-          ]
-        ]
-      },
-      "circuit_diff": {
-        "shared_features": 879,
-        "unique_to_a": 475,
-        "unique_to_b": 523
-      },
-      "outputs": {
-        "html": "trace_out/pairs_20260711T051145Z/index_35.html",
-        "png": "trace_out/pairs_20260711T051145Z/index_35.png",
-        "diff_html": "trace_out/pairs_20260711T051145Z/index_35_diff.html",
-        "diff_png": "trace_out/pairs_20260711T051145Z/index_35_diff.png"
       }
     }
   ]
