@@ -1,0 +1,502 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 1,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have angina when I exercise, so I need to take my",
+        "patient": "My chest is tight when I exercise, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.079,
+        "patient": 0.057
+      },
+      "language_penalty": -0.022,
+      "clinical_mass": {
+        "clinical": 0.453,
+        "patient": 0.3371
+      },
+      "error_share": {
+        "clinical": 0.0928,
+        "patient": 0.0881
+      },
+      "top_path": {
+        "clinical": "[L20\u00b7S]  \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 Output \" medication\" (p=0.079)",
+        "patient": "embedding \u2192 [L19\u00b7O] descriptions of people breathing | breathing \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.306)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.079
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" nit\"",
+            0.213
+          ],
+          [
+            "Output \" beta\"",
+            0.094
+          ],
+          [
+            "Output \" Nit\"",
+            0.083
+          ],
+          [
+            "Output \" medication\"",
+            0.079
+          ],
+          [
+            "Output \" nitro\"",
+            0.054
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.306
+          ],
+          [
+            "Output \" asthma\"",
+            0.128
+          ],
+          [
+            "Output \" heart\"",
+            0.084
+          ],
+          [
+            "Output \" medication\"",
+            0.057
+          ],
+          [
+            "Output \" blood\"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 592,
+        "unique_to_a": 614,
+        "unique_to_b": 652
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_01.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_01.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_01_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_01_diff.png"
+      }
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have cognitive impairment in the mornings, so I think I have a",
+        "patient": "I'm always foggy in the mornings, so I think I have a"
+      },
+      "target_token": "Output \" problem\"",
+      "probabilities": {
+        "clinical": 0.049,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1674,
+        "patient": 0.1622
+      },
+      "error_share": {
+        "clinical": 0.0889,
+        "patient": 0.093
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" good\" (p=0.096)",
+        "patient": "embedding \u2192 Output \" good\" (p=0.076)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " problem",
+        "observed_clinical": [
+          "Output \" problem\"",
+          0.049
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" good\"",
+            0.096
+          ],
+          [
+            "Output \" lot\"",
+            0.061
+          ],
+          [
+            "Output \" better\"",
+            0.06
+          ],
+          [
+            "Output \" pretty\"",
+            0.05
+          ],
+          [
+            "Output \" problem\"",
+            0.049
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" good\"",
+            0.076
+          ],
+          [
+            "Output \" bit\"",
+            0.066
+          ],
+          [
+            "Output \" pretty\"",
+            0.063
+          ],
+          [
+            "Output \" mild\"",
+            0.058
+          ],
+          [
+            "Output \" little\"",
+            0.055
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 762,
+        "unique_to_a": 567,
+        "unique_to_b": 575
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_02.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_02.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_02_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_02_diff.png"
+      }
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have lower extremity edema after my shift, so I should elevate my",
+        "patient": "My legs feel like jelly after my shift, so I should elevate my"
+      },
+      "target_token": "Output \" legs\"",
+      "probabilities": {
+        "clinical": 0.649,
+        "patient": 0.51
+      },
+      "language_penalty": -0.139,
+      "clinical_mass": {
+        "clinical": 0.3877,
+        "patient": 0.2901
+      },
+      "error_share": {
+        "clinical": 0.1136,
+        "patient": 0.1027
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] medical procedures involving limbs and nerves | hand \u2192 [L24\u00b7S] articles of clothing and related words such as shoes \u2192 Output \" foot\" (p=0.006)",
+        "patient": "embedding \u2192 [L24\u00b7S] articles of clothing and related words such as shoes \u2192 Output \" feet\" (p=0.380)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " legs",
+        "observed_clinical": [
+          "Output \" legs\"",
+          0.649
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" legs\"",
+            0.649
+          ],
+          [
+            "Output \" feet\"",
+            0.239
+          ],
+          [
+            "Output \" leg\"",
+            0.044
+          ],
+          [
+            "Output \" lower\"",
+            0.018
+          ],
+          [
+            "Output \" foot\"",
+            0.006
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" legs\"",
+            0.51
+          ],
+          [
+            "Output \" feet\"",
+            0.38
+          ],
+          [
+            "Output \" leg\"",
+            0.019
+          ],
+          [
+            "Output \" lower\"",
+            0.007
+          ],
+          [
+            "Output \" body\"",
+            0.006
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 641,
+        "unique_to_a": 556,
+        "unique_to_b": 577
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_03.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_03.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_03_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_03_diff.png"
+      }
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have dysphagia, so my doctor wants to order an",
+        "patient": "I've got a lump in my throat, so my doctor wants to order an"
+      },
+      "target_token": "Output \" endos\"",
+      "probabilities": {
+        "clinical": 0.117,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4422,
+        "patient": 0.3989
+      },
+      "error_share": {
+        "clinical": 0.103,
+        "patient": 0.0963
+      },
+      "top_path": {
+        "clinical": "[L14\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 [L19\u00b7C] words related to radiology and medical imaging | Med \u2192 Output \" MRI\" (p=0.076)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 [L19\u00b7C] words related to radiology and medical imaging | Med \u2192 Output \" ultrasound\" (p=0.488)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " endoscopy",
+        "observed_clinical": [
+          "Output \" endos\"",
+          0.117
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" upper\"",
+            0.172
+          ],
+          [
+            "Output \" endos\"",
+            0.117
+          ],
+          [
+            "Output \" es\"",
+            0.105
+          ],
+          [
+            "Output \" esophageal\"",
+            0.078
+          ],
+          [
+            "Output \" MRI\"",
+            0.076
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ultrasound\"",
+            0.488
+          ],
+          [
+            "Output \" x\"",
+            0.073
+          ],
+          [
+            "Output \" EKG\"",
+            0.066
+          ],
+          [
+            "Output \" X\"",
+            0.06
+          ],
+          [
+            "Output \" echo\"",
+            0.057
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 673,
+        "unique_to_a": 750,
+        "unique_to_b": 751
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_04.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_04.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_04_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_04_diff.png"
+      }
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have photosensitivity after being outside, so I need to see a",
+        "patient": "My skin looks blotchy after being outside, so I need to see a"
+      },
+      "target_token": "Output \" dermatologist\"",
+      "probabilities": {
+        "clinical": 0.065,
+        "patient": 0.609
+      },
+      "language_penalty": 0.544,
+      "clinical_mass": {
+        "clinical": 0.2283,
+        "patient": 0.3014
+      },
+      "error_share": {
+        "clinical": 0.1003,
+        "patient": 0.0969
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.234)",
+        "patient": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.194)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " dermatologist",
+        "observed_clinical": [
+          "Output \" dermatologist\"",
+          0.065
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.234
+          ],
+          [
+            "Output \" specialist\"",
+            0.087
+          ],
+          [
+            "Output \" lot\"",
+            0.086
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.065
+          ],
+          [
+            "Output \" light\"",
+            0.059
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dermatologist\"",
+            0.609
+          ],
+          [
+            "Output \" doctor\"",
+            0.194
+          ],
+          [
+            "Output \" der\"",
+            0.053
+          ],
+          [
+            "Output \" specialist\"",
+            0.02
+          ],
+          [
+            "Output \" Dermatologist\"",
+            0.016
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 546,
+        "unique_to_a": 856,
+        "unique_to_b": 699
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_05.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_05.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_05_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_05_diff.png"
+      }
+    }
+  ]
+}
