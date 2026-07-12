@@ -1,0 +1,497 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 21,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 21,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have urticaria, so I need to avoid my",
+        "patient": "My skin's been breaking out in hives all over, so I need to avoid my",
+        "translated": "My skin has been developing urticaria over the entire body, so I need to avoid my"
+      },
+      "target_token": "Output \" triggers\"",
+      "probabilities": {
+        "clinical": 0.096,
+        "patient": null,
+        "translated": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.303,
+        "patient": 0.238,
+        "translated": 0.2557
+      },
+      "error_share": {
+        "clinical": 0.0929,
+        "patient": 0.0923,
+        "translated": 0.095
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7O] words relating to uncertainty, possibility and small \u2192 [L24\u00b7S] common words such as pronouns, prepositions, conjunc \u2192 Output \" normal\" (p=0.031)",
+        "patient": "[L14\u00b7S]  \u2192 [L18\u00b7O] words relating to uncertainty, possibility and small \u2192 [L24\u00b7S] common words such as pronouns, prepositions, conjunc \u2192 Output \" normal\" (p=0.106)",
+        "translated": "embedding \u2192 [L25\u00b7O] technical language related to dermatology and immuno \u2192 Output \" skin\" (p=0.122)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " triggers",
+        "observed_clinical": [
+          "Output \" triggers\"",
+          0.096
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" usual\"",
+            0.121
+          ],
+          [
+            "Output \" triggers\"",
+            0.096
+          ],
+          [
+            "Output \" trigger\"",
+            0.043
+          ],
+          [
+            "Output \" doctor\"",
+            0.031
+          ],
+          [
+            "Output \" normal\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" usual\"",
+            0.3
+          ],
+          [
+            "Output \" normal\"",
+            0.106
+          ],
+          [
+            "Output \" favorite\"",
+            0.065
+          ],
+          [
+            "Output \" regular\"",
+            0.053
+          ],
+          [
+            "Output \" current\"",
+            0.028
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" skin\"",
+            0.122
+          ],
+          [
+            "Output \" usual\"",
+            0.109
+          ],
+          [
+            "Output \" daily\"",
+            0.064
+          ],
+          [
+            "Output \" face\"",
+            0.045
+          ],
+          [
+            "Output \" favorite\"",
+            0.045
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 575,
+        "unique_to_a": 812,
+        "unique_to_b": 740
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z_txopus/index_21.html",
+        "png": "trace_out/pairs_20260711T051145Z_txopus/index_21.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z_txopus/index_21_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z_txopus/index_21_diff.png"
+      }
+    },
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have attention deficit hyperactivity disorder, so I might need to see a",
+        "patient": "I keep having a hard time concentrating at work, so I might need to see a",
+        "translated": "I keep experiencing difficulty concentrating at work, so I might need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.061,
+        "patient": null,
+        "translated": 0.042
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3461,
+        "patient": 0.2613,
+        "translated": 0.3032
+      },
+      "error_share": {
+        "clinical": 0.0935,
+        "patient": 0.0899,
+        "translated": 0.0901
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.344)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.571)",
+        "translated": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.488)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " specialist",
+        "observed_clinical": [
+          "Output \" specialist\"",
+          0.061
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.344
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.149
+          ],
+          [
+            "Output \" therapist\"",
+            0.111
+          ],
+          [
+            "Output \" specialist\"",
+            0.061
+          ],
+          [
+            "Output \" neuro\"",
+            0.061
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.571
+          ],
+          [
+            "Output \" therapist\"",
+            0.097
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.075
+          ],
+          [
+            "Output \" psychologist\"",
+            0.034
+          ],
+          [
+            "Output \" counselor\"",
+            0.026
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" doctor\"",
+            0.488
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.089
+          ],
+          [
+            "Output \" therapist\"",
+            0.085
+          ],
+          [
+            "Output \" psychologist\"",
+            0.061
+          ],
+          [
+            "Output \" specialist\"",
+            0.042
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 587,
+        "unique_to_a": 722,
+        "unique_to_b": 726
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z_txopus/index_22.html",
+        "png": "trace_out/pairs_20260711T051145Z_txopus/index_22.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z_txopus/index_22_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z_txopus/index_22_diff.png"
+      }
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing vertigo and the room won't stop spinning, so I should probably see a",
+        "patient": "I've been feeling really dizzy and the room won't stop spinning, so I should probably see a",
+        "translated": "I've been experiencing significant vertigo with a persistent sensation of the room spinning, so I should probably see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.035,
+        "patient": 0.013,
+        "translated": 0.104
+      },
+      "language_penalty": -0.022000000000000006,
+      "clinical_mass": {
+        "clinical": 0.392,
+        "patient": 0.3707,
+        "translated": 0.4078
+      },
+      "error_share": {
+        "clinical": 0.0973,
+        "patient": 0.0984,
+        "translated": 0.0954
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.869)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.893)",
+        "translated": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.755)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.035
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": 0.091,
+      "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.869
+          ],
+          [
+            "Output \" neuro\"",
+            0.035
+          ],
+          [
+            "Output \" specialist\"",
+            0.018
+          ],
+          [
+            "Output \" doc\"",
+            0.018
+          ],
+          [
+            "Output \" Doctor\"",
+            0.01
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.893
+          ],
+          [
+            "Output \" doc\"",
+            0.023
+          ],
+          [
+            "Output \" neuro\"",
+            0.013
+          ],
+          [
+            "Output \" Dr\"",
+            0.01
+          ],
+          [
+            "Output \" dr\"",
+            0.009
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" doctor\"",
+            0.755
+          ],
+          [
+            "Output \" neuro\"",
+            0.104
+          ],
+          [
+            "Output \" specialist\"",
+            0.045
+          ],
+          [
+            "Output \" physician\"",
+            0.018
+          ],
+          [
+            "Output \" doc\"",
+            0.015
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 829,
+        "unique_to_a": 334,
+        "unique_to_b": 381
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z_txopus/index_23.html",
+        "png": "trace_out/pairs_20260711T051145Z_txopus/index_23.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z_txopus/index_23_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z_txopus/index_23_diff.png"
+      }
+    },
+    {
+      "index": 24,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep getting these episodes of gastroesophageal reflux in my stomach, so my doctor thinks I might need some",
+        "patient": "I keep getting these burning sensations in my stomach, so my doctor thinks I might need some"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4535
+      },
+      "error_share": {
+        "clinical": 0.1081
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " antacids",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" medication\"",
+            0.173
+          ],
+          [
+            "Output \" kind\"",
+            0.1
+          ],
+          [
+            "Output \" medicine\"",
+            0.081
+          ],
+          [
+            "Output \" surgery\"",
+            0.073
+          ],
+          [
+            "Output \" type\"",
+            0.064
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 25,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I experience dysphagia when I eat, so I need to see a",
+        "patient": "I feel like my throat is closing up when I eat, so I need to see a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3997
+      },
+      "error_share": {
+        "clinical": 0.103
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " gastroenterologist",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" speech\"",
+            0.325
+          ],
+          [
+            "Output \" doctor\"",
+            0.143
+          ],
+          [
+            "Output \" specialist\"",
+            0.122
+          ],
+          [
+            "Output \" swallowing\"",
+            0.059
+          ],
+          [
+            "Output \" die\"",
+            0.043
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}
