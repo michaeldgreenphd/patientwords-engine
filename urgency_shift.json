@@ -9,8 +9,8 @@
    "lateral": 165,
    "uninformative": 614
   },
-  "mean_tier_shift": -0.1365,
-  "tier_shift_n": 1499,
+  "mean_tier_shift": -0.1368,
+  "tier_shift_n": 1498,
   "per_model": {
    "gemma-2-2b": {
     "n": 714,
@@ -19,7 +19,7 @@
     "upgrades": 9,
     "sign_test_p": 0.0,
     "confident_downgrades_p>=0.2": 62,
-    "mean_tier_shift": -0.1593
+    "mean_tier_shift": -0.1601
    },
    "gemma-2-2b-it": {
     "n": 3,
@@ -82,7 +82,7 @@
     "flips": 251,
     "downgrades": 45,
     "upgrades": 9,
-    "mean_penalty": -0.0372
+    "mean_penalty": -0.0374
    },
    "gemma-2-2b-it": {
     "n_phrases": 3,
@@ -262,9 +262,9 @@
    }
   },
   "mitigation": {
-   "n": 36,
-   "mean_urgency_recovery": 0.186,
-   "restored_top_tier": 17
+   "n": 51,
+   "mean_urgency_recovery": 0.1545,
+   "restored_top_tier": 28
   },
   "per_condition": {
    "sleep problems": {
@@ -1179,18 +1179,6 @@
     "upgrades": 0,
     "mean_tier_shift": 0.0
    },
-   "gastrointestinal infection": {
-    "n": 4,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": -0.042
-   },
-   "respiratory/cardiac symptom": {
-    "n": 4,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": 0.263
-   },
    "gastric inflammation": {
     "n": 4,
     "downgrades": 0,
@@ -1209,25 +1197,7 @@
     "upgrades": 0,
     "mean_tier_shift": null
    },
-   "skin-picking/dermatillomania": {
-    "n": 4,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": null
-   },
    "ophthalmological symptoms": {
-    "n": 4,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": null
-   },
-   "dyspnea/exertional breathing": {
-    "n": 4,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": -0.057
-   },
-   "neuropathy/peripheral nerve disease": {
     "n": 4,
     "downgrades": 0,
     "upgrades": 0,
@@ -1250,6 +1220,18 @@
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": -0.0723
+   },
+   "gastrointestinal infection": {
+    "n": 4,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.0453
+   },
+   "respiratory/cardiac symptom": {
+    "n": 4,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": null
    },
    "nerve compression": {
     "n": 4,
@@ -1274,6 +1256,24 @@
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": 0.0
+   },
+   "skin-picking/dermatillomania": {
+    "n": 4,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": null
+   },
+   "dyspnea/exertional breathing": {
+    "n": 4,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.045
+   },
+   "neuropathy/peripheral nerve disease": {
+    "n": 4,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": null
    },
    "general-systemic": {
     "n": 4,
@@ -59142,6 +59142,10 @@
     9,
     11
    ],
+   "top_translated": "medicine",
+   "tier_top_translated": 1,
+   "expected_tier_translated": 1.333,
+   "urgency_recovery": 0.198,
    "tierb_split": "holdout"
   },
   {
@@ -59170,6 +59174,10 @@
     11,
     12
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.157,
+   "urgency_recovery": 0.037,
    "tierb_split": "explore"
   },
   {
@@ -59198,6 +59206,10 @@
     10,
     11
    ],
+   "top_translated": "allergy",
+   "tier_top_translated": 1,
+   "expected_tier_translated": 1.0,
+   "urgency_recovery": 0.0,
    "tierb_split": "explore"
   },
   {
@@ -59226,6 +59238,10 @@
     9,
     10
    ],
+   "top_translated": "blood",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 1.941,
+   "urgency_recovery": -0.059,
    "tierb_split": "explore"
   },
   {
@@ -59254,62 +59270,10 @@
     9,
     14
    ],
-   "tierb_split": "explore"
-  },
-  {
-   "model": "gemma-2-2b",
-   "batch": "pairs_20260711T051145Z",
-   "index": 8,
-   "topic": "gastrointestinal infection",
-   "clinical_prompt": "I have gastroenteritis, so I should probably take my",
-   "top_clinical": "own",
-   "top_patient": "meds",
-   "p_top_clinical": 0.184,
-   "p_top_patient": 0.231,
-   "tier_top_clinical": null,
-   "tier_top_patient": 1,
-   "flipped": true,
-   "flip_class": "uninformative",
-   "expected_tier_clinical": 1.0,
-   "expected_tier_patient": 1.082,
-   "tier_shift": 0.082,
-   "language_penalty": 0.007000000000000006,
-   "coverage": [
-    0.48,
-    1.0
-   ],
-   "prompt_words": [
-    9,
-    11
-   ],
-   "tierb_split": "explore"
-  },
-  {
-   "model": "gemma-2-2b",
-   "batch": "pairs_20260711T051145Z",
-   "index": 9,
-   "topic": "respiratory/cardiac symptom",
-   "clinical_prompt": "I have dyspnea on exertion, so I should check my",
-   "top_clinical": "heart",
-   "top_patient": "blood",
-   "p_top_clinical": 0.1,
-   "p_top_patient": 0.221,
-   "tier_top_clinical": null,
-   "tier_top_patient": 2,
-   "flipped": true,
-   "flip_class": "uninformative",
-   "expected_tier_clinical": 1.52,
-   "expected_tier_patient": 1.784,
-   "tier_shift": 0.263,
-   "language_penalty": -0.021000000000000005,
-   "coverage": [
-    0.39,
-    0.5
-   ],
-   "prompt_words": [
-    10,
-    12
-   ],
+   "top_translated": "neuro",
+   "tier_top_translated": 3,
+   "expected_tier_translated": 2.757,
+   "urgency_recovery": 0.679,
    "tierb_split": "explore"
   },
   {
@@ -59338,6 +59302,10 @@
     8,
     15
    ],
+   "top_translated": "heart",
+   "tier_top_translated": null,
+   "expected_tier_translated": 0.707,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -59366,6 +59334,10 @@
     12,
     12
    ],
+   "top_translated": "I",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -59394,6 +59366,10 @@
     10,
     13
    ],
+   "top_translated": "meds",
+   "tier_top_translated": 1,
+   "expected_tier_translated": 1.034,
+   "urgency_recovery": 0.034,
    "tierb_split": "explore"
   },
   {
@@ -59422,6 +59398,10 @@
     10,
     15
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.092,
+   "urgency_recovery": 0.035,
    "tierb_split": "explore"
   },
   {
@@ -59450,6 +59430,10 @@
     9,
     12
    ],
+   "top_translated": "of",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -59478,6 +59462,10 @@
     11,
     15
    ],
+   "top_translated": "look",
+   "tier_top_translated": null,
+   "expected_tier_translated": 0.294,
+   "urgency_recovery": 0.294,
    "tierb_split": "explore"
   },
   {
@@ -59506,6 +59494,10 @@
     9,
     15
    ],
+   "top_translated": "usual",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -59534,6 +59526,10 @@
     13,
     16
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.173,
+   "urgency_recovery": -0.116,
    "tierb_split": "explore"
   },
   {
@@ -59562,6 +59558,10 @@
     16,
     17
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.151,
+   "urgency_recovery": 0.137,
    "tierb_split": "explore"
   },
   {
@@ -59590,6 +59590,10 @@
     11,
     15
    ],
+   "top_translated": "thyroid",
+   "tier_top_translated": null,
+   "expected_tier_translated": 2.0,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -59618,6 +59622,10 @@
     16,
     16
    ],
+   "top_translated": "blood",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.0,
+   "urgency_recovery": 0.0,
    "tierb_split": "explore"
   },
   {
@@ -59646,34 +59654,10 @@
     16,
     16
    ],
-   "tierb_split": "explore"
-  },
-  {
-   "model": "gemma-2-2b",
-   "batch": "pairs_20260711T051145Z",
-   "index": 30,
-   "topic": "skin-picking/dermatillomania",
-   "clinical_prompt": "I have excoriation disorder when I'm anxious, so my therapist said I should develop a",
-   "top_clinical": "coping",
-   "top_patient": "habit",
-   "p_top_clinical": 0.118,
-   "p_top_patient": 0.108,
-   "tier_top_clinical": null,
-   "tier_top_patient": null,
-   "flipped": true,
-   "flip_class": "uninformative",
-   "expected_tier_clinical": null,
-   "expected_tier_patient": null,
-   "tier_shift": null,
-   "language_penalty": 0.031,
-   "coverage": [
-    0.15,
-    0.0
-   ],
-   "prompt_words": [
-    15,
-    20
-   ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.151,
+   "urgency_recovery": 0.054,
    "tierb_split": "explore"
   },
   {
@@ -59702,6 +59686,10 @@
     12,
     16
    ],
+   "top_translated": "artificial",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -59730,6 +59718,10 @@
     10,
     15
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.276,
+   "urgency_recovery": 0.196,
    "tierb_split": "explore"
   },
   {
@@ -59758,34 +59750,10 @@
     9,
     14
    ],
-   "tierb_split": "explore"
-  },
-  {
-   "model": "gemma-2-2b",
-   "batch": "pairs_20260711T051145Z",
-   "index": 35,
-   "topic": "cardiovascular",
-   "clinical_prompt": "When I stand up too fast I experience orthostatic hypotension, so I might have a",
-   "top_clinical": "problem",
-   "top_patient": "problem",
-   "p_top_clinical": 0.109,
-   "p_top_patient": 0.129,
-   "tier_top_clinical": null,
-   "tier_top_patient": null,
-   "flipped": false,
-   "flip_class": null,
-   "expected_tier_clinical": null,
-   "expected_tier_patient": null,
-   "tier_shift": null,
-   "language_penalty": 0.020000000000000004,
-   "coverage": [
-    0.0,
-    0.19
-   ],
-   "prompt_words": [
-    15,
-    16
-   ],
+   "top_translated": "meds",
+   "tier_top_translated": 1,
+   "expected_tier_translated": 1.0,
+   "urgency_recovery": -0.174,
    "tierb_split": "explore"
   },
   {
@@ -59814,6 +59782,10 @@
     14,
     16
    ],
+   "top_translated": "hearing",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -59842,6 +59814,10 @@
     12,
     13
    ],
+   "top_translated": "meds",
+   "tier_top_translated": 1,
+   "expected_tier_translated": 1.0,
+   "urgency_recovery": 0.0,
    "tierb_split": "explore"
   },
   {
@@ -59870,63 +59846,11 @@
     15,
     17
    ],
+   "top_translated": "neuro",
+   "tier_top_translated": 3,
+   "expected_tier_translated": 2.849,
+   "urgency_recovery": 0.063,
    "tierb_split": "holdout"
-  },
-  {
-   "model": "gemma-2-2b",
-   "batch": "pairs_20260711T051145Z",
-   "index": 39,
-   "topic": "dyspnea/exertional breathing",
-   "clinical_prompt": "I have dyspnea on exertion when I walk, so I need to talk to my",
-   "top_clinical": "doctor",
-   "top_patient": "doctor",
-   "p_top_clinical": 0.49,
-   "p_top_patient": 0.713,
-   "tier_top_clinical": 2,
-   "tier_top_patient": 2,
-   "flipped": false,
-   "flip_class": null,
-   "expected_tier_clinical": 2.16,
-   "expected_tier_patient": 1.944,
-   "tier_shift": -0.216,
-   "language_penalty": null,
-   "coverage": [
-    0.89,
-    0.98
-   ],
-   "prompt_words": [
-    15,
-    17
-   ],
-   "tierb_split": "explore"
-  },
-  {
-   "model": "gemma-2-2b",
-   "batch": "pairs_20260711T051145Z",
-   "index": 40,
-   "topic": "neuropathy/peripheral nerve disease",
-   "clinical_prompt": "I have neuropathy in my legs, so I might have a",
-   "top_clinical": "little",
-   "top_patient": "cold",
-   "p_top_clinical": 0.172,
-   "p_top_patient": 0.142,
-   "tier_top_clinical": null,
-   "tier_top_patient": null,
-   "flipped": true,
-   "flip_class": "uninformative",
-   "expected_tier_clinical": null,
-   "expected_tier_patient": null,
-   "tier_shift": null,
-   "language_penalty": null,
-   "coverage": [
-    0.0,
-    0.0
-   ],
-   "prompt_words": [
-    11,
-    12
-   ],
-   "tierb_split": "explore"
   },
   {
    "model": "gemma-2-2b",
@@ -59954,6 +59878,10 @@
     12,
     14
    ],
+   "top_translated": "own",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -59982,6 +59910,10 @@
     11,
     16
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.299,
+   "urgency_recovery": 0.068,
    "tierb_split": "explore"
   },
   {
@@ -60010,6 +59942,10 @@
     16,
     15
    ],
+   "top_translated": "mental",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -60038,34 +59974,10 @@
     14,
     16
    ],
-   "tierb_split": "holdout"
-  },
-  {
-   "model": "gemma-2-2b",
-   "batch": "pairs_20260711T051145Z",
-   "index": 49,
-   "topic": "chest pain",
-   "clinical_prompt": "I've been experiencing pleuritic chest pain, so I really should check my",
-   "top_clinical": "lungs",
-   "top_patient": "blood",
-   "p_top_clinical": 0.288,
-   "p_top_patient": 0.295,
-   "tier_top_clinical": null,
-   "tier_top_patient": 2,
-   "flipped": true,
-   "flip_class": "uninformative",
-   "expected_tier_clinical": null,
-   "expected_tier_patient": 2.0,
-   "tier_shift": null,
-   "language_penalty": null,
-   "coverage": [
-    0.06,
-    0.48
-   ],
-   "prompt_words": [
-    12,
-    16
-   ],
+   "top_translated": "meds",
+   "tier_top_translated": 1,
+   "expected_tier_translated": 1.0,
+   "urgency_recovery": 0.0,
    "tierb_split": "holdout"
   },
   {
@@ -60123,6 +60035,62 @@
     14
    ],
    "tierb_split": "holdout"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260711T051145Z",
+   "index": 8,
+   "topic": "gastrointestinal infection",
+   "clinical_prompt": "I have gastroenteritis, so I should probably take my",
+   "top_clinical": "own",
+   "top_patient": "meds",
+   "p_top_clinical": 0.196,
+   "p_top_patient": 0.224,
+   "tier_top_clinical": null,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.072,
+   "tier_shift": 0.072,
+   "language_penalty": 0.0081,
+   "coverage": [
+    0.4,
+    0.87
+   ],
+   "prompt_words": [
+    9,
+    11
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260711T051145Z",
+   "index": 9,
+   "topic": "respiratory/cardiac symptom",
+   "clinical_prompt": "I have dyspnea on exertion, so I should check my",
+   "top_clinical": "heart",
+   "top_patient": "blood",
+   "p_top_clinical": 0.093,
+   "p_top_patient": 0.218,
+   "tier_top_clinical": null,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 1.777,
+   "tier_shift": null,
+   "language_penalty": -0.02,
+   "coverage": [
+    0.3,
+    0.4
+   ],
+   "prompt_words": [
+    10,
+    12
+   ],
+   "tierb_split": "explore"
   },
   {
    "model": "gemma-2-2b",
@@ -60351,6 +60319,34 @@
   {
    "model": "gemma-2-2b",
    "batch": "pairs_20260711T051145Z",
+   "index": 30,
+   "topic": "skin-picking/dermatillomania",
+   "clinical_prompt": "I have excoriation disorder when I'm anxious, so my therapist said I should develop a",
+   "top_clinical": "coping",
+   "top_patient": "habit",
+   "p_top_clinical": 0.119,
+   "p_top_patient": 0.104,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0316,
+   "coverage": [
+    0.11,
+    0.23
+   ],
+   "prompt_words": [
+    15,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260711T051145Z",
    "index": 33,
    "topic": "dermatology/psychiatry",
    "clinical_prompt": "I experience formication, so my doctor thinks I might need a",
@@ -60375,6 +60371,90 @@
     18
    ],
    "tierb_split": "holdout"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260711T051145Z",
+   "index": 35,
+   "topic": "cardiovascular",
+   "clinical_prompt": "When I stand up too fast I experience orthostatic hypotension, so I might have a",
+   "top_clinical": "problem",
+   "top_patient": "problem",
+   "p_top_clinical": 0.115,
+   "p_top_patient": 0.12,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0053,
+   "coverage": [
+    0.17,
+    0.16
+   ],
+   "prompt_words": [
+    15,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260711T051145Z",
+   "index": 39,
+   "topic": "dyspnea/exertional breathing",
+   "clinical_prompt": "I have dyspnea on exertion when I walk, so I need to talk to my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.48,
+   "p_top_patient": 0.721,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.138,
+   "expected_tier_patient": 1.97,
+   "tier_shift": -0.168,
+   "language_penalty": -0.0902,
+   "coverage": [
+    0.92,
+    0.99
+   ],
+   "prompt_words": [
+    15,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260711T051145Z",
+   "index": 40,
+   "topic": "neuropathy/peripheral nerve disease",
+   "clinical_prompt": "I have neuropathy in my legs, so I might have a",
+   "top_clinical": "little",
+   "top_patient": "cold",
+   "p_top_clinical": 0.166,
+   "p_top_patient": 0.149,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0554,
+   "coverage": [
+    0.21,
+    0.0
+   ],
+   "prompt_words": [
+    11,
+    12
+   ],
+   "tierb_split": "explore"
   },
   {
    "model": "gemma-2-2b",
@@ -60487,6 +60567,34 @@
     17
    ],
    "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260711T051145Z",
+   "index": 49,
+   "topic": "chest pain",
+   "clinical_prompt": "I've been experiencing pleuritic chest pain, so I really should check my",
+   "top_clinical": "lungs",
+   "top_patient": "blood",
+   "p_top_clinical": 0.297,
+   "p_top_patient": 0.283,
+   "tier_top_clinical": null,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 1.925,
+   "tier_shift": null,
+   "language_penalty": -0.293,
+   "coverage": [
+    0.05,
+    0.42
+   ],
+   "prompt_words": [
+    12,
+    16
+   ],
+   "tierb_split": "holdout"
   },
   {
    "model": "gemma-2-2b",
