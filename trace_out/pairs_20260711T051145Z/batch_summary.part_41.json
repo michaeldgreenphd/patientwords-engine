@@ -18,25 +18,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I've been feeling dysphoric lately, so I think I should take my",
-        "patient": "I've been feeling out of sorts lately, so I think I should take my"
+        "patient": "I've been feeling out of sorts lately, so I think I should take my",
+        "translated": "I've been experiencing malaise lately, so I think I should take my"
       },
       "target_token": "Output \" medication\"",
       "probabilities": {
         "clinical": 0.073,
-        "patient": null
+        "patient": null,
+        "translated": null
       },
       "language_penalty": null,
       "clinical_mass": {
         "clinical": 0.2154,
-        "patient": 0.0667
+        "patient": 0.0667,
+        "translated": 0.1205
       },
       "error_share": {
         "clinical": 0.0916,
-        "patient": 0.076
+        "patient": 0.076,
+        "translated": 0.0811
       },
       "top_path": {
         "clinical": "embedding \u2192 Output \" own\" (p=0.096)",
-        "patient": "[L19\u00b7S]  \u2192 [L20\u00b7O] instances where someone changes their mind or story  \u2192 Output \" mind\" (p=0.144)"
+        "patient": "[L19\u00b7S]  \u2192 [L20\u00b7O] instances where someone changes their mind or story  \u2192 Output \" mind\" (p=0.144)",
+        "translated": "[L16\u00b7S]  \u2192 [L21\u00b7S] possessive pronouns | possessive forms of 'own' | po \u2192 Output \" own\" (p=0.421)"
       },
       "screening": {
         "status": "passed",
@@ -49,8 +54,8 @@
         "probe_extension": null
       },
       "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -95,6 +100,28 @@
           [
             "Output \" time\"",
             0.017
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" own\"",
+            0.421
+          ],
+          [
+            "Output \" mind\"",
+            0.078
+          ],
+          [
+            "Output \" medicine\"",
+            0.066
+          ],
+          [
+            "Output \" meds\"",
+            0.047
+          ],
+          [
+            "Output \" doctor\"",
+            0.025
           ]
         ]
       },
@@ -277,25 +304,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I have anxiety, so I think I need to see a",
-        "patient": "I've been feeling really wound up and jittery, so I think I need to see a"
+        "patient": "I've been feeling really wound up and jittery, so I think I need to see a",
+        "translated": "I've been feeling really anxious and tremulous, so I think I need to see a"
       },
       "target_token": "Output \" therapist\"",
       "probabilities": {
         "clinical": 0.281,
-        "patient": 0.119
+        "patient": 0.119,
+        "translated": 0.121
       },
       "language_penalty": -0.16200000000000003,
       "clinical_mass": {
         "clinical": 0.3606,
-        "patient": 0.3043
+        "patient": 0.3043,
+        "translated": 0.3396
       },
       "error_share": {
         "clinical": 0.0855,
-        "patient": 0.0929
+        "patient": 0.0929,
+        "translated": 0.0926
       },
       "top_path": {
         "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.227)",
-        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.546)"
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.546)",
+        "translated": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.509)"
       },
       "screening": {
         "status": "passed",
@@ -307,9 +339,9 @@
         ],
         "probe_extension": null
       },
-      "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "mitigation_recovery": 0.0020000000000000018,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -354,6 +386,28 @@
           [
             "Output \" GP\"",
             0.025
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" doctor\"",
+            0.509
+          ],
+          [
+            "Output \" therapist\"",
+            0.121
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.091
+          ],
+          [
+            "Output \" GP\"",
+            0.052
+          ],
+          [
+            "Output \" psychologist\"",
+            0.027
           ]
         ]
       },
