@@ -193,8 +193,20 @@ jobs:
           # consumers can glob batch_summary*.json (repo checkpoint convention)
           START=$((OFFSET + 1))
           PART=$(printf 'batch_summary.part_%02d.json' "$START")
+          # The runner writes its chunk as part_01, but a committed part_01
+          # from the offset-0 chunk may already be checked out at that path.
+          # Rename only when the file is new (untracked) or modified (the
+          # script overwrote it); restore the tracked copy afterwards so the
+          # commit step's pull --rebase sees a clean tree. If the script
+          # failed and part_01 is the untouched offset-0 chunk, no rename
+          # happens and the commit step is a no-op instead of committing
+          # duplicate data under the wrong part number.
           if [ "$START" -ne 1 ] && [ -f "$OUT_DIR/batch_summary.part_01.json" ]; then
-            mv "$OUT_DIR/batch_summary.part_01.json" "$OUT_DIR/$PART"
+            if ! git ls-files --error-unmatch "$OUT_DIR/batch_summary.part_01.json" >/dev/null 2>&1 \
+               || ! git diff --quiet -- "$OUT_DIR/batch_summary.part_01.json"; then
+              mv "$OUT_DIR/batch_summary.part_01.json" "$OUT_DIR/$PART"
+              git checkout -- "$OUT_DIR/batch_summary.part_01.json" 2>/dev/null || true
+            fi
           fi
           echo "PART=$PART" >> "$GITHUB_ENV"
 
