@@ -18,25 +18,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I've been experiencing temperature dysregulation, so I should probably check my",
-        "patient": "I've been getting these sudden hot and cold spells, so I should probably check my"
+        "patient": "I've been getting these sudden hot and cold spells, so I should probably check my",
+        "translated": "I've been experiencing episodes of flushing and chills, so I should probably check my"
       },
       "target_token": "Output \" thyroid\"",
       "probabilities": {
         "clinical": 0.114,
-        "patient": null
+        "patient": null,
+        "translated": 0.262
       },
       "language_penalty": null,
       "clinical_mass": {
         "clinical": 0.2079,
-        "patient": 0.1334
+        "patient": 0.1334,
+        "translated": 0.3665
       },
       "error_share": {
         "clinical": 0.096,
-        "patient": 0.0968
+        "patient": 0.0968,
+        "translated": 0.1
       },
       "top_path": {
         "clinical": "embedding \u2192 Output \" temperature\" (p=0.053)",
-        "patient": "embedding \u2192 Output \" thermostat\" (p=0.192)"
+        "patient": "embedding \u2192 Output \" thermostat\" (p=0.192)",
+        "translated": "[L18\u00b7S]  \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.252)"
       },
       "screening": {
         "status": "passed",
@@ -49,8 +54,8 @@
         "probe_extension": null
       },
       "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -96,6 +101,28 @@
             "Output \" oil\"",
             0.048
           ]
+        ],
+        "translated": [
+          [
+            "Output \" thyroid\"",
+            0.262
+          ],
+          [
+            "Output \" blood\"",
+            0.252
+          ],
+          [
+            "Output \" iron\"",
+            0.052
+          ],
+          [
+            "Output \" electrolytes\"",
+            0.046
+          ],
+          [
+            "Output \" heart\"",
+            0.034
+          ]
         ]
       },
       "circuit_diff": {
@@ -115,25 +142,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I've been having these vertigo episodes at work, so I think I need to get my",
-        "patient": "I've been having these dizzy spells at work, so I think I need to get my"
+        "patient": "I've been having these dizzy spells at work, so I think I need to get my",
+        "translated": "I've been experiencing episodes of dizziness at work, so I think I need to get my"
       },
       "target_token": "Output \" blood\"",
       "probabilities": {
         "clinical": 0.079,
-        "patient": 0.403
+        "patient": 0.403,
+        "translated": 0.357
       },
       "language_penalty": 0.324,
       "clinical_mass": {
         "clinical": 0.2911,
-        "patient": 0.2899
+        "patient": 0.2899,
+        "translated": 0.3228
       },
       "error_share": {
         "clinical": 0.0914,
-        "patient": 0.0978
+        "patient": 0.0978,
+        "translated": 0.0906
       },
       "top_path": {
         "clinical": "embedding \u2192 [L20\u00b7O] words and concepts about the inner ear | ear and hea \u2192 Output \" hearing\" (p=0.197)",
-        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.403)"
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.403)",
+        "translated": "[L18\u00b7S]  \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.357)"
       },
       "screening": {
         "status": "passed",
@@ -145,9 +177,9 @@
         ],
         "probe_extension": null
       },
-      "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "mitigation_recovery": -0.04600000000000004,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -192,6 +224,28 @@
           [
             "Output \" hearing\"",
             0.037
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" blood\"",
+            0.357
+          ],
+          [
+            "Output \" hearing\"",
+            0.16
+          ],
+          [
+            "Output \" eyes\"",
+            0.122
+          ],
+          [
+            "Output \" ears\"",
+            0.062
+          ],
+          [
+            "Output \" BP\"",
+            0.035
           ]
         ]
       },
@@ -266,25 +320,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I've been getting these tension headaches when I read, so I might need to see a",
-        "patient": "I've been getting these awful headaches when I read, so I might need to see a"
+        "patient": "I've been getting these awful headaches when I read, so I might need to see a",
+        "translated": "I've been experiencing severe headaches during reading, so I might need to see a"
       },
       "target_token": "Output \" neuro\"",
       "probabilities": {
         "clinical": 0.114,
-        "patient": 0.064
+        "patient": 0.064,
+        "translated": 0.105
       },
       "language_penalty": -0.05,
       "clinical_mass": {
         "clinical": 0.3884,
-        "patient": 0.3802
+        "patient": 0.3802,
+        "translated": 0.4082
       },
       "error_share": {
         "clinical": 0.0953,
-        "patient": 0.0969
+        "patient": 0.0969,
+        "translated": 0.092
       },
       "top_path": {
         "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.684)",
-        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.791)"
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.791)",
+        "translated": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.760)"
       },
       "screening": {
         "status": "passed",
@@ -296,9 +355,9 @@
         ],
         "probe_extension": null
       },
-      "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "mitigation_recovery": 0.040999999999999995,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -344,6 +403,28 @@
             "Output \" Dr\"",
             0.013
           ]
+        ],
+        "translated": [
+          [
+            "Output \" doctor\"",
+            0.76
+          ],
+          [
+            "Output \" neuro\"",
+            0.105
+          ],
+          [
+            "Output \" specialist\"",
+            0.035
+          ],
+          [
+            "Output \" doc\"",
+            0.018
+          ],
+          [
+            "Output \" physician\"",
+            0.011
+          ]
         ]
       },
       "circuit_diff": {
@@ -356,103 +437,6 @@
         "png": "trace_out/pairs_20260711T051145Z/index_29.png",
         "diff_html": "trace_out/pairs_20260711T051145Z/index_29_diff.html",
         "diff_png": "trace_out/pairs_20260711T051145Z/index_29_diff.png"
-      }
-    },
-    {
-      "index": 30,
-      "mode": "2panel",
-      "prompts": {
-        "clinical": "I have excoriation disorder when I'm anxious, so my therapist said I should develop a",
-        "patient": "I can't seem to stop picking at my skin when I'm anxious, so my therapist said I should develop a"
-      },
-      "target_token": "Output \" habit\"",
-      "probabilities": {
-        "clinical": 0.077,
-        "patient": 0.108
-      },
-      "language_penalty": 0.031,
-      "clinical_mass": {
-        "clinical": 0.2663,
-        "patient": 0.1905
-      },
-      "error_share": {
-        "clinical": 0.1027,
-        "patient": 0.0999
-      },
-      "top_path": {
-        "clinical": "embedding \u2192 Output \" \"\" (p=0.061)",
-        "patient": "embedding \u2192 Output \" skin\" (p=0.087)"
-      },
-      "screening": {
-        "status": "passed",
-        "min_prob": 0.02,
-        "intended_target": " habit",
-        "observed_clinical": [
-          "Output \" habit\"",
-          0.077
-        ],
-        "probe_extension": null
-      },
-      "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
-      "forced_targets": [],
-      "predictive_spread": {
-        "clinical": [
-          [
-            "Output \" coping\"",
-            0.118
-          ],
-          [
-            "Output \" habit\"",
-            0.077
-          ],
-          [
-            "Output \" \"\"",
-            0.061
-          ],
-          [
-            "Output \" routine\"",
-            0.055
-          ],
-          [
-            "Output \" self\"",
-            0.045
-          ]
-        ],
-        "patient": [
-          [
-            "Output \" habit\"",
-            0.108
-          ],
-          [
-            "Output \" skin\"",
-            0.087
-          ],
-          [
-            "Output \" new\"",
-            0.085
-          ],
-          [
-            "Output \" \"\"",
-            0.063
-          ],
-          [
-            "Output \" coping\"",
-            0.045
-          ]
-        ]
-      },
-      "circuit_diff": {
-        "shared_features": 695,
-        "unique_to_a": 889,
-        "unique_to_b": 820
-      },
-      "outputs": {
-        "html": "trace_out/pairs_20260711T051145Z/index_30.html",
-        "png": "trace_out/pairs_20260711T051145Z/index_30.png",
-        "diff_html": "trace_out/pairs_20260711T051145Z/index_30_diff.html",
-        "diff_png": "trace_out/pairs_20260711T051145Z/index_30_diff.png"
       }
     }
   ]
