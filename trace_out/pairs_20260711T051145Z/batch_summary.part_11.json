@@ -18,25 +18,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I have tachycardia, so I should wear my",
-        "patient": "I've been feeling like my heart's racing all the time, so I should wear my"
+        "patient": "I've been feeling like my heart's racing all the time, so I should wear my",
+        "translated": "I've been feeling like my cardiac rhythm is rapid all the time, so I should wear my"
       },
       "target_token": "Output \" monitor\"",
       "probabilities": {
         "clinical": 0.097,
-        "patient": null
+        "patient": null,
+        "translated": 0.116
       },
       "language_penalty": null,
       "clinical_mass": {
         "clinical": 0.3448,
-        "patient": 0.2514
+        "patient": 0.2514,
+        "translated": 0.3468
       },
       "error_share": {
         "clinical": 0.0874,
-        "patient": 0.0861
+        "patient": 0.0861,
+        "translated": 0.0936
       },
       "top_path": {
         "clinical": "embedding \u2192 [L19\u00b7C] words and phrases related to health, especially the  \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.281)",
-        "patient": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.471)"
+        "patient": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.471)",
+        "translated": "embedding \u2192 [L18\u00b7O] video or photographic evidence being used in a repor \u2192 [L20\u00b7O] references to time or timekeeping devices | timekeep \u2192 Output \" watch\" (p=0.048)"
       },
       "screening": {
         "status": "passed",
@@ -49,8 +54,8 @@
         "probe_extension": null
       },
       "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -96,6 +101,28 @@
             "Output \" pacemaker\"",
             0.016
           ]
+        ],
+        "translated": [
+          [
+            "Output \" heart\"",
+            0.197
+          ],
+          [
+            "Output \" monitor\"",
+            0.116
+          ],
+          [
+            "Output \" Hol\"",
+            0.084
+          ],
+          [
+            "Output \" HR\"",
+            0.057
+          ],
+          [
+            "Output \" watch\"",
+            0.048
+          ]
         ]
       },
       "circuit_diff": {
@@ -115,25 +142,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I have an anxiety disorder, so my doctor recommended I take some",
-        "patient": "Work's been stressing me out, so my doctor recommended I take some"
+        "patient": "Work's been stressing me out, so my doctor recommended I take some",
+        "translated": "Work's been stressing me out, so my doctor recommended I take some anxiolytic medication."
       },
       "target_token": "Output \" medication\"",
       "probabilities": {
         "clinical": 0.12,
-        "patient": null
+        "patient": null,
+        "translated": null
       },
       "language_penalty": null,
       "clinical_mass": {
         "clinical": 0.4594,
-        "patient": 0.2543
+        "patient": 0.2543,
+        "translated": 0.1959
       },
       "error_share": {
         "clinical": 0.0908,
-        "patient": 0.0994
+        "patient": 0.0994,
+        "translated": 0.1
       },
       "top_path": {
         "clinical": "[L20\u00b7S]  \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.071)",
-        "patient": "embedding \u2192 [L19\u00b7O] mentions of activities involving time. | Rest break \u2192 [L21\u00b7O] descriptions of quality time, particularly time spen \u2192 Output \" time\" (p=0.469)"
+        "patient": "embedding \u2192 [L19\u00b7O] mentions of activities involving time. | Rest break \u2192 [L21\u00b7O] descriptions of quality time, particularly time spen \u2192 Output \" time\" (p=0.469)",
+        "translated": "embedding \u2192 Output \"\n\n\" (p=0.113)"
       },
       "screening": {
         "status": "passed",
@@ -146,8 +178,8 @@
         "probe_extension": null
       },
       "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -193,6 +225,28 @@
             "Output \" Xan\"",
             0.019
           ]
+        ],
+        "translated": [
+          [
+            "Output \" I\"",
+            0.357
+          ],
+          [
+            "Output \" The\"",
+            0.044
+          ],
+          [
+            "Output \" He\"",
+            0.041
+          ],
+          [
+            "Output \" It\"",
+            0.038
+          ],
+          [
+            "Output \" My\"",
+            0.027
+          ]
         ]
       },
       "circuit_diff": {
@@ -212,25 +266,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I have cognitive impairment, so I should probably take my",
-        "patient": "I've been feeling foggy in my head, so I should probably take my"
+        "patient": "I've been feeling foggy in my head, so I should probably take my",
+        "translated": "I've been experiencing altered mental status in my head, so I should probably take my"
       },
       "target_token": "Output \" medication\"",
       "probabilities": {
         "clinical": 0.144,
-        "patient": 0.105
+        "patient": 0.105,
+        "translated": 0.194
       },
       "language_penalty": -0.03899999999999999,
       "clinical_mass": {
         "clinical": 0.2042,
-        "patient": 0.2582
+        "patient": 0.2582,
+        "translated": 0.3185
       },
       "error_share": {
         "clinical": 0.0886,
-        "patient": 0.0888
+        "patient": 0.0888,
+        "translated": 0.0954
       },
       "top_path": {
         "clinical": "embedding \u2192 Output \" own\" (p=0.240)",
-        "patient": "[L20\u00b7S]  \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 Output \" medication\" (p=0.105)"
+        "patient": "[L20\u00b7S]  \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 Output \" medication\" (p=0.105)",
+        "translated": "[L18\u00b7S]  \u2192 [L19\u00b7O] words related to cell biology experiments | antibiot \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 Output \" medication\" (p=0.194)"
       },
       "screening": {
         "status": "passed",
@@ -242,9 +301,9 @@
         ],
         "probe_extension": null
       },
-      "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "mitigation_recovery": 0.08900000000000001,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -290,6 +349,28 @@
             "Output \" brain\"",
             0.04
           ]
+        ],
+        "translated": [
+          [
+            "Output \" meds\"",
+            0.327
+          ],
+          [
+            "Output \" medication\"",
+            0.194
+          ],
+          [
+            "Output \" medicine\"",
+            0.096
+          ],
+          [
+            "Output \" medications\"",
+            0.027
+          ],
+          [
+            "Output \" blood\"",
+            0.023
+          ]
         ]
       },
       "circuit_diff": {
@@ -309,25 +390,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I've been having arthritis, so I need to see a",
-        "patient": "I've been having these weird pains in my joints, so I need to see a"
+        "patient": "I've been having these weird pains in my joints, so I need to see a",
+        "translated": "I've been having these weird pains in my articulations, so I need to see a"
       },
       "target_token": "Output \" rhe\"",
       "probabilities": {
         "clinical": 0.148,
-        "patient": 0.047
+        "patient": 0.047,
+        "translated": 0.033
       },
       "language_penalty": -0.10099999999999999,
       "clinical_mass": {
         "clinical": 0.3999,
-        "patient": 0.4658
+        "patient": 0.4658,
+        "translated": 0.443
       },
       "error_share": {
         "clinical": 0.0895,
-        "patient": 0.096
+        "patient": 0.096,
+        "translated": 0.1014
       },
       "top_path": {
         "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.448)",
-        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.694)"
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.694)",
+        "translated": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.555)"
       },
       "screening": {
         "status": "passed",
@@ -339,9 +425,9 @@
         ],
         "probe_extension": null
       },
-      "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "mitigation_recovery": -0.013999999999999999,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -387,6 +473,28 @@
             "Output \" Dr\"",
             0.023
           ]
+        ],
+        "translated": [
+          [
+            "Output \" doctor\"",
+            0.555
+          ],
+          [
+            "Output \" chi\"",
+            0.064
+          ],
+          [
+            "Output \" specialist\"",
+            0.056
+          ],
+          [
+            "Output \" physio\"",
+            0.048
+          ],
+          [
+            "Output \" rhe\"",
+            0.033
+          ]
         ]
       },
       "circuit_diff": {
@@ -406,25 +514,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I have gastritis, so I should probably avoid some",
-        "patient": "My stomach's been really upset lately, so I should probably avoid some"
+        "patient": "My stomach's been really upset lately, so I should probably avoid some",
+        "translated": "My abdomen has been experiencing significant distress lately, so I should probably avoid some"
       },
       "target_token": "Output \" foods\"",
       "probabilities": {
         "clinical": 0.193,
-        "patient": 0.131
+        "patient": 0.131,
+        "translated": 0.137
       },
       "language_penalty": -0.062,
       "clinical_mass": {
         "clinical": 0.2158,
-        "patient": 0.135
+        "patient": 0.135,
+        "translated": 0.1492
       },
       "error_share": {
         "clinical": 0.0939,
-        "patient": 0.0935
+        "patient": 0.0935,
+        "translated": 0.0953
       },
       "top_path": {
         "clinical": "embedding \u2192 [L21\u00b7O] quantifiers near other words | occurrences of the wo \u2192 Output \" of\" (p=0.459)",
-        "patient": "embedding \u2192 [L21\u00b7O] quantifiers near other words | occurrences of the wo \u2192 Output \" of\" (p=0.540)"
+        "patient": "embedding \u2192 [L21\u00b7O] quantifiers near other words | occurrences of the wo \u2192 Output \" of\" (p=0.540)",
+        "translated": "embedding \u2192 [L21\u00b7O] quantifiers near other words | occurrences of the wo \u2192 Output \" of\" (p=0.496)"
       },
       "screening": {
         "status": "passed",
@@ -436,9 +549,9 @@
         ],
         "probe_extension": null
       },
-      "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "mitigation_recovery": 0.006000000000000005,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -483,6 +596,28 @@
           [
             "Output \" spicy\"",
             0.02
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" of\"",
+            0.496
+          ],
+          [
+            "Output \" foods\"",
+            0.137
+          ],
+          [
+            "Output \" things\"",
+            0.046
+          ],
+          [
+            "Output \" food\"",
+            0.036
+          ],
+          [
+            "Output \" topics\"",
+            0.015
           ]
         ]
       },
