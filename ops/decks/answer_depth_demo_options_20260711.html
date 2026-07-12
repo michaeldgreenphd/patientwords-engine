@@ -3,138 +3,161 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Demonstrating Answer Depth · options</title>
+<title>Answer Depth · choices</title>
 <style>
   :root{
-    --paper:#faf9f5; --ink:#1c1c19; --patient:#111827; --clinical:#15803d;
-    --penalty:#b4483d; --muted:#6d6c66; --structural:#c3c9d2; --hairline:#dcdad2;
-    --teal:#0f766e;
+    --paper:#faf9f5; --ink:#1c1c19; --clinical:#15803d; --penalty:#b4483d;
+    --muted:#6d6c66; --structural:#c3c9d2; --hairline:#dcdad2; --teal:#0f766e;
     --serif:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;
     --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);
-    font-size:16.5px;line-height:1.6;padding:18px 16px 70px;max-width:520px;margin:0 auto}
-  .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
-    color:var(--muted)}
-  h1{font-size:24px;line-height:1.2;margin:6px 0 4px}
-  .sub{color:var(--muted);font-size:14.5px;margin:0 0 18px}
+    font-size:16px;line-height:1.55;padding:16px 14px 120px;max-width:520px;margin:0 auto}
+  .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  h1{font-size:22px;margin:6px 0 4px}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 16px}
+  h2{font-size:13px;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;
+     color:var(--muted);font-weight:600;margin:24px 0 8px}
   .card{border:1px solid var(--hairline);border-top:2px solid var(--ink);
-    padding:14px 16px;margin:0 0 14px;background:#fff}
-  .card h2{font-size:17px;margin:0 0 2px}
-  .meta{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted);
-    margin:0 0 8px}
-  .meta b{color:var(--clinical);font-weight:600}
-  .card p{font-size:14.5px;margin:0 0 8px}
-  .take{border-left:2px solid var(--teal);padding-left:10px;font-size:13.5px;color:var(--ink)}
-  .take .tl{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--teal);
-    text-transform:uppercase;font-weight:600;margin-right:6px}
-  ol.path{margin:4px 0 8px;padding-left:20px;font-size:14px}
-  ol.path li{margin:0 0 4px}
-  .q{border:1px solid var(--hairline);padding:12px 14px;margin:0 0 10px;background:#fff}
-  .q p{font-size:14px;margin:0 0 6px}
-  .q .dflt{font-family:var(--mono);font-size:11.5px;color:var(--teal)}
-  .flag{color:var(--penalty)}
-  a{color:inherit}
-  .foot{font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.8;
-    border-top:1px solid var(--hairline);padding-top:10px;margin-top:22px}
+    padding:12px 14px;margin:0 0 12px;background:#fff}
+  .card h3{font-size:16px;margin:0 0 4px}
+  .card p{font-size:13.5px;color:var(--ink);margin:0 0 10px}
+  .card p.m{color:var(--muted);font-size:12.5px}
+  .seg{display:flex;gap:8px;flex-wrap:wrap}
+  .seg button{flex:1;min-width:86px;font-family:var(--mono);font-size:12px;letter-spacing:.06em;
+    padding:11px 8px;background:none;border:1.5px solid var(--structural);color:var(--muted);
+    cursor:pointer;border-radius:3px}
+  .seg button[aria-pressed=true]{border-color:var(--clinical);color:var(--clinical);font-weight:700;
+    background:#eef5ef}
+  .seg button.neg[aria-pressed=true]{border-color:var(--penalty);color:var(--penalty);background:#f8efee}
+  .seg button:focus-visible{outline:2px solid var(--clinical);outline-offset:2px}
+  textarea{width:100%;border:1px solid var(--hairline);background:#fff;font-family:var(--serif);
+    font-size:14px;padding:10px;min-height:64px;border-radius:3px}
+  .bar{position:fixed;bottom:0;left:0;right:0;background:var(--paper);
+    border-top:1px solid var(--ink);padding:10px 14px calc(10px + env(safe-area-inset-bottom));}
+  .bar-inner{max-width:520px;margin:0 auto;display:flex;gap:10px;align-items:center}
+  .bar button{flex:1;font-family:var(--mono);font-size:13px;letter-spacing:.08em;padding:13px;
+    background:var(--ink);color:var(--paper);border:0;cursor:pointer;border-radius:3px}
+  .bar button:focus-visible{outline:2px solid var(--clinical);outline-offset:2px}
+  .bar .n{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:64px;text-align:right}
+  #out{font-family:var(--mono);font-size:11.5px;white-space:pre-wrap;background:#fff;
+    border:1px dashed var(--structural);padding:10px;margin:14px 0 0;display:none}
+  .ok{color:var(--clinical);font-family:var(--mono);font-size:11px;display:none;margin-left:6px}
 </style>
 </head>
 <body>
-<p class="tag">internal · 2026-07-11 · decision aid, not site content</p>
-<h1>Demonstrating Answer Depth</h1>
-<p class="sub">Five ways to show what the depth readout buys, by audience. Reply with
-option letters and question numbers; defaults run unless you say otherwise.</p>
+<p class="tag">internal · tap your choices · 2026-07-12</p>
+<h1>Answer Depth: your calls</h1>
+<p class="sub">Tap through, then Copy choices at the bottom and paste the result back to
+Claude. Selections stay saved on this phone.</p>
 
-<div class="card">
-  <h2>A · The 90-second site walk</h2>
-  <p class="meta">audience <b>anyone</b> · cost <b>$0</b> · status <b>ready now</b></p>
-  <ol class="path">
-    <li>Answer Depth → The switch, close up → open the chest-pain pair: lungs becomes heart.</li>
-    <li>Scroll up: 50 squares, three fates, one batch.</li>
-    <li>Methods → Reading the layers: the same idea on one pair, with the causal patch lane.</li>
-    <li>Back to Answer Depth: the translation table and its prediction.</li>
-  </ol>
-  <p class="take"><span class="tl">my take</span>The default for any meeting. It ends on
-  a testable prediction, which is the strongest exit line the project has.</p>
-</div>
+<h2>Demonstrations</h2>
+<div id="demos"></div>
 
-<div class="card">
-  <h2>B · The live instrument</h2>
-  <p class="meta">audience <b>technical</b> · cost <b>$0</b> · status <b>needs one check</b></p>
-  <p>Open Neuronpedia's lens page, paste one of our pairs, and watch the readout form
-  live. Their interface also steers: suppress or swap a concept and watch the answer
-  move. Nothing to install; it is public infrastructure anyone can verify.</p>
-  <p class="take"><span class="tl">my take</span>The encore after A for researchers.
-  One check first: confirm their page serves gemma-2-2b interactively, not only through
-  the API. I can verify and write the exact steps.</p>
-</div>
+<h2>Open questions</h2>
+<div id="qs"></div>
 
-<div class="card">
-  <h2>C · The monitoring-loop pitch</h2>
-  <p class="meta">audience <b>medical AI companies</b> · cost <b>$0</b> · status <b>one deck card away</b></p>
-  <p>Frame the readout as production triage: every flagged failure is classified free
-  of charge into never-formed or lost-late, translation is spent only where it pays,
-  and patching verifies the fix. The pitch is an operations loop, not a paper.</p>
-  <p class="take"><span class="tl">my take</span>This is the utility story for
-  deployers. One card in the 07-17 deck covers it; I can add it tonight.</p>
-</div>
+<h2>Anything else</h2>
+<textarea id="note" placeholder="optional note for Claude"></textarea>
 
-<div class="card">
-  <h2>D · The collaboration hook</h2>
-  <p class="meta">audience <b>Anthropic meeting</b> · cost <b>$0</b> · status <b>deck update queued</b></p>
-  <p>The line: your lens shipped Monday; by Friday it was attached to a causal check
-  and produced a falsifiable prediction about when translation works, on public
-  infrastructure, for under a dollar. Early split: 0.267 versus 0.124 tiers regained.
-  The confirmatory version needs bigger n and pre-registered endpoints.</p>
-  <p class="take"><span class="tl">my take</span>Leads with their work, ends with a
-  concrete ask. Strongest card in the meeting deck; I will fold it in with fresh
-  numbers on the 17th.</p>
-</div>
+<div id="out" aria-live="polite"></div>
 
-<div class="card">
-  <h2>E · The 40-second capture</h2>
-  <p class="meta">audience <b>email · slack · socials</b> · cost <b>$0</b> · status <b>on request</b></p>
-  <p>A scripted screen capture of the close-up example opening, the strip flickering
-  and dying at the output, then the translation table. For places a link will not be
-  clicked.</p>
-  <p class="take"><span class="tl">my take</span>Useful but last. Make it after the
-  page survives your Gemini screenshot round and the mitigation arm lands.</p>
-</div>
+<div class="bar"><div class="bar-inner">
+  <span class="n" id="count">0 / 11</span>
+  <button id="copy" type="button">Copy choices</button>
+  <span class="ok" id="ok">copied</span>
+</div></div>
 
-<h1 style="font-size:20px;margin-top:26px">Outstanding questions</h1>
-<p class="sub">Defaults run unless you object.</p>
+<script>
+var DEMOS=[
+ ["A","90-second site walk","Close-up example, unit rows, methods figure, translation test. Default for any meeting."],
+ ["B","Live Neuronpedia instrument","Paste a pair, watch the readout, steer it. Needs one page check first."],
+ ["C","Monitoring-loop pitch","Readout as free production triage; one card in the 07-17 deck."],
+ ["D","Anthropic collaboration hook","Their Monday lens, our Friday causal check and prediction; deck card with the ask."],
+ ["E","40-second screen capture","For email and slack; make after the mitigation arm lands."]
+];
+var QS=[
+ ["Q1","Lost-late translation row","Batch-6 translation arm is running. When the class reaches n of 3:",
+  [["publish automatically",1],["hold for my review",0]]],
+ ["Q2","Gallery republish","Adding Tier B batches to the public gallery lights the depth badges and grows the scenario count:",
+  [["republish, cap 25 renders, flag in digest",1],["hold for now",0]]],
+ ["Q3","Confirmatory language","Depth findings stay exploratory until endpoints are pre-registered:",
+  [["draft the prereg for my review",1],["not yet",0]]],
+ ["Q4","Neuronpedia aliasing issue","The instruct id returns readouts identical to base; asking is public:",
+  [["draft it, I decide",1],["post it",0],["drop it",0]]],
+ ["Q5","Top-8 floor wording","Low-probability answers are invisible to the lens:",
+  [["current clause stands",1],["expand to a full sentence",0]]],
+ ["Q6","Tab name","Answer Depth is live in the nav:",
+  [["keep",1],["rename, see note",0]]]
+];
+var state={};
+try{state=JSON.parse(localStorage.getItem('ad-choices')||'{}');}catch(e){}
 
-<div class="q"><p><b>1 · Lost-late translation row.</b> The batch-6 translation arm is
-  queued and approved. When it lands and the class reaches n of 3, the table row
-  publishes itself.</p>
-  <p class="dflt">default: publish automatically, digest notes it</p></div>
+function save(){try{localStorage.setItem('ad-choices',JSON.stringify(state));}catch(e){}
+  var done=DEMOS.filter(function(d){return state[d[0]];}).length+
+           QS.filter(function(q){return state[q[0]];}).length;
+  document.getElementById('count').textContent=done+' / '+(DEMOS.length+QS.length);}
 
-<div class="q"><p><b>2 · Gallery republish.</b> The depth badges stay dormant until the
-  public gallery ingests a Tier B batch. Republishing expands the public scenario
-  count and render set.</p>
-  <p class="dflt">default: nightly cycle republishes with the usual 25-render cap; flagged in the digest first</p></div>
+function seg(key,choices,neg){
+  var wrap=document.createElement('div');wrap.className='seg';
+  wrap.setAttribute('role','group');
+  choices.forEach(function(c){
+    var b=document.createElement('button');b.type='button';b.textContent=c;
+    if(neg&&neg.indexOf(c)>=0)b.className='neg';
+    b.setAttribute('aria-pressed',state[key]===c?'true':'false');
+    b.onclick=function(){
+      state[key]=c;save();
+      Array.prototype.forEach.call(wrap.children,function(x){
+        x.setAttribute('aria-pressed',x===b?'true':'false');});
+    };
+    wrap.appendChild(b);
+  });
+  return wrap;
+}
 
-<div class="q"><p><b>3 · Confirmatory language.</b> Everything depth-related is labeled
-  exploratory. Before any stronger claim, the absence-versus-suppression endpoints get
-  pre-registered on future batches.</p>
-  <p class="dflt">default: I draft the endpoints doc for your review; nothing upgrades until you approve</p></div>
+var dm=document.getElementById('demos');
+DEMOS.forEach(function(d){
+  var c=document.createElement('div');c.className='card';
+  c.innerHTML='<h3>'+d[0]+' · '+d[1]+'</h3><p class="m">'+d[2]+'</p>';
+  c.appendChild(seg(d[0],['run','later','skip'],['skip']));
+  dm.appendChild(c);
+});
+var qm=document.getElementById('qs');
+QS.forEach(function(q){
+  var c=document.createElement('div');c.className='card';
+  c.innerHTML='<h3>'+q[0]+' · '+q[1]+'</h3><p class="m">'+q[2]+'</p>';
+  var labels=q[3].map(function(x){return x[0]+(x[1]?' (default)':'');});
+  c.appendChild(seg(q[0],labels));
+  qm.appendChild(c);
+});
+document.getElementById('note').value=state._note||'';
+document.getElementById('note').addEventListener('input',function(e){
+  state._note=e.target.value;save();});
+save();
 
-<div class="q"><p><b>4 · <span class="flag">Instruct-model aliasing.</span></b> The
-  gemma-2-2b-it id returns readouts identical to base across all 50 pairs. Worth
-  asking Neuronpedia whether both ids hit one host. Filing an issue is public.</p>
-  <p class="dflt">default: I draft the issue text; you decide whether it posts</p></div>
-
-<div class="q"><p><b>5 · Top-8 floor.</b> Low-probability answers are invisible to the
-  lens even when patching shows strong recovery (the sedative pair). The methods
-  limitation note covers it in one clause; a fuller sentence is possible.</p>
-  <p class="dflt">default: current clause stands</p></div>
-
-<div class="q"><p><b>6 · Tab name.</b> Answer Depth is live in the nav on every page.</p>
-  <p class="dflt">default: keep</p></div>
-
-<p class="foot">Every number cited here traces to data/jlens_depth.json in the public
-site repo. Method credit: Jacobian lens, Gurnee et al., Transformer Circuits 2026;
-anthropics/jacobian-lens; hosted by Neuronpedia.</p>
+function summary(){
+  var lines=['ANSWER DEPTH CHOICES · '+new Date().toISOString().slice(0,10)];
+  DEMOS.forEach(function(d){lines.push(d[0]+' '+d[1]+': '+(state[d[0]]||'(no answer)'));});
+  QS.forEach(function(q){lines.push(q[0]+' '+q[1]+': '+(state[q[0]]||'(no answer)'));});
+  if(state._note)lines.push('NOTE: '+state._note);
+  return lines.join('\n');
+}
+document.getElementById('copy').onclick=function(){
+  var text=summary();
+  var out=document.getElementById('out');
+  out.textContent=text;out.style.display='block';
+  function done(){var ok=document.getElementById('ok');ok.style.display='inline';
+    setTimeout(function(){ok.style.display='none';},2000);}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done,function(){/* text shown below anyway */});
+  }else{
+    var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);
+    ta.select();try{document.execCommand('copy');done();}catch(e){}
+    document.body.removeChild(ta);
+  }
+  out.scrollIntoView({behavior:'smooth',block:'center'});
+};
+</script>
 </body>
 </html>
