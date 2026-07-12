@@ -71,8 +71,8 @@ Priority order when slots are free:
 
 1. **Generation** (scenario-generation slot free, Tier B accepted < 1,600,
    validator-yield stopping rule not tripped): fire the next batch —
-   `fire --trigger scenario-generation --params '{"task":"pairs","num":"50",
-   "anthropic_model":"claude-haiku-4-5","max_spend":"0.25",
+   `fire --trigger scenario-generation --params '{"task":"pairs","num":"100",
+   "anthropic_model":"claude-haiku-4-5","max_spend":"0.50",
    "seed_pairs":"medlang_circuits/data/ci_pairs_2panel.json",
    "trace_sample_size":"0","_note":"tierB batch <k>"}'`
    **Bootstrap:** if `tierb.start_utc` is null when you fire the FIRST Tier B
