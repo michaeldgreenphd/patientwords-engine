@@ -18,25 +18,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I keep experiencing dissociative episodes during meetings at work, so my boss thinks I have a",
-        "patient": "I keep spacing out during meetings at work, so my boss thinks I have a"
+        "patient": "I keep spacing out during meetings at work, so my boss thinks I have a",
+        "translated": "I keep experiencing episodes of altered consciousness during meetings at work, so my boss thinks I have a"
       },
       "target_token": "Output \" problem\"",
       "probabilities": {
         "clinical": 0.093,
-        "patient": 0.186
+        "patient": 0.186,
+        "translated": 0.1
       },
       "language_penalty": 0.093,
       "clinical_mass": {
         "clinical": 0.3387,
-        "patient": 0.1777
+        "patient": 0.1777,
+        "translated": 0.2999
       },
       "error_share": {
         "clinical": 0.1078,
-        "patient": 0.105
+        "patient": 0.105,
+        "translated": 0.1034
       },
       "top_path": {
         "clinical": "embedding \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" mental\" (p=0.419)",
-        "patient": "embedding \u2192 Output \" short\" (p=0.051)"
+        "patient": "embedding \u2192 Output \" short\" (p=0.051)",
+        "translated": "embedding \u2192 Output \" serious\" (p=0.053)"
       },
       "screening": {
         "status": "passed",
@@ -48,9 +53,9 @@
         ],
         "probe_extension": null
       },
-      "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "mitigation_recovery": -0.086,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -96,6 +101,28 @@
             "Output \" mental\"",
             0.046
           ]
+        ],
+        "translated": [
+          [
+            "Output \" mental\"",
+            0.126
+          ],
+          [
+            "Output \" brain\"",
+            0.111
+          ],
+          [
+            "Output \" problem\"",
+            0.1
+          ],
+          [
+            "Output \" medical\"",
+            0.076
+          ],
+          [
+            "Output \" serious\"",
+            0.053
+          ]
         ]
       },
       "circuit_diff": {
@@ -115,25 +142,30 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I've been experiencing cognitive impairment in the mornings, so I should probably take my",
-        "patient": "I've been having these awful brain fog in the mornings, so I should probably take my"
+        "patient": "I've been having these awful brain fog in the mornings, so I should probably take my",
+        "translated": "I've been having this awful cerebral cloudiness in the mornings, so I should probably take my"
       },
       "target_token": "Output \" medication\"",
       "probabilities": {
         "clinical": 0.132,
-        "patient": 0.085
+        "patient": 0.085,
+        "translated": 0.065
       },
       "language_penalty": -0.047,
       "clinical_mass": {
         "clinical": 0.3098,
-        "patient": 0.2822
+        "patient": 0.2822,
+        "translated": 0.2624
       },
       "error_share": {
         "clinical": 0.0921,
-        "patient": 0.0958
+        "patient": 0.0958,
+        "translated": 0.0933
       },
       "top_path": {
         "clinical": "embedding \u2192 Output \" morning\" (p=0.036)",
-        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] text related to vitamins and nutritional deficiencie \u2192 [L19\u00b7C] terminology related to medicine, health, and nutriti \u2192 Output \" supplements\" (p=0.057)"
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] text related to vitamins and nutritional deficiencie \u2192 [L19\u00b7C] terminology related to medicine, health, and nutriti \u2192 Output \" supplements\" (p=0.057)",
+        "translated": "[L18\u00b7S]  \u2192 [L19\u00b7O] words related to cell biology experiments | antibiot \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 Output \" medication\" (p=0.065)"
       },
       "screening": {
         "status": "passed",
@@ -145,9 +177,9 @@
         ],
         "probe_extension": null
       },
-      "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
+      "mitigation_recovery": -0.020000000000000004,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -192,6 +224,28 @@
           [
             "Output \" vitamin\"",
             0.036
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" meds\"",
+            0.185
+          ],
+          [
+            "Output \" vitamins\"",
+            0.069
+          ],
+          [
+            "Output \" medication\"",
+            0.065
+          ],
+          [
+            "Output \" medicine\"",
+            0.059
+          ],
+          [
+            "Output \" vitamin\"",
+            0.04
           ]
         ]
       },
@@ -260,103 +314,6 @@
         ]
       },
       "outputs": {}
-    },
-    {
-      "index": 49,
-      "mode": "2panel",
-      "prompts": {
-        "clinical": "I've been experiencing pleuritic chest pain, so I really should check my",
-        "patient": "I've been getting those sharp stabbing pains in my chest, so I really should check my"
-      },
-      "target_token": "Output \" lungs\"",
-      "probabilities": {
-        "clinical": 0.288,
-        "patient": null
-      },
-      "language_penalty": null,
-      "clinical_mass": {
-        "clinical": 0.3733,
-        "patient": 0.3564
-      },
-      "error_share": {
-        "clinical": 0.1034,
-        "patient": 0.0948
-      },
-      "top_path": {
-        "clinical": "embedding \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L25\u00b7C] medical terminology related to pulmonology. | lungs  \u2192 Output \" lung\" (p=0.071)",
-        "patient": "embedding \u2192 [L19\u00b7C] words and phrases related to health, especially the  \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.148)"
-      },
-      "screening": {
-        "status": "passed",
-        "min_prob": 0.02,
-        "intended_target": " lungs",
-        "observed_clinical": [
-          "Output \" lungs\"",
-          0.288
-        ],
-        "probe_extension": null
-      },
-      "mitigation_recovery": null,
-      "translation_method": null,
-      "translation_model": null,
-      "forced_targets": [],
-      "predictive_spread": {
-        "clinical": [
-          [
-            "Output \" lungs\"",
-            0.288
-          ],
-          [
-            "Output \" chest\"",
-            0.115
-          ],
-          [
-            "Output \" lung\"",
-            0.071
-          ],
-          [
-            "Output \" heart\"",
-            0.051
-          ],
-          [
-            "Output \" blood\"",
-            0.031
-          ]
-        ],
-        "patient": [
-          [
-            "Output \" blood\"",
-            0.295
-          ],
-          [
-            "Output \" heart\"",
-            0.148
-          ],
-          [
-            "Output \" cholesterol\"",
-            0.115
-          ],
-          [
-            "Output \" BP\"",
-            0.035
-          ],
-          [
-            "Output \" health\"",
-            0.027
-          ]
-        ]
-      },
-      "circuit_diff": {
-        "shared_features": 676,
-        "unique_to_a": 756,
-        "unique_to_b": 733
-      },
-      "outputs": {
-        "html": "trace_out/pairs_20260711T051145Z/index_49.html",
-        "png": "trace_out/pairs_20260711T051145Z/index_49.png",
-        "diff_html": "trace_out/pairs_20260711T051145Z/index_49_diff.html",
-        "diff_png": "trace_out/pairs_20260711T051145Z/index_49_diff.png"
-      }
     }
   ]
 }
