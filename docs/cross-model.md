@@ -90,3 +90,19 @@ the front end labels these models "next-token behavior only".
   ```
   gemma's numbers stay graph-derived; the Qwen numbers are raw next-token logits.
   That method difference is the one caveat of comparing them side by side.
+
+## Probe-extension outcomes (2026-07-12)
+
+The 07-11 five-model probe (3 pairs each through the logits path) triaged as:
+
+- **Landed and usable:** llama-3.2-3b, olmo-2-1b, gemma-2-2b-it. Unified-set
+  runs are queued; `inference.revision` pins fill from each model's next run.
+- **gemma-2-9b: skipped.** Died twice loading weights on the standard runner,
+  the second time (07-12) with the 12G swap step in place — the host kills the
+  runner before the load completes. Protocol says two deaths = skip; revisit
+  only if Tier B2 justifies a larger runner.
+- **biomistral-7b: dropped.** The upstream repository publishes pickle `.bin`
+  shards only, no `model.safetensors`. This study's supply-chain posture loads
+  safetensors exclusively (`use_safetensors=True`), and transformers' automatic
+  conversion path failed server-side (07-12 run). Loading pickled weights is
+  not an acceptable workaround, so the model is structurally out of scope.
