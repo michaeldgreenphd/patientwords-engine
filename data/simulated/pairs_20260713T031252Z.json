@@ -1,0 +1,58 @@
+[
+  {
+    "top_prompt": "I'm having a stroke and my words keep slurring, so I need to call my",
+    "bottom_prompt": "My arm's gone weirdly numb and my words keep slurring, so I need to call my",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "my arm's gone weirdly numb and my words keep slurring",
+      "clinical_term": "I'm having a stroke and my words keep slurring",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "Swaps a lay description of stroke symptoms for the clinical label while keeping the rest of the sentence identical; 'call my' funnels toward the high-frequency word 'doctor', which should be favored more strongly once the clinical term signals urgency.",
+      "topic": "stroke",
+      "swap_spans": {
+        "patient_span": "My arm's gone weirdly numb",
+        "clinical_span": "I'm having a stroke"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "stroke",
+        "anaphylaxis",
+        "heart attack",
+        "opioid overdose",
+        "severe bleeding",
+        "sepsis",
+        "diabetic emergency"
+      ]
+    }
+  },
+  {
+    "top_prompt": "She's going into anaphylaxis after the peanut, so we need to call an",
+    "bottom_prompt": "Her lips are puffing up and her throat feels tight after the peanut, so we need to call an",
+    "target_clinical_token": " ambulance",
+    "generation": {
+      "patient_term": "her lips are puffing up and her throat feels tight",
+      "clinical_term": "she's going into anaphylaxis",
+      "expected_clinical_continuations": [
+        "ambulance"
+      ],
+      "rationale": "The colloquial allergic-reaction description is swapped for the clinical term 'anaphylaxis'; the vowel-initial article 'an' funnels toward 'ambulance', a plausible top-token continuation for the clinical framing.",
+      "topic": "anaphylaxis",
+      "swap_spans": {
+        "patient_span": "Her lips are puffing up and her throat feels tight",
+        "clinical_span": "She's going into anaphylaxis"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "stroke",
+        "anaphylaxis",
+        "heart attack",
+        "opioid overdose",
+        "severe bleeding",
+        "sepsis",
+        "diabetic emergency"
+      ]
+    }
+  }
+]
