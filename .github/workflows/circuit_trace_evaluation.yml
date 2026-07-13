@@ -176,7 +176,10 @@ jobs:
   trace:
     needs: params
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # 45 was tight: hosted-API latency variance killed 5-pair chunks mid-pair
+    # four times on 2026-07-13 (conclusion 'cancelled', truncated final pair).
+    # Incremental commits make a longer ceiling cheap.
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       max-parallel: 3
