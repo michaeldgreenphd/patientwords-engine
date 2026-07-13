@@ -322,7 +322,10 @@
     }
   ],
   "blockers": [],
-  "notes": "13:2x UTC: gen (batch 7), trace (batch 6), logits (batch-6) all running; patching + pending logits slot free for the critic's probe follow-ups (biomistral/9B chunked or swap-fixed, recovery grid chunk 2). GitHub MCP down again this cycle; worked from landed outputs.",
+  "notes": [
+    "13:2x UTC: gen (batch 7), trace (batch 6), logits (batch-6) all running; patching + pending logits slot free for the critic's probe follow-ups (biomistral/9B chunked or swap-fixed, recovery grid chunk 2). GitHub MCP down again this cycle; worked from landed outputs.",
+    "2026-07-13 ~10:10Z: repeatability r1 landed 19/20 pairs (CI job cancelled mid-pair-20 after incremental commit; part_16 holds indices 16-19). r2 fired (running), r3 pending. Completion chunk for r1 pair 20 (offsets '15', sample_size 5, pairs_file repeatability_r1.json) queues when a circuit-trace slot frees; analysis waits for all 60 designed traces (currently 59 scheduled)."
+  ],
   "decisions_log": [
     {
       "date": "2026-07-12",
