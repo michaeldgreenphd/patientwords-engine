@@ -17,7 +17,8 @@ for the long tail. A data-only scenario's page says so and can link to the
 back-end archive.
 
 **Back-end archive (this repo's Releases).** The complete render set for a run
-is zipped and attached to a **GitHub Release** on this private engine repo. That
+is zipped and attached to a **GitHub Release** on this engine repo (both repos are
+public - never write secrets anywhere). That
 keeps the durable full copy reachable without bloating the site or git.
 
 ## Archiving a run
@@ -35,7 +36,8 @@ keeps the durable full copy reachable without bloating the site or git.
    drops the multi-MB PNGs and keeps just the interactive HTML + summaries.
 
 2. **Upload to a Release** — the `archive_renders` workflow does this in CI
-   (it has a token). Fire it the same way as the trace workflow, by pushing a
+   (it has a token). Fire it ONLY via `scripts/fire_trigger.py fire --trigger
+archive-renders` (journals the fire and guards the queue), which updates a
    trigger file:
 
    ```jsonc

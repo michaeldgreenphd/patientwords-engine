@@ -47,4 +47,4 @@ Approve item-by-item: reply with e.g. “1,2,4 yes; 3 → tier 2”. When done, 
 26. tier 4: `ed`, `emergency`, `er`, `ers`, `hospital` — confirm or name removals.
 27. tier 3: `cardiac`, `cardio`, `chiropr`, `consultation`, `counseling`, `counselor`, `dentist`, `der`, `dermatologist`, `gastro`, `gastroenter`, `gi`, `neuro`, `orth`, `psychiatrist`, `psychologist`, `referral`, `session`, `shrink`, `special`, `specialist`, `therapist`, `therapy` — confirm or name removals.
 
-*(Full vocabulary: data/urgency_tiers.draft.json — 140 review-flagged tokens total; A+B above are the ones that change today's numbers.)*
+*(Executed 2026-07-09: status is now owner-reviewed v1, domain review pending. 129 low-frequency tokens remain review-flagged; defaults unaffected per the file's _review note.)*

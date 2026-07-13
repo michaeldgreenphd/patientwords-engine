@@ -80,3 +80,9 @@ def test_live_manifest_verifies_against_live_site():
         return
     failures, warnings = check(root / "data" / "claims_manifest.json", site)
     assert failures == [] and warnings == []
+
+
+def test_evaluate_comprehension_body_sees_data():
+    # regression: d must live in eval's globals - comprehension bodies run in
+    # their own frame and never see eval's locals
+    assert evaluate("[d['xs'][k] for k in ('a', 'b')]", {"xs": {"a": 1, "b": 2}}) == [1, 2]

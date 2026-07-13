@@ -69,6 +69,96 @@
         20,
         7
       ]
+    },
+    {
+      "page": "model-evaluations/index.html",
+      "snippet": "seven measured models compared",
+      "source": "data/model_stats.json",
+      "expr": "len(d['per_model'])",
+      "expected": 7
+    },
+    {
+      "page": "methods.html",
+      "snippet": "11 of the first kind, 5 of the second, 34 unaffected",
+      "source": "data/jlens_depth.json",
+      "expr": "[sum(1 for p in d['blocks'][0]['pairs'] if p['class']=='absent'), sum(1 for p in d['blocks'][0]['pairs'] if p['class']=='suppressed'), sum(1 for p in d['blocks'][0]['pairs'] if p['class']=='retained')]",
+      "expected": [
+        11,
+        5,
+        34
+      ],
+      "_": "'newest batch' sentence tracks blocks[0]; when a newer lens block lands this drifts on purpose"
+    },
+    {
+      "page": "methods.html",
+      "snippet": "gemma, qwen, llama, and olmo families",
+      "source": "data/model_stats.json",
+      "expr": "len(d['per_model'])",
+      "expected": 7
+    },
+    {
+      "page": "start-here/index.html",
+      "snippet": "three times made things worse",
+      "source": "data/provenance.json",
+      "expr": "sum(1 for c in d['translation_cases']['all']['cases'] if (c.get('class') or c.get('classification'))=='worsened')",
+      "expected": 3
+    },
+    {
+      "page": "start-here/index.html",
+      "snippet": "roughly halves the penalty measured under casual framing",
+      "source": "data/provenance.json",
+      "expr": "[d['context_inoculation']['casual_context_mean_penalty'], d['context_inoculation']['clinical_context_mean_penalty']]",
+      "expected": [
+        -0.137,
+        -0.059
+      ]
+    },
+    {
+      "page": "translation/index.html",
+      "snippet": "(4/5, 5/5, 4/5) and falls off at 20",
+      "source": "data/provenance.json",
+      "expr": "[d['steering_titration']['strengths'][k]['recovered'] for k in ('2.5','5','10','20')]",
+      "expected": [
+        4,
+        5,
+        4,
+        1
+      ]
+    },
+    {
+      "page": "index.html",
+      "snippet": "traced 2026-07-08",
+      "source": "data/dialects.json",
+      "expr": "d['updated']",
+      "expected": "2026-07-08"
+    },
+    {
+      "page": "index.html",
+      "snippet": "domain review pending",
+      "source": "data/urgency_shift.json",
+      "expr": "'pending' in d['vocabulary_status']",
+      "expected": true
+    },
+    {
+      "page": "methods.html",
+      "snippet": "domain review pending",
+      "source": "data/urgency_shift.json",
+      "expr": "'pending' in d['vocabulary_status']",
+      "expected": true
+    },
+    {
+      "page": "translation/index.html",
+      "snippet": "domain review pending",
+      "source": "data/urgency_shift.json",
+      "expr": "'pending' in d['vocabulary_status']",
+      "expected": true
+    },
+    {
+      "page": "answer-depth/index.html",
+      "snippet": "domain review pending",
+      "source": "data/urgency_shift.json",
+      "expr": "'pending' in d['vocabulary_status']",
+      "expected": true
     }
   ]
 }

@@ -118,7 +118,8 @@ publication.
 
 No feature-level tags (that stays Neuronpedia transcoders, gemma-2-2b only);
 no causal evidence (stays B1 patching); no multi-token concept readout; no
-hosted API we can call today (the Neuronpedia demo is interactive-only as far
+hosted API we could call at writing time (SUPERSEDED - section 5b documents the
+hosted POST /api/lens/prompt endpoint that became the production path; the demo seemed interactive-only as far
 as verifiable from here — re-check from CI, J0).
 
 ## 5b. Update 2026-07-11 pm: hosted endpoint found — fitting unnecessary
@@ -156,7 +157,7 @@ under patient phrasing) already exhibit the depth classes the design
 anticipated. Multi-wordpiece targets match by prefix (MIN_PREFIX_CHARS=4),
 mirroring the behavioral path's first-wordpiece measurement.
 
-## 6. Gated plan (no fires yet; critic queue owns sequencing)
+## 6. Gated plan (HISTORICAL - J0/J1 retired by the hosted endpoint per 5b; J2 implemented and running; J3/J4 remain gated)
 
 - **J0 verify (free, next CI touch):** from a runner with open egress — list
   `neuronpedia/jacobian-lens` HF files (gemma lens? our qwen variants?); pull

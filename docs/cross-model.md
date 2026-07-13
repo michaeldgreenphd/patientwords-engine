@@ -80,7 +80,7 @@ the front end labels these models "next-token behavior only".
   ```
   It installs CPU torch + transformers, runs one model per matrix cell, and
   commits the tiny per-model summary. The Qwen models are open; **gemma-3-4b-it
-  is gated** — add an `HF_TOKEN` repo secret and include it in `models` to run it.
+  is gated** — covered by the existing CI `HF_TOKEN` (runs routinely since 2026-07-08).
 - **Publish** — after the summaries land, `git pull`, then re-export with all
   stamps and models:
   ```

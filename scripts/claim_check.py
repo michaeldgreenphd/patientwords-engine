@@ -18,10 +18,13 @@ from pathlib import Path
 
 
 def evaluate(expr: str, data):
+    # d lives in globals, not locals: comprehension bodies execute in their own
+    # frame whose name lookups skip eval's locals dict entirely
     return eval(expr, {"__builtins__": {"round": round, "sum": sum, "any": any,
                                         "all": all, "len": len, "next": next,
-                                        "min": min, "max": max, "true": True,
-                                        "false": False}}, {"d": data})
+                                        "min": min, "max": max, "sorted": sorted,
+                                        "true": True, "false": False},
+                       "d": data}, {})
 
 
 def check(manifest_path: Path, site: Path):
