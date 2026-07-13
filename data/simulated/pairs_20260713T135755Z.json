@@ -1,0 +1,137 @@
+[
+  {
+    "top_prompt": "He's having a stroke and he can't lift his arm at work, so his coworkers called an",
+    "bottom_prompt": "One side of his face is drooping and he can't lift his arm at work, so his coworkers called an",
+    "target_clinical_token": " ambulance",
+    "generation": {
+      "patient_term": "One side of his face is drooping",
+      "clinical_term": "He's having a stroke",
+      "expected_clinical_continuations": [
+        "ambulance"
+      ],
+      "rationale": "The workplace setting makes 'called an' ambiguous between calling a ride and calling for emergency help; naming the stroke explicitly funnels the next token toward 'ambulance' rather than a mundane alternative like 'Uber'.",
+      "topic": "stroke",
+      "swap_spans": {
+        "patient_span": "One side of his face is drooping",
+        "clinical_span": "He's having a stroke"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "stroke",
+        "anaphylaxis",
+        "heart attack",
+        "severe bleeding",
+        "sepsis",
+        "diabetic emergency"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm having a stroke and I can't get the words out right during the meeting, so I need to see a",
+    "bottom_prompt": "My vision's gone blurry in one eye and I can't get the words out right during the meeting, so I need to see a",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "My vision's gone blurry in one eye",
+      "clinical_term": "I'm having a stroke",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "The clinical framing of an acute stroke funnels the next-token prediction toward seeking professional medical help ('doctor'), whereas the vague lay description of blurry vision could plausibly continue toward a mundane referral like an optician.",
+      "topic": "stroke",
+      "swap_spans": {
+        "patient_span": "My vision's gone blurry in one eye",
+        "clinical_span": "I'm having a stroke"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "stroke",
+        "anaphylaxis",
+        "heart attack",
+        "severe bleeding",
+        "sepsis",
+        "diabetic emergency"
+      ]
+    }
+  },
+  {
+    "top_prompt": "She went into anaphylaxis right after the shellfish at dinner, so dad rushed her to the",
+    "bottom_prompt": "Her face swelled up and she started wheezing right after the shellfish at dinner, so dad rushed her to the",
+    "target_clinical_token": " hospital",
+    "generation": {
+      "patient_term": "Her face swelled up and she started wheezing",
+      "clinical_term": "She went into anaphylaxis",
+      "expected_clinical_continuations": [
+        "hospital"
+      ],
+      "rationale": "Naming anaphylaxis explicitly should push the model strongly toward 'hospital' as the emergency destination, while the colloquial symptom description leaves the destination more ambiguous (e.g., could just be an allergist visit).",
+      "topic": "anaphylaxis",
+      "swap_spans": {
+        "patient_span": "Her face swelled up and she started wheezing",
+        "clinical_span": "She went into anaphylaxis"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "stroke",
+        "anaphylaxis",
+        "heart attack",
+        "severe bleeding",
+        "sepsis",
+        "diabetic emergency"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm having a heart attack halfway through my workout, so I need to call my",
+    "bottom_prompt": "My chest is crushing and my arm's gone numb halfway through my workout, so I need to call my",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "My chest is crushing and my arm's gone numb",
+      "clinical_term": "I'm having a heart attack",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "The explicit cardiac diagnosis should raise the probability of 'doctor' as the person called, while the colloquial symptom list leaves open more mundane options like a gym buddy or trainer.",
+      "topic": "heart attack",
+      "swap_spans": {
+        "patient_span": "My chest is crushing and my arm's gone numb",
+        "clinical_span": "I'm having a heart attack"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "stroke",
+        "anaphylaxis",
+        "heart attack",
+        "severe bleeding",
+        "sepsis",
+        "diabetic emergency"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm going septic after the cut got infected, so my wife is driving me to the",
+    "bottom_prompt": "My fever's spiking and I feel foggy and shivery after the cut got infected, so my wife is driving me to the",
+    "target_clinical_token": " hospital",
+    "generation": {
+      "patient_term": "My fever's spiking and I feel foggy and shivery",
+      "clinical_term": "I'm going septic",
+      "expected_clinical_continuations": [
+        "hospital"
+      ],
+      "rationale": "Naming sepsis directly should strongly bias the continuation toward 'hospital' as an urgent destination, whereas the colloquial description of fever and fogginess could plausibly lead to a more mundane destination like 'pharmacy'.",
+      "topic": "sepsis",
+      "swap_spans": {
+        "patient_span": "My fever's spiking and I feel foggy and shivery",
+        "clinical_span": "I'm going septic"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "stroke",
+        "anaphylaxis",
+        "heart attack",
+        "severe bleeding",
+        "sepsis",
+        "diabetic emergency"
+      ]
+    }
+  }
+]
