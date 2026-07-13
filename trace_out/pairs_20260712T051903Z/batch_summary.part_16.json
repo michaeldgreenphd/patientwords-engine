@@ -1,0 +1,373 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 16,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have burnout syndrome, so I need to talk to a",
+        "patient": "I've been feeling burnt out at work, so I need to talk to a"
+      },
+      "target_token": "Output \" therapist\"",
+      "probabilities": {
+        "clinical": 0.154,
+        "patient": 0.168
+      },
+      "language_penalty": 0.014000000000000012,
+      "clinical_mass": {
+        "clinical": 0.2518,
+        "patient": 0.1269
+      },
+      "error_share": {
+        "clinical": 0.0913,
+        "patient": 0.0912
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.230)",
+        "patient": "embedding \u2192 Output \" professional\" (p=0.131)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " therapist",
+        "observed_clinical": [
+          "Output \" therapist\"",
+          0.154
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.23
+          ],
+          [
+            "Output \" therapist\"",
+            0.154
+          ],
+          [
+            "Output \" professional\"",
+            0.107
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.054
+          ],
+          [
+            "Output \" psychologist\"",
+            0.053
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" therapist\"",
+            0.168
+          ],
+          [
+            "Output \" friend\"",
+            0.163
+          ],
+          [
+            "Output \" professional\"",
+            0.131
+          ],
+          [
+            "Output \" doctor\"",
+            0.066
+          ],
+          [
+            "Output \" counselor\"",
+            0.037
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 698,
+        "unique_to_a": 582,
+        "unique_to_b": 701
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_16.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_16.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_16_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_16_diff.png"
+      }
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have tremor when I hold my",
+        "patient": "My hands won't stop shaking when I hold my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2248
+      },
+      "error_share": {
+        "clinical": 0.0867
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " coffee",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" phone\"",
+            0.153
+          ],
+          [
+            "Output \" hand\"",
+            0.089
+          ],
+          [
+            "Output \" pen\"",
+            0.067
+          ],
+          [
+            "Output \" head\"",
+            0.053
+          ],
+          [
+            "Output \" hands\"",
+            0.052
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have cognitive decline, so I should probably get my",
+        "patient": "I feel like I'm getting forgetful, so I should probably get my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1805
+      },
+      "error_share": {
+        "clinical": 0.0868
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " memory",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" affairs\"",
+            0.195
+          ],
+          [
+            "Output \" head\"",
+            0.09
+          ],
+          [
+            "Output \" brain\"",
+            0.044
+          ],
+          [
+            "Output \" act\"",
+            0.032
+          ],
+          [
+            "Output \" hearing\"",
+            0.03
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have polyuria, so I might have a",
+        "patient": "I've been running to the bathroom all day, so I might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1858
+      },
+      "error_share": {
+        "clinical": 0.0939
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " infection",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" little\"",
+            0.102
+          ],
+          [
+            "Output \" different\"",
+            0.068
+          ],
+          [
+            "Output \" bit\"",
+            0.063
+          ],
+          [
+            "Output \" higher\"",
+            0.051
+          ],
+          [
+            "Output \" problem\"",
+            0.043
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have orthostatic hypotension, so my doctor wants to check my",
+        "patient": "I keep getting dizzy when I stand up, so my doctor wants to check my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.326,
+        "patient": 0.589
+      },
+      "language_penalty": 0.26299999999999996,
+      "clinical_mass": {
+        "clinical": 0.4474,
+        "patient": 0.3762
+      },
+      "error_share": {
+        "clinical": 0.1091,
+        "patient": 0.1018
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.326)",
+        "patient": "embedding \u2192 [L23\u00b7O] the concept of balance, or weighing multiple options \u2192 Output \" balance\" (p=0.027)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.326
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.326
+          ],
+          [
+            "Output \" BP\"",
+            0.079
+          ],
+          [
+            "Output \" heart\"",
+            0.064
+          ],
+          [
+            "Output \" carotid\"",
+            0.033
+          ],
+          [
+            "Output \" pressure\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.589
+          ],
+          [
+            "Output \" inner\"",
+            0.049
+          ],
+          [
+            "Output \" BP\"",
+            0.034
+          ],
+          [
+            "Output \" eyes\"",
+            0.029
+          ],
+          [
+            "Output \" balance\"",
+            0.027
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 720,
+        "unique_to_a": 615,
+        "unique_to_b": 676
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_20.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_20.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_20_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_20_diff.png"
+      }
+    }
+  ]
+}
