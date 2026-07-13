@@ -381,6 +381,13 @@ def main(argv=None):
             if v["penalty"]["n_phrases"] >= MIN_SITE_PHRASES}
         site_bundle["models"] = sorted(site_bundle["per_model"])
         site_bundle["site_floor_n_phrases"] = MIN_SITE_PHRASES
+        # measured-but-below-floor models are listed so the page can show an
+        # honest pending row instead of silently omitting them
+        site_bundle["below_floor"] = sorted(
+            [{"id": m, "n_phrases": v["penalty"]["n_phrases"]}
+             for m, v in bundle["per_model"].items()
+             if v["penalty"]["n_phrases"] < MIN_SITE_PHRASES],
+            key=lambda r: r["id"])
         payload_path = Path(args.site) / "data" / "simulated_scenarios.json"
         try:
             payload = json.loads(payload_path.read_text(encoding="utf-8"))
