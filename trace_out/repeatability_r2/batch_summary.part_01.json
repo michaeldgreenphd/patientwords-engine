@@ -356,6 +356,93 @@
         "diff_html": "trace_out/repeatability_r2/index_04_diff.html",
         "diff_png": "trace_out/repeatability_r2/index_04_diff.png"
       }
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been suffering from insomnia for hours staring at the ceiling, so tonight I finally swallowed a",
+        "patient": "I've been wide awake for hours staring at the ceiling, so tonight I finally swallowed a"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.119,
+        "patient": 0.109
+      },
+      "language_penalty": -0.009999999999999995,
+      "clinical_mass": {
+        "clinical": 0.2292,
+        "patient": 0.1864
+      },
+      "error_share": {
+        "clinical": 0.1016,
+        "patient": 0.1028
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sleeping\" (p=0.085)",
+        "patient": "embedding \u2192 [L18\u00b7S] instances of the indefinite article 'a' or 'an' near \u2192 [L24\u00b7S] articles, prepositions, and other common short words \u2192 Output \" couple\" (p=0.100)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pill\"",
+            0.119
+          ],
+          [
+            "Output \" few\"",
+            0.115
+          ],
+          [
+            "Output \" sleeping\"",
+            0.085
+          ],
+          [
+            "Output \" couple\"",
+            0.072
+          ],
+          [
+            "Output \" handful\"",
+            0.054
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" few\"",
+            0.149
+          ],
+          [
+            "Output \" pill\"",
+            0.109
+          ],
+          [
+            "Output \" couple\"",
+            0.1
+          ],
+          [
+            "Output \" sleeping\"",
+            0.072
+          ],
+          [
+            "Output \" handful\"",
+            0.067
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1065,
+        "unique_to_a": 344,
+        "unique_to_b": 384
+      },
+      "outputs": {
+        "html": "trace_out/repeatability_r2/index_05.html",
+        "png": "trace_out/repeatability_r2/index_05.png",
+        "diff_html": "trace_out/repeatability_r2/index_05_diff.html",
+        "diff_png": "trace_out/repeatability_r2/index_05_diff.png"
+      }
     }
   ]
 }
