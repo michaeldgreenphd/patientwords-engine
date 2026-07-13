@@ -159,6 +159,50 @@
       "source": "data/urgency_shift.json",
       "expr": "'pending' in d['vocabulary_status']",
       "expected": true
+    },
+    {
+      "page": "word-differences/index.html",
+      "snippet": "\u221265% probability (0.69 \u2192 0.04)",
+      "source": "data/simulated_scenarios.json",
+      "expr": "[round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_clinical'],2), round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_patient'],2)]",
+      "expected": [
+        0.69,
+        0.04
+      ]
+    },
+    {
+      "page": "dialect-differences/index.html",
+      "snippet": "45 (5 baselines + 40 framings)",
+      "source": "data/dialects.json",
+      "expr": "[len(d['items']), sum(len(i['variants']) for i in d['items'])]",
+      "expected": [
+        5,
+        40
+      ]
+    },
+    {
+      "page": "dialect-differences/index.html",
+      "snippet": "traced July 8, 2026",
+      "source": "data/dialects.json",
+      "expr": "d['updated']",
+      "expected": "2026-07-08"
+    },
+    {
+      "page": "dialect-differences/index.html",
+      "snippet": "claude-sonnet-5 ($0.189, 64 accepted / 2 rejected)",
+      "source": "data/provenance.json",
+      "expr": "[next(b for b in d['batches'] if b.get('batch')=='dialects_20260708T120729Z')['accepted'], next(b for b in d['batches'] if b.get('batch')=='dialects_20260708T120729Z')['rejected']]",
+      "expected": [
+        64,
+        2
+      ]
+    },
+    {
+      "page": "simulated-scenarios/index.html",
+      "snippet": "domain review pending",
+      "source": "data/urgency_shift.json",
+      "expr": "'pending' in d['vocabulary_status']",
+      "expected": true
     }
   ]
 }
