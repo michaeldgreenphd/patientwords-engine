@@ -1,0 +1,452 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 16,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing migraines that won't quit, so I need to take my",
+        "patient": "I've been getting these headaches that won't quit, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.08,
+        "patient": 0.078
+      },
+      "language_penalty": -0.0020000000000000018,
+      "clinical_mass": {
+        "clinical": 0.3273,
+        "patient": 0.3045
+      },
+      "error_share": {
+        "clinical": 0.0902,
+        "patient": 0.0872
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" migraine\" (p=0.053)",
+        "patient": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.096)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.118
+          ],
+          [
+            "Output \" medication\"",
+            0.08
+          ],
+          [
+            "Output \" medicine\"",
+            0.075
+          ],
+          [
+            "Output \" blood\"",
+            0.064
+          ],
+          [
+            "Output \" migraine\"",
+            0.053
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" medicine\"",
+            0.156
+          ],
+          [
+            "Output \" meds\"",
+            0.123
+          ],
+          [
+            "Output \" blood\"",
+            0.096
+          ],
+          [
+            "Output \" medication\"",
+            0.078
+          ],
+          [
+            "Output \" mind\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 974,
+        "unique_to_a": 409,
+        "unique_to_b": 443
+      },
+      "outputs": {
+        "html": "trace_out/repeatability_r3/index_16.html",
+        "png": "trace_out/repeatability_r3/index_16.png",
+        "diff_html": "trace_out/repeatability_r3/index_16_diff.html",
+        "diff_png": "trace_out/repeatability_r3/index_16_diff.png"
+      }
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I experience acute anxiety before presentations, so I'm wondering if I should take an",
+        "patient": "I've got butterflies in my stomach before presentations, so I'm wondering if I should take an"
+      },
+      "target_token": "Output \" anx\"",
+      "probabilities": {
+        "clinical": 0.073,
+        "patient": 0.089
+      },
+      "language_penalty": 0.016,
+      "clinical_mass": {
+        "clinical": 0.3361,
+        "patient": 0.2722
+      },
+      "error_share": {
+        "clinical": 0.0879,
+        "patient": 0.0982
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" anxiety\" (p=0.198)",
+        "patient": "embedding \u2192 [L17\u00b7O] the word \"taken\" and words/phrases around it, especi \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L22\u00b7C] sentences related to drug use | medications \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.298)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.343
+          ],
+          [
+            "Output \" anxiety\"",
+            0.198
+          ],
+          [
+            "Output \" anx\"",
+            0.073
+          ],
+          [
+            "Output \" SS\"",
+            0.072
+          ],
+          [
+            "Output \" Ati\"",
+            0.052
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.298
+          ],
+          [
+            "Output \" ant\"",
+            0.153
+          ],
+          [
+            "Output \" anxiety\"",
+            0.089
+          ],
+          [
+            "Output \" SS\"",
+            0.071
+          ],
+          [
+            "Output \" over\"",
+            0.052
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 731,
+        "unique_to_a": 564,
+        "unique_to_b": 653
+      },
+      "outputs": {
+        "html": "trace_out/repeatability_r3/index_17.html",
+        "png": "trace_out/repeatability_r3/index_17.png",
+        "diff_html": "trace_out/repeatability_r3/index_17_diff.html",
+        "diff_png": "trace_out/repeatability_r3/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have food intolerance, so my doctor says I need to watch my",
+        "patient": "I've been feeling out of it after eating certain foods, so my doctor says I need to watch my"
+      },
+      "target_token": "Output \" diet\"",
+      "probabilities": {
+        "clinical": 0.175,
+        "patient": 0.229
+      },
+      "language_penalty": 0.05400000000000002,
+      "clinical_mass": {
+        "clinical": 0.2996,
+        "patient": 0.2658
+      },
+      "error_share": {
+        "clinical": 0.0887,
+        "patient": 0.0956
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] sentences about the effects of diet on health, inclu \u2192 Output \" diet\" (p=0.175)",
+        "patient": "embedding \u2192 [L24\u00b7O] passages discussing nutrition, diet, and micronutrie \u2192 Output \" diet\" (p=0.229)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" diet\"",
+            0.175
+          ],
+          [
+            "Output \" sugar\"",
+            0.113
+          ],
+          [
+            "Output \" intake\"",
+            0.077
+          ],
+          [
+            "Output \" dairy\"",
+            0.066
+          ],
+          [
+            "Output \" sodium\"",
+            0.064
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" diet\"",
+            0.229
+          ],
+          [
+            "Output \" sodium\"",
+            0.081
+          ],
+          [
+            "Output \" intake\"",
+            0.071
+          ],
+          [
+            "Output \" sugar\"",
+            0.066
+          ],
+          [
+            "Output \" salt\"",
+            0.047
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 616,
+        "unique_to_a": 703,
+        "unique_to_b": 773
+      },
+      "outputs": {
+        "html": "trace_out/repeatability_r3/index_18.html",
+        "png": "trace_out/repeatability_r3/index_18.png",
+        "diff_html": "trace_out/repeatability_r3/index_18_diff.html",
+        "diff_png": "trace_out/repeatability_r3/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have cognitive impairment, so I should probably take my",
+        "patient": "I've been feeling foggy in my head, so I should probably take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.144,
+        "patient": 0.105
+      },
+      "language_penalty": -0.03899999999999999,
+      "clinical_mass": {
+        "clinical": 0.2042,
+        "patient": 0.2582
+      },
+      "error_share": {
+        "clinical": 0.0886,
+        "patient": 0.0888
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.240)",
+        "patient": "[L20\u00b7S]  \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 Output \" medication\" (p=0.105)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" own\"",
+            0.24
+          ],
+          [
+            "Output \" meds\"",
+            0.199
+          ],
+          [
+            "Output \" medication\"",
+            0.144
+          ],
+          [
+            "Output \" medicine\"",
+            0.065
+          ],
+          [
+            "Output \" medications\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.215
+          ],
+          [
+            "Output \" medication\"",
+            0.105
+          ],
+          [
+            "Output \" vitamins\"",
+            0.102
+          ],
+          [
+            "Output \" medicine\"",
+            0.102
+          ],
+          [
+            "Output \" brain\"",
+            0.04
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 633,
+        "unique_to_a": 621,
+        "unique_to_b": 716
+      },
+      "outputs": {
+        "html": "trace_out/repeatability_r3/index_19.html",
+        "png": "trace_out/repeatability_r3/index_19.png",
+        "diff_html": "trace_out/repeatability_r3/index_19_diff.html",
+        "diff_png": "trace_out/repeatability_r3/index_19_diff.png"
+      }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing dissociation, so I should probably see a",
+        "patient": "I've been feeling really spacey and out of it, so I should probably see a"
+      },
+      "target_token": "Output \" psychiatrist\"",
+      "probabilities": {
+        "clinical": 0.114,
+        "patient": 0.033
+      },
+      "language_penalty": -0.081,
+      "clinical_mass": {
+        "clinical": 0.3587,
+        "patient": 0.2778
+      },
+      "error_share": {
+        "clinical": 0.0953,
+        "patient": 0.0931
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" psychologist\" (p=0.044)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.753)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" therapist\"",
+            0.503
+          ],
+          [
+            "Output \" doctor\"",
+            0.188
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.114
+          ],
+          [
+            "Output \" psychologist\"",
+            0.044
+          ],
+          [
+            "Output \" professional\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.753
+          ],
+          [
+            "Output \" doc\"",
+            0.042
+          ],
+          [
+            "Output \" therapist\"",
+            0.038
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.033
+          ],
+          [
+            "Output \" Dr\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 601,
+        "unique_to_a": 616,
+        "unique_to_b": 554
+      },
+      "outputs": {
+        "html": "trace_out/repeatability_r3/index_20.html",
+        "png": "trace_out/repeatability_r3/index_20.png",
+        "diff_html": "trace_out/repeatability_r3/index_20_diff.html",
+        "diff_png": "trace_out/repeatability_r3/index_20_diff.png"
+      }
+    }
+  ]
+}
