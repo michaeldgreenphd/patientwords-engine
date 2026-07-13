@@ -7,6 +7,15 @@ probabilities moved and whether the top word changed. The forward pass of a
 frozen model is deterministic, so any movement bounds the hosted instrument's
 run-to-run stability rather than the model's.
 
+Three layers are compared, each at the precision the files record
+(probabilities are stored to 3 decimals):
+- target-token probabilities and the full top-k spread lists (words + probs),
+- the top word under each wording,
+- clinical_mass, compared only between runs that share the same graph
+  parameters (node budget and thresholds), because the attribution graph is
+  parameter-sensitive by design; cross-parameter differences are reported
+  separately and are not noise.
+
 Writes ops/retrace_consistency.json; the printed last line is the summary
 verdict. No medical vocabulary lives in this file.
 """
@@ -29,6 +38,9 @@ def collect(trace_root: Path):
         if summary.get("backend") not in (None, "hosted"):
             continue  # logits runs are locally deterministic; this measures the hosted path
         model = summary.get("graph_model") or "gemma-2-2b"
+        gp = summary.get("generation_params") or {}
+        params_sig = json.dumps([gp.get("max_feature_nodes"), gp.get("node_threshold"),
+                                 gp.get("edge_threshold")])
         for row in summary.get("results", []):
             prompts = row.get("prompts") or {}
             clin, pat = prompts.get("clinical"), prompts.get("patient")
@@ -36,13 +48,19 @@ def collect(trace_root: Path):
             if not clin or not pat or probs.get("clinical") is None:
                 continue
             outputs = row.get("outputs") or {}
+            spread = row.get("predictive_spread") or {}
+            cmass = row.get("clinical_mass") or {}
             groups[(model, clin, pat)].append({
                 "run": part.parent.name,
                 "part": part.name,
+                "params_sig": params_sig,
                 "p_clinical": probs.get("clinical"),
                 "p_patient": probs.get("patient"),
                 "top_clinical": (outputs.get("clinical") or [None])[0],
                 "top_patient": (outputs.get("patient") or [None])[0],
+                "spread_sig": json.dumps([spread.get("clinical"), spread.get("patient")]),
+                "cmass_clinical": cmass.get("clinical"),
+                "cmass_patient": cmass.get("patient"),
             })
     return groups
 
@@ -65,6 +83,14 @@ def compare(groups):
         pp = [r["p_patient"] for r in recs if r["p_patient"] is not None]
         tc = {r["top_clinical"] for r in recs if r["top_clinical"]}
         tp = {r["top_patient"] for r in recs if r["top_patient"]}
+        spread_sigs = {r["spread_sig"] for r in recs}
+        # clinical_mass: same-parameter repeats only; cross-parameter runs are
+        # expected to differ (pruning budget), flagged separately
+        by_params = {}
+        for r in recs:
+            if r["cmass_clinical"] is not None:
+                by_params.setdefault(r["params_sig"], []).append(r["cmass_clinical"])
+        cmass_same = [max(v) - min(v) for v in by_params.values() if len(v) > 1]
         rows.append({
             "model": model,
             "clinical_prompt": clin[:70],
@@ -74,6 +100,9 @@ def compare(groups):
             "spread_p_patient": round(max(pp) - min(pp), 6) if len(pp) > 1 else None,
             "top_clinical_stable": len(tc) <= 1,
             "top_patient_stable": len(tp) <= 1,
+            "spread_lists_identical": len(spread_sigs) <= 1,
+            "cmass_same_params_spread": round(max(cmass_same), 6) if cmass_same else None,
+            "cmass_param_variants": len(by_params),
         })
     return rows
 
@@ -88,11 +117,22 @@ def main():
     spreads = [r["spread_p_clinical"] for r in rows if r["spread_p_clinical"] is not None] + \
               [r["spread_p_patient"] for r in rows if r["spread_p_patient"] is not None]
     stable_tops = sum(1 for r in rows if r["top_clinical_stable"] and r["top_patient_stable"])
+    lists_ok = sum(1 for r in rows if r["spread_lists_identical"])
+    cmass_spreads = [r["cmass_same_params_spread"] for r in rows
+                     if r["cmass_same_params_spread"] is not None]
+    multi_param = sum(1 for r in rows if r["cmass_param_variants"] > 1)
     payload = {
+        "note": ("comparisons are at the precision the summaries record "
+                 "(probabilities: 3 decimals); the retraced pairs are the ones that "
+                 "happened to be traced repeatedly, not a designed sample"),
         "pairs_retraced": len(rows),
         "prob_spread_max": round(max(spreads), 6) if spreads else None,
         "prob_spread_mean": round(sum(spreads) / len(spreads), 6) if spreads else None,
         "top_word_stable_pairs": stable_tops,
+        "spread_lists_identical_pairs": lists_ok,
+        "cmass_same_params_spread_max": round(max(cmass_spreads), 6) if cmass_spreads else None,
+        "cmass_same_params_pairs": len(cmass_spreads),
+        "cmass_multi_param_pairs": multi_param,
         "rows": sorted(rows, key=lambda r: -(r["spread_p_clinical"] or 0)),
     }
     out = Path(args.out)
@@ -103,8 +143,10 @@ def main():
         print("retrace consistency: no phrase traced more than once yet")
     else:
         print(f"retrace consistency: {len(rows)} pairs traced 2+ times · "
-              f"max prob spread {payload['prob_spread_max']} · mean {payload['prob_spread_mean']} · "
-              f"top word stable on {stable_tops}/{len(rows)} pairs")
+              f"max prob spread {payload['prob_spread_max']} (stored precision) · "
+              f"top word stable {stable_tops}/{len(rows)} · full spread lists identical "
+              f"{lists_ok}/{len(rows)} · clinical_mass same-params max spread "
+              f"{payload['cmass_same_params_spread_max']} over {len(cmass_spreads)} pairs")
 
 
 if __name__ == "__main__":

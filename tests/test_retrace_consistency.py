@@ -23,6 +23,8 @@ def test_identical_retrace_zero_spread(tmp_path):
     assert len(rows) == 1
     assert rows[0]["spread_p_clinical"] == 0.0
     assert rows[0]["top_clinical_stable"] and rows[0]["top_patient_stable"]
+    assert rows[0]["spread_lists_identical"]
+    assert rows[0]["cmass_param_variants"] <= 1
 
 
 def test_moved_retrace_reports_spread_and_instability(tmp_path):
