@@ -360,6 +360,93 @@
         "diff_html": "trace_out/repeatability_r2/index_19_diff.html",
         "diff_png": "trace_out/repeatability_r2/index_19_diff.png"
       }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing dissociation, so I should probably see a",
+        "patient": "I've been feeling really spacey and out of it, so I should probably see a"
+      },
+      "target_token": "Output \" psychiatrist\"",
+      "probabilities": {
+        "clinical": 0.114,
+        "patient": 0.033
+      },
+      "language_penalty": -0.081,
+      "clinical_mass": {
+        "clinical": 0.3587,
+        "patient": 0.2778
+      },
+      "error_share": {
+        "clinical": 0.0953,
+        "patient": 0.0931
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" psychologist\" (p=0.044)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.753)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" therapist\"",
+            0.503
+          ],
+          [
+            "Output \" doctor\"",
+            0.188
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.114
+          ],
+          [
+            "Output \" psychologist\"",
+            0.044
+          ],
+          [
+            "Output \" professional\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.753
+          ],
+          [
+            "Output \" doc\"",
+            0.042
+          ],
+          [
+            "Output \" therapist\"",
+            0.038
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.033
+          ],
+          [
+            "Output \" Dr\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 601,
+        "unique_to_a": 616,
+        "unique_to_b": 554
+      },
+      "outputs": {
+        "html": "trace_out/repeatability_r2/index_20.html",
+        "png": "trace_out/repeatability_r2/index_20.png",
+        "diff_html": "trace_out/repeatability_r2/index_20_diff.html",
+        "diff_png": "trace_out/repeatability_r2/index_20_diff.png"
+      }
     }
   ]
 }
