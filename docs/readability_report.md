@@ -16,5 +16,5 @@ use as a ranked editing worklist. Regenerate: `python scripts/readability_report
 | translation/index.html | 12.3 | 22.0 | 484 | REVISE |
 | word-differences/index.html | 12.3 | 23.3 | 303 | REVISE |
 | start-here/index.html | 11.2 | 20.1 | 846 | REVISE |
-| methods.html | 10.3 | 17.4 | 1735 | REVISE |
 | answer-depth/index.html | 10.3 | 16.8 | 504 | REVISE |
+| methods.html | 10.2 | 17.2 | 1705 | REVISE |
