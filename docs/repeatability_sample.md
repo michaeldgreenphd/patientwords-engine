@@ -19,3 +19,27 @@ clinical-mass shares at recorded precision on repeated input.
   designed repeat-traces, with the rule-of-three 95% upper bound on the
   per-trace difference rate, pooled with the opportunistic record and also
   reported alone. Any nonzero difference publishes as-is.
+
+## Result (2026-07-13, per the frozen analysis above)
+
+All 60 designed traces landed (20 pairs x 3 independent CI runs). Two
+operational notes, disclosed: runs r1 and r2 required fill-in chunks after
+the workflow's 45-minute chunk timeout truncated chunk-final pairs (the
+timeout is now 75 minutes; commit daa46fb), and where a chunk was re-run
+the analysis uses one measurement per run as designed.
+
+- Differences observed: **0 of 60 designed repeat-traces.** Probabilities
+  (at the recorded 3-decimal precision), top words, full top-k spread
+  lists, and clinical_mass under identical graph parameters were identical
+  across all three runs for all 20 pairs.
+- Rule-of-three 95% upper bound on the per-trace difference rate,
+  designed sample alone: 3/60 = 5.0%.
+- Pooled with the opportunistic record: 68 distinct pairs now traced 2-12
+  times with zero differences on every compared quantity
+  (ops/retrace_consistency.json).
+
+The pre-declared commitment was that any nonzero difference publishes
+as-is; the observed difference count is zero, and that publishes as-is
+too. The claim stays scoped: determinism at recorded precision on the
+frozen model via the hosted tracer, not a guarantee against future
+service-side change (the daily sentinel watches for that).
