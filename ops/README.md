@@ -39,7 +39,7 @@ Top-level fields, and which step of the Routine's cycle writes them:
 | `schema_version` | contract version, currently `1` | fixed |
 | `updated_utc` | UTC timestamp of the last write; the page shows a STALE chip when this is older than 26 h (the Routine has failed) | every Routine write, incl. every `ledger_update.py` dashboard write |
 | `updated_by` | `"routine"` or `"session"`; `ledger_update.py` sets `"session"` only when the field is absent and otherwise preserves the existing value | every Routine write |
-| `queue` | per-concurrency-group running/pending slots (`circuit-trace`, `logits-eval`, `scenario-generation`, `model-evaluation`, `archive-renders`), each `{fired_utc, commit, note}` or `null` | `scripts/fire_trigger.py` (fire/resolve), mirrored by the Routine |
+| `queue` | per-concurrency-group running/pending slots (`circuit-trace`, `logits-eval`, `activation-patching`, `jlens-readout`, `scenario-generation`, `model-evaluation`, `archive-renders`), each `{fired_utc, commit, note}` or `null` (the Routine's mirror may write a free-text summary string instead - both shapes are valid to readers) | `scripts/fire_trigger.py` (fire/resolve), mirrored by the Routine |
 | `runs_recent` | compact log of recent workflow runs `{workflow, fired_utc, status, note}` | the Routine's own edits |
 | `spend` | generation-run and daily ceilings vs. spend, lifetime total, per-day map, sidecar filenames already counted (`entries_seen`), `last_scan_utc`, ceiling `alerts` | `scripts/ledger_update.py` (idempotent sidecar scan) |
 | `tierb` | overnight campaign progress: `target_pairs`, `generator`, `start_utc`, `accepted_pairs`, `traced_pairs`, `screened_in_pairs`, `batches[]` | `scripts/ledger_update.py` (costs) + the Routine's own edits (counts, statuses) |
@@ -74,7 +74,8 @@ in-flight hold once the run's real cost lands via the sidecar scan.
 
 ## Single-writer rule
 
-`ops/dashboard.json` is written **only by the daily Routine session**, through
+`ops/dashboard.json` is written **only by the orchestrator session** (the daily
+Routine fires into it since the 2026-07-10 rebind), through
 exactly three paths: `scripts/fire_trigger.py` (queue slots and the trigger
 journal), `scripts/ledger_update.py` (spend accounting from cost sidecars), and
 the Routine's own direct edits (verdicts, findings, decisions, blockers,

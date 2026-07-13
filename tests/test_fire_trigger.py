@@ -308,7 +308,8 @@ def test_budget_check_inflight_counts_only_active_entries_fired_today():
 
     kind, reason = ft.budget_check({"max_spend": "1.9"}, {}, today, entries=[entry()], now=now)
     assert kind == "ceiling" and "in-flight 1.90" in reason
-    for released in (entry(resolved=True), entry(evicted=True), entry(trigger="circuit-trace")):
+    for released in (entry(resolved=True), entry(evicted=True),
+                     entry(trigger="circuit-trace", max_spend=None)):
         assert ft.budget_check({"max_spend": "1.9"}, {}, today,
                                entries=[released], now=now)[0] == "ok"
     # active (expiry widened) but fired on a previous UTC date: not today's spend
@@ -519,3 +520,20 @@ def test_settle_minutes_env_rejects_nonfinite_and_nonpositive(monkeypatch, capsy
     monkeypatch.delenv("MEDLANG_TRIGGER_SETTLE_MINUTES", raising=False)
     assert ft.settle_minutes_from_env() == ft.DEFAULT_SETTLE_MINUTES
     assert capsys.readouterr().err == ""  # valid or unset values warn nothing
+
+
+def test_mitigation_fire_detection_and_inflight_counting():
+    import scripts.fire_trigger as ft
+    assert ft.is_mitigation_fire("circuit-trace", {"show_mitigation": "true"})
+    assert ft.is_mitigation_fire("circuit-trace", {"show_mitigation": "1"})
+    assert not ft.is_mitigation_fire("circuit-trace", {})
+    assert not ft.is_mitigation_fire("logits-eval", {"show_mitigation": "true"})
+    # a mitigation circuit-trace entry with a recorded imputed commitment
+    # counts toward today's in-flight spend
+    from datetime import datetime, timezone
+    now = datetime(2026, 7, 13, 12, 0, tzinfo=timezone.utc)
+    entry = {"trigger": "circuit-trace", "fired_utc": "2026-07-13T11:00:00Z",
+             "commit": "", "note": "mitigation arm", "resolved": False,
+             "evicted": False, "max_spend": ft.MITIGATION_IMPUTED_USD}
+    total = ft.inflight_max_spend([entry], "2026-07-13", now, 8.0)
+    assert total == ft.MITIGATION_IMPUTED_USD

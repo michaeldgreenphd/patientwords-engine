@@ -28,7 +28,7 @@ generates or evaluates medical advice.
 ```bash
 pip install -e ".[llm]"                 # dev install (poetry-core backend; [llm] adds anthropic)
 python -m pytest                        # full suite (fast, offline; must stay green)
-python -m pytest tests/test_graph_client.py -k retry   # single file / test
+python -m pytest tests/test_graph_client.py -k retries   # single file / test
 ruff check .                            # lint (line-length 120)
 ```
 
@@ -50,6 +50,8 @@ changes on any pushed branch.
 | `scenario-generation.json` | `scenario_generation.yml` | Claude-authored pair batches (paid; `max_spend` ceiling) |
 | `model-evaluation.json` | `model_evaluation.yml` | Claude concept-extraction eval before/after translation (paid) |
 | `archive-renders.json` | `archive_renders.yml` | zips run renders to a GitHub Release |
+| `activation-patching.json` | `activation_patching.yml` | CPU residual-stream patching grid ($0) |
+| `jlens-readout.json` | `jlens_readout.yml` | hosted Jacobian-lens depth readouts ($0) |
 
 **Queue discipline (the sharpest tool in the repo):** every workflow has a per-branch
 concurrency group with `cancel-in-progress: false`, which means **one running + one
@@ -61,8 +63,10 @@ merges to `main`. When merging branches, keep the target branch's trigger files 
 (restore them before committing the merge) or you will re-fire runs and double-spend.
 
 **Cost discipline:** Neuronpedia tracing, Qwen logits, and all analysis are $0. Only
-`medlang-generate` and `medlang-evaluate` spend Anthropic credits (~$0.015/pair on opus,
-~$0.002 on haiku); every paid run writes a `.report.json` sidecar with its cost. Session
+`medlang-generate`, `medlang-evaluate`, and 2panel's `--show-mitigation` translation
+panel spend Anthropic credits (~$0.015/pair on opus, ~$0.002 on haiku; mitigation
+fires are budget-guarded via an imputed commitment in `fire_trigger.py`); every paid
+run writes a `.report.json` (or `.mitigation.report.json`) sidecar with its cost. Session
 ledgers live in `docs/` when an overnight run is active.
 
 **Ops tooling (required path):** fire triggers ONLY via `scripts/fire_trigger.py` — it

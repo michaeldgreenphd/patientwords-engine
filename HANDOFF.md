@@ -47,8 +47,9 @@ approved · Q6 blind QC pending (owner will paste later).
   (set `tierb.start_utc`), create the daily Routine, run the unified
   gemma-3 + dedupe recompute, publish. Hold + flag on any ambiguity;
   rationale to the ledger either way.
-- **Daily Routine digest:** 13:00 UTC (9:00 AM EDT), fresh session per fire,
-  push notification, prompt = `docs/routine_standing_prompt.md`.
+- **Daily Routine digest:** 13:00 UTC, fires into the orchestrator session
+  (2026-07-10 rebind; owner on Pacific time through 2026-07-16, so 6:00 AM PDT
+  this week), push notification, prompt = `docs/routine_standing_prompt.md`.
 
 ## Architecture decided (build in flight)
 
@@ -142,8 +143,8 @@ Key design decisions and why:
   Batch-1 trace complete (50/50, screened 42 in); batch-2 trace running;
   batch-1+2 logits (all four models) running + pending. Spend: $0.15 today
   / $2 ceiling; $0.15 / $8 Tier B; $9.72 lifetime.
-- **Daily Routine LIVE**: `trig_01VXhhGaCorFodHP4bicKpSM`, fresh session,
-  cron 13:00 UTC (9 AM EDT), push notification on — the owner's one daily
+- **Daily Routine LIVE**: `trig_01Qczu2cNAsk1gYodan6auHb`, fires into the
+  orchestrator session (2026-07-10 rebind), cron 13:00 UTC, push notification on — the owner's one daily
   touchpoint. Watchdog in its prompt checks this session's pulse.
 - **Wake chain armed**: critic nightly 05:00 UTC (run 2 =
   `trig_01Xtg1znNDJnfab1DvEq6ZKZ`; re-chains itself), Monday synthesis
@@ -174,7 +175,8 @@ Key design decisions and why:
    biomistral-7b, gemma-2-2b-it, gemma-2-9b — limit 3, gated 401s become
    owner click-path items) + patching smoke #4 harvest.
 3. Monday: synthesis DRAFT (never overwrites the released doc). Tuesday:
-   downshift batch agents to Opus 4.8.
+   Fable health check only (downshift cancelled - access extended through
+   2026-07-19, owner decision 2026-07-12).
 4. Week's end: holdout analysis (once, against pre-registered endpoints),
    welcome-back consolidation package.
 5. Owner-return items parked in `decisions_pending` (skeptic voice/framing)
@@ -201,7 +203,7 @@ Key design decisions and why:
   `results[i]["index"]`.
 - Owner's timezone: CONFIRMED America/New_York (EDT, UTC−4; 3:00 PM =
   19:00 UTC). All Routine crons are written in UTC computed from EDT
-  anchors — the daily Routine fires 11:30 UTC (7:30 AM EDT) so the digest
+  anchors — the daily Routine fires 13:00 UTC so the digest
   push lands with the owner's morning.
 - Tier B firing authority: owner granted standing approval (2026-07-09) to
   fire batch 1 tonight ONLY IF the haiku translation verdict is clean —

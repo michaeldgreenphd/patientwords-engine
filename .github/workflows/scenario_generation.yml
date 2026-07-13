@@ -9,8 +9,8 @@ name: Scenario Generation (medlang-circuits)
 #      (hosted backend) and the per-model next-token probabilities are
 #      compared on the run page.
 # Secrets: ANTHROPIC_API_KEY (generation), NEURONPEDIA_API_KEY (tracing).
-# Caveat: non-gemma models fail at the feature-tagging step until their
-# autointerp source sets are registered (see MODEL_SOURCE_SETS).
+# Caveat: only gemma-2-2b currently produces hosted graphs (docs/cross-model.md);
+# models without a registered source set trace with untagged features (NullFetcher).
 #
 # Two ways to start a run:
 #   - workflow_dispatch from the Actions tab, parameters as form inputs;
@@ -93,6 +93,13 @@ on:
 
 permissions:
   contents: write
+
+# One running + one pending per branch, like every other workflow here -
+# these are the PAID workflows and were the only two missing the group
+# (audit 2026-07-13). fire_trigger.py enforces the same discipline client-side.
+concurrency:
+  group: scenario-generation-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   generate:

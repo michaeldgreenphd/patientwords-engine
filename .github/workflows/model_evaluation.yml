@@ -45,6 +45,13 @@ on:
 permissions:
   contents: write
 
+# One running + one pending per branch, like every other workflow here -
+# these are the PAID workflows and were the only two missing the group
+# (audit 2026-07-13). fire_trigger.py enforces the same discipline client-side.
+concurrency:
+  group: model-evaluation-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   evaluate:
     runs-on: ubuntu-latest

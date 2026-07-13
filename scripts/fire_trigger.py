@@ -59,6 +59,14 @@ TRIGGERS = (
     "archive-renders",
 )
 PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation"})
+# A circuit-trace fire with show_mitigation=true makes Anthropic translation
+# calls (the only paid path outside PAID_TRIGGERS). Its cost has no max_spend
+# param, so the guard imputes a conservative flat commitment per fire.
+MITIGATION_IMPUTED_USD = 0.15
+
+
+def is_mitigation_fire(trigger, params):
+    return trigger == "circuit-trace" and str(params.get("show_mitigation", "")).lower() in ("true", "1")
 DEFAULT_EXPIRE_HOURS = 8.0
 DEFAULT_SETTLE_MINUTES = 15.0
 DEFAULT_DAILY_CEILING_USD = 2.0
@@ -291,7 +299,9 @@ def inflight_max_spend(entries, today, now, expire_hours):
     yet landed on the dashboard."""
     total = 0.0
     for entry in entries:
-        if entry.get("trigger") not in PAID_TRIGGERS:
+        # paid triggers always record max_spend; mitigation circuit-trace
+        # entries record their imputed commitment the same way
+        if entry.get("trigger") not in PAID_TRIGGERS and entry.get("max_spend") is None:
             continue
         if not entry_is_active(entry, now, expire_hours):
             continue
@@ -492,10 +502,14 @@ def cmd_fire(args):
             return 6
 
     # 4. Budget guard for the paid triggers: committed = landed + in-flight max_spend.
+    # Mitigation circuit-trace fires are paid too (Anthropic translation calls);
+    # they carry no max_spend param, so a flat imputed commitment is used.
     max_spend = None
-    if args.trigger in PAID_TRIGGERS:
+    if args.trigger in PAID_TRIGGERS or is_mitigation_fire(args.trigger, params):
+        budget_params = params if args.trigger in PAID_TRIGGERS \
+            else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
         dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
-        kind, reason = budget_check(params, dashboard, now.strftime("%Y-%m-%d"),
+        kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),
                                     entries=entries, now=now, expire_hours=expire_hours)
         if kind == "ok":
             print(reason)
@@ -504,7 +518,7 @@ def cmd_fire(args):
         else:
             print(f"refused: {reason}", file=sys.stderr)
             return 4
-        max_spend = parse_max_spend(params["max_spend"])  # valid here: budget_check vetted it
+        max_spend = parse_max_spend(budget_params["max_spend"])  # valid here: budget_check vetted it
 
     # 5. Refuse a no-op fire: identical trigger-file content means the push would
     # not change the file, so CI would NOT fire, yet a journal entry would hold a

@@ -134,7 +134,7 @@ medlang-compare \
 # Tag an existing graph JSON in place (no generation)
 medlang-compare tag path/to/graph.json
 
-# Batch evaluation over paired prompts (three modes)
+# Batch evaluation over paired prompts (four modes)
 medlang-batch-eval pairs.json --mode 2panel --out batch_out
 medlang-batch-eval matrix.json --mode 4quadrant --out batch_out
 medlang-batch-eval patient.json --mode translation --out batch_out
@@ -523,8 +523,8 @@ Three separate meters, and only one of them bills real money by default:
    Neuronpedia account settings at roughly $0.001-0.003 per explanation, and
    only when explicitly requested via `generate_explanations`.
 
-3. **GitHub Actions minutes** - free until the private-repo allowance runs
-   out (2,000 minutes/month on the free plan). Tracing paces at roughly 1.5-2
+3. **GitHub Actions minutes** - free on public repos with standard runners;
+   the practical ceiling is runner wall-clock. Tracing paces at roughly 1.5-2
    minutes per graph, so a 150-candidate screened run (~270 graphs: every
    clinical side plus measured patient sides and probe extensions) uses
    roughly 450-550 runner-minutes, about a quarter of the monthly allowance,
