@@ -1,0 +1,330 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 11,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have lower extremity edema after work, so I should probably see a",
+        "patient": "My legs feel heavy after work, so I should probably see a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4571
+      },
+      "error_share": {
+        "clinical": 0.0999
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " cardiologist",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.415
+          ],
+          [
+            "Output \" po\"",
+            0.201
+          ],
+          [
+            "Output \" specialist\"",
+            0.043
+          ],
+          [
+            "Output \" doc\"",
+            0.03
+          ],
+          [
+            "Output \" foot\"",
+            0.029
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have weakness in my grip, so my doctor ordered some",
+        "patient": "I've been having trouble holding things, so my doctor ordered some"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2426
+      },
+      "error_share": {
+        "clinical": 0.0997
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " tests",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hand\"",
+            0.087
+          ],
+          [
+            "Output \" wrist\"",
+            0.075
+          ],
+          [
+            "Output \" of\"",
+            0.066
+          ],
+          [
+            "Output \" grip\"",
+            0.051
+          ],
+          [
+            "Output \" weights\"",
+            0.051
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I experience paresthesia at night, so I should talk to my",
+        "patient": "I feel like my skin's crawling at night, so I should talk to my"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.18,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3501,
+        "patient": 0.2674
+      },
+      "error_share": {
+        "clinical": 0.0987,
+        "patient": 0.0904
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.425)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.528)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.18
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.425
+          ],
+          [
+            "Output \" neuro\"",
+            0.18
+          ],
+          [
+            "Output \" doc\"",
+            0.1
+          ],
+          [
+            "Output \" GP\"",
+            0.028
+          ],
+          [
+            "Output \" Dr\"",
+            0.026
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.528
+          ],
+          [
+            "Output \" doc\"",
+            0.092
+          ],
+          [
+            "Output \" GP\"",
+            0.09
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.087
+          ],
+          [
+            "Output \" Dr\"",
+            0.018
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 588,
+        "unique_to_a": 674,
+        "unique_to_b": 617
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_13.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_13.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_13_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_13_diff.png"
+      }
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have nausea and vomiting, so I need to avoid my",
+        "patient": "I've been having trouble keeping food down, so I need to avoid my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2522
+      },
+      "error_share": {
+        "clinical": 0.087
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " medications",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" favorite\"",
+            0.198
+          ],
+          [
+            "Output \" usual\"",
+            0.141
+          ],
+          [
+            "Output \" favourite\"",
+            0.055
+          ],
+          [
+            "Output \" normal\"",
+            0.05
+          ],
+          [
+            "Output \" food\"",
+            0.046
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have mood instability, so I should probably get my",
+        "patient": "My mood's been all over the place, so I should probably get my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2469
+      },
+      "error_share": {
+        "clinical": 0.0881
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " levels",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.12
+          ],
+          [
+            "Output \" sleep\"",
+            0.064
+          ],
+          [
+            "Output \" meds\"",
+            0.05
+          ],
+          [
+            "Output \" hormones\"",
+            0.044
+          ],
+          [
+            "Output \" head\"",
+            0.035
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}
