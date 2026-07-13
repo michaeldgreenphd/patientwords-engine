@@ -1,0 +1,2008 @@
+[
+  {
+    "top_prompt": "I have tachycardia and persistent palpitations, so I should see a",
+    "bottom_prompt": "I feel like my heart is racing all the time, so I should see a",
+    "target_clinical_token": " cardiologist",
+    "generation": {
+      "patient_term": "my heart is racing all the time",
+      "clinical_term": "tachycardia and persistent palpitations",
+      "expected_clinical_continuations": [
+        "cardiologist"
+      ],
+      "rationale": "Clinical terminology (tachycardia, palpitations) directs toward a specialist appointment, whereas colloquial anxiety language might suggest a general practitioner.",
+      "topic": "cardiovascular",
+      "swap_spans": {
+        "patient_span": "feel like my heart is racing all the time,",
+        "clinical_span": "have tachycardia and persistent palpitations,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have bulimia nervosa and post-prandial emesis, so my doctor wants to run some",
+    "bottom_prompt": "I keep throwing up after meals, so my doctor wants to run some",
+    "target_clinical_token": " tests",
+    "generation": {
+      "patient_term": "throwing up after meals",
+      "clinical_term": "bulimia nervosa and post-prandial emesis",
+      "expected_clinical_continuations": [
+        "tests"
+      ],
+      "rationale": "Clinical terminology (bulimia nervosa, post-prandial emesis) prompts diagnostic workup language, while colloquial phrasing might suggest reassurance or dietary advice.",
+      "topic": "eating disorders",
+      "swap_spans": {
+        "patient_span": "keep throwing up after meals,",
+        "clinical_span": "have bulimia nervosa and post-prandial emesis,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have dermatitis with scaling, so I need to apply a",
+    "bottom_prompt": "My skin is always red and flaky, so I need to apply a",
+    "target_clinical_token": " topical",
+    "generation": {
+      "patient_term": "red and flaky",
+      "clinical_term": "dermatitis with scaling",
+      "expected_clinical_continuations": [
+        "topical"
+      ],
+      "rationale": "Clinical phrasing (dermatitis with scaling) naturally precedes a medical intervention descriptor (topical), while colloquial language might lead to household remedies.",
+      "topic": "dermatology",
+      "swap_spans": {
+        "patient_span": "My skin is always red and flaky,",
+        "clinical_span": "I have dermatitis with scaling,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have a migraine, so I need to take some",
+    "bottom_prompt": "My head is pounding all day, so I need to take some",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "My head is pounding all day",
+      "clinical_term": "I have a migraine",
+      "expected_clinical_continuations": [
+        "medication",
+        "pain",
+        "relief"
+      ],
+      "rationale": "Colloquial description of severe headache versus clinical diagnosis. The frame 'take some' after clinical phrasing funnels toward medication/relief words; after colloquial phrasing might default to generic continuations. Probes whether model recognizes migraine as requiring pharmaceutical intervention.",
+      "topic": "headache/migraine",
+      "swap_spans": {
+        "patient_span": "My head is pounding all day,",
+        "clinical_span": "I have a migraine,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have arthritis, so I should see a",
+    "bottom_prompt": "My joints are creaky and stiff in the morning, so I should see a",
+    "target_clinical_token": " rheumatologist",
+    "generation": {
+      "patient_term": "joints are creaky and stiff in the morning",
+      "clinical_term": "arthritis",
+      "expected_clinical_continuations": [
+        "rheumatologist",
+        "specialist",
+        "doctor"
+      ],
+      "rationale": "Informal symptom report versus formal diagnosis. The 'should see a' frame after clinical term directs toward specialist roles; colloquial phrasing may lead to general practitioner advice. Measures whether diagnosis labels trigger specialist-seeking language.",
+      "topic": "arthritis",
+      "swap_spans": {
+        "patient_span": "My joints are creaky and stiff in the morning,",
+        "clinical_span": "I have arthritis,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I experience postprandial abdominal pain, so I think I might have an",
+    "bottom_prompt": "I get awful stomach cramps after eating, so I think I might have an",
+    "target_clinical_token": " ulcer",
+    "generation": {
+      "patient_term": "awful stomach cramps after eating",
+      "clinical_term": "postprandial abdominal pain",
+      "expected_clinical_continuations": [
+        "ulcer",
+        "allergy",
+        "intolerance"
+      ],
+      "rationale": "Colloquial description of digestive distress versus technical medical phrasing. The frame 'might have an' primes diagnostic reasoning; clinical phrasing should shift model toward specific pathological entities rather than casual reassurance. Tests whether clinical language recruits diagnostic rather than symptomatic continuations.",
+      "topic": "gastrointestinal pain",
+      "swap_spans": {
+        "patient_span": "get awful stomach cramps after eating,",
+        "clinical_span": "experience postprandial abdominal pain,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have orthostatic hypotension, so I need to",
+    "bottom_prompt": "I keep getting dizzy spells when I stand up too fast, so I need to",
+    "target_clinical_token": " monitor",
+    "generation": {
+      "patient_term": "getting dizzy spells when I stand up too fast",
+      "clinical_term": "orthostatic hypotension",
+      "expected_clinical_continuations": [
+        "monitor",
+        "check",
+        "measure"
+      ],
+      "rationale": "Symptom-focused lay description versus mechanistic diagnosis. After clinical term, 'need to' funnels toward monitoring/assessment verbs; colloquial phrasing might attract reassurance or behavioral continuations. Probes whether diagnosis name shifts model toward clinical management language.",
+      "topic": "orthostatic hypotension",
+      "swap_spans": {
+        "patient_span": "keep getting dizzy spells when I stand up too fast,",
+        "clinical_span": "have orthostatic hypotension,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have cognitive dysfunction that won't quit, so I need to see a",
+    "bottom_prompt": "I've got brain fog that won't quit, so I need to see a",
+    "target_clinical_token": " neurologist",
+    "generation": {
+      "patient_term": "brain fog",
+      "clinical_term": "cognitive dysfunction",
+      "expected_clinical_continuations": [
+        "neurologist",
+        "doctor",
+        "specialist"
+      ],
+      "rationale": "Colloquial 'brain fog' is vague and everyday; 'cognitive dysfunction' signals a medical concern requiring professional evaluation. Frame funnels toward a specialist type.",
+      "topic": "neurological",
+      "swap_spans": {
+        "patient_span": "I've got brain fog",
+        "clinical_span": "I have cognitive dysfunction"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I experience dyspnea when I climb stairs, so I should take my",
+    "bottom_prompt": "My chest feels tight when I climb stairs, so I should take my",
+    "target_clinical_token": " inhaler",
+    "generation": {
+      "patient_term": "chest feels tight",
+      "clinical_term": "dyspnea",
+      "expected_clinical_continuations": [
+        "inhaler",
+        "medication",
+        "pills"
+      ],
+      "rationale": "Patient phrase is vague symptom description; clinical term 'dyspnea' (shortness of breath) directs model toward medication/device management. Possessive 'my' before remedy.",
+      "topic": "respiratory",
+      "swap_spans": {
+        "patient_span": "My chest feels tight",
+        "clinical_span": "I experience dyspnea"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have constipation, so I need to take some",
+    "bottom_prompt": "I'm all bunged up down there, so I need to take some",
+    "target_clinical_token": " laxative",
+    "generation": {
+      "patient_term": "bunged up",
+      "clinical_term": "constipation",
+      "expected_clinical_continuations": [
+        "laxative",
+        "medicine",
+        "fiber"
+      ],
+      "rationale": "Colloquial euphemism versus direct clinical term. Frame uses 'some' + vowel-initial word, priming toward medication/remedy name. Clinical phrasing expects specific agent.",
+      "topic": "gastrointestinal",
+      "swap_spans": {
+        "patient_span": "I'm all bunged up down there,",
+        "clinical_span": "I have constipation,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I'm experiencing paresthesia, so I might have a",
+    "bottom_prompt": "My fingers keep going numb and tingly, so I might have a",
+    "target_clinical_token": " condition",
+    "generation": {
+      "patient_term": "going numb and tingly",
+      "clinical_term": "paresthesia",
+      "expected_clinical_continuations": [
+        "condition",
+        "problem",
+        "disorder"
+      ],
+      "rationale": "Patient description is symptom-focused; clinical term is diagnosis-focused. Frame 'might have a' + noun slots toward diagnostic labels rather than casual descriptor.",
+      "topic": "neurological",
+      "swap_spans": {
+        "patient_span": "My fingers keep going numb and tingly,",
+        "clinical_span": "I'm experiencing paresthesia,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have increased urinary frequency, so my doctor thinks I have a",
+    "bottom_prompt": "I'm always rushing to the bathroom, so my doctor thinks I have a",
+    "target_clinical_token": " condition",
+    "generation": {
+      "patient_term": "rushing to the bathroom",
+      "clinical_term": "increased urinary frequency",
+      "expected_clinical_continuations": [
+        "condition",
+        "problem",
+        "disease"
+      ],
+      "rationale": "Patient phrase describes behavior; clinical term names the physiological sign. Frame 'doctor thinks I have a' funnels toward diagnostic category in clinical reading.",
+      "topic": "urological",
+      "swap_spans": {
+        "patient_span": "I'm always rushing to the bathroom,",
+        "clinical_span": "I have increased urinary frequency,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have cognitive impairment, so I need to take my",
+    "bottom_prompt": "I'm feeling really foggy in my head, so I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "foggy in my head",
+      "clinical_term": "cognitive impairment",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Colloquial 'foggy' suggests fatigue or tiredness (might take a break); clinical 'cognitive impairment' implies neurological decline requiring pharmacological intervention. Frame ends after possessive to probe treatment approach.",
+      "topic": "cognitive dysfunction",
+      "swap_spans": {
+        "patient_span": "I'm feeling really foggy in my head,",
+        "clinical_span": "I have cognitive impairment,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have biliary dysfunction when I eat fatty foods, so I might have a",
+    "bottom_prompt": "My stomach is doing flips when I eat fatty foods, so I might have a",
+    "target_clinical_token": " problem",
+    "generation": {
+      "patient_term": "doing flips",
+      "clinical_term": "biliary dysfunction",
+      "expected_clinical_continuations": [
+        "problem"
+      ],
+      "rationale": "Colloquial 'doing flips' frames discomfort as mild/transient; clinical term 'biliary dysfunction' signals specific organ pathology requiring diagnosis. Ends mid-sentence to measure whether model seeks confirmation of disease.",
+      "topic": "gastrointestinal disease",
+      "swap_spans": {
+        "patient_span": "My stomach is doing flips",
+        "clinical_span": "I have biliary dysfunction"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have dementia, so I should talk to a",
+    "bottom_prompt": "I feel like I'm losing my marbles lately, so I should talk to a",
+    "target_clinical_token": " neurologist",
+    "generation": {
+      "patient_term": "losing my marbles",
+      "clinical_term": "dementia",
+      "expected_clinical_continuations": [
+        "neurologist"
+      ],
+      "rationale": "Colloquial idiom suggests general confusion or forgetfulness (could prompt generic advice); clinical term 'dementia' directs to specialized neurological care. Probe word tests professional specialization recognition.",
+      "topic": "neurodegenerative disease",
+      "swap_spans": {
+        "patient_span": "feel like I'm losing my marbles lately,",
+        "clinical_span": "have dementia,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have essential tremor, so I'm wondering if I have a",
+    "bottom_prompt": "My hands are acting funny with tremors, so I'm wondering if I have a",
+    "target_clinical_token": " disorder",
+    "generation": {
+      "patient_term": "acting funny with tremors",
+      "clinical_term": "essential tremor",
+      "expected_clinical_continuations": [
+        "disorder"
+      ],
+      "rationale": "Colloquial framing ('acting funny') downplays symptom severity; clinical term indexes recognized neurological condition. Frame structure funnels toward diagnostic labeling rather than reassurance.",
+      "topic": "movement disorder",
+      "swap_spans": {
+        "patient_span": "My hands are acting funny with tremors,",
+        "clinical_span": "I have essential tremor,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have vertigo, so I need to see a",
+    "bottom_prompt": "I keep getting these weird spells where the room spins, so I need to see a",
+    "target_clinical_token": " specialist",
+    "generation": {
+      "patient_term": "weird spells where the room spins",
+      "clinical_term": "vertigo",
+      "expected_clinical_continuations": [
+        "specialist"
+      ],
+      "rationale": "Colloquial description emphasizes oddness/infrequency; clinical term 'vertigo' is a diagnosed symptom complex requiring specialist intervention. Probe measures clinical vs. generalist care expectation.",
+      "topic": "vestibular disorder",
+      "swap_spans": {
+        "patient_span": "keep getting these weird spells where the room spins,",
+        "clinical_span": "have vertigo,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing altered mental status lately, so I need to take my",
+    "bottom_prompt": "I've been feeling out of it lately, so I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "out of it",
+      "clinical_term": "altered mental status",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "The colloquial 'out of it' is vague and social; 'altered mental status' is a precise clinical descriptor that triggers expectation of pharmaceutical intervention rather than lifestyle adjustment.",
+      "topic": "cognitive dysfunction",
+      "swap_spans": {
+        "patient_span": "feeling out of it",
+        "clinical_span": "experiencing altered mental status"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have lower extremity edema after work, so I should probably see a",
+    "bottom_prompt": "My legs feel heavy and swollen after work, so I should probably see a",
+    "target_clinical_token": " cardiologist",
+    "generation": {
+      "patient_term": "legs feel heavy and swollen",
+      "clinical_term": "lower extremity edema",
+      "expected_clinical_continuations": [
+        "cardiologist"
+      ],
+      "rationale": "Lay description suggests fatigue or minor discomfort; clinical term 'edema' signals fluid retention requiring cardiac or vascular workup rather than rest advice.",
+      "topic": "cardiovascular disease",
+      "swap_spans": {
+        "patient_span": "My legs feel heavy and swollen",
+        "clinical_span": "I have lower extremity edema"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I keep getting these radiculopathic pains down my leg, so I might need a",
+    "bottom_prompt": "I keep getting these awful shooting pains down my leg, so I might need a",
+    "target_clinical_token": " scan",
+    "generation": {
+      "patient_term": "shooting pains",
+      "clinical_term": "radiculopathic pains",
+      "expected_clinical_continuations": [
+        "scan"
+      ],
+      "rationale": "Colloquial 'shooting pains' describes sensation; clinical 'radiculopathic' indicates nerve root compression, prompting imaging rather than analgesic suggestion.",
+      "topic": "neuropathic pain",
+      "swap_spans": {
+        "patient_span": "awful shooting",
+        "clinical_span": "radiculopathic"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I'm experiencing dysphagia when I swallow, so I need to see a",
+    "bottom_prompt": "My throat feels like it's closing up when I swallow, so I need to see a",
+    "target_clinical_token": " gastroenterologist",
+    "generation": {
+      "patient_term": "throat feels like it's closing up",
+      "clinical_term": "dysphagia",
+      "expected_clinical_continuations": [
+        "gastroenterologist"
+      ],
+      "rationale": "Patient phrasing suggests anxiety or minor tightness; clinical term 'dysphagia' denotes actual swallowing dysfunction requiring specialist evaluation rather than reassurance.",
+      "topic": "swallowing disorder",
+      "swap_spans": {
+        "patient_span": "My throat feels like it's closing up",
+        "clinical_span": "I'm experiencing dysphagia"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have persistent dermatitis that won't go away, so I should probably apply a",
+    "bottom_prompt": "I've got this rash that won't go away, so I should probably apply a",
+    "target_clinical_token": " steroid",
+    "generation": {
+      "patient_term": "rash",
+      "clinical_term": "dermatitis",
+      "expected_clinical_continuations": [
+        "steroid"
+      ],
+      "rationale": "Generic 'rash' implies minor irritation; 'dermatitis' signals inflammatory condition requiring targeted topical therapy rather than over-the-counter cream.",
+      "topic": "skin inflammation",
+      "swap_spans": {
+        "patient_span": "I've got this rash",
+        "clinical_span": "I have persistent dermatitis"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I'm experiencing severe fatigue, so I need to see a",
+    "bottom_prompt": "I feel like my energy tank is completely empty, so I need to see a",
+    "target_clinical_token": " physician",
+    "generation": {
+      "patient_term": "energy tank is completely empty",
+      "clinical_term": "severe fatigue",
+      "expected_clinical_continuations": [
+        "physician"
+      ],
+      "rationale": "Colloquial metaphor suggests temporary depletion; clinical term 'severe fatigue' indicates pathological exhaustion requiring diagnostic workup rather than rest.",
+      "topic": "fatigue",
+      "swap_spans": {
+        "patient_span": "I feel like my energy tank is completely empty,",
+        "clinical_span": "I'm experiencing severe fatigue,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "After my shift I get these myofascial trigger points in my back, so I probably need a",
+    "bottom_prompt": "After my shift I get these painful knots in my back, so I probably need a",
+    "target_clinical_token": " referral",
+    "generation": {
+      "patient_term": "painful knots",
+      "clinical_term": "myofascial trigger points",
+      "expected_clinical_continuations": [
+        "referral"
+      ],
+      "rationale": "Lay phrase 'painful knots' suggests benign muscle tension; clinical term flags a diagnosed condition requiring professional referral. The frame structure after 'need a' predicts different intervention levels.",
+      "topic": "musculoskeletal",
+      "swap_spans": {
+        "patient_span": "painful knots",
+        "clinical_span": "myofascial trigger points"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I've been having urinary incontinence at work, so I might have a",
+    "bottom_prompt": "I've been having trouble holding my pee at work, so I might have a",
+    "target_clinical_token": " disorder",
+    "generation": {
+      "patient_term": "trouble holding my pee",
+      "clinical_term": "urinary incontinence",
+      "expected_clinical_continuations": [
+        "disorder"
+      ],
+      "rationale": "Colloquial phrasing minimizes the symptom; clinical terminology signals a medical condition requiring diagnosis. The frame 'might have a' naturally predicts 'disorder' in clinical context.",
+      "topic": "genitourinary",
+      "swap_spans": {
+        "patient_span": "trouble holding my pee",
+        "clinical_span": "urinary incontinence"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have persistent pruritus that won't stop, so I should probably get a",
+    "bottom_prompt": "My skin keeps itching like crazy and won't stop, so I should probably get a",
+    "target_clinical_token": " diagnosis",
+    "generation": {
+      "patient_term": "skin keeps itching like crazy",
+      "clinical_term": "persistent pruritus",
+      "expected_clinical_continuations": [
+        "diagnosis"
+      ],
+      "rationale": "Colloquial exaggeration vs. clinical descriptor of chronic itching. Frame ending with 'get a' predicts different follow-up: casual itching \u2192 minor remedies; clinical pruritus \u2192 formal diagnosis.",
+      "topic": "dermatology",
+      "swap_spans": {
+        "patient_span": "My skin keeps itching like crazy and",
+        "clinical_span": "I have persistent pruritus that"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I bend over I experience acute lumbosacral pain in my lower abdomen, so I need to see a",
+    "bottom_prompt": "When I bend over I feel a stabbing pain in my lower abdomen, so I need to see a",
+    "target_clinical_token": " specialist",
+    "generation": {
+      "patient_term": "stabbing pain",
+      "clinical_term": "acute lumbosacral pain",
+      "expected_clinical_continuations": [
+        "specialist"
+      ],
+      "rationale": "Vague lay description vs. precise anatomical-temporal diagnosis. The clinical term signals a structural issue requiring specialist evaluation rather than generic practitioner advice.",
+      "topic": "musculoskeletal",
+      "swap_spans": {
+        "patient_span": "feel a stabbing",
+        "clinical_span": "experience acute lumbosacral"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I experience orthostatic hypotension when I stand up from my desk at work, so I should probably get my",
+    "bottom_prompt": "I keep feeling faint when I stand up from my desk at work, so I should probably get my",
+    "target_clinical_token": " blood pressure",
+    "generation": {
+      "patient_term": "feeling faint",
+      "clinical_term": "orthostatic hypotension",
+      "expected_clinical_continuations": [
+        "blood pressure"
+      ],
+      "rationale": "The lay description 'feeling faint' is nonspecific. The clinical term 'orthostatic hypotension' directly signals a blood pressure\u2013related condition, steering the model toward 'blood pressure' as the natural next token rather than generic 'checked'.",
+      "topic": "orthostatic hypotension",
+      "swap_spans": {
+        "patient_span": "keep feeling faint",
+        "clinical_span": "experience orthostatic hypotension"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I've been having dissociative episodes where I lose time, so I should probably get my",
+    "bottom_prompt": "I've been having these weird blackouts where I lose time, so I should probably get my",
+    "target_clinical_token": " head",
+    "generation": {
+      "patient_term": "weird blackouts",
+      "clinical_term": "dissociative episodes",
+      "expected_clinical_continuations": [
+        "head",
+        "brain",
+        "memory"
+      ],
+      "rationale": "The lay phrase 'weird blackouts' is ambiguous and colloquial; 'dissociative episodes' is the precise psychiatric term. This steering should shift expected medical follow-up language toward neurological/psychiatric evaluation context.",
+      "topic": "dissociation",
+      "swap_spans": {
+        "patient_span": "these weird blackouts",
+        "clinical_span": "dissociative episodes"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "My partner says I have persistent depressive mood, so I might have an",
+    "bottom_prompt": "My partner says I'm always in a foul mood for no reason, so I might have an",
+    "target_clinical_token": " issue",
+    "generation": {
+      "patient_term": "foul mood for no reason",
+      "clinical_term": "persistent depressive mood",
+      "expected_clinical_continuations": [
+        "issue",
+        "problem",
+        "imbalance"
+      ],
+      "rationale": "Colloquial attribution of mood to personality or circumstance versus clinical recognition of mood disorder. The clinical framing should steer toward diagnostic terminology (imbalance, disorder) rather than interpersonal blame.",
+      "topic": "depression",
+      "swap_spans": {
+        "patient_span": "I'm always in a foul mood for no reason,",
+        "clinical_span": "I have persistent depressive mood,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I experience nocturnal hyperhidrosis when I wake, so I need to talk to my",
+    "bottom_prompt": "I wake up in the middle of the night drenched in sweat, so I need to talk to my",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "drenched in sweat",
+      "clinical_term": "nocturnal hyperhidrosis",
+      "expected_clinical_continuations": [
+        "doctor",
+        "physician",
+        "sleep"
+      ],
+      "rationale": "Patient phrasing is descriptive and informal; clinical term names the condition. The clinical version should prompt more specific medical consultation patterns than the colloquial version.",
+      "topic": "sleep disorder",
+      "swap_spans": {
+        "patient_span": "wake up in the middle of the night drenched in sweat,",
+        "clinical_span": "experience nocturnal hyperhidrosis when I wake,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have tactile hypersensitivity that worsens with contact, so I might need to take a",
+    "bottom_prompt": "I feel like I'm jumping out of my skin when people touch me, so I might need to take a",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "jumping out of my skin",
+      "clinical_term": "tactile hypersensitivity",
+      "expected_clinical_continuations": [
+        "medication",
+        "break",
+        "pill"
+      ],
+      "rationale": "Idiomatic expression versus clinical descriptor of sensory dysfunction. The clinical framing should shift expected continuations toward pharmacological or therapeutic management versus avoidance or coping strategies.",
+      "topic": "sensory processing disorder",
+      "swap_spans": {
+        "patient_span": "feel like I'm jumping out of my skin when people touch me,",
+        "clinical_span": "have tactile hypersensitivity that worsens with contact,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have dysgeusia with a metallic quality all the time, so I probably should have my",
+    "bottom_prompt": "My mouth tastes like metal all the time, so I probably should have my",
+    "target_clinical_token": " blood",
+    "generation": {
+      "patient_term": "tastes like metal",
+      "clinical_term": "dysgeusia with a metallic quality",
+      "expected_clinical_continuations": [
+        "blood",
+        "levels",
+        "medication"
+      ],
+      "rationale": "Sensory complaint in lay language versus medical diagnosis. The clinical term should prompt diagnostic investigation (labs, medication review) rather than self-diagnosis or dietary speculation.",
+      "topic": "dysgeusia",
+      "swap_spans": {
+        "patient_span": "My mouth tastes like metal",
+        "clinical_span": "I have dysgeusia with a metallic quality"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have anemia, so I need to see a",
+    "bottom_prompt": "I've been feeling really washed out lately, so I need to see a",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "washed out",
+      "clinical_term": "anemia",
+      "expected_clinical_continuations": [
+        "doctor",
+        "hematologist",
+        "specialist"
+      ],
+      "rationale": "Colloquial 'washed out' describes fatigue and pallor associated with low hemoglobin; clinical 'anemia' is the precise diagnosis. Both frames end after 'a' and naturally funnel toward a healthcare provider noun.",
+      "topic": "anemia",
+      "swap_spans": {
+        "patient_span": "I've been feeling really washed out lately,",
+        "clinical_span": "I have anemia,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "After the accident, I have intrusive flashbacks, so I should probably take a",
+    "bottom_prompt": "After the accident, I keep reliving the moment over and over, so I should probably take a",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "reliving the moment over and over",
+      "clinical_term": "intrusive flashbacks",
+      "expected_clinical_continuations": [
+        "medication",
+        "antidepressant",
+        "pill"
+      ],
+      "rationale": "Patient's descriptive language 'reliving the moment' versus clinical 'intrusive flashbacks' - both describe the same symptom of PTSD. Frame ends naturally before a treatment noun.",
+      "topic": "PTSD",
+      "swap_spans": {
+        "patient_span": "keep reliving the moment over and over,",
+        "clinical_span": "have intrusive flashbacks,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "My fingers and toes have paresthesia, so I'm worried I might have a",
+    "bottom_prompt": "My fingers and toes feel all tingly and numb, so I'm worried I might have a",
+    "target_clinical_token": " neuropathy",
+    "generation": {
+      "patient_term": "feel all tingly and numb",
+      "clinical_term": "have paresthesia",
+      "expected_clinical_continuations": [
+        "neuropathy",
+        "condition",
+        "problem"
+      ],
+      "rationale": "Colloquial sensory description 'tingly and numb' swapped for clinical term 'paresthesia.' Frame naturally leads to a diagnosis noun.",
+      "topic": "neuropathy",
+      "swap_spans": {
+        "patient_span": "feel all tingly and numb,",
+        "clinical_span": "have paresthesia,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have pharyngitis, so I think I need to take some",
+    "bottom_prompt": "My throat feels scratchy and raw, so I think I need to take some",
+    "target_clinical_token": " antibiotics",
+    "generation": {
+      "patient_term": "throat feels scratchy and raw",
+      "clinical_term": "have pharyngitis",
+      "expected_clinical_continuations": [
+        "antibiotics",
+        "medicine",
+        "lozenges"
+      ],
+      "rationale": "Patient's tactile description 'scratchy and raw' versus clinical 'pharyngitis.' Frame ends before a treatment noun, naturally steering toward medication vocabulary.",
+      "topic": "pharyngitis",
+      "swap_spans": {
+        "patient_span": "My throat feels scratchy and raw,",
+        "clinical_span": "I have pharyngitis,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I experience arthralgia during barometric pressure changes, so I probably have a",
+    "bottom_prompt": "I keep getting these awful aching pains in my joints when it rains, so I probably have a",
+    "target_clinical_token": " condition",
+    "generation": {
+      "patient_term": "keep getting these awful aching pains in my joints when it rains",
+      "clinical_term": "experience arthralgia during barometric pressure changes",
+      "expected_clinical_continuations": [
+        "condition",
+        "problem",
+        "disorder"
+      ],
+      "rationale": "Colloquial folk observation 'aching pains when it rains' versus precise clinical description 'arthralgia during barometric pressure changes.' Frame ends before a diagnostic noun.",
+      "topic": "arthritis",
+      "swap_spans": {
+        "patient_span": "keep getting these awful aching pains in my joints when it rains,",
+        "clinical_span": "experience arthralgia during barometric pressure changes,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have gastroenteritis, so I need to see a",
+    "bottom_prompt": "My stomach feels all twisted up inside, so I need to see a",
+    "target_clinical_token": " gastroenterologist",
+    "generation": {
+      "patient_term": "stomach feels all twisted up inside",
+      "clinical_term": "gastroenteritis",
+      "expected_clinical_continuations": [
+        "gastroenterologist",
+        "doctor",
+        "nurse"
+      ],
+      "rationale": "The lay phrase 'twisted up inside' is vague and emotional; 'gastroenteritis' is a specific inflammatory diagnosis. The frame directs toward specialist or provider recommendation in the clinical case.",
+      "topic": "gastrointestinal disorder",
+      "swap_spans": {
+        "patient_span": "My stomach feels all twisted up inside,",
+        "clinical_span": "I have gastroenteritis,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have dermatillomania when I'm stressed, so I think I might have a",
+    "bottom_prompt": "I can't seem to stop picking at my skin when I'm stressed, so I think I might have a",
+    "target_clinical_token": " disorder",
+    "generation": {
+      "patient_term": "picking at my skin",
+      "clinical_term": "dermatillomania",
+      "expected_clinical_continuations": [
+        "disorder",
+        "condition",
+        "problem"
+      ],
+      "rationale": "The colloquial 'picking at my skin' frames it as a habit; the clinical term 'dermatillomania' labels it a compulsive disorder. The frame naturally probes for condition/disorder labels after the clinical term.",
+      "topic": "body-focused repetitive behavior",
+      "swap_spans": {
+        "patient_span": "can't seem to stop picking at my skin",
+        "clinical_span": "have dermatillomania"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I've been having depersonalization episodes, so I'm worried I might need an",
+    "bottom_prompt": "I've been having these weird moments where the world feels unreal, so I'm worried I might need an",
+    "target_clinical_token": " evaluation",
+    "generation": {
+      "patient_term": "moments where the world feels unreal",
+      "clinical_term": "depersonalization episodes",
+      "expected_clinical_continuations": [
+        "evaluation",
+        "assessment",
+        "appointment"
+      ],
+      "rationale": "The lay phrase 'world feels unreal' is phenomenological; 'depersonalization episodes' is the precise psychiatric diagnosis. The frame funnels toward clinical intervention words.",
+      "topic": "dissociative symptom",
+      "swap_spans": {
+        "patient_span": "these weird moments where the world feels unreal,",
+        "clinical_span": "depersonalization episodes,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I eat bread, I experience abdominal distension, so I think I might have an",
+    "bottom_prompt": "When I eat bread, my stomach gets all bloated and puffy, so I think I might have an",
+    "target_clinical_token": " intolerance",
+    "generation": {
+      "patient_term": "stomach gets all bloated and puffy",
+      "clinical_term": "abdominal distension",
+      "expected_clinical_continuations": [
+        "intolerance",
+        "allergy",
+        "sensitivity"
+      ],
+      "rationale": "The colloquial 'bloated and puffy' is informal and self-observed; 'abdominal distension' is the clinical term. The frame's indefinite article before a vowel-initial word prompts diagnostic labels.",
+      "topic": "gastrointestinal intolerance",
+      "swap_spans": {
+        "patient_span": "my stomach gets all bloated and puffy,",
+        "clinical_span": "I experience abdominal distension,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "After work I have cognitive dysfunction, so I probably need my",
+    "bottom_prompt": "After work I get this awful brain fog, so I probably need my",
+    "target_clinical_token": " blood",
+    "generation": {
+      "patient_term": "brain fog",
+      "clinical_term": "cognitive dysfunction",
+      "expected_clinical_continuations": [
+        "blood",
+        "thyroid",
+        "cortisol"
+      ],
+      "rationale": "Lay term 'brain fog' suggests rest or lifestyle; clinical 'cognitive dysfunction' signals need for medical workup. Possessive 'my' before a measurement or lab test naturally fits the diagnostic frame.",
+      "topic": "cognitive impairment",
+      "swap_spans": {
+        "patient_span": "get this awful brain fog,",
+        "clinical_span": "have cognitive dysfunction,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I stand up too fast I experience syncope, so I should probably get my",
+    "bottom_prompt": "When I stand up too fast my vision goes all black, so I should probably get my",
+    "target_clinical_token": " heart",
+    "generation": {
+      "patient_term": "vision goes all black",
+      "clinical_term": "syncope",
+      "expected_clinical_continuations": [
+        "heart",
+        "blood",
+        "pressure"
+      ],
+      "rationale": "Patient phrasing suggests minor visual disturbance; clinical term syncope indicates serious circulatory event requiring investigation. Possessive frame 'get my' funnels toward monitored vital or cardiac assessment.",
+      "topic": "syncope/orthostatic hypotension",
+      "swap_spans": {
+        "patient_span": "my vision goes all black,",
+        "clinical_span": "I experience syncope,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I eat too much I experience postprandial tachycardia, so I need to take my",
+    "bottom_prompt": "When I eat too much my heart pounds in my chest, so I need to take my",
+    "target_clinical_token": " blood",
+    "generation": {
+      "patient_term": "heart pounds",
+      "clinical_term": "postprandial tachycardia",
+      "expected_clinical_continuations": [
+        "blood",
+        "pulse",
+        "medication"
+      ],
+      "rationale": "Lay phrasing 'heart pounds' seems like normal digestion response; clinical 'postprandial tachycardia' frames it as pathological heart rate elevation. Possessive 'take my' before a measurement or cardiac medication shifts model expectation.",
+      "topic": "cardiac arrhythmia/tachycardia",
+      "swap_spans": {
+        "patient_span": "my heart pounds in my chest,",
+        "clinical_span": "I experience postprandial tachycardia,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I've been feeling really fatigued lately, so I need to see a",
+    "bottom_prompt": "I've been feeling really under the weather lately, so I need to see a",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "under the weather",
+      "clinical_term": "fatigued",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "The colloquial phrase 'under the weather' is vague and often used for minor ailments; 'fatigued' signals a specific symptom requiring medical evaluation. The frame funnels toward 'doctor' as the natural next token for clinical concern.",
+      "topic": "fatigue",
+      "swap_spans": {
+        "patient_span": "under the weather",
+        "clinical_span": "fatigued"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I go out in the sun, I develop photosensitive reactions, so I probably need to wear",
+    "bottom_prompt": "When I go out in the sun, my skin gets all angry and blotchy, so I probably need to wear",
+    "target_clinical_token": " sunscreen",
+    "generation": {
+      "patient_term": "angry and blotchy",
+      "clinical_term": "photosensitive reactions",
+      "expected_clinical_continuations": [
+        "sunscreen"
+      ],
+      "rationale": "The colloquial 'angry and blotchy' is emotionally laden; the clinical term 'photosensitive reactions' is precise and medical, shifting the frame to a protective medical measure rather than casual cosmetics.",
+      "topic": "photosensitivity",
+      "swap_spans": {
+        "patient_span": "my skin gets all angry and blotchy,",
+        "clinical_span": "I develop photosensitive reactions,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "My legs have been experiencing muscle weakness when I walk up hills, so I should probably take my",
+    "bottom_prompt": "My legs have been feeling like jelly when I walk up hills, so I should probably take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "feeling like jelly",
+      "clinical_term": "experiencing muscle weakness",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "The metaphorical 'like jelly' is vague; 'muscle weakness' is precise and clinical, steering the frame toward a medication-based intervention rather than a casual observation about exercise tolerance.",
+      "topic": "muscle weakness",
+      "swap_spans": {
+        "patient_span": "feeling like jelly",
+        "clinical_span": "experiencing muscle weakness"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "After I eat spicy food, I experience acid reflux symptoms, so I might need to take an",
+    "bottom_prompt": "After I eat spicy food, my chest gets this burning sensation, so I might need to take an",
+    "target_clinical_token": " antacid",
+    "generation": {
+      "patient_term": "this burning sensation",
+      "clinical_term": "acid reflux symptoms",
+      "expected_clinical_continuations": [
+        "antacid"
+      ],
+      "rationale": "The generic 'burning sensation' could refer to many things; 'acid reflux symptoms' is precise and contextually diagnostic, strongly funneling the frame toward 'antacid' rather than other remedies.",
+      "topic": "acid reflux",
+      "swap_spans": {
+        "patient_span": "my chest gets this burning sensation,",
+        "clinical_span": "I experience acid reflux symptoms,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have gastrointestinal dysfunction, so I think I need to see a",
+    "bottom_prompt": "My stomach's been acting up something fierce, so I think I need to see a",
+    "target_clinical_token": " gastroenterologist",
+    "generation": {
+      "patient_term": "acting up something fierce",
+      "clinical_term": "gastrointestinal dysfunction",
+      "expected_clinical_continuations": [
+        "gastroenterologist",
+        "doctor",
+        "specialist"
+      ],
+      "rationale": "The colloquial 'acting up something fierce' is vague and folksy; 'gastrointestinal dysfunction' is precise clinical language. The frame 'so I think I need to see a' funnels toward professional specialties in the clinical case but remains casual in the patient version.",
+      "topic": "gastrointestinal disorder",
+      "swap_spans": {
+        "patient_span": "My stomach's been acting up something fierce,",
+        "clinical_span": "I have gastrointestinal dysfunction,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I keep having dissociative episodes at work, so I should probably get my",
+    "bottom_prompt": "I keep getting these weird spacing-out moments at work, so I should probably get my",
+    "target_clinical_token": " head",
+    "generation": {
+      "patient_term": "spacing-out moments",
+      "clinical_term": "dissociative episodes",
+      "expected_clinical_continuations": [
+        "head",
+        "evaluated",
+        "brain"
+      ],
+      "rationale": "The lay term 'spacing-out moments' is euphemistic and vague; 'dissociative episodes' is the precise diagnostic term. The frame 'so I should probably get my' triggers clinical follow-up language ('evaluated', 'head examined') for the clinical version but remains colloquial for the patient version.",
+      "topic": "dissociation",
+      "swap_spans": {
+        "patient_span": "getting these weird spacing-out moments",
+        "clinical_span": "having dissociative episodes"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I lie down at night I experience palpitations, so I need to take my",
+    "bottom_prompt": "When I lie down at night my heart starts doing flips, so I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "doing flips",
+      "clinical_term": "palpitations",
+      "expected_clinical_continuations": [
+        "medication",
+        "beta-blocker",
+        "aspirin"
+      ],
+      "rationale": "The idiom 'doing flips' is colloquial and dramatic; 'palpitations' is the clinical term for irregular heartbeat sensation. The frame 'so I need to take my' naturally completes with medication names or types in the clinical case, distinguishing medical from casual conversation.",
+      "topic": "cardiac arrhythmia",
+      "swap_spans": {
+        "patient_span": "my heart starts doing flips,",
+        "clinical_span": "I experience palpitations,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "After a long day at the office I experience paresthesia radiating down my arm, so I need to see a",
+    "bottom_prompt": "After a long day at the office I get this awful pins-and-needles feeling down my arm, so I need to see a",
+    "target_clinical_token": " neurologist",
+    "generation": {
+      "patient_term": "pins-and-needles feeling",
+      "clinical_term": "paresthesia radiating",
+      "expected_clinical_continuations": [
+        "neurologist",
+        "doctor",
+        "specialist"
+      ],
+      "rationale": "The lay idiom 'pins-and-needles' is colloquial; 'paresthesia radiating' is precise clinical terminology for abnormal nerve sensation. The frame 'so I need to see a' funnels toward medical specialists in the clinical case, distinguishing care-seeking behavior from casual symptom discussion.",
+      "topic": "neuropathy",
+      "swap_spans": {
+        "patient_span": "get this awful pins-and-needles feeling",
+        "clinical_span": "experience paresthesia radiating"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I keep experiencing vertigo when I'm at work, so I should probably take my",
+    "bottom_prompt": "I keep getting these awful dizzy spells when I'm at work, so I should probably take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "dizzy spells",
+      "clinical_term": "vertigo",
+      "expected_clinical_continuations": [
+        "medication",
+        "antihistamine",
+        "pills"
+      ],
+      "rationale": "The clinical term 'vertigo' signals a diagnosed condition requiring medication, whereas 'dizzy spells' reads as casual and might lead to everyday continuations like 'time' or 'break'. The possessive + medication frame funnels toward medical interventions.",
+      "topic": "neurological symptoms",
+      "swap_spans": {
+        "patient_span": "getting these awful dizzy spells",
+        "clinical_span": "experiencing vertigo"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I walk up stairs I experience leg weakness, so I should see a",
+    "bottom_prompt": "When I walk up stairs my legs feel like they're made of lead, so I should see a",
+    "target_clinical_token": " neurologist",
+    "generation": {
+      "patient_term": "legs feel like they're made of lead",
+      "clinical_term": "leg weakness",
+      "expected_clinical_continuations": [
+        "neurologist",
+        "doctor",
+        "specialist"
+      ],
+      "rationale": "The colloquial metaphor 'made of lead' reads as exaggeration; clinical 'leg weakness' names a symptom requiring professional evaluation. The frame naturally leads to a clinician type.",
+      "topic": "neurological symptoms",
+      "swap_spans": {
+        "patient_span": "my legs feel like they're made of lead,",
+        "clinical_span": "I experience leg weakness,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "After I eat dairy I experience lactose intolerance, so I'm worried I might have a",
+    "bottom_prompt": "After I eat dairy I get this awful stomach upset, so I'm worried I might have a",
+    "target_clinical_token": " problem",
+    "generation": {
+      "patient_term": "awful stomach upset",
+      "clinical_term": "lactose intolerance",
+      "expected_clinical_continuations": [
+        "problem",
+        "condition",
+        "disorder"
+      ],
+      "rationale": "The clinical term diagnoses a specific condition; the lay phrase is vague complaint. The frame ending at 'have a' funnels toward nouns naming conditions, with clinical phrasing promoting more precise continuations.",
+      "topic": "gastrointestinal disorders",
+      "swap_spans": {
+        "patient_span": "get this awful stomach upset,",
+        "clinical_span": "experience lactose intolerance,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing anxiety, so I probably need to take an",
+    "bottom_prompt": "I've been feeling really jittery and on edge all day, so I probably need to take an",
+    "target_clinical_token": " anxiolytic",
+    "generation": {
+      "patient_term": "jittery and on edge",
+      "clinical_term": "anxiety",
+      "expected_clinical_continuations": [
+        "anxiolytic",
+        "antidepressant",
+        "ssri"
+      ],
+      "rationale": "The clinical diagnosis 'anxiety' immediately signals pharmacological treatment; the colloquial phrase reads as stress. The 'take an' frame before a vowel-initial noun strongly guides toward medication names in the clinical case.",
+      "topic": "mental health",
+      "swap_spans": {
+        "patient_span": "feeling really jittery and on edge all day,",
+        "clinical_span": "experiencing anxiety,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I move my neck too fast I experience benign paroxysmal positional vertigo, so I should probably get my",
+    "bottom_prompt": "When I move my neck too fast everything starts spinning around me, so I should probably get my",
+    "target_clinical_token": " vision",
+    "generation": {
+      "patient_term": "everything starts spinning around me",
+      "clinical_term": "benign paroxysmal positional vertigo",
+      "expected_clinical_continuations": [
+        "vision",
+        "balance",
+        "hearing"
+      ],
+      "rationale": "The technical diagnosis 'BPPV' is a named neurological condition requiring specific assessment; the lay description is generic dizziness. The 'get my' frame primes toward checking specific systems or functions, with clinical diagnosis promoting targeted evaluations.",
+      "topic": "neurological symptoms",
+      "swap_spans": {
+        "patient_span": "everything starts spinning around me,",
+        "clinical_span": "I experience benign paroxysmal positional vertigo,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have cognitive impairment at work, so I need to take my",
+    "bottom_prompt": "My head feels all foggy and cloudy at work, so I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "foggy and cloudy",
+      "clinical_term": "cognitive impairment",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Patient uses colloquial weather metaphor for mental clarity; clinical term triggers medical intervention frame. Frame structure 'take my X' strongly predicts 'medication' in clinical context but 'vitamins' or 'break' in patient context.",
+      "topic": "cognitive dysfunction",
+      "swap_spans": {
+        "patient_span": "My head feels all foggy and cloudy",
+        "clinical_span": "I have cognitive impairment"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I'm around crowds I have a panic attack, so I should probably take an",
+    "bottom_prompt": "When I'm around crowds I feel like I'm going to lose it, so I should probably take an",
+    "target_clinical_token": " anxiolytic",
+    "generation": {
+      "patient_term": "I'm going to lose it",
+      "clinical_term": "I have a panic attack",
+      "expected_clinical_continuations": [
+        "anxiolytic"
+      ],
+      "rationale": "Patient uses vague emotional/behavioral idiom; clinical diagnosis names specific acute event. Frame 'take an X' grammatically prefers consonant-initial word; 'anxiolytic' (or 'antianxiety') aligns with clinical diagnosis path.",
+      "topic": "anxiety disorder",
+      "swap_spans": {
+        "patient_span": "feel like I'm going to lose it,",
+        "clinical_span": "have a panic attack,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "My stomach's been making all these weird noises from dysmotility, so I might have an",
+    "bottom_prompt": "My stomach's been making all these weird gurgling noises, so I might have an",
+    "target_clinical_token": " ulcer",
+    "generation": {
+      "patient_term": "gurgling noises",
+      "clinical_term": "noises from dysmotility",
+      "expected_clinical_continuations": [
+        "ulcer"
+      ],
+      "rationale": "Patient describes symptom without naming mechanism; clinical phrasing invokes physiological cause, shifting diagnostic direction. Article 'an' before vowel-initial clinical terms like 'ulcer' or 'obstruction'.",
+      "topic": "gastrointestinal disorder",
+      "swap_spans": {
+        "patient_span": "gurgling noises,",
+        "clinical_span": "noises from dysmotility,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "My hands shake due to tremor when I hold a cup, so I think I need to get my",
+    "bottom_prompt": "My hands shake like crazy when I hold a cup, so I think I need to get my",
+    "target_clinical_token": " blood",
+    "generation": {
+      "patient_term": "shake like crazy",
+      "clinical_term": "shake due to tremor",
+      "expected_clinical_continuations": [
+        "blood"
+      ],
+      "rationale": "Colloquial intensifier versus medical term. Clinical phrasing 'due to tremor' prompts diagnostic workup frame, shifting 'get my X' toward 'blood work' or 'checked' rather than 'dose' or 'pills'.",
+      "topic": "neurological symptom",
+      "swap_spans": {
+        "patient_span": "like crazy",
+        "clinical_span": "due to tremor"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I eat gluten my belly swells from bloating, so I probably need to avoid",
+    "bottom_prompt": "When I eat gluten my belly balloons up like a balloon, so I probably need to avoid",
+    "target_clinical_token": " bread",
+    "generation": {
+      "patient_term": "balloons up like a balloon",
+      "clinical_term": "swells from bloating",
+      "expected_clinical_continuations": [
+        "bread"
+      ],
+      "rationale": "Patient uses playful exaggeration; clinical phrasing names the mechanism (bloating). Both lead to dietary avoidance, but clinical framing makes 'bread' or 'gluten' more salient as the named culprit.",
+      "topic": "celiac disease / gluten sensitivity",
+      "swap_spans": {
+        "patient_span": "balloons up like a balloon,",
+        "clinical_span": "swells from bloating,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have angina when I walk uphill, so I probably need to take my",
+    "bottom_prompt": "My chest gets all tight and heavy when I walk uphill, so I probably need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "chest gets all tight and heavy",
+      "clinical_term": "have angina",
+      "expected_clinical_continuations": [
+        "medication",
+        "pills",
+        "nitrates"
+      ],
+      "rationale": "The colloquial phrasing suggests general discomfort; the clinical term 'angina' strongly predicts medication-seeking behavior and specific cardiac therapeutics as the natural next token.",
+      "topic": "cardiovascular disease",
+      "swap_spans": {
+        "patient_span": "My chest gets all tight and heavy",
+        "clinical_span": "I have angina"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I keep getting these awful sharp pains when I try to move my neck, so I think I might have cervical",
+    "bottom_prompt": "I keep getting these awful sharp pains when I try to move my neck, so I think I might have a",
+    "target_clinical_token": " strain",
+    "generation": {
+      "patient_term": "sharp pains when I try to move my neck",
+      "clinical_term": "sharp pains when I try to move my neck, so I think I might have cervical",
+      "expected_clinical_continuations": [
+        "strain",
+        "sprain"
+      ],
+      "rationale": "Adding the clinical modifier 'cervical' before the probe point shifts expectation from vague 'something wrong' to a specific anatomical diagnosis, driving toward precise injury terminology.",
+      "topic": "musculoskeletal pain",
+      "swap_spans": {
+        "patient_span": "a",
+        "clinical_span": "cervical"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I eat dairy my stomach starts acting up real bad, so I think I have lactose",
+    "bottom_prompt": "When I eat dairy my stomach starts acting up real bad, so I think I have an",
+    "target_clinical_token": " intolerance",
+    "generation": {
+      "patient_term": "acting up real bad",
+      "clinical_term": "acting up real bad, so I think I have lactose",
+      "expected_clinical_continuations": [
+        "intolerance"
+      ],
+      "rationale": "The clinical prefix 'lactose' narrows the frame from general digestive complaint to a specific metabolic condition, making 'intolerance' the dominant continuation rather than vague symptom words.",
+      "topic": "gastrointestinal disorder",
+      "swap_spans": {
+        "patient_span": "an",
+        "clinical_span": "lactose"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I experience panic symptoms whenever I have to give a presentation at work, so I might need an",
+    "bottom_prompt": "I get really sweaty and shaky whenever I have to give a presentation at work, so I might need an",
+    "target_clinical_token": " antianxiety",
+    "generation": {
+      "patient_term": "get really sweaty and shaky",
+      "clinical_term": "experience panic symptoms",
+      "expected_clinical_continuations": [
+        "antianxiety",
+        "anxiolytic"
+      ],
+      "rationale": "Replacing colloquial somatic descriptors with 'panic symptoms' shifts the frame from stress reaction to psychiatric diagnosis, predicting clinical intervention over reassurance.",
+      "topic": "anxiety disorder",
+      "swap_spans": {
+        "patient_span": "get really sweaty and shaky",
+        "clinical_span": "experience panic symptoms"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I get photosensitivity when I go outside, so I should probably apply a",
+    "bottom_prompt": "My skin gets all red and burns when I go outside, so I should probably apply a",
+    "target_clinical_token": " sunscreen",
+    "generation": {
+      "patient_term": "skin gets all red and burns",
+      "clinical_term": "get photosensitivity",
+      "expected_clinical_continuations": [
+        "sunscreen",
+        "protectant"
+      ],
+      "rationale": "The medical term 'photosensitivity' replaces layperson symptom language, triggering a shift from general skincare to clinical photoprotection as the natural response.",
+      "topic": "dermatological condition",
+      "swap_spans": {
+        "patient_span": "My skin gets all red and burns",
+        "clinical_span": "I get photosensitivity"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I eat too much I feel all bloated and my stomach hurts, so I might have functional",
+    "bottom_prompt": "When I eat too much I feel all bloated and my stomach hurts, so I might have an",
+    "target_clinical_token": " dyspepsia",
+    "generation": {
+      "patient_term": "bloated and my stomach hurts",
+      "clinical_term": "bloated and my stomach hurts, so I might have functional",
+      "expected_clinical_continuations": [
+        "dyspepsia"
+      ],
+      "rationale": "Adding the clinical modifier 'functional' before the probe point converts a complaint into a medical diagnosis category, funneling strongly toward the precise clinical term 'dyspepsia.'",
+      "topic": "gastrointestinal disorder",
+      "swap_spans": {
+        "patient_span": "an",
+        "clinical_span": "functional"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing vertigo in the evening, so my wife thinks I need my",
+    "bottom_prompt": "I've been getting these awful dizzy spells in the evening, so my wife thinks I need my",
+    "target_clinical_token": " blood pressure checked",
+    "generation": {
+      "patient_term": "dizzy spells",
+      "clinical_term": "vertigo",
+      "expected_clinical_continuations": [
+        "blood pressure checked",
+        "blood",
+        "hearing",
+        "ears"
+      ],
+      "rationale": "Vertigo has specific neurological and otological workup implications (balance disorders, inner ear issues), distinct from generic dizziness; the frame funnels toward medical investigations.",
+      "topic": "dizziness",
+      "swap_spans": {
+        "patient_span": "getting these awful dizzy spells",
+        "clinical_span": "experiencing vertigo"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I eat too much sugar I get reactive hypoglycemia, so I probably should take my",
+    "bottom_prompt": "When I eat too much sugar I get this awful shaking feeling, so I probably should take my",
+    "target_clinical_token": " blood",
+    "generation": {
+      "patient_term": "shaking feeling",
+      "clinical_term": "reactive hypoglycemia",
+      "expected_clinical_continuations": [
+        "blood",
+        "glucose",
+        "medication",
+        "insulin"
+      ],
+      "rationale": "Reactive hypoglycemia diagnosis cues blood glucose monitoring and metabolic management; colloquial 'shaking feeling' suggests more generic anxiety or fatigue management.",
+      "topic": "metabolic disorder",
+      "swap_spans": {
+        "patient_span": "this awful shaking feeling,",
+        "clinical_span": "reactive hypoglycemia,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I've been having dyspnea episodes, so I need to see a",
+    "bottom_prompt": "I've been getting these weird episodes where I can't catch my breath, so I need to see a",
+    "target_clinical_token": " cardiologist",
+    "generation": {
+      "patient_term": "can't catch my breath",
+      "clinical_term": "dyspnea",
+      "expected_clinical_continuations": [
+        "cardiologist",
+        "pulmonologist",
+        "doctor",
+        "specialist"
+      ],
+      "rationale": "Dyspnea as a clinical term cues cardiac and pulmonary specialist referrals; lay phrasing might trigger generic physician or reassurance-seeking.",
+      "topic": "respiratory distress",
+      "swap_spans": {
+        "patient_span": "getting these weird episodes where I can't catch my breath,",
+        "clinical_span": "having dyspnea episodes,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I eat greasy food I have impaired fat digestion, so I might have a",
+    "bottom_prompt": "When I eat greasy food my stomach gets all upset, so I might have a",
+    "target_clinical_token": " malabsorption",
+    "generation": {
+      "patient_term": "stomach gets all upset",
+      "clinical_term": "impaired fat digestion",
+      "expected_clinical_continuations": [
+        "malabsorption",
+        "lipase",
+        "deficiency"
+      ],
+      "rationale": "The lay phrase 'stomach gets all upset' is vague and everyday; the clinical term 'impaired fat digestion' steers toward specific disorders or conditions. The frame ending after 'have a' creates diagnostic pressure.",
+      "topic": "gastrointestinal",
+      "swap_spans": {
+        "patient_span": "my stomach gets all upset,",
+        "clinical_span": "I have impaired fat digestion,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have proximal muscle weakness, so I should probably get my",
+    "bottom_prompt": "My legs keep feeling weak and wobbly, so I should probably get my",
+    "target_clinical_token": " creatinine",
+    "generation": {
+      "patient_term": "legs keep feeling weak and wobbly",
+      "clinical_term": "proximal muscle weakness",
+      "expected_clinical_continuations": [
+        "creatinine",
+        "strength",
+        "electrolytes"
+      ],
+      "rationale": "The colloquial 'weak and wobbly' is imprecise; 'proximal muscle weakness' is a specific clinical sign that prompts investigation. The possessive 'my' at frame end naturally leads to tests or measurements.",
+      "topic": "neuromuscular",
+      "swap_spans": {
+        "patient_span": "My legs keep feeling weak and wobbly,",
+        "clinical_span": "I have proximal muscle weakness,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have pleuritic chest pain on the right, so I need to see a",
+    "bottom_prompt": "I keep getting these awful sharp pains right here in my side, so I need to see a",
+    "target_clinical_token": " pulmonologist",
+    "generation": {
+      "patient_term": "awful sharp pains right here in my side",
+      "clinical_term": "pleuritic chest pain on the right",
+      "expected_clinical_continuations": [
+        "pulmonologist",
+        "cardiologist",
+        "doctor"
+      ],
+      "rationale": "The lay description 'sharp pains in my side' is nonspecific localization; the clinical term 'pleuritic chest pain on the right' is a precise symptom descriptor that steers toward specific specialties.",
+      "topic": "chest pain",
+      "swap_spans": {
+        "patient_span": "keep getting these awful sharp pains right here in my side,",
+        "clinical_span": "have pleuritic chest pain on the right,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "After I eat a big meal I experience delayed gastric emptying, so I probably have a",
+    "bottom_prompt": "After I eat a big meal my food just sits there like a brick, so I probably have a",
+    "target_clinical_token": " motility",
+    "generation": {
+      "patient_term": "food just sits there like a brick",
+      "clinical_term": "delayed gastric emptying",
+      "expected_clinical_continuations": [
+        "motility",
+        "gastroparesis",
+        "disorder"
+      ],
+      "rationale": "The idiom 'sits there like a brick' is colloquial and vague; 'delayed gastric emptying' is the precise clinical mechanism that naturally prompts condition names or functional descriptors.",
+      "topic": "gastrointestinal",
+      "swap_spans": {
+        "patient_span": "my food just sits there like a brick,",
+        "clinical_span": "I experience delayed gastric emptying,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing vasomotor symptoms at night, so my doctor thinks I should take my",
+    "bottom_prompt": "I've been getting these awful hot flashes at night, so my doctor thinks I should take my",
+    "target_clinical_token": " hormones",
+    "generation": {
+      "patient_term": "hot flashes",
+      "clinical_term": "vasomotor symptoms",
+      "expected_clinical_continuations": [
+        "hormones",
+        "estrogen",
+        "medication"
+      ],
+      "rationale": "The lay term 'hot flashes' is commonly understood but nonmedical; 'vasomotor symptoms' is the clinical descriptor that steers toward hormone-replacement or pharmaceutical interventions. The possessive frame naturally leads to treatments.",
+      "topic": "menopause",
+      "swap_spans": {
+        "patient_span": "getting these awful hot flashes",
+        "clinical_span": "experiencing vasomotor symptoms"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have gastroesophageal reflux disease, so I need to take my",
+    "bottom_prompt": "My stomach's been acting up something awful, so I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "acting up",
+      "clinical_term": "gastroesophageal reflux disease",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "The colloquial 'acting up' is vague and everyday; the clinical GERD diagnosis drives toward a specific remedy category. The frame funnels toward a possessive + medication word.",
+      "topic": "GERD",
+      "swap_spans": {
+        "patient_span": "My stomach's been acting up something awful,",
+        "clinical_span": "I have gastroesophageal reflux disease,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have cognitive impairment, so I should probably take a",
+    "bottom_prompt": "I feel like my thoughts are all scrambled up lately, so I should probably take a",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "scrambled up",
+      "clinical_term": "cognitive impairment",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Colloquial descriptor versus clinical diagnosis. The clinical term triggers expectation of pharmacological intervention; the vague patient version could prompt lifestyle advice instead.",
+      "topic": "cognitive impairment",
+      "swap_spans": {
+        "patient_span": "feel like my thoughts are all scrambled up lately,",
+        "clinical_span": "have cognitive impairment,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "After I eat wheat I experience abdominal distension, so I'm worried I might have a",
+    "bottom_prompt": "After I eat wheat my stomach balloons up like a soccer ball, so I'm worried I might have a",
+    "target_clinical_token": " disorder",
+    "generation": {
+      "patient_term": "balloons up like a soccer ball",
+      "clinical_term": "abdominal distension",
+      "expected_clinical_continuations": [
+        "disorder"
+      ],
+      "rationale": "Hyperbolic lay simile versus precise clinical symptom name. Clinical phrasing primes continuation toward diagnosis categories; colloquial phrasing might elicit sympathy or dietary advice instead.",
+      "topic": "celiac disease",
+      "swap_spans": {
+        "patient_span": "my stomach balloons up like a soccer ball,",
+        "clinical_span": "I experience abdominal distension,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I try to remember things at work I experience memory loss, so I should probably get my",
+    "bottom_prompt": "When I try to remember things at work my mind just goes blank, so I should probably get my",
+    "target_clinical_token": " brain",
+    "generation": {
+      "patient_term": "mind just goes blank",
+      "clinical_term": "memory loss",
+      "expected_clinical_continuations": [
+        "brain"
+      ],
+      "rationale": "Casual self-description versus diagnostic term. Clinical phrasing steers toward neurological workup; patient phrasing could prompt stress-management or sleep advice.",
+      "topic": "memory loss",
+      "swap_spans": {
+        "patient_span": "my mind just goes blank,",
+        "clinical_span": "I experience memory loss,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have orthostatic hypotension, so I should take my",
+    "bottom_prompt": "I've been feeling really lightheaded and woozy, so I should take my",
+    "target_clinical_token": " blood",
+    "generation": {
+      "patient_term": "lightheaded and woozy",
+      "clinical_term": "orthostatic hypotension",
+      "expected_clinical_continuations": [
+        "blood",
+        "pressure"
+      ],
+      "rationale": "Patient phrasing suggests dizziness; clinical term (drop in blood pressure on standing) shifts expectation toward blood pressure monitoring rather than general wellness advice. Frame naturally funnels to 'blood pressure' as the next token after possessive 'my'.",
+      "topic": "cardiovascular",
+      "swap_spans": {
+        "patient_span": "I've been feeling really lightheaded and woozy,",
+        "clinical_span": "I have orthostatic hypotension,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have functional dyspepsia, so I might have a",
+    "bottom_prompt": "My stomach's been feeling all twisted and crampy after meals, so I might have a",
+    "target_clinical_token": " problem",
+    "generation": {
+      "patient_term": "twisted and crampy",
+      "clinical_term": "functional dyspepsia",
+      "expected_clinical_continuations": [
+        "problem",
+        "disorder"
+      ],
+      "rationale": "Lay description of postprandial discomfort versus clinical diagnosis. Clinical term narrows focus to a specific functional disorder rather than general digestive upset, shifting next-token prediction toward diagnostic labeling.",
+      "topic": "gastrointestinal",
+      "swap_spans": {
+        "patient_span": "My stomach's been feeling all twisted and crampy after meals,",
+        "clinical_span": "I have functional dyspepsia,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I wake up I have morning stiffness, so I should probably see a",
+    "bottom_prompt": "When I wake up my joints feel all stiff and locked up, so I should probably see a",
+    "target_clinical_token": " rheumatologist",
+    "generation": {
+      "patient_term": "stiff and locked up",
+      "clinical_term": "morning stiffness",
+      "expected_clinical_continuations": [
+        "rheumatologist"
+      ],
+      "rationale": "Colloquial description of morning joint rigidity versus clinical terminology. Clinical phrasing suggests inflammatory arthropathy (rheumatologist) rather than general practitioner, shifting specialist referral expectation.",
+      "topic": "rheumatologic",
+      "swap_spans": {
+        "patient_span": "my joints feel all stiff and locked up,",
+        "clinical_span": "I have morning stiffness,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have neuropathic pain on my skin, so I should probably apply a",
+    "bottom_prompt": "I keep getting these awful burning and painful sensations on my skin, so I should probably apply a",
+    "target_clinical_token": " cream",
+    "generation": {
+      "patient_term": "burning and painful sensations",
+      "clinical_term": "neuropathic pain",
+      "expected_clinical_continuations": [
+        "cream",
+        "topical"
+      ],
+      "rationale": "Patient idiom for nerve-related pain versus clinical diagnosis. Clinical term primes toward targeted neuropathic treatment (topical cream) rather than generic pain relief, narrowing expected continuations.",
+      "topic": "neurologic",
+      "swap_spans": {
+        "patient_span": "keep getting these awful burning and painful sensations",
+        "clinical_span": "have neuropathic pain"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have accommodation problems when I read for too long, so I need to get my",
+    "bottom_prompt": "My vision gets all blurry and fuzzy when I read for too long, so I need to get my",
+    "target_clinical_token": " eyes",
+    "generation": {
+      "patient_term": "blurry and fuzzy",
+      "clinical_term": "accommodation problems",
+      "expected_clinical_continuations": [
+        "eyes",
+        "vision"
+      ],
+      "rationale": "Lay symptom description versus clinical term for focusing dysfunction. Clinical phrasing shifts expectation from general vision concern toward specific refractive or accommodation testing, priming 'eyes' as natural continuation.",
+      "topic": "ophthalmologic",
+      "swap_spans": {
+        "patient_span": "My vision gets all blurry and fuzzy",
+        "clinical_span": "I have accommodation problems"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "After a few drinks at the bar I get alcohol-induced anxiety, so I might need to avoid",
+    "bottom_prompt": "After a few drinks at the bar I get really shaky and anxious, so I might need to avoid",
+    "target_clinical_token": " alcohol",
+    "generation": {
+      "patient_term": "shaky and anxious",
+      "clinical_term": "alcohol-induced anxiety",
+      "expected_clinical_continuations": [
+        "alcohol"
+      ],
+      "rationale": "Casual symptom reporting versus clinical diagnosis of substance-related anxiety. Clinical framing narrows the causal chain and shifts next-token prediction strongly toward identifying alcohol itself as the problem to avoid, rather than seeking symptomatic treatment.",
+      "topic": "psychiatric",
+      "swap_spans": {
+        "patient_span": "really shaky and anxious,",
+        "clinical_span": "alcohol-induced anxiety,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have a persistent headache, so I need to take my",
+    "bottom_prompt": "My head's been pounding for days, so I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "pounding",
+      "clinical_term": "persistent headache",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "The colloquial 'pounding' emphasizes sensation and invites casual remedies; 'persistent headache' is a clinical diagnosis that naturally prompts prescription medication or a specific medical intervention.",
+      "topic": "headache",
+      "swap_spans": {
+        "patient_span": "My head's been pounding for days,",
+        "clinical_span": "I have a persistent headache,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I eat too fast I experience dysphagia, so I might need an",
+    "bottom_prompt": "When I eat too fast my food gets stuck in my throat, so I might need an",
+    "target_clinical_token": " evaluation",
+    "generation": {
+      "patient_term": "food gets stuck in my throat",
+      "clinical_term": "dysphagia",
+      "expected_clinical_continuations": [
+        "evaluation"
+      ],
+      "rationale": "The lay phrase suggests a mechanical eating problem; the clinical term 'dysphagia' redirects the frame toward diagnostic assessment rather than simple behavioral adjustment.",
+      "topic": "swallowing disorder",
+      "swap_spans": {
+        "patient_span": "my food gets stuck in my throat,",
+        "clinical_span": "I experience dysphagia,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "After I work out I experience angina, so I should probably see a",
+    "bottom_prompt": "After I work out I get this awful burning in my chest, so I should probably see a",
+    "target_clinical_token": " cardiologist",
+    "generation": {
+      "patient_term": "awful burning in my chest",
+      "clinical_term": "angina",
+      "expected_clinical_continuations": [
+        "cardiologist"
+      ],
+      "rationale": "The symptom-based phrasing might prompt generic doctor; the clinical diagnosis 'angina' funnels toward a cardiac specialist.",
+      "topic": "chest pain",
+      "swap_spans": {
+        "patient_span": "get this awful burning in my chest,",
+        "clinical_span": "experience angina,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing cognitive impairment at work, so I might have a",
+    "bottom_prompt": "I've been feeling really scattered and forgetful at work, so I might have a",
+    "target_clinical_token": " neurological",
+    "generation": {
+      "patient_term": "scattered and forgetful",
+      "clinical_term": "cognitive impairment",
+      "expected_clinical_continuations": [
+        "neurological"
+      ],
+      "rationale": "Colloquial phrasing invites benign explanations (stress, fatigue); clinical framing prompts serious medical etiologies and specialist referral.",
+      "topic": "memory disorder",
+      "swap_spans": {
+        "patient_span": "feeling really scattered and forgetful",
+        "clinical_span": "experiencing cognitive impairment"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I keep experiencing palpitations at rest, so I need to take my",
+    "bottom_prompt": "I keep feeling like my heart's doing weird flutters when I sit still, so I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "heart's doing weird flutters",
+      "clinical_term": "palpitations",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "The colloquial description frames it as an odd sensation; clinical 'palpitations' is a recognized cardiac symptom that prompts pharmacologic management.",
+      "topic": "cardiac arrhythmia",
+      "swap_spans": {
+        "patient_span": "feeling like my heart's doing weird flutters when I sit still,",
+        "clinical_span": "experiencing palpitations at rest,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "After I drink my morning coffee I experience tremor, so I probably need to cut back on my",
+    "bottom_prompt": "After I drink my morning coffee my hands won't stop shaking, so I probably need to cut back on my",
+    "target_clinical_token": " caffeine",
+    "generation": {
+      "patient_term": "my hands won't stop shaking",
+      "clinical_term": "tremor",
+      "expected_clinical_continuations": [
+        "caffeine",
+        "coffee"
+      ],
+      "rationale": "The colloquial 'hands won't stop shaking' suggests a behavioral observation; 'tremor' medicalizes it as a motor symptom. Both lead naturally to reduction of a substance, but the clinical framing better supports medical causality attribution.",
+      "topic": "movement disorders",
+      "swap_spans": {
+        "patient_span": "my hands won't stop shaking,",
+        "clinical_span": "I experience tremor,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I eat heavy foods I experience gastroparesis, so I might have an",
+    "bottom_prompt": "When I eat heavy foods my stomach feels like it's tied up in knots, so I might have an",
+    "target_clinical_token": " issue",
+    "generation": {
+      "patient_term": "tied up in knots",
+      "clinical_term": "gastroparesis",
+      "expected_clinical_continuations": [
+        "issue",
+        "ulcer",
+        "obstruction"
+      ],
+      "rationale": "The colloquial phrase uses an idiom (tied in knots) as metaphor; 'gastroparesis' names a specific motility disorder. The clinical term shifts the expected continuation from a vague descriptor toward a more precise diagnostic consideration.",
+      "topic": "gastrointestinal disorders",
+      "swap_spans": {
+        "patient_span": "my stomach feels like it's tied up in knots,",
+        "clinical_span": "I experience gastroparesis,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "My wife says I always seem dysphoric these days, so I should probably take my",
+    "bottom_prompt": "My wife says I always seem out of sorts these days, so I should probably take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "out of sorts",
+      "clinical_term": "dysphoric",
+      "expected_clinical_continuations": [
+        "medication",
+        "antidepressant"
+      ],
+      "rationale": "The colloquial 'out of sorts' is a general idiom for feeling off; 'dysphoric' specifies a clinical mood state. Both probe for pharmacological intervention, but the clinical term more directly suggests psychiatric medication management.",
+      "topic": "mood disorders",
+      "swap_spans": {
+        "patient_span": "out of sorts",
+        "clinical_span": "dysphoric"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "When I stand up from my desk too quickly I experience syncope, so I need to get my",
+    "bottom_prompt": "When I stand up from my desk too quickly the room starts doing loop-de-loops, so I need to get my",
+    "target_clinical_token": " blood pressure",
+    "generation": {
+      "patient_term": "doing loop-de-loops",
+      "clinical_term": "syncope",
+      "expected_clinical_continuations": [
+        "blood pressure",
+        "vitals",
+        "heart checked"
+      ],
+      "rationale": "The colloquial 'loop-de-loops' is a playful, lay description of dizziness; 'syncope' indicates a fainting episode with cardiovascular implications. The clinical term funnels toward hemodynamic or cardiac assessment.",
+      "topic": "cardiovascular disorders",
+      "swap_spans": {
+        "patient_span": "the room starts doing loop-de-loops,",
+        "clinical_span": "I experience syncope,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "My skin develops urticaria when I'm stressed out, so I should probably apply a",
+    "bottom_prompt": "My skin gets all red and angry-looking when I'm stressed out, so I should probably apply a",
+    "target_clinical_token": " cream",
+    "generation": {
+      "patient_term": "red and angry-looking",
+      "clinical_term": "urticaria",
+      "expected_clinical_continuations": [
+        "cream",
+        "antihistamine",
+        "ointment"
+      ],
+      "rationale": "The colloquial 'angry-looking' anthropomorphizes the rash; 'urticaria' is the clinical diagnosis for hives. Both probe for topical treatment, but the clinical term more strongly suggests antihistamine application as a first-line response.",
+      "topic": "dermatological conditions",
+      "swap_spans": {
+        "patient_span": "gets all red and angry-looking",
+        "clinical_span": "develops urticaria"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have generalized paresthesia all over, so I should probably take my",
+    "bottom_prompt": "My whole body feels like it's got pins and needles all over, so I should probably take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "feels like it's got pins and needles all over",
+      "clinical_term": "have generalized paresthesia",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Colloquial sensory description replaced with clinical neurological term. Frame 'take my' steers toward 'medication' in clinical reading (treating neuropathy) versus 'time' or 'vitamins' in lay interpretation.",
+      "topic": "paresthesia",
+      "swap_spans": {
+        "patient_span": "My whole body feels like it's got pins and needles",
+        "clinical_span": "I have generalized paresthesia"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "After I eat, I experience postprandial fullness and delayed gastric emptying, so I might have an",
+    "bottom_prompt": "After I eat, my food just sits heavy in my stomach like a lump, so I might have an",
+    "target_clinical_token": " ulcer",
+    "generation": {
+      "patient_term": "sits heavy in my stomach like a lump",
+      "clinical_term": "experience postprandial fullness and delayed gastric emptying",
+      "expected_clinical_continuations": [
+        "ulcer"
+      ],
+      "rationale": "Lay metaphor replaced with precise gastroenterological terminology describing symptom mechanism. Frame ending 'might have an' with vowel triggers medical diagnosis thinking; 'ulcer' is high-frequency continuation in clinical context versus 'issue' or 'allergy' in colloquial.",
+      "topic": "gastroparesis and dyspepsia",
+      "swap_spans": {
+        "patient_span": "my food just sits heavy in my stomach like a lump,",
+        "clinical_span": "I experience postprandial fullness and delayed gastric emptying,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "my stomach's been making weird gurgling and distended, so i think i might have a",
+    "bottom_prompt": "my stomach's been making weird gurgling and bloated, so i think i might have a",
+    "target_clinical_token": " condition",
+    "generation": {
+      "patient_term": "bloated",
+      "clinical_term": "distended",
+      "expected_clinical_continuations": [
+        "condition"
+      ],
+      "rationale": "Patient uses colloquial 'bloated' (lay description of abdominal swelling); clinical version uses 'distended' (precise medical term). The frame guides toward a diagnostic continuation\u2014'distended' signals a medical assessment requiring naming a condition, whereas 'bloated' invites everyday remedies or dismissal. The grammatical structure funnels naturally toward a noun after 'have a'.",
+      "topic": "gastrointestinal",
+      "swap_spans": {
+        "patient_span": "bloated,",
+        "clinical_span": "distended,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  }
+]
