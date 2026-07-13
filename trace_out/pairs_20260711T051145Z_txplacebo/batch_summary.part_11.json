@@ -1,0 +1,513 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 11,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have tachycardia, so I should wear my",
+        "patient": "I've been feeling like my heart's racing all the time, so I should wear my",
+        "translated": "I've been feeling like my heart's beating really fast all the time, so I should wear my"
+      },
+      "target_token": "Output \" monitor\"",
+      "probabilities": {
+        "clinical": 0.097,
+        "patient": null,
+        "translated": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3448,
+        "patient": 0.2514,
+        "translated": 0.2774
+      },
+      "error_share": {
+        "clinical": 0.0874,
+        "patient": 0.0861,
+        "translated": 0.0909
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] words and phrases related to health, especially the  \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.281)",
+        "patient": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.471)",
+        "translated": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.487)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " monitor",
+        "observed_clinical": [
+          "Output \" monitor\"",
+          0.097
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm_placebo",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" heart\"",
+            0.281
+          ],
+          [
+            "Output \" monitor\"",
+            0.097
+          ],
+          [
+            "Output \" HR\"",
+            0.034
+          ],
+          [
+            "Output \" watch\"",
+            0.034
+          ],
+          [
+            "Output \" pacemaker\"",
+            0.032
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" heart\"",
+            0.471
+          ],
+          [
+            "Output \" watch\"",
+            0.054
+          ],
+          [
+            "Output \" Fitbit\"",
+            0.041
+          ],
+          [
+            "Output \" Apple\"",
+            0.017
+          ],
+          [
+            "Output \" pacemaker\"",
+            0.016
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" heart\"",
+            0.487
+          ],
+          [
+            "Output \" watch\"",
+            0.045
+          ],
+          [
+            "Output \" Fitbit\"",
+            0.033
+          ],
+          [
+            "Output \" pulse\"",
+            0.025
+          ],
+          [
+            "Output \" fit\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 486,
+        "unique_to_a": 618,
+        "unique_to_b": 697
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z_txplacebo/index_11.html",
+        "png": "trace_out/pairs_20260711T051145Z_txplacebo/index_11.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z_txplacebo/index_11_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z_txplacebo/index_11_diff.png"
+      }
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have an anxiety disorder, so my doctor recommended I take some",
+        "patient": "Work's been stressing me out, so my doctor recommended I take some",
+        "translated": "Work's been stressing me out, so my doctor recommended I take some"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.12,
+        "patient": null,
+        "translated": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4594,
+        "patient": 0.2543,
+        "translated": 0.2543
+      },
+      "error_share": {
+        "clinical": 0.0908,
+        "patient": 0.0994,
+        "translated": 0.0994
+      },
+      "top_path": {
+        "clinical": "[L20\u00b7S]  \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.071)",
+        "patient": "embedding \u2192 [L19\u00b7O] mentions of activities involving time. | Rest break \u2192 [L21\u00b7O] descriptions of quality time, particularly time spen \u2192 Output \" time\" (p=0.469)",
+        "translated": "embedding \u2192 [L19\u00b7O] mentions of activities involving time. | Rest break \u2192 [L21\u00b7O] descriptions of quality time, particularly time spen \u2192 Output \" time\" (p=0.469)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.12
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm_placebo",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" medication\"",
+            0.12
+          ],
+          [
+            "Output \" Xan\"",
+            0.109
+          ],
+          [
+            "Output \" anti\"",
+            0.071
+          ],
+          [
+            "Output \" medicine\"",
+            0.043
+          ],
+          [
+            "Output \" kind\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" time\"",
+            0.469
+          ],
+          [
+            "Output \" days\"",
+            0.026
+          ],
+          [
+            "Output \" vacation\"",
+            0.025
+          ],
+          [
+            "Output \" of\"",
+            0.024
+          ],
+          [
+            "Output \" Xan\"",
+            0.019
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" time\"",
+            0.469
+          ],
+          [
+            "Output \" days\"",
+            0.026
+          ],
+          [
+            "Output \" vacation\"",
+            0.025
+          ],
+          [
+            "Output \" of\"",
+            0.024
+          ],
+          [
+            "Output \" Xan\"",
+            0.019
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 642,
+        "unique_to_a": 588,
+        "unique_to_b": 673
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z_txplacebo/index_12.html",
+        "png": "trace_out/pairs_20260711T051145Z_txplacebo/index_12.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z_txplacebo/index_12_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z_txplacebo/index_12_diff.png"
+      }
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have cognitive impairment, so I should probably take my",
+        "patient": "I've been feeling foggy in my head, so I should probably take my",
+        "translated": "I've been feeling fuzzy in my head, so I should probably take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.144,
+        "patient": 0.105,
+        "translated": 0.121
+      },
+      "language_penalty": -0.03899999999999999,
+      "clinical_mass": {
+        "clinical": 0.2042,
+        "patient": 0.2582,
+        "translated": 0.2349
+      },
+      "error_share": {
+        "clinical": 0.0886,
+        "patient": 0.0888,
+        "translated": 0.0889
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.240)",
+        "patient": "[L20\u00b7S]  \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 Output \" medication\" (p=0.105)",
+        "translated": "[L18\u00b7S]  \u2192 [L19\u00b7O] words related to cell biology experiments | antibiot \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 Output \" medication\" (p=0.121)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.144
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": 0.016,
+      "translation_method": "llm_placebo",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" own\"",
+            0.24
+          ],
+          [
+            "Output \" meds\"",
+            0.199
+          ],
+          [
+            "Output \" medication\"",
+            0.144
+          ],
+          [
+            "Output \" medicine\"",
+            0.065
+          ],
+          [
+            "Output \" medications\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.215
+          ],
+          [
+            "Output \" medication\"",
+            0.105
+          ],
+          [
+            "Output \" vitamins\"",
+            0.102
+          ],
+          [
+            "Output \" medicine\"",
+            0.102
+          ],
+          [
+            "Output \" brain\"",
+            0.04
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" meds\"",
+            0.317
+          ],
+          [
+            "Output \" medicine\"",
+            0.165
+          ],
+          [
+            "Output \" medication\"",
+            0.121
+          ],
+          [
+            "Output \" vitamins\"",
+            0.053
+          ],
+          [
+            "Output \" pills\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 633,
+        "unique_to_a": 621,
+        "unique_to_b": 716
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z_txplacebo/index_13.html",
+        "png": "trace_out/pairs_20260711T051145Z_txplacebo/index_13.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z_txplacebo/index_13_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z_txplacebo/index_13_diff.png"
+      }
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having arthritis, so I need to see a",
+        "patient": "I've been having these weird pains in my joints, so I need to see a",
+        "translated": "I've been having these weird aches in my bones where they bend, so I need to see a"
+      },
+      "target_token": "Output \" rhe\"",
+      "probabilities": {
+        "clinical": 0.148,
+        "patient": 0.047,
+        "translated": null
+      },
+      "language_penalty": -0.10099999999999999,
+      "clinical_mass": {
+        "clinical": 0.3999,
+        "patient": 0.4658,
+        "translated": 0.4174
+      },
+      "error_share": {
+        "clinical": 0.0895,
+        "patient": 0.096,
+        "translated": 0.1005
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.448)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.694)",
+        "translated": "embedding \u2192 Output \" bone\" (p=0.021)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " rheumatologist",
+        "observed_clinical": [
+          "Output \" rhe\"",
+          0.148
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm_placebo",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.448
+          ],
+          [
+            "Output \" rhe\"",
+            0.148
+          ],
+          [
+            "Output \" specialist\"",
+            0.117
+          ],
+          [
+            "Output \" chi\"",
+            0.035
+          ],
+          [
+            "Output \" new\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.694
+          ],
+          [
+            "Output \" rhe\"",
+            0.047
+          ],
+          [
+            "Output \" specialist\"",
+            0.043
+          ],
+          [
+            "Output \" physio\"",
+            0.024
+          ],
+          [
+            "Output \" Dr\"",
+            0.023
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" doctor\"",
+            0.593
+          ],
+          [
+            "Output \" chi\"",
+            0.071
+          ],
+          [
+            "Output \" specialist\"",
+            0.067
+          ],
+          [
+            "Output \" physio\"",
+            0.046
+          ],
+          [
+            "Output \" bone\"",
+            0.021
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 756,
+        "unique_to_a": 447,
+        "unique_to_b": 468
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z_txplacebo/index_14.html",
+        "png": "trace_out/pairs_20260711T051145Z_txplacebo/index_14.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z_txplacebo/index_14_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z_txplacebo/index_14_diff.png"
+      }
+    }
+  ]
+}
