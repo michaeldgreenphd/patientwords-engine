@@ -1,0 +1,373 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 36,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 36,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have irritable bowel syndrome, so I should probably cut out my",
+        "patient": "My stomach's been in knots all week, so I should probably cut out my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.279
+      },
+      "error_share": {
+        "clinical": 0.097
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " trigger",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" favorite\"",
+            0.192
+          ],
+          [
+            "Output \" favourite\"",
+            0.064
+          ],
+          [
+            "Output \" daily\"",
+            0.049
+          ],
+          [
+            "Output \" gluten\"",
+            0.044
+          ],
+          [
+            "Output \" diet\"",
+            0.037
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 37,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have vasomotor symptoms, so I might need to take an",
+        "patient": "I keep getting hot flushes at night, so I might need to take an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.241,
+        "patient": 0.215
+      },
+      "language_penalty": -0.025999999999999995,
+      "clinical_mass": {
+        "clinical": 0.4449,
+        "patient": 0.277
+      },
+      "error_share": {
+        "clinical": 0.1037,
+        "patient": 0.1008
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" anti\" (p=0.241)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" extra\" (p=0.070)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antidepressant",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.241
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.241
+          ],
+          [
+            "Output \" estrogen\"",
+            0.218
+          ],
+          [
+            "Output \" antidepress\"",
+            0.097
+          ],
+          [
+            "Output \" SS\"",
+            0.08
+          ],
+          [
+            "Output \" HRT\"",
+            0.058
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.215
+          ],
+          [
+            "Output \" HRT\"",
+            0.189
+          ],
+          [
+            "Output \" evening\"",
+            0.12
+          ],
+          [
+            "Output \" extra\"",
+            0.07
+          ],
+          [
+            "Output \" estrogen\"",
+            0.049
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 615,
+        "unique_to_a": 722,
+        "unique_to_b": 810
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_37.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_37.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_37_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_37_diff.png"
+      }
+    },
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have cognitive slowing, so my wife says I should see a",
+        "patient": "I feel like my thinking's gotten sluggish, so my wife says I should see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.289,
+        "patient": 0.091
+      },
+      "language_penalty": -0.19799999999999998,
+      "clinical_mass": {
+        "clinical": 0.3458,
+        "patient": 0.2459
+      },
+      "error_share": {
+        "clinical": 0.0953,
+        "patient": 0.0921
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.197)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.531)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.289
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neuro\"",
+            0.289
+          ],
+          [
+            "Output \" doctor\"",
+            0.197
+          ],
+          [
+            "Output \" therapist\"",
+            0.077
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.072
+          ],
+          [
+            "Output \" psychologist\"",
+            0.062
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.531
+          ],
+          [
+            "Output \" neuro\"",
+            0.091
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.089
+          ],
+          [
+            "Output \" therapist\"",
+            0.053
+          ],
+          [
+            "Output \" shrink\"",
+            0.032
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 627,
+        "unique_to_a": 612,
+        "unique_to_b": 659
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_38.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_38.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_38_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_38_diff.png"
+      }
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have myalgia, so the pharmacist recommended I take some",
+        "patient": "I've been getting these weird aches all over, so the pharmacist recommended I take some"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.42
+      },
+      "error_share": {
+        "clinical": 0.1027
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " pain",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ibuprofen\"",
+            0.097
+          ],
+          [
+            "Output \" of\"",
+            0.097
+          ],
+          [
+            "Output \" magnesium\"",
+            0.042
+          ],
+          [
+            "Output \".\"",
+            0.04
+          ],
+          [
+            "Output \" para\"",
+            0.034
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have dissociation, so I wonder if my",
+        "patient": "I've been feeling spacey and out of it, so I wonder if my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1882
+      },
+      "error_share": {
+        "clinical": 0.0839
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" brain\"",
+            0.133
+          ],
+          [
+            "Output \" memory\"",
+            0.049
+          ],
+          [
+            "Output \" dissociation\"",
+            0.042
+          ],
+          [
+            "Output \" body\"",
+            0.041
+          ],
+          [
+            "Output \" mind\"",
+            0.038
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}
