@@ -1,0 +1,373 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 41,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have anxiety, so I might need to take an",
+        "patient": "I've been feeling all wound up lately, so I might need to take an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.235,
+        "patient": 0.071
+      },
+      "language_penalty": -0.16399999999999998,
+      "clinical_mass": {
+        "clinical": 0.2476,
+        "patient": 0.1183
+      },
+      "error_share": {
+        "clinical": 0.0801,
+        "patient": 0.0821
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" anxiety\" (p=0.116)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" hour\" (p=0.113)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antidepressant",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.235
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.235
+          ],
+          [
+            "Output \" extra\"",
+            0.156
+          ],
+          [
+            "Output \" anxiety\"",
+            0.116
+          ],
+          [
+            "Output \" antidepress\"",
+            0.075
+          ],
+          [
+            "Output \" hour\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" extended\"",
+            0.129
+          ],
+          [
+            "Output \" hour\"",
+            0.113
+          ],
+          [
+            "Output \" afternoon\"",
+            0.103
+          ],
+          [
+            "Output \" anti\"",
+            0.071
+          ],
+          [
+            "Output \" extra\"",
+            0.066
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 578,
+        "unique_to_a": 519,
+        "unique_to_b": 764
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_41.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_41.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_41_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_41_diff.png"
+      }
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My dad has mild cognitive impairment, so we're thinking about getting his",
+        "patient": "My dad's been acting a bit forgetful lately, so we're thinking about getting his"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2305
+      },
+      "error_share": {
+        "clinical": 0.0946
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " cognition",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" driver\"",
+            0.045
+          ],
+          [
+            "Output \" affairs\"",
+            0.045
+          ],
+          [
+            "Output \" dementia\"",
+            0.037
+          ],
+          [
+            "Output \" blood\"",
+            0.034
+          ],
+          [
+            "Output \" memory\"",
+            0.026
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have chronic fatigue, so my manager thinks I should take a",
+        "patient": "I've been having trouble keeping up at work, so my manager thinks I should take a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2047
+      },
+      "error_share": {
+        "clinical": 0.0927
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " break",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" day\"",
+            0.111
+          ],
+          [
+            "Output \" few\"",
+            0.098
+          ],
+          [
+            "Output \" leave\"",
+            0.093
+          ],
+          [
+            "Output \" week\"",
+            0.086
+          ],
+          [
+            "Output \" \"",
+            0.057
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 44,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have aphasia, so my wife wants me to see a",
+        "patient": "I keep losing my words when I talk, so my wife wants me to see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.051,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.336,
+        "patient": 0.1996
+      },
+      "error_share": {
+        "clinical": 0.101,
+        "patient": 0.0962
+      },
+      "top_path": {
+        "clinical": "[L21\u00b7S]  \u2192 [L25\u00b7S] prepositions used in certain phrases and contexts |  \u2192 Output \" speech\" (p=0.550)",
+        "patient": "[L22\u00b7S]  \u2192 [L25\u00b7S] prepositions used in certain phrases and contexts |  \u2192 Output \" speech\" (p=0.410)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.051
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" speech\"",
+            0.55
+          ],
+          [
+            "Output \" therapist\"",
+            0.101
+          ],
+          [
+            "Output \" neuro\"",
+            0.051
+          ],
+          [
+            "Output \" doctor\"",
+            0.05
+          ],
+          [
+            "Output \" specialist\"",
+            0.046
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" speech\"",
+            0.41
+          ],
+          [
+            "Output \" therapist\"",
+            0.169
+          ],
+          [
+            "Output \" doctor\"",
+            0.115
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.057
+          ],
+          [
+            "Output \" psychologist\"",
+            0.055
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 561,
+        "unique_to_a": 813,
+        "unique_to_b": 714
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_44.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_44.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_44_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_44_diff.png"
+      }
+    },
+    {
+      "index": 45,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have irritable bowel syndrome, so I should probably cut out my",
+        "patient": "I've been feeling out of sorts after eating, so I should probably cut out my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.279
+      },
+      "error_share": {
+        "clinical": 0.097
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " dairy",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" favorite\"",
+            0.192
+          ],
+          [
+            "Output \" favourite\"",
+            0.064
+          ],
+          [
+            "Output \" daily\"",
+            0.049
+          ],
+          [
+            "Output \" gluten\"",
+            0.044
+          ],
+          [
+            "Output \" diet\"",
+            0.037
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}
