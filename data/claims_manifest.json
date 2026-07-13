@@ -1,0 +1,74 @@
+{
+  "_": "Hardcoded numbers in site prose, each tied to its data source. scripts/claim_check.py verifies nightly: the snippet must still appear in the page, and the value recomputed from the source must match. A mismatch means the prose went stale and needs a hand rewrite.",
+  "claims": [
+    {
+      "page": "index.html",
+      "snippet": "inhaler at 69% probability",
+      "source": "data/simulated_scenarios.json",
+      "expr": "round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_clinical']*100)",
+      "expected": 69
+    },
+    {
+      "page": "index.html",
+      "snippet": "inhaler falls to 4% probability",
+      "source": "data/simulated_scenarios.json",
+      "expr": "round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_patient']*100)",
+      "expected": 4
+    },
+    {
+      "page": "translation/index.html",
+      "snippet": "At 35 joined pairs",
+      "source": "data/jlens_depth.json",
+      "expr": "sum(v['n'] for v in d['translation']['by_class'].values())",
+      "expected": 35
+    },
+    {
+      "page": "translation/index.html",
+      "snippet": "0.13 tiers regained where the answer survived",
+      "source": "data/jlens_depth.json",
+      "expr": "round(d['translation']['by_class']['retained']['mean_recovery'], 2)",
+      "expected": 0.13
+    },
+    {
+      "page": "translation/index.html",
+      "snippet": "0.16 where it\u2019s never formed",
+      "snippet_alt": "0.16 where it",
+      "source": "data/jlens_depth.json",
+      "expr": "round(d['translation']['by_class']['absent']['mean_recovery'], 2)",
+      "expected": 0.16
+    },
+    {
+      "page": "methods.html",
+      "snippet": "at 36 phrases the downgrade pattern",
+      "source": "data/convergence.json",
+      "expr": "[ [q['downgrades'], q['upgrades']] for q in d['models']['gemma-3-4b-it']['points'] if q['n_phrases']==36 ][0]",
+      "expected": [
+        4,
+        1
+      ],
+      "_": "sign test on 4 down / 1 up is p=0.375: chance still plausible"
+    },
+    {
+      "page": "methods.html",
+      "snippet": "by 155 it could not",
+      "source": "data/convergence.json",
+      "expr": "[ [q['downgrades'], q['upgrades']] for q in d['models']['gemma-3-4b-it']['points'] if q['n_phrases']==155 ][0]",
+      "expected": [
+        17,
+        2
+      ],
+      "_": "sign test on 17 down / 2 up is p=0.0007: chance excluded"
+    },
+    {
+      "page": "start-here/index.html",
+      "snippet": "translation fixed 8 of the 20 hardest cases, left 7 unchanged",
+      "source": "data/provenance.json",
+      "expr": "[d['translation_cases']['summary']['recovered'], d['translation_cases']['summary']['n_downgrades'], d['translation_cases']['summary']['unrecovered']]",
+      "expected": [
+        8,
+        20,
+        7
+      ]
+    }
+  ]
+}

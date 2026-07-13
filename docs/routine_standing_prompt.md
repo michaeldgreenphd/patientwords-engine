@@ -115,6 +115,14 @@ to `../patientwords` (push the branch, then push branch:main as sanctioned).
 Do NOT edit any page HTML, page text, figures, or labels — the owner is
 editing site text personally; text edits will collide with theirs.
 
+After any data republish, run `python scripts/claim_check.py` (checks
+hardcoded prose numbers against `data/claims_manifest.json`). Exit 1 =
+refreshed data invalidated a sentence on the site: do NOT edit the prose
+from this session — put the exact FAIL line in the digest headline and
+`decisions_pending` so the owner (or the orchestrating session, which holds
+text-edit sanction) rewrites it. A `warn:` line means the prose was edited
+and the manifest needs updating — flag it the same way.
+
 ## 6 · Update the dashboard
 
 Rewrite the relevant sections of `ops/dashboard.json` (you are its only
