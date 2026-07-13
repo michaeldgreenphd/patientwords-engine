@@ -15,8 +15,9 @@ logits_eval = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(logits_eval)
 
 # The full owner-approved matrix (docs/model_matrix.md): the original four plus
-# the C1/C3/C4 + B2/B3 expansion. Exact-set assertion so an accidental removal
-# or a stray key both fail loudly.
+# the C1/C3/C4 + B2/B3 expansion, and meditron-7b (2026-07-13, medical-domain
+# candidate replacing the dropped biomistral). Exact-set assertion so an
+# accidental removal or a stray key both fail loudly.
 EXPECTED_IDS = {
     "gemma-2-2b",
     "gemma-3-4b-it",
@@ -27,10 +28,11 @@ EXPECTED_IDS = {
     "biomistral-7b",
     "gemma-2-2b-it",
     "gemma-2-9b",
+    "meditron-7b",
 }
 
 
-def test_registry_contains_all_nine_ids():
+def test_registry_contains_all_ids():
     assert set(logits_eval.HF_IDS) == EXPECTED_IDS
 
 
