@@ -1,0 +1,514 @@
+[
+  {
+    "top_prompt": "My lumbar radiculopathy's been acting up for months, so at the clinic they ordered an",
+    "bottom_prompt": "My lower back's been acting up for months, so at the clinic they ordered an",
+    "target_clinical_token": " MRI",
+    "generation": {
+      "patient_term": "lower back",
+      "clinical_term": "lumbar radiculopathy",
+      "expected_clinical_continuations": [
+        "MRI",
+        "X",
+        "scan"
+      ],
+      "rationale": "Article 'an' before a vowel-sound imaging term funnels the clinical reading toward 'MRI'; the lay 'lower back' phrasing might allow an ice pack or appointment.",
+      "topic": "chronic pain",
+      "swap_spans": {
+        "patient_span": "lower back's",
+        "clinical_span": "lumbar radiculopathy's"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Every spring my allergic rhinitis acts up, so before the walk I pop an",
+    "bottom_prompt": "Every spring my nose goes crazy, so before the walk I pop an",
+    "target_clinical_token": " antihistamine",
+    "generation": {
+      "patient_term": "nose goes crazy",
+      "clinical_term": "allergic rhinitis acts up",
+      "expected_clinical_continuations": [
+        "antihistamine",
+        "allergy"
+      ],
+      "rationale": "'Pop an' before a vowel-initial remedy funnels to 'antihistamine'; the colloquial version could just mean sneezing while the clinical term cues the drug.",
+      "topic": "breathing and allergies",
+      "swap_spans": {
+        "patient_span": "nose goes crazy,",
+        "clinical_span": "allergic rhinitis acts up,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "After that greasy diner meal I have acid reflux, so I reached for an",
+    "bottom_prompt": "After that greasy diner meal my stomach's on fire, so I reached for an",
+    "target_clinical_token": " antacid",
+    "generation": {
+      "patient_term": "stomach's on fire",
+      "clinical_term": "have acid reflux",
+      "expected_clinical_continuations": [
+        "antacid",
+        "acid"
+      ],
+      "rationale": "The 'an' probe before a vowel funnels toward 'antacid' in the clinical reading, while 'stomach's on fire' could continue toward food/drink.",
+      "topic": "digestive issues",
+      "swap_spans": {
+        "patient_span": "my stomach's on fire,",
+        "clinical_span": "I have acid reflux,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Ever since the layoffs I've had insomnia at night, so my GP wrote me a",
+    "bottom_prompt": "Ever since the layoffs I can't drop off at night, so my GP wrote me a",
+    "target_clinical_token": " prescription",
+    "generation": {
+      "patient_term": "can't drop off",
+      "clinical_term": "had insomnia",
+      "expected_clinical_continuations": [
+        "prescription",
+        "note",
+        "referral",
+        "script"
+      ],
+      "rationale": "'Can't drop off' reads casually; 'insomnia' steers toward a written medical continuation after 'a'.",
+      "topic": "sleep problems",
+      "swap_spans": {
+        "patient_span": "I can't drop off",
+        "clinical_span": "I've had insomnia"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been suffering from insomnia for hours staring at the ceiling, so tonight I finally swallowed a",
+    "bottom_prompt": "I've been wide awake for hours staring at the ceiling, so tonight I finally swallowed a",
+    "target_clinical_token": " pill",
+    "generation": {
+      "patient_term": "wide awake",
+      "clinical_term": "suffering from insomnia",
+      "expected_clinical_continuations": [
+        "pill",
+        "sleeping",
+        "tablet"
+      ],
+      "rationale": "Clinical framing of insomnia pushes toward a remedy noun like 'pill' after 'a', while the lay 'wide awake' allows mundane readings like 'a book' or 'a drink'.",
+      "topic": "sleep problems",
+      "swap_spans": {
+        "patient_span": "wide awake",
+        "clinical_span": "suffering from insomnia"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My osteoarthritis has been giving me grief all week, so this morning I swallowed a",
+    "bottom_prompt": "My trick knee's been giving me grief all week, so this morning I swallowed a",
+    "target_clinical_token": " pill",
+    "generation": {
+      "patient_term": "trick knee's been",
+      "clinical_term": "osteoarthritis has been",
+      "expected_clinical_continuations": [
+        "pill",
+        "painkiller",
+        "tablet"
+      ],
+      "rationale": "'swallowed a' before a singular noun funnels to 'pill'; clinical term reinforces a medication reading.",
+      "topic": "chronic pain",
+      "swap_spans": {
+        "patient_span": "trick knee's",
+        "clinical_span": "osteoarthritis has"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "The pollen's brutal today and my allergic rhinitis won't quit, so before the barbecue I took an",
+    "bottom_prompt": "The pollen's brutal today and my sniffles won't quit, so before the barbecue I took an",
+    "target_clinical_token": " antihistamine",
+    "generation": {
+      "patient_term": "sniffles",
+      "clinical_term": "allergic rhinitis",
+      "expected_clinical_continuations": [
+        "antihistamine",
+        "allergy",
+        "anti"
+      ],
+      "rationale": "The 'an' before a vowel-initial remedy funnels hard toward 'antihistamine'; the clinical term makes the medical continuation dominant over a lay one.",
+      "topic": "breathing and allergies",
+      "swap_spans": {
+        "patient_span": "sniffles",
+        "clinical_span": "allergic rhinitis"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Every time the pollen hits my asthma acts up on the porch, so I keep an",
+    "bottom_prompt": "Every time the pollen hits I get all wheezy on the porch, so I keep an",
+    "target_clinical_token": " inhaler",
+    "generation": {
+      "patient_term": "I get all wheezy",
+      "clinical_term": "my asthma acts up",
+      "expected_clinical_continuations": [
+        "inhaler",
+        "epi"
+      ],
+      "rationale": "'Keep an' before a vowel-initial word funnels toward 'inhaler'; clinical 'asthma' strengthens the medical-device reading.",
+      "topic": "breathing and allergies",
+      "swap_spans": {
+        "patient_span": "I get all wheezy",
+        "clinical_span": "my asthma acts up"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My asthma flares up and wheezy on the stairs, so at work I keep a spare",
+    "bottom_prompt": "My chest gets all tight and wheezy on the stairs, so at work I keep a spare",
+    "target_clinical_token": " inhaler",
+    "generation": {
+      "patient_term": "chest gets all tight",
+      "clinical_term": "asthma flares up",
+      "expected_clinical_continuations": [
+        "inhaler",
+        "puffer",
+        "one"
+      ],
+      "rationale": "The possessive 'a spare' funnels hard toward 'inhaler' under the clinical framing versus a generic object in lay reading.",
+      "topic": "breathing and allergies",
+      "swap_spans": {
+        "patient_span": "chest gets all tight",
+        "clinical_span": "asthma flares up"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I keep having night sweats every night, so the doctor ordered a",
+    "bottom_prompt": "I keep waking up drenched in sweat every night, so the doctor ordered a",
+    "target_clinical_token": " blood",
+    "generation": {
+      "patient_term": "waking up drenched in sweat",
+      "clinical_term": "having night sweats",
+      "expected_clinical_continuations": [
+        "blood",
+        "test",
+        "scan",
+        "sleep"
+      ],
+      "rationale": "Waking up sweaty could be a warm room; 'night sweats' as a clinical symptom funnels toward a workup, and 'a' before a common noun favors 'blood' (test).",
+      "topic": "sleep problems",
+      "swap_spans": {
+        "patient_span": "waking up drenched in sweat",
+        "clinical_span": "having night sweats"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "sleep problems",
+        "digestive issues",
+        "skin conditions",
+        "chronic pain",
+        "breathing and allergies",
+        "mental health",
+        "heart and blood pressure",
+        "medication routines"
+      ]
+    }
+  },
+  {
+    "top_prompt": "He's been having acid reflux after coffee, so his doctor told him to cut back on the",
+    "bottom_prompt": "He's been feeling really acidy after coffee, so his doctor told him to cut back on the",
+    "target_clinical_token": " coffee",
+    "generation": {
+      "patient_term": "feeling really acidy",
+      "clinical_term": "having acid reflux",
+      "expected_clinical_continuations": [
+        "coffee",
+        "caffeine"
+      ],
+      "rationale": "Clinical reflux framing pulls toward dietary triggers like 'coffee', while the lay version leaves the ending more open to mundane continuations.",
+      "topic": "digestive issues",
+      "swap_spans": {
+        "patient_span": "feeling really acidy",
+        "clinical_span": "having acid reflux"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "digestive issues",
+        "sleep problems"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have paresthesia in my fingers, so I should see a",
+    "bottom_prompt": "I'm getting these weird tingling feelings in my fingers, so I should see a",
+    "target_clinical_token": " neurologist",
+    "generation": {
+      "patient_term": "weird tingling feelings",
+      "clinical_term": "paresthesia",
+      "expected_clinical_continuations": [
+        "neurologist"
+      ],
+      "rationale": "Paresthesia is abnormal sensation; the clinical term triggers specialist referral, whereas patient phrasing might suggest general practitioner or dismissal.",
+      "topic": "neuropathy",
+      "swap_spans": {
+        "patient_span": "I'm getting these weird tingling feelings",
+        "clinical_span": "I have paresthesia"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have osteoarthritis in the morning, so I should talk to a",
+    "bottom_prompt": "My joints feel like they're rusting up in the morning, so I should talk to a",
+    "target_clinical_token": " rheumatologist",
+    "generation": {
+      "patient_term": "rusting up",
+      "clinical_term": "osteoarthritis",
+      "expected_clinical_continuations": [
+        "rheumatologist"
+      ],
+      "rationale": "The clinical term 'osteoarthritis' primes specialist consultation, whereas 'rusting up' might evoke general practitioner or physical therapist. The frame's ending after 'a' creates a natural diagnostic probe for profession type.",
+      "topic": "arthritis",
+      "swap_spans": {
+        "patient_span": "My joints feel like they're rusting up",
+        "clinical_span": "I have osteoarthritis"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have orthostatic hypotension when I stand up, so I should get my",
+    "bottom_prompt": "I've been feeling kind of woozy when I stand up, so I should get my",
+    "target_clinical_token": " blood",
+    "generation": {
+      "patient_term": "feeling kind of woozy",
+      "clinical_term": "orthostatic hypotension",
+      "expected_clinical_continuations": [
+        "blood",
+        "pressure",
+        "vitals"
+      ],
+      "rationale": "Orthostatic hypotension (drop in blood pressure on standing) naturally prompts checking vitals, while 'woozy' could be dismissed as fatigue or dehydration, making 'blood pressure' the clinical diagnostic continuation.",
+      "topic": "cardiovascular",
+      "swap_spans": {
+        "patient_span": "I've been feeling kind of woozy",
+        "clinical_span": "I have orthostatic hypotension"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing angina, so I really need to take my",
+    "bottom_prompt": "I've been getting these terrible shooting pains in my chest, so I really need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "shooting pains in my chest",
+      "clinical_term": "angina",
+      "expected_clinical_continuations": [
+        "medication",
+        "pills",
+        "nitrate"
+      ],
+      "rationale": "Angina is the clinical diagnosis for chest pain from reduced blood flow to the heart; the frame 'need to take my' funnels toward a medication name or class, distinguishing medical urgency from casual pain description.",
+      "topic": "cardiovascular",
+      "swap_spans": {
+        "patient_span": "getting these terrible shooting pains in my chest,",
+        "clinical_span": "experiencing angina,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing migraines that won't quit, so I need to take my",
+    "bottom_prompt": "I've been getting these headaches that won't quit, so I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "headaches",
+      "clinical_term": "migraines",
+      "expected_clinical_continuations": [
+        "medication",
+        "prescription",
+        "abortive"
+      ],
+      "rationale": "Colloquial 'headaches' suggests general pain treatable with over-the-counter remedies; clinical 'migraines' strongly steers toward prescription medication or specific migraine abortives as the expected continuation.",
+      "topic": "headache/migraine",
+      "swap_spans": {
+        "patient_span": "getting these headaches",
+        "clinical_span": "experiencing migraines"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I experience acute anxiety before presentations, so I'm wondering if I should take an",
+    "bottom_prompt": "I've got butterflies in my stomach before presentations, so I'm wondering if I should take an",
+    "target_clinical_token": " anxiolytic",
+    "generation": {
+      "patient_term": "butterflies in my stomach",
+      "clinical_term": "acute anxiety",
+      "expected_clinical_continuations": [
+        "anxiolytic",
+        "beta blocker",
+        "antidepressant"
+      ],
+      "rationale": "Idiom signals nervousness (normal); clinical term signals diagnosable condition, shifting next token from reassurance ('aspirin') toward psychiatric medication.",
+      "topic": "anxiety disorder",
+      "swap_spans": {
+        "patient_span": "I've got butterflies in my stomach",
+        "clinical_span": "I experience acute anxiety"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have food intolerance, so my doctor says I need to watch my",
+    "bottom_prompt": "I've been feeling out of it after eating certain foods, so my doctor says I need to watch my",
+    "target_clinical_token": " diet",
+    "generation": {
+      "patient_term": "feeling out of it after eating certain foods",
+      "clinical_term": "food intolerance",
+      "expected_clinical_continuations": [
+        "diet"
+      ],
+      "rationale": "Vague sensory complaint versus diagnosed intolerance. Possessive 'my' in medical context naturally invites 'diet' as proper management term, versus casual 'stomach' or 'reactions' in patient version.",
+      "topic": "food reaction",
+      "swap_spans": {
+        "patient_span": "I've been feeling out of it after eating certain foods,",
+        "clinical_span": "I have food intolerance,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I have cognitive impairment, so I should probably take my",
+    "bottom_prompt": "I've been feeling foggy in my head, so I should probably take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "foggy in my head",
+      "clinical_term": "cognitive impairment",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Patient colloquialism 'foggy in my head' is a lay description of mental cloudiness; clinical term specifies the neurological condition. Both frames end after possessive 'my', funneling toward a remedy. The clinical reading strongly biases toward 'medication' vs. everyday 'vitamins' or 'pills'.",
+      "topic": "cognitive dysfunction",
+      "swap_spans": {
+        "patient_span": "I've been feeling foggy in my head,",
+        "clinical_span": "I have cognitive impairment,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing dissociation, so I should probably see a",
+    "bottom_prompt": "I've been feeling really spacey and out of it, so I should probably see a",
+    "target_clinical_token": " psychiatrist",
+    "generation": {
+      "patient_term": "spacey and out of it",
+      "clinical_term": "dissociation",
+      "expected_clinical_continuations": [
+        "psychiatrist",
+        "therapist",
+        "doctor"
+      ],
+      "rationale": "Colloquial 'spacey and out of it' versus clinical 'dissociation' should shift expected continuation from casual dismissal toward mental health professional referral.",
+      "topic": "mental health",
+      "swap_spans": {
+        "patient_span": "feeling really spacey and out of it,",
+        "clinical_span": "experiencing dissociation,"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  }
+]
