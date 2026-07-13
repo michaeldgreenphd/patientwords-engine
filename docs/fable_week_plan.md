@@ -68,6 +68,20 @@ CI compute is GitHub's free public-repo runners. Charge risk: none.
   access extended through 07-19; the Tuesday wake is now a health check
   (queue state, spend, drift sentinel), no model changes.
 
+## S · Supplementary stress-test program (owner-approved 2026-07-13)
+
+Targeted sets outside the pre-registered Tier B run; shared protocol in
+`docs/supplementary_stress_sets.md` (non-TierB generator, seeds file per set,
+batch-exclusion sensitivity before pooling, exploratory labels). Adding a new
+set = write seeds + one doc section + one generation fire; measurement and
+site data flow through the standard cycle unchanged.
+- S1 emergency/critical (round 2 in flight)
+- S2 severity inversion (fire 07-14, nightly critic)
+- S3 misspelling robustness (fire 07-15, nightly critic)
+- Standing instruments that audit the pipeline itself: daily drift sentinel,
+  retrace-consistency analysis (52/52 exact reproduction, published site-wide
+  2026-07-13), translation placebo + translator-quality arms (landed).
+
 ## H · Headroom streams (owner-approved 2026-07-09 evening; H6 pending)
 
 Execution order (nightly critic works through this queue; verify-before-
