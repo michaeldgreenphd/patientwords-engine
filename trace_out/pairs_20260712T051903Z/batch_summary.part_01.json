@@ -1,0 +1,459 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 1,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have tachycardia, so I need to take my",
+        "patient": "My heart's been racing all day, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.038,
+        "patient": 0.062
+      },
+      "language_penalty": 0.024,
+      "clinical_mass": {
+        "clinical": 0.4195,
+        "patient": 0.2006
+      },
+      "error_share": {
+        "clinical": 0.0921,
+        "patient": 0.0837
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] rate | configurations with numbers \u2192 [L19\u00b7C] words and phrases related to health, especially the  \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.322)",
+        "patient": "embedding \u2192 Output \" heart\" (p=0.070)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.038
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" heart\"",
+            0.322
+          ],
+          [
+            "Output \" blood\"",
+            0.227
+          ],
+          [
+            "Output \" meds\"",
+            0.077
+          ],
+          [
+            "Output \" pulse\"",
+            0.057
+          ],
+          [
+            "Output \" medication\"",
+            0.038
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.225
+          ],
+          [
+            "Output \" mind\"",
+            0.147
+          ],
+          [
+            "Output \" medicine\"",
+            0.118
+          ],
+          [
+            "Output \" heart\"",
+            0.07
+          ],
+          [
+            "Output \" medication\"",
+            0.062
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 456,
+        "unique_to_a": 648,
+        "unique_to_b": 844
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_01.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_01.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_01_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_01_diff.png"
+      }
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have diplopia, so I should probably get my",
+        "patient": "I've been seeing double lately, so I should probably get my"
+      },
+      "target_token": "Output \" eyes\"",
+      "probabilities": {
+        "clinical": 0.608,
+        "patient": 0.622
+      },
+      "language_penalty": 0.014000000000000012,
+      "clinical_mass": {
+        "clinical": 0.2868,
+        "patient": 0.1491
+      },
+      "error_share": {
+        "clinical": 0.0957,
+        "patient": 0.1001
+      },
+      "top_path": {
+        "clinical": "[L21\u00b7S]  \u2192 [L22\u00b7O] ophthalmology and optometry related terms | Eyeglass \u2192 Output \" glasses\" (p=0.047)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] words about vision, especially those that use lenses \u2192 [L22\u00b7O] ophthalmology and optometry related terms | Eyeglass \u2192 Output \" glasses\" (p=0.128)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " eyes",
+        "observed_clinical": [
+          "Output \" eyes\"",
+          0.608
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" eyes\"",
+            0.608
+          ],
+          [
+            "Output \" eye\"",
+            0.069
+          ],
+          [
+            "Output \" head\"",
+            0.047
+          ],
+          [
+            "Output \" glasses\"",
+            0.047
+          ],
+          [
+            "Output \" vision\"",
+            0.043
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" eyes\"",
+            0.622
+          ],
+          [
+            "Output \" glasses\"",
+            0.128
+          ],
+          [
+            "Output \" contacts\"",
+            0.06
+          ],
+          [
+            "Output \" eye\"",
+            0.031
+          ],
+          [
+            "Output \" prescription\"",
+            0.025
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 476,
+        "unique_to_a": 845,
+        "unique_to_b": 717
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_02.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_02.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_02_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_02_diff.png"
+      }
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have gastritis, so I'll need to avoid",
+        "patient": "My stomach's been acting up, so I'll need to avoid"
+      },
+      "target_token": "Output \" spicy\"",
+      "probabilities": {
+        "clinical": 0.062,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2617,
+        "patient": 0.1901
+      },
+      "error_share": {
+        "clinical": 0.0864,
+        "patient": 0.0841
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" the\" (p=0.098)",
+        "patient": "embedding \u2192 [L21\u00b7O] words related to diet and feeding | technical terms  \u2192 Output \" eating\" (p=0.129)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " spicy",
+        "observed_clinical": [
+          "Output \" spicy\"",
+          0.062
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" the\"",
+            0.098
+          ],
+          [
+            "Output \" spicy\"",
+            0.062
+          ],
+          [
+            "Output \" this\"",
+            0.045
+          ],
+          [
+            "Output \" all\"",
+            0.04
+          ],
+          [
+            "Output \" some\"",
+            0.038
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" eating\"",
+            0.129
+          ],
+          [
+            "Output \" the\"",
+            0.089
+          ],
+          [
+            "Output \" food\"",
+            0.062
+          ],
+          [
+            "Output \" any\"",
+            0.041
+          ],
+          [
+            "Output \" a\"",
+            0.04
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 614,
+        "unique_to_a": 691,
+        "unique_to_b": 686
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_03.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_03.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_03_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_03_diff.png"
+      }
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have cognitive impairment, so my doctor wants to check my",
+        "patient": "I'm feeling foggy all the time, so my doctor wants to check my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.155,
+        "patient": 0.065
+      },
+      "language_penalty": -0.09,
+      "clinical_mass": {
+        "clinical": 0.4439,
+        "patient": 0.3881
+      },
+      "error_share": {
+        "clinical": 0.0922,
+        "patient": 0.0971
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] the word \"mind\" or the letter 't' following an apost \u2192 Output \" brain\" (p=0.117)",
+        "patient": "embedding \u2192 [L25\u00b7O] the word \"mind\" or the letter 't' following an apost \u2192 Output \" brain\" (p=0.051)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.155
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" thyroid\"",
+            0.173
+          ],
+          [
+            "Output \" blood\"",
+            0.155
+          ],
+          [
+            "Output \" brain\"",
+            0.117
+          ],
+          [
+            "Output \" liver\"",
+            0.046
+          ],
+          [
+            "Output \" memory\"",
+            0.043
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" thyroid\"",
+            0.613
+          ],
+          [
+            "Output \" blood\"",
+            0.065
+          ],
+          [
+            "Output \" brain\"",
+            0.051
+          ],
+          [
+            "Output \" Thyroid\"",
+            0.025
+          ],
+          [
+            "Output \" liver\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 691,
+        "unique_to_a": 685,
+        "unique_to_b": 737
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_04.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_04.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_04_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_04_diff.png"
+      }
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have migraines, so I'm going to try an",
+        "patient": "I keep getting these awful headaches, so I'm going to try an"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2195
+      },
+      "error_share": {
+        "clinical": 0.0869
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " abortive",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.165
+          ],
+          [
+            "Output \" alternative\"",
+            0.066
+          ],
+          [
+            "Output \" over\"",
+            0.064
+          ],
+          [
+            "Output \" experiment\"",
+            0.061
+          ],
+          [
+            "Output \" OTC\"",
+            0.039
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}
