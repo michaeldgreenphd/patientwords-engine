@@ -1,62 +1,18 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-07-13T13:49:28Z",
-  "updated_by": "session",
+  "updated_utc": "2026-07-13T14:05:00Z",
+  "updated_by": "routine",
   "queue": {
     "circuit-trace": {
-      "running": {
-        "fired_utc": "2026-07-13T13:49:24Z",
-        "commit": "",
-        "note": "repeatability r1 completion (pairs 5, 20)"
-      },
-      "pending": {
-        "fired_utc": "2026-07-13T13:49:26Z",
-        "commit": "",
-        "note": "repeatability r2 completion (pending behind r1 completion)"
-      }
+      "running": "repeatability r1 completion (pairs 5,20)",
+      "pending": "repeatability r2 completion"
     },
     "logits-eval": {
-      "running": {
-        "fired_utc": "2026-07-13T13:48:30Z",
-        "commit": "",
-        "note": "medgemma-4b-it probe (owner-approved gate)"
-      },
-      "pending": {
-        "fired_utc": "2026-07-13T13:48:31Z",
-        "commit": "",
-        "note": "batch-9 logits (pending behind medgemma probe)"
-      }
+      "running": "medgemma-4b-it limit-3 probe",
+      "pending": "batch-9 logits (4 models)"
     },
     "scenario-generation": {
-      "running": {
-        "fired_utc": "2026-07-13T13:49:28Z",
-        "commit": "",
-        "note": "emergency round 2b re-fire (workflow race fixed this cycle)"
-      },
-      "pending": null
-    },
-    "model-evaluation": {
-      "running": null,
-      "pending": null
-    },
-    "archive-renders": {
-      "running": null,
-      "pending": null
-    },
-    "activation-patching": {
-      "running": {
-        "fired_utc": "2026-07-13T05:04:11Z",
-        "commit": "",
-        "note": "patch chunk 3"
-      },
-      "pending": null
-    },
-    "jlens-readout": {
-      "running": {
-        "fired_utc": "2026-07-13T05:04:10Z",
-        "commit": "",
-        "note": "batch-8 lens"
-      },
+      "running": "emergency round 2b re-fire",
       "pending": null
     }
   },
@@ -94,12 +50,12 @@
   ],
   "spend": {
     "generation_ceiling_usd": 8.0,
-    "generation_spent_usd": 0.789,
-    "lifetime_generation_usd": 10.7394,
+    "generation_spent_usd": 0.9618,
+    "lifetime_generation_usd": 11.3091,
     "daily_ceiling_usd": 2.0,
     "today": {
       "date": "2026-07-13",
-      "spent_usd": 0.3672
+      "spent_usd": 0.9369
     },
     "by_day": {
       "2026-07-09": 0.0,
@@ -109,7 +65,7 @@
       "2026-07-10": 0.4063,
       "2026-07-11": 0.1424,
       "2026-07-12": 0.2603,
-      "2026-07-13": 0.3672
+      "2026-07-13": 0.9369
     },
     "entries_seen": [
       "boostgrid_lowrank.report.json",
@@ -161,16 +117,18 @@
       "pairs_20260711T051145Z_txplacebo.mitigation.report.json",
       "pairs_20260711T051145Z_txplacebo.report.json",
       "pairs_20260712T163501Z.report.json",
-      "pairs_20260713T031252Z.report.json"
+      "pairs_20260713T031252Z.report.json",
+      "pairs_20260713T050937Z.report.json",
+      "pairs_20260713T050939Z.report.json"
     ],
-    "last_scan_utc": "2026-07-13T05:10:45Z",
+    "last_scan_utc": "2026-07-13T13:50:09Z",
     "alerts": []
   },
   "tierb": {
     "target_pairs": 1600,
     "generator": "claude-haiku-4-5",
     "start_utc": "2026-07-10T01:14:38Z",
-    "accepted_pairs": 500,
+    "accepted_pairs": 600,
     "traced_pairs": 98,
     "screened_in_pairs": null,
     "batches": [
@@ -227,6 +185,12 @@
         "accepted": 100,
         "cost_usd": 0.175007,
         "status": "landed"
+      },
+      {
+        "file": "pairs_20260713T050939Z.json",
+        "accepted": 100,
+        "cost_usd": 0.172764,
+        "status": "landed"
       }
     ]
   },
@@ -234,7 +198,8 @@
     "Tier B interim (exploration split; 128 holdout rows sealed): all four models hold the asymmetry at n>=453 - gemma-2 39v8 q=4e-05 (n=479), gemma-3 30v7 q=0.0003, qwen3-4b 30v5 q=4e-05, qwen3-1.7b 27v8 q=0.002; every penalty CI excludes zero. Source: paired_stats_rigor.json.",
     "B1 activation patching pipeline VALIDATED: smoke #4 success (run 4, 55 min) after the OOM + tokens fixes. Recovery-grid runs on the downgrade set can proceed.",
     "Amendment-1 holdout live at scale: 350 Tier B rows, 53 excluded from every interim number.",
-    "2026-07-12 critic run 3: on track scientifically; generation pace under target (1 batch/day finishes ~07-24) - decision item filed"
+    "2026-07-12 critic run 3: on track scientifically; generation pace under target (1 batch/day finishes ~07-24) - decision item filed",
+    "Cross-family generalization (interim, holdout excluded): with the unified 122-phrase runs landed, llama-3.2-3b (-0.050 [-0.074,-0.029], 9 down vs 0 up, q=0.005) and olmo-2-1b (-0.072 [-0.104,-0.043], 9v1, q=0.025) join gemma-2/gemma-3/qwen3x2: six models, four families (Google, Alibaba, Meta, Ai2), every penalty CI excludes zero. gemma-2-2b-it n=122 penalty significant, asymmetry not yet (6v2, q=0.29). Source: paired_stats_rigor.json 2026-07-13 14:00Z."
   ],
   "findings_delta": [
     {
@@ -308,6 +273,10 @@
     {
       "date": "2026-07-13",
       "text": "A3 weekly synthesis deep-refresh drafted (docs/findings_synthesis_DRAFT_20260713.md, owner rewrites in own voice; released synthesis untouched). Headline deltas vs release: penalties at n=540-553 phrases/model are -0.034..-0.060 (roughly half the n=132 estimates, all CIs exclude zero); asymmetry 47v11 / 35v7 / 36v5 / 33v10 all q<=6e-4; three-arm translation verified on 15 joined pairs (haiku 0.091 / opus 0.102 / placebo 0.033 - ~2/3 of benefit is clinical vocabulary); patching localizes decision late (best layer >=13 in 6/7, downstream site 6/7); instrument deterministic 52/52 at recorded precision. Every number recomputed from committed artifacts this cycle."
+    },
+    {
+      "date": "2026-07-13",
+      "text": "Probe models crossed the 30-phrase site floor (unified 122-phrase runs): llama-3.2-3b and olmo-2-1b now show the penalty with CIs excluding zero - four model families total. Batch 10 landed (100 accepted, 71% yield, $0.173; Tier B 600/1600). Emergency round 2 generated 7/11 but LOST its archive to a push race (spend $0.397 recorded via reconstructed sidecar); workflow race fixed (rebase-retry), artifact bloat fixed (was 4.4GB/run), round 2b re-fired. MedGemma HAI-DEF gate accepted by owner; medgemma-4b-it wired (registry+matrix+provenance) and probe fired."
     }
   ],
   "decisions_pending": [
@@ -320,7 +289,7 @@
   "blockers": [],
   "notes": [
     "13:2x UTC: gen (batch 7), trace (batch 6), logits (batch-6) all running; patching + pending logits slot free for the critic's probe follow-ups (biomistral/9B chunked or swap-fixed, recovery grid chunk 2). GitHub MCP down again this cycle; worked from landed outputs.",
-    "2026-07-13 ~10:10Z: repeatability r1 landed 19/20 pairs (CI job cancelled mid-pair-20 after incremental commit; part_16 holds indices 16-19). r2 fired (running), r3 pending. Completion chunk for r1 pair 20 (offsets '15', sample_size 5, pairs_file repeatability_r1.json) queues when a circuit-trace slot frees; analysis waits for all 60 designed traces (currently 59 scheduled)."
+    "2026-07-13 14:05Z: repeatability truth: r1 AND r2 each landed 18/20 (missing indices 5,20 - chunk-final cancels), r3 20/20. Completion chunks fired for both; 15:30Z wake finalizes analysis + site publish. jlens batch-8 landed, export deferred to critic run 5 (multi-block invocation). Patching part_12 (offset 11) missing - critic should include offset 11 in the chunk-4 fire (offsets 11,12,13,14,15)."
   ],
   "decisions_log": [
     {
