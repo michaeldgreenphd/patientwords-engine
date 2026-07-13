@@ -115,6 +115,11 @@ to `../patientwords` (push the branch, then push branch:main as sanctioned).
 Do NOT edit any page HTML, page text, figures, or labels — the owner is
 editing site text personally; text edits will collide with theirs.
 
+After any data republish, run `python scripts/coverage_gaps.py` (specialty
+coverage; $0). When Tier B generation fires, take `topics` for the fire from
+its `steer_topics` block so thin specialties fill first - corpus balance is
+a sampling decision, not an afterthought.
+
 After any data republish, run `python scripts/claim_check.py` (checks
 hardcoded prose numbers against `data/claims_manifest.json`). Exit 1 =
 refreshed data invalidated a sentence on the site: do NOT edit the prose

@@ -64,6 +64,24 @@ def normalize(term: str) -> str:
     return t
 
 
+def edit_distance_le2(a: str, b: str) -> int | None:
+    """Levenshtein distance if <= 2, else None (banded, cheap for 158k rows)."""
+    if abs(len(a) - len(b)) > 2:
+        return None
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        best = i
+        for j, cb in enumerate(b, 1):
+            v = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb))
+            cur.append(v)
+            best = min(best, v)
+        if best > 2:
+            return None
+        prev = cur
+    return prev[-1] if prev[-1] <= 2 else None
+
+
 def score(value: str) -> float:
     try:
         v = float(value)
@@ -76,6 +94,7 @@ def build(chv_dir: Path, top: int):
     stop_cuis = read_stop_cuis(chv_dir / STOP)
     incorrect = read_incorrect(chv_dir / INCORRECT)
     best_per_cui: dict[str, dict] = {}
+    misspellings: list[dict] = []
     rows = kept = 0
     with (chv_dir / CONCEPTS).open(encoding="utf-8", errors="replace", newline="") as f:
         for row in csv.reader(f, delimiter="\t"):
@@ -91,6 +110,20 @@ def build(chv_dir: Path, top: int):
                 continue
             if cui in stop_cuis or (cui, term.lower()) in incorrect:
                 continue
+            # real observed misspellings: a consumer term a 1-2 character edit
+            # from its own concept's CHV preferred name, beyond case/plural
+            # trivia. These feed the misspelling stress set (as data, after
+            # review) - CHV recorded them from actual consumer queries.
+            if (chv_pref and len(term) >= 4 and term.lower() != chv_pref.lower()
+                    and normalize(term) != normalize(chv_pref)):
+                dist = edit_distance_le2(term.lower(), chv_pref.lower())
+                lo, plo = term.lower(), chv_pref.lower()
+                inflection = (lo.startswith(plo) and lo[len(plo):] in ("d", "ed", "ing", "s", "es")) or \
+                             (plo.startswith(lo) and plo[len(lo):] in ("d", "ed", "ing", "s", "es"))
+                if dist and not inflection:
+                    misspellings.append({"cui": cui, "misspelling": term,
+                                         "standard": chv_pref, "distance": dist,
+                                         "frequency": score(row[8])})
             if disparaged or combo <= 0:
                 continue
             # a lay mapping only when the consumer term differs beyond
@@ -124,9 +157,12 @@ def build(chv_dir: Path, top: int):
                 best_per_cui[cui] = entry
     ranked = sorted(best_per_cui.values(),
                     key=lambda e: (-e["scores"]["frequency"], -e["scores"]["combo"]))
-    return ranked[:top], {"flatfile_rows": rows, "eligible_rows": kept,
-                          "concepts_with_lay_term": len(best_per_cui),
-                          "stop_cuis": len(stop_cuis), "incorrect_pairs": len(incorrect)}
+    misspellings.sort(key=lambda e: -e["frequency"])
+    return ranked[:top], misspellings, {"flatfile_rows": rows, "eligible_rows": kept,
+                                        "concepts_with_lay_term": len(best_per_cui),
+                                        "misspelling_candidates": len(misspellings),
+                                        "stop_cuis": len(stop_cuis),
+                                        "incorrect_pairs": len(incorrect)}
 
 
 def main():
@@ -135,9 +171,11 @@ def main():
     parser.add_argument("--top", type=int, default=400,
                         help="entries in the reviewable draft (ranked by CHV combo score)")
     parser.add_argument("--out", default="data/patient_lexicon.draft.json")
+    parser.add_argument("--misspellings-out", default="data/misspelling_candidates.draft.json")
+    parser.add_argument("--misspellings-top", type=int, default=200)
     args = parser.parse_args()
 
-    entries, counts = build(Path(args.chv_dir), args.top)
+    entries, misspellings, counts = build(Path(args.chv_dir), args.top)
     payload = {
         "_": ("DRAFT pending doctor + linguist review - no entry seeds generation until the "
               "reviewers approve it. Lay phrases are real consumer language from the OAC CHV; "
@@ -154,8 +192,21 @@ def main():
     }
     out = Path(args.out)
     out.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    mis_payload = {
+        "_": ("DRAFT pending review - real misspellings observed in consumer queries (OAC CHV): "
+              "terms a 1-2 character edit from their concept's CHV preferred name. Candidate "
+              "stimuli for the misspelling stress set; nothing fires until reviewed."),
+        "status": "draft pending domain review",
+        "source": CITATION,
+        "entries": misspellings[:args.misspellings_top],
+        "total_candidates": len(misspellings),
+    }
+    mis_out = Path(args.misspellings_out)
+    mis_out.write_text(json.dumps(mis_payload, indent=2, ensure_ascii=False) + "\n",
+                       encoding="utf-8")
     print(f"{len(entries)} entries -> {out} (from {counts['concepts_with_lay_term']} eligible "
-          f"concepts, {counts['flatfile_rows']} flatfile rows)")
+          f"concepts, {counts['flatfile_rows']} flatfile rows); "
+          f"{len(misspellings)} misspelling candidates -> {mis_out}")
 
 
 if __name__ == "__main__":
