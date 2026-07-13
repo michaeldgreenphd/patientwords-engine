@@ -633,3 +633,10 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - pairs_20260711T051145Z.mitigation.report.json · $0.0200 · claude-haiku-4-5 · accepted — · 2026-07-12T05:30:00+00:00
 - pairs_20260711T131752Z.report.json · $0.0711 · claude-haiku-4-5 · accepted 50 · 2026-07-11T13:19:16.321760+00:00
 - pairs_20260712T051903Z.report.json · $0.0653 · claude-haiku-4-5 · accepted 50 · 2026-07-12T05:20:22.926599+00:00
+- drift_sentinel.report.json · $0.0000 · alias · accepted — · 2026-07-12T17:30:00+00:00
+- pairs_20260711T051145Z_txopus.mitigation.report.json · $0.0750 · claude-opus-4-8 · accepted — · 2026-07-13T02:00:00+00:00
+- pairs_20260711T051145Z_txopus.report.json · $0.0000 · alias · accepted — · 2026-07-12T17:00:00+00:00
+- pairs_20260711T051145Z_txplacebo.mitigation.report.json · $0.0310 · claude-haiku-4-5 · accepted — · 2026-07-13T02:00:00+00:00
+- pairs_20260711T051145Z_txplacebo.report.json · $0.0000 · alias · accepted — · 2026-07-12T17:45:00+00:00
+- pairs_20260712T163501Z.report.json · $0.1750 · claude-haiku-4-5 · accepted 100 · 2026-07-12T16:38:19.647329+00:00
+- pairs_20260713T031252Z.report.json · $0.2612 · claude-sonnet-5 · accepted 2 · 2026-07-13T03:15:34.597742+00:00
