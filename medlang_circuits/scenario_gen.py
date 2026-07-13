@@ -413,6 +413,7 @@ def generate_stress_pairs(
     max_spend: float = 2.0,
     client: Any = None,
     feedback: list[dict[str, Any]] | None = None,
+    required_phrases: list[str] | None = None,
 ) -> dict[str, Any]:
     """Generate up to ``n`` validated stress pairs; returns pairs + rejects + usage.
 
@@ -428,6 +429,11 @@ def generate_stress_pairs(
     client = _require_client(client)
     tracker = CostTracker(max_spend=max_spend)
     seen: set[tuple[str, str]] = set()
+    # required_phrases: the patient-sourced arm. Each accepted item must use
+    # one provided phrase verbatim inside its patient-side swap span, one item
+    # per phrase; phrases come from a reviewed lexicon data file, never code.
+    phrase_pool = [ph.strip() for ph in (required_phrases or []) if isinstance(ph, str) and ph.strip()]
+    unused_phrases = list(phrase_pool)
     examples = _seed_examples(seed_pairs)
     for example in examples:
         seen.add(_pair_key(example["patient_prompt"], example["clinical_prompt"]))
@@ -437,8 +443,12 @@ def generate_stress_pairs(
     rounds = 0
     max_rounds = max(4, 2 * math.ceil(n / GEN_BATCH_SIZE) + 2)
     while len(accepted) < n and rounds < max_rounds and tracker.can_afford(model):
+        if phrase_pool and not unused_phrases:
+            break  # every provided phrase is used; more items would be unsourced
         rounds += 1
         want = min(n - len(accepted), GEN_BATCH_SIZE)
+        if phrase_pool:
+            want = min(want, len(unused_phrases))
         parts = [f"Generate {want} new items."]
         if topics:
             parts.append("Steer coverage across these topics/situations: " + ", ".join(topics) + ".")
@@ -449,6 +459,12 @@ def generate_stress_pairs(
                 "wording, so the intended target was unmeasurable. Study why (the probe word "
                 "invited a non-medical continuation) and design structurally different frames - "
                 "do not imitate or lightly rephrase these:\n" + json.dumps(feedback, indent=2))
+        if unused_phrases:
+            parts.append(
+                "PATIENT-SOURCED PHRASES (real consumer language from a reviewed vocabulary): "
+                "each item's patient sentence must be built around exactly ONE unused phrase from "
+                "this list, reproduced VERBATIM inside the swapped patient span (one phrase per "
+                "item, never reworded, never reused):\n" + json.dumps(unused_phrases, indent=2))
         if examples:
             parts.append("Format and quality examples from the existing dataset (do NOT repeat or "
                          "trivially rephrase them):\n" + json.dumps(examples, indent=2))
@@ -471,13 +487,25 @@ def generate_stress_pairs(
                 rejected.append({"candidate": candidate, "reason": reason})
                 logger.info("Rejected candidate: %s", reason)
             else:
+                if phrase_pool:
+                    span = ((pair.get("generation") or {}).get("swap_spans") or {}).get("patient_span") \
+                        or pair.get("bottom_prompt", "")
+                    used = next((ph for ph in unused_phrases if ph.lower() in span.lower()), None)
+                    if used is None:
+                        rejected.append({"candidate": candidate,
+                                         "reason": "patient span does not contain one of the "
+                                                   "provided patient-sourced phrases verbatim"})
+                        continue
+                    unused_phrases.remove(used)
+                    pair["generation"]["source_phrase"] = used
+                    pair["generation"]["phrase_provenance"] = "patient_sourced_lexicon"
                 pair["generation"]["model"] = model
                 if topics:
                     # condition/topic steering rides along so archives can be
                     # categorized later (e.g. per-condition breakdowns)
                     pair["generation"]["topics"] = list(topics)
                 accepted.append(pair)
-    return {
+    result = {
         "pairs": accepted,
         "topics": list(topics) if topics else [],
         "rejected": rejected,
@@ -486,6 +514,11 @@ def generate_stress_pairs(
         "truncated": tracker.truncated,
         "usage": {"total_cost_usd": round(tracker.spent, 6), "per_model": tracker.per_model},
     }
+    if phrase_pool:
+        result["required_phrases"] = {"provided": len(phrase_pool),
+                                      "used": len(phrase_pool) - len(unused_phrases),
+                                      "unused": unused_phrases}
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -981,6 +1014,10 @@ def main(argv: list[str] | None = None) -> int:
                              help="Generate validated patient-vs-clinical stress pairs")
     p_pairs.add_argument("-n", "--num", type=int, default=10, help="Pairs to accept")
     p_pairs.add_argument("--topics", nargs="+", default=None, help="Optional topics to steer coverage")
+    p_pairs.add_argument("--required-phrases-file", default=None,
+                         help="JSON file of patient-sourced phrases the generator must use verbatim "
+                              "(a list of strings, or a lexicon file with entries[].lay); one item "
+                              "per phrase - the patient-sourced arm")
 
     p_quadrants = sub.add_parser("quadrants", parents=[shared],
                                  help="Generate validated 4-quadrant items: standard/nonstandard "
@@ -1020,6 +1057,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.feedback:
             with open(args.feedback, encoding="utf-8") as f:
                 feedback = json.load(f)
+        required_phrases = None
+        if args.required_phrases_file:
+            with open(args.required_phrases_file, encoding="utf-8") as f:
+                loaded = json.load(f)
+            if isinstance(loaded, dict):  # lexicon file: entries[].lay
+                required_phrases = [e.get("lay") for e in loaded.get("entries", []) if e.get("lay")]
+            else:
+                required_phrases = [ph for ph in loaded if isinstance(ph, str)]
         result = generate_stress_pairs(
             args.num,
             model=args.model,
@@ -1027,6 +1072,7 @@ def main(argv: list[str] | None = None) -> int:
             topics=args.topics,
             max_spend=args.max_spend,
             feedback=feedback,
+            required_phrases=required_phrases,
         )
         out = args.out or "generated_pairs.json"
         _write_json(out, result["pairs"])
@@ -1034,6 +1080,9 @@ def main(argv: list[str] | None = None) -> int:
         # general patient language, and the report says so explicitly
         extra: dict[str, Any] = {"language_register": "general_patient_language",
                                  "topics": result["topics"]}
+        if result.get("required_phrases"):
+            extra["required_phrases"] = dict(result["required_phrases"],
+                                             file=args.required_phrases_file)
     elif args.command == "quadrants":
         result = generate_quadrant_scenarios(
             args.num,

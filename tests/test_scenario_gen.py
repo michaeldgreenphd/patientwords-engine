@@ -533,3 +533,55 @@ def test_generate_dialect_sweep_offline(monkeypatch):
     assert result["usage"]["total_cost_usd"] > 0
     # both baselines called the generator once each
     assert len(calls) == 2
+
+
+# ---------------------------------------------------------------------------
+# Patient-sourced phrases (required_phrases arm)
+# ---------------------------------------------------------------------------
+
+
+def test_required_phrases_accepts_verbatim_use_and_records_provenance(monkeypatch):
+    fake_call, calls = _fake_call_returning([json.dumps([VALID_CANDIDATE])])
+    monkeypatch.setattr(scenario_gen, "_call", fake_call)
+
+    result = generate_stress_pairs(1, client=object(), required_phrases=["the alpha"])
+    assert len(result["pairs"]) == 1
+    gen = result["pairs"][0]["generation"]
+    assert gen["source_phrase"] == "the alpha"
+    assert gen["phrase_provenance"] == "patient_sourced_lexicon"
+    assert result["required_phrases"] == {"provided": 1, "used": 1, "unused": []}
+    # the phrases reach the generation prompt verbatim
+    assert "the alpha" in calls[0]["prompt"]
+    assert "PATIENT-SOURCED PHRASES" in calls[0]["prompt"]
+
+
+def test_required_phrases_rejects_candidates_that_skip_the_phrase(monkeypatch):
+    fake_call, _ = _fake_call_returning([json.dumps([VALID_CANDIDATE])] * 8)
+    monkeypatch.setattr(scenario_gen, "_call", fake_call)
+
+    result = generate_stress_pairs(1, client=object(), required_phrases=["omega omega"])
+    assert result["pairs"] == []
+    assert any("patient-sourced phrases verbatim" in r["reason"] for r in result["rejected"])
+    assert result["required_phrases"]["used"] == 0
+
+
+def test_required_phrases_pool_exhaustion_stops_generation(monkeypatch):
+    fake_call, calls = _fake_call_returning([json.dumps([VALID_CANDIDATE])] * 8)
+    monkeypatch.setattr(scenario_gen, "_call", fake_call)
+
+    # ask for 3 items with a single phrase: one accept, then the loop stops
+    result = generate_stress_pairs(3, client=object(), required_phrases=["the alpha"])
+    assert len(result["pairs"]) == 1
+    assert result["required_phrases"] == {"provided": 1, "used": 1, "unused": []}
+    assert len(calls) == 1  # no unsourced rounds after the pool emptied
+
+
+def test_no_required_phrases_keeps_default_behavior(monkeypatch):
+    fake_call, calls = _fake_call_returning([json.dumps([VALID_CANDIDATE])])
+    monkeypatch.setattr(scenario_gen, "_call", fake_call)
+
+    result = generate_stress_pairs(1, client=object())
+    assert len(result["pairs"]) == 1
+    assert "required_phrases" not in result
+    assert "PATIENT-SOURCED PHRASES" not in calls[0]["prompt"]
+    assert "source_phrase" not in result["pairs"][0]["generation"]
