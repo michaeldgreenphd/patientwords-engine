@@ -38,7 +38,9 @@ HF_IDS = {
     # fires for them must use smaller chunks than the 2-4B models.
     "llama-3.2-3b": "meta-llama/Llama-3.2-3B",
     "olmo-2-1b": "allenai/OLMo-2-0425-1B",
-    "biomistral-7b": "BioMistral/BioMistral-7B",
+    "biomistral-7b": "BioMistral/BioMistral-7B",  # DROPPED 2026-07-13: pickle-only upstream
+    "meditron-7b": "epfl-llm/meditron-7b",  # medical-domain candidate replacing biomistral
+
     "gemma-2-2b-it": "google/gemma-2-2b-it",
     "gemma-2-9b": "google/gemma-2-9b",
 }
