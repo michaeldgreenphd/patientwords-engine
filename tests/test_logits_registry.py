@@ -29,6 +29,7 @@ EXPECTED_IDS = {
     "gemma-2-2b-it",
     "gemma-2-9b",
     "meditron-7b",
+    "medgemma-4b-it",
 }
 
 

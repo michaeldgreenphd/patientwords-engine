@@ -277,7 +277,18 @@ jobs:
           cd ../main-archive
           git add data/simulated/
           git commit -m "Archive simulated ${{ steps.params.outputs.task }} scenarios: $(basename '${{ steps.gen.outputs.out }}')"
-          git push origin HEAD:main
+          # A concurrent archive push can win the race (2026-07-13: emergency
+          # round 2 lost its paid batch this way). An archive commit is pure
+          # addition of uniquely-named files, so a rebase always applies
+          # cleanly - retry instead of dying.
+          pushed=0
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then pushed=1; break; fi
+            git fetch origin main
+            git rebase origin/main
+            sleep "$attempt"
+          done
+          if [ "$pushed" != "1" ]; then echo "::error::archive push failed after 5 attempts"; exit 1; fi
           echo "Archived ${{ steps.gen.outputs.out }}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Trace on the selected Neuronpedia models
@@ -354,8 +365,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: scenario-generation-${{ steps.params.outputs.task }}-${{ github.run_number }}
+          # This run's outputs only - zipping the whole data/simulated/ +
+          # trace_out/ trees produced 4+ GB artifacts (2026-07-13) and the
+          # batch must reach main via the archive step anyway.
           path: |
-            data/simulated/
-            trace_out/
+            ${{ steps.gen.outputs.out }}
+            ${{ steps.gen.outputs.report }}
             generation_report.json
           if-no-files-found: warn

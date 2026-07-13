@@ -19,6 +19,7 @@ bfloat16 on CPU, `low_cpu_mem_usage=True` — no per-model dtype or kwargs.
 | `biomistral-7b` | `BioMistral/BioMistral-7B` | 7.2B | Mistral 7B derivative (PubMed Central continued pretraining) | Ungated (Apache-2.0) | **C4** — medical-domain-tuned contrast |
 | `gemma-2-2b-it` | `google/gemma-2-2b-it` | 2.6B | Gemma 2 (Google) | Gated — Gemma license (likely already granted; verify via probe) | **B3** — instruction-tuning contrast: same base as `gemma-2-2b` ± IT |
 | `gemma-2-9b` | `google/gemma-2-9b` | 9.2B | Gemma 2 (Google) | Gated — Gemma license (likely already granted; verify via probe) | **B2** — scale universality within one family (2.6B → 9.2B) |
+| `medgemma-4b-it` | `google/medgemma-4b-it` | 4.3B | MedGemma / Gemma 3 (Google, Health AI Developer Foundations) | Gated — HAI-DEF terms (owner accepted 2026-07-13 on the CI `HF_TOKEN` account) | Medical-tuned twin of `gemma-3-4b-it` (same base, same size): the paired contrast isolates what medical fine-tuning does to the colloquial-vs-clinical gap |
 
 The Gemma gate on Hugging Face is one shared license acknowledgement across `google/gemma*`
 repos, so the acceptance already made for `google/gemma-3-4b-it` (the grant behind the

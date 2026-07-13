@@ -40,6 +40,10 @@ HF_IDS = {
     "olmo-2-1b": "allenai/OLMo-2-0425-1B",
     "biomistral-7b": "BioMistral/BioMistral-7B",  # DROPPED 2026-07-13: pickle-only upstream
     "meditron-7b": "epfl-llm/meditron-7b",  # medical-domain candidate replacing biomistral
+    # Same base as gemma-3-4b-it with medical tuning - the paired contrast
+    # isolates what medical fine-tuning does to the register gap. Gated by
+    # HAI-DEF terms (owner accepted 2026-07-13).
+    "medgemma-4b-it": "google/medgemma-4b-it",
 
     "gemma-2-2b-it": "google/gemma-2-2b-it",
     "gemma-2-9b": "google/gemma-2-9b",
