@@ -89,7 +89,9 @@ def test_top_cap_and_draft_labeling(tmp_path):
     out = tmp_path / "lex.json"
     script = Path(__file__).resolve().parents[1] / "scripts" / "build_patient_lexicon.py"
     subprocess.run([sys.executable, str(script), "--chv-dir", str(d),
-                    "--top", "2", "--out", str(out)], check=True, capture_output=True)
+                    "--top", "2", "--out", str(out),
+                    "--misspellings-out", str(tmp_path / "mis.json")],
+                   check=True, capture_output=True)
     payload = json.loads(out.read_text(encoding="utf-8"))
     assert payload["status"] == "draft pending domain review"
     assert "OAC" in payload["source"]
