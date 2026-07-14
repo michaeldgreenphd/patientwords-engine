@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "updated_utc": "2026-07-14T22:40:47Z",
+ "updated_utc": "2026-07-14T23:26:50Z",
  "updated_by": "session",
  "queue": {
   "circuit-trace": {
@@ -389,6 +389,12 @@
    "label": "txcorpus-logits",
    "note": "Once the txcorpus batch archives to MAIN: git checkout origin/main -- data/simulated/txcorpus_<stamp>.json + sidecar onto the branch (measurement-fire seam!), then fire logits-eval on it for gemma-2-2b,gemma-3-4b-it,qwen3-1.7b,qwen3-4b ($0). After landing: python scripts/translation_scale.py -> ops/translation_scale.json. Owner request 2026-07-14: translation recovery at scale.",
    "blocked_by": "txcorpus generation running"
+  },
+  {
+   "trigger": "jlens-readout + circuit-trace",
+   "label": "txcorpus-deep-views",
+   "note": "After translation_scale.py lands (owner question 2026-07-14 evening): draw a stratified sample from the scale results (recovered / unrecovered / worsened by recovery sign and top restoration, ~15-20 each, gemma-2-2b) into a txcorpus sample file, then (a) jlens-readout on it, save_raw true - does real translation restore EARLY formation (amendment 2 H-D1 territory; these are post-A2-adoption measurements of pre-A2 phrases, so exploratory, labeled) - and (b) a circuit-trace chunk for exemplar figures (do clinical features reappear). Both $0, technical page only.",
+   "blocked_by": "txcorpus generation running; scale numbers land at the next harvest"
   }
  ],
  "endpoint_protocol": {
