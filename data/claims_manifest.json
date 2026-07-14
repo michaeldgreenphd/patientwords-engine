@@ -3,42 +3,22 @@
  "claims": [
   {
    "page": "index.html",
-   "snippet": "inhaler at 69% probability",
+   "snippet": "'inhaler',0.692",
    "source": "data/simulated_scenarios.json",
-   "expr": "round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_clinical']*100)",
-   "expected": 69
+   "expr": "round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_clinical'],3)",
+   "expected": 0.692,
+   "_": "retargeted to the try-it widget data 2026-07-14 (owner: lede numbers cut, widget is the one telling)"
   },
   {
    "page": "index.html",
-   "snippet": "inhaler falls to 4% probability",
+   "snippet": "'inhaler (5th)',0.043",
    "source": "data/simulated_scenarios.json",
-   "expr": "round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_patient']*100)",
-   "expected": 4
+   "expr": "round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_patient'],3)",
+   "expected": 0.043,
+   "_": "retargeted to the try-it widget data 2026-07-14"
   },
   {
-   "page": "translation/index.html",
-   "snippet": "At 35 joined pairs",
-   "source": "data/jlens_depth.json",
-   "expr": "sum(v['n'] for v in d['translation']['by_class'].values())",
-   "expected": 35
-  },
-  {
-   "page": "translation/index.html",
-   "snippet": "0.13 tiers regained where the answer survived",
-   "source": "data/jlens_depth.json",
-   "expr": "round(d['translation']['by_class']['retained']['mean_recovery'], 2)",
-   "expected": 0.13
-  },
-  {
-   "page": "translation/index.html",
-   "snippet": "0.16 where it’s never formed",
-   "snippet_alt": "0.16 where it",
-   "source": "data/jlens_depth.json",
-   "expr": "round(d['translation']['by_class']['absent']['mean_recovery'], 2)",
-   "expected": 0.16
-  },
-  {
-   "page": "methods.html",
+   "page": "technical/index.html",
    "snippet": "at 36 phrases the downgrade pattern",
    "source": "data/convergence.json",
    "expr": "[ [q['downgrades'], q['upgrades']] for q in d['models']['gemma-3-4b-it']['points'] if q['n_phrases']==36 ][0]",
@@ -46,10 +26,10 @@
     4,
     1
    ],
-   "_": "sign test on 4 down / 1 up is p=0.375: chance still plausible"
+   "_": "sign test on 4 down / 1 up is p=0.375: chance still plausible · moved with the convergence fold 2026-07-14"
   },
   {
-   "page": "methods.html",
+   "page": "technical/index.html",
    "snippet": "by 155 it could not",
    "source": "data/convergence.json",
    "expr": "[ [q['downgrades'], q['upgrades']] for q in d['models']['gemma-3-4b-it']['points'] if q['n_phrases']==155 ][0]",
@@ -57,7 +37,7 @@
     17,
     2
    ],
-   "_": "sign test on 17 down / 2 up is p=0.0007: chance excluded"
+   "_": "sign test on 17 down / 2 up is p=0.0007: chance excluded · moved with the convergence fold 2026-07-14"
   },
   {
    "page": "start-here/index.html",
@@ -123,11 +103,12 @@
    ]
   },
   {
-   "page": "index.html",
-   "snippet": "traced 2026-07-08",
+   "page": "dialect-differences/index.html",
+   "snippet": "traced July 8, 2026",
    "source": "data/dialects.json",
    "expr": "d['updated']",
-   "expected": "2026-07-08"
+   "expected": "2026-07-08",
+   "_": "retargeted 2026-07-14: the index Fig.3 card was replaced by the live specimen (no hardcoded date)"
   },
   {
    "page": "index.html",
@@ -138,13 +119,6 @@
   },
   {
    "page": "methods.html",
-   "snippet": "domain review pending",
-   "source": "data/urgency_shift.json",
-   "expr": "'pending' in d['vocabulary_status']",
-   "expected": true
-  },
-  {
-   "page": "translation/index.html",
    "snippet": "domain review pending",
    "source": "data/urgency_shift.json",
    "expr": "'pending' in d['vocabulary_status']",
