@@ -181,7 +181,16 @@ jobs:
           set -euo pipefail
           STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
           mkdir -p data/simulated
-          if [ "$TASK" = "pairs" ] || [ "$TASK" = "quadrants" ]; then
+          if [ "$TASK" = "translate_corpus" ]; then
+            # Full-corpus haiku translation for the at-scale recovery test
+            # (owner 2026-07-14). The txcorpus_ stem never matches the
+            # observational pairs_* regex, so it cannot enter confirmatory
+            # populations; measured later by logits-eval, analyzed by
+            # scripts/translation_scale.py. num=0 means the whole corpus.
+            OUT="data/simulated/txcorpus_${STAMP}.json"
+            MODE="2panel"
+            ARGS=()
+          elif [ "$TASK" = "pairs" ] || [ "$TASK" = "quadrants" ]; then
             if [ "$TASK" = "quadrants" ]; then
               OUT="data/simulated/quadrants_${STAMP}.json"
               MODE="4quadrant"
@@ -246,10 +255,15 @@ jobs:
               fi
             fi
           fi
-          if [ -n "$GEN_MODEL" ]; then
-            ARGS+=(--model "$GEN_MODEL")
+          if [ "$TASK" = "translate_corpus" ]; then
+            python scripts/translate_corpus.py --out "$OUT" --max-spend "$MAX_SPEND" \
+              --model "${GEN_MODEL:-claude-haiku-4-5}" --limit "${NUM:-0}" | tee generation_report.json
+          else
+            if [ -n "$GEN_MODEL" ]; then
+              ARGS+=(--model "$GEN_MODEL")
+            fi
+            medlang-generate "${ARGS[@]}" | tee generation_report.json
           fi
-          medlang-generate "${ARGS[@]}" | tee generation_report.json
           REPORT="${OUT%.json}.report.json"
           COUNT=$(python -c "import json; d=json.load(open('$OUT')); \
             print(sum(len(i.get('variants',[1])) if 'variants' in i else 1 for i in d) if d else 0)")

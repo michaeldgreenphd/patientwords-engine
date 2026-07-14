@@ -160,6 +160,13 @@ seen = set()
 for part in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
     run_dir = Path(part).parent.name
     stem, _, model_suffix = run_dir.partition("__")
+    if stem.startswith("txcorpus_"):
+        # translated-corpus measurements are NOT patient rows: their "patient"
+        # side is the haiku rewrite. They are analyzed only by
+        # scripts/translation_scale.py; ingesting them here would let
+        # translated sentences masquerade as patient measurements in the
+        # all-rows sensitivity and the urgency aggregates (2026-07-14).
+        continue
     summary = json.loads(Path(part).read_text(encoding="utf-8"))
     model = summary.get("graph_model") or model_suffix or "gemma-2-2b"
     for r in summary.get("results", []):
