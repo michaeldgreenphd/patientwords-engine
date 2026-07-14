@@ -1,0 +1,2902 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 1,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My stomach has acid reflux after lunch, so I reached for an",
+        "patient": "My stomach's tied up in knots after lunch, so I reached for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.404,
+        "patient": 0.072
+      },
+      "language_penalty": -0.332,
+      "clinical_mass": {
+        "clinical": 0.2763,
+        "patient": 0.1574
+      },
+      "error_share": {
+        "clinical": 0.1035,
+        "patient": 0.0979
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.095)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.110)"
+      },
+      "steering_boost": {
+        "boosted_features": [
+          {
+            "layer": 20,
+            "index": 7320,
+            "mass": 516.6131,
+            "label": "instructions on how to clean something, particularly related to bodily fluids or"
+          },
+          {
+            "layer": 16,
+            "index": 8800,
+            "mass": 516.0797,
+            "label": "words related to health issues, medical treatments, and pain. | unexplained code"
+          },
+          {
+            "layer": 7,
+            "index": 10003,
+            "mass": 505.8368,
+            "label": "words and phrases related to digestive and intestinal diseases and their treatme"
+          },
+          {
+            "layer": 16,
+            "index": 11422,
+            "mass": 482.2178,
+            "label": "Scientific extracts | words and abbreviations used in scientific publications, e"
+          },
+          {
+            "layer": 20,
+            "index": 13778,
+            "mass": 470.9663,
+            "label": "language related to medical treatment, especially for headaches or respiratory i"
+          }
+        ],
+        "rank_offset": 5,
+        "ok": true,
+        "status": 200,
+        "request": {
+          "endpoint": "/api/steer",
+          "strength": 10.0,
+          "features": [
+            {
+              "layer": 20,
+              "index": 7320
+            },
+            {
+              "layer": 16,
+              "index": 8800
+            },
+            {
+              "layer": 7,
+              "index": 10003
+            },
+            {
+              "layer": 16,
+              "index": 11422
+            },
+            {
+              "layer": 20,
+              "index": 13778
+            }
+          ]
+        },
+        "response": {
+          "STEERED": "<bos>My stomach's tied up in knots after lunch, so I reached for an antacid.\n\nI'm not",
+          "DEFAULT": "<bos>My stomach's tied up in knots after lunch, so I reached for an old favorite: a bowl of chicken noodle",
+          "steeredLogProbs": [
+            {
+              "token": " ant",
+              "logprob": -1.890625,
+              "topLogprobs": [
+                {
+                  "token": " ant",
+                  "logprob": -1.890625
+                },
+                {
+                  "token": " aspirin",
+                  "logprob": -2.140625
+                },
+                {
+                  "token": " Ad",
+                  "logprob": -2.765625
+                },
+                {
+                  "token": " Asp",
+                  "logprob": -2.890625
+                },
+                {
+                  "token": " over",
+                  "logprob": -3.265625
+                }
+              ]
+            },
+            {
+              "token": "acid",
+              "logprob": -0.0174560546875,
+              "topLogprobs": [
+                {
+                  "token": "acid",
+                  "logprob": -0.0174560546875
+                },
+                {
+                  "token": " acid",
+                  "logprob": -4.46875
+                },
+                {
+                  "token": "acids",
+                  "logprob": -6.15625
+                },
+                {
+                  "token": "-",
+                  "logprob": -7.03125
+                },
+                {
+                  "token": "o",
+                  "logprob": -7.96875
+                }
+              ]
+            },
+            {
+              "token": ".",
+              "logprob": -1.171875,
+              "topLogprobs": [
+                {
+                  "token": ".",
+                  "logprob": -1.171875
+                },
+                {
+                  "token": " and",
+                  "logprob": -1.671875
+                },
+                {
+                  "token": ",",
+                  "logprob": -2.046875
+                },
+                {
+                  "token": " tablet",
+                  "logprob": -2.796875
+                },
+                {
+                  "token": " to",
+                  "logprob": -2.796875
+                }
+              ]
+            },
+            {
+              "token": "\n\n",
+              "logprob": -1.6328125,
+              "topLogprobs": [
+                {
+                  "token": " I",
+                  "logprob": -1.6328125
+                },
+                {
+                  "token": "\n\n",
+                  "logprob": -1.6328125
+                },
+                {
+                  "token": " My",
+                  "logprob": -2.640625
+                },
+                {
+                  "token": " The",
+                  "logprob": -3.015625
+                },
+                {
+                  "token": "\n",
+                  "logprob": -3.015625
+                }
+              ]
+            },
+            {
+              "token": "I",
+              "logprob": -1.5234375,
+              "topLogprobs": [
+                {
+                  "token": "I",
+                  "logprob": -1.5234375
+                },
+                {
+                  "token": "My",
+                  "logprob": -2.140625
+                },
+                {
+                  "token": "The",
+                  "logprob": -2.515625
+                },
+                {
+                  "token": "It",
+                  "logprob": -2.765625
+                },
+                {
+                  "token": "\"",
+                  "logprob": -2.890625
+                }
+              ]
+            },
+            {
+              "token": "'",
+              "logprob": -1.421875,
+              "topLogprobs": [
+                {
+                  "token": "'",
+                  "logprob": -1.421875
+                },
+                {
+                  "token": " have",
+                  "logprob": -2.796875
+                },
+                {
+                  "token": " was",
+                  "logprob": -3.046875
+                },
+                {
+                  "token": " took",
+                  "logprob": -3.171875
+                },
+                {
+                  "token": " had",
+                  "logprob": -3.171875
+                }
+              ]
+            },
+            {
+              "token": "m",
+              "logprob": -0.41796875,
+              "topLogprobs": [
+                {
+                  "token": "m",
+                  "logprob": -0.41796875
+                },
+                {
+                  "token": "ve",
+                  "logprob": -1.421875
+                },
+                {
+                  "token": "ll",
+                  "logprob": -2.921875
+                },
+                {
+                  "token": "d",
+                  "logprob": -3.171875
+                },
+                {
+                  "token": "M",
+                  "logprob": -5.78125
+                }
+              ]
+            },
+            {
+              "token": " not",
+              "logprob": -1.9921875,
+              "topLogprobs": [
+                {
+                  "token": " not",
+                  "logprob": -1.9921875
+                },
+                {
+                  "token": " a",
+                  "logprob": -2.5
+                },
+                {
+                  "token": " feeling",
+                  "logprob": -2.875
+                },
+                {
+                  "token": " ",
+                  "logprob": -3.375
+                },
+                {
+                  "token": " also",
+                  "logprob": -3.5
+                }
+              ]
+            }
+          ],
+          "defaultLogProbs": [
+            {
+              "token": " old",
+              "logprob": -1.90625,
+              "topLogprobs": [
+                {
+                  "token": " old",
+                  "logprob": -1.90625
+                },
+                {
+                  "token": " apple",
+                  "logprob": -2.03125
+                },
+                {
+                  "token": " ice",
+                  "logprob": -2.15625
+                },
+                {
+                  "token": " anti",
+                  "logprob": -3.03125
+                },
+                {
+                  "token": " energy",
+                  "logprob": -3.28125
+                }
+              ]
+            },
+            {
+              "token": " favorite",
+              "logprob": -1.2890625,
+              "topLogprobs": [
+                {
+                  "token": " favorite",
+                  "logprob": -1.2890625
+                },
+                {
+                  "token": " standby",
+                  "logprob": -1.4140625
+                },
+                {
+                  "token": " favourite",
+                  "logprob": -2.28125
+                },
+                {
+                  "token": " friend",
+                  "logprob": -2.90625
+                },
+                {
+                  "token": " comfort",
+                  "logprob": -3.65625
+                }
+              ]
+            },
+            {
+              "token": ":",
+              "logprob": -1.6328125,
+              "topLogprobs": [
+                {
+                  "token": ":",
+                  "logprob": -1.6328125
+                },
+                {
+                  "token": ",",
+                  "logprob": -1.7578125
+                },
+                {
+                  "token": ".",
+                  "logprob": -1.8828125
+                },
+                {
+                  "token": " to",
+                  "logprob": -2.640625
+                },
+                {
+                  "token": " -",
+                  "logprob": -3.265625
+                }
+              ]
+            },
+            {
+              "token": " a",
+              "logprob": -1.4140625,
+              "topLogprobs": [
+                {
+                  "token": " a",
+                  "logprob": -1.4140625
+                },
+                {
+                  "token": " the",
+                  "logprob": -1.7890625
+                },
+                {
+                  "token": " ",
+                  "logprob": -2.65625
+                },
+                {
+                  "token": "\n\n",
+                  "logprob": -2.65625
+                },
+                {
+                  "token": " The",
+                  "logprob": -3.15625
+                }
+              ]
+            },
+            {
+              "token": " bowl",
+              "logprob": -2.46875,
+              "topLogprobs": [
+                {
+                  "token": " bowl",
+                  "logprob": -2.46875
+                },
+                {
+                  "token": " ",
+                  "logprob": -2.84375
+                },
+                {
+                  "token": " cup",
+                  "logprob": -3.34375
+                },
+                {
+                  "token": " salad",
+                  "logprob": -3.59375
+                },
+                {
+                  "token": " big",
+                  "logprob": -3.71875
+                }
+              ]
+            },
+            {
+              "token": " of",
+              "logprob": -0.02490234375,
+              "topLogprobs": [
+                {
+                  "token": " of",
+                  "logprob": -0.02490234375
+                },
+                {
+                  "token": "ful",
+                  "logprob": -4.4375
+                },
+                {
+                  "token": " full",
+                  "logprob": -5.625
+                },
+                {
+                  "token": " with",
+                  "logprob": -6.3125
+                },
+                {
+                  "token": ".",
+                  "logprob": -7.09375
+                }
+              ]
+            },
+            {
+              "token": " chicken",
+              "logprob": -2.9375,
+              "topLogprobs": [
+                {
+                  "token": " chicken",
+                  "logprob": -2.9375
+                },
+                {
+                  "token": " tomato",
+                  "logprob": -3.0625
+                },
+                {
+                  "token": " soup",
+                  "logprob": -3.1875
+                },
+                {
+                  "token": " hot",
+                  "logprob": -3.1875
+                },
+                {
+                  "token": " creamy",
+                  "logprob": -3.3125
+                }
+              ]
+            },
+            {
+              "token": " noodle",
+              "logprob": -0.83203125,
+              "topLogprobs": [
+                {
+                  "token": " noodle",
+                  "logprob": -0.83203125
+                },
+                {
+                  "token": " soup",
+                  "logprob": -1.7109375
+                },
+                {
+                  "token": " and",
+                  "logprob": -2.328125
+                },
+                {
+                  "token": "-",
+                  "logprob": -3.828125
+                },
+                {
+                  "token": " broth",
+                  "logprob": -3.828125
+                }
+              ]
+            }
+          ],
+          "id": "cmrcmhm6d0003uuac0x6858k0",
+          "shareUrl": "https://www.neuronpedia.org/steer/cmrcmhm6d0003uuac0x6858k0",
+          "limit": "119"
+        }
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.404
+          ],
+          [
+            "Output \" apple\"",
+            0.096
+          ],
+          [
+            "Output \" over\"",
+            0.095
+          ],
+          [
+            "Output \" OTC\"",
+            0.044
+          ],
+          [
+            "Output \" anti\"",
+            0.043
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" apple\"",
+            0.134
+          ],
+          [
+            "Output \" ice\"",
+            0.11
+          ],
+          [
+            "Output \" old\"",
+            0.096
+          ],
+          [
+            "Output \" ant\"",
+            0.072
+          ],
+          [
+            "Output \" anti\"",
+            0.059
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 839,
+        "unique_to_a": 428,
+        "unique_to_b": 528
+      },
+      "outputs": {
+        "html": "trace_out/boostgrid_lowrank_r2/index_01.html",
+        "png": "trace_out/boostgrid_lowrank_r2/index_01.png",
+        "diff_html": "trace_out/boostgrid_lowrank_r2/index_01_diff.html",
+        "diff_png": "trace_out/boostgrid_lowrank_r2/index_01_diff.png"
+      }
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been having panic attacks lately, so before the meeting she took a",
+        "patient": "She's been feeling on edge lately, so before the meeting she took a"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.063,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2467,
+        "patient": 0.1371
+      },
+      "error_share": {
+        "clinical": 0.095,
+        "patient": 0.0902
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7S] instances of the indefinite article 'a' or 'an' near \u2192 [L24\u00b7S] articles, prepositions, and other common short words \u2192 Output \" couple\" (p=0.083)",
+        "patient": "embedding \u2192 [L20\u00b7S] the article \"a\" and words associated with taking act \u2192 [L21\u00b7S] the verb \"take\" commonly preceded by the article \"a\" \u2192 [L22\u00b7C] phrases involving breathing. | deep \u2192 Output \" deep\" (p=0.105)"
+      },
+      "steering_boost": {
+        "boosted_features": [
+          {
+            "layer": 20,
+            "index": 13778,
+            "mass": 710.7951,
+            "label": "language related to medical treatment, especially for headaches or respiratory i"
+          },
+          {
+            "layer": 19,
+            "index": 8313,
+            "mass": 679.8849,
+            "label": "words related to the process of scientific research, especially inhibitors and b"
+          },
+          {
+            "layer": 22,
+            "index": 11539,
+            "mass": 656.4883,
+            "label": "words related to drug use and addiction | Drugs"
+          },
+          {
+            "layer": 22,
+            "index": 7081,
+            "mass": 587.1138,
+            "label": "phrases involving breathing. | deep"
+          },
+          {
+            "layer": 13,
+            "index": 3597,
+            "mass": 584.5921,
+            "label": "technical writing related to legal, medical, or engineering contexts | machines "
+          }
+        ],
+        "rank_offset": 5,
+        "ok": true,
+        "status": 200,
+        "request": {
+          "endpoint": "/api/steer",
+          "strength": 10.0,
+          "features": [
+            {
+              "layer": 20,
+              "index": 13778
+            },
+            {
+              "layer": 19,
+              "index": 8313
+            },
+            {
+              "layer": 22,
+              "index": 11539
+            },
+            {
+              "layer": 22,
+              "index": 7081
+            },
+            {
+              "layer": 13,
+              "index": 3597
+            }
+          ]
+        },
+        "response": {
+          "STEERED": "<bos>She's been feeling on edge lately, so before the meeting she took a couple of Valium and a couple of",
+          "DEFAULT": "<bos>She's been feeling on edge lately, so before the meeting she took a few deep breaths and tried to calm herself",
+          "steeredLogProbs": [
+            {
+              "token": " couple",
+              "logprob": -1.796875,
+              "topLogprobs": [
+                {
+                  "token": " couple",
+                  "logprob": -1.796875
+                },
+                {
+                  "token": " sleeping",
+                  "logprob": -2.171875
+                },
+                {
+                  "token": " few",
+                  "logprob": -2.296875
+                },
+                {
+                  "token": " V",
+                  "logprob": -2.671875
+                },
+                {
+                  "token": " little",
+                  "logprob": -3.296875
+                }
+              ]
+            },
+            {
+              "token": " of",
+              "logprob": -0.158203125,
+              "topLogprobs": [
+                {
+                  "token": " of",
+                  "logprob": -0.158203125
+                },
+                {
+                  "token": " V",
+                  "logprob": -4.03125
+                },
+                {
+                  "token": " pills",
+                  "logprob": -4.15625
+                },
+                {
+                  "token": " shots",
+                  "logprob": -4.40625
+                },
+                {
+                  "token": " sleeping",
+                  "logprob": -4.78125
+                }
+              ]
+            },
+            {
+              "token": " V",
+              "logprob": -1.734375,
+              "topLogprobs": [
+                {
+                  "token": " V",
+                  "logprob": -1.734375
+                },
+                {
+                  "token": " pills",
+                  "logprob": -2.109375
+                },
+                {
+                  "token": " sleeping",
+                  "logprob": -2.234375
+                },
+                {
+                  "token": " shots",
+                  "logprob": -2.984375
+                },
+                {
+                  "token": " different",
+                  "logprob": -3.359375
+                }
+              ]
+            },
+            {
+              "token": "alium",
+              "logprob": -0.79296875,
+              "topLogprobs": [
+                {
+                  "token": "alium",
+                  "logprob": -0.79296875
+                },
+                {
+                  "token": "'",
+                  "logprob": -2.859375
+                },
+                {
+                  "token": "-",
+                  "logprob": -2.984375
+                },
+                {
+                  "token": "As",
+                  "logprob": -3.171875
+                },
+                {
+                  "token": ".",
+                  "logprob": -4.28125
+                }
+              ]
+            },
+            {
+              "token": " and",
+              "logprob": -1.296875,
+              "topLogprobs": [
+                {
+                  "token": " and",
+                  "logprob": -1.296875
+                },
+                {
+                  "token": ".",
+                  "logprob": -1.296875
+                },
+                {
+                  "token": ",",
+                  "logprob": -1.796875
+                },
+                {
+                  "token": " to",
+                  "logprob": -2.421875
+                },
+                {
+                  "token": "'",
+                  "logprob": -3.796875
+                }
+              ]
+            },
+            {
+              "token": " a",
+              "logprob": -1.71875,
+              "topLogprobs": [
+                {
+                  "token": " a",
+                  "logprob": -1.71875
+                },
+                {
+                  "token": " some",
+                  "logprob": -2.71875
+                },
+                {
+                  "token": " then",
+                  "logprob": -3.21875
+                },
+                {
+                  "token": " went",
+                  "logprob": -3.21875
+                },
+                {
+                  "token": " drank",
+                  "logprob": -3.34375
+                }
+              ]
+            },
+            {
+              "token": " couple",
+              "logprob": -0.890625,
+              "topLogprobs": [
+                {
+                  "token": " couple",
+                  "logprob": -0.890625
+                },
+                {
+                  "token": " few",
+                  "logprob": -2.515625
+                },
+                {
+                  "token": " sleeping",
+                  "logprob": -2.890625
+                },
+                {
+                  "token": " little",
+                  "logprob": -3.015625
+                },
+                {
+                  "token": " shot",
+                  "logprob": -3.390625
+                }
+              ]
+            },
+            {
+              "token": " of",
+              "logprob": -0.0274658203125,
+              "topLogprobs": [
+                {
+                  "token": " of",
+                  "logprob": -0.0274658203125
+                },
+                {
+                  "token": " more",
+                  "logprob": -5.78125
+                },
+                {
+                  "token": " shots",
+                  "logprob": -6.65625
+                },
+                {
+                  "token": " a",
+                  "logprob": -6.78125
+                },
+                {
+                  "token": " V",
+                  "logprob": -6.90625
+                }
+              ]
+            }
+          ],
+          "defaultLogProbs": [
+            {
+              "token": " few",
+              "logprob": -2.328125,
+              "topLogprobs": [
+                {
+                  "token": " few",
+                  "logprob": -2.328125
+                },
+                {
+                  "token": " deep",
+                  "logprob": -2.703125
+                },
+                {
+                  "token": " couple",
+                  "logprob": -2.828125
+                },
+                {
+                  "token": " pill",
+                  "logprob": -3.078125
+                },
+                {
+                  "token": " nap",
+                  "logprob": -3.078125
+                }
+              ]
+            },
+            {
+              "token": " deep",
+              "logprob": -1.4140625,
+              "topLogprobs": [
+                {
+                  "token": " deep",
+                  "logprob": -1.4140625
+                },
+                {
+                  "token": " pills",
+                  "logprob": -2.65625
+                },
+                {
+                  "token": " minutes",
+                  "logprob": -2.90625
+                },
+                {
+                  "token": " shots",
+                  "logprob": -3.28125
+                },
+                {
+                  "token": " extra",
+                  "logprob": -3.28125
+                }
+              ]
+            },
+            {
+              "token": " breaths",
+              "logprob": -0.0703125,
+              "topLogprobs": [
+                {
+                  "token": " breaths",
+                  "logprob": -0.0703125
+                },
+                {
+                  "token": ",",
+                  "logprob": -3.9375
+                },
+                {
+                  "token": " breathes",
+                  "logprob": -3.9375
+                },
+                {
+                  "token": " cleansing",
+                  "logprob": -5.0625
+                },
+                {
+                  "token": " breath",
+                  "logprob": -5.5625
+                }
+              ]
+            },
+            {
+              "token": " and",
+              "logprob": -0.90625,
+              "topLogprobs": [
+                {
+                  "token": " and",
+                  "logprob": -0.90625
+                },
+                {
+                  "token": ",",
+                  "logprob": -1.78125
+                },
+                {
+                  "token": ".",
+                  "logprob": -1.78125
+                },
+                {
+                  "token": " to",
+                  "logprob": -2.03125
+                },
+                {
+                  "token": " in",
+                  "logprob": -3.53125
+                }
+              ]
+            },
+            {
+              "token": " tried",
+              "logprob": -2.03125,
+              "topLogprobs": [
+                {
+                  "token": " tried",
+                  "logprob": -2.03125
+                },
+                {
+                  "token": " went",
+                  "logprob": -3.03125
+                },
+                {
+                  "token": " a",
+                  "logprob": -3.15625
+                },
+                {
+                  "token": " walked",
+                  "logprob": -3.28125
+                },
+                {
+                  "token": " then",
+                  "logprob": -3.40625
+                }
+              ]
+            },
+            {
+              "token": " to",
+              "logprob": -0.10498046875,
+              "topLogprobs": [
+                {
+                  "token": " to",
+                  "logprob": -0.10498046875
+                },
+                {
+                  "token": " her",
+                  "logprob": -3.359375
+                },
+                {
+                  "token": " not",
+                  "logprob": -3.609375
+                },
+                {
+                  "token": " a",
+                  "logprob": -5.46875
+                },
+                {
+                  "token": " hard",
+                  "logprob": -5.71875
+                }
+              ]
+            },
+            {
+              "token": " calm",
+              "logprob": -1.3984375,
+              "topLogprobs": [
+                {
+                  "token": " calm",
+                  "logprob": -1.3984375
+                },
+                {
+                  "token": " relax",
+                  "logprob": -1.5234375
+                },
+                {
+                  "token": " focus",
+                  "logprob": -3.015625
+                },
+                {
+                  "token": " clear",
+                  "logprob": -3.140625
+                },
+                {
+                  "token": " get",
+                  "logprob": -3.390625
+                }
+              ]
+            },
+            {
+              "token": " herself",
+              "logprob": -0.87890625,
+              "topLogprobs": [
+                {
+                  "token": " herself",
+                  "logprob": -0.87890625
+                },
+                {
+                  "token": " down",
+                  "logprob": -1.2578125
+                },
+                {
+                  "token": " her",
+                  "logprob": -1.2578125
+                },
+                {
+                  "token": " the",
+                  "logprob": -4.625
+                },
+                {
+                  "token": ".",
+                  "logprob": -6.75
+                }
+              ]
+            }
+          ],
+          "id": "cmrcnz99b000tuuac5rs0zn7u",
+          "shareUrl": "https://www.neuronpedia.org/steer/cmrcnz99b000tuuac5rs0zn7u",
+          "limit": "118"
+        }
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" Xan\"",
+            0.126
+          ],
+          [
+            "Output \" few\"",
+            0.121
+          ],
+          [
+            "Output \" couple\"",
+            0.083
+          ],
+          [
+            "Output \" pill\"",
+            0.063
+          ],
+          [
+            "Output \" xan\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" few\"",
+            0.117
+          ],
+          [
+            "Output \" deep\"",
+            0.105
+          ],
+          [
+            "Output \" couple\"",
+            0.058
+          ],
+          [
+            "Output \" nap\"",
+            0.043
+          ],
+          [
+            "Output \" long\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 852,
+        "unique_to_a": 577,
+        "unique_to_b": 529
+      },
+      "outputs": {
+        "html": "trace_out/boostgrid_lowrank_r2/index_02.html",
+        "png": "trace_out/boostgrid_lowrank_r2/index_02.png",
+        "diff_html": "trace_out/boostgrid_lowrank_r2/index_02_diff.html",
+        "diff_png": "trace_out/boostgrid_lowrank_r2/index_02_diff.png"
+      }
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After that greasy diner meal I have acid reflux, so I reached for an",
+        "patient": "After that greasy diner meal my stomach's on fire, so I reached for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.523,
+        "patient": 0.09
+      },
+      "language_penalty": -0.43300000000000005,
+      "clinical_mass": {
+        "clinical": 0.2604,
+        "patient": 0.1736
+      },
+      "error_share": {
+        "clinical": 0.1096,
+        "patient": 0.1014
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.072)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.285)"
+      },
+      "steering_boost": {
+        "boosted_features": [
+          {
+            "layer": 16,
+            "index": 8800,
+            "mass": 599.8952,
+            "label": "words related to health issues, medical treatments, and pain. | unexplained code"
+          },
+          {
+            "layer": 20,
+            "index": 7320,
+            "mass": 590.0134,
+            "label": "instructions on how to clean something, particularly related to bodily fluids or"
+          },
+          {
+            "layer": 20,
+            "index": 13778,
+            "mass": 588.2274,
+            "label": "language related to medical treatment, especially for headaches or respiratory i"
+          },
+          {
+            "layer": 4,
+            "index": 1752,
+            "mass": 574.8089,
+            "label": "medical terminology related to the digestive system and surgical treatments. | M"
+          },
+          {
+            "layer": 17,
+            "index": 2892,
+            "mass": 556.535,
+            "label": "words related to medical conditions, especially involving abdominal issues like "
+          }
+        ],
+        "rank_offset": 5,
+        "ok": true,
+        "status": 200,
+        "request": {
+          "endpoint": "/api/steer",
+          "strength": 10.0,
+          "features": [
+            {
+              "layer": 16,
+              "index": 8800
+            },
+            {
+              "layer": 20,
+              "index": 7320
+            },
+            {
+              "layer": 20,
+              "index": 13778
+            },
+            {
+              "layer": 4,
+              "index": 1752
+            },
+            {
+              "layer": 17,
+              "index": 2892
+            }
+          ]
+        },
+        "response": {
+          "STEERED": "<bos>After that greasy diner meal my stomach's on fire, so I reached for an antacid. I was feeling a little",
+          "DEFAULT": "<bos>After that greasy diner meal my stomach's on fire, so I reached for an ice cream cone.\n\nI'm",
+          "steeredLogProbs": [
+            {
+              "token": " ant",
+              "logprob": -1.03125,
+              "topLogprobs": [
+                {
+                  "token": " ant",
+                  "logprob": -1.03125
+                },
+                {
+                  "token": " aspirin",
+                  "logprob": -2.40625
+                },
+                {
+                  "token": " over",
+                  "logprob": -3.03125
+                },
+                {
+                  "token": " Ad",
+                  "logprob": -3.15625
+                },
+                {
+                  "token": " ice",
+                  "logprob": -3.53125
+                }
+              ]
+            },
+            {
+              "token": "acid",
+              "logprob": -0.07958984375,
+              "topLogprobs": [
+                {
+                  "token": "acid",
+                  "logprob": -0.07958984375
+                },
+                {
+                  "token": "-",
+                  "logprob": -3.484375
+                },
+                {
+                  "token": " acid",
+                  "logprob": -3.671875
+                },
+                {
+                  "token": "acids",
+                  "logprob": -4.6875
+                },
+                {
+                  "token": "o",
+                  "logprob": -5.84375
+                }
+              ]
+            },
+            {
+              "token": ".",
+              "logprob": -1.15625,
+              "topLogprobs": [
+                {
+                  "token": ".",
+                  "logprob": -1.15625
+                },
+                {
+                  "token": ",",
+                  "logprob": -2.03125
+                },
+                {
+                  "token": " and",
+                  "logprob": -2.03125
+                },
+                {
+                  "token": " tablet",
+                  "logprob": -2.40625
+                },
+                {
+                  "token": " to",
+                  "logprob": -3.03125
+                }
+              ]
+            },
+            {
+              "token": " I",
+              "logprob": -1.609375,
+              "topLogprobs": [
+                {
+                  "token": " I",
+                  "logprob": -1.609375
+                },
+                {
+                  "token": "\n\n",
+                  "logprob": -1.984375
+                },
+                {
+                  "token": " It",
+                  "logprob": -2.734375
+                },
+                {
+                  "token": " But",
+                  "logprob": -2.859375
+                },
+                {
+                  "token": "\n",
+                  "logprob": -2.984375
+                }
+              ]
+            },
+            {
+              "token": " was",
+              "logprob": -2.390625,
+              "topLogprobs": [
+                {
+                  "token": " took",
+                  "logprob": -2.390625
+                },
+                {
+                  "token": " had",
+                  "logprob": -2.390625
+                },
+                {
+                  "token": " was",
+                  "logprob": -2.390625
+                },
+                {
+                  "token": "'",
+                  "logprob": -2.515625
+                },
+                {
+                  "token": " didn",
+                  "logprob": -3.390625
+                }
+              ]
+            },
+            {
+              "token": " feeling",
+              "logprob": -2.703125,
+              "topLogprobs": [
+                {
+                  "token": " feeling",
+                  "logprob": -2.703125
+                },
+                {
+                  "token": " in",
+                  "logprob": -2.953125
+                },
+                {
+                  "token": " worried",
+                  "logprob": -3.203125
+                },
+                {
+                  "token": " able",
+                  "logprob": -3.203125
+                },
+                {
+                  "token": " a",
+                  "logprob": -3.328125
+                }
+              ]
+            },
+            {
+              "token": " a",
+              "logprob": -1.5390625,
+              "topLogprobs": [
+                {
+                  "token": " a",
+                  "logprob": -1.5390625
+                },
+                {
+                  "token": " pretty",
+                  "logprob": -1.7890625
+                },
+                {
+                  "token": " better",
+                  "logprob": -2.921875
+                },
+                {
+                  "token": " like",
+                  "logprob": -3.171875
+                },
+                {
+                  "token": " really",
+                  "logprob": -3.421875
+                }
+              ]
+            },
+            {
+              "token": " little",
+              "logprob": -0.8203125,
+              "topLogprobs": [
+                {
+                  "token": " little",
+                  "logprob": -0.8203125
+                },
+                {
+                  "token": " bit",
+                  "logprob": -0.9453125
+                },
+                {
+                  "token": " lot",
+                  "logprob": -3.703125
+                },
+                {
+                  "token": " tad",
+                  "logprob": -3.828125
+                },
+                {
+                  "token": "chy",
+                  "logprob": -3.828125
+                }
+              ]
+            }
+          ],
+          "defaultLogProbs": [
+            {
+              "token": " ice",
+              "logprob": -1.5390625,
+              "topLogprobs": [
+                {
+                  "token": " ice",
+                  "logprob": -1.5390625
+                },
+                {
+                  "token": " apple",
+                  "logprob": -2.28125
+                },
+                {
+                  "token": " old",
+                  "logprob": -2.28125
+                },
+                {
+                  "token": " ant",
+                  "logprob": -2.90625
+                },
+                {
+                  "token": " aspirin",
+                  "logprob": -3.40625
+                }
+              ]
+            },
+            {
+              "token": " cream",
+              "logprob": -0.92578125,
+              "topLogprobs": [
+                {
+                  "token": " cream",
+                  "logprob": -0.92578125
+                },
+                {
+                  "token": "-",
+                  "logprob": -1.296875
+                },
+                {
+                  "token": " cold",
+                  "logprob": -1.796875
+                },
+                {
+                  "token": " pack",
+                  "logprob": -3.046875
+                },
+                {
+                  "token": " cube",
+                  "logprob": -3.796875
+                }
+              ]
+            },
+            {
+              "token": " cone",
+              "logprob": -1.03125,
+              "topLogprobs": [
+                {
+                  "token": " cone",
+                  "logprob": -1.03125
+                },
+                {
+                  "token": " bar",
+                  "logprob": -1.90625
+                },
+                {
+                  "token": ".",
+                  "logprob": -2.53125
+                },
+                {
+                  "token": " to",
+                  "logprob": -2.78125
+                },
+                {
+                  "token": " sandwich",
+                  "logprob": -2.90625
+                }
+              ]
+            },
+            {
+              "token": ".",
+              "logprob": -1.078125,
+              "topLogprobs": [
+                {
+                  "token": ".",
+                  "logprob": -1.078125
+                },
+                {
+                  "token": " to",
+                  "logprob": -2.453125
+                },
+                {
+                  "token": " from",
+                  "logprob": -2.578125
+                },
+                {
+                  "token": " and",
+                  "logprob": -2.578125
+                },
+                {
+                  "token": ",",
+                  "logprob": -2.703125
+                }
+              ]
+            },
+            {
+              "token": "\n\n",
+              "logprob": -1.703125,
+              "topLogprobs": [
+                {
+                  "token": "\n\n",
+                  "logprob": -1.703125
+                },
+                {
+                  "token": " I",
+                  "logprob": -1.828125
+                },
+                {
+                  "token": " It",
+                  "logprob": -2.453125
+                },
+                {
+                  "token": " The",
+                  "logprob": -2.703125
+                },
+                {
+                  "token": "  ",
+                  "logprob": -2.953125
+                }
+              ]
+            },
+            {
+              "token": "I",
+              "logprob": -1.5390625,
+              "topLogprobs": [
+                {
+                  "token": "I",
+                  "logprob": -1.5390625
+                },
+                {
+                  "token": "The",
+                  "logprob": -2.546875
+                },
+                {
+                  "token": "\"",
+                  "logprob": -2.796875
+                },
+                {
+                  "token": "It",
+                  "logprob": -2.796875
+                },
+                {
+                  "token": "But",
+                  "logprob": -3.171875
+                }
+              ]
+            },
+            {
+              "token": "'",
+              "logprob": -1.8046875,
+              "topLogprobs": [
+                {
+                  "token": "'",
+                  "logprob": -1.8046875
+                },
+                {
+                  "token": " was",
+                  "logprob": -2.4375
+                },
+                {
+                  "token": " don",
+                  "logprob": -3.4375
+                },
+                {
+                  "token": " had",
+                  "logprob": -3.4375
+                },
+                {
+                  "token": " got",
+                  "logprob": -3.5625
+                }
+              ]
+            },
+            {
+              "token": "m",
+              "logprob": -0.5625,
+              "topLogprobs": [
+                {
+                  "token": "m",
+                  "logprob": -0.5625
+                },
+                {
+                  "token": "ve",
+                  "logprob": -1.3125
+                },
+                {
+                  "token": "d",
+                  "logprob": -2.1875
+                },
+                {
+                  "token": "ll",
+                  "logprob": -3.0625
+                },
+                {
+                  "token": "M",
+                  "logprob": -8.0625
+                }
+              ]
+            }
+          ],
+          "id": "cmrcmq5bl000jh7jdig9iwmoi",
+          "shareUrl": "https://www.neuronpedia.org/steer/cmrcmq5bl000jh7jdig9iwmoi",
+          "limit": "117"
+        }
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.523
+          ],
+          [
+            "Output \" over\"",
+            0.072
+          ],
+          [
+            "Output \" anti\"",
+            0.045
+          ],
+          [
+            "Output \" apple\"",
+            0.045
+          ],
+          [
+            "Output \" OTC\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ice\"",
+            0.285
+          ],
+          [
+            "Output \" ant\"",
+            0.09
+          ],
+          [
+            "Output \" apple\"",
+            0.09
+          ],
+          [
+            "Output \" aspirin\"",
+            0.059
+          ],
+          [
+            "Output \" old\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 828,
+        "unique_to_a": 428,
+        "unique_to_b": 511
+      },
+      "outputs": {
+        "html": "trace_out/boostgrid_lowrank_r2/index_03.html",
+        "png": "trace_out/boostgrid_lowrank_r2/index_03.png",
+        "diff_html": "trace_out/boostgrid_lowrank_r2/index_03_diff.html",
+        "diff_png": "trace_out/boostgrid_lowrank_r2/index_03_diff.png"
+      }
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When the dust kicks up my asthma flares, so at work I keep a spare",
+        "patient": "When the dust kicks up my chest gets all tight, so at work I keep a spare"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.692,
+        "patient": 0.043
+      },
+      "language_penalty": -0.6489999999999999,
+      "clinical_mass": {
+        "clinical": 0.2681,
+        "patient": 0.1467
+      },
+      "error_share": {
+        "clinical": 0.112,
+        "patient": 0.1042
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.692)",
+        "patient": "embedding \u2192 [L21\u00b7O] words related to argumentation, sequences and newnes \u2192 Output \" one\" (p=0.058)"
+      },
+      "steering_boost": {
+        "boosted_features": [
+          {
+            "layer": 18,
+            "index": 11440,
+            "mass": 881.855,
+            "label": "words related to allergic rhinitis and asthma, plus some other medical terms lik"
+          },
+          {
+            "layer": 21,
+            "index": 871,
+            "mass": 807.2358,
+            "label": "passages about medical issues, especially breathing and respiratory problems | c"
+          },
+          {
+            "layer": 16,
+            "index": 11440,
+            "mass": 770.2667,
+            "label": "oxygen/breathing | words related to medical conditions and breathing assistance"
+          },
+          {
+            "layer": 20,
+            "index": 10397,
+            "mass": 700.7994,
+            "label": "words associated with medical procedures and medications being administered to a"
+          },
+          {
+            "layer": 16,
+            "index": 1395,
+            "mass": 617.1969,
+            "label": "words related to allergies | allergy"
+          }
+        ],
+        "rank_offset": 5,
+        "ok": true,
+        "status": 200,
+        "request": {
+          "endpoint": "/api/steer",
+          "strength": 10.0,
+          "features": [
+            {
+              "layer": 18,
+              "index": 11440
+            },
+            {
+              "layer": 21,
+              "index": 871
+            },
+            {
+              "layer": 16,
+              "index": 11440
+            },
+            {
+              "layer": 20,
+              "index": 10397
+            },
+            {
+              "layer": 16,
+              "index": 1395
+            }
+          ]
+        },
+        "response": {
+          "STEERED": "<bos>When the dust kicks up my chest gets all tight, so at work I keep a spare inhaler in my desk. I'",
+          "DEFAULT": "<bos>When the dust kicks up my chest gets all tight, so at work I keep a spare shirt in my desk. I'm",
+          "steeredLogProbs": [
+            {
+              "token": " inhal",
+              "logprob": -1.3671875,
+              "topLogprobs": [
+                {
+                  "token": " inhal",
+                  "logprob": -1.3671875
+                },
+                {
+                  "token": " Epi",
+                  "logprob": -2.484375
+                },
+                {
+                  "token": " one",
+                  "logprob": -2.734375
+                },
+                {
+                  "token": " box",
+                  "logprob": -2.859375
+                },
+                {
+                  "token": " set",
+                  "logprob": -3.234375
+                }
+              ]
+            },
+            {
+              "token": "er",
+              "logprob": -0.028564453125,
+              "topLogprobs": [
+                {
+                  "token": "er",
+                  "logprob": -0.028564453125
+                },
+                {
+                  "token": "iner",
+                  "logprob": -5.15625
+                },
+                {
+                  "token": "in",
+                  "logprob": -5.71875
+                },
+                {
+                  "token": ".",
+                  "logprob": -5.96875
+                },
+                {
+                  "token": "ener",
+                  "logprob": -6.40625
+                }
+              ]
+            },
+            {
+              "token": " in",
+              "logprob": -1.109375,
+              "topLogprobs": [
+                {
+                  "token": " in",
+                  "logprob": -1.109375
+                },
+                {
+                  "token": ".",
+                  "logprob": -2.484375
+                },
+                {
+                  "token": " with",
+                  "logprob": -2.609375
+                },
+                {
+                  "token": " on",
+                  "logprob": -2.609375
+                },
+                {
+                  "token": " just",
+                  "logprob": -2.984375
+                }
+              ]
+            },
+            {
+              "token": " my",
+              "logprob": -0.296875,
+              "topLogprobs": [
+                {
+                  "token": " my",
+                  "logprob": -0.296875
+                },
+                {
+                  "token": " the",
+                  "logprob": -1.671875
+                },
+                {
+                  "token": " case",
+                  "logprob": -3.421875
+                },
+                {
+                  "token": " a",
+                  "logprob": -4.15625
+                },
+                {
+                  "token": " every",
+                  "logprob": -5.78125
+                }
+              ]
+            },
+            {
+              "token": " desk",
+              "logprob": -1.046875,
+              "topLogprobs": [
+                {
+                  "token": " desk",
+                  "logprob": -1.046875
+                },
+                {
+                  "token": " bag",
+                  "logprob": -2.046875
+                },
+                {
+                  "token": " purse",
+                  "logprob": -2.296875
+                },
+                {
+                  "token": " car",
+                  "logprob": -2.421875
+                },
+                {
+                  "token": " pocket",
+                  "logprob": -2.671875
+                }
+              ]
+            },
+            {
+              "token": ".",
+              "logprob": -0.9765625,
+              "topLogprobs": [
+                {
+                  "token": ".",
+                  "logprob": -0.9765625
+                },
+                {
+                  "token": " drawer",
+                  "logprob": -1.9765625
+                },
+                {
+                  "token": ",",
+                  "logprob": -2.359375
+                },
+                {
+                  "token": " for",
+                  "logprob": -2.984375
+                },
+                {
+                  "token": " and",
+                  "logprob": -2.984375
+                }
+              ]
+            },
+            {
+              "token": " I",
+              "logprob": -1.4609375,
+              "topLogprobs": [
+                {
+                  "token": " I",
+                  "logprob": -1.4609375
+                },
+                {
+                  "token": "\n\n",
+                  "logprob": -1.8359375
+                },
+                {
+                  "token": " It",
+                  "logprob": -2.84375
+                },
+                {
+                  "token": "\n",
+                  "logprob": -2.84375
+                },
+                {
+                  "token": "  ",
+                  "logprob": -2.96875
+                }
+              ]
+            },
+            {
+              "token": "'",
+              "logprob": -1.671875,
+              "topLogprobs": [
+                {
+                  "token": "'",
+                  "logprob": -1.671875
+                },
+                {
+                  "token": "\u2019",
+                  "logprob": -1.796875
+                },
+                {
+                  "token": " have",
+                  "logprob": -2.046875
+                },
+                {
+                  "token": " am",
+                  "logprob": -3.046875
+                },
+                {
+                  "token": " was",
+                  "logprob": -3.296875
+                }
+              ]
+            }
+          ],
+          "defaultLogProbs": [
+            {
+              "token": " shirt",
+              "logprob": -1.8046875,
+              "topLogprobs": [
+                {
+                  "token": " shirt",
+                  "logprob": -1.8046875
+                },
+                {
+                  "token": " pair",
+                  "logprob": -2.796875
+                },
+                {
+                  "token": " t",
+                  "logprob": -2.796875
+                },
+                {
+                  "token": " one",
+                  "logprob": -2.796875
+                },
+                {
+                  "token": " jacket",
+                  "logprob": -3.046875
+                }
+              ]
+            },
+            {
+              "token": " in",
+              "logprob": -1.34375,
+              "topLogprobs": [
+                {
+                  "token": " in",
+                  "logprob": -1.34375
+                },
+                {
+                  "token": " on",
+                  "logprob": -1.84375
+                },
+                {
+                  "token": " and",
+                  "logprob": -2.59375
+                },
+                {
+                  "token": " handy",
+                  "logprob": -3.09375
+                },
+                {
+                  "token": " under",
+                  "logprob": -3.09375
+                }
+              ]
+            },
+            {
+              "token": " my",
+              "logprob": -0.19140625,
+              "topLogprobs": [
+                {
+                  "token": " my",
+                  "logprob": -0.19140625
+                },
+                {
+                  "token": " the",
+                  "logprob": -2.0625
+                },
+                {
+                  "token": " a",
+                  "logprob": -3.8125
+                },
+                {
+                  "token": " case",
+                  "logprob": -4.6875
+                },
+                {
+                  "token": " there",
+                  "logprob": -6.1875
+                }
+              ]
+            },
+            {
+              "token": " desk",
+              "logprob": -1.234375,
+              "topLogprobs": [
+                {
+                  "token": " desk",
+                  "logprob": -1.234375
+                },
+                {
+                  "token": " locker",
+                  "logprob": -2.109375
+                },
+                {
+                  "token": " bag",
+                  "logprob": -2.359375
+                },
+                {
+                  "token": " car",
+                  "logprob": -2.359375
+                },
+                {
+                  "token": " office",
+                  "logprob": -2.859375
+                }
+              ]
+            },
+            {
+              "token": ".",
+              "logprob": -1.3515625,
+              "topLogprobs": [
+                {
+                  "token": ".",
+                  "logprob": -1.3515625
+                },
+                {
+                  "token": " drawer",
+                  "logprob": -1.6015625
+                },
+                {
+                  "token": " for",
+                  "logprob": -2.484375
+                },
+                {
+                  "token": ",",
+                  "logprob": -2.734375
+                },
+                {
+                  "token": " and",
+                  "logprob": -2.734375
+                }
+              ]
+            },
+            {
+              "token": " I",
+              "logprob": -1.6796875,
+              "topLogprobs": [
+                {
+                  "token": " I",
+                  "logprob": -1.6796875
+                },
+                {
+                  "token": "\n\n",
+                  "logprob": -1.8046875
+                },
+                {
+                  "token": "  ",
+                  "logprob": -2.296875
+                },
+                {
+                  "token": " It",
+                  "logprob": -2.796875
+                },
+                {
+                  "token": "\n",
+                  "logprob": -2.921875
+                }
+              ]
+            },
+            {
+              "token": "'",
+              "logprob": -2.234375,
+              "topLogprobs": [
+                {
+                  "token": "'",
+                  "logprob": -2.234375
+                },
+                {
+                  "token": "\u2019",
+                  "logprob": -2.234375
+                },
+                {
+                  "token": " don",
+                  "logprob": -2.609375
+                },
+                {
+                  "token": " have",
+                  "logprob": -2.609375
+                },
+                {
+                  "token": " also",
+                  "logprob": -2.859375
+                }
+              ]
+            },
+            {
+              "token": "m",
+              "logprob": -0.53515625,
+              "topLogprobs": [
+                {
+                  "token": "m",
+                  "logprob": -0.53515625
+                },
+                {
+                  "token": "ve",
+                  "logprob": -1.2890625
+                },
+                {
+                  "token": "ll",
+                  "logprob": -2.40625
+                },
+                {
+                  "token": "d",
+                  "logprob": -3.03125
+                },
+                {
+                  "token": "ma",
+                  "logprob": -9.0625
+                }
+              ]
+            }
+          ],
+          "id": "cmrcmunr70005lju7ag4ujtf5",
+          "shareUrl": "https://www.neuronpedia.org/steer/cmrcmunr70005lju7ag4ujtf5",
+          "limit": "116"
+        }
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.692
+          ],
+          [
+            "Output \" mask\"",
+            0.059
+          ],
+          [
+            "Output \" set\"",
+            0.028
+          ],
+          [
+            "Output \" puffer\"",
+            0.026
+          ],
+          [
+            "Output \" pair\"",
+            0.017
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" shirt\"",
+            0.183
+          ],
+          [
+            "Output \" t\"",
+            0.068
+          ],
+          [
+            "Output \" pair\"",
+            0.06
+          ],
+          [
+            "Output \" one\"",
+            0.058
+          ],
+          [
+            "Output \" inhal\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 903,
+        "unique_to_a": 407,
+        "unique_to_b": 567
+      },
+      "outputs": {
+        "html": "trace_out/boostgrid_lowrank_r2/index_04.html",
+        "png": "trace_out/boostgrid_lowrank_r2/index_04.png",
+        "diff_html": "trace_out/boostgrid_lowrank_r2/index_04_diff.html",
+        "diff_png": "trace_out/boostgrid_lowrank_r2/index_04_diff.png"
+      }
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep having night sweats every night, so the doctor ordered a",
+        "patient": "I keep waking up drenched in sweat every night, so the doctor ordered a"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.232,
+        "patient": 0.094
+      },
+      "language_penalty": -0.138,
+      "clinical_mass": {
+        "clinical": 0.3863,
+        "patient": 0.285
+      },
+      "error_share": {
+        "clinical": 0.0987,
+        "patient": 0.1066
+      },
+      "top_path": {
+        "clinical": "[L14\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 Output \" test\" (p=0.072)",
+        "patient": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.305)"
+      },
+      "steering_boost": {
+        "boosted_features": [
+          {
+            "layer": 4,
+            "index": 3400,
+            "mass": 587.9378,
+            "label": "references to medical conditions characterized as diseases ending in \"itis\" or p"
+          },
+          {
+            "layer": 20,
+            "index": 13778,
+            "mass": 511.3313,
+            "label": "language related to medical treatment, especially for headaches or respiratory i"
+          },
+          {
+            "layer": 21,
+            "index": 9280,
+            "mass": 484.4759,
+            "label": "words related to medical procedures and studies | terms related to medical proce"
+          },
+          {
+            "layer": 17,
+            "index": 6651,
+            "mass": 467.5525,
+            "label": "medical terminology and phrases relating to studies, treatment, and outcomes | S"
+          },
+          {
+            "layer": 20,
+            "index": 7857,
+            "mass": 434.6039,
+            "label": "medical and research contexts | lab tests"
+          }
+        ],
+        "rank_offset": 5,
+        "ok": true,
+        "status": 200,
+        "request": {
+          "endpoint": "/api/steer",
+          "strength": 10.0,
+          "features": [
+            {
+              "layer": 4,
+              "index": 3400
+            },
+            {
+              "layer": 20,
+              "index": 13778
+            },
+            {
+              "layer": 21,
+              "index": 9280
+            },
+            {
+              "layer": 17,
+              "index": 6651
+            },
+            {
+              "layer": 20,
+              "index": 7857
+            }
+          ]
+        },
+        "response": {
+          "STEERED": "<bos>I keep waking up drenched in sweat every night, so the doctor ordered a sleep study. I had a sleep study",
+          "DEFAULT": "<bos>I keep waking up drenched in sweat every night, so the doctor ordered a sleep study. I was told I have",
+          "steeredLogProbs": [
+            {
+              "token": " sleep",
+              "logprob": -1.3046875,
+              "topLogprobs": [
+                {
+                  "token": " sleep",
+                  "logprob": -1.3046875
+                },
+                {
+                  "token": " blood",
+                  "logprob": -2.4375
+                },
+                {
+                  "token": " series",
+                  "logprob": -3.0625
+                },
+                {
+                  "token": " test",
+                  "logprob": -3.0625
+                },
+                {
+                  "token": " night",
+                  "logprob": -3.1875
+                }
+              ]
+            },
+            {
+              "token": " study",
+              "logprob": -0.2890625,
+              "topLogprobs": [
+                {
+                  "token": " study",
+                  "logprob": -0.2890625
+                },
+                {
+                  "token": " test",
+                  "logprob": -2.046875
+                },
+                {
+                  "token": "-",
+                  "logprob": -3.421875
+                },
+                {
+                  "token": " apnea",
+                  "logprob": -3.546875
+                },
+                {
+                  "token": " monitor",
+                  "logprob": -4.15625
+                }
+              ]
+            },
+            {
+              "token": ".",
+              "logprob": -0.71875,
+              "topLogprobs": [
+                {
+                  "token": ".",
+                  "logprob": -0.71875
+                },
+                {
+                  "token": " to",
+                  "logprob": -2.09375
+                },
+                {
+                  "token": " and",
+                  "logprob": -2.34375
+                },
+                {
+                  "token": ",",
+                  "logprob": -2.46875
+                },
+                {
+                  "token": " for",
+                  "logprob": -2.96875
+                }
+              ]
+            },
+            {
+              "token": " I",
+              "logprob": -1.65625,
+              "topLogprobs": [
+                {
+                  "token": " I",
+                  "logprob": -1.65625
+                },
+                {
+                  "token": " The",
+                  "logprob": -1.65625
+                },
+                {
+                  "token": "\n\n",
+                  "logprob": -2.65625
+                },
+                {
+                  "token": " It",
+                  "logprob": -2.78125
+                },
+                {
+                  "token": "  ",
+                  "logprob": -2.78125
+                }
+              ]
+            },
+            {
+              "token": " had",
+              "logprob": -1.671875,
+              "topLogprobs": [
+                {
+                  "token": " had",
+                  "logprob": -1.671875
+                },
+                {
+                  "token": " have",
+                  "logprob": -2.046875
+                },
+                {
+                  "token": " was",
+                  "logprob": -2.171875
+                },
+                {
+                  "token": "\u2019",
+                  "logprob": -2.421875
+                },
+                {
+                  "token": "'",
+                  "logprob": -2.671875
+                }
+              ]
+            },
+            {
+              "token": " a",
+              "logprob": -1.234375,
+              "topLogprobs": [
+                {
+                  "token": " a",
+                  "logprob": -1.234375
+                },
+                {
+                  "token": " to",
+                  "logprob": -1.609375
+                },
+                {
+                  "token": " the",
+                  "logprob": -1.859375
+                },
+                {
+                  "token": " an",
+                  "logprob": -2.234375
+                },
+                {
+                  "token": " my",
+                  "logprob": -3.484375
+                }
+              ]
+            },
+            {
+              "token": " sleep",
+              "logprob": -1.8671875,
+              "topLogprobs": [
+                {
+                  "token": " sleep",
+                  "logprob": -1.8671875
+                },
+                {
+                  "token": " heart",
+                  "logprob": -2.875
+                },
+                {
+                  "token": " very",
+                  "logprob": -2.875
+                },
+                {
+                  "token": " CP",
+                  "logprob": -3
+                },
+                {
+                  "token": " procedure",
+                  "logprob": -3.25
+                }
+              ]
+            },
+            {
+              "token": " study",
+              "logprob": -0.341796875,
+              "topLogprobs": [
+                {
+                  "token": " study",
+                  "logprob": -0.341796875
+                },
+                {
+                  "token": " test",
+                  "logprob": -2.71875
+                },
+                {
+                  "token": " apnea",
+                  "logprob": -2.84375
+                },
+                {
+                  "token": "-",
+                  "logprob": -3.71875
+                },
+                {
+                  "token": " monitor",
+                  "logprob": -3.71875
+                }
+              ]
+            }
+          ],
+          "defaultLogProbs": [
+            {
+              "token": " sleep",
+              "logprob": -1.1796875,
+              "topLogprobs": [
+                {
+                  "token": " sleep",
+                  "logprob": -1.1796875
+                },
+                {
+                  "token": " blood",
+                  "logprob": -2.1875
+                },
+                {
+                  "token": " heart",
+                  "logprob": -3.0625
+                },
+                {
+                  "token": " test",
+                  "logprob": -3.1875
+                },
+                {
+                  "token": " CP",
+                  "logprob": -3.4375
+                }
+              ]
+            },
+            {
+              "token": " study",
+              "logprob": -0.21875,
+              "topLogprobs": [
+                {
+                  "token": " study",
+                  "logprob": -0.21875
+                },
+                {
+                  "token": " test",
+                  "logprob": -1.84375
+                },
+                {
+                  "token": " apnea",
+                  "logprob": -4.21875
+                },
+                {
+                  "token": " monitor",
+                  "logprob": -4.96875
+                },
+                {
+                  "token": " studies",
+                  "logprob": -6.59375
+                }
+              ]
+            },
+            {
+              "token": ".",
+              "logprob": -0.6328125,
+              "topLogprobs": [
+                {
+                  "token": ".",
+                  "logprob": -0.6328125
+                },
+                {
+                  "token": " to",
+                  "logprob": -1.7578125
+                },
+                {
+                  "token": " and",
+                  "logprob": -2.75
+                },
+                {
+                  "token": ",",
+                  "logprob": -2.875
+                },
+                {
+                  "token": " for",
+                  "logprob": -3.5
+                }
+              ]
+            },
+            {
+              "token": " I",
+              "logprob": -1.5625,
+              "topLogprobs": [
+                {
+                  "token": " I",
+                  "logprob": -1.5625
+                },
+                {
+                  "token": " The",
+                  "logprob": -2.3125
+                },
+                {
+                  "token": "\n\n",
+                  "logprob": -2.3125
+                },
+                {
+                  "token": "  ",
+                  "logprob": -2.3125
+                },
+                {
+                  "token": " It",
+                  "logprob": -2.6875
+                }
+              ]
+            },
+            {
+              "token": " was",
+              "logprob": -2.109375,
+              "topLogprobs": [
+                {
+                  "token": " was",
+                  "logprob": -2.109375
+                },
+                {
+                  "token": "'",
+                  "logprob": -2.109375
+                },
+                {
+                  "token": " have",
+                  "logprob": -2.359375
+                },
+                {
+                  "token": "\u2019",
+                  "logprob": -2.484375
+                },
+                {
+                  "token": " had",
+                  "logprob": -2.734375
+                }
+              ]
+            },
+            {
+              "token": " told",
+              "logprob": -2.140625,
+              "topLogprobs": [
+                {
+                  "token": " told",
+                  "logprob": -2.140625
+                },
+                {
+                  "token": " diagnosed",
+                  "logprob": -2.515625
+                },
+                {
+                  "token": " a",
+                  "logprob": -3.015625
+                },
+                {
+                  "token": " given",
+                  "logprob": -3.265625
+                },
+                {
+                  "token": " in",
+                  "logprob": -3.515625
+                }
+              ]
+            },
+            {
+              "token": " I",
+              "logprob": -1.4296875,
+              "topLogprobs": [
+                {
+                  "token": " I",
+                  "logprob": -1.4296875
+                },
+                {
+                  "token": " that",
+                  "logprob": -1.5546875
+                },
+                {
+                  "token": " to",
+                  "logprob": -1.5546875
+                },
+                {
+                  "token": " it",
+                  "logprob": -2.421875
+                },
+                {
+                  "token": " the",
+                  "logprob": -3.171875
+                }
+              ]
+            },
+            {
+              "token": " have",
+              "logprob": -1.015625,
+              "topLogprobs": [
+                {
+                  "token": " have",
+                  "logprob": -1.015625
+                },
+                {
+                  "token": " had",
+                  "logprob": -1.890625
+                },
+                {
+                  "token": " was",
+                  "logprob": -2.265625
+                },
+                {
+                  "token": " might",
+                  "logprob": -3.265625
+                },
+                {
+                  "token": " may",
+                  "logprob": -3.515625
+                }
+              ]
+            }
+          ],
+          "id": "cmrcmzfdx000kuuacd5ce5u3u",
+          "shareUrl": "https://www.neuronpedia.org/steer/cmrcmzfdx000kuuacd5ce5u3u",
+          "limit": "115"
+        }
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.232
+          ],
+          [
+            "Output \" sleep\"",
+            0.121
+          ],
+          [
+            "Output \" test\"",
+            0.072
+          ],
+          [
+            "Output \" hormone\"",
+            0.053
+          ],
+          [
+            "Output \" urine\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.305
+          ],
+          [
+            "Output \" blood\"",
+            0.094
+          ],
+          [
+            "Output \" heart\"",
+            0.069
+          ],
+          [
+            "Output \" test\"",
+            0.036
+          ],
+          [
+            "Output \" CP\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 806,
+        "unique_to_a": 700,
+        "unique_to_b": 596
+      },
+      "outputs": {
+        "html": "trace_out/boostgrid_lowrank_r2/index_05.html",
+        "png": "trace_out/boostgrid_lowrank_r2/index_05.png",
+        "diff_html": "trace_out/boostgrid_lowrank_r2/index_05_diff.html",
+        "diff_png": "trace_out/boostgrid_lowrank_r2/index_05_diff.png"
+      }
+    }
+  ]
+}
