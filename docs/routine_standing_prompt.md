@@ -129,6 +129,15 @@ Stopping rules (from the pre-registration): if two consecutive batches show
 validator yield < 50%, stop firing generation and record a decision for the
 owner. If `generation_spent_usd` would exceed $8, stop generation entirely.
 
+## 4b · Endpoint guard (owner decision 2026-07-14)
+
+The Tier B endpoint / holdout unsealing does NOT run on the calendar. It runs
+only on an explicit owner instruction (the word from the owner, e.g. "unseal").
+Until then: never run paired_stats on holdout rows, never lift a withholding
+gate, never regenerate any output with holdout phrases included - even on or
+after the registered endpoint date (2026-07-16). Amendments 1-3 govern what
+happens when the instruction arrives.
+
 ## 5 · Publish data, never text
 
 If new results landed, run the export/collection chain per `CLAUDE.md`

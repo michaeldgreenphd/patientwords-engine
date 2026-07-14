@@ -1,9 +1,9 @@
-# DRAFT · Pre-registration Amendment 2: depth-readout endpoints
+# Pre-registration Amendment 2: depth-readout endpoints
 
-**Status: DRAFT, pending owner approval. Nothing in this document takes effect,
-and no depth claim upgrades past "exploratory," until the owner approves and
-this file loses its DRAFT marker. Written 2026-07-12, before any data it
-governs exists.**
+**Status: IN FORCE.** Written 2026-07-12, before any data it governs exists;
+adopted as drafted by the owner 2026-07-14 (chat: "sign as drafted"). "Post-A2
+batches" means Tier B generation batches whose stamps postdate the adoption
+commit of this file. Depth claims on pre-A2 data remain exploratory.
 
 ## Motivation
 The Jacobian-lens depth readout (exploratory since 2026-07-11) classifies each
