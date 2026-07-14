@@ -1,210 +1,259 @@
 {
-  "_": "Hardcoded numbers in site prose, each tied to its data source. scripts/claim_check.py verifies nightly: the snippet must still appear in the page, and the value recomputed from the source must match. A mismatch means the prose went stale and needs a hand rewrite.",
-  "claims": [
-    {
-      "page": "index.html",
-      "snippet": "inhaler at 69% probability",
-      "source": "data/simulated_scenarios.json",
-      "expr": "round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_clinical']*100)",
-      "expected": 69
-    },
-    {
-      "page": "index.html",
-      "snippet": "inhaler falls to 4% probability",
-      "source": "data/simulated_scenarios.json",
-      "expr": "round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_patient']*100)",
-      "expected": 4
-    },
-    {
-      "page": "translation/index.html",
-      "snippet": "At 35 joined pairs",
-      "source": "data/jlens_depth.json",
-      "expr": "sum(v['n'] for v in d['translation']['by_class'].values())",
-      "expected": 35
-    },
-    {
-      "page": "translation/index.html",
-      "snippet": "0.13 tiers regained where the answer survived",
-      "source": "data/jlens_depth.json",
-      "expr": "round(d['translation']['by_class']['retained']['mean_recovery'], 2)",
-      "expected": 0.13
-    },
-    {
-      "page": "translation/index.html",
-      "snippet": "0.16 where it\u2019s never formed",
-      "snippet_alt": "0.16 where it",
-      "source": "data/jlens_depth.json",
-      "expr": "round(d['translation']['by_class']['absent']['mean_recovery'], 2)",
-      "expected": 0.16
-    },
-    {
-      "page": "methods.html",
-      "snippet": "at 36 phrases the downgrade pattern",
-      "source": "data/convergence.json",
-      "expr": "[ [q['downgrades'], q['upgrades']] for q in d['models']['gemma-3-4b-it']['points'] if q['n_phrases']==36 ][0]",
-      "expected": [
-        4,
-        1
-      ],
-      "_": "sign test on 4 down / 1 up is p=0.375: chance still plausible"
-    },
-    {
-      "page": "methods.html",
-      "snippet": "by 155 it could not",
-      "source": "data/convergence.json",
-      "expr": "[ [q['downgrades'], q['upgrades']] for q in d['models']['gemma-3-4b-it']['points'] if q['n_phrases']==155 ][0]",
-      "expected": [
-        17,
-        2
-      ],
-      "_": "sign test on 17 down / 2 up is p=0.0007: chance excluded"
-    },
-    {
-      "page": "start-here/index.html",
-      "snippet": "translation fixed 8 of the 20 hardest cases, left 7 unchanged",
-      "source": "data/provenance.json",
-      "expr": "[d['translation_cases']['summary']['recovered'], d['translation_cases']['summary']['n_downgrades'], d['translation_cases']['summary']['unrecovered']]",
-      "expected": [
-        8,
-        20,
-        7
-      ]
-    },
-    {
-      "page": "technical/index.html",
-      "snippet": "eight measured",
-      "source": "data/model_stats.json",
-      "expr": "len(d['per_model'])",
-      "expected": 8,
-      "_": "moved with the model-evaluations consolidation 2026-07-14; guards the Part 4 count"
-    },
-    {
-      "page": "methods.html",
-      "snippet": "11 of the first kind, 5 of the second, 34 unaffected",
-      "source": "data/jlens_depth.json",
-      "expr": "[sum(1 for p in d['blocks'][0]['pairs'] if p['class']=='absent'), sum(1 for p in d['blocks'][0]['pairs'] if p['class']=='suppressed'), sum(1 for p in d['blocks'][0]['pairs'] if p['class']=='retained')]",
-      "expected": [
-        11,
-        5,
-        34
-      ],
-      "_": "'newest batch' sentence tracks blocks[0]; when a newer lens block lands this drifts on purpose"
-    },
-    {
-      "page": "methods.html",
-      "snippet": "gemma, qwen, llama, and olmo families",
-      "source": "data/model_stats.json",
-      "expr": "len(d['per_model'])",
-      "expected": 8
-    },
-    {
-      "page": "start-here/index.html",
-      "snippet": "three times made things worse",
-      "source": "data/provenance.json",
-      "expr": "sum(1 for c in d['translation_cases']['all']['cases'] if (c.get('class') or c.get('classification'))=='worsened')",
-      "expected": 3
-    },
-    {
-      "page": "start-here/index.html",
-      "snippet": "roughly halves the penalty measured under casual framing",
-      "source": "data/provenance.json",
-      "expr": "[d['context_inoculation']['casual_context_mean_penalty'], d['context_inoculation']['clinical_context_mean_penalty']]",
-      "expected": [
-        -0.137,
-        -0.059
-      ]
-    },
-    {
-      "page": "translation/index.html",
-      "snippet": "(4/5, 5/5, 4/5) and falls off at 20",
-      "source": "data/provenance.json",
-      "expr": "[d['steering_titration']['strengths'][k]['recovered'] for k in ('2.5','5','10','20')]",
-      "expected": [
-        4,
-        5,
-        4,
-        1
-      ]
-    },
-    {
-      "page": "index.html",
-      "snippet": "traced 2026-07-08",
-      "source": "data/dialects.json",
-      "expr": "d['updated']",
-      "expected": "2026-07-08"
-    },
-    {
-      "page": "index.html",
-      "snippet": "domain review pending",
-      "source": "data/urgency_shift.json",
-      "expr": "'pending' in d['vocabulary_status']",
-      "expected": true
-    },
-    {
-      "page": "methods.html",
-      "snippet": "domain review pending",
-      "source": "data/urgency_shift.json",
-      "expr": "'pending' in d['vocabulary_status']",
-      "expected": true
-    },
-    {
-      "page": "translation/index.html",
-      "snippet": "domain review pending",
-      "source": "data/urgency_shift.json",
-      "expr": "'pending' in d['vocabulary_status']",
-      "expected": true
-    },
-    {
-      "page": "technical/index.html",
-      "snippet": "domain review pending",
-      "source": "data/urgency_shift.json",
-      "expr": "'pending' in d['vocabulary_status']",
-      "expected": true,
-      "_": "moved with the answer-depth consolidation 2026-07-14"
-    },
-    {
-      "page": "word-differences/index.html",
-      "snippet": "\u221265% probability (0.69 \u2192 0.04)",
-      "source": "data/simulated_scenarios.json",
-      "expr": "[round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_clinical'],2), round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_patient'],2)]",
-      "expected": [
-        0.69,
-        0.04
-      ]
-    },
-    {
-      "page": "dialect-differences/index.html",
-      "snippet": "45 (5 baselines + 40 framings)",
-      "source": "data/dialects.json",
-      "expr": "[len(d['items']), sum(len(i['variants']) for i in d['items'])]",
-      "expected": [
-        5,
-        40
-      ]
-    },
-    {
-      "page": "dialect-differences/index.html",
-      "snippet": "traced July 8, 2026",
-      "source": "data/dialects.json",
-      "expr": "d['updated']",
-      "expected": "2026-07-08"
-    },
-    {
-      "page": "dialect-differences/index.html",
-      "snippet": "claude-sonnet-5 ($0.189, 64 accepted / 2 rejected)",
-      "source": "data/provenance.json",
-      "expr": "[next(b for b in d['batches'] if b.get('batch')=='dialects_20260708T120729Z')['accepted'], next(b for b in d['batches'] if b.get('batch')=='dialects_20260708T120729Z')['rejected']]",
-      "expected": [
-        64,
-        2
-      ]
-    },
-    {
-      "page": "simulated-scenarios/index.html",
-      "snippet": "domain review pending",
-      "source": "data/urgency_shift.json",
-      "expr": "'pending' in d['vocabulary_status']",
-      "expected": true
-    }
-  ]
+ "_": "Hardcoded numbers in site prose, each tied to its data source. scripts/claim_check.py verifies nightly: the snippet must still appear in the page, and the value recomputed from the source must match. A mismatch means the prose went stale and needs a hand rewrite.",
+ "claims": [
+  {
+   "page": "index.html",
+   "snippet": "inhaler at 69% probability",
+   "source": "data/simulated_scenarios.json",
+   "expr": "round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_clinical']*100)",
+   "expected": 69
+  },
+  {
+   "page": "index.html",
+   "snippet": "inhaler falls to 4% probability",
+   "source": "data/simulated_scenarios.json",
+   "expr": "round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_patient']*100)",
+   "expected": 4
+  },
+  {
+   "page": "translation/index.html",
+   "snippet": "At 35 joined pairs",
+   "source": "data/jlens_depth.json",
+   "expr": "sum(v['n'] for v in d['translation']['by_class'].values())",
+   "expected": 35
+  },
+  {
+   "page": "translation/index.html",
+   "snippet": "0.13 tiers regained where the answer survived",
+   "source": "data/jlens_depth.json",
+   "expr": "round(d['translation']['by_class']['retained']['mean_recovery'], 2)",
+   "expected": 0.13
+  },
+  {
+   "page": "translation/index.html",
+   "snippet": "0.16 where it’s never formed",
+   "snippet_alt": "0.16 where it",
+   "source": "data/jlens_depth.json",
+   "expr": "round(d['translation']['by_class']['absent']['mean_recovery'], 2)",
+   "expected": 0.16
+  },
+  {
+   "page": "methods.html",
+   "snippet": "at 36 phrases the downgrade pattern",
+   "source": "data/convergence.json",
+   "expr": "[ [q['downgrades'], q['upgrades']] for q in d['models']['gemma-3-4b-it']['points'] if q['n_phrases']==36 ][0]",
+   "expected": [
+    4,
+    1
+   ],
+   "_": "sign test on 4 down / 1 up is p=0.375: chance still plausible"
+  },
+  {
+   "page": "methods.html",
+   "snippet": "by 155 it could not",
+   "source": "data/convergence.json",
+   "expr": "[ [q['downgrades'], q['upgrades']] for q in d['models']['gemma-3-4b-it']['points'] if q['n_phrases']==155 ][0]",
+   "expected": [
+    17,
+    2
+   ],
+   "_": "sign test on 17 down / 2 up is p=0.0007: chance excluded"
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "translation fixed 8 of the 20 hardest cases, left 7 unchanged",
+   "source": "data/provenance.json",
+   "expr": "[d['translation_cases']['summary']['recovered'], d['translation_cases']['summary']['n_downgrades'], d['translation_cases']['summary']['unrecovered']]",
+   "expected": [
+    8,
+    20,
+    7
+   ]
+  },
+  {
+   "page": "technical/index.html",
+   "snippet": "run on eight",
+   "source": "data/model_stats.json",
+   "expr": "len(d['per_model'])",
+   "expected": 8,
+   "_": "guards the Part 4 count; snippet updated 2026-07-14 audit round 2"
+  },
+  {
+   "page": "methods.html",
+   "snippet": "census, set by set",
+   "source": "data/jlens_depth.json",
+   "expr": "len(d['blocks']) > 0",
+   "expected": true,
+   "_": "translation-fixes pointer replaced the drifting per-batch snapshot 2026-07-14; guard keeps the link target's data live"
+  },
+  {
+   "page": "methods.html",
+   "snippet": "gemma, qwen, llama, and olmo families",
+   "source": "data/model_stats.json",
+   "expr": "len(d['per_model'])",
+   "expected": 8
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "three times made things worse",
+   "source": "data/provenance.json",
+   "expr": "sum(1 for c in d['translation_cases']['all']['cases'] if (c.get('class') or c.get('classification'))=='worsened')",
+   "expected": 3
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "roughly halves the penalty measured under casual framing",
+   "source": "data/provenance.json",
+   "expr": "[d['context_inoculation']['casual_context_mean_penalty'], d['context_inoculation']['clinical_context_mean_penalty']]",
+   "expected": [
+    -0.137,
+    -0.059
+   ]
+  },
+  {
+   "page": "translation/index.html",
+   "snippet": "(4/5, 5/5, 4/5) and falls off at 20",
+   "source": "data/provenance.json",
+   "expr": "[d['steering_titration']['strengths'][k]['recovered'] for k in ('2.5','5','10','20')]",
+   "expected": [
+    4,
+    5,
+    4,
+    1
+   ]
+  },
+  {
+   "page": "index.html",
+   "snippet": "traced 2026-07-08",
+   "source": "data/dialects.json",
+   "expr": "d['updated']",
+   "expected": "2026-07-08"
+  },
+  {
+   "page": "index.html",
+   "snippet": "domain review pending",
+   "source": "data/urgency_shift.json",
+   "expr": "'pending' in d['vocabulary_status']",
+   "expected": true
+  },
+  {
+   "page": "methods.html",
+   "snippet": "domain review pending",
+   "source": "data/urgency_shift.json",
+   "expr": "'pending' in d['vocabulary_status']",
+   "expected": true
+  },
+  {
+   "page": "translation/index.html",
+   "snippet": "domain review pending",
+   "source": "data/urgency_shift.json",
+   "expr": "'pending' in d['vocabulary_status']",
+   "expected": true
+  },
+  {
+   "page": "technical/index.html",
+   "snippet": "domain review pending",
+   "source": "data/urgency_shift.json",
+   "expr": "'pending' in d['vocabulary_status']",
+   "expected": true,
+   "_": "moved with the answer-depth consolidation 2026-07-14"
+  },
+  {
+   "page": "word-differences/index.html",
+   "snippet": "−65% probability (0.69 → 0.04)",
+   "source": "data/simulated_scenarios.json",
+   "expr": "[round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_clinical'],2), round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_patient'],2)]",
+   "expected": [
+    0.69,
+    0.04
+   ]
+  },
+  {
+   "page": "dialect-differences/index.html",
+   "snippet": "45 (5 baselines + 40 framings)",
+   "source": "data/dialects.json",
+   "expr": "[len(d['items']), sum(len(i['variants']) for i in d['items'])]",
+   "expected": [
+    5,
+    40
+   ]
+  },
+  {
+   "page": "dialect-differences/index.html",
+   "snippet": "traced July 8, 2026",
+   "source": "data/dialects.json",
+   "expr": "d['updated']",
+   "expected": "2026-07-08"
+  },
+  {
+   "page": "dialect-differences/index.html",
+   "snippet": "claude-sonnet-5 ($0.189, 64 accepted / 2 rejected)",
+   "source": "data/provenance.json",
+   "expr": "[next(b for b in d['batches'] if b.get('batch')=='dialects_20260708T120729Z')['accepted'], next(b for b in d['batches'] if b.get('batch')=='dialects_20260708T120729Z')['rejected']]",
+   "expected": [
+    64,
+    2
+   ]
+  },
+  {
+   "page": "simulated-scenarios/index.html",
+   "snippet": "domain review pending",
+   "source": "data/urgency_shift.json",
+   "expr": "'pending' in d['vocabulary_status']",
+   "expected": true
+  },
+  {
+   "page": "technical/index.html",
+   "snippet": "four model families",
+   "source": "data/model_stats.json",
+   "expr": "len(d['per_model'])",
+   "expected": 8,
+   "_": "mirrors the methods families guard; model count drift flags a family recount"
+  },
+  {
+   "page": "methods.html",
+   "snippet": "still shows a below-zero penalty",
+   "source": "data/model_stats.json",
+   "expr": "d['per_model']['medgemma-4b-it']['penalty']['ci95'][1] < 0",
+   "expected": true,
+   "_": "limitations sentence rescoped 2026-07-14: the one medically tuned model measured keeps a CI excluding zero"
+  },
+  {
+   "page": "technical/index.html",
+   "snippet": "One tenth of newly",
+   "source": "data/provenance.json",
+   "expr": "d['tierb_holdout']['fraction']",
+   "expected": 0.1,
+   "_": "holdout provenance added to site data 2026-07-14"
+  },
+  {
+   "page": "translation/index.html",
+   "snippet": "41% on the July 9 re-trace",
+   "source": "data/provenance.json",
+   "expr": "round(d['translation_cases']['grandma_laxative']['retrace_20260709']['translated'][1]*100)",
+   "expected": 41
+  },
+  {
+   "page": "translation/index.html",
+   "snippet": "45% in the July 7 study trace",
+   "source": "data/provenance.json",
+   "expr": "round(d['translation_cases']['grandma_laxative']['translated'][1]*100)",
+   "expected": 45
+  },
+  {
+   "page": "index.html",
+   "snippet": "0.45 after translation (clinical baseline 0.26) · July 7 trace",
+   "source": "data/provenance.json",
+   "expr": "round(d['translation_cases']['grandma_laxative']['translated'][1],2)",
+   "expected": 0.45
+  },
+  {
+   "page": "start-here/index.html",
+   "snippet": "emergency-scenario set (7 pairs)",
+   "source": "data/provenance.json",
+   "expr": "d['emergency_sets']['accepted_pairs']",
+   "expected": 7,
+   "_": "maintain-list item updated 2026-07-14: rounds paused, landed pairs being measured"
+  }
+ ]
 }
