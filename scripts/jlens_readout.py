@@ -49,13 +49,17 @@ RETRY_SLEEP = 15.0  # doubles per retry: 15s, 30s, 60s (mirrors graph_client)
 UNSUPPORTED_STATUS = {400, 404, 422}
 
 
-def lens_request_body(model_id, prompt, topn):
+LENS_TYPES = ("JACOBIAN_LENS", "LOGIT_LENS")
+
+
+def lens_request_body(model_id, prompt, topn, lens_type="JACOBIAN_LENS"):
     """Request body for /api/lens/prompt (schema read from the open-source
-    webapp route on 2026-07-11): non-streaming, prompt positions only."""
+    webapp route on 2026-07-11): non-streaming, prompt positions only.
+    LOGIT_LENS rides the same endpoint (comparison arm, referee item 7)."""
     return {
         "modelId": model_id,
         "prompt": prompt,
-        "type": ["JACOBIAN_LENS"],
+        "type": [lens_type],
         "topN": topn,
         "temperature": 0,
         "numCompletionTokens": 0,
@@ -209,7 +213,7 @@ def _token_string(item):
     return None
 
 
-def depth_profile(response, target, topn):
+def depth_profile(response, target, topn, lens_type="JACOBIAN_LENS"):
     """(profile, parse_status) for the FINAL prompt position of one response.
 
     profile: [{"layer": n, "target_rank": r|None, "top1": str|None}, ...] -
@@ -220,7 +224,8 @@ def depth_profile(response, target, topn):
     if not tokens:
         return [], "no tokens[] in response"
     final = tokens[-1]
-    entries = list(_layer_entries_from_results(final, response)) or list(_iter_layer_entries(final))
+    entries = (list(_layer_entries_from_results(final, response, lens_type))
+               or list(_iter_layer_entries(final)))
     profile = []
     for layer, tops in entries:
         strings = [_token_string(item) for item in tops[:topn]]
@@ -277,10 +282,12 @@ def save_raw(out_dir, index, side, response):
     return str(path)
 
 
-def build_result(index, pair, clin, pat, topn):
+def build_result(index, pair, clin, pat, topn, lens_type="JACOBIAN_LENS"):
     target = pair.get("target_clinical_token") or ""
-    clin_profile, clin_status = depth_profile(clin, target, topn) if clin else ([], "no response")
-    pat_profile, pat_status = depth_profile(pat, target, topn) if pat else ([], "no response")
+    clin_profile, clin_status = (depth_profile(clin, target, topn, lens_type)
+                                 if clin else ([], "no response"))
+    pat_profile, pat_status = (depth_profile(pat, target, topn, lens_type)
+                               if pat else ([], "no response"))
     result = {
         "index": index,
         "prompts": {"clinical": pair["top_prompt"], "patient": pair["bottom_prompt"]},
@@ -292,12 +299,12 @@ def build_result(index, pair, clin, pat, topn):
     return result
 
 
-def build_summary(model_id, results, start_index=1, topn=8):
+def build_summary(model_id, results, start_index=1, topn=8, lens_type="JACOBIAN_LENS"):
     return {
         "mode": "jlens",
         "backend": "jlens-hosted",
         "graph_model": model_id,
-        "lens_type": "JACOBIAN_LENS",
+        "lens_type": lens_type,
         "top_n": topn,
         "start_index": start_index,
         "endpoint": LENS_ENDPOINT,
@@ -316,6 +323,8 @@ def main(argv=None):
     parser.add_argument("--limit", type=int, default=0, help="first N pairs after offset (0 = all)")
     parser.add_argument("--offset", type=int, default=0, help="skip N pairs; part number = offset+1")
     parser.add_argument("--topn", type=int, default=8, choices=range(1, 9))
+    parser.add_argument("--lens-type", default="JACOBIAN_LENS", choices=LENS_TYPES,
+                        help="lens family served by the endpoint (LOGIT_LENS = comparison arm)")
     parser.add_argument("--save-raw", action="store_true",
                         help="gzip the raw API responses under <out>/jlens_raw/")
     args = parser.parse_args(argv)
@@ -340,7 +349,7 @@ def main(argv=None):
         responses = {}
         for side, prompt in (("clinical", pair["top_prompt"]),
                              ("patient", pair["bottom_prompt"])):
-            body = lens_request_body(args.model, prompt, args.topn)
+            body = lens_request_body(args.model, prompt, args.topn, args.lens_type)
             try:
                 response, unsupported = post_lens(session, body)
             except RuntimeError as err:
@@ -370,12 +379,13 @@ def main(argv=None):
             if args.save_raw:
                 save_raw(out_dir, index, side, response)
         results.append(build_result(index, pair, responses["clinical"],
-                                    responses["patient"], args.topn))
+                                    responses["patient"], args.topn, args.lens_type))
         print(f"pair {index}: clinical={results[-1]['parse_status']['clinical']} "
               f"patient={results[-1]['parse_status']['patient']} "
               f"class={results[-1]['patient_depth_class']}")
 
-    summary = build_summary(args.model, results, start_index=args.offset + 1, topn=args.topn)
+    summary = build_summary(args.model, results, start_index=args.offset + 1,
+                            topn=args.topn, lens_type=args.lens_type)
     (out_dir / f"jlens_summary.{part}.json").write_text(
         json.dumps(summary, indent=1) + "\n", encoding="utf-8")
     probe = {"model": args.model, "supported": True, "pairs_measured": len(results),

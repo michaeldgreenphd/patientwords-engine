@@ -223,6 +223,20 @@ def test_build_summary_carries_join_keys_and_credit():
     assert "anthropics/jacobian-lens" in s["method_credit"]
 
 
+def test_logit_lens_type_threads_through_body_and_parser():
+    # LOGIT_LENS comparison arm (2026-07-14): the request asks for it and the
+    # parser reads the matching results entry, not the first one it sees.
+    body = jlens.lens_request_body("gemma-2-2b", "p", 8, "LOGIT_LENS")
+    assert body["type"] == ["LOGIT_LENS"]
+    token_entry = {"results": [
+        {"type": "JACOBIAN_LENS", "top_tokens": [["a"]]},
+        {"type": "LOGIT_LENS", "top_tokens": [["b"]]},
+    ]}
+    resp = {"meta": {"layers_by_type": {"JACOBIAN_LENS": [0], "LOGIT_LENS": [0]}}}
+    assert list(jlens._layer_entries_from_results(token_entry, resp, "LOGIT_LENS")) == [(0, ["b"])]
+    assert list(jlens._layer_entries_from_results(token_entry, resp)) == [(0, ["a"])]
+
+
 def test_output_filename_never_collides_with_behavioral_summaries():
     # Collectors glob batch_summary*.json; the lens path must not match it.
     src = _MODULE_PATH.read_text(encoding="utf-8")
@@ -233,7 +247,8 @@ def test_output_filename_never_collides_with_behavioral_summaries():
 def test_fire_trigger_knows_jlens_readout():
     assert "jlens-readout" in ft.TRIGGERS
     assert ft.KNOWN_KEYS["jlens-readout"] == frozenset(
-        {"models", "pairs_file", "limit", "offset", "topn", "save_raw", "commit_outputs"})
+        {"models", "pairs_file", "limit", "offset", "topn", "lens_type", "save_raw",
+         "commit_outputs"})
     # unknown-key typo is a hard error, like every other trigger
     try:
         ft.validate_params("jlens-readout", {"models": "m", "topN": "8"})
@@ -251,11 +266,14 @@ def test_workflow_wiring_defaults_and_part_naming():
     # push-path defaults dict must contain every trigger key (CI silently
     # drops keys absent from `defaults`)
     for key in ('"models"', '"pairs_file"', '"limit"', '"offset"', '"topn"',
-                '"save_raw"', '"commit_outputs"'):
+                '"lens_type"', '"save_raw"', '"commit_outputs"'):
         assert f"{key}:" in text.replace(f"{key} :", f"{key}:"), key
     assert '".github/trigger/jlens-readout.json"' in text
     assert "part_%02d' $((OFFSET + 1))" in text     # part naming from offset
-    assert "__jlens_${MODEL}" in text               # dir distinct from logits dirs
+    assert "__${KIND}_${MODEL}" in text             # dir distinct from logits dirs
+    # LOGIT_LENS comparison runs must never write into __jlens_ dirs
+    assert 'KIND="loglens"' in text
+    assert "--lens-type" in text
     assert "NEURONPEDIA_API_KEY" in text
     # list->string normalization before str(): the push path must join lists
     assert 'isinstance(cfg.get("models"), list)' in text
