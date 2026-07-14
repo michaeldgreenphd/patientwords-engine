@@ -73,14 +73,21 @@ def test_window_sensitivity_top8_matches_headline_taxonomy():
 
 
 def test_steer_body_fields_only_when_steered():
+    # route schema pinned 2026-07-14: steer tokens are {token, type} objects;
+    # the first probe 400'd on a bare-string swapToken
     base = js.steer_request_body("gemma-2-2b", "p", 8, " tgt", None, None)
     assert "swapToken" not in base and "steerLayers" not in base
     assert base["numCompletionTokens"] == 1
-    steered = js.steer_request_body("gemma-2-2b", "p", 8, " tgt", 21, 4)
-    assert steered["swapToken"] == " tgt"
-    assert steered["steerLayers"] == [21]
-    assert steered["steerStrength"] == 4
-    assert steered["steerTokens"] == [" tgt"]
+    add = js.steer_request_body("gemma-2-2b", "p", 8, " tgt", 21, 0.5)
+    assert add["steerTokens"] == [{"token": " tgt", "type": "JACOBIAN_LENS"}]
+    assert add["steerLayers"] == [21]
+    assert add["steerStrength"] == 0.5
+    assert "swapToken" not in add
+    swap = js.steer_request_body("gemma-2-2b", "p", 8, " tgt", 21, None,
+                                 swap_source=" win")
+    assert swap["steerTokens"] == [{"token": " win", "type": "JACOBIAN_LENS"}]
+    assert swap["swapToken"] == {"token": " tgt", "type": "JACOBIAN_LENS"}
+    assert "steerStrength" not in swap
 
 
 def test_rate_limit_rides_the_long_ladder(monkeypatch):

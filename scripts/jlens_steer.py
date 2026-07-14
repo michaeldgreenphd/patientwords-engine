@@ -38,14 +38,24 @@ _JR_SPEC.loader.exec_module(jr)
 
 
 def steer_request_body(model_id, prompt, topn, target, layer, strength,
-                       num_completion_tokens=1):
-    """Baseline body plus the steering fields. `layer`/`strength` None =
-    unsteered baseline call."""
+                       num_completion_tokens=1, swap_source=None):
+    """Baseline body plus the steering fields, per the route's OpenAPI schema
+    (verified against the webapp source 2026-07-14 after the first probe's 400:
+    steer tokens are {token, type} objects; steerStrength is a signed fraction
+    of each position's residual norm; swapToken replaces steerTokens[0]'s
+    readout). `layer`/`strength` None = unsteered baseline call. `swap_source`
+    set = swap arm: replace the source readout with the target instead of
+    additively injecting."""
     body = jr.lens_request_body(model_id, prompt, topn)
     body["numCompletionTokens"] = num_completion_tokens
-    if layer is not None:
-        body["swapToken"] = target
-        body["steerTokens"] = [target]
+    if layer is None:
+        return body
+    if swap_source is not None:
+        body["steerTokens"] = [{"token": swap_source, "type": "JACOBIAN_LENS"}]
+        body["swapToken"] = {"token": target, "type": "JACOBIAN_LENS"}
+        body["steerLayers"] = [layer]
+    else:
+        body["steerTokens"] = [{"token": target, "type": "JACOBIAN_LENS"}]
         body["steerLayers"] = [layer]
         body["steerStrength"] = strength
     return body
@@ -99,13 +109,19 @@ def main(argv=None):
     for i, item in enumerate(items):
         index = args.offset + i + 1
         target = item["target"]
-        calls = [("baseline", None, None)] + [
-            (f"L{la}_s{st}", la, st) for la in layers for st in strengths]
+        winner = item.get("winner")
+        calls = [("baseline", None, None, None)] + [
+            (f"L{la}_s{st:g}", la, st, None) for la in layers for st in strengths]
+        # swap arm: replace the patient-side winner's readout with the target,
+        # one call per layer; skipped when the winner IS the target (held pairs)
+        if winner and winner != target:
+            calls += [(f"L{la}_swap", la, None, winner) for la in layers]
         row = {"index": index, "dataset": item["dataset"], "spec_index": item["index"],
-               "class": item["class"], "target_token": target, "calls": {}}
-        for label, layer, strength in calls:
+               "class": item["class"], "target_token": target, "winner_token": winner,
+               "calls": {}}
+        for label, layer, strength, swap_source in calls:
             body = steer_request_body(model, item["prompt"], args.topn, target,
-                                      layer, strength, nct)
+                                      layer, strength, nct, swap_source)
             try:
                 response, unsupported = jr.post_lens(session, body)
             except RuntimeError as err:

@@ -49,26 +49,34 @@ From `ops/jlens_insights.json` (rescoped taxonomy, persistence rule,
 
 Patient-side prompts only. Baseline lens call per pair, then a swap grid.
 
-## Grid
+## Grid (units corrected 2026-07-14 pm after the schema probe)
 
-- **Swap token:** the pair's clinical target token.
-- **Layers:** the hijack class's lock-in median and formation median from
-  the live taxonomy (currently ~19 and ~21-25), applied to every class the
-  same way so classes are compared under identical interventions.
-- **Strengths:** 2, 4, 8 (endpoint units; the feature-steering titration's
-  recovery knee sat at 5-10 in its own units, so this brackets low).
+- **Additive arm:** inject the clinical target's readout direction
+  (`steerTokens: [{token, type}]`, `steerStrength`) at each listed layer.
+  Per the route's OpenAPI schema, strength is a signed FRACTION of each
+  position's residual norm, range +/-50; the original 2/4/8 ladder assumed
+  the feature-titration's units and was wrong. Ladder: 0.25, 0.5, 1, 2.
+- **Swap arm:** `swapToken` replaces the SOURCE readout (`steerTokens[0]`)
+  with the target, so the source must be the patient-side winner token (from
+  the landed lens summaries), not the target itself; one swap call per
+  layer, skipped when the winner already is the target.
+- **Layers:** the hijack class's formation and lock-in medians from the live
+  taxonomy (currently 19 and 21), applied to every class the same way so
+  classes are compared under identical interventions.
 - **Readout:** target rank at the final position across layers (same parser
   as the lens readout) plus one completion token
   (`numCompletionTokens: 1`) as the behavioral check.
 
 ## Schema risk gate (step 0)
 
-The steering fields have never been exercised here; the response shape under
-steering is unverified. Step 0 is a 2-pair probe with `save_raw` on,
-parse_status recorded per call, and the parser pinned against the committed
-raw before the full grid fires. Persistent 4xx/5xx on steering fields =
-capability not served; record it and stop (same probe-negative pattern as
-model support discovery).
+The steering fields had never been exercised here. Step 0 is a 2-pair probe
+with raw saved, parse_status recorded per call, and the parser pinned against
+the committed raw before the full grid fires. Persistent 4xx/5xx on steering
+fields = capability not served; record it and stop (same probe-negative
+pattern as model support discovery). **Probe run 1 (2026-07-14 16:38 UTC)
+did its job:** the endpoint 400'd on `swapToken` as a bare string; the route
+source pinned the object schema and the corrected probe re-fired the same
+evening. This gate is why the pilot starts at 2 items.
 
 ## Outputs
 
