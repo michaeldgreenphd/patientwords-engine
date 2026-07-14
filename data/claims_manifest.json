@@ -18,6 +18,38 @@
    "_": "retargeted to the try-it widget data 2026-07-14"
   },
   {
+   "page": "translation/index.html",
+   "snippet": "restores the prediction in 8 of the 20 hardest cases",
+   "source": "data/provenance.json",
+   "expr": "[d['translation_cases']['summary']['recovered'], d['translation_cases']['summary']['n_downgrades'], d['translation_cases']['summary']['unrecovered']]",
+   "expected": [
+    8,
+    20,
+    7
+   ],
+   "_": "headline gained the measured rate 2026-07-14 (owner yes on referee item 6)"
+  },
+  {
+   "page": "index.html",
+   "snippet": "restores it in 8 of the 20 hardest cases",
+   "source": "data/provenance.json",
+   "expr": "d['translation_cases']['summary']['recovered']",
+   "expected": 8,
+   "_": "homepage lede counted 2026-07-14 (referee item 6)"
+  },
+  {
+   "page": "translation/index.html",
+   "snippet": "mean +1.9 points of target probability against +0.5",
+   "source": "data/provenance.json",
+   "expr": "[round(d['translation_placebo']['mean_recovery_translation']*100,1), round(d['translation_placebo']['mean_recovery_placebo']*100,1), d['translation_placebo']['n_paired']]",
+   "expected": [
+    1.9,
+    0.5,
+    14
+   ],
+   "_": "paired translation-vs-placebo contrast computed from the landed batch-6 arms 2026-07-14 (referee item 6); the '14 pairs' in the sentence is guarded here too"
+  },
+  {
    "page": "start-here/index.html",
    "snippet": "translation fixed 8 of the 20 hardest cases, left 7 unchanged",
    "source": "data/provenance.json",
