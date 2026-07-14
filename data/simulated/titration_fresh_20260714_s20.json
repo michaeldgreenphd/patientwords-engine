@@ -1,0 +1,177 @@
+[
+ {
+  "top_prompt": "I have angina, so I need to see a",
+  "bottom_prompt": "My chest has been tight lately, so I need to see a",
+  "target_clinical_token": " cardiologist",
+  "generation": {
+   "patient_term": "chest has been tight",
+   "clinical_term": "angina",
+   "expected_clinical_continuations": [
+    "cardiologist",
+    "doctor",
+    "specialist"
+   ],
+   "rationale": "Lay symptom versus clinical diagnosis. The frame 'need to see a' strongly predicts a medical professional title in clinical reading but might default to generic advice in patient phrasing.",
+   "topic": "cardiovascular",
+   "swap_spans": {
+    "patient_span": "My chest has been tight lately,",
+    "clinical_span": "I have angina,"
+   },
+   "model": "claude-haiku-4-5"
+  }
+ },
+ {
+  "top_prompt": "I have anxiety, so I should probably see a",
+  "bottom_prompt": "I've been feeling butterflies in my stomach, so I should probably see a",
+  "target_clinical_token": " therapist",
+  "generation": {
+   "patient_term": "butterflies in my stomach",
+   "clinical_term": "anxiety",
+   "expected_clinical_continuations": [
+    "therapist",
+    "counselor",
+    "psychiatrist"
+   ],
+   "rationale": "Colloquial somatic description of anxiety versus clinical diagnosis. Both frames end after article, funneling toward healthcare professional. Clinical version strongly suggests mental health specialist.",
+   "topic": "anxiety",
+   "swap_spans": {
+    "patient_span": "I've been feeling butterflies in my stomach,",
+    "clinical_span": "I have anxiety,"
+   },
+   "model": "claude-haiku-4-5"
+  }
+ },
+ {
+  "top_prompt": "I have palpitations when I stand up, so I might need to take my",
+  "bottom_prompt": "I feel like my heart's doing backflips whenever I stand up, so I might need to take my",
+  "target_clinical_token": " medication",
+  "generation": {
+   "patient_term": "doing backflips",
+   "clinical_term": "palpitations",
+   "expected_clinical_continuations": [
+    "medication"
+   ],
+   "rationale": "Patient idiom suggests nervousness or excitement; clinical term 'palpitations' names a cardiac symptom requiring medical management, shifting the model toward medication over reassurance.",
+   "topic": "cardiac palpitations",
+   "swap_spans": {
+    "patient_span": "feel like my heart's doing backflips whenever",
+    "clinical_span": "have palpitations when"
+   },
+   "model": "claude-haiku-4-5"
+  }
+ },
+ {
+  "top_prompt": "When I eat too fast, I experience dysphagia, so I should probably see a",
+  "bottom_prompt": "When I eat too fast, my food gets stuck in my throat, so I should probably see a",
+  "target_clinical_token": " gastroenterologist",
+  "generation": {
+   "patient_term": "my food gets stuck in my throat",
+   "clinical_term": "dysphagia",
+   "expected_clinical_continuations": [
+    "gastroenterologist"
+   ],
+   "rationale": "Patient phrasing suggests a benign mechanical issue ('doctor', 'therapist'). Clinical terminology indicates a medical disorder requiring specialized gastrointestinal assessment, shifting toward 'gastroenterologist'.",
+   "topic": "swallowing difficulty",
+   "swap_spans": {
+    "patient_span": "my food gets stuck in my throat,",
+    "clinical_span": "I experience dysphagia,"
+   },
+   "model": "claude-haiku-4-5"
+  }
+ },
+ {
+  "top_prompt": "My chest has been experiencing palpitations during exercise, so I should probably take my",
+  "bottom_prompt": "My chest has been doing flip-flops when I exercise, so I should probably take my",
+  "target_clinical_token": " pulse",
+  "generation": {
+   "patient_term": "doing flip-flops",
+   "clinical_term": "experiencing palpitations",
+   "expected_clinical_continuations": [
+    "pulse"
+   ],
+   "rationale": "'Flip-flops' is lay description; 'palpitations' is clinical. The frame '...so I should probably take my' is unusual but grammatically probes for measurement or monitoring. Clinical version should favor 'pulse' over casual follow-ups.",
+   "topic": "cardiac arrhythmia",
+   "swap_spans": {
+    "patient_span": "doing flip-flops when I",
+    "clinical_span": "experiencing palpitations during"
+   },
+   "model": "claude-haiku-4-5"
+  }
+ },
+ {
+  "top_prompt": "When I eat, I have dysphagia, so I probably need to see a",
+  "bottom_prompt": "When I eat, my throat gets all tight and stuck, so I probably need to see a",
+  "target_clinical_token": " gastroenterologist",
+  "generation": {
+   "patient_term": "my throat gets all tight and stuck",
+   "clinical_term": "dysphagia",
+   "expected_clinical_continuations": [
+    "gastroenterologist"
+   ],
+   "rationale": "Patient phrasing uses concrete, sensory lay language; clinical term is the medical diagnosis. Both end after 'a', naturally preceding a specialist title. The clinical framing should elicit 'gastroenterologist' or 'specialist', while colloquial framing might suggest 'doctor' or 'throat specialist'.",
+   "topic": "swallowing disorder",
+   "swap_spans": {
+    "patient_span": "my throat gets all tight and stuck,",
+    "clinical_span": "I have dysphagia,"
+   },
+   "model": "claude-haiku-4-5"
+  }
+ },
+ {
+  "top_prompt": "I've been having vasomotor symptoms, so I think I might need to take my",
+  "bottom_prompt": "I've been getting these awful hot flushes all day, so I think I might need to take my",
+  "target_clinical_token": " hormone",
+  "generation": {
+   "patient_term": "awful hot flushes",
+   "clinical_term": "vasomotor symptoms",
+   "expected_clinical_continuations": [
+    "hormone"
+   ],
+   "rationale": "Colloquial 'hot flushes' is a patient-friendly descriptor; 'vasomotor symptoms' is the clinical classification. Both end after 'my', funneling toward treatment modality. Clinical phrasing should bias toward 'hormone' or 'estrogen', while colloquial might suggest 'medication' or 'vitamins'.",
+   "topic": "vasomotor dysfunction",
+   "swap_spans": {
+    "patient_span": "getting these awful hot flushes all day,",
+    "clinical_span": "having vasomotor symptoms,"
+   },
+   "model": "claude-haiku-4-5"
+  }
+ },
+ {
+  "top_prompt": "I have irritable bowel syndrome, so I wonder if I should take an",
+  "bottom_prompt": "My stomach's been making all these gurgling and bloated noises, so I wonder if I should take an",
+  "target_clinical_token": " antispasmodic",
+  "generation": {
+   "patient_term": "making all these gurgling and bloated noises",
+   "clinical_term": "irritable bowel syndrome",
+   "expected_clinical_continuations": [
+    "antispasmodic"
+   ],
+   "rationale": "Patient phrasing describes symptoms phenomenologically; clinical term names the syndrome diagnosis. Both end after 'an', opening to a vowel-initial medication. The clinical framing should push toward 'antispasmodic' or 'agent', while the colloquial phrasing might suggest 'antacid' or 'remedy'.",
+   "topic": "functional bowel disorder",
+   "swap_spans": {
+    "patient_span": "My stomach's been making all these gurgling and bloated noises,",
+    "clinical_span": "I have irritable bowel syndrome,"
+   },
+   "model": "claude-haiku-4-5"
+  }
+ },
+ {
+  "top_prompt": "I have pharyngitis, so I should probably take an",
+  "bottom_prompt": "My throat feels all scratchy and raw, so I should probably take an",
+  "target_clinical_token": " antibiotic",
+  "generation": {
+   "patient_term": "scratchy and raw",
+   "clinical_term": "pharyngitis",
+   "expected_clinical_continuations": [
+    "antibiotic"
+   ],
+   "rationale": "Colloquial description of sore throat versus clinical diagnosis; frames naturally toward medication recommendation; antibiotic is common first token after 'take an' in clinical context.",
+   "topic": "upper respiratory infection",
+   "swap_spans": {
+    "patient_span": "My throat feels all scratchy and raw,",
+    "clinical_span": "I have pharyngitis,"
+   },
+   "model": "claude-haiku-4-5"
+  }
+ }
+]

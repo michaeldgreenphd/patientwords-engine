@@ -62,7 +62,19 @@ def steer_request_body(model_id, prompt, topn, target, layer, strength,
 
 
 def final_rank_profile(response, target, topn):
-    """(first_layer, final_rank, parse_status) for the final prompt position."""
+    """(first_layer, final_rank, parse_status) for the FINAL PROMPT position.
+
+    With numCompletionTokens > 0 the response appends generated-token entries,
+    so tokens[-1] is the completion, not the prompt's final position (probe
+    round 2, 2026-07-14: baseline final_rank came back None while the
+    completion WAS the target). Trim generated entries before parsing."""
+    tokens = response.get("tokens") if isinstance(response, dict) else None
+    if isinstance(tokens, list):
+        prompt_tokens = [t for t in tokens
+                         if not (isinstance(t, dict)
+                                 and (t.get("is_generated") or t.get("kind") == "generated"))]
+        if prompt_tokens:
+            response = dict(response, tokens=prompt_tokens)
     profile, status = jr.depth_profile(response, target, topn)
     if not profile:
         return None, None, status
