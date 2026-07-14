@@ -1,0 +1,420 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 1,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's having a stroke and he can't lift his arm at work, so his coworkers called an",
+        "patient": "One side of his face is drooping and he can't lift his arm at work, so his coworkers called an"
+      },
+      "target_token": "Output \" ambulance\"",
+      "probabilities": {
+        "clinical": 0.974,
+        "patient": 0.957
+      },
+      "language_penalty": -0.017000000000000015,
+      "clinical_mass": {
+        "clinical": 0.2437,
+        "patient": 0.2161
+      },
+      "error_share": {
+        "clinical": 0.0963,
+        "patient": 0.107
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ambulance\" (p=0.974)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ambulance\" (p=0.957)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ambulance\"",
+            0.974
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ambulance\"",
+            0.957
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 668,
+        "unique_to_a": 569,
+        "unique_to_b": 647
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T135755Z/index_01.html",
+        "png": "trace_out/pairs_20260713T135755Z/index_01.png",
+        "diff_html": "trace_out/pairs_20260713T135755Z/index_01_diff.html",
+        "diff_png": "trace_out/pairs_20260713T135755Z/index_01_diff.png"
+      }
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm having a stroke and I can't get the words out right during the meeting, so I need to see a",
+        "patient": "My vision's gone blurry in one eye and I can't get the words out right during the meeting, so I need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.351,
+        "patient": 0.642
+      },
+      "language_penalty": 0.29100000000000004,
+      "clinical_mass": {
+        "clinical": 0.2631,
+        "patient": 0.2778
+      },
+      "error_share": {
+        "clinical": 0.0921,
+        "patient": 0.0968
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.351)",
+        "patient": "embedding \u2192 Output \" new\" (p=0.020)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.351
+          ],
+          [
+            "Output \" neuro\"",
+            0.115
+          ],
+          [
+            "Output \" speech\"",
+            0.108
+          ],
+          [
+            "Output \" therapist\"",
+            0.059
+          ],
+          [
+            "Output \" specialist\"",
+            0.057
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.642
+          ],
+          [
+            "Output \" specialist\"",
+            0.11
+          ],
+          [
+            "Output \" neuro\"",
+            0.076
+          ],
+          [
+            "Output \" new\"",
+            0.02
+          ],
+          [
+            "Output \" professional\"",
+            0.014
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 684,
+        "unique_to_a": 752,
+        "unique_to_b": 662
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T135755Z/index_02.html",
+        "png": "trace_out/pairs_20260713T135755Z/index_02.png",
+        "diff_html": "trace_out/pairs_20260713T135755Z/index_02_diff.html",
+        "diff_png": "trace_out/pairs_20260713T135755Z/index_02_diff.png"
+      }
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She went into anaphylaxis right after the shellfish at dinner, so dad rushed her to the",
+        "patient": "Her face swelled up and she started wheezing right after the shellfish at dinner, so dad rushed her to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.378,
+        "patient": 0.368
+      },
+      "language_penalty": -0.010000000000000009,
+      "clinical_mass": {
+        "clinical": 0.3974,
+        "patient": 0.3811
+      },
+      "error_share": {
+        "clinical": 0.1012,
+        "patient": 0.1042
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.134)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.251)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.378
+          ],
+          [
+            "Output \" ER\"",
+            0.311
+          ],
+          [
+            "Output \" emergency\"",
+            0.134
+          ],
+          [
+            "Output \" nearest\"",
+            0.04
+          ],
+          [
+            "Output \" local\"",
+            0.021
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.368
+          ],
+          [
+            "Output \" emergency\"",
+            0.251
+          ],
+          [
+            "Output \" ER\"",
+            0.206
+          ],
+          [
+            "Output \" doctor\"",
+            0.058
+          ],
+          [
+            "Output \" nearest\"",
+            0.018
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 759,
+        "unique_to_a": 508,
+        "unique_to_b": 549
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T135755Z/index_03.html",
+        "png": "trace_out/pairs_20260713T135755Z/index_03.png",
+        "diff_html": "trace_out/pairs_20260713T135755Z/index_03_diff.html",
+        "diff_png": "trace_out/pairs_20260713T135755Z/index_03_diff.png"
+      }
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm having a heart attack halfway through my workout, so I need to call my",
+        "patient": "My chest is crushing and my arm's gone numb halfway through my workout, so I need to call my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.28,
+        "patient": 0.065
+      },
+      "language_penalty": -0.21500000000000002,
+      "clinical_mass": {
+        "clinical": 0.2271,
+        "patient": 0.181
+      },
+      "error_share": {
+        "clinical": 0.0864,
+        "patient": 0.0986
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] my | first-person references related to technology i \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.280)",
+        "patient": "embedding \u2192 [L18\u00b7O] my | first-person references related to technology i \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.065)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.28
+          ],
+          [
+            "Output \" mom\"",
+            0.092
+          ],
+          [
+            "Output \" wife\"",
+            0.079
+          ],
+          [
+            "Output \" cardio\"",
+            0.07
+          ],
+          [
+            "Output \" husband\"",
+            0.053
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" trainer\"",
+            0.164
+          ],
+          [
+            "Output \" mom\"",
+            0.133
+          ],
+          [
+            "Output \" doctor\"",
+            0.065
+          ],
+          [
+            "Output \" friend\"",
+            0.06
+          ],
+          [
+            "Output \" coach\"",
+            0.049
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 702,
+        "unique_to_a": 692,
+        "unique_to_b": 694
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T135755Z/index_04.html",
+        "png": "trace_out/pairs_20260713T135755Z/index_04.png",
+        "diff_html": "trace_out/pairs_20260713T135755Z/index_04_diff.html",
+        "diff_png": "trace_out/pairs_20260713T135755Z/index_04_diff.png"
+      }
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm going septic after the cut got infected, so my wife is driving me to the",
+        "patient": "My fever's spiking and I feel foggy and shivery after the cut got infected, so my wife is driving me to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.427,
+        "patient": 0.412
+      },
+      "language_penalty": -0.015000000000000013,
+      "clinical_mass": {
+        "clinical": 0.3079,
+        "patient": 0.3361
+      },
+      "error_share": {
+        "clinical": 0.1038,
+        "patient": 0.1093
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.090)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.075)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.427
+          ],
+          [
+            "Output \" ER\"",
+            0.205
+          ],
+          [
+            "Output \" emergency\"",
+            0.09
+          ],
+          [
+            "Output \" doctor\"",
+            0.069
+          ],
+          [
+            "Output \" clinic\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.412
+          ],
+          [
+            "Output \" ER\"",
+            0.162
+          ],
+          [
+            "Output \" doctor\"",
+            0.127
+          ],
+          [
+            "Output \" emergency\"",
+            0.075
+          ],
+          [
+            "Output \" clinic\"",
+            0.037
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 888,
+        "unique_to_a": 518,
+        "unique_to_b": 539
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T135755Z/index_05.html",
+        "png": "trace_out/pairs_20260713T135755Z/index_05.png",
+        "diff_html": "trace_out/pairs_20260713T135755Z/index_05_diff.html",
+        "diff_png": "trace_out/pairs_20260713T135755Z/index_05_diff.png"
+      }
+    }
+  ]
+}
