@@ -372,22 +372,10 @@
  ],
  "queued_next": [
   {
-   "trigger": "circuit-trace",
-   "label": "titration-fresh-s10-s20",
-   "note": "Fresh-sample titration strengths 10 and 20 (aliases committed: titration_fresh_20260714_s10/s20.json, sample_size 9, steer_boost 5). s2.5 running, s5 pending.",
-   "blocked_by": "circuit-trace group full"
-  },
-  {
    "trigger": "jlens-readout",
    "label": "loglens-comparison-arm",
    "note": "LOGIT_LENS comparison pull on one landed batch (pairs_20260712T051903Z, gemma-2-2b, save_raw true): do depth classes and never-formed counts replicate under the older lens, or are they j-lens artifacts? Outputs go to __loglens_ dirs (workflow routes by lens_type since 2026-07-14). $0.",
    "blocked_by": "jlens-readout group full (batch-9 lens running + lens sentinel day-1 pending)"
-  },
-  {
-   "trigger": "jlens-readout",
-   "label": "batch9-lens-chunk-4",
-   "note": "batch-9 lens chunk 4 (offset 75, limit 25, save_raw true); chunk 3 running.",
-   "blocked_by": "jlens group full"
   },
   {
    "trigger": "logits-eval",
@@ -412,12 +400,6 @@
    "label": "titration-fresh-s20",
    "note": "fresh-sample titration strength 20 (alias committed), after s10.",
    "blocked_by": "group full"
-  },
-  {
-   "trigger": "jlens-readout",
-   "label": "loglens-comparison-arm",
-   "note": "LOGIT_LENS comparison pull on pairs_20260712T051903Z (save_raw true) - after the priority lens chunks.",
-   "blocked_by": "behind priority lens"
   }
  ],
  "endpoint_protocol": {
