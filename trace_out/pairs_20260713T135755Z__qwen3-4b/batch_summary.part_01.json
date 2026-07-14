@@ -1,0 +1,600 @@
+{
+  "mode": "2panel",
+  "backend": "logits",
+  "graph_model": "qwen3-4b",
+  "source_set": null,
+  "generation_params": {},
+  "start_index": 1,
+  "screen_targets": null,
+  "inference": {
+    "method": "logits",
+    "hf_id": "Qwen/Qwen3-4B",
+    "dtype": "bfloat16",
+    "revision": "1cfa9a7208912126459214e8b04321603b3df60c"
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's having a stroke and he can't lift his arm at work, so his coworkers called an",
+        "patient": "One side of his face is drooping and he can't lift his arm at work, so his coworkers called an"
+      },
+      "target_token": "Output \" ambulance\"",
+      "probabilities": {
+        "clinical": 0.9989,
+        "patient": 0.9995
+      },
+      "language_penalty": 0.0006,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ambulance\"",
+            0.9989
+          ],
+          [
+            "Output \" emergency\"",
+            0.0009
+          ],
+          [
+            "Output \" amb\"",
+            0.0
+          ],
+          [
+            "Output \" \"",
+            0.0
+          ],
+          [
+            "Output \" Amb\"",
+            0.0
+          ],
+          [
+            "Output \" urgent\"",
+            0.0
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0
+          ],
+          [
+            "Output \" -\"",
+            0.0
+          ],
+          [
+            "Output \" Uber\"",
+            0.0
+          ],
+          [
+            "Output \" E\"",
+            0.0
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ambulance\"",
+            0.9995
+          ],
+          [
+            "Output \" emergency\"",
+            0.0004
+          ],
+          [
+            "Output \" amb\"",
+            0.0
+          ],
+          [
+            "Output \" \"",
+            0.0
+          ],
+          [
+            "Output \" Amb\"",
+            0.0
+          ],
+          [
+            "Output \" urgent\"",
+            0.0
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0
+          ],
+          [
+            "Output \" -\"",
+            0.0
+          ],
+          [
+            "Output \" **\"",
+            0.0
+          ],
+          [
+            "Output \"\u6551\u62a4\u8f66\"",
+            0.0
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ambulance": "ambulance.",
+          "emergency": "emergency medical service",
+          "amb": "ambulanc"
+        },
+        "patient": {
+          "ambulance": "ambulance.",
+          "emergency": "emergency ambulance.",
+          "amb": "ambulanc"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm having a stroke and I can't get the words out right during the meeting, so I need to see a",
+        "patient": "My vision's gone blurry in one eye and I can't get the words out right during the meeting, so I need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.5017,
+        "patient": 0.7965
+      },
+      "language_penalty": 0.2948,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.5017
+          ],
+          [
+            "Output \" speech\"",
+            0.1846
+          ],
+          [
+            "Output \" specialist\"",
+            0.0412
+          ],
+          [
+            "Output \" professional\"",
+            0.0387
+          ],
+          [
+            "Output \" neuro\"",
+            0.0301
+          ],
+          [
+            "Output \" therapist\"",
+            0.022
+          ],
+          [
+            "Output \" lawyer\"",
+            0.0111
+          ],
+          [
+            "Output \" medical\"",
+            0.0098
+          ],
+          [
+            "Output \" language\"",
+            0.0076
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0067
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.7965
+          ],
+          [
+            "Output \" specialist\"",
+            0.1384
+          ],
+          [
+            "Output \" professional\"",
+            0.0061
+          ],
+          [
+            "Output \" eye\"",
+            0.0054
+          ],
+          [
+            "Output \" o\"",
+            0.0047
+          ],
+          [
+            "Output \" new\"",
+            0.0047
+          ],
+          [
+            "Output \" neuro\"",
+            0.0039
+          ],
+          [
+            "Output \" medical\"",
+            0.0027
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0019
+          ],
+          [
+            "Output \" nurse\"",
+            0.0017
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "speech": "speech pathologist",
+          "specialist": "specialist. What",
+          "professional": "professional. What"
+        },
+        "patient": {
+          "doctor": "doctor. What",
+          "specialist": "specialist. What",
+          "professional": "professional. What",
+          "eye": "eye doctor."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She went into anaphylaxis right after the shellfish at dinner, so dad rushed her to the",
+        "patient": "Her face swelled up and she started wheezing right after the shellfish at dinner, so dad rushed her to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.4643,
+        "patient": 0.5167
+      },
+      "language_penalty": 0.0524,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.4643
+          ],
+          [
+            "Output \" ER\"",
+            0.4097
+          ],
+          [
+            "Output \" emergency\"",
+            0.0914
+          ],
+          [
+            "Output \" er\"",
+            0.0052
+          ],
+          [
+            "Output \" ED\"",
+            0.0052
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0035
+          ],
+          [
+            "Output \" E\"",
+            0.0028
+          ],
+          [
+            "Output \" nearest\"",
+            0.0024
+          ],
+          [
+            "Output \" clinic\"",
+            0.0016
+          ],
+          [
+            "Output \" doctor\"",
+            0.0014
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.5167
+          ],
+          [
+            "Output \" ER\"",
+            0.3551
+          ],
+          [
+            "Output \" emergency\"",
+            0.0898
+          ],
+          [
+            "Output \" doctor\"",
+            0.0138
+          ],
+          [
+            "Output \" er\"",
+            0.0035
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0027
+          ],
+          [
+            "Output \" clinic\"",
+            0.0027
+          ],
+          [
+            "Output \" urgent\"",
+            0.0024
+          ],
+          [
+            "Output \" nearest\"",
+            0.0016
+          ],
+          [
+            "Output \" ED\"",
+            0.0012
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital.",
+          "ER": "ER.",
+          "emergency": "emergency room.",
+          "er": "er."
+        },
+        "patient": {
+          "hospital": "hospital.",
+          "ER": "ER.",
+          "emergency": "emergency room.",
+          "doctor": "doctor."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm having a heart attack halfway through my workout, so I need to call my",
+        "patient": "My chest is crushing and my arm's gone numb halfway through my workout, so I need to call my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.5387,
+        "patient": 0.8668
+      },
+      "language_penalty": 0.3281,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.5387
+          ],
+          [
+            "Output \" mom\"",
+            0.039
+          ],
+          [
+            "Output \" gym\"",
+            0.0344
+          ],
+          [
+            "Output \" trainer\"",
+            0.0324
+          ],
+          [
+            "Output \" friend\"",
+            0.0209
+          ],
+          [
+            "Output \" phone\"",
+            0.0209
+          ],
+          [
+            "Output \" coach\"",
+            0.0173
+          ],
+          [
+            "Output \" cardi\"",
+            0.0144
+          ],
+          [
+            "Output \" emergency\"",
+            0.0144
+          ],
+          [
+            "Output \" workout\"",
+            0.0135
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.8668
+          ],
+          [
+            "Output \" trainer\"",
+            0.0262
+          ],
+          [
+            "Output \" mom\"",
+            0.0204
+          ],
+          [
+            "Output \" doc\"",
+            0.0124
+          ],
+          [
+            "Output \" physician\"",
+            0.007
+          ],
+          [
+            "Output \" gym\"",
+            0.0062
+          ],
+          [
+            "Output \" coach\"",
+            0.0058
+          ],
+          [
+            "Output \" phys\"",
+            0.0058
+          ],
+          [
+            "Output \" GP\"",
+            0.0052
+          ],
+          [
+            "Output \" dad\"",
+            0.0035
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. But",
+          "mom": "mom. But",
+          "gym": "gym's emergency",
+          "trainer": "trainer. But"
+        },
+        "patient": {
+          "doctor": "doctor. What",
+          "trainer": "trainer. But",
+          "mom": "mom. But",
+          "doc": "doc. What"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm going septic after the cut got infected, so my wife is driving me to the",
+        "patient": "My fever's spiking and I feel foggy and shivery after the cut got infected, so my wife is driving me to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.3811,
+        "patient": 0.1214
+      },
+      "language_penalty": -0.2597,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.4318
+          ],
+          [
+            "Output \" hospital\"",
+            0.3811
+          ],
+          [
+            "Output \" doctor\"",
+            0.0584
+          ],
+          [
+            "Output \" emergency\"",
+            0.0455
+          ],
+          [
+            "Output \" clinic\"",
+            0.0402
+          ],
+          [
+            "Output \" urgent\"",
+            0.0102
+          ],
+          [
+            "Output \" Urg\"",
+            0.0035
+          ],
+          [
+            "Output \" doctors\"",
+            0.0026
+          ],
+          [
+            "Output \" nearest\"",
+            0.0017
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.6986
+          ],
+          [
+            "Output \" hospital\"",
+            0.1214
+          ],
+          [
+            "Output \" doctor\"",
+            0.1071
+          ],
+          [
+            "Output \" emergency\"",
+            0.0239
+          ],
+          [
+            "Output \" clinic\"",
+            0.0211
+          ],
+          [
+            "Output \" urgent\"",
+            0.0044
+          ],
+          [
+            "Output \" E\"",
+            0.0032
+          ],
+          [
+            "Output \" doctors\"",
+            0.0025
+          ],
+          [
+            "Output \" er\"",
+            0.002
+          ],
+          [
+            "Output \" ED\"",
+            0.002
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER. I",
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        },
+        "patient": {
+          "ER": "ER. I",
+          "hospital": "hospital. I",
+          "doctor": "doctor. I",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    }
+  ]
+}
