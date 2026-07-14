@@ -1,0 +1,175 @@
+{
+ "mode": "jsteer",
+ "backend": "jlens-hosted",
+ "graph_model": "gemma-2-2b",
+ "spec": "data/steer_pilot_spec.json",
+ "layers": [
+  19,
+  21
+ ],
+ "strengths": [
+  0.25,
+  0.5,
+  1,
+  2
+ ],
+ "top_n": 8,
+ "start_index": 1,
+ "endpoint": "/api/lens/prompt",
+ "_": "EXPLORATORY steering-swap pilot (docs/lens_steering_design.md). No confirmatory claim; fresh pre-registered endpoints required first.",
+ "method_credit": "Jacobian lens + steering: Gurnee et al., Transformer Circuits 2026; hosted by neuronpedia.org",
+ "results": [
+  {
+   "index": 1,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 12,
+   "class": "hijack",
+   "target_token": " medication",
+   "winner_token": " time",
+   "calls": {
+    "baseline": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " time",
+     "parse_status": "ok"
+    },
+    "L19_s0.25": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " time",
+     "parse_status": "ok"
+    },
+    "L19_s0.5": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_s1": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_s2": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.25": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.5": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s1": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s2": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " time",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 2,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 19,
+   "class": "hijack",
+   "target_token": " medication",
+   "winner_token": " break",
+   "calls": {
+    "baseline": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " break",
+     "parse_status": "ok"
+    },
+    "L19_s0.25": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " break",
+     "parse_status": "ok"
+    },
+    "L19_s0.5": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_s1": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_s2": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.25": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.5": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s1": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s2": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 0,
+     "final_rank": null,
+     "completion": " medication",
+     "parse_status": "ok"
+    }
+   }
+  }
+ ]
+}
