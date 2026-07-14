@@ -306,7 +306,8 @@
   "notes": [
     "13:2x UTC: gen (batch 7), trace (batch 6), logits (batch-6) all running; patching + pending logits slot free for the critic's probe follow-ups (biomistral/9B chunked or swap-fixed, recovery grid chunk 2). GitHub MCP down again this cycle; worked from landed outputs.",
     "2026-07-13 ~15:20Z: patient-sourced arm scaffolding landed (owner uploaded OAC CHV to site main; files moved to engine data/chv/, site root cleaned + redeployed). data/patient_lexicon.draft.json (400 entries, draft pending doctor+linguist review) + generator --required-phrases-file with verbatim-span validation. GATE: no paid run until reviewed + pre-registration amendment approved (docs/patient_sourced_arm.md). Owner return items listed there.",
-    "2026-07-13 ~16:00Z: repeatability state: r2 and r3 COMPLETE (20/20 each); r1 at 16/20 after its completion chunk was itself timeout-cancelled mid-chunk and clobbered part_01 (now missing 2-5). ROOT CAUSE FOUND: circuit_trace chunk jobs had timeout-minutes:45; hosted latency variance kills chunk-final pairs - raised to 75 (commit daa46fb). r1 fill-in fired as two 2-pair chunks (part_02, part_04 - no clobber). In-session poller wakes the orchestrator to run the designed-sample analysis and site publish when it lands (create_trigger currently requires approval; cron paths unaffected). Critic run 5 is the fallback finalizer."
+    "2026-07-13 ~16:00Z: repeatability state: r2 and r3 COMPLETE (20/20 each); r1 at 16/20 after its completion chunk was itself timeout-cancelled mid-chunk and clobbered part_01 (now missing 2-5). ROOT CAUSE FOUND: circuit_trace chunk jobs had timeout-minutes:45; hosted latency variance kills chunk-final pairs - raised to 75 (commit daa46fb). r1 fill-in fired as two 2-pair chunks (part_02, part_04 - no clobber). In-session poller wakes the orchestrator to run the designed-sample analysis and site publish when it lands (create_trigger currently requires approval; cron paths unaffected). Critic run 5 is the fallback finalizer.",
+    "2026-07-14: emergency measurement fires occupy both circuit-trace and logits slots; critic run 5 should chain batch-9/10 measurement fires behind them."
   ],
   "decisions_log": [
     {
@@ -328,6 +329,10 @@
     {
       "date": "2026-07-13",
       "decision": "Owner asked after llama and the medical model. Llama shows as a pending row and graduates when today's unified run lands. biomistral-7b exclusion is now visible on the model-evaluations page with the safetensors reason. meditron-7b (epfl-llm, official org) added to the logits model map as the medical-domain replacement candidate: critic run 5 fires a limit-3 probe ($0, needs the swap step, 7B class) when the logits slot frees; if it loads clean, queue its unified run and add provenance (EPFL, meditron release 2023-11, hf epfl-llm/meditron-7b)."
+    },
+    {
+      "date": "2026-07-14",
+      "text": "Owner decisions via the decisions artifact: (1) MedGemma added to the public site (claim-grade n=119, penalty -0.034 CI [-0.069,-0.002], asymmetry 9v2 q=0.075 not yet significant - page says so); (2) specialty breakdown published as exploratory fold on model-evaluations; (3) 400-entry patient lexicon sent for doctor+linguist review (CSV packet delivered); (4) emergency generation rounds PAUSED, the 7 landed pairs measured instead (trace+logits fired). Specialty labels NOT yet approved - stay draft."
     }
   ]
 }

@@ -18,7 +18,7 @@ Shared protocol for every set in this program:
 ## Sets
 
 1. **Emergency / medically critical** (`emergency_stress_seeds.json`,
-   approved 2026-07-13; round 2 generated 7 accepted pairs on 07-13 but the
+   PAUSED by owner decision 2026-07-14 after round 2b (measure the 7 accepted pairs first); round 2 generated 7 accepted pairs on 07-13 but the
    archive was lost to a push race - spend recorded, workflow fixed, round 2b
    re-fired the same day): frames whose natural continuation
    is the emergency response (ambulance, ER, hospital, 911). Question: does
