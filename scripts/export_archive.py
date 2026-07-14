@@ -20,7 +20,14 @@ import argparse
 import csv
 import json
 import re
+import sys
 from pathlib import Path
+
+try:
+    from scripts.tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
+except ImportError:  # direct invocation from repo root
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
 
 parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
 parser.add_argument("--engine", default=".", help="engine repo root (default: cwd)")
@@ -74,6 +81,8 @@ def read_model_results(stem, model):
 
 
 rows = []
+_TIERB_START = tierb_start_stamp(str(ENGINE / "ops/dashboard.json"))
+withheld_holdout = 0
 for batch_path in sorted(ENGINE.glob("data/simulated/pairs_*.json")):
     if batch_path.name.endswith(".report.json"):
         continue
@@ -85,6 +94,11 @@ for batch_path in sorted(ENGINE.glob("data/simulated/pairs_*.json")):
     per_model = {m: r for m in MODELS if (r := read_model_results(stem, m)) is not None}
 
     for i, pair in enumerate(batch, start=1):
+        # confirmatory holdout stays sealed: withheld from every public export
+        # until the pre-registered endpoint (amendment 1; 2026-07-14 decision)
+        if is_tierb_batch(stem, _TIERB_START) and is_holdout(pair.get("top_prompt")):
+            withheld_holdout += 1
+            continue
         gen = pair.get("generation", {})
         base_row = {
             "batch": stem,
@@ -149,4 +163,5 @@ json_path = Path(args.out + ".json")
 json_path.write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
 traced = sum(1 for r in rows if r["status"] != "untraced")
 print(f"{len(rows)} pairs across {len({r['batch'] for r in rows})} batches "
-      f"({traced} traced) -> {csv_path} + {json_path}")
+      f"({traced} traced) -> {csv_path} + {json_path}"
+      + (f" ({withheld_holdout} confirmatory-holdout pairs withheld)" if withheld_holdout else ""))

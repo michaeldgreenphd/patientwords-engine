@@ -18,28 +18,6 @@
    "_": "retargeted to the try-it widget data 2026-07-14"
   },
   {
-   "page": "technical/index.html",
-   "snippet": "at 36 phrases the downgrade pattern",
-   "source": "data/convergence.json",
-   "expr": "[ [q['downgrades'], q['upgrades']] for q in d['models']['gemma-3-4b-it']['points'] if q['n_phrases']==36 ][0]",
-   "expected": [
-    4,
-    1
-   ],
-   "_": "sign test on 4 down / 1 up is p=0.375: chance still plausible · moved with the convergence fold 2026-07-14"
-  },
-  {
-   "page": "technical/index.html",
-   "snippet": "by 155 it could not",
-   "source": "data/convergence.json",
-   "expr": "[ [q['downgrades'], q['upgrades']] for q in d['models']['gemma-3-4b-it']['points'] if q['n_phrases']==155 ][0]",
-   "expected": [
-    17,
-    2
-   ],
-   "_": "sign test on 17 down / 2 up is p=0.0007: chance excluded · moved with the convergence fold 2026-07-14"
-  },
-  {
    "page": "start-here/index.html",
    "snippet": "translation fixed 8 of the 20 hardest cases, left 7 unchanged",
    "source": "data/provenance.json",
@@ -194,12 +172,41 @@
    "_": "limitations sentence rescoped 2026-07-14: the one medically tuned model measured keeps a CI excluding zero"
   },
   {
+   "page": "methods.html",
+   "snippet": "[−6.9, −0.2], on 119 phrases",
+   "source": "data/model_stats.json",
+   "expr": "[round(d['per_model']['medgemma-4b-it']['penalty']['mean']*100,1), round(d['per_model']['medgemma-4b-it']['penalty']['ci95'][0]*100,1), round(d['per_model']['medgemma-4b-it']['penalty']['ci95'][1]*100,1), d['per_model']['medgemma-4b-it']['penalty']['n_phrases']]",
+   "expected": [
+    -3.4,
+    -6.9,
+    -0.2,
+    119
+   ],
+   "_": "medgemma sentence given n, CI, exploratory qualifier 2026-07-14 (owner decision, referee item 6)"
+  },
+  {
+   "page": "methods.html",
+   "snippet": "crosses zero under the stricter simultaneous correction",
+   "source": "data/model_stats.json",
+   "expr": "d['per_model']['medgemma-4b-it']['penalty']['ci95_simultaneous'][1] >= 0",
+   "expected": true,
+   "_": "if the simultaneous interval tightens below zero on more data, this sentence overstates the caveat and needs a rewrite"
+  },
+  {
    "page": "technical/index.html",
    "snippet": "One tenth of newly",
    "source": "data/provenance.json",
    "expr": "d['tierb_holdout']['fraction']",
    "expected": 0.1,
-   "_": "holdout provenance added to site data 2026-07-14"
+   "_": "holdout provenance added to site data 2026-07-14; sentence rescoped to withheld-from-site 2026-07-14"
+  },
+  {
+   "page": "technical/index.html",
+   "snippet": "sealed for the confirmatory endpoint",
+   "source": "data/simulated_scenarios.json",
+   "expr": "d.get('holdout_withheld', 0) > 0",
+   "expected": true,
+   "_": "the withholding claim must stay true in the payload itself; exporter counts skipped holdout pairs"
   },
   {
    "page": "translation/index.html",

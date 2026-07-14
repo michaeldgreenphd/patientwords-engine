@@ -99,6 +99,32 @@ def test_collector_stamps_and_aggregates_on_exploration_split():
     assert '"measurements": len(arows)' in src
 
 
+def test_publish_paths_withhold_holdout():
+    # 2026-07-14 owner decision: every public export withholds confirmatory-
+    # holdout phrases. The three publishers run argparse at import (or write on
+    # import), so tripwire on source: each must gate on is_tierb_batch +
+    # is_holdout before emitting a pair/row.
+    scripts = Path(__file__).resolve().parents[1] / "scripts"
+    for name in ("export_frontend_simulated.py", "export_archive.py"):
+        src = (scripts / name).read_text(encoding="utf-8")
+        assert "is_holdout" in src, f"{name} lost its holdout gate"
+        assert "withheld_holdout += 1" in src, f"{name} lost its withheld counter"
+    # the collector gates on stamped rows (phrase-keyed) rather than re-hashing
+    collector_src = (scripts / "urgency_shift.py").read_text(encoding="utf-8")
+    assert "_holdout_phrases" in collector_src
+    assert 'r["clinical_prompt"] not in _holdout_phrases' in collector_src
+
+
+def test_screen_sensitivity_scope_matches_confirmatory():
+    # the sweep must mirror the rigor population: observational pairs_* only,
+    # logits backend only, holdout excluded (referee worklist item 12)
+    src = (Path(__file__).resolve().parents[1] / "scripts" / "screen_sensitivity.py").read_text(
+        encoding="utf-8")
+    assert 'r"pairs_\\d{8}T\\d{6}Z"' in src
+    assert '"logits"' in src
+    assert "is_holdout" in src
+
+
 def test_site_copy_floors_probe_models():
     # 3-pair probe models must not reach the public comparison page until a
     # real measurement set lands (owner: incorporate models "when results land")
