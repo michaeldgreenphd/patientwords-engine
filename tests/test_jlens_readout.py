@@ -247,8 +247,8 @@ def test_output_filename_never_collides_with_behavioral_summaries():
 def test_fire_trigger_knows_jlens_readout():
     assert "jlens-readout" in ft.TRIGGERS
     assert ft.KNOWN_KEYS["jlens-readout"] == frozenset(
-        {"models", "pairs_file", "limit", "offset", "topn", "lens_type", "save_raw",
-         "commit_outputs"})
+        {"models", "pairs_file", "limit", "offset", "topn", "lens_type", "steer_spec",
+         "save_raw", "commit_outputs"})
     # unknown-key typo is a hard error, like every other trigger
     try:
         ft.validate_params("jlens-readout", {"models": "m", "topN": "8"})
@@ -266,8 +266,11 @@ def test_workflow_wiring_defaults_and_part_naming():
     # push-path defaults dict must contain every trigger key (CI silently
     # drops keys absent from `defaults`)
     for key in ('"models"', '"pairs_file"', '"limit"', '"offset"', '"topn"',
-                '"lens_type"', '"save_raw"', '"commit_outputs"'):
+                '"lens_type"', '"steer_spec"', '"save_raw"', '"commit_outputs"'):
         assert f"{key}:" in text.replace(f"{key} :", f"{key}:"), key
+    # steering runs route to jlens_steer.py and __jsteer_ dirs
+    assert 'KIND="jsteer"' in text
+    assert "scripts/jlens_steer.py" in text
     assert '".github/trigger/jlens-readout.json"' in text
     assert "part_%02d' $((OFFSET + 1))" in text     # part naming from offset
     assert "__${KIND}_${MODEL}" in text             # dir distinct from logits dirs

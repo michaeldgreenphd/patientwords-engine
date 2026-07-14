@@ -100,7 +100,10 @@ Priority order when slots are free:
 3c. **Per-batch lens readout** ($0, jlens-readout slot free): every Tier B
    batch gets a hosted lens pull once its pairs file is on the branch:
    `models` `gemma-2-2b`, `topn` `8`, `save_raw` `true`, `commit_outputs`
-   `true` (add `gemma-2-2b-it` only for tuning-comparison pulls). Raw is
+   `true` (add `gemma-2-2b-it` only for tuning-comparison pulls). Fire in
+   chunks of ~25 pairs (`offset`/`limit`), never whole 100-pair batches:
+   the readout writes its part file only at chunk end, so a mid-run 429
+   window loses the whole chunk (batch-9 lens, 2026-07-14). Raw is
    standard since 2026-07-14: the per-position transport scan and top-K
    window sensitivity (`scripts/jlens_position_scan.py`, referee item 7)
    run only on responses saved raw. A batch is unmeasured if

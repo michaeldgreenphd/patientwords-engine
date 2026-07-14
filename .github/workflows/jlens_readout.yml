@@ -41,6 +41,10 @@ on:
         description: "JACOBIAN_LENS (default) or LOGIT_LENS (comparison arm; outputs go to __loglens_ dirs)"
         type: string
         default: "JACOBIAN_LENS"
+      steer_spec:
+        description: "Steering-swap spec path (e.g. data/steer_pilot_spec.json); non-empty runs jlens_steer.py instead of the readout"
+        type: string
+        default: ""
       save_raw:
         description: "Also commit gzipped raw API responses (schema work; small runs only)"
         type: boolean
@@ -70,6 +74,7 @@ jobs:
       offset: ${{ steps.params.outputs.offset }}
       topn: ${{ steps.params.outputs.topn }}
       lens_type: ${{ steps.params.outputs.lens_type }}
+      steer_spec: ${{ steps.params.outputs.steer_spec }}
       save_raw: ${{ steps.params.outputs.save_raw }}
       commit_outputs: ${{ steps.params.outputs.commit_outputs }}
     steps:
@@ -84,6 +89,7 @@ jobs:
           IN_OFFSET: ${{ inputs.offset }}
           IN_TOPN: ${{ inputs.topn }}
           IN_LENS_TYPE: ${{ inputs.lens_type }}
+          IN_STEER_SPEC: ${{ inputs.steer_spec }}
           IN_SAVE_RAW: ${{ inputs.save_raw }}
           IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
         run: |
@@ -92,7 +98,7 @@ jobs:
           defaults = {"models": "qwen3-1.7b",
                       "pairs_file": "data/simulated/pairs_20260711T051145Z.json",
                       "limit": "0", "offset": "0", "topn": "8",
-                      "lens_type": "JACOBIAN_LENS",
+                      "lens_type": "JACOBIAN_LENS", "steer_spec": "",
                       "save_raw": "false", "commit_outputs": "false"}
           p = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
@@ -114,11 +120,12 @@ jobs:
           with open(out, "a", encoding="utf-8") as f:
               f.write("models=" + json.dumps(models) + "\n")
               for k in ("pairs_file", "limit", "offset", "topn", "lens_type",
-                        "save_raw", "commit_outputs"):
+                        "steer_spec", "save_raw", "commit_outputs"):
                   f.write(k + "=" + p[k] + "\n")
           print("models:", models, "| pairs:", p["pairs_file"], "| limit:", p["limit"],
                 "| offset:", p["offset"], "| topn:", p["topn"],
-                "| lens_type:", p["lens_type"], "| save_raw:", p["save_raw"])
+                "| lens_type:", p["lens_type"], "| steer_spec:", p["steer_spec"] or "-",
+                "| save_raw:", p["save_raw"])
           EOF
 
   readout:
@@ -146,11 +153,17 @@ jobs:
           PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
           OFFSET: ${{ needs.params.outputs.offset }}
           LENS_TYPE: ${{ needs.params.outputs.lens_type }}
+          STEER_SPEC: ${{ needs.params.outputs.steer_spec }}
         run: |
-          STEM=$(basename "$PAIRS_FILE" .json)
+          # steering runs key on the spec file; readout runs on the pairs file.
           # LOGIT_LENS comparison runs live in __loglens_ dirs so consumers
-          # globbing *__jlens_* never mix the two lens families
-          if [ "$LENS_TYPE" = "LOGIT_LENS" ]; then KIND="loglens"; else KIND="jlens"; fi
+          # globbing *__jlens_* never mix the lens families; steering in __jsteer_.
+          if [ -n "$STEER_SPEC" ]; then
+            STEM=$(basename "$STEER_SPEC" .json); KIND="jsteer"
+          else
+            STEM=$(basename "$PAIRS_FILE" .json)
+            if [ "$LENS_TYPE" = "LOGIT_LENS" ]; then KIND="loglens"; else KIND="jlens"; fi
+          fi
           echo "OUT_DIR=trace_out/${STEM}__${KIND}_${MODEL}" >> "$GITHUB_ENV"
           echo "PART=$(printf 'part_%02d' $((OFFSET + 1)))" >> "$GITHUB_ENV"
 
@@ -162,14 +175,20 @@ jobs:
           OFFSET: ${{ needs.params.outputs.offset }}
           TOPN: ${{ needs.params.outputs.topn }}
           LENS_TYPE: ${{ needs.params.outputs.lens_type }}
+          STEER_SPEC: ${{ needs.params.outputs.steer_spec }}
           SAVE_RAW: ${{ needs.params.outputs.save_raw }}
           NEURONPEDIA_API_KEY: ${{ secrets.NEURONPEDIA_API_KEY }}
         run: |
-          EXTRA=""
-          if [ "$SAVE_RAW" = "true" ]; then EXTRA="--save-raw"; fi
-          python scripts/jlens_readout.py --pairs "$PAIRS_FILE" --model "$MODEL" \
-            --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET" --topn "$TOPN" \
-            --lens-type "$LENS_TYPE" $EXTRA
+          if [ -n "$STEER_SPEC" ]; then
+            python scripts/jlens_steer.py --spec "$STEER_SPEC" \
+              --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET" --topn "$TOPN"
+          else
+            EXTRA=""
+            if [ "$SAVE_RAW" = "true" ]; then EXTRA="--save-raw"; fi
+            python scripts/jlens_readout.py --pairs "$PAIRS_FILE" --model "$MODEL" \
+              --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET" --topn "$TOPN" \
+              --lens-type "$LENS_TYPE" $EXTRA
+          fi
 
       - name: Commit outputs to the branch
         if: ${{ always() && needs.params.outputs.commit_outputs == 'true' }}
@@ -178,7 +197,8 @@ jobs:
         run: |
           set -euo pipefail
           FOUND=0
-          for f in "$OUT_DIR/jlens_summary.$PART.json" "$OUT_DIR/jlens_probe.json"; do
+          for f in "$OUT_DIR/jlens_summary.$PART.json" "$OUT_DIR/jlens_probe.json" \
+                   "$OUT_DIR/jsteer_summary.$PART.json" "$OUT_DIR/jsteer_probe.json"; do
             if [ -f "$f" ]; then git add -f "$f"; FOUND=1; fi
           done
           if [ -d "$OUT_DIR/jlens_raw" ]; then git add -f "$OUT_DIR/jlens_raw"; FOUND=1; fi
@@ -201,6 +221,7 @@ jobs:
             echo "## Jlens readout (${{ matrix.model }})"
             echo '```'
             if [ -f "$OUT_DIR/jlens_probe.json" ]; then cat "$OUT_DIR/jlens_probe.json"; fi
+            if [ -f "$OUT_DIR/jsteer_probe.json" ]; then cat "$OUT_DIR/jsteer_probe.json"; fi
             SUMMARY="$OUT_DIR/jlens_summary.$PART.json"
             if [ -f "$SUMMARY" ]; then
               python - "$SUMMARY" <<'EOF'

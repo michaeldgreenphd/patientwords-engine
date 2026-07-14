@@ -68,18 +68,26 @@ def lens_request_body(model_id, prompt, topn, lens_type="JACOBIAN_LENS"):
     }
 
 
+ATTEMPTS_RATELIMIT = 7   # 429s ride a longer ladder: 15/30/60/120/240/240s
+RETRY_SLEEP_CAP = 240.0  # (batch-9 lens died on a sustained 429 window, 2026-07-14)
+
+
 def post_lens(session, body, timeout=180.0):
     """One lens call with graph_client's retry policy. Returns (json, None) on
     success, (None, 'unsupported: ...') when the model is not served, and
-    raises on persistent 5xx/connectivity failure."""
+    raises on persistent 5xx/connectivity failure. Rate limiting (429) gets a
+    longer, capped ladder than server errors: a rate window outlasts 60s."""
     import requests
 
     last_err = None
-    for attempt in range(ATTEMPTS):
+    attempt = 0
+    while attempt < (ATTEMPTS_RATELIMIT if last_err == "HTTP 429" else ATTEMPTS):
         if attempt:
-            wait = RETRY_SLEEP * 2 ** (attempt - 1)
-            print(f"  retry {attempt}/{ATTEMPTS - 1} in {wait:.0f}s ({last_err})")
+            attempts_allowed = ATTEMPTS_RATELIMIT if last_err == "HTTP 429" else ATTEMPTS
+            wait = min(RETRY_SLEEP_CAP, RETRY_SLEEP * 2 ** (attempt - 1))
+            print(f"  retry {attempt}/{attempts_allowed - 1} in {wait:.0f}s ({last_err})")
             time.sleep(wait)
+        attempt += 1
         try:
             resp = session.post(NEURONPEDIA_BASE_URL + LENS_ENDPOINT, json=body, timeout=timeout)
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as err:
@@ -93,7 +101,7 @@ def post_lens(session, body, timeout=180.0):
             continue
         resp.raise_for_status()
         return resp.json(), None
-    raise RuntimeError(f"lens call failed after {ATTEMPTS} attempts: {last_err}")
+    raise RuntimeError(f"lens call failed after {attempt} attempts: {last_err}")
 
 
 def target_variants(target):

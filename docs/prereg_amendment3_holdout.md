@@ -1,10 +1,11 @@
-# Amendment 3 (DRAFT) — Holdout analysis plan, precision, and reconciliation
+# Amendment 3 — Holdout analysis plan, precision, and reconciliation
 
-Status: **DRAFT, not in force.** Written 2026-07-14 in response to the referee
-panel (`docs/referee_panel_20260714.md`, worklist item 4). Nothing here is
-binding until the owner signs off; the sign-off date and channel get recorded
-in this header, as with amendments 1 and 2. The holdout stays sealed while
-this is a draft.
+Status: **IN FORCE.** Written 2026-07-14 in response to the referee panel
+(`docs/referee_panel_20260714.md`, worklist item 4); adopted by the owner the
+same day via the decision deck ("adopt as drafted and add the holdout-only
+significance test on gemma-2-2b; endpoint stays 2026-07-16"). The one
+addition over the draft is Endpoint 2b below. The holdout stays sealed until
+the endpoint run.
 
 ## What this amends
 
@@ -70,6 +71,15 @@ the interim-analysis process**, not as an independently powered replication.
    95% CI widened to the four-model simultaneous level. Expected pass
    probability is high if and only if the interim process did not overfit
    the exploration split; that is what the holdout is for.
+2b. **Holdout-only significance test, gemma-2-2b only** (owner addition at
+   adoption): a two-sided test of mean penalty = 0 on the gemma-2-2b holdout
+   phrases, via the phrase-deduped percentile bootstrap 95% CI (seed 7, same
+   pipeline). gemma-2-2b is the one model whose holdout is adequately
+   powered (±3.8 pp at n=53 against a −3.4 pp exploration mean); the other
+   three models are NOT given this test, and a null result on them would
+   carry no evidential weight either way. The writeup reports this test as
+   supplementary to the consistency readout, and a failure here with a
+   passing consistency check is reported as exactly that, not averaged away.
 3. **Reconciliation rule.**
    - All four models pass: the endpoint writeup reports pooled all-Tier-B
      estimates as the headline, with the holdout check disclosed as passed.
@@ -88,11 +98,9 @@ the interim-analysis process**, not as an independently powered replication.
    excluded from every published aggregate and withheld from public data
    files. This draft does not unseal anything.
 
-## Owner decision points
+## Owner decisions at adoption (2026-07-14, decision deck)
 
-- Approve the consistency-not-significance framing (§ Endpoint 2), or
-  require a holdout-only significance test on gemma-2-2b (the one model
-  powered for it).
-- Approve the reconciliation rule as written, or tighten it.
-- Confirm the endpoint date (end of Tier B collection, 2026-07-16 as
-  currently planned).
+- Consistency framing approved, WITH the holdout-only significance test on
+  gemma-2-2b added (Endpoint 2b).
+- Reconciliation rule adopted as written.
+- Endpoint date confirmed: 2026-07-16 (end of Tier B collection).

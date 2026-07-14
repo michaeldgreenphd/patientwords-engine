@@ -101,12 +101,12 @@ KNOWN_KEYS = {
     "activation-patching": frozenset({
         "pairs_file", "limit", "layers", "positions", "model", "offsets", "commit_outputs",
     }),
-    # jlens_readout.yml `defaults` dict (verified 2026-07-11; lens_type added
-    # 2026-07-14): models, pairs_file, limit, offset, topn, lens_type, save_raw,
-    # commit_outputs.
+    # jlens_readout.yml `defaults` dict (verified 2026-07-11; lens_type and
+    # steer_spec added 2026-07-14): models, pairs_file, limit, offset, topn,
+    # lens_type, steer_spec, save_raw, commit_outputs.
     "jlens-readout": frozenset({
-        "models", "pairs_file", "limit", "offset", "topn", "lens_type", "save_raw",
-        "commit_outputs",
+        "models", "pairs_file", "limit", "offset", "topn", "lens_type", "steer_spec",
+        "save_raw", "commit_outputs",
     }),
     # scenario_generation.yml `defaults` dict (verified 2026-07-09): task, num, topics,
     # seed_pairs, feedback, phrase, term, target_token, num_baselines, dialects,

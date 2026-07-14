@@ -21,11 +21,20 @@ CREDIT = ("Jacobian lens: Gurnee et al., Transformer Circuits (2026); hosted by 
           "distribution, rank recorded when the target appears.")
 
 
-def formation_layer(layers):
-    """First layer where the target token enters the readout (rank non-null)."""
-    for rec in layers:
-        if rec.get("target_rank") is not None:
-            return rec["layer"]
+PERSISTENCE = 2  # consecutive readable layers required to count as formation
+
+
+def formation_layer(layers, persistence=PERSISTENCE):
+    """First layer where the target enters the readout AND stays for
+    `persistence` consecutive layers. One-layer blips are readout noise, not
+    formation (referee worklist item 7, adopted 2026-07-14). A final-layer
+    appearance alone still counts as held via the final rank, not here."""
+    ranks = [rec.get("target_rank") for rec in layers]
+    run = 0
+    for i, r in enumerate(ranks):
+        run = run + 1 if r is not None else 0
+        if run >= persistence:
+            return layers[i - persistence + 1]["layer"]
     return None
 
 
@@ -81,18 +90,63 @@ def collect(trace_root: Path):
 
 
 def classify(row):
-    """Failure taxonomy on the patient side.
+    """Failure taxonomy on the patient side, conditioned on clinical
+    readability (referee recount, adopted 2026-07-14).
 
     held: the target still ranks at the final layer.
-    capture: the target never entered the readout - the other reading owned
-      the trajectory from the start.
-    hijack: the target formed at some depth and was pushed out by the end.
+    unreadable: the clinical side never forms either - the pair carries no
+      clinical-side reference the patient wording could lose, so it is its
+      own class, not evidence of capture.
+    capture: clinical-readable; the target never entered the patient-side
+      readout - the other reading owned the trajectory from the start.
+    hijack: clinical-readable; the target formed at some depth and was
+      pushed out by the end.
     """
     if row["pat_final_rank"] is not None:
         return "held"
+    if row["clin_formed"] is None:
+        return "unreadable"
     if row["pat_formed"] is None:
         return "capture"
     return "hijack"
+
+
+def _formed_idx(ranks, window, persistence=PERSISTENCE):
+    run = 0
+    for i, r in enumerate(ranks):
+        run = run + 1 if (r is not None and r <= window) else 0
+        if run >= persistence:
+            return i - persistence + 1
+    return None
+
+
+def window_sensitivity(rows, windows=(1, 2, 4, 8), persistence=PERSISTENCE):
+    """Class counts re-derived at narrower top-K windows (referee item 7):
+    'readable' should not be an artifact of the top-8 cutoff. The '8' column
+    must equal the headline taxonomy by construction."""
+    out = {}
+    for k in windows:
+        counts = {"held": 0, "unreadable": 0, "capture": 0, "hijack": 0,
+                  "clinical_never": 0, "patient_never": 0}
+        for r in rows:
+            pat, clin = r["pat_ranks"], r["clin_ranks"]
+            pat_final = pat[-1] if pat else None
+            clin_f = _formed_idx(clin, k, persistence)
+            pat_f = _formed_idx(pat, k, persistence)
+            if clin_f is None:
+                counts["clinical_never"] += 1
+            if pat_f is None:
+                counts["patient_never"] += 1
+            if pat_final is not None and pat_final <= k:
+                counts["held"] += 1
+            elif clin_f is None:
+                counts["unreadable"] += 1
+            elif pat_f is None:
+                counts["capture"] += 1
+            else:
+                counts["hijack"] += 1
+        out[str(k)] = counts
+    return out
 
 
 def quantiles(values):
@@ -111,7 +165,12 @@ def analyze(per_model, base_model, it_model, exemplar_count):
         "_": ("EXPLORATORY - formation-depth analytics from landed lens readouts; "
               "no pre-registered endpoint (Amendment 2 drafts the confirmatory "
               "versions). Ranks are within the lens's top-8 readout; 'never "
-              "formed' means never entered that readout."),
+              "formed' means never entered that readout for at least "
+              f"{PERSISTENCE} consecutive layers (one-layer blips do not count; "
+              "referee item 7, adopted 2026-07-14). Capture/hijack are "
+              "conditioned on clinical-readable pairs; pairs where neither "
+              "wording ever reads out are the 'unreadable' class."),
+        "persistence_layers": PERSISTENCE,
         "method_credit": CREDIT,
         "model": base_model,
         "n_pairs": len(rows),
@@ -143,6 +202,7 @@ def analyze(per_model, base_model, it_model, exemplar_count):
         if name == "capture":
             entry["winner_lock_in"] = quantiles([m["pat_lock"] for m in members])
         out["taxonomy"][name] = entry
+    out["window_sensitivity"] = window_sensitivity(rows)
 
     # exemplar trajectories for the concept figure: one held, one hijack, one capture
     exemplars = []

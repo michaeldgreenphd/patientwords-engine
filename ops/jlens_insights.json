@@ -1,25 +1,26 @@
 {
-  "_": "EXPLORATORY - formation-depth analytics from landed lens readouts; no pre-registered endpoint (Amendment 2 drafts the confirmatory versions). Ranks are within the lens's top-8 readout; 'never formed' means never entered that readout.",
+  "_": "EXPLORATORY - formation-depth analytics from landed lens readouts; no pre-registered endpoint (Amendment 2 drafts the confirmatory versions). Ranks are within the lens's top-8 readout; 'never formed' means never entered that readout for at least 2 consecutive layers (one-layer blips do not count; referee item 7, adopted 2026-07-14). Capture/hijack are conditioned on clinical-readable pairs; pairs where neither wording ever reads out are the 'unreadable' class.",
+  "persistence_layers": 2,
   "method_credit": "Jacobian lens: Gurnee et al., Transformer Circuits (2026); hosted by Neuronpedia. Readout = per-layer top-8 of the forming next-token distribution, rank recorded when the target appears.",
   "model": "gemma-2-2b",
-  "n_pairs": 170,
+  "n_pairs": 173,
   "formation": {
     "clinical": {
-      "n": 130,
-      "q25": 18,
+      "n": 121,
+      "q25": 17,
       "median": 19,
-      "q75": 23
+      "q75": 22
     },
     "patient": {
-      "n": 114,
+      "n": 106,
       "q25": 18,
       "median": 19,
       "q75": 22
     },
-    "clinical_never": 40,
-    "patient_never": 56,
+    "clinical_never": 52,
+    "patient_never": 67,
     "lag": {
-      "n": 108,
+      "n": 99,
       "q25": 0,
       "median": 0,
       "q75": 1
@@ -28,34 +29,58 @@
   },
   "taxonomy": {
     "capture": {
-      "n": 56,
+      "n": 16,
       "winner_lock_in": {
-        "n": 56,
+        "n": 16,
         "q25": 21,
-        "median": 24,
+        "median": 25,
         "q75": 25
       }
     },
     "held": {
-      "n": 100
+      "n": 102
     },
     "hijack": {
-      "n": 14,
+      "n": 12,
       "formed_at": {
-        "n": 14,
+        "n": 12,
         "q25": 19,
         "median": 19,
         "q75": 19
       },
       "lock_in": {
-        "n": 14,
+        "n": 12,
         "q25": 20,
         "median": 21,
-        "q75": 25
+        "q75": 24
       }
+    },
+    "unreadable": {
+      "n": 43
     }
   },
   "points": [
+    {
+      "dataset": "drift_sentinel_20260714",
+      "index": 1,
+      "clin_formed": null,
+      "pat_formed": null,
+      "class": "unreadable"
+    },
+    {
+      "dataset": "drift_sentinel_20260714",
+      "index": 2,
+      "clin_formed": 7,
+      "pat_formed": 8,
+      "class": "held"
+    },
+    {
+      "dataset": "drift_sentinel_20260714",
+      "index": 3,
+      "clin_formed": 7,
+      "pat_formed": 7,
+      "class": "held"
+    },
     {
       "dataset": "pairs_20260711T051145Z",
       "index": 1,
@@ -82,7 +107,7 @@
       "index": 4,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T051145Z",
@@ -101,7 +126,7 @@
     {
       "dataset": "pairs_20260711T051145Z",
       "index": 7,
-      "clin_formed": 21,
+      "clin_formed": 23,
       "pat_formed": null,
       "class": "capture"
     },
@@ -116,7 +141,7 @@
       "dataset": "pairs_20260711T051145Z",
       "index": 9,
       "clin_formed": 19,
-      "pat_formed": 22,
+      "pat_formed": 24,
       "class": "held"
     },
     {
@@ -129,15 +154,15 @@
     {
       "dataset": "pairs_20260711T051145Z",
       "index": 11,
-      "clin_formed": 25,
+      "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T051145Z",
       "index": 12,
       "clin_formed": 17,
-      "pat_formed": 20,
+      "pat_formed": 22,
       "class": "hijack"
     },
     {
@@ -152,7 +177,7 @@
       "index": 14,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T051145Z",
@@ -172,7 +197,7 @@
       "dataset": "pairs_20260711T051145Z",
       "index": 17,
       "clin_formed": 18,
-      "pat_formed": 19,
+      "pat_formed": 21,
       "class": "held"
     },
     {
@@ -180,7 +205,7 @@
       "index": 18,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T051145Z",
@@ -194,20 +219,20 @@
       "index": 20,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T051145Z",
       "index": 21,
       "clin_formed": 22,
-      "pat_formed": 25,
+      "pat_formed": null,
       "class": "held"
     },
     {
       "dataset": "pairs_20260711T051145Z",
       "index": 22,
       "clin_formed": 24,
-      "pat_formed": 25,
+      "pat_formed": null,
       "class": "held"
     },
     {
@@ -222,19 +247,19 @@
       "index": 24,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T051145Z",
       "index": 25,
-      "clin_formed": 21,
+      "clin_formed": 23,
       "pat_formed": null,
       "class": "capture"
     },
     {
       "dataset": "pairs_20260711T051145Z",
       "index": 26,
-      "clin_formed": 19,
+      "clin_formed": 22,
       "pat_formed": 22,
       "class": "held"
     },
@@ -262,8 +287,8 @@
     {
       "dataset": "pairs_20260711T051145Z",
       "index": 30,
-      "clin_formed": 25,
-      "pat_formed": 21,
+      "clin_formed": null,
+      "pat_formed": null,
       "class": "held"
     },
     {
@@ -285,13 +310,13 @@
       "index": 33,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T051145Z",
       "index": 34,
-      "clin_formed": 25,
-      "pat_formed": 25,
+      "clin_formed": null,
+      "pat_formed": null,
       "class": "held"
     },
     {
@@ -305,7 +330,7 @@
       "dataset": "pairs_20260711T051145Z",
       "index": 36,
       "clin_formed": 24,
-      "pat_formed": 19,
+      "pat_formed": 21,
       "class": "held"
     },
     {
@@ -348,21 +373,21 @@
       "index": 42,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T051145Z",
       "index": 43,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T051145Z",
       "index": 44,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T051145Z",
@@ -390,7 +415,7 @@
       "index": 48,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T051145Z",
@@ -438,7 +463,7 @@
       "dataset": "pairs_20260711T131752Z",
       "index": 5,
       "clin_formed": 16,
-      "pat_formed": 9,
+      "pat_formed": 16,
       "class": "held"
     },
     {
@@ -472,9 +497,9 @@
     {
       "dataset": "pairs_20260711T131752Z",
       "index": 10,
-      "clin_formed": 25,
+      "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T131752Z",
@@ -494,7 +519,7 @@
       "dataset": "pairs_20260711T131752Z",
       "index": 13,
       "clin_formed": 23,
-      "pat_formed": 25,
+      "pat_formed": null,
       "class": "held"
     },
     {
@@ -523,7 +548,7 @@
       "index": 17,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T131752Z",
@@ -542,8 +567,8 @@
     {
       "dataset": "pairs_20260711T131752Z",
       "index": 20,
-      "clin_formed": 19,
-      "pat_formed": 19,
+      "clin_formed": 23,
+      "pat_formed": 24,
       "class": "held"
     },
     {
@@ -551,12 +576,12 @@
       "index": 21,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T131752Z",
       "index": 22,
-      "clin_formed": 24,
+      "clin_formed": null,
       "pat_formed": 22,
       "class": "held"
     },
@@ -572,7 +597,7 @@
       "index": 24,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T131752Z",
@@ -586,7 +611,7 @@
       "index": 26,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T131752Z",
@@ -619,15 +644,15 @@
     {
       "dataset": "pairs_20260711T131752Z",
       "index": 31,
-      "clin_formed": 25,
-      "pat_formed": 25,
+      "clin_formed": null,
+      "pat_formed": null,
       "class": "held"
     },
     {
       "dataset": "pairs_20260711T131752Z",
       "index": 32,
       "clin_formed": 20,
-      "pat_formed": 18,
+      "pat_formed": 20,
       "class": "held"
     },
     {
@@ -649,7 +674,7 @@
       "index": 35,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T131752Z",
@@ -661,7 +686,7 @@
     {
       "dataset": "pairs_20260711T131752Z",
       "index": 37,
-      "clin_formed": 25,
+      "clin_formed": null,
       "pat_formed": 23,
       "class": "held"
     },
@@ -691,7 +716,7 @@
       "index": 41,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T131752Z",
@@ -704,7 +729,7 @@
       "dataset": "pairs_20260711T131752Z",
       "index": 43,
       "clin_formed": null,
-      "pat_formed": 25,
+      "pat_formed": null,
       "class": "held"
     },
     {
@@ -733,21 +758,21 @@
       "index": 47,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T131752Z",
       "index": 48,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T131752Z",
       "index": 49,
-      "clin_formed": 24,
+      "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260711T131752Z",
@@ -780,7 +805,7 @@
     {
       "dataset": "pairs_20260712T051903Z",
       "index": 4,
-      "clin_formed": 19,
+      "clin_formed": 22,
       "pat_formed": 21,
       "class": "held"
     },
@@ -789,13 +814,13 @@
       "index": 5,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260712T051903Z",
       "index": 6,
       "clin_formed": 18,
-      "pat_formed": 18,
+      "pat_formed": 20,
       "class": "held"
     },
     {
@@ -810,7 +835,7 @@
       "index": 8,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260712T051903Z",
@@ -824,14 +849,14 @@
       "index": 10,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260712T051903Z",
       "index": 11,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260712T051903Z",
@@ -843,23 +868,23 @@
     {
       "dataset": "pairs_20260712T051903Z",
       "index": 13,
-      "clin_formed": 25,
+      "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260712T051903Z",
       "index": 14,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260712T051903Z",
       "index": 15,
-      "clin_formed": 25,
+      "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260712T051903Z",
@@ -872,7 +897,7 @@
       "dataset": "pairs_20260712T051903Z",
       "index": 17,
       "clin_formed": 19,
-      "pat_formed": 25,
+      "pat_formed": null,
       "class": "held"
     },
     {
@@ -887,7 +912,7 @@
       "index": 19,
       "clin_formed": null,
       "pat_formed": 20,
-      "class": "hijack"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260712T051903Z",
@@ -914,29 +939,29 @@
       "dataset": "pairs_20260712T051903Z",
       "index": 23,
       "clin_formed": 19,
-      "pat_formed": 22,
+      "pat_formed": 24,
       "class": "held"
     },
     {
       "dataset": "pairs_20260712T051903Z",
       "index": 24,
       "clin_formed": 18,
-      "pat_formed": 19,
+      "pat_formed": 21,
       "class": "held"
     },
     {
       "dataset": "pairs_20260712T051903Z",
       "index": 25,
       "clin_formed": 18,
-      "pat_formed": 25,
+      "pat_formed": null,
       "class": "held"
     },
     {
       "dataset": "pairs_20260712T051903Z",
       "index": 26,
-      "clin_formed": 25,
+      "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260712T051903Z",
@@ -949,7 +974,7 @@
       "dataset": "pairs_20260712T051903Z",
       "index": 28,
       "clin_formed": 24,
-      "pat_formed": 25,
+      "pat_formed": null,
       "class": "held"
     },
     {
@@ -985,7 +1010,7 @@
       "index": 33,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260712T051903Z",
@@ -1006,7 +1031,7 @@
       "index": 36,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260712T051903Z",
@@ -1034,7 +1059,7 @@
       "index": 40,
       "clin_formed": null,
       "pat_formed": 19,
-      "class": "hijack"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260712T051903Z",
@@ -1048,7 +1073,7 @@
       "index": 42,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "pairs_20260712T051903Z",
@@ -1081,7 +1106,7 @@
     {
       "dataset": "pairs_20260712T051903Z",
       "index": 47,
-      "clin_formed": 19,
+      "clin_formed": 21,
       "pat_formed": 21,
       "class": "held"
     },
@@ -1104,14 +1129,14 @@
       "index": 50,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "urgency_downgrades_20260707T1",
       "index": 1,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "urgency_downgrades_20260707T1",
@@ -1130,7 +1155,7 @@
     {
       "dataset": "urgency_downgrades_20260707T1",
       "index": 4,
-      "clin_formed": 18,
+      "clin_formed": 22,
       "pat_formed": 17,
       "class": "held"
     },
@@ -1153,7 +1178,7 @@
       "index": 7,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "urgency_downgrades_20260707T1",
@@ -1167,7 +1192,7 @@
       "index": 9,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "urgency_downgrades_20260707T1",
@@ -1188,7 +1213,7 @@
       "index": 12,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "urgency_downgrades_20260707T1",
@@ -1208,7 +1233,7 @@
       "dataset": "urgency_downgrades_20260707T1",
       "index": 15,
       "clin_formed": 18,
-      "pat_formed": 18,
+      "pat_formed": 22,
       "class": "held"
     },
     {
@@ -1223,7 +1248,7 @@
       "index": 17,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "urgency_downgrades_20260707T1",
@@ -1237,16 +1262,50 @@
       "index": 19,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     },
     {
       "dataset": "urgency_downgrades_20260707T1",
       "index": 20,
       "clin_formed": null,
       "pat_formed": null,
-      "class": "capture"
+      "class": "unreadable"
     }
   ],
+  "window_sensitivity": {
+    "1": {
+      "held": 37,
+      "unreadable": 101,
+      "capture": 25,
+      "hijack": 10,
+      "clinical_never": 110,
+      "patient_never": 129
+    },
+    "2": {
+      "held": 61,
+      "unreadable": 77,
+      "capture": 26,
+      "hijack": 9,
+      "clinical_never": 94,
+      "patient_never": 114
+    },
+    "4": {
+      "held": 83,
+      "unreadable": 55,
+      "capture": 24,
+      "hijack": 11,
+      "clinical_never": 73,
+      "patient_never": 93
+    },
+    "8": {
+      "held": 102,
+      "unreadable": 43,
+      "capture": 16,
+      "hijack": 12,
+      "clinical_never": 52,
+      "patient_never": 67
+    }
+  },
   "exemplars": [
     {
       "dataset": "pairs_20260711T051145Z",
@@ -1371,8 +1430,8 @@
       ]
     },
     {
-      "dataset": "pairs_20260711T051145Z",
-      "index": 1,
+      "dataset": "drift_sentinel_20260714",
+      "index": 2,
       "class": "held",
       "clin_ranks": [
         null,
@@ -1382,17 +1441,17 @@
         null,
         null,
         null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        8,
+        2,
+        2,
+        2,
         3,
+        3,
+        5,
+        7,
+        6,
+        3,
+        3,
+        2,
         2,
         1,
         1,
@@ -1400,7 +1459,7 @@
         1,
         1,
         1,
-        1
+        2
       ],
       "pat_ranks": [
         null,
@@ -1411,19 +1470,19 @@
         null,
         null,
         null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
+        6,
+        8,
+        6,
         5,
-        1,
-        1,
+        null,
+        null,
+        null,
+        8,
+        3,
+        3,
+        2,
+        2,
+        2,
         1,
         1,
         1,
@@ -1434,20 +1493,30 @@
   ],
   "instruction_tuning": {
     "it_model": "gemma-2-2b-it",
-    "n_paired": 31,
+    "n_paired": 29,
     "base_median": {
-      "n": 31,
+      "n": 29,
       "q25": 18,
-      "median": 19,
-      "q75": 22
+      "median": 18,
+      "q75": 21
     },
     "it_median": {
-      "n": 31,
+      "n": 29,
       "q25": 18,
-      "median": 19,
-      "q75": 22
+      "median": 18,
+      "q75": 21
     },
     "pairs": [
+      {
+        "index": 2,
+        "base": 8,
+        "it": 8
+      },
+      {
+        "index": 3,
+        "base": 7,
+        "it": 7
+      },
       {
         "index": 1,
         "base": 18,
@@ -1470,8 +1539,8 @@
       },
       {
         "index": 9,
-        "base": 22,
-        "it": 22
+        "base": 24,
+        "it": 24
       },
       {
         "index": 10,
@@ -1480,8 +1549,8 @@
       },
       {
         "index": 12,
-        "base": 20,
-        "it": 20
+        "base": 22,
+        "it": 22
       },
       {
         "index": 13,
@@ -1500,23 +1569,13 @@
       },
       {
         "index": 17,
-        "base": 19,
-        "it": 19
+        "base": 21,
+        "it": 21
       },
       {
         "index": 19,
         "base": 19,
         "it": 19
-      },
-      {
-        "index": 21,
-        "base": 25,
-        "it": 25
-      },
-      {
-        "index": 22,
-        "base": 25,
-        "it": 25
       },
       {
         "index": 26,
@@ -1539,11 +1598,6 @@
         "it": 24
       },
       {
-        "index": 30,
-        "base": 21,
-        "it": 21
-      },
-      {
         "index": 31,
         "base": 24,
         "it": 24
@@ -1554,19 +1608,14 @@
         "it": 8
       },
       {
-        "index": 34,
-        "base": 25,
-        "it": 25
-      },
-      {
         "index": 35,
         "base": 18,
         "it": 18
       },
       {
         "index": 36,
-        "base": 19,
-        "it": 19
+        "base": 21,
+        "it": 21
       },
       {
         "index": 37,
