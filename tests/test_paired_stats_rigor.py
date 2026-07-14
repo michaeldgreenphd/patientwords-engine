@@ -21,7 +21,7 @@ _SPEC.loader.exec_module(psr)
 def _row(model, phrase, flipped, flip_class, penalty):
     return {
         "model": model,
-        "batch": "synthetic",
+        "batch": "pairs_20260101T000000Z",
         "index": 0,
         "clinical_prompt": phrase,
         "top_clinical": "x",
@@ -188,3 +188,49 @@ def test_main_site_copy_goes_to_given_root(rows, tmp_path):
     full = json.loads((tmp_path / "rigor.json").read_text(encoding="utf-8"))
     assert set(full["models"]) == {"m1", "m2"}
     assert "models_meta" in copy  # None when the payload is absent, never missing
+
+def test_observational_scope_excludes_non_pairs_batches(rows):
+    steered = _row("m1", "P9", True, "downgrade", -0.9)
+    steered["batch"] = "boostgrid_s5_20260101T000000Z"
+    bundle = psr.analyze(rows + [steered], boot=200, seed=7)
+    # the steered row never enters the confirmatory population...
+    assert "P9" not in [None] and bundle["per_model"]["m1"]["n_unique_phrases"] == 7
+    # ...but is visible in the labeled sensitivity
+    sens = bundle["sensitivity_all_rows"]["per_model"]["m1"]
+    assert sens["n_unique_phrases"] == 8
+
+
+def test_phrase_keyed_holdout_exclusion(tmp_path):
+    hold = _row("m1", "PH", True, "downgrade", -0.5)
+    hold["tierb_split"] = "holdout"
+    leak = _row("m1", "PH", True, "downgrade", -0.5)  # re-run, split-less
+    keep = _row("m1", "PK", False, None, 0.1)
+    bundle_path = tmp_path / "rows.json"
+    bundle_path.write_text(json.dumps({"rows": [hold, leak, keep]}), encoding="utf-8")
+    rows = psr.load_rows(bundle_path)
+    assert {r["clinical_prompt"] for r in rows} == {"PK"}
+
+
+def test_bh_families_split_by_registration(rows):
+    pre = []
+    for name in psr._PREREG_MODELS[:2]:
+        for i in range(9):
+            pre.append(_row(name, f"Q{i}", True, "downgrade", -0.2))
+    bundle = psr.analyze(rows + pre, boot=200, seed=7)
+    fams = bundle["benjamini_hochberg"]["families"]
+    assert set(fams["confirmatory"]["across"]) <= set(psr._PREREG_MODELS)
+    assert "m1" in fams["exploratory"]["across"]
+    assert bundle["per_model"]["m1"]["registration"] == "post-registration exploratory"
+
+
+def test_sign_test_p_is_unrounded_nonzero():
+    p = psr.sign_test(46, 7)
+    assert p is not None and 0 < p < 1e-5  # an exact test never returns 0
+
+
+def test_simultaneous_interval_is_at_least_as_wide(rows):
+    bundle = psr.analyze(rows, boot=500, seed=7)
+    pen = bundle["per_model"]["m2"]["penalty"]
+    if pen.get("ci95_simultaneous"):
+        assert pen["ci95_simultaneous"][0] <= pen["ci95"][0]
+        assert pen["ci95_simultaneous"][1] >= pen["ci95"][1]

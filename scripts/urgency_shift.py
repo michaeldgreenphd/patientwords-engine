@@ -346,10 +346,21 @@ Path(args.out).write_text(json.dumps({"summary": summary, "rows": rows}, indent=
                           encoding="utf-8")
 if args.publish:
     vocab_meta = json.loads(Path(args.tiers).read_text(encoding="utf-8"))
+    # Holdout withholding (2026-07-14, owner decision): confirmatory-holdout
+    # phrases are withheld from the public per-pair rows entirely, not just
+    # from aggregates. Phrase-keyed, matching the rigor loader, so re-runs of
+    # a holdout phrase in split-less batches are withheld too. The full row
+    # file stays engine-side for the sealed endpoint analysis.
+    _holdout_phrases = {r["clinical_prompt"] for r in rows
+                        if r.get("tierb_split") == "holdout"}
+    pub_rows = [r for r in rows if r["clinical_prompt"] not in _holdout_phrases]
+    if len(pub_rows) != len(rows):
+        print(f"holdout withheld from site copy: {len(rows) - len(pub_rows)} rows "
+              f"({len(_holdout_phrases)} phrases)")
     trimmed = [{k: r.get(k) for k in ("batch", "index", "model", "tier_top_clinical",
                                       "tier_top_patient", "flip_class", "tier_shift",
                                       "urgency_recovery")}
-               for r in rows if r["flipped"] or r.get("tier_shift") is not None]
+               for r in pub_rows if r["flipped"] or r.get("tier_shift") is not None]
     # measured example words per tier, so the site can explain the tiers in
     # plain language without linking readers to a data file; base model only,
     # readable whole-word tokens, most frequent first. Wordpiece fragments are
@@ -357,7 +368,7 @@ if args.publish:
     # vocabulary in source).
     vocab_tokens = vocab_meta.get("tokens", {})
     tier_counts: dict = {}
-    for r in rows:
+    for r in pub_rows:
         if r.get("model") != "gemma-2-2b":
             continue
         for tok_key, tier_key in (("top_clinical", "tier_top_clinical"),

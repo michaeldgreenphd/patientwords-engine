@@ -75,16 +75,18 @@ def test_stamp_rows_noop_before_tierb_start(tmp_path):
     assert "tierb_split" not in rows[0]
 
 
-def test_rigor_loader_excludes_holdout_rows(tmp_path):
+def test_rigor_loader_excludes_holdout_rows_phrase_keyed(tmp_path):
+    # 2026-07-14: exclusion is phrase-keyed - a phrase flagged holdout anywhere
+    # is excluded everywhere, including split-less re-run rows of that phrase.
     bundle = tmp_path / "rows.json"
     bundle.write_text(json.dumps({"rows": [
-        {"model": "m", "tierb_split": "holdout"},
-        {"model": "m", "tierb_split": "explore"},
-        {"model": "m"},
+        {"model": "m", "clinical_prompt": "PH", "tierb_split": "holdout"},
+        {"model": "m", "clinical_prompt": "PH"},                       # leak row
+        {"model": "m", "clinical_prompt": "PE", "tierb_split": "explore"},
+        {"model": "m", "clinical_prompt": "PA"},
     ]}))
     kept = rigor.load_rows(str(bundle))
-    assert len(kept) == 2
-    assert all(r.get("tierb_split") != "holdout" for r in kept)
+    assert {r["clinical_prompt"] for r in kept} == {"PE", "PA"}
 
 
 def test_collector_stamps_and_aggregates_on_exploration_split():

@@ -11,43 +11,95 @@
   "qwen3-1.7b",
   "qwen3-4b"
  ],
- "ci_method_penalty": "cluster bootstrap (percentile 95%), cluster = clinical_prompt phrase",
+ "population": "observational pairs_* generation batches only; other row sources reported under sensitivity_all_rows",
+ "ci_method_penalty": "phrase-level nonparametric bootstrap after dedupe (percentile 95%); dedupe collapses re-traces, so no cross-phrase dependence is modeled here - see the batch/topic sensitivity intervals",
  "ci_method_downgrade": "clopper-pearson exact 95%",
- "dedupe": "one record per (model, clinical_prompt); mean penalty, majority flip label",
+ "sign_test_sidedness": "two-sided",
+ "dedupe": "one record per (model, clinical_prompt); mean penalty over its stimulus rows (the paraphrase-averaged path), majority flip label",
+ "registration": {
+  "pre_registered": [
+   "gemma-2-2b",
+   "gemma-3-4b-it",
+   "qwen3-1.7b",
+   "qwen3-4b"
+  ],
+  "post_registration_exploratory": [
+   "gemma-2-2b-it",
+   "llama-3.2-3b",
+   "medgemma-4b-it",
+   "olmo-2-1b"
+  ]
+ },
  "per_model": {
   "gemma-2-2b": {
-   "n_rows": 1027,
-   "n_unique_phrases": 816,
-   "pseudoreplication_gap": 211,
+   "registration": "pre-registered",
+   "n_rows": 769,
+   "n_unique_phrases": 760,
+   "pseudoreplication_gap": 9,
    "penalty": {
-    "n_rows_with_penalty": 854,
-    "n_phrases_with_penalty": 687,
-    "mean": -0.0348,
+    "n_rows_with_penalty": 656,
+    "n_phrases_with_penalty": 650,
+    "mean": -0.0336,
     "ci95": [
-     -0.0455,
-     -0.0243
+     -0.0445,
+     -0.0228
     ],
-    "n_phrases": 687
+    "n_phrases": 650,
+    "ci95_simultaneous": [
+     -0.0495,
+     -0.0185
+    ],
+    "ci95_batch_cluster": {
+     "n_groups": 21,
+     "ci95": [
+      -0.0466,
+      -0.0197
+     ]
+    },
+    "ci95_topic_cluster": {
+     "n_groups": 234,
+     "ci95": [
+      -0.0549,
+      -0.0126
+     ]
+    }
+   },
+   "by_generation_tier": {
+    "tier_a": {
+     "n_phrases": 259,
+     "mean": -0.0555
+    },
+    "tier_b": {
+     "n_phrases": 391,
+     "mean": -0.0191
+    }
+   },
+   "near_duplicates": {
+    "threshold": 0.8,
+    "n_phrases": 760,
+    "n_near_duplicate": 23,
+    "rate": 0.0303
    },
    "flips": {
-    "n_flips": 333,
-    "downgrades": 55,
+    "n_flips": 297,
+    "downgrades": 48,
     "upgrades": 13,
-    "downgrade_rate": 0.1652,
+    "downgrade_rate": 0.1616,
     "downgrade_rate_ci95": [
-     0.1269,
-     0.2095
+     0.1216,
+     0.2085
     ],
     "ci_method": "clopper-pearson"
    },
    "sign_test": {
-    "downgrades": 55,
+    "downgrades": 48,
     "upgrades": 13,
-    "p_raw": 0.0,
-    "p_bh": 0.0
+    "p_raw": 7.665168380445453e-06,
+    "p_bh": 1.0220224507260603e-05
    }
   },
   "gemma-2-2b-it": {
+   "registration": "post-registration exploratory",
    "n_rows": 122,
    "n_unique_phrases": 122,
    "pseudoreplication_gap": 0,
@@ -56,10 +108,44 @@
     "n_phrases_with_penalty": 122,
     "mean": -0.0623,
     "ci95": [
-     -0.0962,
-     -0.0304
+     -0.0971,
+     -0.0292
     ],
-    "n_phrases": 122
+    "n_phrases": 122,
+    "ci95_simultaneous": [
+     -0.1119,
+     -0.0192
+    ],
+    "ci95_batch_cluster": {
+     "n_groups": 2,
+     "ci95": [
+      -0.0853,
+      -0.0617
+     ]
+    },
+    "ci95_topic_cluster": {
+     "n_groups": 11,
+     "ci95": [
+      -0.1232,
+      0.0029
+     ]
+    }
+   },
+   "by_generation_tier": {
+    "tier_a": {
+     "n_phrases": 119,
+     "mean": -0.0617
+    },
+    "tier_b": {
+     "n_phrases": 3,
+     "mean": -0.0853
+    }
+   },
+   "near_duplicates": {
+    "threshold": 0.8,
+    "n_phrases": 122,
+    "n_near_duplicate": 4,
+    "rate": 0.0328
    },
    "flips": {
     "n_flips": 41,
@@ -75,43 +161,79 @@
    "sign_test": {
     "downgrades": 6,
     "upgrades": 2,
-    "p_raw": 0.28906,
-    "p_bh": 0.28906
+    "p_raw": 0.2890625,
+    "p_bh": 0.2890625
    }
   },
   "gemma-3-4b-it": {
-   "n_rows": 706,
-   "n_unique_phrases": 682,
-   "pseudoreplication_gap": 24,
+   "registration": "pre-registered",
+   "n_rows": 686,
+   "n_unique_phrases": 677,
+   "pseudoreplication_gap": 9,
    "penalty": {
-    "n_rows_with_penalty": 706,
-    "n_phrases_with_penalty": 682,
-    "mean": -0.0465,
+    "n_rows_with_penalty": 686,
+    "n_phrases_with_penalty": 677,
+    "mean": -0.046,
     "ci95": [
-     -0.0658,
-     -0.0275
+     -0.0659,
+     -0.0268
     ],
-    "n_phrases": 682
+    "n_phrases": 677,
+    "ci95_simultaneous": [
+     -0.0728,
+     -0.0199
+    ],
+    "ci95_batch_cluster": {
+     "n_groups": 15,
+     "ci95": [
+      -0.0708,
+      -0.0243
+     ]
+    },
+    "ci95_topic_cluster": {
+     "n_groups": 251,
+     "ci95": [
+      -0.0673,
+      -0.0216
+     ]
+    }
+   },
+   "by_generation_tier": {
+    "tier_a": {
+     "n_phrases": 235,
+     "mean": -0.0425
+    },
+    "tier_b": {
+     "n_phrases": 442,
+     "mean": -0.0478
+    }
+   },
+   "near_duplicates": {
+    "threshold": 0.8,
+    "n_phrases": 677,
+    "n_near_duplicate": 27,
+    "rate": 0.0399
    },
    "flips": {
-    "n_flips": 327,
-    "downgrades": 42,
+    "n_flips": 324,
+    "downgrades": 41,
     "upgrades": 8,
-    "downgrade_rate": 0.1284,
+    "downgrade_rate": 0.1265,
     "downgrade_rate_ci95": [
-     0.0942,
-     0.1696
+     0.0924,
+     0.1677
     ],
     "ci_method": "clopper-pearson"
    },
    "sign_test": {
-    "downgrades": 42,
+    "downgrades": 41,
     "upgrades": 8,
-    "p_raw": 0.0,
-    "p_bh": 0.0
+    "p_raw": 1.9646537765538596e-06,
+    "p_bh": 3.929307553107719e-06
    }
   },
   "llama-3.2-3b": {
+   "registration": "post-registration exploratory",
    "n_rows": 122,
    "n_unique_phrases": 122,
    "pseudoreplication_gap": 0,
@@ -120,10 +242,44 @@
     "n_phrases_with_penalty": 122,
     "mean": -0.0503,
     "ci95": [
-     -0.0744,
-     -0.0289
+     -0.0748,
+     -0.0286
     ],
-    "n_phrases": 122
+    "n_phrases": 122,
+    "ci95_simultaneous": [
+     -0.0847,
+     -0.0196
+    ],
+    "ci95_batch_cluster": {
+     "n_groups": 2,
+     "ci95": [
+      -0.052,
+      0.0162
+     ]
+    },
+    "ci95_topic_cluster": {
+     "n_groups": 11,
+     "ci95": [
+      -0.0868,
+      -0.0157
+     ]
+    }
+   },
+   "by_generation_tier": {
+    "tier_a": {
+     "n_phrases": 119,
+     "mean": -0.052
+    },
+    "tier_b": {
+     "n_phrases": 3,
+     "mean": 0.0162
+    }
+   },
+   "near_duplicates": {
+    "threshold": 0.8,
+    "n_phrases": 122,
+    "n_near_duplicate": 4,
+    "rate": 0.0328
    },
    "flips": {
     "n_flips": 40,
@@ -139,11 +295,12 @@
    "sign_test": {
     "downgrades": 9,
     "upgrades": 0,
-    "p_raw": 0.00391,
-    "p_bh": 0.00626
+    "p_raw": 0.00390625,
+    "p_bh": 0.015625
    }
   },
   "medgemma-4b-it": {
+   "registration": "post-registration exploratory",
    "n_rows": 119,
    "n_unique_phrases": 119,
    "pseudoreplication_gap": 0,
@@ -152,10 +309,38 @@
     "n_phrases_with_penalty": 119,
     "mean": -0.0339,
     "ci95": [
-     -0.068,
-     -0.002
+     -0.0688,
+     -0.0022
     ],
-    "n_phrases": 119
+    "n_phrases": 119,
+    "ci95_simultaneous": [
+     -0.0844,
+     0.0077
+    ],
+    "ci95_batch_cluster": null,
+    "ci95_topic_cluster": {
+     "n_groups": 8,
+     "ci95": [
+      -0.0801,
+      0.0137
+     ]
+    }
+   },
+   "by_generation_tier": {
+    "tier_a": {
+     "n_phrases": 119,
+     "mean": -0.0339
+    },
+    "tier_b": {
+     "n_phrases": 0,
+     "mean": null
+    }
+   },
+   "near_duplicates": {
+    "threshold": 0.8,
+    "n_phrases": 119,
+    "n_near_duplicate": 4,
+    "rate": 0.0336
    },
    "flips": {
     "n_flips": 43,
@@ -171,11 +356,12 @@
    "sign_test": {
     "downgrades": 9,
     "upgrades": 2,
-    "p_raw": 0.06543,
-    "p_bh": 0.07478
+    "p_raw": 0.0654296875,
+    "p_bh": 0.08723958333333333
    }
   },
   "olmo-2-1b": {
+   "registration": "post-registration exploratory",
    "n_rows": 122,
    "n_unique_phrases": 122,
    "pseudoreplication_gap": 0,
@@ -184,10 +370,44 @@
     "n_phrases_with_penalty": 122,
     "mean": -0.0723,
     "ci95": [
-     -0.1039,
-     -0.0434
+     -0.1036,
+     -0.0433
     ],
-    "n_phrases": 122
+    "n_phrases": 122,
+    "ci95_simultaneous": [
+     -0.1172,
+     -0.0338
+    ],
+    "ci95_batch_cluster": {
+     "n_groups": 2,
+     "ci95": [
+      -0.0764,
+      0.0905
+     ]
+    },
+    "ci95_topic_cluster": {
+     "n_groups": 11,
+     "ci95": [
+      -0.1296,
+      -0.0152
+     ]
+    }
+   },
+   "by_generation_tier": {
+    "tier_a": {
+     "n_phrases": 119,
+     "mean": -0.0764
+    },
+    "tier_b": {
+     "n_phrases": 3,
+     "mean": 0.0905
+    }
+   },
+   "near_duplicates": {
+    "threshold": 0.8,
+    "n_phrases": 122,
+    "n_near_duplicate": 4,
+    "rate": 0.0328
    },
    "flips": {
     "n_flips": 38,
@@ -203,11 +423,12 @@
    "sign_test": {
     "downgrades": 9,
     "upgrades": 1,
-    "p_raw": 0.02148,
-    "p_bh": 0.02864
+    "p_raw": 0.021484375,
+    "p_bh": 0.04296875
    }
   },
   "qwen3-1.7b": {
+   "registration": "pre-registered",
    "n_rows": 686,
    "n_unique_phrases": 677,
    "pseudoreplication_gap": 9,
@@ -216,10 +437,44 @@
     "n_phrases_with_penalty": 677,
     "mean": -0.0487,
     "ci95": [
-     -0.0644,
-     -0.0329
+     -0.0641,
+     -0.033
     ],
-    "n_phrases": 677
+    "n_phrases": 677,
+    "ci95_simultaneous": [
+     -0.0699,
+     -0.0273
+    ],
+    "ci95_batch_cluster": {
+     "n_groups": 15,
+     "ci95": [
+      -0.0655,
+      -0.0292
+     ]
+    },
+    "ci95_topic_cluster": {
+     "n_groups": 251,
+     "ci95": [
+      -0.0688,
+      -0.0278
+     ]
+    }
+   },
+   "by_generation_tier": {
+    "tier_a": {
+     "n_phrases": 235,
+     "mean": -0.0666
+    },
+    "tier_b": {
+     "n_phrases": 442,
+     "mean": -0.0392
+    }
+   },
+   "near_duplicates": {
+    "threshold": 0.8,
+    "n_phrases": 677,
+    "n_near_duplicate": 27,
+    "rate": 0.0399
    },
    "flips": {
     "n_flips": 307,
@@ -235,11 +490,12 @@
    "sign_test": {
     "downgrades": 42,
     "upgrades": 16,
-    "p_raw": 0.00086,
-    "p_bh": 0.00172
+    "p_raw": 0.0008617822405421263,
+    "p_bh": 0.0008617822405421263
    }
   },
   "qwen3-4b": {
+   "registration": "pre-registered",
    "n_rows": 686,
    "n_unique_phrases": 677,
    "pseudoreplication_gap": 9,
@@ -248,10 +504,44 @@
     "n_phrases_with_penalty": 677,
     "mean": -0.049,
     "ci95": [
-     -0.0672,
-     -0.031
+     -0.0678,
+     -0.0306
     ],
-    "n_phrases": 677
+    "n_phrases": 677,
+    "ci95_simultaneous": [
+     -0.0748,
+     -0.0231
+    ],
+    "ci95_batch_cluster": {
+     "n_groups": 15,
+     "ci95": [
+      -0.0709,
+      -0.0233
+     ]
+    },
+    "ci95_topic_cluster": {
+     "n_groups": 251,
+     "ci95": [
+      -0.0744,
+      -0.0221
+     ]
+    }
+   },
+   "by_generation_tier": {
+    "tier_a": {
+     "n_phrases": 235,
+     "mean": -0.0771
+    },
+    "tier_b": {
+     "n_phrases": 442,
+     "mean": -0.0341
+    }
+   },
+   "near_duplicates": {
+    "threshold": 0.8,
+    "n_phrases": 677,
+    "n_near_duplicate": 27,
+    "rate": 0.0399
    },
    "flips": {
     "n_flips": 299,
@@ -267,12 +557,49 @@
    "sign_test": {
     "downgrades": 46,
     "upgrades": 7,
-    "p_raw": 0.0,
-    "p_bh": 0.0
+    "p_raw": 4.003196174551249e-08,
+    "p_bh": 1.6012784698204996e-07
    }
   }
  },
+ "simultaneous_ci": {
+  "method": "bonferroni percentile",
+  "m": 8,
+  "alpha": 0.00625
+ },
  "benjamini_hochberg": {
+  "families": {
+   "confirmatory": {
+    "across": [
+     "gemma-2-2b",
+     "gemma-3-4b-it",
+     "qwen3-1.7b",
+     "qwen3-4b"
+    ],
+    "n_tests": 4,
+    "adjusted": {
+     "gemma-2-2b": 1.0220224507260603e-05,
+     "gemma-3-4b-it": 3.929307553107719e-06,
+     "qwen3-1.7b": 0.0008617822405421263,
+     "qwen3-4b": 1.6012784698204996e-07
+    }
+   },
+   "exploratory": {
+    "across": [
+     "gemma-2-2b-it",
+     "llama-3.2-3b",
+     "medgemma-4b-it",
+     "olmo-2-1b"
+    ],
+    "n_tests": 4,
+    "adjusted": {
+     "gemma-2-2b-it": 0.2890625,
+     "llama-3.2-3b": 0.015625,
+     "medgemma-4b-it": 0.08723958333333333,
+     "olmo-2-1b": 0.04296875
+    }
+   }
+  },
   "across": [
    "gemma-2-2b",
    "gemma-2-2b-it",
@@ -285,14 +612,67 @@
   ],
   "n_tests": 8,
   "adjusted": {
-   "gemma-2-2b": 0.0,
-   "gemma-2-2b-it": 0.28906,
-   "gemma-3-4b-it": 0.0,
-   "llama-3.2-3b": 0.00626,
-   "medgemma-4b-it": 0.07478,
-   "olmo-2-1b": 0.02864,
-   "qwen3-1.7b": 0.00172,
-   "qwen3-4b": 0.0
+   "gemma-2-2b": 1.0220224507260603e-05,
+   "gemma-2-2b-it": 0.2890625,
+   "gemma-3-4b-it": 3.929307553107719e-06,
+   "llama-3.2-3b": 0.015625,
+   "medgemma-4b-it": 0.08723958333333333,
+   "olmo-2-1b": 0.04296875,
+   "qwen3-1.7b": 0.0008617822405421263,
+   "qwen3-4b": 1.6012784698204996e-07
+  }
+ },
+ "sensitivity_all_rows": {
+  "_": "every collector row regardless of batch provenance (steered runs, outcome-selected sets, imports, re-traces); NOT confirmatory",
+  "per_model": {
+   "gemma-2-2b": {
+    "n_unique_phrases": 811,
+    "mean_penalty": -0.0348,
+    "downgrades": 55,
+    "upgrades": 13
+   },
+   "gemma-2-2b-it": {
+    "n_unique_phrases": 122,
+    "mean_penalty": -0.0623,
+    "downgrades": 6,
+    "upgrades": 2
+   },
+   "gemma-3-4b-it": {
+    "n_unique_phrases": 682,
+    "mean_penalty": -0.0465,
+    "downgrades": 42,
+    "upgrades": 8
+   },
+   "llama-3.2-3b": {
+    "n_unique_phrases": 122,
+    "mean_penalty": -0.0503,
+    "downgrades": 9,
+    "upgrades": 0
+   },
+   "medgemma-4b-it": {
+    "n_unique_phrases": 119,
+    "mean_penalty": -0.0339,
+    "downgrades": 9,
+    "upgrades": 2
+   },
+   "olmo-2-1b": {
+    "n_unique_phrases": 122,
+    "mean_penalty": -0.0723,
+    "downgrades": 9,
+    "upgrades": 1
+   },
+   "qwen3-1.7b": {
+    "n_unique_phrases": 677,
+    "mean_penalty": -0.0487,
+    "downgrades": 42,
+    "upgrades": 16
+   },
+   "qwen3-4b": {
+    "n_unique_phrases": 677,
+    "mean_penalty": -0.049,
+    "downgrades": 46,
+    "upgrades": 7
+   }
   }
  },
  "source": "urgency_shift.json"

@@ -20,9 +20,20 @@ things separate a defensible estimate from the raw tallies:
    flip counts these models produce, where a normal approximation would not.
 
 3. MULTIPLICITY. The per-model sign test (downgrades vs upgrades, two-sided
-   exact) is Benjamini-Hochberg adjusted across models, so a per-model claim
-   carries the false-discovery cost of having asked the question four times.
-   Raw and adjusted p-values are both reported.
+   exact) is Benjamini-Hochberg adjusted within registration family: the
+   confirmatory family is the four pre-registered models; models added after
+   registration form a separate exploratory family. Raw and adjusted p-values
+   are reported unrounded.
+
+4. POPULATION SCOPE (2026-07-14, referee response). The confirmatory numbers
+   use observational generation batches only (batch names matching
+   ``pairs_<STAMP>``). Steered runs, outcome-selected sets, hand-built imports,
+   QC re-traces and sentinel aliases are excluded from the confirmatory
+   population and reported as a labeled all-rows sensitivity instead. Within
+   this scope each row is one stimulus, so the phrase collapse is the
+   pre-registered paraphrase-averaged path. Holdout exclusion is phrase-keyed:
+   any phrase ever flagged holdout is excluded wherever it re-appears,
+   including split-less re-run batches.
 
 No medical vocabulary appears here: phrases and tier labels arrive as data from
 the collector rows.
@@ -38,8 +49,17 @@ import argparse
 import json
 import math
 import random
+import re
 from collections import Counter, defaultdict
 from pathlib import Path
+
+# Observational generation batches: the confirmatory population. Everything
+# else (steered runs, outcome-selected sets, imports, re-traces, sentinels)
+# is sensitivity-only. Mirrors scripts/convergence_tracker.py.
+_OBS_RE = re.compile(r"pairs_\d{8}T\d{6}Z")
+# The four models fixed by docs/preregistration_tierB.md; later additions are
+# exploratory (docs/prereg_divergence_log.md) and get their own BH family.
+_PREREG_MODELS = ("gemma-2-2b", "gemma-3-4b-it", "qwen3-1.7b", "qwen3-4b")
 
 # Non-flip rows carry flip_class None; represent that as an explicit label so a
 # phrase's flip status survives the categorical majority vote intact.
@@ -61,10 +81,16 @@ def load_rows(path):
     """
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     rows = data["rows"]
-    kept = [r for r in rows if r.get("tierb_split") != "holdout"]
+    # Phrase-keyed exclusion (2026-07-14): a phrase flagged holdout anywhere is
+    # excluded everywhere, so re-runs of a holdout phrase in split-less batches
+    # cannot leak into interim numbers (found by the independent replication).
+    holdout_phrases = {r["clinical_prompt"] for r in rows
+                       if r.get("tierb_split") == "holdout"}
+    kept = [r for r in rows if r["clinical_prompt"] not in holdout_phrases]
     excluded = len(rows) - len(kept)
     if excluded:
-        print(f"Amendment 1: excluded {excluded} Tier B holdout rows from interim analysis")
+        print(f"Amendment 1: excluded {excluded} rows across "
+              f"{len(holdout_phrases)} holdout phrases from interim analysis")
     return kept
 
 
@@ -101,13 +127,20 @@ def dedupe_by_phrase(model_rows):
             "phrase": phrase,
             "penalty": (sum(pens) / len(pens)) if pens else None,
             "label": _phrase_label(group),
+            # grouping keys for the pre-specified sensitivity bootstraps
+            "batch": group[0].get("batch"),
+            "topic": group[0].get("topic"),
+            "tier_b": any("tierb_split" in r for r in group),
         })
     return records
 
 
-def cluster_bootstrap_ci(values, rng, n_boot):
-    """Mean and percentile 95% CI, resampling clusters (the passed values are
-    already one-per-cluster phrase means, so this is the cluster bootstrap)."""
+def cluster_bootstrap_ci(values, rng, n_boot, alpha_simultaneous=None):
+    """Mean, percentile 95% CI and (optionally) a Bonferroni-widened
+    simultaneous interval from one bootstrap pass. The passed values are
+    already one-per-phrase means, so this is a phrase-level nonparametric
+    bootstrap after dedupe (the "cluster" it removes is verbatim re-traces,
+    which the dedupe collapses)."""
     if not values:
         return None
     n = len(values)
@@ -118,12 +151,65 @@ def cluster_bootstrap_ci(values, rng, n_boot):
             s += values[rng.randrange(n)]
         means.append(s / n)
     means.sort()
-    return {
+    out = {
         "mean": round(sum(values) / n, 4),
         "ci95": [round(means[int(0.025 * n_boot)], 4),
                  round(means[int(0.975 * n_boot)], 4)],
         "n_phrases": n,
     }
+    if alpha_simultaneous:
+        lo = max(0, min(n_boot - 1, int((alpha_simultaneous / 2.0) * n_boot)))
+        hi = max(0, min(n_boot - 1, int((1.0 - alpha_simultaneous / 2.0) * n_boot)))
+        out["ci95_simultaneous"] = [round(means[lo], 4), round(means[hi], 4)]
+    return out
+
+
+def grouped_bootstrap_ci(records, key_field, rng, n_boot):
+    """Percentile 95% CI resampling GROUPS (batches or topics) with
+    replacement, pooling every phrase mean inside each drawn group. Reported
+    as a pre-specified sensitivity beside the phrase-level interval, since
+    stimuli are generated in batches from standing topics and near-duplicate
+    phrases are not independent."""
+    groups = defaultdict(list)
+    for rec in records:
+        if rec["penalty"] is not None:
+            groups[rec.get(key_field) or "_none"].append(rec["penalty"])
+    keys = sorted(groups)
+    if len(keys) < 2:
+        return None
+    means = []
+    for _ in range(n_boot):
+        pooled = []
+        for _ in range(len(keys)):
+            pooled.extend(groups[keys[rng.randrange(len(keys))]])
+        means.append(sum(pooled) / len(pooled))
+    means.sort()
+    return {"n_groups": len(keys),
+            "ci95": [round(means[int(0.025 * n_boot)], 4),
+                     round(means[int(0.975 * n_boot)], 4)]}
+
+
+def near_duplicate_rate(records, threshold=0.8):
+    """Share of phrases whose token-set Jaccard similarity to another phrase
+    is at or above the threshold. A duplication diagnostic, not a filter: the
+    dedupe key is exact string equality, so near-duplicates count as separate
+    phrases in every interval above."""
+    toks = [frozenset(rec["phrase"].lower().split()) for rec in records]
+    n = len(toks)
+    flagged = [False] * n
+    for i in range(n):
+        if flagged[i]:
+            continue
+        for j in range(i + 1, n):
+            a, b = toks[i], toks[j]
+            if not a or not b:
+                continue
+            inter = len(a & b)
+            if inter / (len(a) + len(b) - inter) >= threshold:
+                flagged[i] = flagged[j] = True
+    return {"threshold": threshold, "n_phrases": n,
+            "n_near_duplicate": sum(flagged),
+            "rate": round(sum(flagged) / n, 4) if n else None}
 
 
 # --- regularized incomplete beta + its inverse (Clopper-Pearson support) -----
@@ -216,7 +302,9 @@ def sign_test(k_down, k_up):
         return None
     k = min(k_down, k_up)
     tail = sum(math.comb(n, i) for i in range(0, k + 1)) / 2 ** n
-    return round(min(1.0, 2.0 * tail), 5)
+    # Unrounded (2026-07-14): an exact test cannot yield p = 0, and rounding to
+    # 5 decimals published exactly that. Display flooring is the renderer's job.
+    return min(1.0, 2.0 * tail)
 
 
 def benjamini_hochberg(pvals):
@@ -235,13 +323,19 @@ def benjamini_hochberg(pvals):
     for i in range(m - 1, -1, -1):
         rank = i + 1
         running = min(running, ordered[i][1] * m / rank)
-        out[ordered[i][0]] = round(min(running, 1.0), 5)
+        out[ordered[i][0]] = min(running, 1.0)  # unrounded; display flooring is the renderer's job
     return out
 
 
 def analyze(rows, models=None, boot=5000, seed=7):
-    """Build the full rigor bundle from collector rows."""
-    present = sorted({r["model"] for r in rows})
+    """Build the full rigor bundle from collector rows.
+
+    Confirmatory population: observational ``pairs_<STAMP>`` batches only.
+    Everything else enters a labeled all-rows sensitivity, never the headline
+    numbers. BH runs within registration family (pre-registered four versus
+    post-registration additions)."""
+    obs_rows = [r for r in rows if _OBS_RE.fullmatch(r.get("batch", ""))]
+    present = sorted({r["model"] for r in obs_rows})
     models = [m for m in (models or present) if m in present]
     rng = random.Random(seed)
 
@@ -249,16 +343,40 @@ def analyze(rows, models=None, boot=5000, seed=7):
         "seed": seed,
         "boot": boot,
         "models": models,
-        "ci_method_penalty": "cluster bootstrap (percentile 95%), cluster = clinical_prompt phrase",
+        "population": "observational pairs_* generation batches only; other row "
+                      "sources reported under sensitivity_all_rows",
+        "ci_method_penalty": "phrase-level nonparametric bootstrap after dedupe "
+                             "(percentile 95%); dedupe collapses re-traces, so no "
+                             "cross-phrase dependence is modeled here - see the "
+                             "batch/topic sensitivity intervals",
         "ci_method_downgrade": "clopper-pearson exact 95%",
-        "dedupe": "one record per (model, clinical_prompt); mean penalty, majority flip label",
+        "sign_test_sidedness": "two-sided",
+        "dedupe": "one record per (model, clinical_prompt); mean penalty over its "
+                  "stimulus rows (the paraphrase-averaged path), majority flip label",
+        "registration": {
+            "pre_registered": [m for m in models if m in _PREREG_MODELS],
+            "post_registration_exploratory": [m for m in models if m not in _PREREG_MODELS],
+        },
         "per_model": {},
     }
 
+    # simultaneous-band width: Bonferroni over the models the site displays
+    site_eligible = 0
+    records_by_model = {}
+    for model in models:
+        records_by_model[model] = dedupe_by_phrase(
+            [r for r in obs_rows if r["model"] == model])
+        n_pen = sum(1 for rec in records_by_model[model] if rec["penalty"] is not None)
+        if n_pen >= 30:
+            site_eligible += 1
+    alpha_sim = 0.05 / max(1, site_eligible)
+    bundle["simultaneous_ci"] = {
+        "method": "bonferroni percentile", "m": site_eligible, "alpha": alpha_sim}
+
     raw_p = {}
     for model in models:
-        model_rows = [r for r in rows if r["model"] == model]
-        records = dedupe_by_phrase(model_rows)
+        model_rows = [r for r in obs_rows if r["model"] == model]
+        records = records_by_model[model]
 
         pens = [rec["penalty"] for rec in records if rec["penalty"] is not None]
         pen_rows = sum(1 for r in model_rows
@@ -271,15 +389,36 @@ def analyze(rows, models=None, boot=5000, seed=7):
         p = sign_test(downgrades, upgrades)
         raw_p[model] = p
 
+        pen_block = cluster_bootstrap_ci(pens, rng, boot, alpha_simultaneous=alpha_sim) \
+            or {"mean": None, "ci95": None, "n_phrases": 0}
+        batch_ci = grouped_bootstrap_ci(records, "batch", rng, boot)
+        topic_ci = grouped_bootstrap_ci(records, "topic", rng, boot)
+
+        tier_a = [rec["penalty"] for rec in records
+                  if rec["penalty"] is not None and not rec["tier_b"]]
+        tier_b = [rec["penalty"] for rec in records
+                  if rec["penalty"] is not None and rec["tier_b"]]
+
         bundle["per_model"][model] = {
+            "registration": ("pre-registered" if model in _PREREG_MODELS
+                             else "post-registration exploratory"),
             "n_rows": len(model_rows),
             "n_unique_phrases": len(records),
             "pseudoreplication_gap": len(model_rows) - len(records),
             "penalty": {
                 "n_rows_with_penalty": pen_rows,
                 "n_phrases_with_penalty": len(pens),
-                **(cluster_bootstrap_ci(pens, rng, boot) or {"mean": None, "ci95": None, "n_phrases": 0}),
+                **pen_block,
+                "ci95_batch_cluster": batch_ci,
+                "ci95_topic_cluster": topic_ci,
             },
+            "by_generation_tier": {
+                "tier_a": {"n_phrases": len(tier_a),
+                           "mean": round(sum(tier_a) / len(tier_a), 4) if tier_a else None},
+                "tier_b": {"n_phrases": len(tier_b),
+                           "mean": round(sum(tier_b) / len(tier_b), 4) if tier_b else None},
+            },
+            "near_duplicates": near_duplicate_rate(records),
             "flips": {
                 "n_flips": n_flips,
                 "downgrades": downgrades,
@@ -296,13 +435,44 @@ def analyze(rows, models=None, boot=5000, seed=7):
             },
         }
 
-    bh = benjamini_hochberg(raw_p)
+    # BH within registration family; a model's published q is its family's q
+    fam_pre = {m: raw_p[m] for m in models if m in _PREREG_MODELS}
+    fam_post = {m: raw_p[m] for m in models if m not in _PREREG_MODELS}
+    bh_pre = benjamini_hochberg(fam_pre)
+    bh_post = benjamini_hochberg(fam_post)
+    bh = {**bh_pre, **bh_post}
     for model in models:
         bundle["per_model"][model]["sign_test"]["p_bh"] = bh[model]
     bundle["benjamini_hochberg"] = {
+        "families": {
+            "confirmatory": {"across": sorted(fam_pre),
+                             "n_tests": sum(1 for p in fam_pre.values() if p is not None),
+                             "adjusted": bh_pre},
+            "exploratory": {"across": sorted(fam_post),
+                            "n_tests": sum(1 for p in fam_post.values() if p is not None),
+                            "adjusted": bh_post},
+        },
+        # legacy view kept for older consumers: family-wise values, merged
         "across": models,
         "n_tests": sum(1 for m in models if raw_p[m] is not None),
         "adjusted": {m: bh[m] for m in models},
+    }
+
+    # all-rows sensitivity: same collapse rules, unrestricted population
+    sens = {}
+    for model in sorted({r["model"] for r in rows}):
+        recs = dedupe_by_phrase([r for r in rows if r["model"] == model])
+        pens = [rec["penalty"] for rec in recs if rec["penalty"] is not None]
+        sens[model] = {
+            "n_unique_phrases": len(recs),
+            "mean_penalty": round(sum(pens) / len(pens), 4) if pens else None,
+            "downgrades": sum(1 for rec in recs if rec["label"] == "downgrade"),
+            "upgrades": sum(1 for rec in recs if rec["label"] == "upgrade"),
+        }
+    bundle["sensitivity_all_rows"] = {
+        "_": "every collector row regardless of batch provenance (steered runs, "
+             "outcome-selected sets, imports, re-traces); NOT confirmatory",
+        "per_model": sens,
     }
     return bundle
 
@@ -333,13 +503,15 @@ def format_summary(bundle):
                          f"{fl['downgrade_rate']:.4f}  {fl['downgrade_rate_ci95']} exact")
         else:
             lines.append("  downgrade rate  --  (no flips)")
-        p_raw = "--" if st["p_raw"] is None else f"{st['p_raw']:.5f}"
-        p_bh = "--" if st["p_bh"] is None else f"{st['p_bh']:.5f}"
+        p_raw = "--" if st["p_raw"] is None else f"{st['p_raw']:.3g}"
+        p_bh = "--" if st["p_bh"] is None else f"{st['p_bh']:.3g}"
         lines.append(f"  sign test  down {st['downgrades']} vs up {st['upgrades']}"
-                     f"  p={p_raw}  BH q={p_bh}")
+                     f"  p={p_raw}  BH q={p_bh}  [{pm['registration']}]")
         lines.append("")
-    bh = bundle["benjamini_hochberg"]
-    lines.append(f"Benjamini-Hochberg across {bh['n_tests']} model sign tests.")
+    fams = bundle["benjamini_hochberg"]["families"]
+    lines.append(f"Benjamini-Hochberg within family: confirmatory "
+                 f"{fams['confirmatory']['n_tests']} tests, exploratory "
+                 f"{fams['exploratory']['n_tests']} tests.")
     return "\n".join(lines)
 
 
