@@ -1,0 +1,24 @@
+{
+ "model": "qwen3-4b",
+ "n_phrases": 677,
+ "mean_penalty_pp": -4.9,
+ "downgrades": 46,
+ "upgrades": 7,
+ "choices": [
+  "Population: rows[] entries with model=='qwen3-4b' in /home/user/patientwords-engine/urgency_shift.json (742 rows); the actual field names are p_top_clinical/p_top_patient (top-token probs per wording) plus language_penalty, not prob_clinical/prob_patient.",
+  "Holdout rule implemented (exact): exclude a row iff it belongs to a Tier B batch (row carries a tierb_split field) AND int(sha1(clinical_prompt.encode('utf-8')).hexdigest(),16) % 10 == 0. This reproduced the file's tierb_split=='holdout' labels on all 2037 Tier B rows with 0 mismatches; 56 qwen3-4b rows excluded (742->686). Tier A rows were retained even when their hash %10==0 (21 such qwen3-4b rows), because prereg Amendment 1 scopes the holdout to Tier B pairs and the site methods text says 'one tenth of newly collected data'.",
+  "Penalty: used the per-row language_penalty field, which I verified against raw trace outputs equals P(clinical target token | patient wording) - P(clinical target token | clinical wording) \u2014 the methodology's definition \u2014 and is NOT p_top_patient - p_top_clinical (those are each side's own top-token probs).",
+  "Dedup key: exact clinical_prompt string per model; 686 rows -> 677 phrases (9 phrases duplicated x2). Duplicate probabilities/penalties collapsed by MEAN (as the methodology directs for probabilities); flip direction by majority vote over flip_class with non-flipped rows voting 'no flip'. No ties occurred, so no tie-break rule was needed.",
+  "Downgrade/upgrade: used the per-row flip_class classification field already present (downgrade/upgrade/lateral/uninformative on flipped rows); phrase-level counts after majority vote: 46 downgrade, 7 upgrade (also 48 lateral, 198 uninformative, 378 no-flip).",
+  "No text join was needed for the main computation (clinical_prompt is embedded in every row). Sample-check join: (batch,index) -> trace_out/<batch>__qwen3-4b/batch_summary.part_*.json matching results[i]['index']==row['index'], with clinical prompt text equality asserted on every joined row.",
+  "Sampling: random.seed(42); random.sample(sorted(deduped_phrases), 15); verified every constituent row of each sampled phrase (16 rows, one sampled phrase is a x2 re-trace).",
+  "Comparison tolerance: a value matches if the trace value rounded half-up to the row's stored decimal precision equals the row value. One row needed this: pairs_20260707T154345Z#19 prob_clinical row=0.382 vs trace=0.3815 (row stored at 3 decimals; half-up rounding gives 0.382) \u2014 treated as a match, not a data mismatch.",
+  "mean_penalty_pp computed as 100 * mean over 677 phrase-level penalties = -4.903, reported to 1 decimal as -4.9.",
+  "Incidental exposure: urgency_shift.json contains a collector 'summary' block that printed while inspecting the schema; it is not one of the forbidden *stats* outputs, and all reported numbers were recomputed independently from the raw rows (its row-level per-model block is neither deduped nor phrase-voted, so it could not supply the deduped answers)."
+ ],
+ "sample_check": {
+  "n_sampled": 15,
+  "n_matched": 15,
+  "mismatches": []
+ }
+}

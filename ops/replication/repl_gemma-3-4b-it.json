@@ -1,0 +1,20 @@
+{
+ "model": "gemma-3-4b-it",
+ "n_phrases": 682,
+ "mean_penalty_pp": -4.6,
+ "downgrades": 42,
+ "upgrades": 8,
+ "choices": [
+  "Holdout rule implemented exactly as: exclude a row iff it carries a Tier B split marker (tierb_split field present) AND int(sha1(clinical_prompt.encode('utf-8')).hexdigest(),16) % 10 == 0; this excluded 56 of 762 gemma-3-4b-it rows. The computed hash agreed with the stored tierb_split label on all 507 split-labeled rows (0 disagreements). Per preregistration_tierB.md Amendment 1 the split is defined only for Tier B pairs, so the 255 Tier A rows (no tierb_split field) were not subject to the holdout even though 23 of them hash to 0 \u2014 they were retained.",
+  "Penalty quantity: used each row's full-precision language_penalty field, which I verified against the original trace outputs to equal p(clinical target token | patient wording) - p(clinical target token | clinical wording) \u2014 exactly the methodology's formula. 'Clinical next word' is the pair's designated clinical target token (trace field target_token), not the argmax token. Sign reported as written: negative means the clinical continuation loses probability under patient wording (a drop of 4.6 pp on average); a published table showing the penalty as a positive drop would be +4.6.",
+  "Deduplication: phrase key = exact clinical_prompt string; per-phrase probability/penalty = mean of duplicate rows (682 phrases from 706 kept rows; 24 phrases had 2 rows each); mean_penalty_pp = unweighted mean over phrases of the per-phrase mean language_penalty x 100, rounded to 1 decimal.",
+  "Flip direction: majority vote on the per-row flip_class field (the collector's downgrade/upgrade/lateral/uninformative classification), phrase-deduped. Ties with no strict majority were left unclassified: 2 phrases tied ('uninformative' vs None, and 'uninformative' vs 'downgrade'); the latter is therefore NOT counted as a downgrade. Row-level kept counts were 47 downgrades / 8 upgrades; phrase-level 42/8 (4 duplicate downgrade-downgrade pairs collapsed, 1 downgrade lost to the tie).",
+  "Join: clinical_prompt text is carried per-row in urgency_shift.json, so no external join to simulated_scenarios.json or batch files was needed; trace prompts.clinical matched the row's clinical_prompt for every sampled row.",
+  "Sample check procedure: random.Random(42).sample over the alphabetically sorted deduped holdout-excluded phrase list; for each sampled phrase every constituent row was checked against trace_out/<batch>__gemma-3-4b-it/batch_summary*.json joined on results[]['index']; row p_top_clinical/p_top_patient compared to the trace's top predictive_spread entries rounded to 3 decimals (tolerance 5e-4), and row language_penalty compared to trace language_penalty as an extra check. All 15 sampled phrases were singletons (15 rows checked)."
+ ],
+ "sample_check": {
+  "n_sampled": 15,
+  "n_matched": 15,
+  "mismatches": []
+ }
+}

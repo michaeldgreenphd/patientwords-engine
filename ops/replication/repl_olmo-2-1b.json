@@ -1,0 +1,23 @@
+{
+ "model": "olmo-2-1b",
+ "n_phrases": 122,
+ "mean_penalty_pp": -7.2,
+ "downgrades": 9,
+ "upgrades": 1,
+ "choices": [
+  "Population: 122 rows with model=='olmo-2-1b' in /home/user/patientwords-engine/urgency_shift.json (119 from Tier A batch pairs_20260707T171223Z, 3 from Tier B batch pairs_20260710T011743Z; backend=logits, hf_id allenai/OLMo-2-0425-1B).",
+  "Holdout rule implemented exactly as: int(hashlib.sha1(clinical_prompt.encode('utf-8')).hexdigest(),16) % 10 == 0 -> holdout. Scoped to Tier B pairs only, because preregistration_tierB.md Amendment 1 says 'every Tier B pair is assigned to an analysis split'; Tier A (pre-registration) pairs are not covered by the sealed split. Implementation validated by reproducing all 2037 committed tierb_split values in the row file with 0 disagreements.",
+  "Under that scope 0 olmo-2-1b phrases are holdout (its 3 Tier B rows all hash to explore), so n=122. Alternative reading (hash applied to all phrases incl. Tier A) would exclude 11 phrases giving n=111, mean penalty -6.7pp, same 9 downgrades / 1 upgrade; not used, per prereg scope.",
+  "Dedup/majority-vote collapse was a no-op: all 122 clinical_prompt strings are unique for this model (no re-traces), so mean-of-duplicate probabilities and majority-vote flip direction had nothing to collapse.",
+  "Penalty: used per-row language_penalty, verified in the sample check to equal probabilities.patient - probabilities.clinical of the clinical target token in the original trace files (matches the written definition: prob of clinical next word under patient wording minus under clinical wording). Mean = -0.07234 -> -7.2 pp.",
+  "Downgrades/upgrades: used the per-row flip_class classification field already present (values downgrade/upgrade/lateral/uninformative/None), counted over the phrase-deduped set.",
+  "Row file schema note: the probability fields are named p_top_clinical/p_top_patient (top-token probabilities, 3-decimal roundings of predictive_spread tops in the traces), not literal prob_clinical/prob_patient; the clinical-target probabilities appear in rows only via language_penalty (4-decimal). Sample check therefore verified p_top_clinical, p_top_patient, language_penalty, and top-token identity per row.",
+  "Sample selection: random.Random(42).sample(phrases, 15) over the 122 deduped, holdout-excluded phrases in row-file order.",
+  "Match criterion: row value must equal the trace value rounded to the row's stored precision (3dp for top probs, 4dp for penalty), accepting either half-rounding direction; 5 initial apparent mismatches were exactly-0.0005 rounding-boundary artifacts (e.g. trace 0.0455 stored as 0.045) and resolved under the rounding-aware check."
+ ],
+ "sample_check": {
+  "n_sampled": 15,
+  "n_matched": 15,
+  "mismatches": []
+ }
+}
