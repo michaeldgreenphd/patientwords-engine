@@ -108,6 +108,16 @@ Priority order when slots are free:
    window sensitivity (`scripts/jlens_position_scan.py`, referee item 7)
    run only on responses saved raw. A batch is unmeasured if
    `trace_out/<batch>__jlens_gemma-2-2b/` is absent. Chain, never stack.
+3c2. **Translated-corpus lens at scale** (owner standing direction,
+   2026-07-14): after Tier B batch pulls are current, fill idle jlens slots
+   with txcorpus chunks (`pairs_file` the txcorpus batch, `limit` `25`,
+   `save_raw` `true`) until the whole corpus has translated-side depth
+   profiles. Track progress by part files under
+   `trace_out/txcorpus_<stamp>__jlens_gemma-2-2b/`. Likewise fill idle
+   circuit-trace slots with txcorpus chunks for the consequential subset
+   (phrases where translation changes the top prediction, from
+   ops/translation_scale.json) - Tier B and the sentinel always outrank
+   these fills.
 3d. **Lens sentinel** ($0, daily, started 2026-07-14): after the day's
    circuit sentinel alias exists (step 3b), fire jlens-readout on the same
    `data/simulated/drift_sentinel_<YYYYMMDD>.json` with `models`
