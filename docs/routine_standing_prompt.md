@@ -97,6 +97,17 @@ Priority order when slots are free:
    `sample_size` `3`, `offsets` `0`, `commit_outputs` `true`. After it lands,
    run `python scripts/drift_sentinel.py` and carry its verdict line into the
    brief. DRIFT verdicts go in the digest headline, not just the brief body.
+3c. **Per-batch lens readout** ($0, jlens-readout slot free): every Tier B
+   batch gets a hosted lens pull once its pairs file is on the branch:
+   `models` `gemma-2-2b`, `topn` `8`, `commit_outputs` `true` (add
+   `gemma-2-2b-it` only for tuning-comparison pulls). A batch is unmeasured
+   if `trace_out/<batch>__jlens_gemma-2-2b/` is absent. Chain, never stack.
+3d. **Lens sentinel** ($0, daily, started 2026-07-14): after the day's
+   circuit sentinel alias exists (step 3b), fire jlens-readout on the same
+   `data/simulated/drift_sentinel_<YYYYMMDD>.json` with `models`
+   `gemma-2-2b,gemma-2-2b-it`, `topn` `8` - the internals-drift watch that
+   pairs with the output-drift watch. Compare formation depths against the
+   day-1 baseline (2026-07-14) in the brief when they move.
 4. **Idle-queue filler** (owner-approved 2026-07-09, lowest priority — only
    when Tier B has no pending generation/tracing work for a slot): trace the
    already-generated sociolect round-2 batch
