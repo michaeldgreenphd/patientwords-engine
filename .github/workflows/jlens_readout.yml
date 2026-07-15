@@ -207,9 +207,14 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Jlens readout: $OUT_DIR (${{ matrix.model }}, hosted lens depth profiles)"
           for i in 1 2 3 4 5; do
-            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+            # -X theirs: during rebase "theirs" is the run's own commit, so a
+            # shared status file (jlens_probe.json) resolves last-writer-wins
+            # instead of stranding the measured outputs on the runner (chunk-3
+            # loss, 2026-07-15). Part files have unique names and never conflict.
+            if git pull --rebase -X theirs origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
               exit 0
             fi
+            git rebase --abort 2>/dev/null || true
             sleep $((i * 2))
           done
           exit 1

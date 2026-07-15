@@ -169,9 +169,14 @@ jobs:
           git add -f "$OUT_DIR/batch_summary.$PART.json"
           git commit -m "Logits eval: $OUT_DIR (${{ matrix.model }}, next-token behavior)"
           for i in 1 2 3 4 5; do
-            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+            # -X theirs: during rebase "theirs" is the run's own commit, so a
+            # shared status file resolves last-writer-wins instead of stranding
+            # the measured outputs on the runner (jlens chunk-3 loss, 2026-07-15).
+            # Part files have unique names and never conflict.
+            if git pull --rebase -X theirs origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
               exit 0
             fi
+            git rebase --abort 2>/dev/null || true
             sleep $((i * 2))
           done
           exit 1

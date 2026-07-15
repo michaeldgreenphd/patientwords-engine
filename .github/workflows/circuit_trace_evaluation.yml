@@ -309,10 +309,14 @@ jobs:
           git commit -m "Trace outputs: $OUT_DIR pairs starting at ${START} (${{ matrix.model }}, ${{ fromJson(needs.params.outputs.config).mode }})"
           PUSHED=0
           for i in 1 2 3 4 5; do
-            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+            # -X theirs + abort guard: same conflict seam as the jlens chunk-3
+            # loss (2026-07-15); the run's own outputs win, unique part names
+            # never conflict.
+            if git pull --rebase -X theirs origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
               PUSHED=1
               break
             fi
+            git rebase --abort 2>/dev/null || true
             sleep $((i * 2))
           done
           [ "$PUSHED" -eq 1 ]
