@@ -10,36 +10,11 @@
   "scenario-generation": "batch-12 generation running (coverage-steered, $0.50 ceiling)"
  },
  "runs_recent": [
-  {
-   "workflow": "circuit_trace_evaluation",
-   "fired_utc": "2026-07-09T18:47:02Z",
-   "status": "in_progress",
-   "note": "haiku batch-2 re-fire after eviction; equivalence n for tonight's go/no-go"
-  },
-  {
-   "workflow": "circuit_trace_evaluation",
-   "fired_utc": "2026-07-09T13:51:00Z",
-   "status": "success",
-   "note": "haiku-arm filler: 5 flaked pairs landed (downgrades_txhaiku complete)"
-  },
-  {
-   "workflow": "circuit_trace_evaluation",
-   "fired_utc": "2026-07-09T11:55:00Z",
-   "status": "failure",
-   "note": "second haiku batch EVICTED by the filler third-push (queue-discipline seam); re-fired"
-  },
-  {
-   "workflow": "circuit_trace_evaluation",
-   "fired_utc": "2026-07-09T11:52:00Z",
-   "status": "success",
-   "note": "haiku-translator arm: 15/20 landed (5 tracer-flake), paired recovery within noise of opus"
-  },
-  {
-   "workflow": "circuit_trace_evaluation",
-   "fired_utc": "2026-07-09T11:55:00Z",
-   "status": "pending",
-   "note": "second haiku batch trace, screened 0.02"
-  }
+  "sentinel day 3 + batch-10 trace (circuit)",
+  "batch-10 lens + lens sentinel day 2 (jlens)",
+  "batch-11 logits pending; txcorpus chunk 2 in progress",
+  "batch-12 generation ($0.50)",
+  "landed since yesterday: batch-9 lens complete, steering pilot 27/27 items, fresh titration 4 doses, priority traces 50, txcorpus translation 1031/1031 ($0.20)"
  ],
  "spend": {
   "generation_ceiling_usd": 8.0,
@@ -199,80 +174,8 @@
  ],
  "findings_delta": [
   {
-   "date": "2026-07-09",
-   "text": "haiku generator evidence complete: validator yield 76% vs opus 60%, screen-in 55% vs 48%, penalty at least as strong; translator arm tracing now"
-  },
-  {
-   "date": "2026-07-09",
-   "text": "run 64 complete: haiku translation recovery within noise of opus (paired diff -0.031\u00b10.205); 5 pairs lost to tracer flake, filler re-trace fired; awaiting run 65 (equivalence n) + gemma-3 stem 3"
-  },
-  {
-   "date": "2026-07-09",
-   "text": "Blind owner QC (20 pairs): 15 sound / 2 unsure / 3 flawed. All flaws are flips (condition-drift on patient side) but all low-signal (pen -0.02/-0.09/unmeasured, none confident downgrades) \u2014 headline downgrade claim insulated. Recorded docs/stimulus_qc_v1.json."
-  },
-  {
-   "date": "2026-07-09",
-   "text": "Checkpoint 1: infra all green (191 tests), Rmd delivered, gemma-3 4/4 stems in. Run 65 was evicted by a third-push (ops seam, now documented + mitigated), re-fired clean."
-  },
-  {
-   "date": "2026-07-09",
-   "text": "Autonomy batch 1: skeptic audit found a live dialect-page factual contradiction (fixed) and a synthesis overstatement (gemma-3 'p=0.039 significant' was actually p=0.12 NOT significant; gemma-2 downgrades 25 deduped not 67 pooled) \u2014 reconciled via new paired_stats_rigor.py. Tier label now discloses owner-review + clinician-pending. Report: docs/skeptic_read_20260709.md."
-  },
-  {
-   "date": "2026-07-09",
-   "text": "Batch 2 live: site shows phrase-deduped counts (gemma-2 26v4 replaces pooled 78); 9-model registry ready; activation-patching CI wired + smoke fired; B4 designs pre-registered. Synthesis reconciled to committed record (26v4, p 6e-5)."
-  },
-  {
-   "date": "2026-07-10",
-   "text": "GO executed: start_utc stamped, batch 1 fired+landed (50 pairs, 67.6%, $0.0816). Run-67 harvest found 2 chunks truncated by a ~45-min step timeout (10 of 50 batch-2 pairs); $0 gap-fill fired chunked at 5 (part_26 already landed). Run 14 (gemma-3 stem-3, 119 pairs) died to the 4h workflow timeout - logits_eval now supports --offset chunking; two chunks in flight. Synthesis header corrected: gemma-3 n=133 covers 3 of 4 pair batches, not 'all four' (committed numbers unchanged). Patching smoke OOM chain diagnosed: TL fp32 conversion peak; loader hardened (bf16 hf_model + no_processing) + 12G swap in workflow; smoke attempt 3 in flight. Daily Routine created (trig_01VXhhGaCorFodHP4bicKpSM, 13:00 UTC)."
-  },
-  {
-   "date": "2026-07-10",
-   "text": "Critic run 1 (05:00): gemma-3 stem-3 landed (119/119 via offset chunks) -> its downgrade asymmetry flipped to SIGNIFICANT (22v5, q=0.002, n=240); synthesis + site data updated. gemma-2 now 27v5 (n=292). Batch-2 trace complete (49/50; 1 tracer flake). Tier B: batch 2 generating, batch-1 trace running (10x5 chunks). Holdout split implemented + tested pre-data. Rigor stale-input hazard documented (collector must run before rigor)."
-  },
-  {
-   "date": "2026-07-10",
-   "text": "Patching unblocked: smoke 3 logs show the swap fix worked (model loads clean); remaining failure was a transformer-lens to_str_tokens raw-string bug, fixed with a regression test; smoke 4 in flight. Tier B batch-1 trace chunks landing. Critic run 2 armed for 05:00 UTC."
-  },
-  {
-   "date": "2026-07-10",
-   "text": "Daily cycle (13:3x, run in-session - Routine rebound here after the fresh-session push misdirect): batches 1-3 landed (150 accepted; yields 67.6/78.1/60.2%), batch-1 FULLY measured (trace 50/50 + 4-model logits), batch-2 trace 48/50 + 3/4 logits (qwen3-4b finishing), batch 4 + batch-3 trace fired. Patching smoke #4 SUCCESS. All-model asymmetry strengthening on the exploration split."
-  },
-  {
-   "date": "2026-07-10",
-   "text": "Afternoon cycle (16:4x): batch 4 landed (50 accepted, 80.6% yield - best yet; batch-3 dip was noise). Tier B 200/1600, $0.32/$8. Batch-3 trace 47/50 (3 flakes), batch-2 logits complete on all four models. Fired: batch 5 gen, batch-4 trace, batch-3+4 logits (running+pending). Site data republished (437 tierB rows, 64 holdout). Owner shipped a day of site work: methods rewrite, comparison tab, Start Here cycle framework + layer track; Friday dissemination package armed (outline + meeting deck)."
-  },
-  {
-   "date": "2026-07-11",
-   "text": "Critic run 2 (05:00): overnight all clean - batch-4 trace 50/50, batch-3+4 logits complete, batch 5 landed (65.8%). Tier B 250/1600, $0.41/$8, 800 rows (104 sealed). Fired: batch 6, batch-5 trace+logits, the 5-MODEL PROBE (llama/olmo/biomistral/gemma-it/gemma-9b), and B1 recovery-grid chunk 1 (downgrade pairs 1-4). Penalty-mean dilution noted as expected; asymmetry (primary endpoint) strengthening."
-  },
-  {
-   "date": "2026-07-11",
-   "text": "Routine cycle (13:1x): PROBE 3/5 LANDED - llama-3.2-3b, olmo-2-1b, gemma-2-2b-it all measure cleanly (pipeline validated; full runs are the critic's next queue); biomistral-7b + gemma-2-9b missing (likely RAM/timeout - critic triages, swap fix candidate). RECOVERY GRID chunk 1 landed: pairs 1,3,4 peak recovery 1.0-1.9 at layers 25/7/21; pair 2 exposed the anticipated inverted-denominator case - aggregator gets the screen rule. Tier B 300/1600 (batch 6: 74.6%), $0.48/$8, 1009 rows (128 sealed). Site copy now floors probe models (n>=30) off the public comparison page."
-  },
-  {
-   "date": "2026-07-11",
-   "finding": "J-lens hosted readout live (owner request 07-11): Neuronpedia serves the Jacobian lens for gemma-2-2b and gemma-2-2b-it (other 7 matrix ids 500/unserved; re-probe as they expand). Probe pair 1: patient phrasing delays the target reaching rank-1 readout by 2 layers. Probe pair 2: concept readable layers 19-24 under clinical phrasing then lost at the output layer; never readable under patient phrasing. Full batch-6 pull (50 pairs, both models) fired 15:25 UTC. Draft owner visual due 18:20 UTC wake. See docs/jlens_evaluation.md 5b."
-  },
-  {
-   "date": "2026-07-12",
-   "finding": "Critic run 3: batch 6 fully joined (four models n~500, all penalty CIs exclude zero; downgrades 35 vs 5, q~0). P3 patching aggregation live: recovery concentrates in deep layers (0.15@L0 to ~1.0@L22-25, n=3, inverted pair auto-screened). Probes: llama/olmo/gemma-it landed; biomistral/9B retry fired with new swap step. Fired: batch-8 gen, batch-7 trace+logits+lens, J5 mitigation arm, patch chunk 2. See docs/critic/critic_20260712.md."
-  },
-  {
-   "date": "2026-07-12",
-   "finding": "Owner choices executed: gallery republished (527 scenarios, 24 depth badges live, render archive firing); prereg Amendment 2 DRAFT committed (depth endpoints, pending owner approval); Neuronpedia aliasing issue drafted with prefill URL (ops/neuronpedia_issue_prefill.txt, owner posts); Friday deck gains the collaboration card (trigger recreated: trig_01H6mPa1Bnb27h9yzY9ADQnD); demo walk cue at ops/decks/demo_walk_cue_20260712.md. Parked by owner: monitoring-loop pitch card, screen capture. Q1/Q5/Q6 defaults confirmed."
-  },
-  {
-   "date": "2026-07-13",
-   "delta": "Three-arm translation on same 15 pairs: haiku 0.0905 / opus 0.1017 / placebo 0.0332 tiers regained (specificity shown). Retrace determinism 52/52. P3 deep-layer replicates n=7 (6/7 best layer >=13, 6/7 downstream). Batch-7 depth: 34/5/11. Emergency set round 1: 2/20 accepted, round 2 fired."
-  },
-  {
-   "date": "2026-07-13",
-   "text": "A3 weekly synthesis deep-refresh drafted (docs/findings_synthesis_DRAFT_20260713.md, owner rewrites in own voice; released synthesis untouched). Headline deltas vs release: penalties at n=540-553 phrases/model are -0.034..-0.060 (roughly half the n=132 estimates, all CIs exclude zero); asymmetry 47v11 / 35v7 / 36v5 / 33v10 all q<=6e-4; three-arm translation verified on 15 joined pairs (haiku 0.091 / opus 0.102 / placebo 0.033 - ~2/3 of benefit is clinical vocabulary); patching localizes decision late (best layer >=13 in 6/7, downstream site 6/7); instrument deterministic 52/52 at recorded precision. Every number recomputed from committed artifacts this cycle."
-  },
-  {
-   "date": "2026-07-13",
-   "text": "Probe models crossed the 30-phrase site floor (unified 122-phrase runs): llama-3.2-3b and olmo-2-1b now show the penalty with CIs excluding zero - four model families total. Batch 10 landed (100 accepted, 71% yield, $0.173; Tier B 600/1600). Emergency round 2 generated 7/11 but LOST its archive to a push race (spend $0.397 recorded via reconstructed sidecar); workflow race fixed (rebase-retry), artifact bloat fixed (was 4.4GB/run), round 2b re-fired. MedGemma HAI-DEF gate accepted by owner; medgemma-4b-it wired (registry+matrix+provenance) and probe fired."
+   "date": "2026-07-14",
+   "finding": "Steering pilot complete: hijack-class pairs all recover at strength 0.5+ but capture-class pairs recover identically - no class separation in additive steering at any dose; only the swap arm hints at one. Translation AT SCALE diverges from the curated set: gemma-3-4b-it corpus-random n=154 recovers just +0.5pp (49% helped, 27 tops restored vs 24 broken) while gemma-2-2b downgrade-source traces n=17 recover +8.9pp (8/0 tops). Lens recovery live on the translation page: 6 of 16 never-formed phrases form under translation."
   }
  ],
  "decisions_pending": [
