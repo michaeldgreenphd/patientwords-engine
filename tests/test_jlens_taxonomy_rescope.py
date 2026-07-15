@@ -175,3 +175,22 @@ def test_unresolvable_steer_token_is_item_level(tmp_path, monkeypatch):
     assert summary["results"][1].get("steer_unresolvable") is None
     probe = json.loads((out / "jsteer_probe.json").read_text())
     assert probe["steering_supported"] is True
+
+
+def test_insights_census_skips_txcorpus_lens_dirs(tmp_path):
+    # translated-side lens profiles must never enter the patient formation
+    # census (2026-07-15): the census would count haiku rewrites as patient
+    # wordings.
+    troot = tmp_path / "trace_out"
+    def mk(stem):
+        d = troot / f"{stem}__jlens_gemma-2-2b"
+        d.mkdir(parents=True)
+        (d / "jlens_summary.part_01.json").write_text(json.dumps({"results": [
+            {"index": 1, "parse_status": {"clinical": "ok", "patient": "ok"},
+             "depth": {"clinical": [{"layer": 0, "target_rank": 1}],
+                       "patient": [{"layer": 0, "target_rank": 1}]}}]}))
+    mk("pairs_20260711T000000Z")
+    mk("txcorpus_priority2_20260714T224455Z")
+    per = ji.collect(troot)
+    stems = {r["dataset"] for rows in per.values() for r in rows}
+    assert stems == {"pairs_20260711T000000Z"}
