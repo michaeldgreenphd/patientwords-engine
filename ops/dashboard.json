@@ -227,6 +227,11 @@
   "blockers": [],
   "notes": "SENTINEL DAY 3 (post-13:00): first instrument movement. Circuit-tracer probabilities shifted on all 3 sentinel pairs (max |dp| 0.027 at pair 2 patient; days 1-2 were identical to 3 decimals). Settings byte-identical, so the change is server-side. Every top word held; only rank-4/5 near-ties reordered. Lens readouts unchanged day over day (alias also unchanged), so the movement is confined to the tracer probability path. Paired penalty moved at most 2.1pp on the sentinel. Methods repeatability note corrected (owner informed), drift series published to the site with 2 manifest guards, drift_sentinel.py now records top-word stability. Instrument boundary 07-14/07-15 noted for any cross-day pooling. 13:00 cycle 2026-07-15: harvest complete (lens census 273 pairs w/ txcorpus guard: 27 capture/20 hijack/68 unreadable/158 held; urgency site copy 3329 rows; scale numbers live on the translation page: gemma-2-2b n=17 +8.9pp 8/0 tops, gemma-3 n=154 +0.5pp 27/24, lens recovery 6/16). Steering pilot COMPLETE: no additive class separation at any dose (0.05-2.0); swap arm hint only (hijack 21/24 v capture 3/6, capture truncated to n=3 by multi-wordpiece targets). Fresh-titration dose ladder complete (harvest next cycle). Fired: sentinel day 3, batch-10 trace+lens, batch-11 logits, batch-12 gen ($0.50). Lens chunking at 25 standard after two 429 deaths. txcorpus logits chunk 1 cancelled at 6h - re-chunk at 150 next slot. GitHub MCP re-authed mid-morning; Actions visibility restored.",
   "decisions_log": [
+  {
+   "date": "2026-07-15",
+   "by": "owner (chat, afternoon)",
+   "decision": "Fig. 1 (wording page): OPTION A, keep the inhaler pair (scenario 85) - still the record single-model penalty (-65pp) of all 369 traced; the anxiety (4/4 models to ' doctor') and angina candidates stay as documented runners-up. Owner commissioned NEW RUNS for the other two figures: (1) grammar 2x2 expansion - 10 fresh quadrant frames generated (opus, $0.25 ceiling, topics steered cardio/mental-health/asthma/reflux/sleep), trace to follow; (2) dialect round-2 batch (20 baselines x 8 framings + baselines = 180 graphs) promoted from idle filler to the trace queue, chunked at 5 items. Goal: rank both by how much the top answers move under the swap and deliver a top-10 set the owner can toggle through before choosing what the pages display. Pages untouched until the owner picks."
+  },
     {
       "date": "2026-07-12",
       "decision": "Owner: 'go 100'. Tier B generation moves to num=100 per daily fire (max_spend 0.50) from batch 9 onward; overall $8 generation ceiling unchanged."
@@ -298,6 +303,12 @@
     }
   ],
   "queued_next": [
+    {
+      "trigger": "circuit-trace",
+      "label": "dialect-r2-chunks-2-4 + quadrants-trace",
+      "note": "Owner request 2026-07-15: dialect round-2 chunks 2-4 (offsets 5,10,15, sample_size 5) chain after chunk 1; the new quadrants batch traces in 4quadrant mode once generation lands (interleave: quadrants trace after dialect chunk 2 so both pages get material). These outrank txcorpus fills until landed.",
+      "blocked_by": "batch-10 trace running + dialect chunk 1 pending"
+    },
     {
       "trigger": "logits-eval",
       "label": "txcorpus-logits-rechunk",
