@@ -57,6 +57,75 @@ def _tops(r):
     return top_c, top_p
 
 
+PERSISTENCE = 2  # consecutive readable layers = formation (adopted 2026-07-14)
+
+
+def _formation(layers, persistence=PERSISTENCE):
+    """First layer where the target stays readable for `persistence` layers;
+    same rule as jlens_insights.formation_layer (kept in sync by test)."""
+    ranks = [rec.get("target_rank") for rec in layers]
+    run = 0
+    for i, r in enumerate(ranks):
+        run = run + 1 if r is not None else 0
+        if run >= persistence:
+            return layers[i - persistence + 1]["layer"]
+    return None
+
+
+def _lens_profiles(trace_root: Path, stem_prefix: str) -> dict:
+    """{(stem, index): {'formed': layer|None}} from landed lens summaries
+    (gemma-2-2b, patient/translated side = the summary's 'patient' profile)."""
+    out = {}
+    for part in sorted(trace_root.glob(f"{stem_prefix}*__jlens_gemma-2-2b/jlens_summary.part_*.json")):
+        stem = part.parent.name.split("__jlens_")[0]
+        data = json.loads(part.read_text(encoding="utf-8"))
+        for r in data.get("results", []):
+            status = r.get("parse_status")
+            if isinstance(status, dict) and any(v != "ok" for v in status.values()):
+                continue
+            pat = (r.get("depth") or {}).get("patient") or []
+            if pat:
+                out[(stem, r["index"])] = {"formed": _formation(pat)}
+    return out
+
+
+def lens_recovery(trace_root: Path, simulated_dir: Path) -> dict:
+    """Formation-depth recovery: for corpus sentences read by the lens under
+    BOTH wordings (patient side via the source batch's regular pull,
+    translated side via a txcorpus pull), did translation move the answer
+    from never-forms to forms? EXPLORATORY (pre-A2 phrases)."""
+    src_lens = _lens_profiles(trace_root, "pairs_")
+    tx_lens = _lens_profiles(trace_root, "txcorpus_")
+    if not tx_lens:
+        return {"n_paired": 0, "_": "no translated-side lens readouts landed yet"}
+    joined = []
+    for corpus_path in sorted(simulated_dir.glob("txcorpus_*.json")):
+        if corpus_path.name.endswith(".report.json"):
+            continue
+        corpus = json.loads(corpus_path.read_text(encoding="utf-8"))
+        cstem = corpus_path.stem
+        for i, pair in enumerate(corpus, start=1):
+            gen = pair.get("generation") or {}
+            tx = tx_lens.get((cstem, i))
+            src = src_lens.get((gen.get("source_batch"), gen.get("source_index")))
+            if tx is None or src is None:
+                continue
+            joined.append({"patient_formed": src["formed"], "translated_formed": tx["formed"]})
+    never = [j for j in joined if j["patient_formed"] is None]
+    return {
+        "_": ("Lens view of translation, gemma-2-2b, EXPLORATORY (phrases predate "
+              "amendment 2 adoption): formation = readable for 2 consecutive layers "
+              "in the top-8 window, per the adopted counting rules."),
+        "n_paired": len(joined),
+        "patient_never_formed": len(never),
+        "recovered_to_formed": sum(1 for j in never if j["translated_formed"] is not None),
+        "formed_both": sum(1 for j in joined
+                           if j["patient_formed"] is not None and j["translated_formed"] is not None),
+        "lost_by_translation": sum(1 for j in joined
+                                   if j["patient_formed"] is not None and j["translated_formed"] is None),
+    }
+
+
 def analyze(trace_root: Path, simulated_dir: Path) -> dict:
     corpora = sorted(simulated_dir.glob("txcorpus_*.json"))
     corpora = [c for c in corpora if not c.name.endswith(".report.json")]
@@ -128,15 +197,26 @@ def main() -> int:
     parser.add_argument("--trace-root", default=str(ENGINE / "trace_out"))
     parser.add_argument("--simulated-dir", default=str(ENGINE / "data/simulated"))
     parser.add_argument("--out", default=str(ENGINE / "ops/translation_scale.json"))
+    parser.add_argument("--site", default=None,
+                        help="site repo root; also writes data/translation_scale.json there")
     args = parser.parse_args()
     result = analyze(Path(args.trace_root), Path(args.simulated_dir))
+    result["lens_recovery"] = lens_recovery(Path(args.trace_root), Path(args.simulated_dir))
     Path(args.out).write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
     for model, s in result["per_model"].items():
         print(f"{model}: n={s['n']} mean recovery {s['mean_recovery']:+.4f} "
               f"(positive {s['share_recovery_positive']:.0%}) "
               f"gap closed {s['mean_gap_closed']} "
               f"top restored {s['top_restored']} / lost {s['top_lost']}")
+    lr = result["lens_recovery"]
+    if lr.get("n_paired"):
+        print(f"lens: {lr['recovered_to_formed']} of {lr['patient_never_formed']} "
+              f"never-formed phrases now form; {lr['lost_by_translation']} lost")
     print(f"-> {args.out}")
+    if args.site:
+        site_copy = Path(args.site) / "data" / "translation_scale.json"
+        site_copy.write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
+        print(f"site copy -> {site_copy}")
     return 0
 
 

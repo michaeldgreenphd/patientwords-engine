@@ -103,3 +103,50 @@ def test_translation_scale_join_and_metrics(tmp_path):
     assert abs(s["mean_recovery"] - 0.3) < 1e-9          # 0.4 translated vs 0.1 patient
     assert abs(s["mean_gap_closed"] - 0.75) < 1e-9       # 0.3 recovered of the 0.4 gap
     assert s["top_restored"] == 1 and s["top_lost"] == 0
+
+
+def test_lens_recovery_join(tmp_path):
+    sim = tmp_path / "simulated"
+    sim.mkdir()
+    _write_batch(sim, "txcorpus_20260715T000000Z", [
+        {"top_prompt": "CL1", "bottom_prompt": "TR1",
+         "generation": {"source_batch": "pairs_20260711T000000Z", "source_index": 3}},
+        {"top_prompt": "CL2", "bottom_prompt": "TR2",
+         "generation": {"source_batch": "pairs_20260711T000000Z", "source_index": 4}},
+    ])
+    troot = tmp_path / "trace_out"
+
+    def lens_dir(stem, results):
+        d = troot / f"{stem}__jlens_gemma-2-2b"
+        d.mkdir(parents=True)
+        (d / "jlens_summary.part_01.json").write_text(json.dumps({"results": results}))
+
+    def prof(ranks):
+        return [{"layer": i, "target_rank": r} for i, r in enumerate(ranks)]
+
+    # patient side: index 3 never forms; index 4 forms (two consecutive layers)
+    lens_dir("pairs_20260711T000000Z", [
+        {"index": 3, "parse_status": {"clinical": "ok", "patient": "ok"},
+         "depth": {"patient": prof([None, None, 5, None])}},
+        {"index": 4, "parse_status": {"clinical": "ok", "patient": "ok"},
+         "depth": {"patient": prof([None, 2, 2, 1])}},
+    ])
+    # translated side: index 1 (source 3) forms -> recovered; index 2 (source 4) lost
+    lens_dir("txcorpus_20260715T000000Z", [
+        {"index": 1, "parse_status": {"clinical": "ok", "patient": "ok"},
+         "depth": {"patient": prof([None, 3, 3, 1])}},
+        {"index": 2, "parse_status": {"clinical": "ok", "patient": "ok"},
+         "depth": {"patient": prof([None, None, 7, None])}},
+    ])
+    out = ts.lens_recovery(troot, sim)
+    assert out["n_paired"] == 2
+    assert out["patient_never_formed"] == 1
+    assert out["recovered_to_formed"] == 1
+    assert out["lost_by_translation"] == 1
+
+
+def test_formation_rule_matches_insights():
+    ji = _load("jlens_insights")
+    for ranks in ([None, 3, None], [None, 4, 4, None], [1, 1, 1], [None] * 4):
+        layers = [{"layer": i, "target_rank": r} for i, r in enumerate(ranks)]
+        assert ts._formation(layers) == ji.formation_layer(layers)
