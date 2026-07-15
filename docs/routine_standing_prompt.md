@@ -95,8 +95,10 @@ Priority order when slots are free:
    `data/simulated/drift_sentinel_<YYYYMMDD>.json` (no sidecar - $0 alias),
    commit, and fire circuit-trace on it when a slot is free: mode `2panel`,
    `sample_size` `3`, `offsets` `0`, `commit_outputs` `true`. After it lands,
-   run `python scripts/drift_sentinel.py` and carry its verdict line into the
-   brief. DRIFT verdicts go in the digest headline, not just the brief body.
+   run `python scripts/drift_sentinel.py --site ../patientwords` and carry its
+   verdict line into the brief (the site copy feeds the methods repeatability
+   note and its manifest guards since 2026-07-15, the first movement day).
+   DRIFT verdicts go in the digest headline, not just the brief body.
 3c. **Per-batch lens readout** ($0, jlens-readout slot free): every Tier B
    batch gets a hosted lens pull once its pairs file is on the branch:
    `models` `gemma-2-2b`, `topn` `8`, `save_raw` `true`, `commit_outputs`

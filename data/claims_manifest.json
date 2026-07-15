@@ -144,7 +144,7 @@
   },
   {
    "page": "wording-differences/index.html",
-   "snippet": "−65% probability (0.69 → 0.04)",
+   "snippet": "\u221265% probability (0.69 \u2192 0.04)",
    "source": "data/simulated_scenarios.json",
    "expr": "[round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_clinical'],2), round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_patient'],2)]",
    "expected": [
@@ -205,7 +205,7 @@
   },
   {
    "page": "methods.html",
-   "snippet": "[−6.9, −0.2], on 119 phrases",
+   "snippet": "[\u22126.9, \u22120.2], on 119 phrases",
    "source": "data/model_stats.json",
    "expr": "[round(d['per_model']['medgemma-4b-it']['penalty']['mean']*100,1), round(d['per_model']['medgemma-4b-it']['penalty']['ci95'][0]*100,1), round(d['per_model']['medgemma-4b-it']['penalty']['ci95'][1]*100,1), d['per_model']['medgemma-4b-it']['penalty']['n_phrases']]",
    "expected": [
@@ -256,7 +256,7 @@
   },
   {
    "page": "index.html",
-   "snippet": "0.45 after translation (clinical baseline 0.26) · July 7 trace",
+   "snippet": "0.45 after translation (clinical baseline 0.26) \u00b7 July 7 trace",
    "source": "data/provenance.json",
    "expr": "round(d['translation_cases']['grandma_laxative']['translated'][1],2)",
    "expected": 0.45
@@ -268,6 +268,22 @@
    "expr": "d['emergency_sets']['accepted_pairs']",
    "expected": 7,
    "_": "maintain-list item updated 2026-07-14: rounds paused, landed pairs being measured"
+  },
+  {
+   "page": "methods.html",
+   "snippet": "at most 0.027 across the",
+   "source": "data/drift_series.json",
+   "expr": "round(next(x for x in d['deltas'] if x['date']=='20260715')['max_abs_delta'],3)",
+   "expected": 0.027,
+   "_": "first sentinel movement, recorded 2026-07-15; pinned to the 07-15 delta so later days do not shift it"
+  },
+  {
+   "page": "methods.html",
+   "snippet": "every top word held",
+   "source": "data/drift_series.json",
+   "expr": "next(x for x in d['deltas'] if x['date']=='20260715')['top_word_changes']",
+   "expected": [],
+   "_": "top-word stability across the 07-15 movement; drift_sentinel.py records top_word_changes since 2026-07-15"
   }
  ]
 }

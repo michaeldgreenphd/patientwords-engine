@@ -40,7 +40,16 @@ def collect_days(trace_root: Path):
                 clin, pat = probs.get("clinical"), probs.get("patient")
                 if clin is None and pat is None:
                     continue
-                pairs[int(row["index"])] = {"clinical": clin, "patient": pat}
+                entry = {"clinical": clin, "patient": pat}
+                spread = row.get("predictive_spread") or {}
+                tops = {}
+                for panel in ("clinical", "patient"):
+                    ranked = spread.get(panel) or []
+                    if ranked and isinstance(ranked[0], (list, tuple)) and ranked[0]:
+                        tops[panel] = ranked[0][0]
+                if tops:
+                    entry["top"] = tops
+                pairs[int(row["index"])] = entry
         if pairs:
             days[match.group(1)] = pairs
     return days
@@ -52,6 +61,7 @@ def day_over_day(days: dict):
     ordered = sorted(days)
     for prev_day, day in zip(ordered, ordered[1:]):
         worst, worst_label = None, None
+        top_changes, top_tracked = [], 0
         for index, panels in days[day].items():
             prev_panels = days[prev_day].get(index)
             if not prev_panels:
@@ -63,9 +73,17 @@ def day_over_day(days: dict):
                 delta = abs(float(now) - float(before))
                 if worst is None or delta > worst:
                     worst, worst_label = delta, f"pair {index} {panel}"
+                top_now = (panels.get("top") or {}).get(panel)
+                top_before = (prev_panels.get("top") or {}).get(panel)
+                if top_now is not None and top_before is not None:
+                    top_tracked += 1
+                    if top_now != top_before:
+                        top_changes.append(f"pair {index} {panel}")
         if worst is not None:
             deltas.append({"date": day, "prev": prev_day,
-                           "max_abs_delta": round(worst, 6), "worst": worst_label})
+                           "max_abs_delta": round(worst, 6), "worst": worst_label,
+                           "top_words_tracked": top_tracked,
+                           "top_word_changes": top_changes})
     return deltas
 
 
@@ -75,6 +93,8 @@ def main():
     parser.add_argument("--out", default="ops/drift_series.json")
     parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD,
                         help="max |delta p| that still counts as stable")
+    parser.add_argument("--site", default=None,
+                        help="site repo root; also writes data/drift_series.json there")
     args = parser.parse_args()
 
     days = collect_days(Path(args.trace_root))
@@ -89,6 +109,10 @@ def main():
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    if args.site:
+        site_copy = Path(args.site) / "data" / "drift_series.json"
+        site_copy.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        print(f"site copy -> {site_copy}")
 
     if not days:
         print("drift sentinel: no runs found")
@@ -96,8 +120,13 @@ def main():
         print(f"drift sentinel: baseline only ({sorted(days)[-1]}), nothing to compare")
     elif breached:
         worst = max(breached, key=lambda d: d["max_abs_delta"])
+        tops = ""
+        if worst.get("top_words_tracked"):
+            changed = worst.get("top_word_changes") or []
+            tops = ("; top words unchanged" if not changed
+                    else f"; top words CHANGED: {', '.join(changed)}")
         print(f"drift sentinel: DRIFT max |dp| {worst['max_abs_delta']} at {worst['worst']} "
-              f"({worst['prev']} -> {worst['date']}, threshold {args.threshold})")
+              f"({worst['prev']} -> {worst['date']}, threshold {args.threshold}{tops})")
     else:
         latest = deltas[-1]
         print(f"drift sentinel: stable, max |dp| {latest['max_abs_delta']} "
