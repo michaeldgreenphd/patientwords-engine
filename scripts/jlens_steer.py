@@ -138,7 +138,17 @@ def main(argv=None):
                 response, unsupported = jr.post_lens(session, body)
             except RuntimeError as err:
                 if results or row["calls"]:
-                    raise  # mid-run failure is real; abort loudly
+                    # abort loudly, but never discard completed items again
+                    # (the 20:43 grid run lost 10 measured items this way)
+                    if results:
+                        partial = {"mode": "jsteer", "graph_model": model, "spec": args.spec,
+                                   "layers": layers, "strengths": strengths, "top_n": args.topn,
+                                   "start_index": args.offset + 1, "partial": True,
+                                   "_": f"partial: aborted mid-run ({err})",
+                                   "results": results}
+                        (out_dir / f"jsteer_summary.{part}.json").write_text(
+                            json.dumps(partial, indent=1) + "\n", encoding="utf-8")
+                    raise
                 probe = {"model": model, "steering_supported": False,
                          "detail": f"{err} (persistent failure on the first call; "
                                    "could also be a transient outage - re-probe)",
@@ -147,7 +157,22 @@ def main(argv=None):
                     json.dumps(probe, indent=1) + "\n", encoding="utf-8")
                 print(f"steering probe negative: {probe['detail']}")
                 return 0
+            if unsupported and "Could not resolve steer token" in unsupported:
+                # ITEM-level condition, not a capability failure: the endpoint
+                # steers single vocab tokens only, and this item's token is
+                # multi-wordpiece (first hit: ' antivirals', 2026-07-14 grid
+                # run, which this branch wrongly declared probe-negative).
+                # Keep the baseline, mark the item, move on.
+                row["steer_unresolvable"] = True
+                print(f"item {index}: steer token unresolvable (multi-wordpiece); "
+                      "baseline kept, steer calls skipped")
+                break
             if unsupported:
+                if results or row["calls"]:
+                    # capability verdicts only come from a clean first call;
+                    # mid-run 4xx is an anomaly - keep what we have and stop
+                    print(f"mid-run unsupported response, stopping: {unsupported}")
+                    break
                 probe = {"model": model, "steering_supported": False, "detail": unsupported,
                          "checked_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
                 (out_dir / "jsteer_probe.json").write_text(

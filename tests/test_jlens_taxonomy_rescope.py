@@ -132,3 +132,46 @@ def test_pilot_spec_is_well_formed():
     assert {"hijack", "capture", "held"} <= classes
     for item in spec["items"]:
         assert item["prompt"] and item["target"]
+
+
+def test_unresolvable_steer_token_is_item_level(tmp_path, monkeypatch):
+    # 2026-07-14 grid run: a multi-wordpiece target 400'd as "Could not
+    # resolve steer token" and the script declared the CAPABILITY dead,
+    # discarding 10 measured items. Now: mark the item, keep its baseline,
+    # continue, and still write the summary.
+    import sys
+    import types
+    spec = {"model": "gemma-2-2b", "layers": [19], "strengths": [1],
+            "num_completion_tokens": 1,
+            "items": [{"dataset": "d", "index": 1, "class": "capture",
+                       "prompt": "p1", "target": " antivirals", "winner": " rest"},
+                      {"dataset": "d", "index": 2, "class": "capture",
+                       "prompt": "p2", "target": " nap", "winner": " rest"}]}
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(spec))
+
+    calls = {"n": 0}
+
+    def fake_post(session, body, timeout=180.0):
+        calls["n"] += 1
+        if body.get("steerTokens") and body["steerTokens"][0]["token"] == " antivirals":
+            return None, 'unsupported (400): {"error":"Could not resolve steer token to a vocab id"}'
+        return {"meta": {"layers_by_type": {"JACOBIAN_LENS": [0]}},
+                "tokens": [{"kind": "token", "position": 0, "token": "p",
+                            "results": [{"type": "JACOBIAN_LENS", "top_tokens": [[" nap"]]}]}]}, None
+
+    monkeypatch.setattr(js.jr, "post_lens", fake_post)
+    monkeypatch.setattr(js.jr, "save_raw", lambda *a, **k: None)
+    fake_requests = types.SimpleNamespace(Session=lambda: types.SimpleNamespace(headers={}))
+    monkeypatch.setitem(sys.modules, "requests", fake_requests)
+    monkeypatch.setenv("NEURONPEDIA_API_KEY", "test")
+    out = tmp_path / "out"
+    rc = js.main(["--spec", str(spec_path), "--out", str(out)])
+    assert rc == 0
+    summary = json.loads((out / "jsteer_summary.part_01.json").read_text())
+    assert len(summary["results"]) == 2
+    assert summary["results"][0].get("steer_unresolvable") is True
+    assert "baseline" in summary["results"][0]["calls"]
+    assert summary["results"][1].get("steer_unresolvable") is None
+    probe = json.loads((out / "jsteer_probe.json").read_text())
+    assert probe["steering_supported"] is True
