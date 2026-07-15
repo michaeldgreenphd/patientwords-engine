@@ -163,6 +163,12 @@ page: formation depths, capture-vs-hijack taxonomy, tuning comparison).
 After any data republish, when txcorpus logits or lens readouts landed, run
 `python scripts/translation_scale.py --site ../patientwords` (feeds the
 translation page's at-scale block and its lens recovery line; $0).
+**Scale-framing gate (owner decision 2026-07-15):** the at-scale TABLE
+auto-updates from data and that is sanctioned; any framing SENTENCE about
+the scale result is not. When the full txcorpus numbers land, a framing
+sentence gets DRAFTED and put in the digest + `decisions_pending` for the
+owner to approve BEFORE it deploys. No cycle publishes that sentence on
+its own - same rule as claim_check prose: data yes, text no.
 
 After any data republish, run `python scripts/coverage_gaps.py` (specialty
 coverage; $0). When Tier B generation fires, take `topics` for the fire from
