@@ -1,0 +1,800 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 11,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've got severe dermatitis all over my back, so I should probably see a",
+        "patient": "I've got this pruritic eruption all over my back, so I should probably see a"
+      },
+      "target_token": "Output \" dermatologist\"",
+      "probabilities": {
+        "clinical": 0.536,
+        "patient": 0.503
+      },
+      "language_penalty": -0.03300000000000003,
+      "clinical_mass": {
+        "clinical": 0.428,
+        "patient": 0.4459
+      },
+      "error_share": {
+        "clinical": 0.092,
+        "patient": 0.1047
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.312)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.266)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dermatologist\"",
+            0.536
+          ],
+          [
+            "Output \" doctor\"",
+            0.312
+          ],
+          [
+            "Output \" der\"",
+            0.052
+          ],
+          [
+            "Output \" specialist\"",
+            0.029
+          ],
+          [
+            "Output \" doc\"",
+            0.015
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dermatologist\"",
+            0.503
+          ],
+          [
+            "Output \" doctor\"",
+            0.266
+          ],
+          [
+            "Output \" der\"",
+            0.124
+          ],
+          [
+            "Output \" doc\"",
+            0.043
+          ],
+          [
+            "Output \" Dermatologist\"",
+            0.008
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 854,
+        "unique_to_a": 387,
+        "unique_to_b": 411
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_11.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_11.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_11_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_11_diff.png"
+      }
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm suffering from insomnia even though I'm exhausted, so I should probably try a",
+        "patient": "I am unable to initiate sleep at night despite feeling fatigued, so I should probably try a"
+      },
+      "target_token": "Output \" sleep\"",
+      "probabilities": {
+        "clinical": 0.113,
+        "patient": 0.088
+      },
+      "language_penalty": -0.02500000000000001,
+      "clinical_mass": {
+        "clinical": 0.2076,
+        "patient": 0.2475
+      },
+      "error_share": {
+        "clinical": 0.0889,
+        "patient": 0.0933
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sleep\" (p=0.113)",
+        "patient": "embedding \u2192 Output \" sleep\" (p=0.088)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.113
+          ],
+          [
+            "Output \" sleeping\"",
+            0.068
+          ],
+          [
+            "Output \" different\"",
+            0.067
+          ],
+          [
+            "Output \" little\"",
+            0.061
+          ],
+          [
+            "Output \" few\"",
+            0.046
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.088
+          ],
+          [
+            "Output \" different\"",
+            0.083
+          ],
+          [
+            "Output \" stimulant\"",
+            0.054
+          ],
+          [
+            "Output \" melatonin\"",
+            0.048
+          ],
+          [
+            "Output \" sleeping\"",
+            0.042
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 647,
+        "unique_to_a": 697,
+        "unique_to_b": 667
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_12.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_12.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_12_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_12_diff.png"
+      }
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My arrhythmia's been acting up lately, so I should probably see a",
+        "patient": "My heart has been acting up lately, so I should probably see a"
+      },
+      "target_token": "Output \" cardio\"",
+      "probabilities": {
+        "clinical": 0.43,
+        "patient": 0.194
+      },
+      "language_penalty": -0.236,
+      "clinical_mass": {
+        "clinical": 0.4244,
+        "patient": 0.3469
+      },
+      "error_share": {
+        "clinical": 0.0972,
+        "patient": 0.0922
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.034)",
+        "patient": "embedding \u2192 Output \" heart\" (p=0.025)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cardio\"",
+            0.43
+          ],
+          [
+            "Output \" doctor\"",
+            0.357
+          ],
+          [
+            "Output \" specialist\"",
+            0.051
+          ],
+          [
+            "Output \" heart\"",
+            0.034
+          ],
+          [
+            "Output \" doc\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.685
+          ],
+          [
+            "Output \" cardio\"",
+            0.194
+          ],
+          [
+            "Output \" heart\"",
+            0.025
+          ],
+          [
+            "Output \" specialist\"",
+            0.025
+          ],
+          [
+            "Output \" doc\"",
+            0.014
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 592,
+        "unique_to_a": 574,
+        "unique_to_b": 503
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_13.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_13.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_13_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_13_diff.png"
+      }
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been feeling palpitations all day, so I think I should take my",
+        "patient": "I've been experiencing palpitations in my abdomen all day, so I think I should take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.063,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3743,
+        "patient": 0.3714
+      },
+      "error_share": {
+        "clinical": 0.0899,
+        "patient": 0.0925
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.091)",
+        "patient": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.063)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.235
+          ],
+          [
+            "Output \" beta\"",
+            0.1
+          ],
+          [
+            "Output \" heart\"",
+            0.091
+          ],
+          [
+            "Output \" meds\"",
+            0.09
+          ],
+          [
+            "Output \" medication\"",
+            0.063
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.286
+          ],
+          [
+            "Output \" meds\"",
+            0.065
+          ],
+          [
+            "Output \" heart\"",
+            0.063
+          ],
+          [
+            "Output \" BP\"",
+            0.057
+          ],
+          [
+            "Output \" pulse\"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1087,
+        "unique_to_a": 258,
+        "unique_to_b": 307
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_14.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_14.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_14_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_14_diff.png"
+      }
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been clinically fatigued every single day, so my boss wants me to get some",
+        "patient": "I've been experiencing severe fatigue every single day, so my boss wants me to get some"
+      },
+      "target_token": "Output \" help\"",
+      "probabilities": {
+        "clinical": 0.096,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2902,
+        "patient": 0.2771
+      },
+      "error_share": {
+        "clinical": 0.0929,
+        "patient": 0.0944
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.186)",
+        "patient": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.186)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.186
+          ],
+          [
+            "Output \" tests\"",
+            0.109
+          ],
+          [
+            "Output \" blood\"",
+            0.101
+          ],
+          [
+            "Output \" help\"",
+            0.096
+          ],
+          [
+            "Output \" rest\"",
+            0.085
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.238
+          ],
+          [
+            "Output \" sleep\"",
+            0.186
+          ],
+          [
+            "Output \" tests\"",
+            0.145
+          ],
+          [
+            "Output \" rest\"",
+            0.112
+          ],
+          [
+            "Output \" medical\"",
+            0.037
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1057,
+        "unique_to_a": 419,
+        "unique_to_b": 414
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_15.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_15.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_15_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_15_diff.png"
+      }
+    },
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My stomach has acid reflux after lunch, so I reached for an",
+        "patient": "My abdomen is experiencing cramping after lunch, so I reached for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.383,
+        "patient": 0.059
+      },
+      "language_penalty": -0.324,
+      "clinical_mass": {
+        "clinical": 0.2763,
+        "patient": 0.2598
+      },
+      "error_share": {
+        "clinical": 0.1037,
+        "patient": 0.102
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.097)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.097)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.383
+          ],
+          [
+            "Output \" apple\"",
+            0.097
+          ],
+          [
+            "Output \" over\"",
+            0.097
+          ],
+          [
+            "Output \" OTC\"",
+            0.046
+          ],
+          [
+            "Output \" anti\"",
+            0.046
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" apple\"",
+            0.181
+          ],
+          [
+            "Output \" ice\"",
+            0.097
+          ],
+          [
+            "Output \" ant\"",
+            0.059
+          ],
+          [
+            "Output \" anti\"",
+            0.059
+          ],
+          [
+            "Output \" old\"",
+            0.059
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 806,
+        "unique_to_a": 462,
+        "unique_to_b": 610
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_16.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_16.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_16_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_16_diff.png"
+      }
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Grandpa's atrial fibrillation flared all day, so we grabbed his",
+        "patient": "Grandfather's heart has been tachycardic all day, so we grabbed his"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.036,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2562,
+        "patient": 0.3008
+      },
+      "error_share": {
+        "clinical": 0.1034,
+        "patient": 0.1091
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.041)",
+        "patient": "embedding \u2192 Output \" heart\" (p=0.033)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.11
+          ],
+          [
+            "Output \" blood\"",
+            0.041
+          ],
+          [
+            "Output \" medication\"",
+            0.036
+          ],
+          [
+            "Output \" cane\"",
+            0.036
+          ],
+          [
+            "Output \" medicine\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.08
+          ],
+          [
+            "Output \" meds\"",
+            0.07
+          ],
+          [
+            "Output \" pulse\"",
+            0.062
+          ],
+          [
+            "Output \" BP\"",
+            0.038
+          ],
+          [
+            "Output \" heart\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 807,
+        "unique_to_a": 526,
+        "unique_to_b": 655
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_17.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_17.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_17_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He has chronic insomnia at night no matter what, so his wife handed him a",
+        "patient": "He cannot fall asleep at night no matter what, so his wife handed him a"
+      },
+      "target_token": "Output \" pillow\"",
+      "probabilities": {
+        "clinical": 0.061,
+        "patient": 0.054
+      },
+      "language_penalty": -0.006999999999999999,
+      "clinical_mass": {
+        "clinical": 0.1787,
+        "patient": 0.1176
+      },
+      "error_share": {
+        "clinical": 0.0968,
+        "patient": 0.0936
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sleeping\" (p=0.088)",
+        "patient": "embedding \u2192 Output \" sleeping\" (p=0.079)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" book\"",
+            0.128
+          ],
+          [
+            "Output \" sleeping\"",
+            0.088
+          ],
+          [
+            "Output \" pillow\"",
+            0.061
+          ],
+          [
+            "Output \" bottle\"",
+            0.053
+          ],
+          [
+            "Output \" pill\"",
+            0.053
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" book\"",
+            0.09
+          ],
+          [
+            "Output \" sleeping\"",
+            0.079
+          ],
+          [
+            "Output \" bottle\"",
+            0.062
+          ],
+          [
+            "Output \" pillow\"",
+            0.054
+          ],
+          [
+            "Output \" glass\"",
+            0.037
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 959,
+        "unique_to_a": 472,
+        "unique_to_b": 472
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_18.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_18.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_18_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After that greasy diner meal I have acid reflux, so I reached for an",
+        "patient": "After that high-fat meal my epigastrium is burning, so I reached for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.494,
+        "patient": 0.209
+      },
+      "language_penalty": -0.28500000000000003,
+      "clinical_mass": {
+        "clinical": 0.2592,
+        "patient": 0.2227
+      },
+      "error_share": {
+        "clinical": 0.1096,
+        "patient": 0.1097
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.086)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.087)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.494
+          ],
+          [
+            "Output \" over\"",
+            0.086
+          ],
+          [
+            "Output \" anti\"",
+            0.052
+          ],
+          [
+            "Output \" apple\"",
+            0.046
+          ],
+          [
+            "Output \" Ant\"",
+            0.032
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ant\"",
+            0.209
+          ],
+          [
+            "Output \" apple\"",
+            0.185
+          ],
+          [
+            "Output \" ice\"",
+            0.087
+          ],
+          [
+            "Output \" aspirin\"",
+            0.047
+          ],
+          [
+            "Output \" old\"",
+            0.041
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 745,
+        "unique_to_a": 516,
+        "unique_to_b": 653
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_19.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_19.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_19_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_19_diff.png"
+      }
+    }
+  ]
+}
