@@ -1,0 +1,858 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 61,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 61,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My stomach's been making all these weird noises from dysmotility, so I might have an",
+        "patient": "My stomach's been making all these weird gurgling noises, so I might have an"
+      },
+      "target_token": "Output \" ulcer\"",
+      "probabilities": {
+        "clinical": 0.111,
+        "patient": 0.134
+      },
+      "language_penalty": 0.023000000000000007,
+      "clinical_mass": {
+        "clinical": 0.3689,
+        "patient": 0.3201
+      },
+      "error_share": {
+        "clinical": 0.1041,
+        "patient": 0.1024
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] scheduling an appointment | appointment \u2192 Output \" appointment\" (p=0.086)",
+        "patient": "[L24\u00b7S]  \u2192 Output \" upset\" (p=0.412)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ulcer",
+        "observed_clinical": [
+          "Output \" ulcer\"",
+          0.111
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" issue\"",
+            0.126
+          ],
+          [
+            "Output \" ulcer\"",
+            0.111
+          ],
+          [
+            "Output \" appointment\"",
+            0.086
+          ],
+          [
+            "Output \" upset\"",
+            0.076
+          ],
+          [
+            "Output \" IBS\"",
+            0.052
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" upset\"",
+            0.412
+          ],
+          [
+            "Output \" ulcer\"",
+            0.134
+          ],
+          [
+            "Output \" infection\"",
+            0.134
+          ],
+          [
+            "Output \" acid\"",
+            0.034
+          ],
+          [
+            "Output \" early\"",
+            0.03
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 944,
+        "unique_to_a": 540,
+        "unique_to_b": 432
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_61.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_61.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_61_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_61_diff.png"
+      }
+    },
+    {
+      "index": 62,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My hands shake due to tremor when I hold a cup, so I think I need to get my",
+        "patient": "My hands shake like crazy when I hold a cup, so I think I need to get my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2007
+      },
+      "error_share": {
+        "clinical": 0.0913
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hands\"",
+            0.432
+          ],
+          [
+            "Output \" hand\"",
+            0.059
+          ],
+          [
+            "Output \" own\"",
+            0.04
+          ],
+          [
+            "Output \" cup\"",
+            0.035
+          ],
+          [
+            "Output \" tremor\"",
+            0.028
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 63,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I eat gluten my belly swells from bloating, so I probably need to avoid",
+        "patient": "When I eat gluten my belly balloons up like a balloon, so I probably need to avoid"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1976
+      },
+      "error_share": {
+        "clinical": 0.091
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " bread",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" it\"",
+            0.543
+          ],
+          [
+            "Output \" gluten\"",
+            0.176
+          ],
+          [
+            "Output \" that\"",
+            0.035
+          ],
+          [
+            "Output \" wheat\"",
+            0.035
+          ],
+          [
+            "Output \" this\"",
+            0.027
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 64,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have angina when I walk uphill, so I probably need to take my",
+        "patient": "My chest gets all tight and heavy when I walk uphill, so I probably need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.057,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2992,
+        "patient": 0.2417
+      },
+      "error_share": {
+        "clinical": 0.0965,
+        "patient": 0.0985
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.057)",
+        "patient": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.079)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.057
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.198
+          ],
+          [
+            "Output \" heart\"",
+            0.057
+          ],
+          [
+            "Output \" medication\"",
+            0.057
+          ],
+          [
+            "Output \" meds\"",
+            0.057
+          ],
+          [
+            "Output \" bike\"",
+            0.05
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" asthma\"",
+            0.102
+          ],
+          [
+            "Output \" inhal\"",
+            0.102
+          ],
+          [
+            "Output \" heart\"",
+            0.079
+          ],
+          [
+            "Output \" meds\"",
+            0.079
+          ],
+          [
+            "Output \" blood\"",
+            0.048
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 724,
+        "unique_to_a": 544,
+        "unique_to_b": 687
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_64.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_64.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_64_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_64_diff.png"
+      }
+    },
+    {
+      "index": 65,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep getting these awful sharp pains when I try to move my neck, so I think I might have cervical",
+        "patient": "I keep getting these awful sharp pains when I try to move my neck, so I think I might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4887
+      },
+      "error_share": {
+        "clinical": 0.0906
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " strain",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sp\"",
+            0.268
+          ],
+          [
+            "Output \" stenosis\"",
+            0.111
+          ],
+          [
+            "Output \" arthritis\"",
+            0.098
+          ],
+          [
+            "Output \" disc\"",
+            0.086
+          ],
+          [
+            "Output \" radic\"",
+            0.067
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 66,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I eat dairy my stomach starts acting up real bad, so I think I have lactose",
+        "patient": "When I eat dairy my stomach starts acting up real bad, so I think I have an"
+      },
+      "target_token": "Output \" intolerance\"",
+      "probabilities": {
+        "clinical": 0.859,
+        "patient": 0.432
+      },
+      "language_penalty": -0.427,
+      "clinical_mass": {
+        "clinical": 0.3541,
+        "patient": 0.2963
+      },
+      "error_share": {
+        "clinical": 0.1014,
+        "patient": 0.1028
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" intolerance\" (p=0.859)",
+        "patient": "embedding \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" issue\" (p=0.059)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " intolerance",
+        "observed_clinical": [
+          "Output \" intolerance\"",
+          0.859
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" intolerance\"",
+            0.859
+          ],
+          [
+            "Output \" intolerant\"",
+            0.038
+          ],
+          [
+            "Output \" intoler\"",
+            0.02
+          ],
+          [
+            "Output \"-\"",
+            0.01
+          ],
+          [
+            "Output \" into\"",
+            0.007
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" intolerance\"",
+            0.432
+          ],
+          [
+            "Output \" allergy\"",
+            0.432
+          ],
+          [
+            "Output \" issue\"",
+            0.059
+          ],
+          [
+            "Output \" allergic\"",
+            0.021
+          ],
+          [
+            "Output \" aversion\"",
+            0.004
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 767,
+        "unique_to_a": 450,
+        "unique_to_b": 505
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_66.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_66.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_66_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_66_diff.png"
+      }
+    },
+    {
+      "index": 67,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I experience panic symptoms whenever I have to give a presentation at work, so I might need an",
+        "patient": "I get really sweaty and shaky whenever I have to give a presentation at work, so I might need an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.1,
+        "patient": 0.12
+      },
+      "language_penalty": 0.01999999999999999,
+      "clinical_mass": {
+        "clinical": 0.2257,
+        "patient": 0.1476
+      },
+      "error_share": {
+        "clinical": 0.0872,
+        "patient": 0.0909
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" anxiety\" (p=0.100)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" excuse\" (p=0.039)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antianxiety",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.1
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anxiety\"",
+            0.1
+          ],
+          [
+            "Output \" anti\"",
+            0.1
+          ],
+          [
+            "Output \" extra\"",
+            0.078
+          ],
+          [
+            "Output \" intervention\"",
+            0.061
+          ],
+          [
+            "Output \" alternative\"",
+            0.032
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.12
+          ],
+          [
+            "Output \" extra\"",
+            0.106
+          ],
+          [
+            "Output \" anxiety\"",
+            0.064
+          ],
+          [
+            "Output \" inhal\"",
+            0.057
+          ],
+          [
+            "Output \" excuse\"",
+            0.039
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 889,
+        "unique_to_a": 548,
+        "unique_to_b": 557
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_67.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_67.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_67_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_67_diff.png"
+      }
+    },
+    {
+      "index": 68,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I get photosensitivity when I go outside, so I should probably apply a",
+        "patient": "My skin gets all red and burns when I go outside, so I should probably apply a"
+      },
+      "target_token": "Output \" sunscreen\"",
+      "probabilities": {
+        "clinical": 0.182,
+        "patient": 0.242
+      },
+      "language_penalty": 0.06,
+      "clinical_mass": {
+        "clinical": 0.1534,
+        "patient": 0.225
+      },
+      "error_share": {
+        "clinical": 0.0956,
+        "patient": 0.0915
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L6\u00b7O] words related to light and photosynthesis | sunlight \u2192 [L18\u00b7O] phrases referring to a threat to the environment, sp \u2192 [L24\u00b7O] mentions of sunlight and blocking it, as well as var \u2192 Output \" sun\" (p=0.041)",
+        "patient": "embedding \u2192 [L18\u00b7O] phrases referring to a threat to the environment, sp \u2192 [L24\u00b7O] mentions of sunlight and blocking it, as well as var \u2192 Output \" sun\" (p=0.054)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " sunscreen",
+        "observed_clinical": [
+          "Output \" sunscreen\"",
+          0.182
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sunscreen\"",
+            0.182
+          ],
+          [
+            "Output \" lot\"",
+            0.076
+          ],
+          [
+            "Output \" little\"",
+            0.076
+          ],
+          [
+            "Output \" sun\"",
+            0.041
+          ],
+          [
+            "Output \" filter\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sunscreen\"",
+            0.242
+          ],
+          [
+            "Output \" moisturizer\"",
+            0.114
+          ],
+          [
+            "Output \" sun\"",
+            0.054
+          ],
+          [
+            "Output \" lot\"",
+            0.054
+          ],
+          [
+            "Output \" little\"",
+            0.054
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 664,
+        "unique_to_a": 745,
+        "unique_to_b": 637
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_68.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_68.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_68_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_68_diff.png"
+      }
+    },
+    {
+      "index": 69,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I eat too much I feel all bloated and my stomach hurts, so I might have functional",
+        "patient": "When I eat too much I feel all bloated and my stomach hurts, so I might have an"
+      },
+      "target_token": "Output \" dys\"",
+      "probabilities": {
+        "clinical": 0.338,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3647,
+        "patient": 0.3015
+      },
+      "error_share": {
+        "clinical": 0.0882,
+        "patient": 0.0953
+      },
+      "top_path": {
+        "clinical": "[L25\u00b7S]  \u2192 Output \" diarrhea\" (p=0.028)",
+        "patient": "embedding \u2192 Output \" over\" (p=0.083)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " dyspepsia",
+        "observed_clinical": [
+          "Output \" dys\"",
+          0.338
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dys\"",
+            0.338
+          ],
+          [
+            "Output \" bloating\"",
+            0.232
+          ],
+          [
+            "Output \" constipation\"",
+            0.097
+          ],
+          [
+            "Output \" diarrhea\"",
+            0.028
+          ],
+          [
+            "Output \" bloat\"",
+            0.019
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ulcer\"",
+            0.154
+          ],
+          [
+            "Output \" issue\"",
+            0.154
+          ],
+          [
+            "Output \" upset\"",
+            0.136
+          ],
+          [
+            "Output \" over\"",
+            0.083
+          ],
+          [
+            "Output \" intolerance\"",
+            0.073
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 874,
+        "unique_to_a": 441,
+        "unique_to_b": 442
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_69.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_69.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_69_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_69_diff.png"
+      }
+    },
+    {
+      "index": 70,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing vertigo in the evening, so my wife thinks I need my",
+        "patient": "I've been getting these awful dizzy spells in the evening, so my wife thinks I need my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.071,
+        "patient": 0.208
+      },
+      "language_penalty": 0.137,
+      "clinical_mass": {
+        "clinical": 0.249,
+        "patient": 0.2599
+      },
+      "error_share": {
+        "clinical": 0.0919,
+        "patient": 0.1045
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.043)",
+        "patient": "[L21\u00b7S]  \u2192 [L22\u00b7O] ophthalmology and optometry related terms | Eyeglass \u2192 Output \" glasses\" (p=0.184)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood pressure checked",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.071
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" glasses\"",
+            0.15
+          ],
+          [
+            "Output \" eyes\"",
+            0.133
+          ],
+          [
+            "Output \" hearing\"",
+            0.091
+          ],
+          [
+            "Output \" blood\"",
+            0.071
+          ],
+          [
+            "Output \" sleep\"",
+            0.043
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.208
+          ],
+          [
+            "Output \" glasses\"",
+            0.184
+          ],
+          [
+            "Output \" eyes\"",
+            0.126
+          ],
+          [
+            "Output \" hearing\"",
+            0.098
+          ],
+          [
+            "Output \" prescription\"",
+            0.025
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1033,
+        "unique_to_a": 441,
+        "unique_to_b": 460
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_70.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_70.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_70_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_70_diff.png"
+      }
+    }
+  ]
+}
