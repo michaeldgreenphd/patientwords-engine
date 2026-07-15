@@ -68,6 +68,18 @@ CI compute is GitHub's free public-repo runners. Charge risk: none.
   access extended through 07-19; the Tuesday wake is now a health check
   (queue state, spend, drift sentinel), no model changes.
 
+### Tuesday health check record (2026-07-15 01:4x UTC wake)
+
+The 07-09 downshift reminder fired on its original schedule; the downshift
+stays CANCELLED per the 2026-07-12 supersession (access through 07-19).
+No model changes made. Health check: queues disciplined (all groups at
+one running + one pending: titration s20 + priority trace, priority lens +
+steering-grid remainder, txcorpus logits 1+2); spend within ceilings
+(txcorpus $0.20 of $1.20; generation $1.16 of $8 lifetime); drift sentinel
+day 2 STABLE (max |dp| 0.0); suite 346 passed. A3 Monday synthesis draft
+ran on schedule (docs/findings_synthesis_DRAFT_20260713.md) - nothing to
+queue.
+
 ## S · Supplementary stress-test program (owner-approved 2026-07-13)
 
 Targeted sets outside the pre-registered Tier B run; shared protocol in
