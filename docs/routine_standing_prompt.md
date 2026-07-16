@@ -90,6 +90,16 @@ Priority order when slots are free:
    branch. All three batch-7 measurement runs failed on this on 2026-07-12.
 3. **Behavior** (logits-eval slot free): fire CPU logits for Tier B batches
    not yet measured (all four models, $0).
+3a2. **Even-n across all eight models (owner directive 2026-07-16):** every
+   batch also gets an exploratory-model leg
+   (`llama-3.2-3b,olmo-2-1b,medgemma-4b-it,gemma-2-2b-it`, same pairs file,
+   $0) CHAINED behind the standard leg in the logits group - the standard
+   pre-registered leg always fires first, the exploratory leg second. Until
+   the backfill catches up (11 legs over batches 1-12, tracked in
+   queued_next), fill EVERY idle logits slot with the next backfill leg -
+   the owner explicitly approved multiple per day. Keep one fire per batch
+   file; the 6h job ceiling fits 4 models x 100 pairs comfortably but NOT
+   4 x 350 (txcorpus chunk-1 lesson).
 3b. **Drift sentinel** ($0, daily, owner-approved 2026-07-12): copy
    `data/simulated/drift_sentinel.json` to
    `data/simulated/drift_sentinel_<YYYYMMDD>.json` (no sidecar - $0 alias),
