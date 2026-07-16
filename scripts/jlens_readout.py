@@ -352,6 +352,7 @@ def main(argv=None):
     part = f"part_{args.offset + 1:02d}"
 
     results = []
+    aborted = None
     for i, pair in enumerate(chunk):
         index = args.offset + i + 1
         responses = {}
@@ -377,6 +378,13 @@ def main(argv=None):
                 print(f"model {args.model}: {probe['detail']}")
                 return 0
             if unsupported:
+                if results or responses:
+                    # F-H09 (audit 1, 2026-07-17): a mid-batch 4xx is an anomaly,
+                    # not a capability verdict (same contract as jlens_steer.py).
+                    # Keep the measured pairs, stop, leave the probe alone.
+                    print(f"mid-batch unsupported response, stopping: {unsupported}")
+                    aborted = unsupported
+                    break
                 probe = {"model": args.model, "supported": False, "detail": unsupported,
                          "checked_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
                 (out_dir / "jlens_probe.json").write_text(
@@ -386,6 +394,8 @@ def main(argv=None):
             responses[side] = response
             if args.save_raw:
                 save_raw(out_dir, index, side, response)
+        if aborted:
+            break
         results.append(build_result(index, pair, responses["clinical"],
                                     responses["patient"], args.topn, args.lens_type))
         print(f"pair {index}: clinical={results[-1]['parse_status']['clinical']} "
@@ -394,6 +404,9 @@ def main(argv=None):
 
     summary = build_summary(args.model, results, start_index=args.offset + 1,
                             topn=args.topn, lens_type=args.lens_type)
+    if aborted:
+        summary["partial"] = True
+        summary["_partial"] = f"aborted mid-batch on an unsupported response: {aborted}"
     (out_dir / f"jlens_summary.{part}.json").write_text(
         json.dumps(summary, indent=1) + "\n", encoding="utf-8")
     probe = {"model": args.model, "supported": True, "pairs_measured": len(results),

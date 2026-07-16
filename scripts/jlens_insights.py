@@ -259,6 +259,12 @@ def main():
     args = parser.parse_args()
 
     per_model = collect(Path(args.trace_root))
+    if not per_model.get(args.base_model):
+        # F-H08 (audit 1, 2026-07-17): a sparse checkout must never overwrite
+        # the committed census (ops + site copies) with an empty one.
+        print(f"refused: no jlens summaries for {args.base_model} under "
+              f"{args.trace_root} - not overwriting outputs")
+        return 3
     payload = analyze(per_model, args.base_model, args.it_model, args.exemplars)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -273,4 +279,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -366,3 +366,73 @@ def test_supported_model_end_to_end_summary(tmp_path, monkeypatch):
     probe = json.loads((out / "jlens_probe.json").read_text(encoding="utf-8"))
     assert probe["supported"] is True and probe["pairs_measured"] == 1
     assert list((out / "jlens_raw").glob("pair_002_*.json.gz"))
+
+
+def test_midbatch_unsupported_keeps_measured_pairs(tmp_path, monkeypatch):
+    """F-H09 (audit 1, 2026-07-17): a mid-batch 4xx is an anomaly, not a
+    capability verdict - measured pairs must land (marked partial) and the
+    probe must not flip to supported=false."""
+    import importlib.util
+    import json as _json
+    import sys
+    import types
+    from pathlib import Path as _P
+
+    spec = importlib.util.spec_from_file_location(
+        "jlens_readout_h09", _P(__file__).resolve().parents[1] / "scripts" / "jlens_readout.py")
+    jr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(jr)
+
+    pairs = tmp_path / "pairs.json"
+    pairs.write_text(_json.dumps([
+        {"top_prompt": "c1", "bottom_prompt": "p1", "target_clinical_token": " t"},
+        {"top_prompt": "c2", "bottom_prompt": "p2", "target_clinical_token": " t"},
+    ]), encoding="utf-8")
+
+    calls = {"n": 0}
+
+    def fake_post(session, body, timeout=180.0):
+        calls["n"] += 1
+        if calls["n"] >= 3:  # pair 2, clinical side: a prompt-specific 400
+            return None, "unsupported (400): bad prompt"
+        return {"meta": {"layers_by_type": {"JACOBIAN_LENS": [0]}},
+                "tokens": [{"kind": "token", "position": 0, "token": "x",
+                            "results": [{"type": "JACOBIAN_LENS", "top_tokens": [[" t"]]}]}]}, None
+
+    monkeypatch.setattr(jr, "post_lens", fake_post)
+    fake_requests = types.SimpleNamespace(Session=lambda: types.SimpleNamespace(headers={}))
+    monkeypatch.setitem(sys.modules, "requests", fake_requests)
+    monkeypatch.setenv("NEURONPEDIA_API_KEY", "test")
+
+    out = tmp_path / "out"
+    rc = jr.main(["--model", "gemma-2-2b", "--pairs", str(pairs),
+                  "--out", str(out)])
+    assert rc == 0
+    summary = _json.loads((out / "jlens_summary.part_01.json").read_text())
+    assert len(summary["results"]) == 1
+    assert summary["partial"] is True
+    probe = _json.loads((out / "jlens_probe.json").read_text())
+    assert probe["supported"] is True
+
+
+def test_insights_refuses_empty_census(tmp_path, monkeypatch, capsys):
+    """F-H08 (audit 1, 2026-07-17): no lens summaries for the base model must
+    refuse (exit 3), never overwrite the committed census with an empty one."""
+    import importlib.util
+    import sys
+    from pathlib import Path as _P
+
+    spec = importlib.util.spec_from_file_location(
+        "jlens_insights_h08", _P(__file__).resolve().parents[1] / "scripts" / "jlens_insights.py")
+    ji = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ji)
+
+    out = tmp_path / "census.json"
+    out.write_text("{\"n_pairs\": 42}", encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["jlens_insights.py",
+                                      "--trace-root", str(tmp_path / "missing"),
+                                      "--out", str(out)])
+    rc = ji.main()
+    assert rc == 3
+    assert "refused" in capsys.readouterr().out
+    assert out.read_text() == "{\"n_pairs\": 42}"

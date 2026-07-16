@@ -472,8 +472,13 @@ def generate_stress_pairs(
         if used:
             parts.append("Patient phrasings already used - avoid duplicating any of these:\n"
                          + json.dumps(used, indent=2))
-        text, in_tok, out_tok = _call(client, model, STRESS_PAIR_SYSTEM, "\n\n".join(parts),
-                                      max_tokens=GEN_MAX_TOKENS)
+        try:
+            text, in_tok, out_tok = _call(client, model, STRESS_PAIR_SYSTEM, "\n\n".join(parts),
+                                          max_tokens=GEN_MAX_TOKENS)
+        except Exception as exc:  # F-H07: keep spend accountable - land partials + sidecar
+            logger.warning("generation call failed on round %d: %s", rounds, exc)
+            rejected.append({"candidate": None, "reason": f"api_error: {exc}"})
+            break
         tracker.record(model, in_tok, out_tok)
         candidates = _parse_json_array(text)
         if not candidates:
@@ -591,8 +596,13 @@ def generate_quadrant_scenarios(
         if used:
             parts.append("Prestige-form sentences already used - avoid duplicating any of these:\n"
                          + json.dumps(used, indent=2))
-        text, in_tok, out_tok = _call(client, model, QUADRANT_SYSTEM, "\n\n".join(parts),
-                                      max_tokens=GEN_MAX_TOKENS)
+        try:
+            text, in_tok, out_tok = _call(client, model, QUADRANT_SYSTEM, "\n\n".join(parts),
+                                          max_tokens=GEN_MAX_TOKENS)
+        except Exception as exc:  # F-H07: keep spend accountable - land partials + sidecar
+            logger.warning("quadrant call failed on round %d: %s", rounds, exc)
+            rejected.append({"candidate": None, "reason": f"api_error: {exc}"})
+            break
         tracker.record(model, in_tok, out_tok)
         candidates = _parse_json_array(text)
         if not candidates:
@@ -670,7 +680,13 @@ def generate_dialect_variants(
         if accepted:
             prompt += "\nAlready produced - do not duplicate:\n" + json.dumps(
                 [v["prompt"] for v in accepted], indent=2)
-        text, in_tok, out_tok = _call(client, model, DIALECT_SYSTEM, prompt, max_tokens=DIALECT_MAX_TOKENS)
+        try:
+            text, in_tok, out_tok = _call(client, model, DIALECT_SYSTEM, prompt,
+                                          max_tokens=DIALECT_MAX_TOKENS)
+        except Exception as exc:  # F-H07: keep spend accountable - land partials + sidecar
+            logger.warning("dialect call failed on round %d: %s", rounds, exc)
+            rejected.append({"candidate": None, "reason": f"api_error: {exc}"})
+            break
         tracker.record(model, in_tok, out_tok)
         candidates = _parse_json_array(text)
         if not candidates:

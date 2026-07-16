@@ -1,0 +1,1083 @@
+[
+ {
+  "key": "sim-scenarios-index",
+  "read_map": [
+   {
+    "artifact": "data/simulated_scenarios.json",
+    "consumer": "patientwords/simulated-scenarios/index.html (lines 574-1157)",
+    "fields": [
+     "payload.scenarios[] (length-gated: throw 'empty' -> pending note)",
+     "payload.batches[].generated.model",
+     "payload.batches[].generated.run_timestamp",
+     "payload.batches[].generated.cost_usd (toFixed(2), typeof-guarded)",
+     "payload.batches[].generated.accepted",
+     "payload.batches[].generated.rejected",
+     "payload.batches[].screen_targets (Math.round(x*100), null-guarded)",
+     "payload.traced.graph_model (base-model fallback)",
+     "payload.traced.source_set",
+     "payload.models_meta[].id",
+     "payload.models_meta[].label",
+     "payload.models_meta[].source_set",
+     "payload.models_meta[].features",
+     "payload.models_meta[].graphs (chip title 'next-token behavior only')",
+     "payload.models_meta[].available",
+     "payload.models_meta[].n_traced",
+     "payload.models_meta[].default",
+     "payload.scenarios[].index",
+     "payload.scenarios[].batch (join key)",
+     "payload.scenarios[].batch_index (join key)",
+     "payload.scenarios[].clinical_prompt",
+     "payload.scenarios[].patient_prompt",
+     "payload.scenarios[].patient_term",
+     "payload.scenarios[].clinical_term",
+     "payload.scenarios[].intended_target",
+     "payload.scenarios[].rationale",
+     "payload.scenarios[].topic",
+     "payload.scenarios[].html (key example iframe only, guarded)",
+     "payload.scenarios[].models[<id>].prob_clinical (via view(); top-level COMPAT mirror is the base fallback)",
+     "payload.scenarios[].models[<id>].prob_patient",
+     "payload.scenarios[].models[<id>].language_penalty",
+     "payload.scenarios[].models[<id>].flipped",
+     "payload.scenarios[].models[<id>].anchor_fallback",
+     "payload.scenarios[].models[<id>].target_token",
+     "payload.scenarios[].models[<id>].top_clinical[0]",
+     "payload.scenarios[].models[<id>].top_patient[0]",
+     "payload.scenarios[].models[<id>].spread_clinical[0][0] (redirect gallery, length-guarded)",
+     "payload.scenarios[].models[<id>].spread_patient[0][0]",
+     "payload.scenarios[].models[<id>].clinical_mass.clinical",
+     "payload.scenarios[].models[<id>].clinical_mass.patient",
+     "payload.scenarios[].models[<id>].screening.status",
+     "payload.scenarios[].models[<id>].screening.probe_extension (CSV export)"
+    ]
+   },
+   {
+    "artifact": "data/simulated_scenarios.json",
+    "consumer": "patientwords/simulated-scenarios/scenario.html (lines 368-556)",
+    "fields": [
+     "payload.scenarios[].index (?sim= lookup; prev/next assumes contiguous 1..N \u2014 holds in live payload)",
+     "payload.scenarios[].batch",
+     "payload.scenarios[].batch_index",
+     "payload.scenarios[].clinical_prompt",
+     "payload.scenarios[].patient_prompt",
+     "payload.scenarios[].patient_term",
+     "payload.scenarios[].clinical_term",
+     "payload.scenarios[].intended_target",
+     "payload.scenarios[].rationale",
+     "payload.scenarios[].models[<id>] (cur() falls back to WHOLE scenario, not {}, when model untraced \u2014 see finding)",
+     "payload.traced.graph_model",
+     "payload.models_meta[].id",
+     "payload.models_meta[].label",
+     "payload.models_meta[].features (chip title)",
+     "payload.models_meta[].graphs (pending-note branch only, NOT chip title \u2014 see finding)",
+     "m.target_token",
+     "m.prob_clinical",
+     "m.prob_patient",
+     "m.language_penalty",
+     "m.flipped",
+     "m.anchor_fallback",
+     "m.screening.status",
+     "m.screening.reason",
+     "m.top_clinical[0..1]",
+     "m.top_patient[0..1]",
+     "m.spread_clinical[][0..1]",
+     "m.spread_patient[][0..1]",
+     "m.clinical_mass.clinical",
+     "m.clinical_mass.patient",
+     "m.html (iframe embed)",
+     "m.diff_html (READ BUT NEVER EMITTED \u2014 dead branch, see finding)",
+     "m.circuit_diff.shared_features (only inside dead diff_html branch)",
+     "m.circuit_diff.unique_to_a",
+     "m.circuit_diff.unique_to_b",
+     "payload.archive.release_url (guarded; absent in live payload)",
+     "payload.archive.models[<id>].release_url (READ BUT NEVER EMITTED by any writer \u2014 see finding)"
+    ]
+   },
+   {
+    "artifact": "data/simulated_scenarios.json",
+    "consumer": "patientwords/index.html (root home stat, lines 716-748)",
+    "fields": [
+     "payload.batches[].generated.accepted",
+     "payload.scenarios[].language_penalty (top-level COMPAT mirror only)",
+     "payload.scenarios[].screening.status",
+     "payload.scenarios[].flipped"
+    ]
+   },
+   {
+    "artifact": "data/simulated_scenarios.json",
+    "consumer": "patientwords/start-here/index.html (care ladder, lines 462-549)",
+    "fields": [
+     "payload.scenarios[].batch (join to hardcoded PAIRS refs)",
+     "payload.scenarios[].batch_index",
+     "payload.scenarios[].models[<id>] (explicit gemma-2-2b -> top-level convention at lines 467-471)",
+     "payload.scenarios[].clinical_prompt",
+     "payload.scenarios[].patient_prompt",
+     "payload.scenarios[].clinical_term",
+     "payload.scenarios[].patient_term",
+     "m.top_clinical[0..1]",
+     "m.top_patient[0..1]"
+    ]
+   },
+   {
+    "artifact": "data/urgency_shift.json (joined by simulated-scenarios/index.html)",
+    "consumer": "patientwords/simulated-scenarios/index.html",
+    "fields": [
+     "rows[].batch + rows[].index + rows[].model (join key == scenario.batch + '#' + scenario.batch_index + '#' + currentModel; verified: int index, matching stems)",
+     "rows[].flip_class",
+     "rows[].tier_top_clinical",
+     "rows[].tier_top_patient",
+     "rows[].tier_shift (toFixed(2), typeof-guarded)",
+     "summary.per_model_deduped[<id>].downgrades/.upgrades (with fallback to summary.flip_classes.downgrade/.upgrade for older payloads)",
+     "vocabulary_status (with draft-label fallback string)"
+    ]
+   },
+   {
+    "artifact": "data/jlens_depth.json (joined by simulated-scenarios/index.html)",
+    "consumer": "patientwords/simulated-scenarios/index.html",
+    "fields": [
+     "model (badge gated on currentModel===model)",
+     "blocks[].id + blocks[].pairs[].index (join == scenario.batch + '#' + scenario.batch_index)",
+     "blocks[].pairs[].class ('suppressed'/'absent' -> badges; 'retained' unlabeled by design)"
+    ]
+   },
+   {
+    "artifact": "data/provenance.json (joined by simulated-scenarios/index.html)",
+    "consumer": "patientwords/simulated-scenarios/index.html",
+    "fields": [
+     "steering.key_example.batch",
+     "steering.key_example.batch_index",
+     "steering.key_example.boost_recovered_token",
+     "steering.boost_recoveries (typeof-guarded)",
+     "steering.n_phrases",
+     "steering.ablation_recoveries"
+    ]
+   },
+   {
+    "artifact": "data/specialties.json (joined by simulated-scenarios/index.html)",
+    "consumer": "patientwords/simulated-scenarios/index.html",
+    "fields": [
+     "specialties[<spec>][<sub>][] (topic string -> [specialty, subcategory] map; unmapped -> ['Other','Other'])"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "sim-scenarios-detail",
+  "read_map": [
+   {
+    "artifact": "data/simulated_scenarios.json",
+    "consumer": "/home/user/audit-wb/patientwords/simulated-scenarios/scenario.html (inline JS lines 365-557)",
+    "fields": [
+     "payload.scenarios[] (fallback [] at L371)",
+     "payload.scenarios[].index (joined === parseInt(?sim,10) at L366/372; prev/next at L379-380 assume indices contiguous 1..scenarios.length \u2014 holds in instance)",
+     "payload.scenarios[].{patient_term,clinical_term} (L376, '\u2014' fallback)",
+     "payload.scenarios[].{batch,batch_index} (L451, pwBatch regex on batch stem)",
+     "payload.scenarios[].{clinical_prompt,patient_prompt,rationale,intended_target} (L444-464, L492)",
+     "payload.scenarios[].models[<id>] with fallback to scenario top level via cur() (L395-396)",
+     "m.target_token (L439, ''-guarded)",
+     "m.screening.status / m.screening.reason (L441, L475-477, null-guarded)",
+     "m.anchor_fallback (L446)",
+     "m.prob_clinical / m.prob_patient (L459/465, p2() em-dash on non-number)",
+     "m.top_clinical[0],[1] / m.top_patient[0],[1] (L459/465 via spreadDetails, null-guarded)",
+     "m.spread_clinical[][0..1] / m.spread_patient[][0..1] (L459/465, empty-guarded)",
+     "m.clinical_mass.clinical / m.clinical_mass.patient (L461/466, (x||{}) guarded; instance also carries unread .translated)",
+     "m.language_penalty (L480-485, typeof-number guarded, em-dash else)",
+     "m.flipped (L487)",
+     "m.diff_html (L499/506/512 \u2014 NEVER emitted by branch exporter; see finding)",
+     "m.circuit_diff.{shared_features,unique_to_a,unique_to_b} (L503-504, only inside dead diff_html branch)",
+     "m.html (L508-512; iframe src '../'+path into modes/simulated/)",
+     "payload.traced.graph_model (L387, guarded, fallback 'gemma-2-2b')",
+     "payload.traced.source_set (L389, only in models_meta fallback construction)",
+     "payload.models_meta[].{id,label,features,graphs} (L388-394, L411-417, L514; fallback single-entry list for old shapes)",
+     "payload.archive.release_url / payload.archive.models[<id>].release_url (L397-402 \u2014 models sub-key never emitted; see finding)",
+     "static: ../data/simulated_archive.csv download links (L521, L536)"
+    ]
+   },
+   {
+    "artifact": "data/simulated_scenarios.json",
+    "consumer": "/home/user/audit-wb/patientwords/index.html (homepage sim strip, inline JS lines 712-749)",
+    "fields": [
+     "payload.batches[].generated.accepted (L720-721, (b.generated&&...)||0 guarded)",
+     "payload.scenarios[].language_penalty (L724-725, typeof-number filter)",
+     "payload.scenarios[].screening.status (L727-728, null-guarded)",
+     "payload.scenarios[].flipped (L737)",
+     "payload.scenarios.length (L730-733)",
+     "static render refs (not payload-driven, all exist on disk): modes/simulated/preview.html via data-live-src (L420, loader L533-538), modes/simulated/pairs_20260707T171223Z/index_49.html (L323), modes/simulated/featured_sim85/index_01.html (L340), modes/simulated/urgency_downgrades_20260707T1/index_17.html (L395)",
+     "hardcoded demo numbers (L820-822) cross-checked = scenario 85 (batch pairs_20260707T171223Z, batch_index 49) stored spread probabilities \u2014 match"
+    ]
+   },
+   {
+    "artifact": "data/simulated_scenarios.json (joined with data/urgency_shift.json)",
+    "consumer": "/home/user/audit-wb/patientwords/start-here/index.html (care-ladder JS lines 446-550)",
+    "fields": [
+     "payload.scenarios[].{batch,batch_index} join against hardcoded refs (pairs_20260707T215921Z,54) and (pairs_20260710T133708Z,1) (L452-455, L476-477) \u2014 both resolve (display indices 209, 362); join miss leaves static 'figure pending' state (mandated)",
+     "payload.scenarios[].models[<model>] with gemma-2-2b read from scenario top level (L467-470)",
+     "payload.scenarios[].{clinical_prompt,patient_prompt,clinical_term,patient_term} (L526-527, null term guarded by indexOf branch)",
+     "m.top_clinical[0],[1] / m.top_patient[0],[1] (L479 presence-gated, L518-519 with ||''/||0 guards)",
+     "urgency_shift.json: rows[].{batch,index,model,tier_top_clinical,tier_top_patient} (join key (batch,index,model), row 'index' == payload 'batch_index' semantics \u2014 verified both refs hit with non-null tiers), tiers['4'..'0'], summary.per_model_deduped['gemma-2-2b'].{downgrades,n_phrases,upgrades}, vocabulary_status (all guarded)",
+     "static: ../modes/simulated/pairs_20260707T171223Z/index_12.html and index_49.html (L189, L205), ../modes/simulated/dialects_20260708T011831Z/index_01.html (L189) \u2014 all exist; index_12/index_49 are also currently payload-referenced"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "urgency-shift",
+  "read_map": [
+   {
+    "artifact": "data/urgency_shift.json",
+    "consumer": "/home/user/audit-wb/patientwords/index.html (lines 650-709)",
+    "fields": [
+     "summary.per_model (Object.keys only \u2014 model list; section gate `if(!models.length)return`)",
+     "summary.per_model_deduped[<model>].downgrades",
+     "summary.per_model_deduped[<model>].upgrades",
+     "summary.per_model_deduped[<model>].flips (dedupComplete check + summed headline)",
+     "summary.flips (fallback headline when per_model_deduped incomplete)",
+     "vocabulary_status (rewrites .draft-flag; 'draft' substring branch)"
+    ]
+   },
+   {
+    "artifact": "data/urgency_shift.json",
+    "consumer": "/home/user/audit-wb/patientwords/methods.html (lines 312-331)",
+    "fields": [
+     "tiers['4'|'3'|'2'|'1'|'0'] (fixed key list; live 'null' key never rendered)",
+     "tier_examples[<tier>][] (joined ' \u00b7 ', em-dash when absent/empty)"
+    ]
+   },
+   {
+    "artifact": "data/urgency_shift.json",
+    "consumer": "/home/user/audit-wb/patientwords/simulated-scenarios/index.html (lines 576, 592-596, 640-663, 713-750, 818-831, 869-874)",
+    "fields": [
+     "rows[].batch + rows[].index + rows[].model (urgMap key batch+'#'+index+'#'+model; looked up as s.batch+'#'+s.batch_index+'#'+currentModel)",
+     "rows[].flip_class ('downgrade'/'upgrade' badges; gallery filter u.flip_class==='downgrade' && u.model==='gemma-2-2b' hard-coded)",
+     "rows[].tier_top_clinical",
+     "rows[].tier_top_patient",
+     "rows[].tier_shift (typeof number guard, toFixed(2); urgency sort value)",
+     "summary.per_model_deduped[<model>].downgrades",
+     "summary.per_model_deduped[<model>].upgrades",
+     "summary.flip_classes.downgrade / summary.flip_classes.upgrade (fallback when per_model_deduped absent/empty)",
+     "vocabulary_status (|| 'owner-reviewed v1 \u00b7 domain review pending' fallback)"
+    ]
+   },
+   {
+    "artifact": "data/urgency_shift.json",
+    "consumer": "/home/user/audit-wb/patientwords/start-here/index.html (lines 462-549)",
+    "fields": [
+     "rows[].find(batch===ref.batch && index===ref.idx && model===ref.model) for 2 hard-coded refs (pairs_20260707T215921Z#54, pairs_20260710T133708Z#1, both gemma-2-2b; both present in live file)",
+     "rows[].tier_top_clinical (null-guarded; yFor[String(...)] rung lookup)",
+     "rows[].tier_top_patient (null-guarded)",
+     "tiers (ladder rungs, fixed '4'..'0' order filtered on presence)",
+     "summary.per_model_deduped['gemma-2-2b'].downgrades / .n_phrases / .upgrades (caption; whole term skipped when entry missing)",
+     "vocabulary_status (|| 'draft pending domain review' fallback)"
+    ]
+   },
+   {
+    "artifact": "data/urgency_shift.json (site copy, engine-side readers)",
+    "consumer": "/home/user/audit-wb/patientwords-engine/scripts/specialty_breakdown.py (lines 31-33, 82-84) and scripts/coverage_gaps.py (lines 38-40, 82-83); scripts/claim_check.py via data/claims_manifest.json claims 13,14,15,20",
+    "fields": [
+     "rows[].batch, rows[].index, rows[].model",
+     "rows[].flip_class (specialty_breakdown: =='downgrade' counts)",
+     "rows[].tier_top_clinical (coverage_gaps: base-model tier matrix)",
+     "vocabulary_status (claim_check expr: 'pending' in d['vocabulary_status'])"
+    ]
+   },
+   {
+    "artifact": "data/urgency_shift.json (emitted, read by NO inspected consumer \u2014 bloat candidates)",
+    "consumer": "(none)",
+    "fields": [
+     "rows[].urgency_recovery (present on all 3759 rows, null on 3676)",
+     "summary.measurements",
+     "summary.flip_classes.lateral / .uninformative",
+     "summary.per_model[<model>].{n,flips,downgrades,upgrades,sign_test_p,confident_downgrades_p>=0.2,mean_tier_shift} (only the per_model KEY LIST is load-bearing, for index.html's model list)",
+     "summary.per_model_deduped[<model>].mean_penalty",
+     "summary.concordance.* (whole subtree incl. pairwise_downgrade_overlap)",
+     "summary.mitigation.{n,mean_urgency_recovery,restored_top_tier}",
+     "tiers['null']"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "technical-bundle",
+  "read_map": [
+   {
+    "artifact": "data/convergence.json",
+    "consumer": "technical/index.html script 1 (L488-637, accumulation fold)",
+    "fields": [
+     "payload.models{<id>}",
+     "payload.models[<id>].points[] (unguarded .forEach L526 / .filter L537; guarded ||[] only at L617)",
+     "points[].n_phrases",
+     "points[].mean_penalty",
+     "points[].ci95[0]",
+     "points[].ci95[1]",
+     "points[].through_batch (parsed by pwBatch regex)",
+     "points[].downgrades",
+     "points[].upgrades"
+    ]
+   },
+   {
+    "artifact": "data/model_stats.json",
+    "consumer": "technical/index.html script 3 (L889-1064, forest + dumbbells + ev-table)",
+    "fields": [
+     "d.per_model{<id>}",
+     "d.models (fallback Object.keys(per_model))",
+     "d.models_meta[].id",
+     "d.models_meta[].label",
+     "d.models_meta[].graphs",
+     "d.models_meta[].features",
+     "d.per_model[<id>].penalty.mean",
+     "d.per_model[<id>].penalty.ci95[0..1]",
+     "d.per_model[<id>].penalty.ci95_simultaneous[0..1] (guarded)",
+     "d.per_model[<id>].penalty.n_phrases",
+     "d.per_model[<id>].sign_test.downgrades",
+     "d.per_model[<id>].sign_test.upgrades",
+     "d.per_model[<id>].sign_test.p_bh (typeof-number guarded; null\u2192'\u2014')",
+     "d.per_model[<id>].registration",
+     "d.seed",
+     "d.boot",
+     "d.dedupe",
+     "d.ci_method_downgrade",
+     "d.below_floor[].id",
+     "d.below_floor[].n_phrases",
+     "d.site_floor_n_phrases"
+    ]
+   },
+   {
+    "artifact": "data/model_provenance.json",
+    "consumer": "technical/index.html script 3 (L901-905 fetch, L994-1010 provCell, L1046-1059 excluded rows)",
+    "fields": [
+     "p.models{<id>} (guarded ||{})",
+     "models[<id>].maker",
+     "models[<id>].released (null-guarded)",
+     "models[<id>].spec",
+     "models[<id>].excluded"
+    ]
+   },
+   {
+    "artifact": "data/jlens_insights.json",
+    "consumer": "technical/index.html script 2 (L662-887, Parts 1-3 figures)",
+    "fields": [
+     "d.formation.n_layers (guarded, fallback 26)",
+     "d.n_pairs",
+     "d.model",
+     "d.method_credit",
+     "d.exemplars[].class",
+     "d.exemplars[].clin_ranks[] (array of rank|null)",
+     "d.exemplars[].pat_ranks[]",
+     "d.exemplars[].index",
+     "d.exemplars[].dataset",
+     "d.points[].clin_formed",
+     "d.points[].pat_formed",
+     "d.points[].class",
+     "d.formation.clinical.median (UNGUARDED \u2014 writer-nullable)",
+     "d.formation.patient.median (unguarded)",
+     "d.formation.clinical_never",
+     "d.formation.patient_never",
+     "d.formation.lag.median (unguarded \u2014 writer-nullable)",
+     "d.formation.lag.n (unguarded)",
+     "d.taxonomy.held.n (guarded)",
+     "d.taxonomy.capture.n (guarded)",
+     "d.taxonomy.hijack.n (guarded)",
+     "d.taxonomy.hijack.formed_at.median (guarded)",
+     "d.taxonomy.hijack.lock_in.median (guarded)",
+     "d.taxonomy.unreadable.n (guarded)",
+     "d.persistence_layers (guarded)",
+     "d.window_sensitivity['1'|'2'|'4'|'8'].capture",
+     "d.window_sensitivity[k].hijack",
+     "d.instruction_tuning.pairs[].base",
+     "d.instruction_tuning.pairs[].it",
+     "d.instruction_tuning.n_paired"
+    ]
+   },
+   {
+    "artifact": "data/jlens_depth.json",
+    "consumer": "technical/index.html script 2 Fig 4 router (L825-848) + script 5 census/table/examples (L1095-1261); also methods.html L556-636 (exemplar.*) and simulated-scenarios/index.html L580-590 (blocks[].id, pairs[].index/class, with (b.pairs||[]) guard technical lacks)",
+    "fields": [
+     "j.translation.by_class{retained|suppressed|absent}.n",
+     "j.translation.by_class[k].mean_recovery (.toFixed(2), gated behind n>=3)",
+     "data.class_labels (guarded fallback)",
+     "data.blocks[] (older-shape fallback [data.units])",
+     "blocks[].id",
+     "blocks[].label",
+     "blocks[].counts.{retained,suppressed,absent} (guarded ||{})",
+     "blocks[].pairs[].index",
+     "blocks[].pairs[].class",
+     "blocks[].pairs[].target",
+     "blocks[].annotation.text (guarded)",
+     "data.translation.pairs[].set (join: set+'#'+index vs b.id+'#'+u.index \u2014 consistent, miss\u2192'\u2014')",
+     "data.translation.pairs[].index",
+     "data.translation.pairs[].recovery (.toFixed(3))",
+     "data.examples[].snippet",
+     "data.examples[].target",
+     "data.examples[].winner (||'?')",
+     "data.examples[].class",
+     "data.examples[].prompts.clinical (unguarded)",
+     "data.examples[].prompts.patient (unguarded)",
+     "data.examples[].clin_last_rank",
+     "data.examples[].clin_ranks{layerStr:rank} (26 layers hardcoded in strip, incl. lane['25'] output check)",
+     "data.examples[].pat_ranks{layerStr:rank}"
+    ]
+   },
+   {
+    "artifact": "data/specialty_breakdown.json",
+    "consumer": "technical/index.html script 4 (L1066-1093, sp-table)",
+    "fields": [
+     "d.specialties{<spec>}",
+     "d.specialties[<spec>]['gemma-2-2b'] (hardcoded base-model key; missing cell \u2192 row skipped)",
+     "cell.n_phrases",
+     "cell.mean_penalty (.toFixed(3))",
+     "cell.downgrades",
+     "d.min_n (emitted, NEVER read \u2014 caption hardcodes 10)"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "methods-sentinel-bundle",
+  "read_map": [
+   {
+    "artifact": "patientwords/data/urgency_shift.json",
+    "consumer": "patientwords/methods.html (tier fold, lines 312-331)",
+    "fields": [
+     "payload.tiers['4'|'3'|'2'|'1'|'0'] (guarded u.tiers||{}; extra 'null' key ignored)",
+     "payload.tier_examples[<tier>][] (guarded tex[k]&&tex[k].length, else em-dash)"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/model_evaluations.json",
+    "consumer": "patientwords/methods.html (#generation-eval table, lines 423-480)",
+    "fields": [
+     "payload.models[] (guarded ||[])",
+     "payload.models[].id (fallback em-dash)",
+     "payload.models[].items (last non-null wins for the 'n = X items per model' caption)",
+     "payload.models[].patient_accuracy (typeof number check)",
+     "payload.models[].clinician_accuracy (typeof number check)",
+     "payload.models[].cost_usd (typeof number check, else em-dash)",
+     "payload.task",
+     "payload.updated"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/jlens_depth.json",
+    "consumer": "patientwords/methods.html (reading-layers figure, lines 556-630)",
+    "fields": [
+     "payload.exemplar (guarded)",
+     "payload.exemplar.patched[] (guarded)",
+     "payload.exemplar.layers (||26 fallback)",
+     "payload.exemplar.labels.clinical (UNGUARDED)",
+     "payload.exemplar.labels.patient (UNGUARDED)",
+     "payload.exemplar.clin_ranks[<layer-str>]",
+     "payload.exemplar.pat_ranks[<layer-str>]",
+     "payload.exemplar.clean_prob (unguarded .toFixed(3) at line 614)",
+     "payload.exemplar.corrupt_prob (unguarded .toFixed(3))"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/retrace_consistency.json",
+    "consumer": "patientwords/methods.html (step-2 note + Limitations, lines 636-648, span #lim-rt-n line 524)",
+    "fields": [
+     "payload.pairs_retraced (falsy guard)",
+     "payload.prob_spread_max (String(); never null while pairs_retraced>0 given writer logic)",
+     "payload.top_word_stable_pairs",
+     "payload.spread_lists_identical_pairs (!=null guarded, em-dash fallback)"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/timeline.json",
+    "consumer": "patientwords/simulated-scenarios/index.html (timeline strip, lines 402-464)",
+    "fields": [
+     "payload.batches[].utc (filter, Date.parse, .slice)",
+     "payload.batches[].kind ('pairs' sizes dots)",
+     "payload.batches[].tierb (fill)",
+     "payload.batches[].batch, .generator, .accepted, .cost_usd (tooltip; !=null guards)",
+     "payload.milestones[].utc, .label (||[] guard; .label unguarded .toLowerCase)",
+     "payload.totals.generation_batches (unguarded, aria-label)",
+     "payload.totals.accepted_pairs",
+     "payload.totals.tierb_accepted",
+     "payload.totals.generation_usd (unguarded .toFixed(2); whole draw() wrapped by .catch -> strip stays hidden)"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/specialties.json",
+    "consumer": "patientwords/simulated-scenarios/index.html (specialty filter chips, lines 582, 604-616, 1025-1053)",
+    "fields": [
+     "payload.specialties[<spec>][<sub>][] (topic strings inverted into topic->[spec,sub] map; guarded specData&&specData.specialties; unmapped topics -> Other/Other; absence falls back to flat condition chips)"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/jlens_depth.json",
+    "consumer": "patientwords/simulated-scenarios/index.html (depth badges, lines 580, 587-589, 833-835)",
+    "fields": [
+     "payload.blocks[] (guarded depthData&&depthData.blocks)",
+     "payload.blocks[].id (join key id+'#'+index vs scenario batch+'#'+batch_index)",
+     "payload.blocks[].pairs[].index",
+     "payload.blocks[].pairs[].class (only 'suppressed'/'absent' badge; unknown classes silently skipped)"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/retrace_consistency.json",
+    "consumer": "patientwords/simulated-scenarios/index.html (repeatability line, lines 1167-1178)",
+    "fields": [
+     "payload.pairs_retraced (falsy guard)",
+     "payload.top_word_stable_pairs (also used, mislabeled, for the top-five-lists claim)",
+     "payload.prob_spread_max"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/drift_series.json (writer: patientwords-engine/scripts/drift_sentinel.py, ops/ + --site copy)",
+    "consumer": "patientwords-engine/scripts/claim_check.py via patientwords-engine/data/claims_manifest.json (2 methods.html claims, manifest lines 272-287)",
+    "fields": [
+     "payload.deltas[].date (pinned '20260715')",
+     "payload.deltas[].max_abs_delta (round(...,3)==0.027)",
+     "payload.deltas[].top_word_changes (==[])",
+     "emitted-but-unread by any consumer: pairs_file, threshold, days_measured, series, stable, deltas[].prev/.worst/.top_words_tracked (by-design audit record per ops priors)"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/{model_stats,urgency_shift,jlens_depth,simulated_scenarios,provenance}.json",
+    "consumer": "patientwords-engine/scripts/claim_check.py (methods.html claim coverage)",
+    "fields": [
+     "model_stats: per_model['medgemma-4b-it'].penalty.{mean,ci95,ci95_simultaneous,n_phrases}, len(per_model)",
+     "urgency_shift: vocabulary_status ('pending' in)",
+     "jlens_depth: len(blocks)>0 (only guard on the reading-layers section)",
+     "NOT covered on methods.html: worked-example 30%/26% (line 291), depth narrative layers 10/19/+9/rank-2 (lines 347-350), 'three sentinel pairs' (line 231), static 52 fallback (line 524)"
+    ]
+   },
+   {
+    "artifact": "patientwords-engine/data/evaluations/model_evaluations_frontend.json (writer: .github/workflows/model_evaluation.yml export heredoc, lines 123-153)",
+    "consumer": "manual copy -> patientwords/data/model_evaluations.json -> methods.html",
+    "fields": [
+     "updated (str(date.today()))",
+     "task",
+     "models[].{id,items,patient_accuracy,clinician_accuracy,delta,mitigated,regressions,cost_usd,status} \u2014 delta/mitigated/regressions/status read by no page"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "small-pages",
+  "read_map": [
+   {
+    "artifact": "data/stress_pairs.json",
+    "consumer": "patientwords/index.html (lines 593-646, top-5 consequence sample)",
+    "fields": [
+     "payload[] (root array; fallback payload.pairs when object)",
+     "payload.model (object shape only)",
+     "payload.source_set (object shape only)",
+     "pairs[].top_prompt",
+     "pairs[].bottom_prompt",
+     "pairs[].target_clinical_token",
+     "pairs[].provenance.source_row",
+     "pairs[].provenance.notes",
+     "pairs[].provenance.patient.observed_next_token",
+     "pairs[].provenance.patient.observed_prob",
+     "pairs[].provenance.patient.circuit_link",
+     "pairs[].provenance.clinical.observed_next_token",
+     "pairs[].provenance.clinical.observed_prob",
+     "pairs[].provenance.clinical.circuit_link"
+    ]
+   },
+   {
+    "artifact": "data/stress_pairs.json",
+    "consumer": "patientwords/phrase-dataset/index.html (lines 201-234, full table)",
+    "fields": [
+     "payload[] (root array; fallback payload.pairs)",
+     "payload.model / payload.source_set (object shape only)",
+     "pairs[].top_prompt",
+     "pairs[].bottom_prompt",
+     "pairs[].target_clinical_token",
+     "pairs[].provenance.source_row",
+     "pairs[].provenance.notes",
+     "pairs[].provenance.patient.{observed_next_token,observed_prob,circuit_link}",
+     "pairs[].provenance.clinical.{observed_next_token,observed_prob,circuit_link}",
+     "(provenance.sourcing emitted, all-null, read by no consumer)"
+    ]
+   },
+   {
+    "artifact": "data/dialects.json",
+    "consumer": "patientwords/index.html (lines 754-812, dialect-variance specimen)",
+    "fields": [
+     "payload.items[]",
+     "items[].variants[].delta (||0 guarded)",
+     "items[].variants[].flip",
+     "items[].variants[].top_token",
+     "items[].variants[].top_p (UNGUARDED Math.round)",
+     "items[].variants[].dialect",
+     "items[].variants[].prompt",
+     "items[].baseline_prompt",
+     "items[].baseline_p (UNGUARDED Math.round)",
+     "items[].target_token",
+     "items[].variants.length",
+     "payload.batch (regex-parsed dialects_YYYYMMDD)"
+    ]
+   },
+   {
+    "artifact": "data/dialects.json",
+    "consumer": "patientwords/dialect-differences/index.html (lines 351-555, matrix + featured + core)",
+    "fields": [
+     "payload.items[]",
+     "payload.batch",
+     "payload.graph_model",
+     "items[].term",
+     "items[].target_token",
+     "items[].baseline_p (null\u2192em-dash)",
+     "items[].baseline_prompt",
+     "items[].render",
+     "items[].core.invariant (NEVER EMITTED by exporter)",
+     "items[].core.baseline_clinical",
+     "items[].core.framings",
+     "items[].core.top[].{feature,desc,norm_mass,survives}",
+     "items[].variants[].{dialect,prompt,p,delta,top_token,top_p,flip} (null p/delta\u2192em-dash; missing dialect cell\u2192em-dash)",
+     "(payload.source_set read by no page)"
+    ]
+   },
+   {
+    "artifact": "data/dialects.json",
+    "consumer": "patientwords-engine scripts/claim_check.py via data/claims_manifest.json (3 claims)",
+    "fields": [
+     "payload.updated (expected 2026-07-08)",
+     "len(payload.items) (expected 5)",
+     "sum(len(items[].variants)) (expected 40)"
+    ]
+   },
+   {
+    "artifact": "data/translation_scale.json",
+    "consumer": "patientwords/translation/index.html (lines 312-352, At-scale table + lens line)",
+    "fields": [
+     "payload.per_model{} (Object.keys sorted; empty\u2192section hidden)",
+     "per_model[<id>].n",
+     "per_model[<id>].mean_recovery",
+     "per_model[<id>].share_recovery_positive",
+     "per_model[<id>].top_restored",
+     "per_model[<id>].top_lost",
+     "payload.lens_recovery.n_paired (0/absent\u2192lens line hidden)",
+     "lens_recovery.patient_never_formed",
+     "lens_recovery.recovered_to_formed",
+     "lens_recovery.lost_by_translation",
+     "(NOT read anywhere: per_model.median_recovery, per_model.n_with_headroom, per_model.mean_gap_closed, payload.corpora, lens_recovery.formed_both)"
+    ]
+   },
+   {
+    "artifact": "data/provenance.json",
+    "consumer": "patientwords/translation/index.html (lines 449-611, flow + gallery + titration; single .catch swallows all)",
+    "fields": [
+     "translation_cases.grandma_laxative.retrace_20260709.{patient_top,translated,clinical} (each [token,prob])",
+     "translation_cases.icecream_antacid.prompts.{patient,translated}",
+     "translation_cases.icecream_antacid.translated[0],[1] (UNGUARDED)",
+     "translation_cases.icecream_antacid.patient[0],[1] (UNGUARDED)",
+     "translation_cases.all.cases[].{class,index,patient_top[0..1],translated_top[0..1],clinical_top[0..1],patient_prompt,translated_prompt}",
+     "steering_titration.strengths['2.5'|'5'|'10'|'20'].{recovered,n} (missing\u2192'pending')",
+     "steering_titration.low_rank_6_10.{recovered,n}",
+     "steering_titration.placebo.{recovered,n}"
+    ]
+   },
+   {
+    "artifact": "data/provenance.json",
+    "consumer": "patientwords/index.html (lines 803-810, specimen scale note)",
+    "fields": [
+     "paraphrase_robustness.mean_abs_delta_vs_baseline (typeof number guarded; absent\u2192note omitted)"
+    ]
+   },
+   {
+    "artifact": "data/provenance.json",
+    "consumer": "patientwords/dialect-differences/index.html (lines 433-439, dl-noise scale note)",
+    "fields": [
+     "paraphrase_robustness.mean_abs_delta_vs_baseline (typeof number guarded)"
+    ]
+   },
+   {
+    "artifact": "data/provenance.json",
+    "consumer": "patientwords/simulated-scenarios/index.html (lines 578-579, 669-709, key example; fetch failure\u2192null, section skipped)",
+    "fields": [
+     "steering.key_example.batch + steering.key_example.batch_index (join key into simulated_scenarios.scenarios[] by (batch,batch_index) \u2014 join verified hit on live data)",
+     "steering.key_example.boost_recovered_token",
+     "steering.boost_recoveries",
+     "steering.ablation_recoveries",
+     "steering.n_phrases"
+    ]
+   },
+   {
+    "artifact": "data/provenance.json",
+    "consumer": "patientwords-engine scripts/claim_check.py via data/claims_manifest.json (13 claims)",
+    "fields": [
+     "translation_cases.summary.{recovered,n_downgrades,unrecovered}",
+     "translation_cases.all.cases[].class (worsened count)",
+     "translation_cases.grandma_laxative.translated[1] + .retrace_20260709.translated[1]",
+     "translation_placebo.{mean_recovery_translation,mean_recovery_placebo,n_paired}",
+     "steering_titration.strengths[*].recovered",
+     "context_inoculation.{casual_context_mean_penalty,clinical_context_mean_penalty}",
+     "batches[].{batch,accepted,rejected}",
+     "tierb_holdout.fraction",
+     "emergency_sets.accepted_pairs"
+    ]
+   },
+   {
+    "artifact": "data/patch_profile.json",
+    "consumer": "NONE (no page fetch, no claims-manifest entry, no frontend doc). Engine docs (findings_synthesis_DRAFT_20260713.md:90,215) cite the ENGINE copy path only. methods.html's causal-patch lane (methods.html:556-621, ex.patched/ex.clean_prob) is fed by data/jlens_depth.json exemplar, which export_jlens_depth.py:74-89,212,238 joins straight from trace_out/<stem>__patch, bypassing patch_profile.json entirely",
+    "fields": [
+     "generated_utc",
+     "stem",
+     "metric",
+     "term_adjacent_rule",
+     "pairs_used[]",
+     "pairs_screened{}",
+     "per_layer[].{layer,mean_max_recovery,n}",
+     "best_cell_site.{term_adjacent,downstream}",
+     "per_pair[].{index,best{recovery,layer,position,site},term_adjacent_best,downstream_best}"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "wf-circuit-trace",
+  "read_map": []
+ },
+ {
+  "key": "wf-logits",
+  "read_map": []
+ },
+ {
+  "key": "wf-paid",
+  "read_map": []
+ },
+ {
+  "key": "wf-new-analyses",
+  "read_map": []
+ },
+ {
+  "key": "wf-archive-ops",
+  "read_map": []
+ },
+ {
+  "key": "global-sweep",
+  "read_map": [
+   {
+    "artifact": "data/simulated_scenarios.json",
+    "consumer": "index.html (lines 716-748, sim stat)",
+    "fields": [
+     "batches[].generated.accepted",
+     "scenarios[].language_penalty",
+     "scenarios[].screening.status",
+     "scenarios[].flipped"
+    ]
+   },
+   {
+    "artifact": "data/simulated_scenarios.json",
+    "consumer": "simulated-scenarios/index.html (lines 573-1157)",
+    "fields": [
+     "scenarios[].index",
+     "scenarios[].batch",
+     "scenarios[].batch_index",
+     "scenarios[].topic",
+     "scenarios[].clinical_prompt",
+     "scenarios[].patient_prompt",
+     "scenarios[].patient_term",
+     "scenarios[].clinical_term",
+     "scenarios[].intended_target",
+     "scenarios[].rationale",
+     "scenarios[].html",
+     "scenarios[].spread_clinical[0][0]",
+     "scenarios[].spread_patient[0][0]",
+     "scenarios[].models[<id>].target_token",
+     "scenarios[].models[<id>].anchor_fallback",
+     "scenarios[].models[<id>].prob_clinical",
+     "scenarios[].models[<id>].prob_patient",
+     "scenarios[].models[<id>].language_penalty",
+     "scenarios[].models[<id>].clinical_mass.clinical",
+     "scenarios[].models[<id>].clinical_mass.patient",
+     "scenarios[].models[<id>].flipped",
+     "scenarios[].models[<id>].screening.status",
+     "scenarios[].models[<id>].screening.probe_extension",
+     "scenarios[].models[<id>].top_clinical[0]",
+     "scenarios[].models[<id>].top_patient[0]",
+     "(base model falls back to same-named top-level fields via (s.models[id])||s)",
+     "batches[].generated.model",
+     "batches[].generated.run_timestamp",
+     "batches[].generated.cost_usd",
+     "batches[].generated.accepted",
+     "batches[].generated.rejected",
+     "batches[].screen_targets",
+     "traced.graph_model",
+     "traced.source_set",
+     "models_meta[].id",
+     "models_meta[].label",
+     "models_meta[].default",
+     "models_meta[].features",
+     "models_meta[].graphs",
+     "models_meta[].available",
+     "models_meta[].n_traced",
+     "models_meta[].source_set"
+    ]
+   },
+   {
+    "artifact": "data/simulated_scenarios.json",
+    "consumer": "simulated-scenarios/scenario.html (lines 365-556)",
+    "fields": [
+     "scenarios[].index",
+     "scenarios[].batch",
+     "scenarios[].batch_index",
+     "scenarios[].patient_term",
+     "scenarios[].clinical_term",
+     "scenarios[].clinical_prompt",
+     "scenarios[].patient_prompt",
+     "scenarios[].intended_target",
+     "scenarios[].rationale",
+     "scenarios[].models[<id>].target_token",
+     "scenarios[].models[<id>].anchor_fallback",
+     "scenarios[].models[<id>].prob_clinical",
+     "scenarios[].models[<id>].prob_patient",
+     "scenarios[].models[<id>].top_clinical[0..1]",
+     "scenarios[].models[<id>].top_patient[0..1]",
+     "scenarios[].models[<id>].spread_clinical[][0..1] (full depth rendered)",
+     "scenarios[].models[<id>].spread_patient[][0..1] (full depth rendered)",
+     "scenarios[].models[<id>].clinical_mass.clinical",
+     "scenarios[].models[<id>].clinical_mass.patient",
+     "scenarios[].models[<id>].language_penalty",
+     "scenarios[].models[<id>].flipped",
+     "scenarios[].models[<id>].screening.status",
+     "scenarios[].models[<id>].screening.reason",
+     "scenarios[].models[<id>].html",
+     "scenarios[].models[<id>].diff_html (READ BUT NEVER EMITTED)",
+     "scenarios[].models[<id>].circuit_diff.{shared_features,unique_to_a,unique_to_b} (only inside dead diff_html branch)",
+     "traced.graph_model",
+     "traced.source_set",
+     "models_meta[].id",
+     "models_meta[].label",
+     "models_meta[].features",
+     "models_meta[].graphs",
+     "archive.release_url (absent in instance, guarded)",
+     "archive.models[<id>].release_url (absent in instance, guarded)"
+    ]
+   },
+   {
+    "artifact": "data/simulated_scenarios.json",
+    "consumer": "start-here/index.html (lines 462-549, care ladder)",
+    "fields": [
+     "scenarios[].batch",
+     "scenarios[].batch_index",
+     "scenarios[].models[<id>] (non-base only; base read from top level explicitly)",
+     "scenarios[].top_clinical[0..1]",
+     "scenarios[].top_patient[0..1]",
+     "scenarios[].clinical_prompt",
+     "scenarios[].clinical_term",
+     "scenarios[].patient_prompt",
+     "scenarios[].patient_term"
+    ]
+   },
+   {
+    "artifact": "data/simulated_scenarios.json",
+    "consumer": "engine data/claims_manifest.json exprs (scripts/claim_check.py)",
+    "fields": [
+     "scenarios[].prob_clinical",
+     "scenarios[].prob_patient",
+     "holdout_withheld"
+    ]
+   },
+   {
+    "artifact": "data/simulated_scenarios.json",
+    "consumer": "NOBODY (emitted, zero readers)",
+    "fields": [
+     "scenarios[].topics",
+     "scenarios[].png",
+     "scenarios[].models[gemma-2-2b].png",
+     "scenarios[].models[gemma-2-2b].* (full duplicate of the 13 top-level COMPAT fields)",
+     "scenarios[].screening.min_prob",
+     "scenarios[].screening.intended_target",
+     "scenarios[].screening.observed_clinical",
+     "traced_by_model",
+     "batches[].generated.max_spend_usd",
+     "batches[].generated.rejection_reasons",
+     "batches[].generated.topics",
+     "batches[].generated.sidecar",
+     "batches[].batch"
+    ]
+   },
+   {
+    "artifact": "data/urgency_shift.json",
+    "consumer": "index.html (lines 650-709, safety view)",
+    "fields": [
+     "summary.per_model (model id list only)",
+     "summary.per_model_deduped[<id>].downgrades",
+     "summary.per_model_deduped[<id>].upgrades",
+     "summary.per_model_deduped[<id>].flips",
+     "summary.flips (fallback count)",
+     "vocabulary_status"
+    ]
+   },
+   {
+    "artifact": "data/urgency_shift.json",
+    "consumer": "simulated-scenarios/index.html (join (batch,index,model)->(s.batch,s.batch_index,currentModel))",
+    "fields": [
+     "rows[].batch",
+     "rows[].index",
+     "rows[].model",
+     "rows[].flip_class",
+     "rows[].tier_top_clinical",
+     "rows[].tier_top_patient",
+     "rows[].tier_shift",
+     "summary.per_model_deduped[<id>].{downgrades,upgrades}",
+     "summary.flip_classes.{downgrade,upgrade} (older-payload fallback)",
+     "vocabulary_status"
+    ]
+   },
+   {
+    "artifact": "data/urgency_shift.json",
+    "consumer": "methods.html (lines 312-331, tier table)",
+    "fields": [
+     "tiers['4'..'0']",
+     "tier_examples['4'..'0'][]"
+    ]
+   },
+   {
+    "artifact": "data/urgency_shift.json",
+    "consumer": "start-here/index.html (lines 462-549)",
+    "fields": [
+     "rows[].batch",
+     "rows[].index",
+     "rows[].model",
+     "rows[].tier_top_clinical",
+     "rows[].tier_top_patient",
+     "tiers",
+     "summary.per_model_deduped['gemma-2-2b'].{downgrades,upgrades,n_phrases}",
+     "vocabulary_status"
+    ]
+   },
+   {
+    "artifact": "data/urgency_shift.json",
+    "consumer": "NOBODY (emitted in site copy, zero readers)",
+    "fields": [
+     "rows[].urgency_recovery",
+     "summary.concordance",
+     "summary.mitigation",
+     "summary.measurements",
+     "tiers['null']"
+    ]
+   },
+   {
+    "artifact": "data/stress_pairs.json",
+    "consumer": "index.html (593-646), phrase-dataset/index.html (201)",
+    "fields": [
+     "pairs[] or bare array",
+     "model",
+     "source_set",
+     "pairs[].provenance.{patient,clinical}.{observed_next_token,observed_prob,circuit_link}",
+     "pairs[].provenance.{notes,source_row}",
+     "pairs[].target_clinical_token",
+     "pairs[].top_prompt",
+     "pairs[].bottom_prompt"
+    ]
+   },
+   {
+    "artifact": "data/dialects.json",
+    "consumer": "index.html (754-812), dialect-differences/index.html (351-504)",
+    "fields": [
+     "items[].{term,target_token,baseline_p,baseline_prompt,index,render,core.{invariant,baseline_clinical,framings}}",
+     "items[].variants[].{dialect,prompt,delta,flip,top_token,top_p}",
+     "batch",
+     "graph_model"
+    ]
+   },
+   {
+    "artifact": "data/provenance.json",
+    "consumer": "index.html, dialect-differences, translation, simulated-scenarios/index.html",
+    "fields": [
+     "paraphrase_robustness.mean_abs_delta_vs_baseline",
+     "steering.{key_example.{batch,batch_index,boost_recovered_token},boost_recoveries,ablation_recoveries,n_phrases}",
+     "translation_cases.{icecream_antacid,grandma_laxative.retrace_20260709,all.cases[].{index,class,patient_top,translated_top,clinical_top,patient_prompt,translated_prompt}}",
+     "steering_titration.{strengths,low_rank_6_10,placebo}"
+    ]
+   },
+   {
+    "artifact": "data/timeline.json",
+    "consumer": "simulated-scenarios/index.html (402-464)",
+    "fields": [
+     "batches[].{utc,kind,tierb,batch,generator,accepted,cost_usd}",
+     "milestones[].{utc,label}",
+     "totals.{generation_batches,accepted_pairs,tierb_accepted,generation_usd}"
+    ]
+   },
+   {
+    "artifact": "data/specialties.json",
+    "consumer": "simulated-scenarios/index.html (582, 604-611)",
+    "fields": [
+     "specialties[<spec>][<sub>][] (topic taxonomy)"
+    ]
+   },
+   {
+    "artifact": "data/jlens_depth.json",
+    "consumer": "simulated-scenarios/index.html (580, 586-590), methods.html (556), technical/index.html (825, 1107)",
+    "fields": [
+     "blocks[].id",
+     "blocks[].pairs[].{index,class}",
+     "model",
+     "units",
+     "class_labels",
+     "formation",
+     "exemplars"
+    ]
+   },
+   {
+    "artifact": "data/retrace_consistency.json",
+    "consumer": "simulated-scenarios/index.html (1167-1178), methods.html (636)",
+    "fields": [
+     "pairs_retraced",
+     "top_word_stable_pairs",
+     "prob_spread_max"
+    ]
+   },
+   {
+    "artifact": "data/model_evaluations.json",
+    "consumer": "methods.html (423)",
+    "fields": [
+     "models[]",
+     "updated"
+    ]
+   },
+   {
+    "artifact": "data/convergence.json + jlens_insights.json + model_provenance.json + model_stats.json + specialty_breakdown.json",
+    "consumer": "technical/index.html (513, 683, 902, 906, 1068)",
+    "fields": [
+     "convergence points/series",
+     "insights n_pairs/exemplars",
+     "provenance per-model rows",
+     "model_stats per_model/models/ci/mean/n_phrases/boot/seed",
+     "specialty_breakdown.specialties"
+    ]
+   },
+   {
+    "artifact": "data/translation_scale.json",
+    "consumer": "translation/index.html (312-352)",
+    "fields": [
+     "per_model[<id>].{n,mean_recovery,share_recovery_positive,top_restored,top_lost}",
+     "lens_recovery.{n_paired,patient_never_formed,recovered_to_formed,lost_by_translation}"
+    ]
+   },
+   {
+    "artifact": "data/simulated_archive.csv",
+    "consumer": "simulated-scenarios/scenario.html (520-537, download hrefs only)",
+    "fields": [
+     "(opaque download; no JS parse)"
+    ]
+   },
+   {
+    "artifact": "data/simulated_archive.json",
+    "consumer": "NOBODY (3,869,136 B; only the .csv is linked)",
+    "fields": [
+     "(entire file)"
+    ]
+   },
+   {
+    "artifact": "data/patch_profile.json",
+    "consumer": "NOBODY (4,012 B; accepted-prior orphan re-verified: zero refs in all 110 pages and not a claims-manifest source)",
+    "fields": [
+     "(entire file)"
+    ]
+   },
+   {
+    "artifact": "data/drift_series.json",
+    "consumer": "engine scripts/claim_check.py via claims manifest (no page fetch, BY DESIGN)",
+    "fields": [
+     "(2 manifest exprs)"
+    ]
+   }
+  ]
+ }
+]

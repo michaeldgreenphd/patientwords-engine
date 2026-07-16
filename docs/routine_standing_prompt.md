@@ -187,6 +187,12 @@ coverage; $0). When Tier B generation fires, take `topics` for the fire from
 its `steer_topics` block so thin specialties fill first - corpus balance is
 a sampling decision, not an afterthought.
 
+After any data republish, run `python
+scripts/validate_frontend_contract.py --site ../patientwords` (audit-1
+structural gate, adopted 2026-07-17; report mode until F-M27's orphan-row
+trim lands, then add --strict). New errors mean an export broke the page
+contract: fix before pushing the site.
+
 After any data republish, run `python scripts/claim_check.py` (checks
 hardcoded prose numbers against `data/claims_manifest.json`). Exit 1 =
 refreshed data invalidated a sentence on the site: do NOT edit the prose

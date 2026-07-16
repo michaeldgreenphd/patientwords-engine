@@ -87,6 +87,12 @@ jobs:
               prune = os.environ.get("IN_PRUNE", "") == "true"
           if not tag or not runs:
               raise SystemExit("archive-renders needs a tag and at least one run")
+          if no_pngs and prune:
+              # F-H01 (audit 1, 2026-07-17): pruning PNGs that the bundle
+              # excluded would leave them neither on the branch tip nor in the
+              # Release; refuse before any bundle or upload work happens.
+              raise SystemExit("prune=true with no_pngs=true would delete PNGs "
+                               "that are not in the Release; refuse")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               out.write(f"tag={tag}\n")
               out.write("runs=" + " ".join(runs) + "\n")
@@ -156,7 +162,7 @@ jobs:
             # working tree so fresh clones stay lean. Interactive HTML +
             # summaries stay in git.
             for run in $RUNS; do
-              git rm -q --ignore-unmatch "$run"/index_*.png || true
+              git rm -q --ignore-unmatch "$run"/index_*.png
             done
           fi
 

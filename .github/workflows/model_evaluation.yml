@@ -113,6 +113,56 @@ jobs:
           fi
           python -m medlang_circuits.evaluate_models "${ARGS[@]}"
 
+      - name: Ledger sidecar to main (spend accounting)
+        if: always()
+        env:
+          MAX_SPEND: ${{ steps.params.outputs.max_spend }}
+          MODEL_LIST: ${{ steps.params.outputs.list }}
+        run: |
+          set -euo pipefail
+          # F-H02/F-H03 (audit 1, 2026-07-17): model-evaluation was the only
+          # paid path without a data/simulated sidecar, so its spend never
+          # reached the ledger scan on main. When the run crashed before
+          # results.json, book max_spend as a conservative estimate.
+          python - <<'EOF'
+          import json, os, pathlib, time
+          stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+          side = {"task": "model-evaluation",
+                  "model": os.environ.get("MODEL_LIST", ""),
+                  "max_spend_usd": float(os.environ.get("MAX_SPEND") or 0)}
+          try:
+              r = json.load(open("eval_out/results.json", encoding="utf-8"))
+              side["run_timestamp"] = r.get("run_timestamp") or time.strftime(
+                  "%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+              side["cost_usd"] = round((r.get("usage") or {}).get("total_cost_usd", 0.0), 6)
+              side["usage"] = r.get("usage")
+          except (OSError, json.JSONDecodeError):
+              side["run_timestamp"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+              side["cost_usd"] = side["max_spend_usd"]
+              side["estimated"] = ("run crashed before results.json; booked at "
+                                   "max_spend as an upper bound")
+          out = pathlib.Path(f"data/simulated/modeleval_{stamp}.report.json")
+          out.write_text(json.dumps(side, indent=1) + "\n", encoding="utf-8")
+          print("sidecar ->", out)
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git worktree add ../main-ledger origin/main
+          mkdir -p ../main-ledger/data/simulated
+          cp data/simulated/modeleval_*.report.json ../main-ledger/data/simulated/
+          cd ../main-ledger
+          git add data/simulated/
+          git commit -m "Model-evaluation cost sidecar"
+          pushed=0
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then pushed=1; break; fi
+            git fetch origin main
+            git rebase origin/main
+            sleep "$attempt"
+          done
+          if [ "$pushed" != "1" ]; then echo "::error::sidecar push failed"; exit 1; fi
+
       - name: Export frontend table + commit to the dispatched branch
         if: always()
         env:
@@ -125,11 +175,20 @@ jobs:
           from datetime import date
           results = json.load(open("eval_out/results.json", encoding="utf-8"))
           per_model_cost = (results.get("usage") or {}).get("per_model") or {}
-          models = []
+          import pathlib
+          # F-H04 (audit 1, 2026-07-17): merge by model id instead of wholesale
+          # overwrite - a single-model run must not discard other models' rows.
+          # Retired ids therefore persist until removed by hand. Each row keeps
+          # its own updated stamp; stale rows never inherit today's date.
+          out_path = pathlib.Path("data/evaluations/model_evaluations_frontend.json")
+          merged = {}
+          if out_path.exists():
+              for m in json.loads(out_path.read_text(encoding="utf-8")).get("models", []):
+                  merged[m["id"]] = m
           for model, blocks in (results.get("by_model") or {}).items():
               ts = blocks.get("two_step") or {}
               flags = ts.get("flags") or {}
-              models.append({
+              merged[model] = {
                   "id": model,
                   "items": len(ts.get("items") or []) or None,
                   "patient_accuracy": ts.get("patient_accuracy"),
@@ -139,13 +198,13 @@ jobs:
                   "regressions": flags.get("regressions"),
                   "cost_usd": round((per_model_cost.get(model) or {}).get("cost", 0.0), 4) or None,
                   "status": "evaluated" if ts.get("patient_accuracy") is not None else "pending",
-              })
+                  "updated": str(date.today()),
+              }
           payload = {
               "updated": str(date.today()),
               "task": "clinical concept extraction, scored on the same expected terms before and after translation",
-              "models": models,
+              "models": list(merged.values()),
           }
-          import pathlib
           pathlib.Path("data/evaluations").mkdir(parents=True, exist_ok=True)
           pathlib.Path("data/evaluations/model_evaluations_frontend.json").write_text(
               json.dumps(payload, indent=2) + "\n", encoding="utf-8")

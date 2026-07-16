@@ -136,6 +136,8 @@ def build_summary(model_id, hf_id, results, start_index=1, revision=None):
         "source_set": None,           # no transcoder -> features=False downstream
         "generation_params": {},
         "start_index": start_index,
+        "pairs_requested": len(results),
+        "completed": True,   # logits parts write once, post-loop: never truncated
         "screen_targets": None,
         # revision = the resolved HF commit hash, for the W5 pin table
         "inference": {"method": "logits", "hf_id": hf_id, "dtype": "bfloat16",

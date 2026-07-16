@@ -186,6 +186,21 @@ def test_run_batch_checkpoints_and_start_index(tmp_path, monkeypatch):
     summary = json.loads((out / "batch_summary.json").read_text(encoding="utf-8"))
     assert summary["start_index"] == 3
     assert [r["index"] for r in summary["results"]] == [3]
+    # F-H06 (audit 1): a truncated checkpoint must be tellable from a complete
+    # smaller chunk - the crash left the completion flag down
+    assert summary["pairs_requested"] == 2
+    assert summary["completed"] is False
+
+    # a clean run over a 1-pair file flips the flag on the final rewrite
+    solo = tmp_path / "solo.json"
+    solo.write_text(json.dumps([
+        {"top_prompt": "clinical one", "bottom_prompt": "patient one", "target_clinical_token": " jumps"},
+    ]), encoding="utf-8")
+    out2 = tmp_path / "out2"
+    batch_eval.run_batch(str(solo), out_dir=str(out2), dpi=60, fetcher=build_fetcher())
+    done = json.loads((out2 / "batch_summary.json").read_text(encoding="utf-8"))
+    assert done["completed"] is True
+    assert done["pairs_requested"] == 1
 
     with pytest.raises(ValueError, match="start_index"):
         batch_eval.run_batch(str(pairs), out_dir=str(out), fetcher=build_fetcher(), start_index=0)

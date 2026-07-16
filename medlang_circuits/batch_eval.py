@@ -1028,6 +1028,8 @@ def run_batch(
         "source_set": source_set or getattr(fetcher, "source_set", None),
         "generation_params": generation_params or {},
         "start_index": start_index,
+        "pairs_requested": len(pairs),
+        "completed": False,
         "screen_targets": screen_targets,
         "results": results,
     }
@@ -1061,6 +1063,11 @@ def run_batch(
         with open(summary_path, "w", encoding="utf-8") as f:  # checkpoint per pair
             json.dump(summary, f, indent=2)
         logger.info("Checkpointed pair %d (%d done) to %s", i, len(results), summary_path)
+    # F-H06 (audit 1, 2026-07-17): a truncated checkpoint must be tellable from
+    # a complete smaller chunk; the final rewrite is what flips the flag.
+    summary["completed"] = True
+    with open(summary_path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
     logger.info("Batch complete: %d pairs (mode=%s), summary at %s", len(results), mode, summary_path)
     return results
 

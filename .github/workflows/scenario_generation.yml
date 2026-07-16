@@ -284,20 +284,26 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Commit to the simulated-data archive
-        if: ${{ steps.gen.outputs.count != '0' }}
         run: |
           set -euo pipefail
           # Commit ONLY the batch + sidecar onto main, whichever ref this run
           # was dispatched from - code on a feature branch must not ride along.
+          # F-H05 (audit 1, 2026-07-17): the COST SIDECAR lands even when the
+          # run accepted 0 items - a paid run with no output still spent money,
+          # and the ledger scans main. The batch file itself only lands when
+          # there is one.
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git worktree add ../main-archive origin/main
           mkdir -p ../main-archive/data/simulated
-          cp "${{ steps.gen.outputs.out }}" "${{ steps.gen.outputs.report }}" ../main-archive/data/simulated/
+          cp "${{ steps.gen.outputs.report }}" ../main-archive/data/simulated/
+          if [ "${{ steps.gen.outputs.count }}" != "0" ]; then
+            cp "${{ steps.gen.outputs.out }}" ../main-archive/data/simulated/
+          fi
           cd ../main-archive
           git add data/simulated/
-          git commit -m "Archive simulated ${{ steps.params.outputs.task }} scenarios: $(basename '${{ steps.gen.outputs.out }}')"
+          git commit -m "Archive simulated ${{ steps.params.outputs.task }} scenarios: $(basename '${{ steps.gen.outputs.report }}')"
           # A concurrent archive push can win the race (2026-07-13: emergency
           # round 2 lost its paid batch this way). An archive commit is pure
           # addition of uniquely-named files, so a rebase always applies

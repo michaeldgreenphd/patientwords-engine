@@ -97,6 +97,7 @@ def main(argv=None) -> int:
     system = _translate_system()
     out_pairs: list[dict] = []
     failed = 0
+    aborted = None
     for item in corpus:
         if not tracker.can_afford(args.model):
             print(f"ceiling reached after {len(out_pairs)} translations", file=sys.stderr)
@@ -109,7 +110,11 @@ def main(argv=None) -> int:
             print(f"  translation failed ({item['source_batch']}#{item['source_index']}): "
                   f"{err}", file=sys.stderr)
             if failed > 25:
-                raise RuntimeError("too many translation failures; aborting") from err
+                # F-H07 (audit 1, 2026-07-17): abort the loop, not the run - the
+                # partial output and the cost sidecar must still land.
+                aborted = "too many translation failures; aborting"
+                print(aborted, file=sys.stderr)
+                break
             continue
         tracker.record(args.model, tin, tout)
         translated = text.strip()
@@ -140,6 +145,7 @@ def main(argv=None) -> int:
         "translated": len(out_pairs),
         "failed": failed,
         "truncated_by_ceiling": tracker.truncated,
+        "aborted": aborted,
         "cost_usd": round(tracker.spent, 6),
         "max_spend_usd": args.max_spend,
         "usage": {"total_cost_usd": round(tracker.spent, 6), "per_model": tracker.per_model},
