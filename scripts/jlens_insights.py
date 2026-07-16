@@ -57,12 +57,14 @@ def collect(trace_root: Path):
     per_model = defaultdict(list)
     for part in sorted(trace_root.glob("*__jlens_*/jlens_summary.part_*.json")):
         dataset = part.parent.name.split("__jlens_")[0]
-        if dataset.startswith("txcorpus_"):
-            # translated-corpus lens readouts are NOT patient profiles: their
-            # "patient" side is the haiku rewrite. translation_scale.py owns
-            # them; ingesting here would pollute the formation census
-            # (guard added 2026-07-15 before the first census regen with
-            # txcorpus lens dirs on disk).
+        if (dataset.startswith("txcorpus_")
+                or dataset.endswith(("_txopus", "_txplacebo", "__context"))):
+            # translated/placebo/context-arm lens readouts are NOT patient
+            # profiles: their "patient" side is a rewrite or a prefixed prompt.
+            # translation_scale.py and the arm analyses own them; ingesting
+            # here would pollute the formation census (txcorpus guard
+            # 2026-07-15; arm stems added 2026-07-16 before the first census
+            # regen with txopus/txplacebo lens dirs on disk).
             continue
         try:
             summary = json.loads(part.read_text(encoding="utf-8"))

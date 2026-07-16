@@ -191,6 +191,11 @@ def test_insights_census_skips_txcorpus_lens_dirs(tmp_path):
                        "patient": [{"layer": 0, "target_rank": 1}]}}]}))
     mk("pairs_20260711T000000Z")
     mk("txcorpus_priority2_20260714T224455Z")
+    # translated/placebo/context arms are rewrites, not patient wordings
+    # (guard extended 2026-07-16 when the arm lens pulls landed)
+    mk("pairs_20260711T051145Z_txopus")
+    mk("pairs_20260711T051145Z_txplacebo")
+    mk("urgency_downgrades_20260707T1__context")
     per = ji.collect(troot)
     stems = {r["dataset"] for rows in per.values() for r in rows}
     assert stems == {"pairs_20260711T000000Z"}
