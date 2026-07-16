@@ -1,0 +1,2672 @@
+[
+  {
+    "top_prompt": "I have pyrexia, so I need to take my",
+    "bottom_prompt": "I've been running a fever, so I need to take my",
+    "target_clinical_token": " temperature",
+    "generation": {
+      "patient_term": "running a fever",
+      "clinical_term": "pyrexia",
+      "expected_clinical_continuations": [
+        "temperature"
+      ],
+      "rationale": "Patient language 'running a fever' is colloquial; clinical 'pyrexia' is the precise term. Both frames end after possessive 'my', and the natural continuation differs: a fever suggests monitoring (take my temperature), while pyrexia in clinical context prompts precise measurement (take my temperature for documentation).",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "I've been running a fever,",
+        "clinical_span": "I have pyrexia,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have renal dysfunction, so I should drink more",
+    "bottom_prompt": "My kidneys are acting up again, so I should drink more",
+    "target_clinical_token": " water",
+    "generation": {
+      "patient_term": "kidneys are acting up",
+      "clinical_term": "renal dysfunction",
+      "expected_clinical_continuations": [
+        "water"
+      ],
+      "rationale": "Patient colloquialism 'acting up' versus clinical 'dysfunction'. Both end after 'more', steering toward a beverage or substance. Clinical framing emphasizes medical management where water intake is a standard intervention for renal conditions.",
+      "topic": "Kidneys & urinary",
+      "swap_spans": {
+        "patient_span": "My kidneys are acting up again,",
+        "clinical_span": "I have renal dysfunction,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have genital pain, so I need to see a",
+    "bottom_prompt": "I've been feeling down there, so I need to see a",
+    "target_clinical_token": " gynecologist",
+    "generation": {
+      "patient_term": "feeling down there",
+      "clinical_term": "genital pain",
+      "expected_clinical_continuations": [
+        "gynecologist"
+      ],
+      "rationale": "Patient euphemism 'down there' replaced with clinical term 'genital pain'. Both end before specialist name. Clinical phrasing more directly prompts a specialized care provider versus vague discomfort.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "I've been feeling down there,",
+        "clinical_span": "I have genital pain,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have hyperglycemia, so I need to monitor my",
+    "bottom_prompt": "My blood sugar has been all over the place, so I need to monitor my",
+    "target_clinical_token": " glucose",
+    "generation": {
+      "patient_term": "blood sugar has been all over the place",
+      "clinical_term": "hyperglycemia",
+      "expected_clinical_continuations": [
+        "glucose"
+      ],
+      "rationale": "Patient description 'all over the place' versus clinical diagnosis 'hyperglycemia'. Both end after possessive 'my', funneling toward the measurement term. Clinical version emphasizes precise laboratory parameter tracking.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "My blood sugar has been all over the place,",
+        "clinical_span": "I have hyperglycemia,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have diplopia, so I should get my",
+    "bottom_prompt": "I can't see straight anymore, so I should get my",
+    "target_clinical_token": " eyes",
+    "generation": {
+      "patient_term": "can't see straight",
+      "clinical_term": "diplopia",
+      "expected_clinical_continuations": [
+        "eyes"
+      ],
+      "rationale": "Patient colloquialism 'see straight' (indicating double vision or visual disturbance) replaced with clinical term 'diplopia' (double vision). Both end after possessive, naturally directing toward eyes/vision assessment.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "can't see straight anymore,",
+        "clinical_span": "have diplopia,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have pharyngitis, so I need to take some",
+    "bottom_prompt": "I've got a sore throat, so I need to take some",
+    "target_clinical_token": " antibiotics",
+    "generation": {
+      "patient_term": "sore throat",
+      "clinical_term": "pharyngitis",
+      "expected_clinical_continuations": [
+        "antibiotics"
+      ],
+      "rationale": "Patient lay term 'sore throat' versus clinical diagnosis 'pharyngitis'. Both end after 'some', steering toward remedy. Clinical phrasing emphasizes pharmaceutical intervention more strongly than casual symptom complaint.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "I've got a sore throat,",
+        "clinical_span": "I have pharyngitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I keep getting urinary tract infections, so I need to see a",
+    "bottom_prompt": "I keep getting water infections, so I need to see a",
+    "target_clinical_token": " urologist",
+    "generation": {
+      "patient_term": "water infections",
+      "clinical_term": "urinary tract infections",
+      "expected_clinical_continuations": [
+        "urologist",
+        "doctor",
+        "specialist"
+      ],
+      "rationale": "Colloquial 'water infections' is a lay term for UTIs; the clinical phrasing should steer toward a specialist recommendation (urologist) rather than generic doctor for recurrent infections.",
+      "topic": "Kidneys & urinary",
+      "swap_spans": {
+        "patient_span": "water",
+        "clinical_span": "urinary tract"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have tinnitus, so I should get my",
+    "bottom_prompt": "My ears won't stop ringing, so I should get my",
+    "target_clinical_token": " hearing",
+    "generation": {
+      "patient_term": "ears won't stop ringing",
+      "clinical_term": "tinnitus",
+      "expected_clinical_continuations": [
+        "hearing",
+        "ears",
+        "balance"
+      ],
+      "rationale": "Colloquial description versus clinical diagnosis; the clinical term should pull toward medical evaluation of hearing-related systems rather than symptomatic self-monitoring.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "My ears won't stop ringing,",
+        "clinical_span": "I have tinnitus,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been having vasomotor symptoms at work, so I might need to take my",
+    "bottom_prompt": "I've been having hot flushes at work, so I might need to take my",
+    "target_clinical_token": " temperature",
+    "generation": {
+      "patient_term": "hot flushes",
+      "clinical_term": "vasomotor symptoms",
+      "expected_clinical_continuations": [
+        "temperature",
+        "medication",
+        "pulse"
+      ],
+      "rationale": "Lay term for menopausal symptom versus precise clinical terminology; clinical framing should orient toward medical intervention (medication) rather than passive monitoring.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "hot flushes",
+        "clinical_span": "vasomotor symptoms"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have persistent bronchitis, so I should see a",
+    "bottom_prompt": "I've got a nasty cough that won't budge, so I should see a",
+    "target_clinical_token": " pulmonologist",
+    "generation": {
+      "patient_term": "a nasty cough that won't budge",
+      "clinical_term": "persistent bronchitis",
+      "expected_clinical_continuations": [
+        "pulmonologist",
+        "doctor",
+        "specialist"
+      ],
+      "rationale": "Colloquial symptom description versus structural diagnosis; clinical term should elicit specialist referral rather than generic provider recommendation.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "I've got a nasty cough that won't budge,",
+        "clinical_span": "I have persistent bronchitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have pneumonia, so I need to take my",
+    "bottom_prompt": "I've got a nasty chest bug, so I need to take my",
+    "target_clinical_token": " antibiotics",
+    "generation": {
+      "patient_term": "nasty chest bug",
+      "clinical_term": "pneumonia",
+      "expected_clinical_continuations": [
+        "antibiotics"
+      ],
+      "rationale": "Colloquial 'bug' (mild, self-limiting) versus clinical pneumonia (serious infection requiring medication). Frame with 'take my' funnels toward a medication. Next token should shift from dismissive to urgent care-seeking.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "I've got a nasty chest bug,",
+        "clinical_span": "I have pneumonia,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have erectile dysfunction, so I might need to take my",
+    "bottom_prompt": "I've been having trouble down there in the bedroom, so I might need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "trouble down there in the bedroom",
+      "clinical_term": "erectile dysfunction",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Colloquial euphemism versus precise clinical diagnosis. Frame 'take my' after the clinical term strongly predicts medication; after lay phrasing it may predict 'time' or 'partner' instead.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "I've been having trouble down there in the bedroom,",
+        "clinical_span": "I have erectile dysfunction,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have night sweats, so this might be my",
+    "bottom_prompt": "I've been sweating buckets at night, so this might be my",
+    "target_clinical_token": " thyroid",
+    "generation": {
+      "patient_term": "sweating buckets at night",
+      "clinical_term": "night sweats",
+      "expected_clinical_continuations": [
+        "thyroid"
+      ],
+      "rationale": "Vivid colloquial expression versus clinical symptom name. 'This might be my' funnels toward a body system or gland; clinical phrasing should weight toward thyroid or hormonal attribution.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "I've been sweating buckets at night,",
+        "clinical_span": "I have night sweats,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have pharyngitis, so I might need to take an",
+    "bottom_prompt": "I woke up with a frog in my throat, so I might need to take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "frog in my throat",
+      "clinical_term": "pharyngitis",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "Idiom for hoarseness/sore throat versus clinical inflammation diagnosis. Frame 'take an' before a vowel funnels toward treatment; clinical term should weight toward antibiotic over lozenge or rest.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "woke up with a frog in my throat,",
+        "clinical_span": "have pharyngitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have hematuria, so I need to see a",
+    "bottom_prompt": "I've been passing blood, so I need to see a",
+    "target_clinical_token": " urologist",
+    "generation": {
+      "patient_term": "passing blood",
+      "clinical_term": "hematuria",
+      "expected_clinical_continuations": [
+        "urologist",
+        "doctor",
+        "specialist"
+      ],
+      "rationale": "Colloquial 'passing blood' (lay description of blood in urine) contrasts with clinical 'hematuria' (precise term). Frame funnels toward specialist type. Clinical version more likely to trigger urologist.",
+      "topic": "Kidneys & urinary",
+      "swap_spans": {
+        "patient_span": "I've been passing blood,",
+        "clinical_span": "I have hematuria,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I think I have pneumonia, so I might need to take an",
+    "bottom_prompt": "I think I've got a really bad chest infection, so I might need to take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "chest infection",
+      "clinical_term": "pneumonia",
+      "expected_clinical_continuations": [
+        "antibiotic",
+        "X-ray"
+      ],
+      "rationale": "Vague colloquial 'chest infection' versus specific clinical diagnosis 'pneumonia'. Article 'an' funnels toward vowel-initial drug/test. Clinical phrasing steers toward antibiotic expectation.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "I've got a really bad chest infection,",
+        "clinical_span": "I have pneumonia,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have erectile dysfunction, so I should probably take my",
+    "bottom_prompt": "I've been having trouble getting it up lately, so I should probably take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "trouble getting it up",
+      "clinical_term": "erectile dysfunction",
+      "expected_clinical_continuations": [
+        "medication",
+        "prescription"
+      ],
+      "rationale": "Colloquial euphemism 'trouble getting it up' replaced with clinical term 'erectile dysfunction'. Possessive 'my' frames toward medication/prescription continuation more naturally in clinical context.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "I've been having trouble getting it up lately,",
+        "clinical_span": "I have erectile dysfunction,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I woke up with acute dysmenorrhea, so I need to take my",
+    "bottom_prompt": "I woke up with a terrible ache down below, so I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "ache down below",
+      "clinical_term": "acute dysmenorrhea",
+      "expected_clinical_continuations": [
+        "medication",
+        "painkiller"
+      ],
+      "rationale": "Euphemistic colloquial 'ache down below' contrasts with clinical term 'acute dysmenorrhea' (severe period pain). Possessive 'my' frames toward medication continuation; clinical phrasing emphasizes treatment urgency.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "a terrible ache down below,",
+        "clinical_span": "acute dysmenorrhea,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have a persistent fever, so I should probably take some",
+    "bottom_prompt": "My temp keeps spiking, so I should probably take some",
+    "target_clinical_token": " paracetamol",
+    "generation": {
+      "patient_term": "My temp keeps spiking",
+      "clinical_term": "I have a persistent fever",
+      "expected_clinical_continuations": [
+        "paracetamol",
+        "ibuprofen",
+        "medication"
+      ],
+      "rationale": "Colloquial 'temp spiking' is informal shorthand; 'persistent fever' is clinical terminology. The frame directs toward a fever-reducing medication as the natural continuation.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "My temp keeps spiking,",
+        "clinical_span": "I have a persistent fever,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been having intermenstrual bleeding, so I need to see a",
+    "bottom_prompt": "I've been spotting between periods, so I need to see a",
+    "target_clinical_token": " gynecologist",
+    "generation": {
+      "patient_term": "spotting between periods",
+      "clinical_term": "intermenstrual bleeding",
+      "expected_clinical_continuations": [
+        "gynecologist",
+        "doctor"
+      ],
+      "rationale": "Patient term uses euphemistic lay language; clinical term is precise medical terminology. Frame funnels toward a specialist or physician as the appropriate care-seeker.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "spotting between periods,",
+        "clinical_span": "having intermenstrual bleeding,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have a thyroid disorder, so I might need to adjust my",
+    "bottom_prompt": "My metabolism has gone haywire, so I might need to adjust my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "My metabolism has gone haywire",
+      "clinical_term": "I have a thyroid disorder",
+      "expected_clinical_continuations": [
+        "medication",
+        "dose",
+        "thyroid"
+      ],
+      "rationale": "Colloquial 'haywire' is vague; 'thyroid disorder' specifies the endocrine dysfunction. Frame leads naturally toward medication or dosage adjustment.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "My metabolism has gone haywire,",
+        "clinical_span": "I have a thyroid disorder,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have presbyopia, so I should get my",
+    "bottom_prompt": "I can't read small print anymore, so I should get my",
+    "target_clinical_token": " eyes",
+    "generation": {
+      "patient_term": "I can't read small print anymore",
+      "clinical_term": "I have presbyopia",
+      "expected_clinical_continuations": [
+        "eyes",
+        "vision",
+        "glasses"
+      ],
+      "rationale": "Patient phrasing describes the symptom functionally; clinical term names the age-related refractive condition. Frame guides toward 'eyes' or corrective intervention.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "can't read small print anymore,",
+        "clinical_span": "have presbyopia,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have oral dysgeusia, so it might be my",
+    "bottom_prompt": "I've got this weird taste in my mouth, so it might be my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "weird taste in my mouth",
+      "clinical_term": "oral dysgeusia",
+      "expected_clinical_continuations": [
+        "medication",
+        "tongue",
+        "teeth"
+      ],
+      "rationale": "Colloquial 'weird taste' is imprecise; 'oral dysgeusia' is the clinical term for taste disturbance. Frame opens toward medication side effect or oral pathology as continuation.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "I've got this weird taste in my mouth,",
+        "clinical_span": "I have oral dysgeusia,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I think I have amenorrhea this month, so I might need to take a",
+    "bottom_prompt": "I think my period is late this month, so I might need to take a",
+    "target_clinical_token": " test",
+    "generation": {
+      "patient_term": "period is late",
+      "clinical_term": "amenorrhea",
+      "expected_clinical_continuations": [
+        "test",
+        "pregnancy",
+        "hormone"
+      ],
+      "rationale": "Amenorrhea is the clinical term for absent or irregular menstruation. The frame 'so I might need to take a' after the condition naturally triggers different continuations: colloquial phrasing suggests waiting/action, while clinical terminology suggests diagnostic or pharmaceutical intervention.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "my period is late",
+        "clinical_span": "I have amenorrhea"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have thyroid dysfunction, so I should probably check my",
+    "bottom_prompt": "My thyroid's been acting funny, so I should probably check my",
+    "target_clinical_token": " levels",
+    "generation": {
+      "patient_term": "thyroid's been acting funny",
+      "clinical_term": "thyroid dysfunction",
+      "expected_clinical_continuations": [
+        "levels",
+        "TSH",
+        "hormones"
+      ],
+      "rationale": "Thyroid dysfunction is the clinical descriptor. The frame ending in 'check my' naturally probes for what gets measured: colloquial language may prompt generic responses, while clinical terminology prompts specific metabolic markers.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "My thyroid's been acting funny,",
+        "clinical_span": "I have thyroid dysfunction,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have conjunctivitis, so I need to pick up some",
+    "bottom_prompt": "I've got a nasty eye infection, so I need to pick up some",
+    "target_clinical_token": " drops",
+    "generation": {
+      "patient_term": "eye infection",
+      "clinical_term": "conjunctivitis",
+      "expected_clinical_continuations": [
+        "drops",
+        "antibiotics",
+        "ointment"
+      ],
+      "rationale": "Conjunctivitis is inflammation of the conjunctiva. The frame 'so I need to pick up some' naturally targets remedies; clinical terminology specifically prompts topical treatments (drops, ointment) while lay phrasing is broader.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "I've got a nasty eye infection,",
+        "clinical_span": "I have conjunctivitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing hyperglycemia all day, so this might be my",
+    "bottom_prompt": "I've been feeling really hot and shaky all day, so this might be my",
+    "target_clinical_token": " blood",
+    "generation": {
+      "patient_term": "feeling really hot and shaky",
+      "clinical_term": "hyperglycemia",
+      "expected_clinical_continuations": [
+        "blood",
+        "sugar",
+        "glucose"
+      ],
+      "rationale": "Hyperglycemia is elevated blood glucose. The frame ending 'so this might be my' probes for what body marker is implicated; clinical phrasing strongly channels toward measurable metabolic values (blood, sugar, glucose) versus colloquial symptom language.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "feeling really hot and shaky",
+        "clinical_span": "experiencing hyperglycemia"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have otitis externa, so I should probably get my",
+    "bottom_prompt": "My ear's been itching like crazy, so I should probably get my",
+    "target_clinical_token": " ear",
+    "generation": {
+      "patient_term": "ear's been itching like crazy",
+      "clinical_term": "otitis externa",
+      "expected_clinical_continuations": [
+        "ear",
+        "checked",
+        "cleaned"
+      ],
+      "rationale": "Otitis externa is inflammation of the external ear canal. The frame 'so I should probably get my' naturally probes for body-part nouns or examination verbs; clinical terminology triggers more specific diagnostic/examination language versus casual symptom description.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "My ear's been itching like crazy,",
+        "clinical_span": "I have otitis externa,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have otitis media with effusion, so I need to see an",
+    "bottom_prompt": "I've got this nasty ear discharge, so I need to see an",
+    "target_clinical_token": " audiologist",
+    "generation": {
+      "patient_term": "nasty ear discharge",
+      "clinical_term": "otitis media with effusion",
+      "expected_clinical_continuations": [
+        "audiologist"
+      ],
+      "rationale": "Patient describes symptom colloquially; clinical term invokes specialist referral rather than home remedy.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "I've got this nasty ear discharge,",
+        "clinical_span": "I have otitis media with effusion,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have urinary incontinence, so I might need to see a",
+    "bottom_prompt": "I've been leaking a bit, so I might need to see a",
+    "target_clinical_token": " urologist",
+    "generation": {
+      "patient_term": "leaking a bit",
+      "clinical_term": "urinary incontinence",
+      "expected_clinical_continuations": [
+        "urologist"
+      ],
+      "rationale": "Vague colloquial descriptor versus precise urological diagnosis steers toward specialist referral in clinical framing.",
+      "topic": "Kidneys & urinary",
+      "swap_spans": {
+        "patient_span": "I've been leaking a bit,",
+        "clinical_span": "I have urinary incontinence,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have a systemic viral infection, so this might be my",
+    "bottom_prompt": "I've been feeling feverish and achy all over, so this might be my",
+    "target_clinical_token": " immune",
+    "generation": {
+      "patient_term": "feeling feverish and achy all over",
+      "clinical_term": "systemic viral infection",
+      "expected_clinical_continuations": [
+        "immune"
+      ],
+      "rationale": "General symptom description versus specific infection diagnosis prompts clinical terminology continuation.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "I've been feeling feverish and achy all over,",
+        "clinical_span": "I have a systemic viral infection,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have irregular menses, so I might need to adjust my",
+    "bottom_prompt": "My period's been all over the place, so I might need to adjust my",
+    "target_clinical_token": " hormones",
+    "generation": {
+      "patient_term": "period's been all over the place",
+      "clinical_term": "irregular menses",
+      "expected_clinical_continuations": [
+        "hormones"
+      ],
+      "rationale": "Colloquial description of menstrual irregularity versus clinical term steers toward hormonal intervention in clinical reading.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "My period's been all over the place,",
+        "clinical_span": "I have irregular menses,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have hypothyroidism, so I should probably check my",
+    "bottom_prompt": "I've been gaining weight despite eating less, so I should probably check my",
+    "target_clinical_token": " thyroid",
+    "generation": {
+      "patient_term": "gaining weight despite eating less",
+      "clinical_term": "hypothyroidism",
+      "expected_clinical_continuations": [
+        "thyroid"
+      ],
+      "rationale": "Symptom-based lay observation versus specific metabolic diagnosis predicts diagnostic test-seeking rather than lifestyle change.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "I've been gaining weight despite eating less,",
+        "clinical_span": "I have hypothyroidism,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have diarrhea, so I might need to see a",
+    "bottom_prompt": "I've been getting the runs something awful, so I might need to see a",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "getting the runs",
+      "clinical_term": "have diarrhea",
+      "expected_clinical_continuations": [
+        "doctor",
+        "gastroenterologist",
+        "specialist"
+      ],
+      "rationale": "Colloquial phrasing 'the runs' versus clinical 'diarrhea' in context of seeking medical advice. The clinical term signals a medical concern requiring professional evaluation, whereas the colloquial version might be dismissed as temporary digestive upset.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "I've been getting the runs something awful,",
+        "clinical_span": "I have diarrhea,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have hematuria, so I should probably get my",
+    "bottom_prompt": "My urine's been looking a bit murky, so I should probably get my",
+    "target_clinical_token": " blood",
+    "generation": {
+      "patient_term": "urine's been looking a bit murky",
+      "clinical_term": "have hematuria",
+      "expected_clinical_continuations": [
+        "blood",
+        "urine",
+        "kidneys"
+      ],
+      "rationale": "Lay description versus medical term for blood in urine. The clinical term immediately signals a urological concern requiring laboratory investigation, while the colloquial version downplays severity.",
+      "topic": "Kidneys & urinary",
+      "swap_spans": {
+        "patient_span": "My urine's been looking a bit murky,",
+        "clinical_span": "I have hematuria,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have a yeast infection, so I need to pick up some",
+    "bottom_prompt": "I've been having some discharge down there, so I need to pick up some",
+    "target_clinical_token": " cream",
+    "generation": {
+      "patient_term": "having some discharge down there",
+      "clinical_term": "have a yeast infection",
+      "expected_clinical_continuations": [
+        "cream",
+        "antifungal",
+        "medication"
+      ],
+      "rationale": "Vague patient description versus specific clinical diagnosis. The clinical term immediately points toward antimycotic treatment, whereas the colloquial phrasing is ambiguous about cause and appropriate remedy.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "I've been having some discharge down there,",
+        "clinical_span": "I have a yeast infection,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have hyperthyroidism, so this might be my",
+    "bottom_prompt": "I feel like I'm burning up from the inside, so this might be my",
+    "target_clinical_token": " thyroid",
+    "generation": {
+      "patient_term": "burning up from the inside",
+      "clinical_term": "have hyperthyroidism",
+      "expected_clinical_continuations": [
+        "thyroid",
+        "metabolism",
+        "hormones"
+      ],
+      "rationale": "Patient's intuitive description of internal heat sensation versus precise endocrine diagnosis. The clinical term narrows interpretation to thyroid dysfunction and guides toward appropriate metabolic investigation.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "feel like I'm burning up from the inside,",
+        "clinical_span": "have hyperthyroidism,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have conjunctivitis, so I should probably see an",
+    "bottom_prompt": "My eye's been weeping something fierce, so I should probably see an",
+    "target_clinical_token": " ophthalmologist",
+    "generation": {
+      "patient_term": "eye's been weeping something fierce",
+      "clinical_term": "have conjunctivitis",
+      "expected_clinical_continuations": [
+        "ophthalmologist",
+        "optometrist",
+        "eye"
+      ],
+      "rationale": "Colloquial description of eye discharge versus clinical term for inflammation. The clinical diagnosis immediately indicates infection or inflammatory condition requiring professional ophthalmologic assessment.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "My eye's been weeping something fierce,",
+        "clinical_span": "I have conjunctivitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have pharyngitis, so I might have a",
+    "bottom_prompt": "I've got this persistent gunk in my throat, so I might have a",
+    "target_clinical_token": " bacterial",
+    "generation": {
+      "patient_term": "persistent gunk in my throat",
+      "clinical_term": "have pharyngitis",
+      "expected_clinical_continuations": [
+        "bacterial",
+        "infection",
+        "fever"
+      ],
+      "rationale": "Patient's descriptive phrasing versus clinical inflammation diagnosis. The medical term signals potential bacterial etiology and suggests need for culture or rapid testing, whereas the lay description remains nonspecific about infectious cause.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "I've got this persistent gunk in my throat,",
+        "clinical_span": "I have pharyngitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have a bacterial infection, so I might need to take an",
+    "bottom_prompt": "I've got this nasty bug going around, so I might need to take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "bug",
+      "clinical_term": "bacterial infection",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "The colloquial 'bug' is vague and could refer to any illness; 'bacterial infection' specifically signals need for antibiotic therapy. The frame funnels toward a single remedy word.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "I've got this nasty bug going around,",
+        "clinical_span": "I have a bacterial infection,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been having urinary dysfunction, so I should probably see a",
+    "bottom_prompt": "I've been having trouble with the waterworks, so I should probably see a",
+    "target_clinical_token": " urologist",
+    "generation": {
+      "patient_term": "trouble with the waterworks",
+      "clinical_term": "urinary dysfunction",
+      "expected_clinical_continuations": [
+        "urologist"
+      ],
+      "rationale": "Lay phrasing 'waterworks' is colloquial and nonspecific; clinical term signals need for specialist urological assessment rather than general practitioner.",
+      "topic": "Kidneys & urinary",
+      "swap_spans": {
+        "patient_span": "trouble with the waterworks,",
+        "clinical_span": "urinary dysfunction,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My partner says I have erectile dysfunction, so I might need to take my",
+    "bottom_prompt": "My partner says I've lost interest down there, so I might need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "lost interest down there",
+      "clinical_term": "erectile dysfunction",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Colloquial euphemism masks the specific medical condition; clinical phrasing points toward pharmacological intervention rather than lifestyle advice.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "I've lost interest down there,",
+        "clinical_span": "I have erectile dysfunction,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been coughing up sputum, so I might have an",
+    "bottom_prompt": "I've been coughing up nasty phlegm, so I might have an",
+    "target_clinical_token": " infection",
+    "generation": {
+      "patient_term": "nasty phlegm",
+      "clinical_term": "sputum",
+      "expected_clinical_continuations": [
+        "infection"
+      ],
+      "rationale": "Colloquial 'nasty phlegm' versus clinical 'sputum' frames productive cough; next token 'infection' is more likely after clinical phrasing, suggesting respiratory pathology rather than benign cough.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "nasty phlegm,",
+        "clinical_span": "sputum,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing polyuria, so I should probably get my",
+    "bottom_prompt": "I've been peeing way too often these days, so I should probably get my",
+    "target_clinical_token": " glucose",
+    "generation": {
+      "patient_term": "peeing way too often",
+      "clinical_term": "experiencing polyuria",
+      "expected_clinical_continuations": [
+        "glucose"
+      ],
+      "rationale": "Lay symptom description versus clinical term for frequent urination; 'glucose' testing is more clinically salient after polyuria (suggesting diabetes) than after colloquial phrasing.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "peeing way too often these days,",
+        "clinical_span": "experiencing polyuria,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have urge incontinence and I keep rushing to the loo, so I need to see a",
+    "bottom_prompt": "My bladder's been acting up and I keep rushing to the loo, so I need to see a",
+    "target_clinical_token": " urologist",
+    "generation": {
+      "patient_term": "My bladder's been acting up",
+      "clinical_term": "I have urge incontinence",
+      "expected_clinical_continuations": [
+        "urologist"
+      ],
+      "rationale": "Vague lay complaint versus specific clinical diagnosis; 'urologist' is the expected specialist referral after clinical naming of urge incontinence rather than colloquial complaint.",
+      "topic": "Kidneys & urinary",
+      "swap_spans": {
+        "patient_span": "My bladder's been acting up",
+        "clinical_span": "I have urge incontinence"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been having symptoms of vulvovaginitis, so I might need to pick up some",
+    "bottom_prompt": "I've been having some itching and burning down there, so I might need to pick up some",
+    "target_clinical_token": " cream",
+    "generation": {
+      "patient_term": "itching and burning down there",
+      "clinical_term": "symptoms of vulvovaginitis",
+      "expected_clinical_continuations": [
+        "cream"
+      ],
+      "rationale": "Euphemistic symptom description versus clinical diagnosis name; 'cream' (antifungal or antibiotic topical) is a more predictable treatment after the specific clinical term.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "some itching and burning down there,",
+        "clinical_span": "symptoms of vulvovaginitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I think I've got acute gastroenteritis from travelling, so I might need to take an",
+    "bottom_prompt": "I think I've picked up some stomach bug while travelling, so I might need to take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "stomach bug",
+      "clinical_term": "acute gastroenteritis",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "Lay term for infectious diarrheal illness versus clinical diagnosis; 'antibiotic' becomes a plausible continuation after clinical naming of acute gastroenteritis, reflecting potential bacterial etiology.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "picked up some stomach bug while",
+        "clinical_span": "got acute gastroenteritis from"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been feeling really under the weather with an infection, so I might need to take an",
+    "bottom_prompt": "I've been feeling really under the weather with a high fever, so I might need to take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "high fever",
+      "clinical_term": "infection",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "Swaps a symptom descriptor for the underlying condition, shifting expected treatment from fever reduction to pathogen-targeting therapy. The frame 'take an' strongly predicts a medication name, with antibiotic being the natural clinical continuation.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "a high fever,",
+        "clinical_span": "an infection,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have erectile dysfunction, so my partner thinks I should see a",
+    "bottom_prompt": "Things haven't been working right down there, so my partner thinks I should see a",
+    "target_clinical_token": " urologist",
+    "generation": {
+      "patient_term": "Things haven't been working right down there",
+      "clinical_term": "erectile dysfunction",
+      "expected_clinical_continuations": [
+        "urologist"
+      ],
+      "rationale": "Moves from euphemistic colloquialism to precise medical terminology, which triggers specialist-seeking behavior. The frame 'see a' funnels toward a professional title; urologist is the clinical equivalent.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "Things haven't been working right down there,",
+        "clinical_span": "I have erectile dysfunction,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have conjunctivitis, so I might need to pick up some",
+    "bottom_prompt": "My eye's been all red and crusty in the morning, so I might need to pick up some",
+    "target_clinical_token": " eyedrops",
+    "generation": {
+      "patient_term": "all red and crusty",
+      "clinical_term": "conjunctivitis",
+      "expected_clinical_continuations": [
+        "eyedrops"
+      ],
+      "rationale": "Symptom description versus diagnosis name; clinical term triggers treatment-seeking and specific medication type. 'Pick up some' grammatically predicts a medication or topical remedy.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "My eye's been all red and crusty in the morning,",
+        "clinical_span": "I have conjunctivitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been getting terrible pressure headaches and I have serous otitis media, so this might be my",
+    "bottom_prompt": "I've been getting terrible pressure headaches and my ears keep popping, so this might be my",
+    "target_clinical_token": " sinusitis",
+    "generation": {
+      "patient_term": "my ears keep popping",
+      "clinical_term": "serous otitis media",
+      "expected_clinical_continuations": [
+        "sinusitis"
+      ],
+      "rationale": "Colloquial symptom replaced with precise otological diagnosis, shifting from vague self-assessment to recognition of related inflammatory conditions. 'This might be my' precedes condition names naturally in medical reasoning.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "my ears keep popping,",
+        "clinical_span": "I have serous otitis media,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have a viral infection, so I might need to take an",
+    "bottom_prompt": "I've been feeling all achy and feverish, so I might need to take an",
+    "target_clinical_token": " antiviral",
+    "generation": {
+      "patient_term": "all achy and feverish",
+      "clinical_term": "viral infection",
+      "expected_clinical_continuations": [
+        "antiviral"
+      ],
+      "rationale": "Patient uses lay symptom description; clinical term triggers medication class expectation. Frame grammar funnels toward single remedy class.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "I've been feeling all achy and feverish,",
+        "clinical_span": "I have a viral infection,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My urine is turbid, so I probably have a",
+    "bottom_prompt": "My wee's been coming out cloudy, so I probably have a",
+    "target_clinical_token": " urinary",
+    "generation": {
+      "patient_term": "wee's been coming out cloudy",
+      "clinical_term": "urine is turbid",
+      "expected_clinical_continuations": [
+        "urinary"
+      ],
+      "rationale": "Colloquial 'wee' and lay descriptor 'cloudy' versus clinical 'urine' and medical term 'turbid' shift toward diagnostic condition framing.",
+      "topic": "Kidneys & urinary",
+      "swap_spans": {
+        "patient_span": "wee's been coming out cloudy,",
+        "clinical_span": "urine is turbid,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have erectile dysfunction, so I should probably talk to my",
+    "bottom_prompt": "I've been having trouble in the bedroom lately, so I should probably talk to my",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "trouble in the bedroom",
+      "clinical_term": "erectile dysfunction",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "Euphemistic patient phrasing versus clinical diagnosis shifts conversational partner expectation from general to medical professional.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "I've been having trouble in the bedroom lately,",
+        "clinical_span": "I have erectile dysfunction,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have metabolic syndrome, so I need to check my",
+    "bottom_prompt": "My body's been all out of whack with weight changes, so I need to check my",
+    "target_clinical_token": " glucose",
+    "generation": {
+      "patient_term": "all out of whack with weight changes",
+      "clinical_term": "metabolic syndrome",
+      "expected_clinical_continuations": [
+        "glucose"
+      ],
+      "rationale": "Lay complaint versus named metabolic condition prompts medical measurement rather than lifestyle adjustment.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "My body's been all out of whack with weight changes,",
+        "clinical_span": "I have metabolic syndrome,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have conjunctivitis, so I should pick up some",
+    "bottom_prompt": "My eye's been all gummy and stuck shut in the morning, so I should pick up some",
+    "target_clinical_token": " drops",
+    "generation": {
+      "patient_term": "gummy and stuck shut",
+      "clinical_term": "conjunctivitis",
+      "expected_clinical_continuations": [
+        "drops"
+      ],
+      "rationale": "Descriptive lay symptom versus clinical diagnosis triggers medication form expectation aligned with treatment pathway.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "My eye's been all gummy and stuck shut in the morning,",
+        "clinical_span": "I have conjunctivitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have bacteremia, so this looks like my",
+    "bottom_prompt": "I've been getting chills and my temp's been creeping up, so this looks like my",
+    "target_clinical_token": " sepsis",
+    "generation": {
+      "patient_term": "chills and my temp's been creeping up",
+      "clinical_term": "bacteremia",
+      "expected_clinical_continuations": [
+        "sepsis"
+      ],
+      "rationale": "Patient symptom cluster versus precise clinical diagnosis (blood infection) shifts severity framing and condition continuations.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "I've been getting chills and my temp's been creeping up,",
+        "clinical_span": "I have bacteremia,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have dysuria, so I need to see a",
+    "bottom_prompt": "My wee's been burning when it comes out, so I need to see a",
+    "target_clinical_token": " urologist",
+    "generation": {
+      "patient_term": "burning when it comes out",
+      "clinical_term": "dysuria",
+      "expected_clinical_continuations": [
+        "urologist"
+      ],
+      "rationale": "Colloquial symptom description triggers generic doctor; clinical term (painful urination) strongly suggests urologic specialist.",
+      "topic": "Kidneys & urinary",
+      "swap_spans": {
+        "patient_span": "My wee's been burning when it comes out,",
+        "clinical_span": "I have dysuria,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I am amenorrheic, so I should probably take a",
+    "bottom_prompt": "I've missed my cycle for weeks now, so I should probably take a",
+    "target_clinical_token": " pregnancy",
+    "generation": {
+      "patient_term": "missed my cycle",
+      "clinical_term": "amenorrheic",
+      "expected_clinical_continuations": [
+        "pregnancy"
+      ],
+      "rationale": "Colloquial phrasing of missed period is ambiguous; clinical term (absence of menstruation) immediately triggers pregnancy-test expectation.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "I've missed my cycle for weeks now,",
+        "clinical_span": "I am amenorrheic,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have central obesity despite stable caloric intake, so I should check my",
+    "bottom_prompt": "I've been gaining fat around my middle even though I'm not eating more, so I should check my",
+    "target_clinical_token": " glucose",
+    "generation": {
+      "patient_term": "gaining fat around my middle",
+      "clinical_term": "central obesity",
+      "expected_clinical_continuations": [
+        "glucose"
+      ],
+      "rationale": "Lay description of weight distribution is vague; clinical term explicitly signals metabolic dysfunction, steering toward metabolic marker testing.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "I've been gaining fat around my middle even though I'm not eating more,",
+        "clinical_span": "I have central obesity despite stable caloric intake,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have dysgeusia, so it might be my",
+    "bottom_prompt": "I've got a nasty taste in my mouth that won't go away, so it might be my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "nasty taste in my mouth",
+      "clinical_term": "dysgeusia",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Vague colloquial complaint; clinical term (distorted taste perception) immediately triggers iatrogenic or systemic cause suspicion.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "I've got a nasty taste in my mouth that won't go away,",
+        "clinical_span": "I have dysgeusia,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been getting aphthous stomatitis lately, so I might need to take my",
+    "bottom_prompt": "I've been getting a lot of mouth ulcers lately, so I might need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "mouth ulcers",
+      "clinical_term": "aphthous stomatitis",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Colloquial 'mouth ulcers' versus clinical diagnosis shifts the frame toward medical intervention rather than casual home treatment.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "a lot of mouth ulcers",
+        "clinical_span": "aphthous stomatitis"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been getting otitis externa, so I should probably see an",
+    "bottom_prompt": "I've been getting a really itchy ear canal, so I should probably see an",
+    "target_clinical_token": " audiologist",
+    "generation": {
+      "patient_term": "itchy ear canal",
+      "clinical_term": "otitis externa",
+      "expected_clinical_continuations": [
+        "audiologist"
+      ],
+      "rationale": "Clinical term 'otitis externa' (external ear infection) prompts professional medical referral versus self-treatment assumption.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "a really itchy ear canal,",
+        "clinical_span": "otitis externa,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been getting hyperhidrosis nocturna, so this might be my",
+    "bottom_prompt": "I've been getting night sweats and I'm really hot and bothered, so this might be my",
+    "target_clinical_token": " thyroid",
+    "generation": {
+      "patient_term": "night sweats and I'm really hot and bothered",
+      "clinical_term": "hyperhidrosis nocturna",
+      "expected_clinical_continuations": [
+        "thyroid"
+      ],
+      "rationale": "Clinical term 'hyperhidrosis nocturna' points toward endocrine workup rather than menopause or situational stress.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "night sweats and I'm really hot and bothered,",
+        "clinical_span": "hyperhidrosis nocturna,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have urethritis with discharge, so my girlfriend thinks I should take an",
+    "bottom_prompt": "There's been some funny discharge down there, so my girlfriend thinks I should take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "funny discharge down there",
+      "clinical_term": "urethritis with discharge",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "Clinical diagnosis 'urethritis' immediately indexes toward antimicrobial treatment rather than home remedies or reassurance.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "There's been some funny discharge down there,",
+        "clinical_span": "I have urethritis with discharge,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have conductive hearing loss and my hearing's been fuzzy, so I might need to take my",
+    "bottom_prompt": "I've been having ear trouble and my hearing's been fuzzy, so I might need to take my",
+    "target_clinical_token": " hearing aid",
+    "generation": {
+      "patient_term": "ear trouble and my hearing's been fuzzy",
+      "clinical_term": "conductive hearing loss",
+      "expected_clinical_continuations": [
+        "hearing aid"
+      ],
+      "rationale": "The clinical term 'conductive hearing loss' specifies a medical condition requiring a hearing aid, whereas the colloquial phrasing 'ear trouble' is vague and could prompt other continuations like 'drops' or 'antibiotics'.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "I've been having ear trouble",
+        "clinical_span": "I have conductive hearing loss"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have xerostomia and my lips are cracking, so I might need to take my",
+    "bottom_prompt": "My mouth's been all dry and my lips are cracking, so I might need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "mouth's been all dry",
+      "clinical_term": "xerostomia",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Xerostomia (dry mouth) is a clinical condition that prompts medication management, whereas colloquial 'dry mouth' might lead to simpler remedies like 'water' or 'gum'.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "My mouth's been all dry",
+        "clinical_span": "I have xerostomia"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing hyperhidrosis at work and I'm always hot, so I might need to check my",
+    "bottom_prompt": "I've been sweating through my clothes at work and I'm always hot, so I might need to check my",
+    "target_clinical_token": " thyroid",
+    "generation": {
+      "patient_term": "sweating through my clothes at work and I'm always hot",
+      "clinical_term": "hyperhidrosis",
+      "expected_clinical_continuations": [
+        "thyroid"
+      ],
+      "rationale": "Hyperhidrosis signals an endocrine workup including thyroid function; the colloquial version is less likely to prompt clinical investigation.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "sweating through my clothes",
+        "clinical_span": "experiencing hyperhidrosis"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have dysuria with urinary urgency, so I need to take an",
+    "bottom_prompt": "My wee's been really painful and I've got this burning sensation, so I need to take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "wee's been really painful and I've got this burning sensation",
+      "clinical_term": "dysuria with urinary urgency",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "Dysuria with urgency clinically indicates infection requiring antibiotics; the colloquial phrasing might prompt home remedies or hydration instead.",
+      "topic": "Kidneys & urinary",
+      "swap_spans": {
+        "patient_span": "My wee's been really painful and I've got this burning sensation,",
+        "clinical_span": "I have dysuria with urinary urgency,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have hematuria, so I should probably get my",
+    "bottom_prompt": "I've been passing water that looks a bit off, so I should probably get my",
+    "target_clinical_token": " checked",
+    "generation": {
+      "patient_term": "passing water that looks a bit off",
+      "clinical_term": "hematuria",
+      "expected_clinical_continuations": [
+        "checked"
+      ],
+      "rationale": "Colloquial 'passing water that looks a bit off' (discolored/cloudy urine observation) vs clinical 'hematuria' (blood in urine). Grammar channels toward 'checked' or 'examined' in clinical reading, 'color' in mundane. First-person with future/prescriptive intent.",
+      "topic": "Kidneys & urinary",
+      "swap_spans": {
+        "patient_span": "I've been passing water that looks a bit off,",
+        "clinical_span": "I have hematuria,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have erectile dysfunction, so I might need to talk to my",
+    "bottom_prompt": "My partner mentioned I've lost my spark down there, so I might need to talk to my",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "lost my spark down there",
+      "clinical_term": "erectile dysfunction",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "Idiomatic 'lost my spark down there' vs precise clinical diagnosis 'erectile dysfunction'. Frame funnels toward 'doctor' in clinical reading; mundane reading might prefer 'partner'. Third-person reference ('my partner mentioned') adds social context variation.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "My partner mentioned I've lost my spark down there,",
+        "clinical_span": "I have erectile dysfunction,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have conjunctival injection with epiphora, so I should probably pick up some",
+    "bottom_prompt": "My eye's been all watery and the white bit's been bright red, so I should probably pick up some",
+    "target_clinical_token": " drops",
+    "generation": {
+      "patient_term": "My eye's been all watery and the white bit's been bright red",
+      "clinical_term": "I have conjunctival injection with epiphora",
+      "expected_clinical_continuations": [
+        "drops"
+      ],
+      "rationale": "Patient phrase describes irritation; clinical terms epiphora and conjunctival injection indicate medicated eye drops as the standard treatment continuation.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "My eye's been all watery and the white bit's been bright red,",
+        "clinical_span": "I have conjunctival injection with epiphora,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have pharyngitis with oral thrush, so this might be my",
+    "bottom_prompt": "My throat's been really sore and I've got white patches in there, so this might be my",
+    "target_clinical_token": " candida",
+    "generation": {
+      "patient_term": "really sore and I've got white patches in there",
+      "clinical_term": "pharyngitis with oral thrush",
+      "expected_clinical_continuations": [
+        "candida"
+      ],
+      "rationale": "Patient phrase suggests a simple sore throat; clinical phrasing with 'oral thrush' and 'pharyngitis' signals fungal infection, making fungal-agent 'candida' the natural diagnostic continuation.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "My throat's been really sore and I've got white patches in there,",
+        "clinical_span": "I have pharyngitis with oral thrush,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have oral candidiasis, so I might have an",
+    "bottom_prompt": "I've got this nasty white coating on my tongue, so I might have an",
+    "target_clinical_token": " infection",
+    "generation": {
+      "patient_term": "white coating on my tongue",
+      "clinical_term": "oral candidiasis",
+      "expected_clinical_continuations": [
+        "infection"
+      ],
+      "rationale": "Oral candidiasis presents as white coating in the mouth and is a fungal infection. The frame naturally leads to 'infection' as the clinical diagnosis.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "I've got this nasty white coating on my tongue,",
+        "clinical_span": "I have oral candidiasis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have conjunctivitis, so I need to pick up some",
+    "bottom_prompt": "I've been getting a lot of pus in my eye, so I need to pick up some",
+    "target_clinical_token": " drops",
+    "generation": {
+      "patient_term": "pus in my eye",
+      "clinical_term": "conjunctivitis",
+      "expected_clinical_continuations": [
+        "drops",
+        "ointment",
+        "medication"
+      ],
+      "rationale": "Patient colloquialism 'pus in my eye' versus clinical term 'conjunctivitis' frames a decision about topical treatment. The model should prefer 'drops' or 'ointment' with the clinical phrasing, whereas lay phrasing might prompt more vague responses.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "I've been getting a lot of pus in my eye,",
+        "clinical_span": "I have conjunctivitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been running a fever above 39\u00b0C for three days, so I might have a",
+    "bottom_prompt": "I've been running a really high temperature for three days, so I might have a",
+    "target_clinical_token": " infection",
+    "generation": {
+      "patient_term": "really high temperature",
+      "clinical_term": "fever above 39\u00b0C",
+      "expected_clinical_continuations": [
+        "infection",
+        "virus",
+        "bacterial"
+      ],
+      "rationale": "Vague colloquial descriptor 'really high temperature' versus quantified clinical measurement 'fever above 39\u00b0C' differentiates lay assessment from clinical presentation. The precise threshold should push the model toward infection-related continuations.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "really high temperature",
+        "clinical_span": "fever above 39\u00b0C"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been gaining weight and experiencing fatigue all the time, so I should probably check my",
+    "bottom_prompt": "I've been gaining weight and feeling sluggish all the time, so I should probably check my",
+    "target_clinical_token": " thyroid",
+    "generation": {
+      "patient_term": "feeling sluggish",
+      "clinical_term": "experiencing fatigue",
+      "expected_clinical_continuations": [
+        "thyroid",
+        "metabolism",
+        "hormones"
+      ],
+      "rationale": "Lay colloquialism 'sluggish' versus clinical term 'fatigue' focuses a metabolic/endocrine workup. The precise clinical phrasing should steer strongly toward 'thyroid' as a first-line investigation.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "feeling sluggish",
+        "clinical_span": "experiencing fatigue"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing dysuria, so I think I've picked up a",
+    "bottom_prompt": "I've been getting a burning sensation when I pee, so I think I've picked up a",
+    "target_clinical_token": " infection",
+    "generation": {
+      "patient_term": "burning sensation when I pee",
+      "clinical_term": "dysuria",
+      "expected_clinical_continuations": [
+        "infection",
+        "uti",
+        "std"
+      ],
+      "rationale": "Colloquial symptom description 'burning sensation when I pee' versus clinical diagnosis code 'dysuria' calibrates the model's inference toward pathology. The clinical phrasing should yield infection-type continuations more reliably.",
+      "topic": "Kidneys & urinary",
+      "swap_spans": {
+        "patient_span": "getting a burning sensation when I pee,",
+        "clinical_span": "experiencing dysuria,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been feeling flushed and my skin's all hot, so I might have an",
+    "bottom_prompt": "I've been feeling flushed and my skin's all hot, so I might have a",
+    "target_clinical_token": " infection",
+    "generation": {
+      "patient_term": "a",
+      "clinical_term": "an",
+      "expected_clinical_continuations": [
+        "infection"
+      ],
+      "rationale": "Colloquial 'a' before vowel-initial 'infection' is grammatically awkward, forcing clinical reading; the frame about flushed hot skin naturally leads to infection as a diagnostic continuation in care-seeking context.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "a",
+        "clinical_span": "an"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been passing excessive urine and my wee's really dark, so I should probably get my",
+    "bottom_prompt": "I've been peeing way too much and my wee's really dark, so I should probably get my",
+    "target_clinical_token": " kidneys",
+    "generation": {
+      "patient_term": "peeing way too much",
+      "clinical_term": "passing excessive urine",
+      "expected_clinical_continuations": [
+        "kidneys"
+      ],
+      "rationale": "Replacing colloquial 'peeing way too much' with clinical 'passing excessive urine' shifts context toward metabolic/renal concern; the possessive frame funnels toward 'kidneys' as the diagnostic continuation.",
+      "topic": "Kidneys & urinary",
+      "swap_spans": {
+        "patient_span": "peeing way too much",
+        "clinical_span": "passing excessive urine"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My girlfriend says I've been experiencing erectile dysfunction, so I might need to take my",
+    "bottom_prompt": "My girlfriend says I've been acting cold down there, so I might need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "acting cold down there",
+      "clinical_term": "experiencing erectile dysfunction",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Clinical term 'erectile dysfunction' primes medical treatment framing; the possessive+infinitive structure naturally leads to 'medication' rather than dismissive responses.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "acting cold down there,",
+        "clinical_span": "experiencing erectile dysfunction,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've got tinnitus that won't stop, so it might be my",
+    "bottom_prompt": "I've got this ringing in my ears that won't stop, so it might be my",
+    "target_clinical_token": " hearing",
+    "generation": {
+      "patient_term": "ringing in my ears",
+      "clinical_term": "tinnitus",
+      "expected_clinical_continuations": [
+        "hearing"
+      ],
+      "rationale": "Clinical term 'tinnitus' shifts from symptom description to diagnostic label; the possessive frame with 'might be' naturally funnels toward 'hearing' as the clinical continuation.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "this ringing in my ears",
+        "clinical_span": "tinnitus"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been getting stomatitis all over my mouth, so I might need to see a",
+    "bottom_prompt": "I've been getting these little sores all over my mouth, so I might need to see a",
+    "target_clinical_token": " dentist",
+    "generation": {
+      "patient_term": "little sores",
+      "clinical_term": "stomatitis",
+      "expected_clinical_continuations": [
+        "dentist"
+      ],
+      "rationale": "Clinical term 'stomatitis' (mouth inflammation) instead of colloquial 'sores' activates professional-care framing; the structure naturally leads to 'dentist' as the diagnostic continuation in clinical context.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "these little sores",
+        "clinical_span": "stomatitis"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have urinary retention, so I should probably see a",
+    "bottom_prompt": "I've been having trouble passing water regularly, so I should probably see a",
+    "target_clinical_token": " urologist",
+    "generation": {
+      "patient_term": "having trouble passing water regularly",
+      "clinical_term": "urinary retention",
+      "expected_clinical_continuations": [
+        "urologist",
+        "doctor",
+        "nephrologist",
+        "specialist"
+      ],
+      "rationale": "Colloquial 'trouble passing water regularly' is lay language for the clinical diagnosis 'urinary retention'. The frame forces selection of a specialist type. A small model should associate the clinical term with urologist more strongly.",
+      "topic": "Kidneys & urinary",
+      "swap_spans": {
+        "patient_span": "I've been having trouble passing water regularly,",
+        "clinical_span": "I have urinary retention,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have erectile dysfunction, so I might need to talk to my",
+    "bottom_prompt": "My girlfriend thinks I've lost my libido, so I might need to talk to my",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "lost my libido",
+      "clinical_term": "erectile dysfunction",
+      "expected_clinical_continuations": [
+        "doctor",
+        "urologist",
+        "therapist",
+        "partner"
+      ],
+      "rationale": "Colloquial 'lost my libido' is a lay attribution; clinical 'erectile dysfunction' is the precise diagnosis. The frame naturally calls for a professional. The clinical term should strengthen preference for 'doctor' or 'urologist' over 'partner'.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "My girlfriend thinks I've lost my libido,",
+        "clinical_span": "I have erectile dysfunction,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have insulin resistance, so I should probably check my",
+    "bottom_prompt": "I've been putting on weight around my belly and feeling sluggish, so I should probably check my",
+    "target_clinical_token": " glucose",
+    "generation": {
+      "patient_term": "putting on weight around my belly and feeling sluggish",
+      "clinical_term": "insulin resistance",
+      "expected_clinical_continuations": [
+        "glucose",
+        "blood",
+        "levels",
+        "insulin"
+      ],
+      "rationale": "Colloquial symptom cluster 'putting on weight around my belly and feeling sluggish' versus clinical diagnosis 'insulin resistance'. The frame funnels toward lab-test or biomarker terms. Clinical phrasing should increase likelihood of 'glucose' or 'insulin'.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "I've been putting on weight around my belly and feeling sluggish,",
+        "clinical_span": "I have insulin resistance,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have tinnitus, so this might be my",
+    "bottom_prompt": "I've got this constant ringing in my ears that's driving me mad, so this might be my",
+    "target_clinical_token": " hearing",
+    "generation": {
+      "patient_term": "constant ringing in my ears",
+      "clinical_term": "tinnitus",
+      "expected_clinical_continuations": [
+        "hearing",
+        "eardrums",
+        "ears",
+        "condition"
+      ],
+      "rationale": "Colloquial 'constant ringing in my ears' versus clinical 'tinnitus'. The frame 'this might be my [noun]' probes for descriptive or diagnostic noun continuations. Clinical term should bias toward 'hearing' or clinical attributes.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "I've got this constant ringing in my ears that's driving me mad,",
+        "clinical_span": "I have tinnitus,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have gingivitis, so I should probably see an",
+    "bottom_prompt": "I've been getting really sore gums and my mouth tastes metallic, so I should probably see an",
+    "target_clinical_token": " dentist",
+    "generation": {
+      "patient_term": "getting really sore gums and my mouth tastes metallic",
+      "clinical_term": "gingivitis",
+      "expected_clinical_continuations": [
+        "dentist",
+        "orthodontist",
+        "hygienist",
+        "oral"
+      ],
+      "rationale": "Colloquial symptom description 'sore gums and metallic taste' versus precise clinical diagnosis 'gingivitis'. The frame after 'see an' naturally calls for a healthcare professional. Clinical phrasing should bias toward dental specialists.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "I've been getting really sore gums and my mouth tastes metallic,",
+        "clinical_span": "I have gingivitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have erectile dysfunction, so I should probably talk to my",
+    "bottom_prompt": "I've been having trouble getting in the mood down there, so I should probably talk to my",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "trouble getting in the mood down there",
+      "clinical_term": "erectile dysfunction",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "Patient expression is euphemistic lay language; clinical term is precise medical diagnosis. The frame 'talk to my' strongly predicts 'doctor' as the most natural next token in clinical contexts, shifting from what a patient might colloquially suggest to a care-seeking response.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "I've been having trouble getting in the mood down there,",
+        "clinical_span": "I have erectile dysfunction,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have tinnitus, so it might be my",
+    "bottom_prompt": "I've had this constant buzzing in my ear for weeks, so it might be my",
+    "target_clinical_token": " hearing",
+    "generation": {
+      "patient_term": "constant buzzing in my ear",
+      "clinical_term": "tinnitus",
+      "expected_clinical_continuations": [
+        "hearing"
+      ],
+      "rationale": "Patient uses colloquial symptom description; clinical term is the medical diagnosis. The frame 'it might be my' funnels toward 'hearing' (as in 'hearing loss' or hearing-related condition) as the natural next diagnostic token in clinical interpretation, distinguishing from casual worry language.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "I've had this constant buzzing in my ear for weeks,",
+        "clinical_span": "I have tinnitus,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have bacterial vaginosis, so I should probably take my",
+    "bottom_prompt": "My partner's been complaining about a funny smell down there, so I should probably take my",
+    "target_clinical_token": " antibiotics",
+    "generation": {
+      "patient_term": "funny smell down there",
+      "clinical_term": "bacterial vaginosis",
+      "expected_clinical_continuations": [
+        "antibiotics"
+      ],
+      "rationale": "Patient term uses euphemism for genital discharge symptom; clinical term names the infection. Frame directs toward 'antibiotics' as treatment.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "My partner's been complaining about a funny smell down there,",
+        "clinical_span": "I have bacterial vaginosis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have bacterial conjunctivitis, so I need to pick up some",
+    "bottom_prompt": "My eye's been all stuck shut with gunk in the morning and it's really red, so I need to pick up some",
+    "target_clinical_token": " drops",
+    "generation": {
+      "patient_term": "all stuck shut with gunk in the morning and it's really red",
+      "clinical_term": "bacterial conjunctivitis",
+      "expected_clinical_continuations": [
+        "drops"
+      ],
+      "rationale": "Patient phrase describes eye infection symptoms colloquially; clinical term names the condition. Frame funnels toward 'drops' as the standard treatment form.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "My eye's been all stuck shut with gunk in the morning and it's really red,",
+        "clinical_span": "I have bacterial conjunctivitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have amenorrhea for two months now, so I might need to take a",
+    "bottom_prompt": "I haven't had my period for two months now, so I might need to take a",
+    "target_clinical_token": " pregnancy",
+    "generation": {
+      "patient_term": "haven't had my period",
+      "clinical_term": "have amenorrhea",
+      "expected_clinical_continuations": [
+        "pregnancy"
+      ],
+      "rationale": "Amenorrhea prompts clinical thinking about pregnancy test first; colloquial phrasing delays that association and suggests lifestyle remedies.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "haven't had my period",
+        "clinical_span": "have amenorrhea"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have ocular pain with foreign body sensation, so I need to see an",
+    "bottom_prompt": "My eye's been really painful and I've got this gritty feeling in there, so I need to see an",
+    "target_clinical_token": " ophthalmologist",
+    "generation": {
+      "patient_term": "really painful and I've got this gritty feeling",
+      "clinical_term": "ocular pain with foreign body sensation",
+      "expected_clinical_continuations": [
+        "ophthalmologist"
+      ],
+      "rationale": "Foreign body sensation + pain directs to specialist eye care; colloquial version might be self-treated with drops.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "My eye's been really painful and I've got this gritty feeling in there,",
+        "clinical_span": "I have ocular pain with foreign body sensation,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have oral thrush with a metallic taste, so I might have an",
+    "bottom_prompt": "I've got this nasty white coating all over my tongue and my mouth tastes funny, so I might have an",
+    "target_clinical_token": " infection",
+    "generation": {
+      "patient_term": "nasty white coating all over my tongue and my mouth tastes funny",
+      "clinical_term": "oral thrush with a metallic taste",
+      "expected_clinical_continuations": [
+        "infection"
+      ],
+      "rationale": "Oral thrush + metallic taste indicates candida infection requiring antifungal treatment; lay phrasing could prompt mouth rinse attempts.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "I've got this nasty white coating all over my tongue and my mouth tastes funny,",
+        "clinical_span": "I have oral thrush with a metallic taste,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have pyrexia with myalgia, so I might need to take an",
+    "bottom_prompt": "I've been getting a fever and my body aches all over, so I might need to take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "fever and my body aches",
+      "clinical_term": "pyrexia with myalgia",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "Pyrexia is the clinical term for fever; myalgia is muscle pain. The clinical phrasing signals a more systemic infection likely requiring antibiotics, whereas colloquial phrasing might suggest over-the-counter remedies.",
+      "topic": "Infections & fever",
+      "swap_spans": {
+        "patient_span": "I've been getting a fever and my body aches all over,",
+        "clinical_span": "I have pyrexia with myalgia,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have purulent exudate with periorbital edema, so I need to pick up some",
+    "bottom_prompt": "I've got this sticky discharge and my eye's really puffy, so I need to pick up some",
+    "target_clinical_token": " antibiotics",
+    "generation": {
+      "patient_term": "sticky discharge and my eye's really puffy",
+      "clinical_term": "purulent exudate with periorbital edema",
+      "expected_clinical_continuations": [
+        "antibiotics"
+      ],
+      "rationale": "Purulent exudate and periorbital edema are clinical descriptors indicating bacterial eye infection. The clinical phrasing directs toward prescription antibiotics rather than home remedies.",
+      "topic": "Eyes ears & mouth",
+      "swap_spans": {
+        "patient_span": "I've got this sticky discharge and my eye's really puffy,",
+        "clinical_span": "I have purulent exudate with periorbital edema,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing hot flushes with auricular erythema, so I might need to check my",
+    "bottom_prompt": "I've been feeling really flushed and my ears keep getting hot, so I might need to check my",
+    "target_clinical_token": " thyroid",
+    "generation": {
+      "patient_term": "feeling really flushed and my ears keep getting hot",
+      "clinical_term": "experiencing hot flushes with auricular erythema",
+      "expected_clinical_continuations": [
+        "thyroid"
+      ],
+      "rationale": "The clinical phrasing (hot flushes + auricular erythema) strongly signals endocrine dysfunction, steering the model toward thyroid-related testing as the natural next step, whereas the colloquial version could vaguely suggest environmental or stress-related warmth.",
+      "topic": "Hormones & metabolism",
+      "swap_spans": {
+        "patient_span": "feeling really flushed and my ears keep getting hot,",
+        "clinical_span": "experiencing hot flushes with auricular erythema,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been passing turbid urine with dysuria, so I should probably take an",
+    "bottom_prompt": "I've been passing cloudy water and it stings like anything, so I should probably take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "passing cloudy water and it stings like anything",
+      "clinical_term": "passing turbid urine with dysuria",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "The clinical framing (turbid urine + dysuria) unambiguously signals urinary tract infection, making antibiotic the preferred continuation; the colloquial phrasing is less medically specific and might allow other interpretations.",
+      "topic": "Kidneys & urinary",
+      "swap_spans": {
+        "patient_span": "cloudy water and it stings like anything,",
+        "clinical_span": "turbid urine with dysuria,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have vulvovaginal pruritus and it's driving me crazy, so I need to pick up some",
+    "bottom_prompt": "I've been getting a nasty itch down below and it's driving me crazy, so I need to pick up some",
+    "target_clinical_token": " cream",
+    "generation": {
+      "patient_term": "nasty itch down below",
+      "clinical_term": "vulvovaginal pruritus",
+      "expected_clinical_continuations": [
+        "cream",
+        "antifungal",
+        "ointment",
+        "treatment"
+      ],
+      "rationale": "The clinical term 'vulvovaginal pruritus' shifts the frame from casual discomfort to a named clinical condition, making the next token diagnostically shift toward medical remedies (cream, antifungal) rather than casual itch solutions. The grammatical frame '...so I need to pick up some' funnels hard toward a countable remedy noun, and the clinical phrasing strongly biases toward clinical-grade treatments.",
+      "topic": "Reproductive & sexual health",
+      "swap_spans": {
+        "patient_span": "I've been getting a nasty itch down below",
+        "clinical_span": "I have vulvovaginal pruritus"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "Infections & fever",
+        "Kidneys & urinary",
+        "Reproductive & sexual health",
+        "Hormones & metabolism",
+        "Eyes ears & mouth"
+      ]
+    }
+  }
+]
