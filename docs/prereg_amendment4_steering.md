@@ -1,11 +1,12 @@
-# Amendment 4 (DRAFT) — Swap-based steering-by-class endpoint
+# Amendment 4 — Swap-based steering-by-class endpoint
 
-Status: **DRAFT, not in force.** Commissioned by the owner 2026-07-15
-("draft amendment 4: swap-based steering-by-class endpoint on future batches,
-single-token targets; DRAFT for my sign-off"). Nothing here binds until the
-owner signs; the sign-off gets recorded in this header, as with amendments
-1-3. Written after the 2026-07-14/15 exploratory pilot and before any data
-this amendment governs exists.
+Status: **SIGNED AS DRAFTED, in force.** Commissioned by the owner 2026-07-15;
+signed by the owner 2026-07-17 ("amendment 4: sign as drafted"). Decision
+points resolved at sign-off: layers frozen at 19 and 21; pair-level
+either-layer restoration is the primary outcome; the 15-per-class floor is
+confirmed. Post-A4 = observational batches generated after the adoption
+commit of this rename. Written after the 2026-07-14/15 exploratory pilot and
+before any data this amendment governs existed.
 
 ## Motivation (what the pilot measured)
 

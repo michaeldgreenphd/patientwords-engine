@@ -229,26 +229,6 @@
  ],
  "decisions_pending": [
   {
-   "id": "MEDITRON-9TH",
-   "title": "meditron-7b: gated repo blocks the probe - owner action or drop (07-17 AM deck)",
-   "context": "Probe VERDICT 07-16: epfl-llm/meditron-7b is a GATED HF repo; CI got 403 GatedRepoError at config fetch (run 29477837576) - the HF_TOKEN account is not on the authorized list. Options: (a) owner requests access at huggingface.co/epfl-llm/meditron-7b with the account behind HF_TOKEN, probe re-fires on approval; (b) drop meditron, MedGemma stays the only medical model; (c) pick a different ungated medical model. Same exclusion class as BioMistral (visible on the site); if dropped, add the gating reason there."
-  },
-  {
-   "id": "QUEUED-LIST",
-   "title": "Technical page queued-next list: wire displays or trim (07-17 AM deck)",
-   "context": "Owner asked 07-16 whether the seven queued-next items actually populate. Audit: item 4 (misspelling) and 5 (lens sentinel measurement) are real and running; items 1 (steering router column - cell is a hardcoded 'queued' string), 2 (tx-arms), 3 (context), 6 (per-position), 7 (loglens) need display work after data lands. Fired 07-16: tx-arms lens pulls (txopus chunks 1-2 in queue; txplacebo + context queued next). Recommendation: wire item 1 as exploratory router column from the landed pilot, add a one-line sentinel status readout (also fixes the stale 'lands with day 2' parenthetical), keep 4+7, trim 6 until scheduled."
-  },
-  {
-   "id": "DISPLAY-TOP10",
-   "title": "Wording 2x2 + dialect page display picks - top-10 movers rankings land in the 07-17 AM deck",
-   "context": "Quadrants trace landed (10 frames); dialect r2 at 8 of 20 terms, rest chaining. Rankings by answer movement under the swap, with renders, delivered for collective AM choice. Pages untouched until picked."
-  },
-  {
-   "id": "AMEND4",
-   "title": "Amendment 4 sign-off (swap steering-by-class endpoint)",
-   "context": "docs/prereg_amendment4_steering_DRAFT.md awaits the owner's signature. Decision points at sign-off: layers frozen 19/21 vs re-derived from the census; pair-level either-layer restoration as primary; 15-per-class floor. Draft binds nothing until signed."
-  },
-  {
    "id": "SCALE-FRAMING",
    "title": "Scale framing sentence (drafted when full txcorpus numbers land)",
    "context": "Owner 2026-07-15: draft the translation-page framing sentence when the remaining txcorpus logits legs land, SHOW the owner before it deploys. The at-scale table keeps auto-updating; the sentence never auto-publishes."
@@ -262,6 +242,11 @@
  "blockers": [],
  "notes": "MORNING-DECK PLAN (owner 07-16): batch ALL pending choices into one collective deck for the 07-17 AM digest (MEDITRON-9TH, DISPLAY-TOP10, AMEND4 sign-off, SCALE-FRAMING if numbers land). Owner shows results to their team Friday; backfill + deep-view scaling continue over the weekend. SITE-TEXT OUTLINE (task #33) due 07-17 ~12:45 UTC before the digest: full markdown outline of all site text so the owner can reduce it into their own words. JLENS CHUNK-3 LOSS + FIX (15:30): chunk 3 (51-75) measured all 25 pairs, then lost them in the commit step - rebase conflict on jlens_probe.json (chunk 2 rewrote the same status file), and the push-retry loop cannot recover from a half-applied rebase. All three measurement workflows now pull --rebase -X theirs with a rebase-abort guard (8a84745); chunk 3 re-fired, batch-11 lens chunk 1 pending. Owner runs commissioned this afternoon: quadrants_20260715T142413Z landed (10 frames, opus, $0.063, seed copied to branch) awaiting a circuit slot; dialect round-2 chunk 1 pending behind batch-10 trace. SENTINEL DAY 3 (post-13:00): first instrument movement. Circuit-tracer probabilities shifted on all 3 sentinel pairs (max |dp| 0.027 at pair 2 patient; days 1-2 were identical to 3 decimals). Settings byte-identical, so the change is server-side. Every top word held; only rank-4/5 near-ties reordered. Lens readouts unchanged day over day (alias also unchanged), so the movement is confined to the tracer probability path. Paired penalty moved at most 2.1pp on the sentinel. Methods repeatability note corrected (owner informed), drift series published to the site with 2 manifest guards, drift_sentinel.py now records top-word stability. Instrument boundary 07-14/07-15 noted for any cross-day pooling. 13:00 cycle 2026-07-15: harvest complete (lens census 273 pairs w/ txcorpus guard: 27 capture/20 hijack/68 unreadable/158 held; urgency site copy 3329 rows; scale numbers live on the translation page: gemma-2-2b n=17 +8.9pp 8/0 tops, gemma-3 n=154 +0.5pp 27/24, lens recovery 6/16). Steering pilot COMPLETE: no additive class separation at any dose (0.05-2.0); swap arm hint only (hijack 21/24 v capture 3/6, capture truncated to n=3 by multi-wordpiece targets). Fresh-titration dose ladder complete (harvest next cycle). Fired: sentinel day 3, batch-10 trace+lens, batch-11 logits, batch-12 gen ($0.50). Lens chunking at 25 standard after two 429 deaths. txcorpus logits chunk 1 cancelled at 6h - re-chunk at 150 next slot. GitHub MCP re-authed mid-morning; Actions visibility restored.",
  "decisions_log": [
+  {
+   "date": "2026-07-17",
+   "by": "owner (morning deck, all six chips)",
+   "decision": "(1) meditron: owner requested gated access; daily idle re-probe until it loads. (2) Queued list: wire steering router column (exploratory, from the landed pilot) + sentinel status line; trim per-position. (3) Dialect: publish round 2 (15 of 20 terms landed; rest join at next cycle), feature the seizure term. (4) Wording 2x2: swap in the palpitations frame (grammar +13.0/+9.6pp, word -9.8/-13.2pp). (5) AMENDMENT 4 SIGNED AS DRAFTED, in force: layers 19/21 frozen, pair-level either-layer primary, 15-per-class floor; docs/prereg_amendment4_steering.md. (6) Audit session repointed at the working branch by the owner; fixes route through this session when its report lands. Owner also asked for suggestions of current, actually-used HF healthcare models to add (meditron is 2 years old)."
+  },
   {
    "date": "2026-07-16",
    "by": "owner (chat, morning)",
@@ -343,6 +328,12 @@
   }
  ],
  "queued_next": [
+  {
+   "trigger": "logits-eval",
+   "label": "meditron-daily-reprobe",
+   "note": "Owner requested HF gated access 07-17. One limit-3 probe per day in an idle logits slot until it loads clean (approval is silent); stop after 5 days and re-card if still gated.",
+   "blocked_by": "backfill legs take priority in the running slot"
+  },
   {
    "trigger": "circuit-trace",
    "label": "batch-12-trace + quadrant-gaps",

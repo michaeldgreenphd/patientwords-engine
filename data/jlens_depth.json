@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-07-16T13:25:10Z",
+ "generated_utc": "2026-07-16T14:14:12Z",
  "model": "gemma-2-2b",
  "scope": "hosted Jacobian lens, top-8 readout per layer; exploratory measurement; Amendment 1 exploration split only",
  "method_credit": "Jacobian lens: Gurnee et al., Transformer Circuits, 2026; reference implementation github.com/anthropics/jacobian-lens (Apache-2.0); hosted readout by neuronpedia.org. The lens is a readout, not an intervention; causal evidence comes from activation patching.",
@@ -1564,6 +1564,27 @@
    }
   },
   "note": "exploratory; recovery = expected care-urgency tier of the translated panel minus the everyday wording (probability-weighted, reviewed v1 tiers), split by the lens depth class of the everyday wording"
+ },
+ "steering": {
+  "_": "EXPLORATORY pilot (docs/lens_steering_design.md): swap intervention, pair-level rank-1 restoration at either frozen layer. Unresolvable = multi-wordpiece target, excluded before comparison. Amendment 4 registers the confirmatory version on post-adoption batches.",
+  "intervention": "swap",
+  "by_class": {
+   "suppressed": {
+    "n": 12,
+    "restored": 11,
+    "unresolvable": 0
+   },
+   "absent": {
+    "n": 3,
+    "restored": 2,
+    "unresolvable": 9
+   },
+   "retained": {
+    "n": 0,
+    "restored": 0,
+    "unresolvable": 2
+   }
+  }
  },
  "examples": [
   {

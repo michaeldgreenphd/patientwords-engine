@@ -200,6 +200,52 @@ def pick_examples(blocks_spec, max_suppressed=4, max_absent=2):
     return suppressed[:max_suppressed] + absent[:max_absent]
 
 
+def steering_split(trace_root=Path("trace_out")):
+    """Pair-level swap restoration by lens class from the landed steering pilot
+    (EXPLORATORY; owner-approved for the router's steering column 2026-07-17).
+    Dedupes spec items measured in more than one pilot run; a pair is restored
+    if any swap call read the target at rank 1. Class names map to the census
+    labels: hijack -> suppressed, capture -> absent."""
+    pairs = {}
+    for part in sorted(trace_root.glob("*jsteer_*/jsteer_summary.part_*.json")):
+        try:
+            summary = json.loads(part.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        for r in summary.get("results", []):
+            key = (r.get("dataset"), r.get("spec_index"))
+            e = pairs.setdefault(key, {"class": r.get("class"), "unres": False,
+                                       "restored": False, "measured": False})
+            if r.get("steer_unresolvable"):
+                e["unres"] = True
+                continue
+            swaps = {k: v for k, v in (r.get("calls") or {}).items() if k.endswith("_swap")}
+            if swaps:
+                e["measured"] = True
+                if any(v.get("final_rank") == 1 for v in swaps.values()):
+                    e["restored"] = True
+    name_map = {"hijack": "suppressed", "capture": "absent", "held": "retained"}
+    by_class = {}
+    for e in pairs.values():
+        cls = name_map.get(e["class"], e["class"])
+        c = by_class.setdefault(cls, {"n": 0, "restored": 0, "unresolvable": 0})
+        if e["measured"]:
+            c["n"] += 1
+            c["restored"] += int(e["restored"])
+        elif e["unres"]:
+            c["unresolvable"] += 1
+    if not by_class:
+        return None
+    return {
+        "_": ("EXPLORATORY pilot (docs/lens_steering_design.md): swap intervention, pair-level "
+              "rank-1 restoration at either frozen layer. Unresolvable = multi-wordpiece target, "
+              "excluded before comparison. Amendment 4 registers the confirmatory version on "
+              "post-adoption batches."),
+        "intervention": "swap",
+        "by_class": by_class,
+    }
+
+
 def build_payload(blocks_spec, exemplar_stem, exemplar_index, annotate=None):
     """blocks_spec: list of (stem, label); annotate: (stem, index) or None."""
     blocks = []
@@ -223,6 +269,7 @@ def build_payload(blocks_spec, exemplar_stem, exemplar_index, annotate=None):
         "blocks": blocks,
         "units": blocks[0],  # back-compat alias: first block is the newest batch
         "translation": translation_split([b["id"] for b in blocks]),
+        "steering": steering_split(),
         "examples": pick_examples(blocks_spec),
         "exemplar": {
             "stem": exemplar_stem,
