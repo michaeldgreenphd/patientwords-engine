@@ -114,11 +114,11 @@
   },
   {
    "page": "dialect-differences/index.html",
-   "snippet": "traced July 8, 2026",
+   "snippet": "traced July 16 and 17, 2026",
    "source": "data/dialects.json",
    "expr": "d['updated']",
-   "expected": "2026-07-08",
-   "_": "retargeted 2026-07-14: the index Fig.3 card was replaced by the live specimen (no hardcoded date)"
+   "expected": "2026-07-17",
+   "_": "matrix dateline vs the published payload stamp (round 2, 2026-07-17)"
   },
   {
    "page": "index.html",
@@ -152,33 +152,6 @@
     0.04
    ],
    "_": "page merged into wording-differences 2026-07-14 (owner decision)"
-  },
-  {
-   "page": "dialect-differences/index.html",
-   "snippet": "45 (5 baselines + 40 framings)",
-   "source": "data/dialects.json",
-   "expr": "[len(d['items']), sum(len(i['variants']) for i in d['items'])]",
-   "expected": [
-    5,
-    40
-   ]
-  },
-  {
-   "page": "dialect-differences/index.html",
-   "snippet": "traced July 8, 2026",
-   "source": "data/dialects.json",
-   "expr": "d['updated']",
-   "expected": "2026-07-08"
-  },
-  {
-   "page": "dialect-differences/index.html",
-   "snippet": "claude-sonnet-5 ($0.189, 64 accepted / 2 rejected)",
-   "source": "data/provenance.json",
-   "expr": "[next(b for b in d['batches'] if b.get('batch')=='dialects_20260708T120729Z')['accepted'], next(b for b in d['batches'] if b.get('batch')=='dialects_20260708T120729Z')['rejected']]",
-   "expected": [
-    64,
-    2
-   ]
   },
   {
    "page": "simulated-scenarios/index.html",
@@ -284,6 +257,29 @@
    "expr": "next(x for x in d['deltas'] if x['date']=='20260715')['top_word_changes']",
    "expected": [],
    "_": "top-word stability across the 07-15 movement; drift_sentinel.py records top_word_changes since 2026-07-15"
+  },
+  {
+   "page": "dialect-differences/index.html",
+   "snippet": "$0.413, 160 accepted / 5 rejected",
+   "source": "data/provenance.json",
+   "expr": "[round(d['dialects_round2']['cost_usd'],3), d['dialects_round2']['accepted'], d['dialects_round2']['rejected']]",
+   "expected": [
+    0.413,
+    160,
+    5
+   ],
+   "_": "round-2 sweep generation facts (owner decision 2026-07-17: publish round 2)"
+  },
+  {
+   "page": "dialect-differences/index.html",
+   "snippet": "153 (17 baselines + 136 framings",
+   "source": "data/dialects.json",
+   "expr": "[len(d['items']), sum(len(i['variants']) for i in d['items'])]",
+   "expected": [
+    17,
+    136
+   ],
+   "_": "graph counts recomputed from the published matrix payload; updates when the 3-term gap lands"
   }
  ]
 }
