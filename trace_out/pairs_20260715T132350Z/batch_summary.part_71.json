@@ -1,0 +1,815 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 71,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 71,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have erectile dysfunction, so I might need to talk to my",
+        "patient": "My partner mentioned I've lost my spark down there, so I might need to talk to my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.672,
+        "patient": 0.396
+      },
+      "language_penalty": -0.276,
+      "clinical_mass": {
+        "clinical": 0.3301,
+        "patient": 0.2229
+      },
+      "error_share": {
+        "clinical": 0.0989,
+        "patient": 0.0942
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.672)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.396)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.672
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.672
+          ],
+          [
+            "Output \" doc\"",
+            0.055
+          ],
+          [
+            "Output \" uro\"",
+            0.043
+          ],
+          [
+            "Output \" GP\"",
+            0.023
+          ],
+          [
+            "Output \" partner\"",
+            0.016
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.396
+          ],
+          [
+            "Output \" GP\"",
+            0.146
+          ],
+          [
+            "Output \" doc\"",
+            0.069
+          ],
+          [
+            "Output \" partner\"",
+            0.037
+          ],
+          [
+            "Output \" uro\"",
+            0.032
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 453,
+        "unique_to_a": 616,
+        "unique_to_b": 870
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_71.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_71.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_71_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_71_diff.png"
+      }
+    },
+    {
+      "index": 72,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have conjunctival injection with epiphora, so I should probably pick up some",
+        "patient": "My eye's been all watery and the white bit's been bright red, so I should probably pick up some"
+      },
+      "target_token": "Output \" drops\"",
+      "probabilities": {
+        "clinical": 0.061,
+        "patient": 0.095
+      },
+      "language_penalty": 0.034,
+      "clinical_mass": {
+        "clinical": 0.3687,
+        "patient": 0.281
+      },
+      "error_share": {
+        "clinical": 0.111,
+        "patient": 0.1108
+      },
+      "top_path": {
+        "clinical": "[L23\u00b7S]  \u2192 [L25\u00b7S] words related to liquids and dropping, as well as so \u2192 Output \" drops\" (p=0.061)",
+        "patient": "embedding \u2192 Output \" eye\" (p=0.428)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " drops",
+        "observed_clinical": [
+          "Output \" drops\"",
+          0.061
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" artificial\"",
+            0.213
+          ],
+          [
+            "Output \" eye\"",
+            0.114
+          ],
+          [
+            "Output \" of\"",
+            0.089
+          ],
+          [
+            "Output \" drops\"",
+            0.061
+          ],
+          [
+            "Output \" tears\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" eye\"",
+            0.428
+          ],
+          [
+            "Output \" drops\"",
+            0.095
+          ],
+          [
+            "Output \" new\"",
+            0.035
+          ],
+          [
+            "Output \" of\"",
+            0.027
+          ],
+          [
+            "Output \" anti\"",
+            0.024
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 567,
+        "unique_to_a": 749,
+        "unique_to_b": 742
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_72.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_72.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_72_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_72_diff.png"
+      }
+    },
+    {
+      "index": 73,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have pharyngitis with oral thrush, so this might be my",
+        "patient": "My throat's been really sore and I've got white patches in there, so this might be my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2491
+      },
+      "error_share": {
+        "clinical": 0.0963
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " candida",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" problem\"",
+            0.15
+          ],
+          [
+            "Output \" issue\"",
+            0.063
+          ],
+          [
+            "Output \" first\"",
+            0.055
+          ],
+          [
+            "Output \" own\"",
+            0.055
+          ],
+          [
+            "Output \" body\"",
+            0.038
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 74,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have oral candidiasis, so I might have an",
+        "patient": "I've got this nasty white coating on my tongue, so I might have an"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2541
+      },
+      "error_share": {
+        "clinical": 0.0908
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " infection",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" idea\"",
+            0.184
+          ],
+          [
+            "Output \" increased\"",
+            0.098
+          ],
+          [
+            "Output \" extra\"",
+            0.077
+          ],
+          [
+            "Output \" advantage\"",
+            0.06
+          ],
+          [
+            "Output \" issue\"",
+            0.053
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 75,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have conjunctivitis, so I need to pick up some",
+        "patient": "I've been getting a lot of pus in my eye, so I need to pick up some"
+      },
+      "target_token": "Output \" drops\"",
+      "probabilities": {
+        "clinical": 0.174,
+        "patient": 0.164
+      },
+      "language_penalty": -0.009999999999999981,
+      "clinical_mass": {
+        "clinical": 0.3706,
+        "patient": 0.3486
+      },
+      "error_share": {
+        "clinical": 0.099,
+        "patient": 0.0959
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7C] mentions of eyes, studies, patients, and medical ana \u2192 Output \" eye\" (p=0.324)",
+        "patient": "embedding \u2192 Output \" eye\" (p=0.239)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " drops",
+        "observed_clinical": [
+          "Output \" drops\"",
+          0.174
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" eye\"",
+            0.324
+          ],
+          [
+            "Output \" drops\"",
+            0.174
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.064
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.05
+          ],
+          [
+            "Output \" new\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" eye\"",
+            0.239
+          ],
+          [
+            "Output \" drops\"",
+            0.164
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.145
+          ],
+          [
+            "Output \" ointment\"",
+            0.053
+          ],
+          [
+            "Output \" new\"",
+            0.053
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 668,
+        "unique_to_a": 511,
+        "unique_to_b": 710
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_75.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_75.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_75_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_75_diff.png"
+      }
+    },
+    {
+      "index": 76,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been running a fever above 39\u00b0C for three days, so I might have a",
+        "patient": "I've been running a really high temperature for three days, so I might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2993
+      },
+      "error_share": {
+        "clinical": 0.0904
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " infection",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cold\"",
+            0.252
+          ],
+          [
+            "Output \" bit\"",
+            0.072
+          ],
+          [
+            "Output \" virus\"",
+            0.056
+          ],
+          [
+            "Output \" mild\"",
+            0.056
+          ],
+          [
+            "Output \" bad\"",
+            0.044
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 77,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been gaining weight and experiencing fatigue all the time, so I should probably check my",
+        "patient": "I've been gaining weight and feeling sluggish all the time, so I should probably check my"
+      },
+      "target_token": "Output \" thyroid\"",
+      "probabilities": {
+        "clinical": 0.389,
+        "patient": 0.266
+      },
+      "language_penalty": -0.123,
+      "clinical_mass": {
+        "clinical": 0.3162,
+        "patient": 0.2925
+      },
+      "error_share": {
+        "clinical": 0.0932,
+        "patient": 0.092
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.144)",
+        "patient": "[L18\u00b7S]  \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.183)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " thyroid",
+        "observed_clinical": [
+          "Output \" thyroid\"",
+          0.389
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" thyroid\"",
+            0.389
+          ],
+          [
+            "Output \" blood\"",
+            0.144
+          ],
+          [
+            "Output \" iron\"",
+            0.06
+          ],
+          [
+            "Output \" hormones\"",
+            0.041
+          ],
+          [
+            "Output \" levels\"",
+            0.032
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" thyroid\"",
+            0.266
+          ],
+          [
+            "Output \" blood\"",
+            0.183
+          ],
+          [
+            "Output \" diet\"",
+            0.086
+          ],
+          [
+            "Output \" cholesterol\"",
+            0.046
+          ],
+          [
+            "Output \" hormones\"",
+            0.041
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1162,
+        "unique_to_a": 280,
+        "unique_to_b": 291
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_77.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_77.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_77_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_77_diff.png"
+      }
+    },
+    {
+      "index": 78,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing dysuria, so I think I've picked up a",
+        "patient": "I've been getting a burning sensation when I pee, so I think I've picked up a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4056
+      },
+      "error_share": {
+        "clinical": 0.1053
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " infection",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" UTI\"",
+            0.355
+          ],
+          [
+            "Output \" urinary\"",
+            0.168
+          ],
+          [
+            "Output \" bladder\"",
+            0.131
+          ],
+          [
+            "Output \" yeast\"",
+            0.048
+          ],
+          [
+            "Output \" uti\"",
+            0.026
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 79,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been feeling flushed and my skin's all hot, so I might have an",
+        "patient": "I've been feeling flushed and my skin's all hot, so I might have a"
+      },
+      "target_token": "Output \" infection\"",
+      "probabilities": {
+        "clinical": 0.189,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2772,
+        "patient": 0.2578
+      },
+      "error_share": {
+        "clinical": 0.0948,
+        "patient": 0.0997
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" allergy\" (p=0.101)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] discussion of medical conditions with location on th \u2192 [L19\u00b7C] words and phrases related to being sick and medical  \u2192 Output \" cold\" (p=0.132)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " infection",
+        "observed_clinical": [
+          "Output \" infection\"",
+          0.189
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" infection\"",
+            0.189
+          ],
+          [
+            "Output \" allergy\"",
+            0.101
+          ],
+          [
+            "Output \" upset\"",
+            0.042
+          ],
+          [
+            "Output \" allergic\"",
+            0.042
+          ],
+          [
+            "Output \" early\"",
+            0.042
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" fever\"",
+            0.459
+          ],
+          [
+            "Output \" cold\"",
+            0.132
+          ],
+          [
+            "Output \" little\"",
+            0.055
+          ],
+          [
+            "Output \" slight\"",
+            0.029
+          ],
+          [
+            "Output \" bit\"",
+            0.029
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1161,
+        "unique_to_a": 221,
+        "unique_to_b": 191
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_79.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_79.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_79_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_79_diff.png"
+      }
+    },
+    {
+      "index": 80,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been passing excessive urine and my wee's really dark, so I should probably get my",
+        "patient": "I've been peeing way too much and my wee's really dark, so I should probably get my"
+      },
+      "target_token": "Output \" kidneys\"",
+      "probabilities": {
+        "clinical": 0.111,
+        "patient": 0.062
+      },
+      "language_penalty": -0.049,
+      "clinical_mass": {
+        "clinical": 0.317,
+        "patient": 0.2852
+      },
+      "error_share": {
+        "clinical": 0.1038,
+        "patient": 0.1046
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" urine\" (p=0.235)",
+        "patient": "embedding \u2192 [L21\u00b7O] phrases related to self-reflection, personal identit \u2192 Output \" self\" (p=0.033)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " kidneys",
+        "observed_clinical": [
+          "Output \" kidneys\"",
+          0.111
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.266
+          ],
+          [
+            "Output \" urine\"",
+            0.235
+          ],
+          [
+            "Output \" kidneys\"",
+            0.111
+          ],
+          [
+            "Output \" GP\"",
+            0.041
+          ],
+          [
+            "Output \" kidney\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.248
+          ],
+          [
+            "Output \" urine\"",
+            0.193
+          ],
+          [
+            "Output \" thyroid\"",
+            0.062
+          ],
+          [
+            "Output \" kidneys\"",
+            0.062
+          ],
+          [
+            "Output \" self\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 859,
+        "unique_to_a": 562,
+        "unique_to_b": 669
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_80.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_80.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_80_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_80_diff.png"
+      }
+    }
+  ]
+}
