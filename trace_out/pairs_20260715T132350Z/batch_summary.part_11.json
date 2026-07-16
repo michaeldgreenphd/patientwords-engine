@@ -1,0 +1,858 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 11,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have pneumonia, so I need to take my",
+        "patient": "I've got a nasty chest bug, so I need to take my"
+      },
+      "target_token": "Output \" antibiotics\"",
+      "probabilities": {
+        "clinical": 0.077,
+        "patient": 0.125
+      },
+      "language_penalty": 0.048,
+      "clinical_mass": {
+        "clinical": 0.361,
+        "patient": 0.3026
+      },
+      "error_share": {
+        "clinical": 0.0857,
+        "patient": 0.0892
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" antibiotics\" (p=0.077)",
+        "patient": "embedding \u2192 Output \" \" (p=0.028)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antibiotics",
+        "observed_clinical": [
+          "Output \" antibiotics\"",
+          0.077
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.112
+          ],
+          [
+            "Output \" medicine\"",
+            0.087
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.077
+          ],
+          [
+            "Output \" medication\"",
+            0.06
+          ],
+          [
+            "Output \" temperature\"",
+            0.06
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.182
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.125
+          ],
+          [
+            "Output \" medicine\"",
+            0.059
+          ],
+          [
+            "Output \" medication\"",
+            0.052
+          ],
+          [
+            "Output \" \"",
+            0.028
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 636,
+        "unique_to_a": 518,
+        "unique_to_b": 660
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_11.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_11.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_11_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_11_diff.png"
+      }
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have erectile dysfunction, so I might need to take my",
+        "patient": "I've been having trouble down there in the bedroom, so I might need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.079,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2792,
+        "patient": 0.1066
+      },
+      "error_share": {
+        "clinical": 0.0979,
+        "patient": 0.0832
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" penis\" (p=0.054)",
+        "patient": "embedding \u2192 Output \" own\" (p=0.033)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.079
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.102
+          ],
+          [
+            "Output \" medication\"",
+            0.079
+          ],
+          [
+            "Output \" wife\"",
+            0.054
+          ],
+          [
+            "Output \" penis\"",
+            0.054
+          ],
+          [
+            "Output \" medicine\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" wife\"",
+            0.218
+          ],
+          [
+            "Output \" meds\"",
+            0.038
+          ],
+          [
+            "Output \" pants\"",
+            0.038
+          ],
+          [
+            "Output \" medicine\"",
+            0.033
+          ],
+          [
+            "Output \" own\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 543,
+        "unique_to_a": 650,
+        "unique_to_b": 785
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_12.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_12.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_12_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_12_diff.png"
+      }
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have night sweats, so this might be my",
+        "patient": "I've been sweating buckets at night, so this might be my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1353
+      },
+      "error_share": {
+        "clinical": 0.0885
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " thyroid",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" only\"",
+            0.119
+          ],
+          [
+            "Output \" new\"",
+            0.082
+          ],
+          [
+            "Output \" answer\"",
+            0.082
+          ],
+          [
+            "Output \" solution\"",
+            0.082
+          ],
+          [
+            "Output \" problem\"",
+            0.072
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have pharyngitis, so I might need to take an",
+        "patient": "I woke up with a frog in my throat, so I might need to take an"
+      },
+      "target_token": "Output \" antibiotic\"",
+      "probabilities": {
+        "clinical": 0.641,
+        "patient": 0.04
+      },
+      "language_penalty": -0.601,
+      "clinical_mass": {
+        "clinical": 0.4097,
+        "patient": 0.2075
+      },
+      "error_share": {
+        "clinical": 0.0978,
+        "patient": 0.0906
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7O] the word \"taken\" and words/phrases around it, especi \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L22\u00b7C] sentences related to drug use | medications \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.077)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" hour\" (p=0.108)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antibiotic",
+        "observed_clinical": [
+          "Output \" antibiotic\"",
+          0.641
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" antibiotic\"",
+            0.641
+          ],
+          [
+            "Output \" anti\"",
+            0.077
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.041
+          ],
+          [
+            "Output \" oral\"",
+            0.036
+          ],
+          [
+            "Output \" extra\"",
+            0.019
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" extra\"",
+            0.179
+          ],
+          [
+            "Output \" hour\"",
+            0.108
+          ],
+          [
+            "Output \" aspirin\"",
+            0.096
+          ],
+          [
+            "Output \" allergy\"",
+            0.051
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.04
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 552,
+        "unique_to_a": 673,
+        "unique_to_b": 819
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_14.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_14.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_14_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_14_diff.png"
+      }
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have hematuria, so I need to see a",
+        "patient": "I've been passing blood, so I need to see a"
+      },
+      "target_token": "Output \" uro\"",
+      "probabilities": {
+        "clinical": 0.504,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4762,
+        "patient": 0.3642
+      },
+      "error_share": {
+        "clinical": 0.0966,
+        "patient": 0.0888
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" hemat\" (p=0.060)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.676)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " urologist",
+        "observed_clinical": [
+          "Output \" uro\"",
+          0.504
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" uro\"",
+            0.504
+          ],
+          [
+            "Output \" nephro\"",
+            0.099
+          ],
+          [
+            "Output \" doctor\"",
+            0.077
+          ],
+          [
+            "Output \" Uro\"",
+            0.068
+          ],
+          [
+            "Output \" hemat\"",
+            0.06
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.676
+          ],
+          [
+            "Output \" doc\"",
+            0.049
+          ],
+          [
+            "Output \" Dr\"",
+            0.034
+          ],
+          [
+            "Output \" specialist\"",
+            0.03
+          ],
+          [
+            "Output \" dr\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 483,
+        "unique_to_a": 724,
+        "unique_to_b": 622
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_15.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_15.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_15_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_15_diff.png"
+      }
+    },
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I think I have pneumonia, so I might need to take an",
+        "patient": "I think I've got a really bad chest infection, so I might need to take an"
+      },
+      "target_token": "Output \" antibiotic\"",
+      "probabilities": {
+        "clinical": 0.57,
+        "patient": 0.605
+      },
+      "language_penalty": 0.03500000000000003,
+      "clinical_mass": {
+        "clinical": 0.3412,
+        "patient": 0.3881
+      },
+      "error_share": {
+        "clinical": 0.0918,
+        "patient": 0.092
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" antibiotics\" (p=0.053)",
+        "patient": "[L22\u00b7S]  \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.056)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antibiotic",
+        "observed_clinical": [
+          "Output \" antibiotic\"",
+          0.57
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" antibiotic\"",
+            0.57
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.053
+          ],
+          [
+            "Output \" extra\"",
+            0.047
+          ],
+          [
+            "Output \" anti\"",
+            0.041
+          ],
+          [
+            "Output \" extended\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" antibiotic\"",
+            0.605
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.093
+          ],
+          [
+            "Output \" extra\"",
+            0.056
+          ],
+          [
+            "Output \" anti\"",
+            0.056
+          ],
+          [
+            "Output \" early\"",
+            0.021
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 705,
+        "unique_to_a": 425,
+        "unique_to_b": 561
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_16.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_16.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_16_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_16_diff.png"
+      }
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have erectile dysfunction, so I should probably take my",
+        "patient": "I've been having trouble getting it up lately, so I should probably take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.08,
+        "patient": 0.024
+      },
+      "language_penalty": -0.056,
+      "clinical_mass": {
+        "clinical": 0.2796,
+        "patient": 0.0768
+      },
+      "error_share": {
+        "clinical": 0.0984,
+        "patient": 0.0866
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.048)",
+        "patient": "embedding \u2192 Output \" own\" (p=0.555)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.08
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.116
+          ],
+          [
+            "Output \" medicine\"",
+            0.09
+          ],
+          [
+            "Output \" medication\"",
+            0.08
+          ],
+          [
+            "Output \" own\"",
+            0.048
+          ],
+          [
+            "Output \" wife\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" own\"",
+            0.555
+          ],
+          [
+            "Output \" meds\"",
+            0.075
+          ],
+          [
+            "Output \" medicine\"",
+            0.028
+          ],
+          [
+            "Output \" medication\"",
+            0.024
+          ],
+          [
+            "Output \" car\"",
+            0.019
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 546,
+        "unique_to_a": 638,
+        "unique_to_b": 746
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_17.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_17.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_17_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I woke up with acute dysmenorrhea, so I need to take my",
+        "patient": "I woke up with a terrible ache down below, so I need to take my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3998
+      },
+      "error_share": {
+        "clinical": 0.1
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" medicine\"",
+            0.143
+          ],
+          [
+            "Output \" first\"",
+            0.076
+          ],
+          [
+            "Output \" paink\"",
+            0.067
+          ],
+          [
+            "Output \" menstrual\"",
+            0.059
+          ],
+          [
+            "Output \" period\"",
+            0.059
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have a persistent fever, so I should probably take some",
+        "patient": "My temp keeps spiking, so I should probably take some"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3869
+      },
+      "error_share": {
+        "clinical": 0.0914
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " paracetamol",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" medicine\"",
+            0.158
+          ],
+          [
+            "Output \" T\"",
+            0.158
+          ],
+          [
+            "Output \" ibuprofen\"",
+            0.075
+          ],
+          [
+            "Output \" time\"",
+            0.058
+          ],
+          [
+            "Output \" aspirin\"",
+            0.058
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having intermenstrual bleeding, so I need to see a",
+        "patient": "I've been spotting between periods, so I need to see a"
+      },
+      "target_token": "Output \" gyne\"",
+      "probabilities": {
+        "clinical": 0.17,
+        "patient": 0.081
+      },
+      "language_penalty": -0.08900000000000001,
+      "clinical_mass": {
+        "clinical": 0.4249,
+        "patient": 0.3664
+      },
+      "error_share": {
+        "clinical": 0.0966,
+        "patient": 0.101
+      },
+      "top_path": {
+        "clinical": "[L11\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.463)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.531)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " gynecologist",
+        "observed_clinical": [
+          "Output \" gyne\"",
+          0.17
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.463
+          ],
+          [
+            "Output \" gyne\"",
+            0.17
+          ],
+          [
+            "Output \" gy\"",
+            0.091
+          ],
+          [
+            "Output \" g\"",
+            0.055
+          ],
+          [
+            "Output \" specialist\"",
+            0.03
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.531
+          ],
+          [
+            "Output \" gyne\"",
+            0.081
+          ],
+          [
+            "Output \" doc\"",
+            0.056
+          ],
+          [
+            "Output \" gy\"",
+            0.056
+          ],
+          [
+            "Output \" Dr\"",
+            0.056
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 737,
+        "unique_to_a": 545,
+        "unique_to_b": 471
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_20.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_20.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_20_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_20_diff.png"
+      }
+    }
+  ]
+}
