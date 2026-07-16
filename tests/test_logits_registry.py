@@ -30,6 +30,9 @@ EXPECTED_IDS = {
     "gemma-2-9b",
     "meditron-7b",
     "medgemma-4b-it",
+    # meditron successors, owner 2026-07-17 (3-8B ack signed; Apertus ungated)
+    "meditron3-8b",
+    "apertus-8b-meditronfo",
 }
 
 

@@ -39,7 +39,14 @@ HF_IDS = {
     "llama-3.2-3b": "meta-llama/Llama-3.2-3B",
     "olmo-2-1b": "allenai/OLMo-2-0425-1B",
     "biomistral-7b": "BioMistral/BioMistral-7B",  # DROPPED 2026-07-13: pickle-only upstream
-    "meditron-7b": "epfl-llm/meditron-7b",  # medical-domain candidate replacing biomistral
+    "meditron-7b": "epfl-llm/meditron-7b",  # SUPERSEDED 2026-07-17: gated (403) and 2 years old; kept for the record
+    # Meditron successors (owner 2026-07-17): the same EPFL lineage, current.
+    # Meditron3-8B is Llama-3.1-8B based (owner signed the license
+    # acknowledgment 2026-07-17); Apertus-8B-MeditronFO is Apertus-8B based
+    # and carries no acknowledgment gate. 8B class: swap step required,
+    # small chunks only.
+    "meditron3-8b": "OpenMeditron/Meditron3-8B",
+    "apertus-8b-meditronfo": "EPFLiGHT/Apertus-8B-MeditronFO",
     # Same base as gemma-3-4b-it with medical tuning - the paired contrast
     # isolates what medical fine-tuning does to the register gap. Gated by
     # HAI-DEF terms (owner accepted 2026-07-13).
