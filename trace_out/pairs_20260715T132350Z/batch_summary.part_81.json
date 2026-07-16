@@ -1,0 +1,944 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 81,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 81,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My girlfriend says I've been experiencing erectile dysfunction, so I might need to take my",
+        "patient": "My girlfriend says I've been acting cold down there, so I might need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.047,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2403,
+        "patient": 0.1289
+      },
+      "error_share": {
+        "clinical": 0.0957,
+        "patient": 0.0872
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" first\" (p=0.068)",
+        "patient": "embedding \u2192 Output \" own\" (p=0.043)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.047
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" first\"",
+            0.068
+          ],
+          [
+            "Output \" meds\"",
+            0.053
+          ],
+          [
+            "Output \" ED\"",
+            0.053
+          ],
+          [
+            "Output \" penis\"",
+            0.047
+          ],
+          [
+            "Output \" medication\"",
+            0.047
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pants\"",
+            0.117
+          ],
+          [
+            "Output \" shirt\"",
+            0.049
+          ],
+          [
+            "Output \" meds\"",
+            0.049
+          ],
+          [
+            "Output \" clothes\"",
+            0.049
+          ],
+          [
+            "Output \" own\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 869,
+        "unique_to_a": 463,
+        "unique_to_b": 584
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_81.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_81.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_81_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_81_diff.png"
+      }
+    },
+    {
+      "index": 82,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've got tinnitus that won't stop, so it might be my",
+        "patient": "I've got this ringing in my ears that won't stop, so it might be my"
+      },
+      "target_token": "Output \" hearing\"",
+      "probabilities": {
+        "clinical": 0.045,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1434,
+        "patient": 0.1052
+      },
+      "error_share": {
+        "clinical": 0.0871,
+        "patient": 0.0886
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" hearing\" (p=0.045)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7O] words related to narratives, specifically scenes inv \u2192 [L21\u00b7S] the word \"in\" surrounding pronouns and possessive no \u2192 Output \" turn\" (p=0.082)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " hearing",
+        "observed_clinical": [
+          "Output \" hearing\"",
+          0.045
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ears\"",
+            0.227
+          ],
+          [
+            "Output \" imagination\"",
+            0.155
+          ],
+          [
+            "Output \" hearing\"",
+            0.045
+          ],
+          [
+            "Output \" own\"",
+            0.035
+          ],
+          [
+            "Output \" problem\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" fault\"",
+            0.119
+          ],
+          [
+            "Output \" turn\"",
+            0.082
+          ],
+          [
+            "Output \" ears\"",
+            0.063
+          ],
+          [
+            "Output \" imagination\"",
+            0.063
+          ],
+          [
+            "Output \" time\"",
+            0.039
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 897,
+        "unique_to_a": 460,
+        "unique_to_b": 602
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_82.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_82.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_82_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_82_diff.png"
+      }
+    },
+    {
+      "index": 83,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been getting stomatitis all over my mouth, so I might need to see a",
+        "patient": "I've been getting these little sores all over my mouth, so I might need to see a"
+      },
+      "target_token": "Output \" dentist\"",
+      "probabilities": {
+        "clinical": 0.633,
+        "patient": 0.574
+      },
+      "language_penalty": -0.05900000000000005,
+      "clinical_mass": {
+        "clinical": 0.44,
+        "patient": 0.4476
+      },
+      "error_share": {
+        "clinical": 0.0926,
+        "patient": 0.0924
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.206)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.271)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " dentist",
+        "observed_clinical": [
+          "Output \" dentist\"",
+          0.633
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dentist\"",
+            0.633
+          ],
+          [
+            "Output \" doctor\"",
+            0.206
+          ],
+          [
+            "Output \" specialist\"",
+            0.036
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.036
+          ],
+          [
+            "Output \" new\"",
+            0.012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dentist\"",
+            0.574
+          ],
+          [
+            "Output \" doctor\"",
+            0.271
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.088
+          ],
+          [
+            "Output \" doc\"",
+            0.009
+          ],
+          [
+            "Output \" der\"",
+            0.008
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 806,
+        "unique_to_a": 515,
+        "unique_to_b": 404
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_83.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_83.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_83_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_83_diff.png"
+      }
+    },
+    {
+      "index": 84,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have urinary retention, so I should probably see a",
+        "patient": "I've been having trouble passing water regularly, so I should probably see a"
+      },
+      "target_token": "Output \" uro\"",
+      "probabilities": {
+        "clinical": 0.645,
+        "patient": 0.049
+      },
+      "language_penalty": -0.596,
+      "clinical_mass": {
+        "clinical": 0.4552,
+        "patient": 0.3376
+      },
+      "error_share": {
+        "clinical": 0.0984,
+        "patient": 0.0959
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.127)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.766)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " urologist",
+        "observed_clinical": [
+          "Output \" uro\"",
+          0.645
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" uro\"",
+            0.645
+          ],
+          [
+            "Output \" doctor\"",
+            0.127
+          ],
+          [
+            "Output \" Uro\"",
+            0.087
+          ],
+          [
+            "Output \" specialist\"",
+            0.041
+          ],
+          [
+            "Output \" doc\"",
+            0.012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.766
+          ],
+          [
+            "Output \" uro\"",
+            0.049
+          ],
+          [
+            "Output \" doc\"",
+            0.049
+          ],
+          [
+            "Output \" Dr\"",
+            0.026
+          ],
+          [
+            "Output \" GP\"",
+            0.02
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 479,
+        "unique_to_a": 678,
+        "unique_to_b": 718
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_84.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_84.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_84_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_84_diff.png"
+      }
+    },
+    {
+      "index": 85,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have erectile dysfunction, so I might need to talk to my",
+        "patient": "My girlfriend thinks I've lost my libido, so I might need to talk to my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.672,
+        "patient": 0.602
+      },
+      "language_penalty": -0.07000000000000006,
+      "clinical_mass": {
+        "clinical": 0.3301,
+        "patient": 0.2269
+      },
+      "error_share": {
+        "clinical": 0.0989,
+        "patient": 0.0925
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.672)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.602)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.672
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.672
+          ],
+          [
+            "Output \" doc\"",
+            0.055
+          ],
+          [
+            "Output \" uro\"",
+            0.043
+          ],
+          [
+            "Output \" GP\"",
+            0.023
+          ],
+          [
+            "Output \" partner\"",
+            0.016
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.602
+          ],
+          [
+            "Output \" doc\"",
+            0.063
+          ],
+          [
+            "Output \" GP\"",
+            0.038
+          ],
+          [
+            "Output \" therapist\"",
+            0.034
+          ],
+          [
+            "Output \" wife\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 574,
+        "unique_to_a": 495,
+        "unique_to_b": 649
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_85.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_85.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_85_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_85_diff.png"
+      }
+    },
+    {
+      "index": 86,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have insulin resistance, so I should probably check my",
+        "patient": "I've been putting on weight around my belly and feeling sluggish, so I should probably check my"
+      },
+      "target_token": "Output \" glucose\"",
+      "probabilities": {
+        "clinical": 0.056,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3157,
+        "patient": 0.2887
+      },
+      "error_share": {
+        "clinical": 0.0967,
+        "patient": 0.0978
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" insulin\" (p=0.044)",
+        "patient": "[L21\u00b7S]  \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.202)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " glucose",
+        "observed_clinical": [
+          "Output \" glucose\"",
+          0.056
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.369
+          ],
+          [
+            "Output \" fasting\"",
+            0.136
+          ],
+          [
+            "Output \" A\"",
+            0.064
+          ],
+          [
+            "Output \" glucose\"",
+            0.056
+          ],
+          [
+            "Output \" insulin\"",
+            0.044
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.202
+          ],
+          [
+            "Output \" thyroid\"",
+            0.157
+          ],
+          [
+            "Output \" diet\"",
+            0.108
+          ],
+          [
+            "Output \" cholesterol\"",
+            0.084
+          ],
+          [
+            "Output \" hormones\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 562,
+        "unique_to_a": 745,
+        "unique_to_b": 875
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_86.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_86.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_86_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_86_diff.png"
+      }
+    },
+    {
+      "index": 87,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have tinnitus, so this might be my",
+        "patient": "I've got this constant ringing in my ears that's driving me mad, so this might be my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1361
+      },
+      "error_share": {
+        "clinical": 0.0874
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " hearing",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" own\"",
+            0.102
+          ],
+          [
+            "Output \" problem\"",
+            0.079
+          ],
+          [
+            "Output \" imagination\"",
+            0.07
+          ],
+          [
+            "Output \" experience\"",
+            0.054
+          ],
+          [
+            "Output \" only\"",
+            0.048
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 88,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have gingivitis, so I should probably see an",
+        "patient": "I've been getting really sore gums and my mouth tastes metallic, so I should probably see an"
+      },
+      "target_token": "Output \" dentist\"",
+      "probabilities": {
+        "clinical": 0.025,
+        "patient": 0.117
+      },
+      "language_penalty": 0.092,
+      "clinical_mass": {
+        "clinical": 0.3984,
+        "patient": 0.3801
+      },
+      "error_share": {
+        "clinical": 0.1006,
+        "patient": 0.0919
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L20\u00b7C] text related to dental practices, procedures, and pr \u2192 Output \" oral\" (p=0.566)",
+        "patient": "embedding \u2192 [L20\u00b7C] text related to dental practices, procedures, and pr \u2192 Output \" oral\" (p=0.281)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " dentist",
+        "observed_clinical": [
+          "Output \" dentist\"",
+          0.025
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" oral\"",
+            0.566
+          ],
+          [
+            "Output \" actual\"",
+            0.077
+          ],
+          [
+            "Output \" end\"",
+            0.077
+          ],
+          [
+            "Output \" orthodon\"",
+            0.044
+          ],
+          [
+            "Output \" dentist\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" oral\"",
+            0.281
+          ],
+          [
+            "Output \" ENT\"",
+            0.171
+          ],
+          [
+            "Output \" dentist\"",
+            0.117
+          ],
+          [
+            "Output \" orthodon\"",
+            0.104
+          ],
+          [
+            "Output \" end\"",
+            0.063
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 623,
+        "unique_to_a": 510,
+        "unique_to_b": 659
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_88.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_88.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_88_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_88_diff.png"
+      }
+    },
+    {
+      "index": 89,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have erectile dysfunction, so I should probably talk to my",
+        "patient": "I've been having trouble getting in the mood down there, so I should probably talk to my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.73,
+        "patient": 0.414
+      },
+      "language_penalty": -0.316,
+      "clinical_mass": {
+        "clinical": 0.3242,
+        "patient": 0.1889
+      },
+      "error_share": {
+        "clinical": 0.1014,
+        "patient": 0.0868
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.730)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.414)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.73
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.73
+          ],
+          [
+            "Output \" wife\"",
+            0.028
+          ],
+          [
+            "Output \" doc\"",
+            0.028
+          ],
+          [
+            "Output \" uro\"",
+            0.025
+          ],
+          [
+            "Output \" GP\"",
+            0.022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.414
+          ],
+          [
+            "Output \" therapist\"",
+            0.082
+          ],
+          [
+            "Output \" doc\"",
+            0.072
+          ],
+          [
+            "Output \" wife\"",
+            0.044
+          ],
+          [
+            "Output \" OB\"",
+            0.026
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 495,
+        "unique_to_a": 563,
+        "unique_to_b": 882
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_89.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_89.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_89_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_89_diff.png"
+      }
+    },
+    {
+      "index": 90,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have tinnitus, so it might be my",
+        "patient": "I've had this constant buzzing in my ear for weeks, so it might be my"
+      },
+      "target_token": "Output \" hearing\"",
+      "probabilities": {
+        "clinical": 0.078,
+        "patient": 0.069
+      },
+      "language_penalty": -0.008999999999999994,
+      "clinical_mass": {
+        "clinical": 0.1778,
+        "patient": 0.1989
+      },
+      "error_share": {
+        "clinical": 0.0915,
+        "patient": 0.0885
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" hearing\" (p=0.078)",
+        "patient": "embedding \u2192 Output \" ear\" (p=0.078)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " hearing",
+        "observed_clinical": [
+          "Output \" hearing\"",
+          0.078
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ears\"",
+            0.239
+          ],
+          [
+            "Output \" imagination\"",
+            0.187
+          ],
+          [
+            "Output \" hearing\"",
+            0.078
+          ],
+          [
+            "Output \" perception\"",
+            0.042
+          ],
+          [
+            "Output \" ear\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" imagination\"",
+            0.129
+          ],
+          [
+            "Output \" ears\"",
+            0.088
+          ],
+          [
+            "Output \" ear\"",
+            0.078
+          ],
+          [
+            "Output \" hearing\"",
+            0.069
+          ],
+          [
+            "Output \" tinnitus\"",
+            0.054
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 583,
+        "unique_to_a": 586,
+        "unique_to_b": 856
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_90.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_90.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_90_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_90_diff.png"
+      }
+    }
+  ]
+}
