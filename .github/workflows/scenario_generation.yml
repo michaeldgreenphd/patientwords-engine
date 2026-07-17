@@ -64,7 +64,10 @@ on:
       anthropic_model:
         description: "Anthropic model for generation"
         type: choice
-        default: claude-sonnet-5
+        # default = the registered Tier B generator: an omitted model must not
+        # silently produce a non-Tier-B sonnet batch (2026-07-17; the batch-13
+        # trap). Supplementary sonnet sets pass claude-sonnet-5 explicitly.
+        default: claude-haiku-4-5
         options:
           - claude-sonnet-5
           - claude-opus-4-8
@@ -142,7 +145,7 @@ jobs:
               "phrase": "", "term": "", "target_token": "",
               "num_baselines": "8",
               "dialects": "",
-              "anthropic_model": "claude-sonnet-5", "max_spend": "2",
+              "anthropic_model": "claude-haiku-4-5", "max_spend": "2",
               "graph_models": "gemma-2-2b", "trace_sample_size": "2",
           }
           params = dict(defaults)
