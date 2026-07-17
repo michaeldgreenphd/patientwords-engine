@@ -29,18 +29,20 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-# Fixed extraction order (matches the site's navigation order); 404.html excluded.
+# Fixed extraction order (reading order); 404.html and redirect stubs excluded.
+# word-differences/, syntax-differences/, answer-depth/, and model-evaluations/
+# are one-line redirect stubs since the 2026-07-14 consolidation; their real
+# content now lives on wording-differences/ and technical/ and is extracted there.
 PAGES = [
     "index.html",
     "start-here/index.html",
-    "word-differences/index.html",
-    "syntax-differences/index.html",
-    "dialect-differences/index.html",
-    "phrase-dataset/index.html",
-    "simulated-scenarios/index.html",
-    "translation/index.html",
-    "model-evaluations/index.html",
     "methods.html",
+    "technical/index.html",
+    "simulated-scenarios/index.html",
+    "wording-differences/index.html",
+    "dialect-differences/index.html",
+    "translation/index.html",
+    "phrase-dataset/index.html",
 ]
 
 CAPTURE_TAGS = {"h1", "h2", "h3", "p", "li", "summary", "figcaption"}
@@ -59,7 +61,7 @@ BREAK_TAGS = {"br", "hr", "p", "li", "ul", "ol", "dl", "dt", "dd", "div", "secti
               "tr", "td", "th", "h1", "h2", "h3", "h4", "h5", "h6", "button"}
 
 DOC_TITLE = "PatientWords — site text for manual editing"
-DOC_DATE = "2026-07-09"
+DOC_DATE = "2026-07-17"
 
 # The only prose this script is allowed to author: the editing instructions and the
 # one per-page note about runtime-generated text. Everything else is extracted verbatim.
