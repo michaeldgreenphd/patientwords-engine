@@ -1,0 +1,214 @@
+[
+  {
+    "top_prompt": "My kid has a fever, so I need to give her some",
+    "bottom_prompt": "My kid is burning up, so I need to give her some",
+    "target_clinical_token": " medicine",
+    "generation": {
+      "patient_term": "burning up",
+      "clinical_term": "a fever",
+      "expected_clinical_continuations": [
+        "medicine"
+      ],
+      "rationale": "The colloquial 'burning up' could lead to a mundane continuation like 'water' or 'blanket', while the clinical 'fever' funnels toward the high-frequency medical noun 'medicine', testing whether the model shifts toward care-seeking completions.",
+      "topic": "infections and fever",
+      "swap_spans": {
+        "patient_span": "is burning up,",
+        "clinical_span": "has a fever,"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "infections and fever",
+        "reproductive and sexual health",
+        "kidneys and urinary",
+        "hormones and metabolism",
+        "eyes ears and mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I think I have an STI, so I should get a",
+    "bottom_prompt": "I think I caught something down there, so I should get a",
+    "target_clinical_token": " test",
+    "generation": {
+      "patient_term": "caught something down there",
+      "clinical_term": "an STI",
+      "expected_clinical_continuations": [
+        "test"
+      ],
+      "rationale": "The vague lay phrase could continue with an everyday noun like 'cream', while the precise clinical term 'STI' strongly funnels toward the common diagnostic noun 'test', letting us measure the shift toward medical framing.",
+      "topic": "reproductive and sexual health",
+      "swap_spans": {
+        "patient_span": "caught something down there,",
+        "clinical_span": "have an STI,"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "infections and fever",
+        "reproductive and sexual health",
+        "kidneys and urinary",
+        "hormones and metabolism",
+        "eyes ears and mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have diabetes, so I need to check my",
+    "bottom_prompt": "My sugar's been all over the place lately, so I need to check my",
+    "target_clinical_token": " blood",
+    "generation": {
+      "patient_term": "my sugar's been all over the place",
+      "clinical_term": "I have diabetes",
+      "expected_clinical_continuations": [
+        "blood"
+      ],
+      "rationale": "The colloquial phrase about erratic 'sugar' could continue toward unrelated everyday nouns, while the clinical term 'diabetes' funnels toward the frequent medical noun 'blood' (as in checking blood sugar), revealing a shift toward clinical self-monitoring language.",
+      "topic": "hormones and metabolism",
+      "swap_spans": {
+        "patient_span": "My sugar's been all over the place lately,",
+        "clinical_span": "I have diabetes,"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "infections and fever",
+        "reproductive and sexual health",
+        "kidneys and urinary",
+        "hormones and metabolism",
+        "eyes ears and mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have a dental abscess, so I need to see a",
+    "bottom_prompt": "My tooth's been killing me, so I need to see a",
+    "target_clinical_token": " dentist",
+    "generation": {
+      "patient_term": "my tooth's been killing me",
+      "clinical_term": "a dental abscess",
+      "expected_clinical_continuations": [
+        "dentist"
+      ],
+      "rationale": "The idiomatic 'killing me' could continue toward informal contexts, whereas the precise clinical term 'dental abscess' strongly funnels toward the high-frequency, care-seeking noun 'dentist'.",
+      "topic": "eyes ears and mouth",
+      "swap_spans": {
+        "patient_span": "My tooth's been killing me,",
+        "clinical_span": "I have a dental abscess,"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "infections and fever",
+        "reproductive and sexual health",
+        "kidneys and urinary",
+        "hormones and metabolism",
+        "eyes ears and mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have a fever, so I should take my",
+    "bottom_prompt": "I feel like I'm burning up, so I should take my",
+    "target_clinical_token": " temperature",
+    "generation": {
+      "patient_term": "burning up",
+      "clinical_term": "a fever",
+      "expected_clinical_continuations": [
+        "temperature",
+        "temp"
+      ],
+      "rationale": "The clinical framing 'have a fever' strongly primes 'take my temperature' as a medical action, while the colloquial 'burning up' could plausibly continue toward an everyday reading like weather or exertion, letting the term swap shift the model's top prediction.",
+      "topic": "infections and fever",
+      "swap_spans": {
+        "patient_span": "feel like I'm burning up,",
+        "clinical_span": "have a fever,"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "infections and fever",
+        "reproductive and sexual health",
+        "kidneys and urinary",
+        "hormones and metabolism",
+        "eyes ears and mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I think I might be pregnant, so I need to take a",
+    "bottom_prompt": "I think I might be knocked up, so I need to take a",
+    "target_clinical_token": " test",
+    "generation": {
+      "patient_term": "knocked up",
+      "clinical_term": "pregnant",
+      "expected_clinical_continuations": [
+        "test",
+        "pregnancy"
+      ],
+      "rationale": "Both phrasings describe the same condition, but 'pregnant' is the clinical trigger word that should push the model toward 'test' (as in pregnancy test), while 'knocked up' may weaken that association due to its slangy, less medical register.",
+      "topic": "reproductive and sexual health",
+      "swap_spans": {
+        "patient_span": "knocked up,",
+        "clinical_span": "pregnant,"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "infections and fever",
+        "reproductive and sexual health",
+        "kidneys and urinary",
+        "hormones and metabolism",
+        "eyes ears and mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've developed tinnitus, so I should get a",
+    "bottom_prompt": "My ears have been ringing like crazy, so I should get a",
+    "target_clinical_token": " hearing",
+    "generation": {
+      "patient_term": "ears have been ringing like crazy",
+      "clinical_term": "developed tinnitus",
+      "expected_clinical_continuations": [
+        "hearing",
+        "checkup"
+      ],
+      "rationale": "The colloquial description could plausibly continue toward a mundane fix like earplugs, while the clinical term 'tinnitus' should bias the model toward a medical noun phrase such as 'hearing test'.",
+      "topic": "eyes ears and mouth",
+      "swap_spans": {
+        "patient_span": "My ears have been ringing like crazy,",
+        "clinical_span": "I've developed tinnitus,"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "infections and fever",
+        "reproductive and sexual health",
+        "kidneys and urinary",
+        "hormones and metabolism",
+        "eyes ears and mouth"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have blurred vision, so I need to see an",
+    "bottom_prompt": "Everything's been blurry lately, so I need to see an",
+    "target_clinical_token": " eye",
+    "generation": {
+      "patient_term": "everything's been blurry",
+      "clinical_term": "blurred vision",
+      "expected_clinical_continuations": [
+        "eye",
+        "optometrist"
+      ],
+      "rationale": "Both phrases describe the same visual symptom, but the clinical framing 'blurred vision' should more strongly funnel the vowel-initial article 'an' toward 'eye' (as in eye doctor) than the vaguer everyday phrase 'everything's been blurry'.",
+      "topic": "eyes ears and mouth",
+      "swap_spans": {
+        "patient_span": "Everything's been blurry lately,",
+        "clinical_span": "I have blurred vision,"
+      },
+      "model": "claude-sonnet-5",
+      "topics": [
+        "infections and fever",
+        "reproductive and sexual health",
+        "kidneys and urinary",
+        "hormones and metabolism",
+        "eyes ears and mouth"
+      ]
+    }
+  }
+]
