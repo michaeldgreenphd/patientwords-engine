@@ -13,44 +13,127 @@
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);
-    font-size:16px;line-height:1.55;padding:16px 14px 120px;max-width:520px;margin:0 auto}
+    font-size:16px;line-height:1.55;padding:16px 14px 130px;max-width:520px;margin:0 auto}
   .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
   h1{font-size:22px;margin:6px 0 4px}
-  .sub{color:var(--muted);font-size:14px;margin:0 0 16px}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 8px}
+  .hint{font-family:var(--mono);font-size:11px;color:var(--muted);border:1px dashed var(--structural);
+    padding:8px 10px;margin:0 0 18px;line-height:1.6}
   .card{border:1px solid var(--hairline);border-top:2px solid var(--ink);
     padding:12px 14px;margin:0 0 12px;background:#fff}
-  .card h3{font-size:16px;margin:0 0 4px}
-  .card p{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+  .card h3{font-size:15px;margin:0 0 4px;font-family:var(--mono);letter-spacing:.02em}
+  .card .t{font-size:15px;font-weight:400;font-family:var(--serif);color:var(--ink)}
+  .card p{font-size:12.5px;color:var(--muted);margin:4px 0 10px}
   .seg{display:flex;gap:8px;flex-wrap:wrap}
-  .seg button{flex:1;min-width:120px;font-family:var(--mono);font-size:12px;letter-spacing:.04em;
-    padding:11px 8px;background:none;border:1.5px solid var(--structural);color:var(--muted);
-    cursor:pointer;border-radius:3px}
-  .seg button[aria-pressed=true]{border-color:var(--clinical);color:var(--clinical);font-weight:700;background:#eef5ef}
-  .seg button:focus-visible{outline:2px solid var(--clinical);outline-offset:2px}
+  .opt{flex:1;min-width:130px;font-family:var(--mono);font-size:12px;letter-spacing:.02em;
+    padding:11px 8px;background:none;border:1.5px solid var(--structural);color:var(--ink);
+    cursor:pointer;border-radius:3px;text-align:left;line-height:1.35}
+  .opt.rec{border-color:#bcd3c2}
+  .opt[aria-pressed=true]{border-color:var(--clinical);color:var(--clinical);font-weight:700;background:#eef5ef}
+  .opt:focus-visible{outline:2px solid var(--clinical);outline-offset:2px}
+  .rectag{color:var(--clinical);font-weight:700}
   textarea{width:100%;border:1px solid var(--hairline);background:#fff;font-family:var(--serif);
-    font-size:14px;padding:10px;min-height:64px;border-radius:3px}
+    font-size:14px;padding:10px;min-height:60px;border-radius:3px}
+  h2.sec{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
   .bar{position:fixed;bottom:0;left:0;right:0;background:var(--paper);
     border-top:1px solid var(--ink);padding:10px 14px calc(10px + env(safe-area-inset-bottom));}
   .bar-inner{max-width:520px;margin:0 auto;display:flex;gap:10px;align-items:center}
   .bar button{flex:1;font-family:var(--mono);font-size:13px;letter-spacing:.08em;padding:13px;
     background:var(--ink);color:var(--paper);border:0;cursor:pointer;border-radius:3px}
-  .bar .n{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:64px;text-align:right}
+  .bar .n{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:60px;text-align:right}
   #out{font-family:var(--mono);font-size:11.5px;white-space:pre-wrap;background:#fff;
     border:1px dashed var(--structural);padding:10px;margin:14px 0 0;display:none}
   .ok{color:var(--clinical);font-family:var(--mono);font-size:11px;display:none;margin-left:6px}
-  .link{font-family:var(--mono);font-size:11px;color:var(--penalty)}
+  .link{color:var(--penalty)}
 </style>
 </head>
 <body>
-<p class="tag">internal · tap your calls · 2026-07-17</p>
+<p class="tag">internal · your calls · 2026-07-17</p>
 <h1>Decisions waiting</h1>
-<p class="sub">Tap a choice on each, then Copy at the bottom and paste back to Claude. The
-first three are linked — <span class="link">POPULATION-DEF cascades into the deck and the
-MedGemma sentence.</span> Selections save on this phone.</p>
+<p class="sub">The first three are linked: <span class="link">POPULATION-DEF cascades into the
+Anthropic deck's headline n and the MedGemma sentence.</span></p>
+<p class="hint">Tap a choice on each, then <b>Copy decisions</b> at the bottom and paste it back
+to me. If the buttons don't respond in this viewer, just reply in chat with your picks —
+e.g. <b>POPULATION-DEF: B, BATCH-13: discard</b>. The recommended option is marked
+<span class="rectag">(rec)</span>.</p>
 
-<div id="qs"></div>
+<h2 class="sec">Linked · confirmatory numbers</h2>
 
-<h3 style="font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Anything else</h3>
+<div class="card">
+  <h3>POPULATION-DEF <span class="t">— confirmatory population (pre-registration call)</span></h3>
+  <p>Which batches count as confirmatory? The stats filter keys on the pairs_ stem only, so the
+    outcome-selected supplementary sets (emergency/severity/misspelling) can slip in. Gemma:
+    A = all −3.08 n843 · B = exclude supplementary −3.12 n836 · C = Tier-B-only −2.22 n632. No
+    option flips significance.</p>
+  <div class="seg" role="group" aria-label="POPULATION-DEF">
+    <button class="opt rec" data-key="POPULATION-DEF" data-val="B · exclude supplementary (rec)">B · exclude supplementary <span class="rectag">(rec)</span></button>
+    <button class="opt" data-key="POPULATION-DEF" data-val="A · all pairs_">A · all pairs_ (n843)</button>
+    <button class="opt" data-key="POPULATION-DEF" data-val="C · Tier-B-only">C · Tier-B-only (n632)</button>
+    <button class="opt" data-key="POPULATION-DEF" data-val="talk it through">talk it through</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>DECK-POPULATION <span class="t">— the Anthropic deck's headline n</span></h3>
+  <p>The meeting deck shows gemma −3.1pp n843 (option A, includes the 7-pair emergency set).
+    Option B (n836, −3.12) is marginally cleaner for an ML audience; the difference is
+    immaterial. Easiest to just match POPULATION-DEF.</p>
+  <div class="seg" role="group" aria-label="DECK-POPULATION">
+    <button class="opt rec" data-key="DECK-POPULATION" data-val="match POPULATION-DEF (rec)">match POPULATION-DEF <span class="rectag">(rec)</span></button>
+    <button class="opt" data-key="DECK-POPULATION" data-val="keep A (n843)">keep A (n843)</button>
+    <button class="opt" data-key="DECK-POPULATION" data-val="switch deck to B (n836)">switch to B (n836)</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>MEDGEMMA <span class="t">— the MedGemma sentence on republish</span></h3>
+  <p>Backfill grew medgemma from n119 to n337 (penalty −3.4 → −3.9pp). The methods + technical
+    sentences still say n119 and match the deployed data, so claim_check passes today. On the
+    next republish the sentence needs the new n. Text edits are your lane.</p>
+  <div class="seg" role="group" aria-label="MEDGEMMA">
+    <button class="opt rec" data-key="MEDGEMMA" data-val="update n when we republish (rec)">update n on republish <span class="rectag">(rec)</span></button>
+    <button class="opt" data-key="MEDGEMMA" data-val="I'll rewrite it myself">I'll rewrite it myself</button>
+    <button class="opt" data-key="MEDGEMMA" data-val="hold at n119">hold at n119</button>
+  </div>
+</div>
+
+<h2 class="sec">Standalone</h2>
+
+<div class="card">
+  <h3>BATCH-13 <span class="t">— the 8 stray sonnet pairs</span></h3>
+  <p>The 07-16 fire missed the model default and made 8 sonnet pairs (pairs_20260716T133552Z).
+    Quarantined, not traced, not counted in Tier B. The workflow default is fixed to haiku now.</p>
+  <div class="seg" role="group" aria-label="BATCH-13">
+    <button class="opt rec" data-key="BATCH-13" data-val="discard (rec)">discard <span class="rectag">(rec)</span></button>
+    <button class="opt" data-key="BATCH-13" data-val="keep, labeled non-TierB">keep, labeled non-TierB</button>
+    <button class="opt" data-key="BATCH-13" data-val="re-gen as haiku">re-gen as haiku</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>SCALE-FRAMING <span class="t">— translation at-scale framing sentence</span></h3>
+  <p>The at-scale table auto-updates from data (sanctioned). Any framing SENTENCE about the
+    scale result gets drafted and shown to you before it deploys. The remaining txcorpus legs
+    are still landing.</p>
+  <div class="seg" role="group" aria-label="SCALE-FRAMING">
+    <button class="opt rec" data-key="SCALE-FRAMING" data-val="draft when numbers land, I approve (rec)">draft when numbers land <span class="rectag">(rec)</span></button>
+    <button class="opt" data-key="SCALE-FRAMING" data-val="no framing sentence">no framing sentence</button>
+    <button class="opt" data-key="SCALE-FRAMING" data-val="draft now">draft now</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>SKEPTIC <span class="t">— skeptic-audit voice items</span></h3>
+  <p>docs/skeptic_read_20260709.md: single-case caveat, word-diff example mismatch, model-eval
+    softening. Yours to phrase (the dedupe half is already done).</p>
+  <div class="seg" role="group" aria-label="SKEPTIC">
+    <button class="opt rec" data-key="SKEPTIC" data-val="I'll phrase these myself (rec)">I'll phrase these myself <span class="rectag">(rec)</span></button>
+    <button class="opt" data-key="SKEPTIC" data-val="Claude drafts for my review">Claude drafts for review</button>
+    <button class="opt" data-key="SKEPTIC" data-val="defer">defer</button>
+  </div>
+</div>
+
+<h2 class="sec">Anything else</h2>
 <textarea id="note" placeholder="optional note for Claude"></textarea>
 
 <div id="out" aria-live="polite"></div>
@@ -62,66 +145,42 @@ MedGemma sentence.</span> Selections save on this phone.</p>
 </div></div>
 
 <script>
-var QS=[
- ["POPULATION-DEF","Confirmatory population (pre-registration call)",
-  "Which batches count as confirmatory? The stats filter keys on the pairs_ stem only, so the outcome-selected supplementary sets (emergency/severity/misspelling) can slip in. Gemma: A=all -3.08 n843 · B=exclude supplementary -3.12 n836 · C=Tier-B-only -2.22 n632. No option flips significance.",
-  ["B · exclude supplementary (rec)","A · all pairs_","C · Tier-B-only","let's talk it through"]],
- ["DECK-POPULATION","Anthropic deck's headline n",
-  "The meeting deck currently shows gemma -3.1pp n843 (option A, includes the 7-pair emergency set). Option B (n836, -3.12) is marginally more defensible for an ML audience; the difference is immaterial. Follows whatever you pick for POPULATION-DEF.",
-  ["match POPULATION-DEF (rec)","keep A (n843) regardless","switch deck to B (n836)"]],
- ["MEDGEMMA-CLAIM","MedGemma sentence on republish",
-  "Backfill grew medgemma from n119 to n337 (penalty -3.4->-3.9pp). The methods + technical sentences still say n119 and match the deployed data, so claim_check passes today. On the next site republish the sentence needs the new n. Text edits are your lane.",
-  ["update n when we republish (rec)","you'll rewrite it yourself","hold at n119 for now"]],
- ["BATCH-13","The 8 stray sonnet pairs",
-  "The 07-16 fire missed the model default and made 8 sonnet pairs (pairs_20260716T133552Z). They're quarantined, not traced, not counted in Tier B. The workflow default is fixed to haiku now.",
-  ["discard them (rec)","keep, labeled non-TierB","re-gen as haiku"]],
- ["SCALE-FRAMING","Translation at-scale framing sentence",
-  "The at-scale table auto-updates from data (sanctioned). Any framing SENTENCE about the scale result gets drafted and shown to you before it deploys. The remaining txcorpus legs are still landing.",
-  ["draft it when numbers land, I approve (rec)","no framing sentence","draft now with current numbers"]],
- ["SKEPTIC","Skeptic-audit voice items",
-  "docs/skeptic_read_20260709.md: single-case caveat, word-diff example mismatch, model-eval softening. Yours to phrase (the dedupe half is already done).",
-  ["I'll phrase these myself (rec)","Claude drafts for my review","defer"]]
-];
-var state={};
-try{state=JSON.parse(localStorage.getItem('dec-0717')||'{}');}catch(e){}
-function save(){try{localStorage.setItem('dec-0717',JSON.stringify(state));}catch(e){}
-  var done=QS.filter(function(q){return state[q[0]];}).length;
-  document.getElementById('count').textContent=done+' / '+QS.length;}
-function seg(key,choices){
-  var wrap=document.createElement('div');wrap.className='seg';wrap.setAttribute('role','group');
-  choices.forEach(function(c){
-    var b=document.createElement('button');b.type='button';b.textContent=c;
-    b.setAttribute('aria-pressed',state[key]===c?'true':'false');
-    b.onclick=function(){state[key]=c;save();
-      Array.prototype.forEach.call(wrap.children,function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});};
-    wrap.appendChild(b);
+// Progressive enhancement only: the six decisions above are static HTML and
+// readable with scripting disabled. This adds tap-to-select, persistence, and copy.
+(function(){
+  var KEYS=["POPULATION-DEF","DECK-POPULATION","MEDGEMMA","BATCH-13","SCALE-FRAMING","SKEPTIC"];
+  var state={}; try{state=JSON.parse(localStorage.getItem('dec-0717')||'{}');}catch(e){}
+  function save(){try{localStorage.setItem('dec-0717',JSON.stringify(state));}catch(e){}
+    var done=KEYS.filter(function(k){return state[k];}).length;
+    var c=document.getElementById('count'); if(c)c.textContent=done+' / '+KEYS.length;}
+  var opts=document.querySelectorAll('.opt');
+  Array.prototype.forEach.call(opts,function(b){
+    var key=b.getAttribute('data-key'), val=b.getAttribute('data-val');
+    if(state[key]===val)b.setAttribute('aria-pressed','true');
+    b.addEventListener('click',function(){
+      state[key]=val;save();
+      Array.prototype.forEach.call(document.querySelectorAll('.opt[data-key="'+key+'"]'),function(x){
+        x.setAttribute('aria-pressed', x===b?'true':'false');});
+    });
   });
-  return wrap;
-}
-var qm=document.getElementById('qs');
-QS.forEach(function(q){
-  var c=document.createElement('div');c.className='card';
-  c.innerHTML='<h3>'+q[0]+' · '+q[1]+'</h3><p>'+q[2]+'</p>';
-  c.appendChild(seg(q[0],q[3]));
-  qm.appendChild(c);
-});
-document.getElementById('note').value=state._note||'';
-document.getElementById('note').addEventListener('input',function(e){state._note=e.target.value;save();});
-save();
-function summary(){
-  var lines=['DECISIONS 2026-07-17'];
-  QS.forEach(function(q){lines.push(q[0]+': '+(state[q[0]]||'(no answer)'));});
-  if(state._note)lines.push('NOTE: '+state._note);
-  return lines.join('\n');
-}
-document.getElementById('copy').onclick=function(){
-  var text=summary(),out=document.getElementById('out');
-  out.textContent=text;out.style.display='block';
-  function done(){var ok=document.getElementById('ok');ok.style.display='inline';setTimeout(function(){ok.style.display='none';},2000);}
-  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,function(){});}
-  else{var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(ta);}
-  out.scrollIntoView({behavior:'smooth',block:'center'});
-};
+  var note=document.getElementById('note');
+  if(note){note.value=state._note||'';note.addEventListener('input',function(e){state._note=e.target.value;save();});}
+  save();
+  function summary(){
+    var lines=['DECISIONS 2026-07-17'];
+    KEYS.forEach(function(k){lines.push(k+': '+(state[k]||'(no answer)'));});
+    if(state._note)lines.push('NOTE: '+state._note);
+    return lines.join('\n');
+  }
+  var copy=document.getElementById('copy');
+  if(copy)copy.addEventListener('click',function(){
+    var text=summary(),out=document.getElementById('out');
+    if(out){out.textContent=text;out.style.display='block';out.scrollIntoView({behavior:'smooth',block:'center'});}
+    function done(){var ok=document.getElementById('ok');if(ok){ok.style.display='inline';setTimeout(function(){ok.style.display='none';},2000);}}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,function(){});}
+    else{try{var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);done();}catch(e){}}
+  });
+})();
 </script>
 </body>
 </html>
