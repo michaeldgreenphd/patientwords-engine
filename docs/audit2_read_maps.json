@@ -1,0 +1,882 @@
+[
+ {
+  "key": "r-model-stats",
+  "read_map": [
+   {
+    "artifact": "engine trace_out/*/batch_summary.part_*.json",
+    "consumer": "scripts/urgency_shift.py (collector)",
+    "fields": [
+     "graph_model",
+     "results[].index",
+     "results[].prompts",
+     "results[].predictive_spread.clinical/patient/translated",
+     "results[].language_penalty",
+     "results[].continuations"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/simulated_scenarios.json",
+    "consumer": "scripts/urgency_shift.py (site fill path) and paired_stats_rigor.py --site (models_meta embed)",
+    "fields": [
+     "scenarios[].batch",
+     "scenarios[].batch_index",
+     "scenarios[].clinical_prompt",
+     "scenarios[].topic",
+     "scenarios[].models[<id>].spread_clinical",
+     "scenarios[].models[<id>].spread_patient",
+     "scenarios[].models[<id>].language_penalty",
+     "models_meta"
+    ]
+   },
+   {
+    "artifact": "engine data/simulated/pairs_*.json",
+    "consumer": "scripts/urgency_shift.py",
+    "fields": [
+     "[].generation.topic"
+    ]
+   },
+   {
+    "artifact": "engine ops/dashboard.json",
+    "consumer": "scripts/tierb_split.py via urgency_shift.py stamp_rows",
+    "fields": [
+     "tierb.start_utc"
+    ]
+   },
+   {
+    "artifact": "engine data/urgency_tiers.draft.json",
+    "consumer": "scripts/urgency_shift.py",
+    "fields": [
+     "tokens",
+     "tiers",
+     "status"
+    ]
+   },
+   {
+    "artifact": "urgency_shift.json (collector row file)",
+    "consumer": "scripts/paired_stats_rigor.py load_rows/analyze",
+    "fields": [
+     "rows[].model",
+     "rows[].batch",
+     "rows[].clinical_prompt",
+     "rows[].language_penalty",
+     "rows[].flipped",
+     "rows[].flip_class",
+     "rows[].tierb_split",
+     "rows[].topic"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/model_stats.json",
+    "consumer": "patientwords/technical/index.html Part 4 (fetch at L917)",
+    "fields": [
+     "per_model.*.penalty.mean/ci95/ci95_simultaneous",
+     "per_model.*.flips",
+     "per_model.*.sign_test.p_raw/p_bh",
+     "registration",
+     "benjamini_hochberg.families",
+     "below_floor",
+     "site_floor_n_phrases",
+     "models_meta"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/model_stats.json (per_model.medgemma-4b-it.penalty)",
+    "consumer": "patientwords/methods.html:518 (hand-copied prose)",
+    "fields": [
+     "mean",
+     "ci95",
+     "n_phrases",
+     "ci95_simultaneous"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "r-urgency",
+  "read_map": [
+   {
+    "artifact": "engine:trace_out/*/batch_summary.part_*.json",
+    "consumer": "engine:scripts/urgency_shift.py (collector, lines 160-190)",
+    "fields": [
+     "graph_model",
+     "backend",
+     "results[].index",
+     "results[].prompts.clinical",
+     "results[].prompts.patient",
+     "results[].predictive_spread.clinical",
+     "results[].predictive_spread.patient",
+     "results[].predictive_spread.translated",
+     "results[].continuations.clinical",
+     "results[].continuations.patient",
+     "results[].language_penalty"
+    ]
+   },
+   {
+    "artifact": "frontend:data/simulated_scenarios.json",
+    "consumer": "engine:scripts/urgency_shift.py (site-fill fallback, lines 193-203)",
+    "fields": [
+     "scenarios[].batch",
+     "scenarios[].batch_index",
+     "scenarios[].clinical_prompt",
+     "scenarios[].topic",
+     "scenarios[].models.<id>.spread_clinical",
+     "scenarios[].models.<id>.spread_patient",
+     "scenarios[].models.<id>.language_penalty"
+    ]
+   },
+   {
+    "artifact": "engine:data/simulated/pairs_*.json",
+    "consumer": "engine:scripts/urgency_shift.py (topic lookup, lines 144-154)",
+    "fields": [
+     "[].generation.topic"
+    ]
+   },
+   {
+    "artifact": "engine:data/urgency_tiers.draft.json",
+    "consumer": "engine:scripts/urgency_shift.py (lines 39, 355, 376-399)",
+    "fields": [
+     "tokens.<token>.tier",
+     "tokens.<token>.note",
+     "tiers",
+     "status"
+    ]
+   },
+   {
+    "artifact": "engine:ops/dashboard.json",
+    "consumer": "engine:scripts/tierb_split.py stamp_rows (lines 36-52)",
+    "fields": [
+     "tierb.start_utc"
+    ]
+   },
+   {
+    "artifact": "frontend:data/urgency_shift.json",
+    "consumer": "frontend pages index.html, methods.html, simulated-scenarios/index.html, start-here/index.html",
+    "fields": [
+     "vocabulary_status",
+     "tiers",
+     "tier_examples",
+     "summary.flips",
+     "summary.flip_classes",
+     "summary.per_model",
+     "summary.per_model_deduped",
+     "rows[].batch",
+     "rows[].index",
+     "rows[].model",
+     "rows[].flip_class",
+     "rows[].tier_top_clinical",
+     "rows[].tier_top_patient",
+     "rows[].tier_shift"
+    ]
+   },
+   {
+    "artifact": "engine:urgency_shift.json (engine-root full row file)",
+    "consumer": "engine:scripts/paired_stats.py, scripts/paired_stats_rigor.py, scripts/convergence_tracker.py, scripts/export_jlens_depth.py (translation_split)",
+    "fields": [
+     "rows[].model",
+     "rows[].batch",
+     "rows[].index",
+     "rows[].clinical_prompt",
+     "rows[].tier_shift",
+     "rows[].flip_class",
+     "rows[].urgency_recovery",
+     "rows[].tierb_split",
+     "rows[].language_penalty"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "r-jlens",
+  "read_map": [
+   {
+    "artifact": "trace_out/*__jlens_<model>/jlens_summary.part_*.json (9 gemma-2-2b stems + 3 gemma-2-2b-it stems; txcorpus/_txopus/_txplacebo stems excluded by guard)",
+    "consumer": "engine scripts/jlens_insights.py collect()/analyze()",
+    "fields": [
+     "graph_model",
+     "results[].index",
+     "results[].parse_status",
+     "results[].depth.clinical[].{layer,target_rank,top1}",
+     "results[].depth.patient[].{layer,target_rank,top1}",
+     "results[].patient_depth_class"
+    ]
+   },
+   {
+    "artifact": "patientwords data/jlens_insights.json",
+    "consumer": "patientwords/technical/index.html Part 3 (script block at L682-893)",
+    "fields": [
+     "n_pairs",
+     "model",
+     "method_credit",
+     "persistence_layers",
+     "formation.{clinical,patient,lag,clinical_never,patient_never,n_layers}",
+     "taxonomy.{capture,hijack,held,unreadable}.{n,formed_at,lock_in}",
+     "points[].{dataset,index,class,clin_formed,pat_formed}",
+     "window_sensitivity[k].{capture,hijack}",
+     "exemplars[].{class,clin_ranks,pat_ranks}",
+     "instruction_tuning.{n_paired,pairs[].{base,it}}"
+    ]
+   },
+   {
+    "artifact": "patientwords data/jlens_depth.json",
+    "consumer": "patientwords/technical/index.html Fig 4 router table (L824-860) + ad-blocks (L1118+)",
+    "fields": [
+     "translation.by_class.{retained,suppressed,absent}.{n,mean_recovery}",
+     "steering.by_class.*.{n,restored,unresolvable}",
+     "blocks",
+     "units.counts",
+     "integrity_note (present in file, NOT consumed by any page)"
+    ]
+   },
+   {
+    "artifact": "engine ops/dashboard.json",
+    "consumer": "engine scripts/tierb_split.py tierb_start_stamp() (used here to determine split membership of census rows; jlens_insights.py itself never reads it)",
+    "fields": [
+     "tierb.start_utc (2026-07-10T01:14:38Z)",
+     "tierb.batches[].file"
+    ]
+   },
+   {
+    "artifact": "engine data/simulated/pairs_20260713T050939Z.json",
+    "consumer": "audit cross-check of holdout hash keying (jlens summary prompts.clinical == batch top_prompt == string urgency_shift.py hashes; verified 0 mismatches on 25 rows)",
+    "fields": [
+     "[].top_prompt",
+     "[].bottom_prompt",
+     "[].target_clinical_token"
+    ]
+   },
+   {
+    "artifact": "engine docs/prereg_amendment3_holdout.md + scripts/tierb_split.py",
+    "consumer": "audit determination of the registered seal rule",
+    "fields": [
+     "sha1(clinical_prompt) % 10 == 0",
+     "is_tierb_batch(pairs_<STAMP> >= tierb.start_utc)",
+     "publication-side withholding disclosure (2026-07-14)"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "r-translation",
+  "read_map": [
+   {
+    "artifact": "patientwords-engine/trace_out/txcorpus_*/batch_summary*.json",
+    "consumer": "scripts/translation_scale.py analyze() via _results()",
+    "fields": [
+     "graph_model",
+     "backend",
+     "results[].index",
+     "results[].probabilities.patient",
+     "results[].probabilities.clinical",
+     "results[].predictive_spread.clinical[0][0]",
+     "results[].predictive_spread.patient[0][0]"
+    ]
+   },
+   {
+    "artifact": "patientwords-engine/trace_out/pairs_*/batch_summary*.json",
+    "consumer": "scripts/translation_scale.py analyze() via _results() (source/patient side of the join)",
+    "fields": [
+     "graph_model",
+     "results[].index",
+     "results[].probabilities.patient",
+     "results[].predictive_spread"
+    ]
+   },
+   {
+    "artifact": "patientwords-engine/data/simulated/txcorpus_*.json",
+    "consumer": "scripts/translation_scale.py analyze() and lens_recovery() (join spine; enumerate order = index)",
+    "fields": [
+     "generation.source_batch",
+     "generation.source_index"
+    ]
+   },
+   {
+    "artifact": "patientwords-engine/trace_out/{pairs_,txcorpus_}*__jlens_gemma-2-2b/jlens_summary.part_*.json",
+    "consumer": "scripts/translation_scale.py lens_recovery() via _lens_profiles()",
+    "fields": [
+     "results[].index",
+     "results[].parse_status",
+     "results[].depth.patient[].target_rank",
+     "results[].depth.patient[].layer"
+    ]
+   },
+   {
+    "artifact": "patientwords-engine/ops/dashboard.json",
+    "consumer": "scripts/translate_corpus.py collect_corpus() via tierb_split.tierb_start_stamp (holdout exclusion at corpus build)",
+    "fields": [
+     "tierb.start_utc"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/translation_scale.json",
+    "consumer": "patientwords/translation/index.html at-scale section (inline JS, lines 312-352)",
+    "fields": [
+     "per_model.<id>.n",
+     "per_model.<id>.mean_recovery",
+     "per_model.<id>.share_recovery_positive",
+     "per_model.<id>.top_restored",
+     "per_model.<id>.top_lost",
+     "lens_recovery.n_paired",
+     "lens_recovery.patient_never_formed",
+     "lens_recovery.recovered_to_formed",
+     "lens_recovery.lost_by_translation"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "r-steering",
+  "read_map": [
+   {
+    "artifact": "patientwords/data/jlens_depth.json",
+    "consumer": "patientwords/technical/index.html Fig-4 router JS (lines 823-860) + caption swap (848-853)",
+    "fields": [
+     "steering.by_class.suppressed.{n,restored}",
+     "steering.by_class.absent.{n,restored,unresolvable}",
+     "steering.by_class.retained",
+     "steering._",
+     "translation.by_class.{n,mean_recovery}",
+     "scope"
+    ]
+   },
+   {
+    "artifact": "patientwords-engine/trace_out/steer_pilot_spec__jsteer_gemma-2-2b/jsteer_summary.part_{01,03,13}.json",
+    "consumer": "patientwords-engine/scripts/export_jlens_depth.py steering_split() (lines 203-246)",
+    "fields": [
+     "results[].dataset",
+     "results[].spec_index",
+     "results[].class",
+     "results[].steer_unresolvable",
+     "results[].calls.L19_swap.final_rank",
+     "results[].calls.L21_swap.final_rank",
+     "results[].calls.*.parse_status"
+    ]
+   },
+   {
+    "artifact": "patientwords-engine/trace_out/steer_lowdose_spec__jsteer_gemma-2-2b/jsteer_summary.part_01.json",
+    "consumer": "patientwords-engine/scripts/export_jlens_depth.py steering_split() (same glob, deduped on (dataset,spec_index), restoration OR'd across runs)",
+    "fields": [
+     "results[].calls.*_swap.final_rank",
+     "results[].steer_unresolvable"
+    ]
+   },
+   {
+    "artifact": "patientwords-engine/data/steer_pilot_spec.json + data/steer_lowdose_spec.json",
+    "consumer": "patientwords-engine/scripts/jlens_steer.py (swap arm gated at line 129: winner and winner != target)",
+    "fields": [
+     "model",
+     "layers=[19,21]",
+     "strengths",
+     "items[].{dataset,index,class,target,winner}"
+    ]
+   },
+   {
+    "artifact": "patientwords-engine/data/simulated/pairs_20260711T051145Z.json, pairs_20260711T131752Z.json, pairs_20260712T051903Z.json",
+    "consumer": "split-membership determination via scripts/tierb_split.py is_holdout(top_prompt) (membership counts only; no phrase text, no holdout statistics)",
+    "fields": [
+     "top_prompt (hashed)",
+     "bottom_prompt (join check against spec prompt only)"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/jlens_depth.json",
+    "consumer": "patientwords-engine/scripts/validate_frontend_contract.py (line 289 schema)",
+    "fields": [
+     "model",
+     "generated_utc",
+     "class_labels",
+     "blocks",
+     "translation",
+     "(steering NOT covered)"
+    ]
+   },
+   {
+    "artifact": "patientwords-engine/docs/prereg_amendment4_steering.md",
+    "consumer": "outcome-rule conformance check against jlens_steer.py/export_jlens_depth.py and page caption technical/index.html:286,851-853",
+    "fields": [
+     "Outcome (lines 59-61)",
+     "Minimum n / power note (lines 64-68)",
+     "Motivation counts 21/24 and 3/6 (lines 24-27)",
+     "Population (lines 45-47)"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "p-holdout",
+  "read_map": [
+   {
+    "artifact": "ops/dashboard.json (engine)",
+    "consumer": "scripts/tierb_split.py tierb_start_stamp(); scripts/export_frontend_simulated.py:179; scripts/export_archive.py:84; scripts/study_timeline.py:70-71",
+    "fields": [
+     "tierb.start_utc",
+     "tierb.batches[].file",
+     "tierb.batches[].accepted",
+     "tierb.accepted_pairs",
+     "endpoint_protocol"
+    ]
+   },
+   {
+    "artifact": "data/simulated/pairs_*.json (engine batch files)",
+    "consumer": "scripts/export_archive.py:96-99 (withholding gate on top_prompt); scripts/export_frontend_simulated.py:184,210; scripts/urgency_shift.py:145-154 (topics); independent membership recount (this audit)",
+    "fields": [
+     "top_prompt",
+     "bottom_prompt",
+     "target_clinical_token",
+     "generation.topic"
+    ]
+   },
+   {
+    "artifact": "trace_out/*/batch_summary.part_*.json (engine)",
+    "consumer": "scripts/urgency_shift.py:160-190 (collector rows); scripts/export_frontend_simulated.py:125-139; scripts/export_archive.py:68-80,143; scripts/translation_scale.py:_results",
+    "fields": [
+     "results[].index",
+     "results[].prompts.clinical",
+     "results[].predictive_spread",
+     "results[].probabilities",
+     "results[].screening.probe_extension",
+     "results[].screening.status",
+     "graph_model"
+    ]
+   },
+   {
+    "artifact": "urgency_shift.json (engine row bundle)",
+    "consumer": "scripts/paired_stats_rigor.py load_rows(); scripts/convergence_tracker.py:111-112; urgency_shift.py --publish trim",
+    "fields": [
+     "rows[].tierb_split",
+     "rows[].clinical_prompt",
+     "rows[].batch",
+     "rows[].index",
+     "rows[].model",
+     "rows[].language_penalty",
+     "rows[].flip_class",
+     "rows[].urgency_recovery",
+     "summary.tierb_holdout_rows_excluded",
+     "summary.measurements",
+     "summary.mitigation"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/simulated_scenarios.json",
+    "consumer": "site pages (simulated-scenarios/index.html); scripts/urgency_shift.py:193-203 (fill path); scripts/paired_stats_rigor.py:563-566 (models_meta)",
+    "fields": [
+     "holdout_withheld",
+     "scenarios[].batch",
+     "scenarios[].batch_index",
+     "scenarios[].clinical_prompt",
+     "scenarios[].models",
+     "batches[].generated.accepted",
+     "models_meta"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/urgency_shift.json",
+    "consumer": "site pages; engine scripts/specialty_breakdown.py and scripts/coverage_gaps.py (rows)",
+    "fields": [
+     "summary.measurements",
+     "summary.mitigation.n",
+     "summary.mitigation.mean_urgency_recovery",
+     "summary.per_model",
+     "summary.per_model_deduped",
+     "rows[].batch/index/model"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/simulated_archive.json + .csv",
+    "consumer": "collaborator download (public)",
+    "fields": [
+     "batch",
+     "batch_index",
+     "clinical_prompt",
+     "patient_prompt",
+     "prob_clinical",
+     "prob_patient",
+     "language_penalty",
+     "status"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/jlens_insights.json",
+    "consumer": "technical page (formation census)",
+    "fields": [
+     "n_pairs",
+     "points[].dataset",
+     "points[].index",
+     "points[].class",
+     "formation.*",
+     "taxonomy.*",
+     "window_sensitivity",
+     "exemplars",
+     "instruction_tuning.pairs"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/translation_scale.json",
+    "consumer": "technical page (translation recovery)",
+    "fields": [
+     "per_model.*.n",
+     "per_model.*.mean_recovery",
+     "lens_recovery.n_paired"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/convergence.json",
+    "consumer": "technical/ Part 4 accumulation fold",
+    "fields": [
+     "scope",
+     "models.*.points[].n_phrases",
+     "models.*.points[].mean_penalty"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/model_stats.json",
+    "consumer": "technical/ Part 4 cross-model comparison",
+    "fields": [
+     "per_model.*.n_rows",
+     "per_model.*.penalty.mean",
+     "seed",
+     "boot",
+     "source"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/timeline.json",
+    "consumer": "simulated-scenarios timeline strip",
+    "fields": [
+     "totals.tierb_accepted",
+     "totals.accepted_pairs",
+     "batches[].tierb"
+    ]
+   },
+   {
+    "artifact": "data/simulated/drift_sentinel.json (engine, frozen)",
+    "consumer": "scripts/drift_sentinel.py (published as patientwords/data/drift_series.json)",
+    "fields": [
+     "top_prompt (membership check only: 0 of 3 in Tier B holdout set)"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "p-amendments",
+  "read_map": [
+   {
+    "artifact": "/home/user/audit-wb/patientwords-engine/urgency_shift.json (collector bundle)",
+    "consumer": "/home/user/audit-wb/patientwords-engine/scripts/paired_stats_rigor.py load_rows (phrase-keyed holdout exclusion) + analyze (_OBS_RE population)",
+    "fields": [
+     "rows[].tierb_split",
+     "rows[].clinical_prompt",
+     "rows[].batch",
+     "rows[].language_penalty",
+     "rows[].flip_class",
+     "rows[].flipped"
+    ]
+   },
+   {
+    "artifact": "/home/user/audit-wb/patientwords-engine/urgency_shift.json",
+    "consumer": "/home/user/audit-wb/patientwords-engine/scripts/convergence_tracker.py (row-flag-keyed exclusion, pairs_* fullmatch scope)",
+    "fields": [
+     "rows[].tierb_split",
+     "rows[].batch",
+     "rows[].language_penalty",
+     "rows[].flip_class"
+    ]
+   },
+   {
+    "artifact": "/home/user/audit-wb/patientwords-engine/urgency_shift.json",
+    "consumer": "/home/user/audit-wb/patientwords-engine/scripts/export_jlens_depth.py translation_split (no split filter)",
+    "fields": [
+     "rows[].batch",
+     "rows[].index",
+     "rows[].model",
+     "rows[].urgency_recovery"
+    ]
+   },
+   {
+    "artifact": "/home/user/audit-wb/patientwords/data/urgency_shift.json",
+    "consumer": "frontend index.html:650-663, start-here/index.html:463+543, simulated-scenarios/index.html:576+646, methods.html:312",
+    "fields": [
+     "summary.measurements",
+     "summary.per_model",
+     "summary.per_model_deduped",
+     "summary.mitigation",
+     "summary.concordance",
+     "rows[] (trimmed, phrase-keyed withheld)"
+    ]
+   },
+   {
+    "artifact": "/home/user/audit-wb/patientwords/data/model_stats.json",
+    "consumer": "frontend technical/index.html:917-1039 (Part 4 cross-model comparison)",
+    "fields": [
+     "per_model.*.penalty.mean/ci95/ci95_simultaneous",
+     "per_model.*.flips.downgrade_rate_ci95",
+     "per_model.*.sign_test.p_raw/p_bh",
+     "benjamini_hochberg.families",
+     "registration.pre_registered/post_registration_exploratory",
+     "below_floor"
+    ]
+   },
+   {
+    "artifact": "/home/user/audit-wb/patientwords/data/convergence.json",
+    "consumer": "frontend technical/index.html:512 (accumulation fold)",
+    "fields": [
+     "scope",
+     "models.*.points[].mean_penalty/ci95/n_phrases"
+    ]
+   },
+   {
+    "artifact": "/home/user/audit-wb/patientwords/data/jlens_depth.json",
+    "consumer": "frontend methods.html:556, technical/index.html:824+1118, simulated-scenarios/index.html:580",
+    "fields": [
+     "scope",
+     "blocks[].counts",
+     "blocks[].pairs[].index/class/target",
+     "translation.by_class.*.n/mean_recovery",
+     "translation.pairs[]",
+     "steering.by_class",
+     "examples[]",
+     "exemplar"
+    ]
+   },
+   {
+    "artifact": "/home/user/audit-wb/patientwords/data/jlens_insights.json",
+    "consumer": "frontend technical/index.html:682 (formation/taxonomy figures)",
+    "fields": [
+     "formation.clinical/patient quartiles",
+     "taxonomy.capture/hijack/held counts",
+     "points[].dataset/index/clin_formed/pat_formed/class",
+     "window_sensitivity"
+    ]
+   },
+   {
+    "artifact": "/home/user/audit-wb/patientwords/data/retrace_consistency.json",
+    "consumer": "frontend methods.html:636, simulated-scenarios/index.html:1168",
+    "fields": [
+     "pairs_retraced",
+     "prob_spread_max/mean",
+     "top_word_stable_pairs",
+     "rows[].clinical_prompt",
+     "rows[].spread_p_clinical/patient"
+    ]
+   },
+   {
+    "artifact": "/home/user/audit-wb/patientwords/data/simulated_archive.json + simulated_archive.csv",
+    "consumer": "frontend simulated-scenarios/scenario.html:524+540 (collaborator download), produced by engine scripts/export_archive.py",
+    "fields": [
+     "rows[].batch",
+     "rows[].clinical_prompt",
+     "rows[].patient_prompt",
+     "rows[].graph_model"
+    ]
+   },
+   {
+    "artifact": "/home/user/audit-wb/patientwords-engine/ops/dashboard.json",
+    "consumer": "engine scripts/tierb_split.py tierb_start_stamp -> stamp_rows; scripts/export_archive.py:84; scripts/export_frontend_simulated.py:179; scripts/translate_corpus.py:49; scripts/screen_sensitivity.py:39",
+    "fields": [
+     "tierb.start_utc",
+     "tierb.batches[]",
+     "endpoint_protocol.endpoint_date_registered/deferral_note",
+     "decisions_log[]"
+    ]
+   },
+   {
+    "artifact": "/home/user/audit-wb/patientwords-engine/data/simulated/pairs_*.json",
+    "consumer": "engine scripts/tierb_split.py is_holdout(top_prompt) (split assignment); export_archive/export_frontend_simulated withholding; this audit's membership counts",
+    "fields": [
+     "[].top_prompt",
+     "[].bottom_prompt",
+     "[].generation.topic"
+    ]
+   },
+   {
+    "artifact": "/home/user/audit-wb/patientwords/data/translation_scale.json",
+    "consumer": "frontend translation/index.html:312; produced by engine scripts/translation_scale.py from txcorpus batches (holdout withheld at translate_corpus.py:64 corpus construction)",
+    "fields": [
+     "per_model.*.n/mean_recovery/mean_gap_closed",
+     "lens_recovery"
+    ]
+   },
+   {
+    "artifact": "/home/user/audit-wb/patientwords/data/timeline.json",
+    "consumer": "this audit (searched for machine-readable A2/A4 adoption stamps; only Tier B prereg + collection-start milestones exist)",
+    "fields": [
+     "milestones[].utc/label"
+    ]
+   },
+   {
+    "artifact": "/home/user/audit-wb/patientwords-engine/data/simulated/pairs_20260713T050939Z.report.json (batch sidecar)",
+    "consumer": "Amendment 1 rule 2 check (generator recorded; seed-pairs file NOT recorded)",
+    "fields": [
+     "model",
+     "batch_file",
+     "max_spend_usd",
+     "cost_usd",
+     "topics"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "c-unguarded",
+  "read_map": [
+   {
+    "artifact": "patientwords-engine/data/claims_manifest.json",
+    "consumer": "patientwords-engine/scripts/claim_check.py",
+    "fields": [
+     "claims[].page",
+     "claims[].snippet",
+     "claims[].snippet_alt",
+     "claims[].source",
+     "claims[].expr",
+     "claims[].expected"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/simulated_scenarios.json",
+    "consumer": "index.html try-it widget + share/card.html + start-here step-3 widget + wording-differences captions",
+    "fields": [
+     "scenarios[].spread_clinical",
+     "scenarios[].spread_patient",
+     "scenarios[].prob_clinical",
+     "scenarios[].prob_patient",
+     "scenarios[].index",
+     "scenarios[].circuit_diff",
+     "scenarios[].html",
+     "holdout_withheld",
+     "batches[].generated.accepted"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/dialects.json",
+    "consumer": "index.html Fig.3 dialect specimen + dialect-differences/index.html",
+    "fields": [
+     "items[].variants",
+     "items[].baseline_p",
+     "batch",
+     "updated"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/provenance.json",
+    "consumer": "methods.html step-4 worked example + translation/index.html + start-here panels 6-7 + dialect-differences ladder caption",
+    "fields": [
+     "translation_cases.grandma_laxative",
+     "translation_cases.icecream_antacid",
+     "translation_cases.worsened_prescription_topical",
+     "translation_cases.summary",
+     "steering_titration.placebo",
+     "ladder_digestive.rungs",
+     "context_inoculation",
+     "emergency_sets.accepted_pairs",
+     "tierb_holdout.fraction",
+     "dialects_round2"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/model_stats.json",
+    "consumer": "technical/index.html Part 4 + methods.html limitations/step-5",
+    "fields": [
+     "per_model (8 keys)",
+     "registration.pre_registered",
+     "registration.post_registration_exploratory",
+     "per_model.medgemma-4b-it.penalty"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/convergence.json",
+    "consumer": "technical/index.html accumulation fold",
+    "fields": [
+     "models[*].points[-1].n_phrases (post-reg models 119-122)"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/retrace_consistency.json",
+    "consumer": "methods.html step-2 note + limitations bullet (ids rt-n, lim-rt-n)",
+    "fields": [
+     "pairs_retraced=68",
+     "prob_spread_max",
+     "top_word_stable_pairs",
+     "spread_lists_identical_pairs"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/drift_series.json",
+    "consumer": "methods.html step-2 sentinel sentence",
+    "fields": [
+     "series (3 pairs/day)",
+     "deltas[date=20260715].max_abs_delta=0.027",
+     "deltas[].top_word_changes"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/jlens_depth.json",
+    "consumer": "methods.html #reading-layers narrative + figure JS; technical router table",
+    "fields": [
+     "exemplar.layers=26",
+     "exemplar.clin_ranks",
+     "exemplar.pat_ranks",
+     "exemplar.patched",
+     "blocks",
+     "translation.by_class",
+     "steering.by_class"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/jlens_insights.json",
+    "consumer": "technical/index.html Parts 1-3 + endnote",
+    "fields": [
+     "persistence_layers=2",
+     "window_sensitivity['8']",
+     "formation",
+     "taxonomy",
+     "n_pairs"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/stress_pairs.json",
+    "consumer": "phrase-dataset/index.html starkest-case sentence + index.html preview table",
+    "fields": [
+     "[].provenance.source_row",
+     "[].provenance.clinical.observed_prob",
+     "[].provenance.patient.observed_prob",
+     "[].provenance.*.observed_next_token"
+    ]
+   },
+   {
+    "artifact": "patientwords/modes/4quadrant/index.html",
+    "consumer": "index.html Fig.2 prose/stat line",
+    "fields": [
+     "Variety shift \u0394 +13/+11",
+     "Register shift \u0394 +5/+4"
+    ]
+   },
+   {
+    "artifact": "patientwords/modes/4quadrant2/index_06*.html",
+    "consumer": "wording-differences/index.html Fig.2 stat line and edge captions",
+    "fields": [
+     "Variety \u0394 +13% (0.39\u21920.52), +10% (0.29\u21920.39)",
+     "Register \u0394 -10% (0.39\u21920.29), -13% (0.52\u21920.39)"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/urgency_shift.json",
+    "consumer": "index.html safety view + methods tier fold + start-here care ladder (all runtime-filled)",
+    "fields": [
+     "summary.per_model_deduped",
+     "tiers",
+     "tier_examples",
+     "vocabulary_status"
+    ]
+   },
+   {
+    "artifact": "patientwords/data/model_evaluations.json",
+    "consumer": "methods.html #generation-eval table (runtime-filled)",
+    "fields": [
+     "models[].patient_accuracy",
+     "models[].clinician_accuracy",
+     "models[].cost_usd",
+     "models[].items"
+    ]
+   }
+  ]
+ }
+]
