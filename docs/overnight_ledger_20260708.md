@@ -646,3 +646,5 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - txcorpus_20260714T224455Z.report.json · $0.1970 · claude-haiku-4-5 · accepted — · 2026-07-14T22:58:54Z
 - pairs_20260714T135150Z.report.json · $0.2102 · claude-haiku-4-5 · accepted 100 · 2026-07-14T13:56:15.801806+00:00
 - quadrants_20260715T142413Z.report.json · $0.0627 · claude-opus-4-8 · accepted 10 · 2026-07-15T14:24:47.203606+00:00
+- pairs_20260715T132350Z.report.json · $0.1810 · claude-haiku-4-5 · accepted 100 · 2026-07-15T13:27:42.588359+00:00
+- pairs_20260716T133552Z.report.json · $0.4994 · claude-sonnet-5 · accepted 8 · 2026-07-16T13:41:22.596044+00:00
