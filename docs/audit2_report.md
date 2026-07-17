@@ -50,8 +50,10 @@ unguarded-claim sweep), each finding then put to an adversarial verifier that re
 reproduction command in its own sandbox, plus a completeness critic. 77 agent runs. Result: 68
 candidate findings, 61 confirmed, 7 refuted (two were barred Audit-1 re-files; one was a
 would-be holdout-translation leak that failed on recompute; one claimed a manifest guard absent
-that exists), 0 undecidable. 57 unique after merging four cross-lane duplicates. Severity after
-verifier corrections: 10 high, 29 medium, 18 low.
+that exists), 0 undecidable. 57 unique after merging four cross-lane duplicates, plus four more
+from the completeness-critic pass filed in the Addendum. Severity after verifier corrections:
+10 high, 31 medium, 20 low (61 unique). The four Addendum items (F2-M30, F2-M31, F2-L19, F2-L20)
+carry continuing IDs so every ID above stays stable.
 
 Commission constraints honored: current-HEAD file:line; the two new logits models
 (meditron3-8b, apertus-8b-meditronfo) were accounted for in every model-set comparison; no
@@ -1526,3 +1528,105 @@ translation-scale joins and gap-closed clipping, and the steering pilot 11/12 an
 Pre-registration: base Tier B registration and amendments 1-4, holdout hash derivation and its
 exclusion across all nine published exporters. Claims: every hardcoded number on all eleven
 pages plus share/404, ranked by drift likelihood, each with a proposed manifest entry.
+
+## Addendum: completeness-critic pass and late finder findings
+
+Four findings landed after the main report was committed (the completeness-critic pass plus
+finder items surfaced on the final merge). IDs continue the sequence so the earlier IDs stay
+stable. Revised totals: 10 high, 31 medium, 20 low (61 unique).
+
+One further candidate was excluded, not filed: a high-severity `site:methods.html:524` item
+(the static `52` fallback in `#lim-rt-n` vs `retrace_consistency.json` `pairs_retraced`) is
+Audit 1 F-M32 verbatim; the commission bars re-filing Audit 1 findings, so it stays with its
+queued Audit 1 entry.
+
+#### F2-M30 · `engine:docs/prereg_divergence_log.md:16` · prereg-mismatch
+
+The registered holdout endpoint date (2026-07-16, amendment 3) has passed without the endpoint run, and the owner-directed deferral is not recorded in the divergence log despite the standing instruction to log it; an unlogged divergence from a registered date.
+
+Evidence:
+```
+Registered (prereg_amendment3_holdout.md, Owner decisions): "Endpoint date confirmed: 2026-07-16 (end of Tier B collection)." Standing instruction (ops/dashboard.json endpoint_protocol.deferral_note): "When 2026-07-16 passes without the instruction, record the deferral in docs/prereg_divergence_log.md (owner-directed, n..." and decisions_log 2026-07-15: "HOLDOUT stays sealed - owner reconfirmed 'keep waiting for my explicit unseal message'; the registered 2026-07-16 date passing without a run is an owner-directed deferral, to be recorded in docs/prereg_divergence_log.md". Current date 2026-07-17; the log's table (lines 8-15) ends with the 2026-07-14 phrase-keyed entry — no deferral row exists. No published number changes (the seal held; nothing was unsealed), so medium rather than high.
+```
+Proposed fix:
+```diff
+--- a/docs/prereg_divergence_log.md
++++ b/docs/prereg_divergence_log.md
+@@ -15,6 +15,7 @@
+ | 2026-07-14 | holdout exclusion made phrase-keyed | ... | ... | strengthens the seal; amendment 3 adopted 2026-07-14 (`docs/prereg_amendment3_holdout.md`) |
++| 2026-07-17 | holdout endpoint run deferred past the registered date | amendment 3: holdout analyzed once at the endpoint, date confirmed 2026-07-16 | 2026-07-16 passed with the holdout still sealed; unsealing waits for an explicit owner instruction (owner decisions 2026-07-14/15, `ops/dashboard.json` endpoint_protocol) | disclose in writeup; seal intact, amendment 3 analysis plan unchanged |
+```
+Verifier correction: The finding is accurate as stated. Only a proposal-level nit: the fix would be cleaner inserting the new row as the last table row (after line 15, before the blank line 16 and the closing paragraph at lines 17-18); the diff's `@@ -15,6 +15,7 @@` context count is loose for an 18-line file.
+
+Found by: p-amendments. Verified: CONFIRMED.
+
+#### F2-M31 · `site:data/retrace_consistency.json:4` · recompute-divergence
+
+The published retrace-repeatability (instrument-determinism) bundle is a stale pre-July-15 snapshot that no lane recomputed: prob_spread_max=0.0, prob_spread_mean=0.0, spread_lists_identical_pairs=68 (=all 68), cmass_same_params_spread_max=0.0 do not reproduce from committed trace_out at engine HEAD, and the divergence is present on the exploration split alone, so the methods-page determinism claim ('every repeat reproduced identical probabilities', 'identical top-five lists') is falsified on the next regen.
+
+Evidence:
+```
+Published patientwords/data/retrace_consistency.json (frontend @bbf5874): lines 3-8 pairs_retraced=68, prob_spread_max=0.0, prob_spread_mean=0.0, top_word_stable_pairs=68, spread_lists_identical_pairs=68, cmass_same_params_spread_max=0.0. Recompute at engine @9696df4 over committed trace_out (SAME script, no code change): 77 pairs; max prob spread 0.027; full spread lists identical only 74/77; cmass same-params max spread 0.0017. Restricting to the EXPLORATION split (holdout excluded via sha1(clinical_prompt)%10==0; 69 explore pairs / 8 holdout): explore-only max prob spread = 0.017 (>0), 2 explore pairs carry nonzero probability spread, 2 explore pairs have non-identical top-k spread lists, explore-only cmass same-params spread = 0.0017 (>0). So every zero in the published file is wrong at current committed inputs even before any holdout row is touched. Reproduction: cd /home/user/audit-wb/patientwords-engine && python3 scripts/retrace_consistency.py --trace-root trace_out --out /tmp/.../retrace_recompute.json (writes only --out; both worktree porcelains empty after run). Aggravators: (a) scripts/retrace_consistency.py emits NO generated_utc/digest (grep for generated|utc|timestamp|digest = NONE), so staleness is undetectable, same undetectability class as the confirmed paired_stats_rigor.json finding; (b) methods.html:223-224 hardcodes the interpretive words 'every repeat reproduced identical probabilities (largest spread <rt-spread>)' and 'identical top-five lists (<rt-lists> pairs)' while rt-spread/rt-lists/rt-n are fetched at runtime (methods.html:641-646) from this file, so the first regen renders 'identical top-five lists (74 pairs)' with prob spread 0.017 and pairs_retraced=77 — a live self-contradiction (74 != 77 under the word 'identical'); (c) validate_frontend_contract.py:291 guards only the TYPES of pairs_retraced/prob_spread_max, not that they are zero, so the regen passes contract. Distinct from the confirmed retrace_consistency.py holdout-leak finding (that flags 2 sealed phrases in the file); this is the separate, un-recomputed staleness of the published determinism numbers.
+```
+Proposed fix:
+```diff
+Two-part minimal fix. (1) De-hardcode the determinism prose in patientwords/methods.html so the qualitative word tracks the data instead of a stale snapshot:
+--- a/methods.html
++++ b/methods.html
+@@ -222,7 +222,7 @@
+-      precision the files record (three decimals), every repeat reproduced identical
+-      probabilities (largest spread <span id="rt-spread">—</span>), identical top-five
+-      lists (<span id="rt-lists">—</span> pairs), and, under the same graph settings,
+-      identical clinical-mass shares. The top word never changed
++      precision the files record (three decimals), the largest probability spread across
++      any repeat was <span id="rt-spread">—</span>; top-five lists matched exactly on
++      <span id="rt-lists">—</span> of <span id="rt-n2">—</span> pairs, and, under the same
++      graph settings, clinical-mass shares moved by at most <span id="rt-cmass">—</span>.
++      The top word never changed
+       (<span id="rt-stable">—</span> pairs).
+(and wire rt-n2/rt-cmass in the existing fetch block at methods.html:636-647 from d.pairs_retraced and d.cmass_same_params_spread_max). (2) Regenerate the site copy from current trace_out AND land the separately-confirmed holdout exclusion in scripts/retrace_consistency.py before republishing, and add a generated_utc stamp to the payload so staleness is detectable; add a value assertion (prob_spread_max plausibility / freshness) to validate_frontend_contract.py:291.
+```
+Severity: verifier downgraded high->medium (documented/self-disclosed staleness). Mechanism overlaps Audit 1 F-M26 (retrace_consistency.py has no --site auto-publish, so the site copy goes stale); the new, Audit-2-specific angle is claim correctness: every zero in the published bundle (prob_spread_max/mean=0.0, spread_lists_identical_pairs=68 of 68) is already wrong at current committed inputs on the exploration split alone (recompute: 77 pairs, max prob spread 0.027, 74/77 identical spread lists), so the methods-page determinism prose is falsified on the next regen. Fix the publish path per F-M26, then de-hardcode the determinism wording.
+
+Verifier correction: Confirmed as a MEDIUM (not high) drift-prone-unguarded-claim finding. The published data/retrace_consistency.json is a stale snapshot (contains only drift_sentinel_20260713); recompute at engine HEAD over committed trace_out gives pairs_retraced=77, prob_spread_max=0.027, spread_lists_identical_pairs=74/77, cmass_same_params_spread_max=0.0017 (vs published 68/0.0/68 of 68/0.0), the movement coming entirely from newly landed drift_sentinel_20260714/15/16; documented/self-disclosed staleness, so no currently-published number is affirmatively false. The real defect: retrace_consistency.py/.json carry no generated_utc/digest (staleness undetectable; validate_frontend_contract.py:291 type-checks only and does not require a freshness field, unlike sibling specs), and methods.html:223-226 hardcodes the word 'identical' ('every repeat reproduced identical probabilities (largest spread <rt-spread>), identical top-five lists (<rt-lists> pairs)') while rt-spread/rt-lists are runtime-filled (methods.html:641,644), so the next regen renders 'identical top-five lists (74 of 77 pairs)'; a self-contradiction NOT covered by the existing July-15 carve-out at methods.html:228-232, which discloses the 0.027 probability movement and top-word stability but not top-five-list identity. Fix (de-hardcode the determinism prose + add a freshness stamp + a value/freshness assertion in the contract) is correct. The finder's aggravator (b) framing of a wholesale 'live self-contradiction' / 'falsified determinism claim' overstates it because the page already discloses the July-15 movement; the true residual contradiction is limited to the top-five-lists line and the 'identical probabilities (largest spread 0.027)' phrasing.
+
+Found by: critic. Verified: CONFIRMED.
+
+#### F2-L19 · `engine:scripts/export_jlens_depth.py:205` · doc-drift
+
+Approval-timeline inconsistency: the live jlens_depth.json carrying the steering block was generated 2026-07-16T14:14:12Z, one day before both the owner approval date the exporter's own docstring records ('owner-approved for the router's steering column 2026-07-17') and Amendment 4's sign-off ('signed by the owner 2026-07-17'), which the shipped file and page caption cite.
+
+Evidence:
+```
+Docstring: 'owner-approved for the router's steering column 2026-07-17' (export_jlens_depth.py:204-205); published file: '"generated_utc": "2026-07-16T14:14:12Z"' with the steering block present and its "_" note citing 'Amendment 4 registers the confirmatory version' (patientwords/data/jlens_depth.json:2 and :1568-1571; engine copy byte-identical); amendment status: 'signed by the owner 2026-07-17' (docs/prereg_amendment4_steering.md:3-4); page caption injected at technical/index.html:853: 'Amendment 4 (adopted July 17) registers the confirmatory version'. Either the docstring's approval date is wrong or the steering numbers were live on the site before the recorded approval.
+```
+Proposed fix:
+```diff
+Re-run the exporter after the fixes above so generated_utc postdates the recorded approval, and add one dated line to docs/prereg_divergence_log.md, e.g.:
++ 2026-07-17: jlens_depth.json steering block first published 2026-07-16 (export run), one day before the recorded owner approval (steering_split docstring) and Amendment 4 sign-off; content unchanged by the approval. Logged for timeline accuracy.
+(If the approval actually occurred 2026-07-16, correct the docstring date at scripts/export_jlens_depth.py:205 instead.)
+```
+Verifier correction: Real low-severity timeline/doc-drift: the shipped jlens_depth.json records generated_utc 2026-07-16T14:14:12Z while the steering_split docstring (export_jlens_depth.py:205) and Amendment 4 (prereg_amendment4_steering.md:3-4) both record owner approval/sign-off as 2026-07-17, and the caption (technical/index.html:853) cites "adopted July 17". But git shows the steering data, the approval-referencing caption, and the column wiring all shipped in ONE frontend commit (cd6965e, 2026-07-16 14:24:39Z) whose message is titled "Owner decisions 2026-07-17", ~10 minutes after generation; so this is a UTC-timestamp (07-16) vs recorded-working-date (07-17) mismatch within a single approval session, NOT the steering numbers being live on the site a day before approval. The fix should reconcile the date label (either annotate that the 07-17 owner-decision session produced 07-16 UTC timestamps, or correct one of the two dates), and any divergence-log line must not repeat the "published one day before approval" overstatement.
+
+Found by: r-steering. Verified: CONFIRMED.
+
+#### F2-L20 · `engine:trace_out/batch_summary.part_01.json:1` · other
+
+Five unprovenanced hosted batch-summary part files sit committed at the trace_out ROOT (part_01/03/05/07/09; 10 gemma-2-2b 2panel results, no pairs_file field) where the two-level glob trace_out/*/batch_summary*.json of every collector can never see them; harmless today but a quarantine trap: relocating them into any trace_out/<dir>/ would inject 10 unprovenanced rows into the urgency and stats pipelines as patient measurements.
+
+Evidence:
+```
+Files: trace_out/batch_summary.part_{01,03,05,07,09}.json, each `{"mode": "2panel", "backend": "hosted", "graph_model": "gemma-2-2b", "source_set": "gemmascope-transcoder-16k", ...}` with 2 results (indices 1-10 total), full predictive spreads, no pairs_file. urgency_shift.py:160 globs `trace_out/*/batch_summary.part_*.json` — root files match no consumer glob repo-wide (also export_frontend_simulated.py, export_archive.py, paired_stats.py, drift_sentinel.py, translation_scale.py). Provenance search: their clinical-prompt sha1s match data/simulated/txcorpus_20260714T224455Z.json positions 3-12 by top_prompt, but their patient sides match NOTHING committed (pair-level sha1 search over every list-shaped JSON under data/ and every results[] under trace_out/: 0 hits), so the traced pair set exists in no landed batch file. No published number is affected (verified: the published urgency file reconstructs exactly without them). Risk is the repair path: any move into trace_out/<dir>/ makes them visible to all part-glob collectors with an arbitrary stem, and a txcorpus_-prefixed dir name would instead feed them to translation_scale.py's `txcorpus_*/batch_summary*.json` glob (line 43) — either way unprovenanced rows enter analysis.
+```
+Proposed fix:
+```
+Quarantine OUTSIDE trace_out/ (never into a subdirectory of it), e.g.:
+  git mv trace_out/batch_summary.part_01.json trace_out/batch_summary.part_03.json \
+         trace_out/batch_summary.part_05.json trace_out/batch_summary.part_07.json \
+         trace_out/batch_summary.part_09.json ops/quarantine/rootparts_20260707/
+plus an ops/quarantine/rootparts_20260707/README.md line: 'batch_summary parts committed to trace_out root by a run with an unset OUT_DIR; pair set matches no landed batch (clinical sides overlap txcorpus_20260714T224455Z top_prompts 3-12); excluded from all analysis; do not move into trace_out/'.
+```
+Verifier correction: Five unprovenanced hosted batch-summary part files (part_01/03/05/07/09; 10 gemma-2-2b 2panel results, indices 1-10, no pairs_file) sit committed at the trace_out ROOT. They are invisible to the two-level globs of urgency_shift.py:160, paired_stats.py:178, export_archive.py:75, drift_sentinel.py:33, and translation_scale.py:43, and today's published simulated_scenarios.json (14 batches) does not include a trap stamp, so no current number is wrong. But contrary to the finding, they ARE reachable by a live consumer: export_frontend_simulated.py model_dir() lines 120-121 fall back to `ENGINE/"trace_out"` (the root) for BASE_MODEL gemma-2-2b whenever `trace_out/pairs_{stamp}` is not a directory, and read_trace_dir() (line 130) then globs `batch_summary.part_*.json` in that root dir, matching all five files. Three already-landed pairs data files trigger this fallback because they have no bare gemma trace dir: pairs_20260706T172135Z, pairs_20260706T175614Z (no trace dir), and pairs_20260714T135150Z (gemma trace only in the __gemma-2-2b suffixed dir). Exporting any of them would silently read the 10 root rows as that batch's gemma base measurements and pair them with the batch's own data rows, injecting unprovenanced/mismatched scenarios into the published payload. The risk is therefore a live latent corruption of a future export of an already-landed batch (notably pairs_20260714T135150Z, landed 2026-07-17), not only the "relocating into a subdirectory" trap. Quarantining the five files OUTSIDE trace_out/ (per the proposed fix) is still the correct remedy, and separately the bare-gemma-dir absence for those stamps should be reconciled.
+
+Found by: r-urgency. Verified: CONFIRMED.
+
