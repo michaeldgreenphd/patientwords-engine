@@ -1,7 +1,7 @@
 {
  "schema_version": 1,
- "updated_utc": "2026-07-17T13:30:00Z",
- "updated_by": "routine",
+ "updated_utc": "2026-07-17T15:30:00Z",
+ "updated_by": "session",
  "queue": {
   "circuit-trace": {
    "running": null,
@@ -241,21 +241,6 @@
  ],
  "decisions_pending": [
   {
-   "id": "POPULATION-DEF",
-   "title": "Confirmatory-population definition is underspecified in code (pre-registration decision)",
-   "context": "Found overnight 07-17: paired_stats_rigor's confirmatory filter is _OBS_RE (pairs_ STEM only, no generator/kind check), so it does not distinguish observational batches from the outcome-selected SONNET supplementary sets (emergency/severity/misspelling), which share the pairs_ stem. There is no marker in the data separating them from the legitimate July 6-7 opus/sonnet PILOT batches, so 'which batches are confirmatory' is a genuine pre-registration definition, not a one-fix bug. Nothing published is wrong today (live model_stats gemma-2-2b = -3.12pp n=836, verified CLEAN of the sonnet sets by timing); the risk is a future regeneration silently pulling them in. Quantified options for gemma-2-2b: (A) all pairs_ incl. supplementary once traced = -3.08pp n=843; (B) exclude only the outcome-selected supplementary sets, keep pilots = -3.12pp n=836 [== current published, matches the docstring's stated intent]; (C) registered Tier B only (haiku, 07-10+) = -2.22pp n=632. In EVERY option no significance flips and every clean number is >= as negative (contamination was conservative). Recommend B (matches published + docstring; negligible), encode via an explicit supplementary-set exclusion list + a divergence-log entry, on owner sign-off. I reverted an over-broad generator-filter attempt (it wrongly dropped the pilots to n=632); no stats code changed. Audit 2 will also surface this."
-  },
-  {
-   "id": "BATCH-13-DISPOSITION",
-   "title": "batch-13 (pairs_20260716T133552Z) is an accidental sonnet batch (8 pairs) - re-gen + disposition",
-   "context": "The 07-16 13:00 'tierB batch 13' fire omitted anthropic_model and hit the sonnet-5 default (now fixed); it generated 8 sonnet pairs, excluded from Tier B by the ledger gate, NOT traced (quarantined). Tier B count is still 700 (batch-13 did not advance it); the $0.50 was effectively spent on a non-Tier-B batch. Plan: re-generate batch-13 with explicit haiku at the next cycle. Disposition of the 8 sonnet pairs: discard, or keep as a labeled supplementary set? (owner call, low stakes)."
-  },
-  {
-   "id": "MEDGEMMA-CLAIM-DRIFT",
-   "title": "claim_check FAIL: methods.html MedGemma sentence stale (n grew 119 -> 249 via backfill)",
-   "context": "The even-n backfill grew medgemma-4b-it from n=119 to n=249, shifting penalty -3.4->-3.6pp and CI [-6.9,-0.2]->[-5.9,-1.4]. The hardcoded methods.html sentence ('n=119, CI [-6.9,-0.2]') is now stale; claim_check FAILs on it. Per routine I do not edit site prose from ops - owner rewrites the sentence (and its manifest guard updates to the new numbers). The drift is in the study's favor (tighter CI, still excludes zero, larger n)."
-  },
-  {
    "id": "SCALE-FRAMING",
    "title": "Scale framing sentence (drafted when full txcorpus numbers land)",
    "context": "Owner 2026-07-15: draft the translation-page framing sentence when the remaining txcorpus logits legs land, SHOW the owner before it deploys. The at-scale table keeps auto-updating; the sentence never auto-publishes."
@@ -264,11 +249,6 @@
    "id": "SKEPTIC",
    "title": "Skeptic audit - voice/framing items (owner's lane, no rush)",
    "context": "docs/skeptic_read_20260709.md: single-case caveat, word-diff example mismatch, model-eval softening are yours to phrase when back. (The pooled-count dedupe half of this item is DONE - deduped stats published site-wide 2026-07-09.)"
-  },
-  {
-   "id": "DECK-POPULATION",
-   "title": "Deck uses fresh option-A n=843 (incl. 7-pair emergency set); confirm or switch to option B (n=836)",
-   "context": "Immaterial numerically (-3.08 vs -3.12, no significance flip) but option B excludes the outcome-selected emergency set = more defensible for an Anthropic audience. Tied to POPULATION-DEF."
   }
  ],
  "blockers": [
@@ -285,7 +265,7 @@
    "what": "Daily lens sentinel (jlens on drift_sentinel_20260717) not fired this cycle: jlens lane was full (txcorpus chunks 4+5). Non-critical $0 watch; fires next idle jlens slot."
   }
  ],
- "notes": "OVERNIGHT 07-17 (~03:30 UTC, Opus/ultracode): the timer's Tufte renderer pass was DEFERRED - an ops-chain check surfaced a confirmatory-population integrity gap (POPULATION-DEF) that took priority. Summary: the sonnet supplementary sets can leak into the headline stats on a future regen; published numbers are currently CLEAN (verified); impact if leaked is negligible + conservative (no significance flips); it is a pre-registration population DECISION, surfaced with 3 quantified options, not auto-fixed. Ops-safe fixes applied: workflow generator default -> haiku. SITE-TEXT OUTLINE (task #33) is DUE ~12:45 UTC before the 13:00 cron - whichever session is active must deliver it. TUFTE renderer pass still pending (next code slot). MORNING-DECK PLAN (owner 07-16): batch ALL pending choices into one collective deck for the 07-17 AM digest (MEDITRON-9TH, DISPLAY-TOP10, AMEND4 sign-off, SCALE-FRAMING if numbers land). Owner shows results to their team Friday; backfill + deep-view scaling continue over the weekend. SITE-TEXT OUTLINE (task #33) due 07-17 ~12:45 UTC before the digest: full markdown outline of all site text so the  | RESTART-RECOVERY 07-17 07:12 UTC (Opus 4.8, ultracode OFF): container restarted ~07:09, killed the outline timer. Reconciled queue after restart: (1) jlens tierB batch-12 all 4 chunks LANDED (success in Actions) - resolved. (2) logits successors-UNIFIED run (00:03, 119-phrase x 2 8B models) was CANCELLED by GitHub's 6h job timeout (Actions run 29543676563) - exactly the oversize risk flagged; produced NO 119-phrase output (only the earlier clean 3-pair joint probe exists under trace_out/pairs_20260714T135150Z__{meditron3-8b,apertus-8b-meditronfo}). Resolved the dead entry. RE-PLAN successors as CHUNKED per-model logits fires over pairs_20260707T171223Z (119 pairs): 4 legs = {meditron3-8b, apertus-8b-meditronfo} x {offset0 limit60, offset60 limit59}; fire one per idle logits slot AFTER even-n backfill (owner's primary directive outranks). (3) Chained logits leg 5/11 (tierB batch 5, 163230Z) pending behind running leg 4; jlens priority2 chunk 4 into freed slot. (4) drift sentinel day-5 ran: DRIFT max|dp| 0.027 at pair 2 patient (14->15), top words unchanged; drift_series day 07-17 appended + committed. MODEL_STATS FLAG: the SITE working tree carried a stale uncommitted model_stats.json regeneration (gemma-2-2b n 650->836 / -3.36->-3.12pp AND meditron3-8b/apertus-8b-meditronfo added to the exploratory list with EMPTY per_model stats). REVERTED to deployed HEAD (n=650/-3.36pp) - it changes confirmatory numbers (POPULATION-DEF owner-pending) and the empty successor rows are a live-render hazard. For the morning deck: a clean model_stats refresh (n=836/-3.12pp = option B accumulation) awaits (a) POPULATION-DEF sign-off and (b) real successor data before deploy. | TUFTE FIGURE FIX (owner's 'implanting the Tufte theme for the figures' ask): fixed the clipped predictive-spread probability labels (task #20) in medlang_circuits/compare_viz.py - the SVG doc viewBox was pinned at PANEL_WIDTH so a long top-1 logit label ran past the edge; now _panel_svg measures each right-extending label and the viewBox widens to contain the widest (PANEL_WIDTH stays the floor; no change when nothing needs room). 2 regression tests added, full suite 370 green, ruff clean, committed+pushed (no trigger touched). The SVG core was already Tufte (no frames, direct labels, site palette) so this was the one concrete defect. Featured figures inherit the fix on their next engine export/re-render (graphs aren't cached locally, so a live re-render is CI-only; not fired - cosmetic, can re-render the 3 featured on request, $0). SITE-TEXT OUTLINE (task #33) DELIVERED to owner ~07:42 (ahead of the 12:45 target): all public pages in reading order, every number source-tagged, with a 6-item FLAGS section (medgemma n=119 stale = #1). | FRIDAY DISSEMINATION PACKAGE delivered ~13:07 (owner back from vacation). (A) ops/site_text_outline_20260717.md - refreshed extract_site_text.py page list (added technical + wording-differences, dropped redirect stubs), 300 blocks/9 pages with stable ids for block-by-block editing. (B) ops/decks/meeting_deck_20260717.html - 6 cards + talking points, phone-friendly, rendered clean (0 console errors); numbers from a FRESH engine-only regen (urgency_shift + paired_stats_rigor + convergence, all with --site '' so NO site write - POPULATION-DEF stays owner's). (C) refreshed ops/decks/demo_walk_cue_20260712.md for the answer-depth->technical consolidation. DIGEST at 13:00 MUST mention this package. DECK POPULATION FLAG: deck uses the freshest cut = gemma-2-2b -3.1pp [-4.1,-2.1] n=843, 62 down/19 up, q~3e-6; this n=843 is POPULATION-DEF option A (now includes the 7-pair outcome-selected emergency supplementary set). Option B (exclude) = -3.12pp n=836, no significance change. The public SITE still shows the earlier n=650 cut (model_stats.json untouched) pending the owner's POPULATION-DEF call. If the owner wants option B for the deck before the meeting, exclude the emergency batch and re-derive ~8 numbers. | DAILY CYCLE 13:00 (routine, into orchestrator session): ledger tierB $1.353/$8, today $0/$2. Fired: (gen) tierB batch 14 haiku thin-specialty steer $0.50 max; (logits) backfill leg 6 running + leg 7 pending (batches 6-7, exploratory 4, $0). jlens lane full (txcorpus 4+5). Sentinel day-5 landed: DRIFT max|dp| 0.027, top words unchanged. claim_check PASS. WATCHDOG: critic stalled since 0714 (flagged in digest). REPUBLISH held pending POPULATION-DEF. Backfill progress: exploratory models now ~n337 (medgemma 119->337, olmo/llama 122->337), gemma-2-2b-it 298; gemma-2-2b fresh -3.1pp n843 (interim, engine-only, NOT published). | OWNER 07-17 ~13:2x: phone decision deck was blank in the render viewer (inline JS blocked) - REBUILT static-first (all 6 decisions + options are HTML now, tap/copy = progressive enhancement); re-delivered. COMMITMENT (task #46): recreate the block-id site-text outline (extract_site_text.py -> ops/site_text_outline_20260717.md) AFTER (a) Audit 2 fixes land AND (b) the owner's phone-deck decisions are applied to the site (POPULATION-DEF republish + MedGemma sentence etc.), then re-deliver - owner hand-edits language ~1pm EDT (17:00 UTC) then does a UI-focused edit. Also added takeaways-first slide to meeting_deck.",
+ "notes": "AUDIT 2 HOLDOUT SEAL BREACH REMEDIATED + DEPLOYED 2026-07-17 (~15:30). All 10 highs fixed: phrase-keyed seal centralized in tierb_split.py; exporters sealed (archive/retrace/jlens_insights/jlens_depth/urgency/scenarios/frontend); full holdout sweep across every public data file = 0 (archive 12->0, retrace 5->0, jlens census 38->0, jlens_depth blocks 21->0 + steering 11/12->8/9, scenarios 3->0). Site data redeployed to main (holdout purged; sealed phrase text was public 07-13->17, now gone). POPULATION-DEF=B + holdout-clean confirmatory stats (gemma -3.13pp n=835). Divergences logged (prereg_divergence_log.md: seal gaps, F2-H08 6 mis-split conservatively sealed, endpoint deferral, option B). claim_check GREEN (medgemma guard refreshed). 371 tests green. Outline regenerated. REMAINING Audit-2 follow-up (mediums/lows, non-emergency): F2-H10 homepage dialect provenance line stale; F2-M08 A2 boundary machine-readable; F2-M09 jlens_steer vs A4; ~15 unguarded-claim manifest hardening; F2-M01 model_stats timestamp/digest; 20 lows. Holdout stays SEALED (no unseal instruction).",
  "decisions_log": [
   {
    "date": "2026-07-17",
@@ -385,6 +365,16 @@
    "date": "2026-07-14",
    "by": "owner (chat, evening)",
    "decision": "STANDING DIRECTION: the next step after the behavioral scale run and the stratified deep-view samples is to SCALE the deep views of the translated corpus. Lens at scale: fire jlens-readout on the full txcorpus in 25-pair chunks in idle jlens slots (Tier B batch pulls keep priority) until the whole corpus has translated-side depth profiles; paired with the patient-side profiles already accumulating from regular per-batch pulls, this gives formation-depth recovery at corpus scale. Tracing at scale: hosted throughput is ~8-12 pairs/hr, so full-corpus tracing is ~4 days of queue; scale tracing to the consequential subset first (every phrase where translation changes the top prediction, expected a few hundred) and extend as queue allows."
+  },
+  {
+   "utc": "2026-07-17T15:30Z",
+   "decisions": {
+    "POPULATION-DEF": "B (exclude supplementary)",
+    "DECK-POPULATION": "match=B",
+    "MEDGEMMA-CLAIM-DRIFT": "updated n->337 on republish",
+    "BATCH-13-DISPOSITION": "discard (untraced, excluded)"
+   },
+   "note": "Owner deck 2026-07-17 applied. POPULATION-DEF=B encoded in paired_stats_rigor + convergence_tracker (supplementary stamps excluded); model_stats gemma-2-2b now -3.13pp n=835. MEDGEMMA methods sentence -> n=337 -3.9pp [-5.9,-2.0], simultaneous now below zero. BATCH-13 (133552Z sonnet, untraced) stays discarded. DECK-POPULATION matched (deck forest -> option B)."
   }
  ],
  "queued_next": [
