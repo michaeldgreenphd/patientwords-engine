@@ -6,7 +6,10 @@ from conftest import TEST_KEYWORD_CONFIG, build_fetcher, make_graph
 from medlang_circuits.compare_viz import (
     CATEGORY_COLORS,
     ELIDED_GAP_ROWS,
+    PANEL_WIDTH,
+    _logit_label,
     _prepare,
+    _text_px_width,
     render_stacked_html,
     render_stacked_png,
 )
@@ -22,6 +25,42 @@ def _tagged_pair():
     for g in (top, bottom):
         annotate_graph(g, fetcher=build_fetcher(), keyword_config=TEST_KEYWORD_CONFIG)
     return top, bottom
+
+
+def test_long_logit_label_widens_viewbox_no_clip(tmp_path):
+    """A long predictive-spread label in the terminal column stretches the
+    document viewBox to contain it, instead of clipping at PANEL_WIDTH.
+
+    Regression for task #20 (clipped probability labels): the top-1 logit label
+    is drawn to the right of a node that already sits near the panel's right
+    margin, so a long token used to run past the fixed viewBox edge."""
+    top, bottom = _tagged_pair()
+    long_clerp = "cardiovascular (p=0.94)"
+    for node in top["nodes"]:
+        if node.get("feature_type") == "logit":
+            node["clerp"] = long_clerp
+    out = tmp_path / "index.html"
+    render_stacked_html(top, bottom, str(out))
+    html = out.read_text(encoding="utf-8")
+
+    width = int(re.search(r'viewBox="0 0 (\d+) \d+"', html).group(1))
+    # the viewBox grew past the base panel width to make room for the wide label
+    assert width > PANEL_WIDTH
+    # and it actually contains that label's right edge (top-1 label is class "llt")
+    label_x = float(re.search(r'<text x="([\d.]+)"[^>]*class="llt">', html).group(1))
+    label_w = _text_px_width(_logit_label({"clerp": long_clerp, "feature_type": "logit"}), 20.0)
+    assert width >= label_x + label_w
+
+
+def test_short_logit_label_keeps_base_viewbox(tmp_path):
+    """The viewBox is only widened when a label needs it: the default short
+    fixture label ("jumps") stays inside PANEL_WIDTH, so the width is unchanged."""
+    top, bottom = _tagged_pair()  # fixture logit clerp "jumps (p=0.81)"
+    out = tmp_path / "index.html"
+    render_stacked_html(top, bottom, str(out))
+    html = out.read_text(encoding="utf-8")
+    width = int(re.search(r'viewBox="0 0 (\d+) \d+"', html).group(1))
+    assert width == PANEL_WIDTH
 
 
 def test_render_stacked_html_standalone_interactive(tmp_path):

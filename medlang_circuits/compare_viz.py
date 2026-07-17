@@ -76,6 +76,9 @@ ROW_HEIGHT = 34
 ELIDED_GAP_ROWS = 1.45  # vertical space for a run of >=1 empty layers
 MARGIN = {"left": 66, "right": 178, "top": 118, "bottom": 66}
 PANEL_GAP = 18
+# Right-side breathing room past the widest predictive-spread label when the
+# document viewBox is stretched to keep those labels from clipping.
+LABEL_VIEWBOX_PAD = 12
 BADGE_GAP = 64  # panel gap when a single-line badge renders in it
 BADGE_LINE_HEIGHT = 34
 DIMMED_NODE_OPACITY = 0.16  # shared-circuit context in pairwise diff views
@@ -354,6 +357,17 @@ def _logit_label(node: dict[str, Any]) -> str:
     return f"\u201c{token[:20]}\u201d \u00b7 prob {prob:.2f}"
 
 
+def _text_px_width(text: str, font_size: float, mono: bool = True) -> float:
+    """Conservative rendered width of an SVG text run, for viewBox sizing.
+
+    Predictive-spread labels sit to the right of the terminal-column logit
+    nodes; the panel width is a layout constant, so the document viewBox is
+    widened to whatever those labels actually reach (never clipped). Average
+    glyph advance: monospace ~0.62em, proportional ~0.55em - deliberately a
+    slight over-estimate so a label never lands past the viewBox edge."""
+    return len(text) * font_size * (0.62 if mono else 0.55)
+
+
 def _node_tooltip_data(node: dict[str, Any], mass: float, mass_frac: float) -> dict[str, str]:
     """Pre-escaped strings for the JS tooltip.
 
@@ -412,6 +426,10 @@ def _panel_svg(
 
     positions, radius = prep["positions"], prep["radius"]
     max_weight, category_of = prep["max_weight"], prep["category_of"]
+    # Track the rightmost pixel any right-extending label reaches, so the caller
+    # can widen the document viewBox to include the predictive-spread readout
+    # (labels sit right of the terminal-column logit nodes and must never clip).
+    right_extent = float(MARGIN["left"])
 
     for label, y in prep["layer_ticks"]:
         parts.append(f'<text x="{MARGIN["left"] - 12}" y="{y + 3:.1f}" class="lk">{label}</text>')
@@ -474,10 +492,13 @@ def _panel_svg(
         if node.get("feature_type") == "logit" and node.get("clerp"):
             is_top = node_id == prep.get("top_logit_id")
             cls = "llt" if is_top else "ll"
+            label_text = _logit_label(node)
+            label_x = pos[0] + r + 8
             parts.append(
-                f'<text x="{pos[0] + r + 8:.1f}" y="{pos[1] + (5 if is_top else 4):.1f}" class="{cls}">'
-                f"{html.escape(_logit_label(node))}</text>"
+                f'<text x="{label_x:.1f}" y="{pos[1] + (5 if is_top else 4):.1f}" class="{cls}">'
+                f"{html.escape(label_text)}</text>"
             )
+            right_extent = max(right_extent, label_x + _text_px_width(label_text, 20.0 if is_top else 12.5))
             if is_top:
                 parts.append(
                     f'<circle cx="{pos[0]:.1f}" cy="{pos[1]:.1f}" r="{r + 3.5:.1f}" fill="none" '
@@ -492,10 +513,12 @@ def _panel_svg(
         pos = positions.get(node_id)
         if pos is None or node_id in dimmed_nodes:
             continue
+        cl_x = pos[0] + radius[node_id] + 5
         parts.append(
-            f'<text x="{pos[0] + radius[node_id] + 5:.1f}" y="{pos[1] + 4:.1f}" class="cl" '
+            f'<text x="{cl_x:.1f}" y="{pos[1] + 4:.1f}" class="cl" '
             f'fill="{CATEGORY_COLORS[category]}">{CATEGORY_LABELS[category]}</text>'
         )
+        right_extent = max(right_extent, cl_x + _text_px_width(CATEGORY_LABELS[category], 13.0, mono=False))
 
     # Token baseline: the compared word is the entire point of the figure, so
     # it gets weight, size, and an accent underline that reads even when the
@@ -517,10 +540,12 @@ def _panel_svg(
     for g in groups:
         x = sum(prep["x_of"](i) for i in g["idxs"]) / len(g["idxs"])
         word = g["text"]
+        tok_half = _text_px_width(word, 13.0) / 2  # .tk is 13px mono, centered
         if g["special"]:
             parts.append(f'<text x="{x:.1f}" y="{token_y}" class="tk" opacity="0.18">{html.escape(word)}</text>')
         elif any(i in emphasized_tokens for i in g["idxs"]):
             half = max(16.0, len(word) * 4.8)
+            tok_half = max(tok_half, half)  # the accent underline is the wider mark
             parts.append(
                 f'<text x="{x:.1f}" y="{token_y}" class="tk tke" '
                 f'style="fill:{emphasis_color}">{html.escape(word)}</text>'
@@ -531,6 +556,7 @@ def _panel_svg(
             )
         else:
             parts.append(f'<text x="{x:.1f}" y="{token_y}" class="tk">{html.escape(word)}</text>')
+        right_extent = max(right_extent, x + tok_half)
 
     if prep["dropped_edges"]:
         parts.append(
@@ -538,7 +564,7 @@ def _panel_svg(
             f'class="lk" text-anchor="end">{prep["dropped_edges"]} weakest edges omitted</text>'
         )
     parts.append("</g>")
-    return parts, tooltip_data
+    return parts, tooltip_data, x_offset + right_extent
 
 
 # Minified inline assets for the standalone export.
@@ -715,11 +741,13 @@ def render_panels_html(
     svg_parts: list[str] = []
     data: list[list[dict]] = []
     y_offset = 0.0
+    max_right = 0.0  # widest label reach across panels; PANEL_WIDTH is the floor below
     for panel_index, panel in enumerate(panels):
         prep = _prepare(panel["graph"], max_edges)
-        parts, tooltip_data = _panel_svg(panel, prep, 0.0, y_offset, panel_index)
+        parts, tooltip_data, right = _panel_svg(panel, prep, 0.0, y_offset, panel_index)
         svg_parts.extend(parts)
         data.append(tooltip_data)
+        max_right = max(max_right, right)
         y_offset += prep["panel_height"]
         if panel_index < len(panels) - 1:
             badge = badges[panel_index] if panel_index < len(badges) else None
@@ -734,7 +762,8 @@ def render_panels_html(
             else:
                 y_offset += PANEL_GAP
 
-    document = _document(svg_parts, data, PANEL_WIDTH, int(y_offset))
+    doc_width = max(PANEL_WIDTH, int(math.ceil(max_right)) + LABEL_VIEWBOX_PAD)
+    document = _document(svg_parts, data, doc_width, int(y_offset))
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(document)
     logger.info("Wrote standalone comparison page to %s", out_path)
@@ -773,10 +802,12 @@ def render_quadrant_html(
     svg_parts: list[str] = []
     data: list[list[dict]] = []
     placements = [(col_x[0], row_y[0]), (col_x[1], row_y[0]), (col_x[0], row_y[1]), (col_x[1], row_y[1])]
+    max_right = 0.0  # widest label reach across cells; the 2-column width is the floor below
     for panel_index, (panel, prep, (x, y)) in enumerate(zip(panels, preps, placements)):
-        parts, tooltip_data = _panel_svg(panel, prep, x, y, panel_index)
+        parts, tooltip_data, right = _panel_svg(panel, prep, x, y, panel_index)
         svg_parts.extend(parts)
         data.append(tooltip_data)
+        max_right = max(max_right, right)
 
     # Horizontal vocabulary deltas, centered on the gutter between the compared boxes:
     # the top one in the header strip, the bottom one in the row gutter above C/D.
@@ -796,7 +827,8 @@ def render_quadrant_html(
                 f'<text x="{cx:.0f}" y="{gutter_cy:.0f}" class="bd" fill="{color}">{html.escape(text)}</text>'
             )
 
-    document = _document(svg_parts, data, width, height, wide=True)
+    doc_width = max(width, int(math.ceil(max_right)) + LABEL_VIEWBOX_PAD)
+    document = _document(svg_parts, data, doc_width, height, wide=True)
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(document)
     logger.info("Wrote 4-quadrant comparison page to %s", out_path)
