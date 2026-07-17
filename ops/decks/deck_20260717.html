@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Decisions · 2026-07-17</title>
+<style>
+  :root{
+    --paper:#faf9f5; --ink:#1c1c19; --clinical:#15803d; --penalty:#b4483d;
+    --muted:#6d6c66; --structural:#c3c9d2; --hairline:#dcdad2;
+    --serif:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);
+    font-size:16px;line-height:1.55;padding:16px 14px 120px;max-width:520px;margin:0 auto}
+  .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  h1{font-size:22px;margin:6px 0 4px}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 16px}
+  .card{border:1px solid var(--hairline);border-top:2px solid var(--ink);
+    padding:12px 14px;margin:0 0 12px;background:#fff}
+  .card h3{font-size:16px;margin:0 0 4px}
+  .card p{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+  .seg{display:flex;gap:8px;flex-wrap:wrap}
+  .seg button{flex:1;min-width:120px;font-family:var(--mono);font-size:12px;letter-spacing:.04em;
+    padding:11px 8px;background:none;border:1.5px solid var(--structural);color:var(--muted);
+    cursor:pointer;border-radius:3px}
+  .seg button[aria-pressed=true]{border-color:var(--clinical);color:var(--clinical);font-weight:700;background:#eef5ef}
+  .seg button:focus-visible{outline:2px solid var(--clinical);outline-offset:2px}
+  textarea{width:100%;border:1px solid var(--hairline);background:#fff;font-family:var(--serif);
+    font-size:14px;padding:10px;min-height:64px;border-radius:3px}
+  .bar{position:fixed;bottom:0;left:0;right:0;background:var(--paper);
+    border-top:1px solid var(--ink);padding:10px 14px calc(10px + env(safe-area-inset-bottom));}
+  .bar-inner{max-width:520px;margin:0 auto;display:flex;gap:10px;align-items:center}
+  .bar button{flex:1;font-family:var(--mono);font-size:13px;letter-spacing:.08em;padding:13px;
+    background:var(--ink);color:var(--paper);border:0;cursor:pointer;border-radius:3px}
+  .bar .n{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:64px;text-align:right}
+  #out{font-family:var(--mono);font-size:11.5px;white-space:pre-wrap;background:#fff;
+    border:1px dashed var(--structural);padding:10px;margin:14px 0 0;display:none}
+  .ok{color:var(--clinical);font-family:var(--mono);font-size:11px;display:none;margin-left:6px}
+  .link{font-family:var(--mono);font-size:11px;color:var(--penalty)}
+</style>
+</head>
+<body>
+<p class="tag">internal · tap your calls · 2026-07-17</p>
+<h1>Decisions waiting</h1>
+<p class="sub">Tap a choice on each, then Copy at the bottom and paste back to Claude. The
+first three are linked — <span class="link">POPULATION-DEF cascades into the deck and the
+MedGemma sentence.</span> Selections save on this phone.</p>
+
+<div id="qs"></div>
+
+<h3 style="font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Anything else</h3>
+<textarea id="note" placeholder="optional note for Claude"></textarea>
+
+<div id="out" aria-live="polite"></div>
+
+<div class="bar"><div class="bar-inner">
+  <span class="n" id="count">0 / 6</span>
+  <button id="copy" type="button">Copy decisions</button>
+  <span class="ok" id="ok">copied</span>
+</div></div>
+
+<script>
+var QS=[
+ ["POPULATION-DEF","Confirmatory population (pre-registration call)",
+  "Which batches count as confirmatory? The stats filter keys on the pairs_ stem only, so the outcome-selected supplementary sets (emergency/severity/misspelling) can slip in. Gemma: A=all -3.08 n843 · B=exclude supplementary -3.12 n836 · C=Tier-B-only -2.22 n632. No option flips significance.",
+  ["B · exclude supplementary (rec)","A · all pairs_","C · Tier-B-only","let's talk it through"]],
+ ["DECK-POPULATION","Anthropic deck's headline n",
+  "The meeting deck currently shows gemma -3.1pp n843 (option A, includes the 7-pair emergency set). Option B (n836, -3.12) is marginally more defensible for an ML audience; the difference is immaterial. Follows whatever you pick for POPULATION-DEF.",
+  ["match POPULATION-DEF (rec)","keep A (n843) regardless","switch deck to B (n836)"]],
+ ["MEDGEMMA-CLAIM","MedGemma sentence on republish",
+  "Backfill grew medgemma from n119 to n337 (penalty -3.4->-3.9pp). The methods + technical sentences still say n119 and match the deployed data, so claim_check passes today. On the next site republish the sentence needs the new n. Text edits are your lane.",
+  ["update n when we republish (rec)","you'll rewrite it yourself","hold at n119 for now"]],
+ ["BATCH-13","The 8 stray sonnet pairs",
+  "The 07-16 fire missed the model default and made 8 sonnet pairs (pairs_20260716T133552Z). They're quarantined, not traced, not counted in Tier B. The workflow default is fixed to haiku now.",
+  ["discard them (rec)","keep, labeled non-TierB","re-gen as haiku"]],
+ ["SCALE-FRAMING","Translation at-scale framing sentence",
+  "The at-scale table auto-updates from data (sanctioned). Any framing SENTENCE about the scale result gets drafted and shown to you before it deploys. The remaining txcorpus legs are still landing.",
+  ["draft it when numbers land, I approve (rec)","no framing sentence","draft now with current numbers"]],
+ ["SKEPTIC","Skeptic-audit voice items",
+  "docs/skeptic_read_20260709.md: single-case caveat, word-diff example mismatch, model-eval softening. Yours to phrase (the dedupe half is already done).",
+  ["I'll phrase these myself (rec)","Claude drafts for my review","defer"]]
+];
+var state={};
+try{state=JSON.parse(localStorage.getItem('dec-0717')||'{}');}catch(e){}
+function save(){try{localStorage.setItem('dec-0717',JSON.stringify(state));}catch(e){}
+  var done=QS.filter(function(q){return state[q[0]];}).length;
+  document.getElementById('count').textContent=done+' / '+QS.length;}
+function seg(key,choices){
+  var wrap=document.createElement('div');wrap.className='seg';wrap.setAttribute('role','group');
+  choices.forEach(function(c){
+    var b=document.createElement('button');b.type='button';b.textContent=c;
+    b.setAttribute('aria-pressed',state[key]===c?'true':'false');
+    b.onclick=function(){state[key]=c;save();
+      Array.prototype.forEach.call(wrap.children,function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});};
+    wrap.appendChild(b);
+  });
+  return wrap;
+}
+var qm=document.getElementById('qs');
+QS.forEach(function(q){
+  var c=document.createElement('div');c.className='card';
+  c.innerHTML='<h3>'+q[0]+' · '+q[1]+'</h3><p>'+q[2]+'</p>';
+  c.appendChild(seg(q[0],q[3]));
+  qm.appendChild(c);
+});
+document.getElementById('note').value=state._note||'';
+document.getElementById('note').addEventListener('input',function(e){state._note=e.target.value;save();});
+save();
+function summary(){
+  var lines=['DECISIONS 2026-07-17'];
+  QS.forEach(function(q){lines.push(q[0]+': '+(state[q[0]]||'(no answer)'));});
+  if(state._note)lines.push('NOTE: '+state._note);
+  return lines.join('\n');
+}
+document.getElementById('copy').onclick=function(){
+  var text=summary(),out=document.getElementById('out');
+  out.textContent=text;out.style.display='block';
+  function done(){var ok=document.getElementById('ok');ok.style.display='inline';setTimeout(function(){ok.style.display='none';},2000);}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,function(){});}
+  else{var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(ta);}
+  out.scrollIntoView({behavior:'smooth',block:'center'});
+};
+</script>
+</body>
+</html>
