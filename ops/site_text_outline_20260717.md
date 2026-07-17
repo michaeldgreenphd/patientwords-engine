@@ -457,7 +457,7 @@ Limitations
 This project measures one narrow thing: how the probability of a single next word changes when clinical wording is replaced by patient wording. That is a probe of model behavior, not a clinical outcome. A lower probability for “antacid” isn’t a measure of harm; it’s a sign the model treats the two phrasings differently.
 
 <!-- id: methods.b050 -->
-- One small model carries the circuit evidence. Every graph here comes from gemma-2-2b, chosen because its transcoders are public. The behavioral checks on the other seven models measure next-word probabilities only, no circuits. None of this shows how larger systems behave. The one medically tuned model measured, medgemma-4b-it (4B parameters, next-word behavior only), still shows a below-zero penalty: −3.4 pp, 95% CI [−6.9, −0.2], on 119 phrases. That reading is exploratory; the model is a post-registration addition, and its interval crosses zero under the stricter simultaneous correction.
+- One small model carries the circuit evidence. Every graph here comes from gemma-2-2b, chosen because its transcoders are public. The behavioral checks on the other seven models measure next-word probabilities only, no circuits. None of this shows how larger systems behave. The one medically tuned model measured, medgemma-4b-it (4B parameters, next-word behavior only), still shows a below-zero penalty: −3.9 pp, 95% CI [−5.9, −2.0], on 337 phrases. That reading is exploratory; the model is a post-registration addition, and its interval stays below zero even under the stricter simultaneous correction ([−6.7, −1.3]).
 
 <!-- id: methods.b051 -->
 - Attribution graphs are an interpretive tool. They reconstruct the model’s computation through features and prune heavily; error nodes absorb what’s missed.
