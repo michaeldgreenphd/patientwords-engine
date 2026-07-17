@@ -34,6 +34,8 @@
   .rectag{color:var(--clinical);font-weight:700}
   textarea{width:100%;border:1px solid var(--hairline);background:#fff;font-family:var(--serif);
     font-size:14px;padding:10px;min-height:60px;border-radius:3px}
+  #summary{font-family:var(--mono);font-size:12.5px;line-height:1.7;min-height:210px;
+    border:1.5px solid var(--clinical);background:#fff;color:var(--ink)}
   h2.sec{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
   .bar{position:fixed;bottom:0;left:0;right:0;background:var(--paper);
     border-top:1px solid var(--ink);padding:10px 14px calc(10px + env(safe-area-inset-bottom));}
@@ -133,52 +135,60 @@ e.g. <b>POPULATION-DEF: B, BATCH-13: discard</b>. The recommended option is mark
   </div>
 </div>
 
-<h2 class="sec">Anything else</h2>
-<textarea id="note" placeholder="optional note for Claude"></textarea>
-
-<div id="out" aria-live="polite"></div>
+<h2 class="sec">Your decisions — edit or copy this box</h2>
+<p class="hint">This box already holds the <span class="rectag">recommended</span> pick for each. Tapping
+a button above updates the matching line; you can also just type in the box directly. Then
+select all &amp; copy (or tap Copy below) and send it back. Sending it unchanged accepts all
+the recommendations.</p>
+<textarea id="summary" spellcheck="false" aria-label="Your decisions to copy and send back">DECISIONS 2026-07-17
+POPULATION-DEF: B — exclude supplementary
+DECK-POPULATION: match POPULATION-DEF
+MEDGEMMA: update n on republish
+BATCH-13: discard
+SCALE-FRAMING: draft when numbers land
+SKEPTIC: I'll phrase myself
+NOTE: </textarea>
 
 <div class="bar"><div class="bar-inner">
-  <span class="n" id="count">0 / 6</span>
+  <span class="n" id="count">0 tapped</span>
   <button id="copy" type="button">Copy decisions</button>
   <span class="ok" id="ok">copied</span>
 </div></div>
 
 <script>
-// Progressive enhancement only: the six decisions above are static HTML and
-// readable with scripting disabled. This adds tap-to-select, persistence, and copy.
+// Progressive enhancement only. The six decisions AND the pre-filled summary box
+// below are static HTML: fully visible, editable, and copyable with scripting
+// disabled. This just syncs a tapped option into the matching summary line and
+// wires the Copy button.
 (function(){
-  var KEYS=["POPULATION-DEF","DECK-POPULATION","MEDGEMMA","BATCH-13","SCALE-FRAMING","SKEPTIC"];
-  var state={}; try{state=JSON.parse(localStorage.getItem('dec-0717')||'{}');}catch(e){}
-  function save(){try{localStorage.setItem('dec-0717',JSON.stringify(state));}catch(e){}
-    var done=KEYS.filter(function(k){return state[k];}).length;
-    var c=document.getElementById('count'); if(c)c.textContent=done+' / '+KEYS.length;}
-  var opts=document.querySelectorAll('.opt');
-  Array.prototype.forEach.call(opts,function(b){
-    var key=b.getAttribute('data-key'), val=b.getAttribute('data-val');
-    if(state[key]===val)b.setAttribute('aria-pressed','true');
+  var tapped={};
+  function setLine(key,val){
+    var ta=document.getElementById('summary'); if(!ta)return;
+    var lines=ta.value.split('\n'), hit=false;
+    for(var i=0;i<lines.length;i++){ if(lines[i].indexOf(key+':')===0){lines[i]=key+': '+val;hit=true;break;} }
+    if(!hit)lines.push(key+': '+val);
+    ta.value=lines.join('\n');
+  }
+  function count(){var c=document.getElementById('count'); if(c)c.textContent=Object.keys(tapped).length+' tapped';}
+  Array.prototype.forEach.call(document.querySelectorAll('.opt'),function(b){
     b.addEventListener('click',function(){
-      state[key]=val;save();
+      var key=b.getAttribute('data-key'), val=(b.getAttribute('data-val')||'').replace(' (rec)','');
+      tapped[key]=val;
       Array.prototype.forEach.call(document.querySelectorAll('.opt[data-key="'+key+'"]'),function(x){
         x.setAttribute('aria-pressed', x===b?'true':'false');});
+      setLine(key,val); count();
     });
   });
-  var note=document.getElementById('note');
-  if(note){note.value=state._note||'';note.addEventListener('input',function(e){state._note=e.target.value;save();});}
-  save();
-  function summary(){
-    var lines=['DECISIONS 2026-07-17'];
-    KEYS.forEach(function(k){lines.push(k+': '+(state[k]||'(no answer)'));});
-    if(state._note)lines.push('NOTE: '+state._note);
-    return lines.join('\n');
-  }
   var copy=document.getElementById('copy');
   if(copy)copy.addEventListener('click',function(){
-    var text=summary(),out=document.getElementById('out');
-    if(out){out.textContent=text;out.style.display='block';out.scrollIntoView({behavior:'smooth',block:'center'});}
-    function done(){var ok=document.getElementById('ok');if(ok){ok.style.display='inline';setTimeout(function(){ok.style.display='none';},2000);}}
-    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,function(){});}
-    else{try{var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);done();}catch(e){}}
+    var ta=document.getElementById('summary'); if(!ta)return;
+    ta.focus(); ta.select();
+    var ok=document.getElementById('ok');
+    function shown(){if(ok){ok.style.display='inline';setTimeout(function(){ok.style.display='none';},2000);}}
+    try{
+      if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(ta.value).then(shown,function(){});}
+      else{document.execCommand('copy');shown();}
+    }catch(e){/* the box stays selected for a manual copy */}
   });
 })();
 </script>
