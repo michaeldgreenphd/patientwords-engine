@@ -16,16 +16,16 @@ Site navigation and footers are excluded; the provenance & acknowledgments foote
 > ⚑ meta description: Attribution-graph comparisons of clinical vs. colloquial patient language in gemma-2-2b, built on Neuronpedia and circuit-tracer.
 
 <!-- id: index.b001 -->
-Research bulletin · mechanistic interpretability of medical language · gemma-2-2b
+*dateline:* Research bulletin · mechanistic interpretability of medical language · gemma-2-2b
 
 <!-- id: index.b002 -->
 ## Patients don’t speak like doctors. Small open models change their next-word predictions when the wording does.
 
 <!-- id: index.b003 -->
-We trace how gemma-2-2b reads clinical terms versus the everyday words patients use. Wording can change the model's top next word in addition to its confidence, and rewriting the sentence in clinical terms restores it in 8 of the 20 hardest cases. Try the live case below.
+*subtitle:* We trace how gemma-2-2b reads clinical terms versus the everyday words patients use. Wording can change the model's top next word in addition to its confidence, and rewriting the sentence in clinical terms restores it in 8 of the 20 hardest cases. Try the live case below.
 
 <!-- id: index.b004 -->
-Every figure is a live render: columns are the prompt’s words in order; height is depth in the model; the predicted next word sits at the top. Nodes (the dots) are features — size is contribution, color is category. Curves are paths of influence; the spread at the top shows the competing next-word continuations ranked by probability. Hover any node for its identity and mass.
+*subtitle:* Every figure is a live render: columns are the prompt’s words in order; height is depth in the model; the predicted next word sits at the top. Nodes (the dots) are features — size is contribution, color is category. Curves are paths of influence; the spread at the top shows the competing next-word continuations ranked by probability. Hover any node for its identity and mass.
 
 <!-- id: index.b005 -->
 “When the dust kicks up my asthma flares, so at work I keep a spare ___”
@@ -112,7 +112,7 @@ traced model: gemma-2-2b · gemma scope transcoders simulated data · generating
 ## Safety view — urgency of the predicted actiontiers owner-reviewed v1 · domain review pending
 
 <!-- id: index.b033 -->
-Not every flip is equal: the model hedges (top answer holds, loses probability) or redirects; a redirect down the care ladder is a downgrade. Definitions and the five-tier ladder live in methods step 4. These are next-word probabilities in small open models on LLM-written test sentences, not clinical outcomes; scope and caveats are on the methods page.
+*subtitle:* Not every flip is equal: the model hedges (top answer holds, loses probability) or redirects; a redirect down the care ladder is a downgrade. Definitions and the five-tier ladder live in methods step 4. These are next-word probabilities in small open models on LLM-written test sentences, not clinical outcomes; scope and caveats are on the methods page.
 
 <!-- id: index.b034 -->
 when a wording change moves the top answer across care tiers, the move is mostly down · red arrows: answers landing on a lower tier · grey: a higher one · phrase-deduped counts per model · LLM-authored stimuli
@@ -139,13 +139,16 @@ preview: observed-token flips and biggest probability gaps first · full dataset
 ## Model evaluations
 
 <!-- id: index.b042 -->
-One set of AIs writes the test, another takes it, and translating patient words into clinician language loses information. The full audit lives on the methods page; the measured models compare on the Technical page.
+*subtitle:* One set of AIs writes the test, another takes it, and translating patient words into clinician language loses information. The full audit lives on the methods page; the measured models compare on the Technical page.
 
 <!-- id: index.b043 -->
 Figs. 1–4, the simulated scenarios, and the phrase-dataset measurements are live gemma-2-2b traces.
 
 <!-- id: index.b044 -->
 SIMULATED DATA: the sentence pairs measured across this site are written by an LLM and checked automatically. The scenarios are simulated; the testing is real. The phrase dataset is the exception: hand-built from real patient language and measured by hand.
+
+<!-- id: index.b045 -->
+*footer (provenance):* Built with the patientwords-engine pipeline on Neuronpedia · attribution graphs by circuit-tracer · features from Gemma Scope transcoders set in Iowan Old Style & ui-monospace · every number on this page traces to a data file in this repository · how the pipeline works
 
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
@@ -154,13 +157,13 @@ SIMULATED DATA: the sentence pairs measured across this site are written by an L
 > ⚑ meta description: A plain-language introduction: doctors interpret many ways of saying the same thing; a language model can answer each one differently. What we trace and measure.
 
 <!-- id: start-here.b001 -->
-Start here · the whole idea in five minutes
+*dateline:* Start here · the whole idea in five minutes
 
 <!-- id: start-here.b002 -->
 ## People say the same thing many ways. What does a machine "hear"?
 
 <!-- id: start-here.b003 -->
-What happens inside a language model when the same medical question is asked in patient words instead of clinical words.
+*subtitle:* What happens inside a language model when the same medical question is asked in patient words instead of clinical words.
 
 <!-- id: start-here.b004 -->
 1 · A doctor converges
@@ -297,6 +300,9 @@ A layer-by-layer readout shows where the answer is lost: some answers form and d
 <!-- id: start-here.b048 -->
 SIMULATED DATA: the sentence pairs measured across this site are written by an LLM and checked automatically. The scenarios are simulated; the testing is real. The phrase dataset is the exception: hand-built from real patient language and measured by hand.
 
+<!-- id: start-here.b049 -->
+*footer (provenance):* Built with the patientwords-engine pipeline on Neuronpedia · attribution graphs by circuit-tracer · features from Gemma Scope transcoders set in Iowan Old Style & ui-monospace · every number on this page traces to a data file in this repository
+
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
 # Methods — PatientWords — `methods.html`
@@ -304,13 +310,13 @@ SIMULATED DATA: the sentence pairs measured across this site are written by an L
 > ⚑ meta description: How PatientWords works: gemma-2-2b with Gemma Scope transcoders, circuit-tracer attribution graphs via Neuronpedia, feature tagging, and the comparison engines.
 
 <!-- id: methods.b001 -->
-Methods · how the pipeline works
+*dateline:* Methods · how the pipeline works
 
 <!-- id: methods.b002 -->
 ## From a sentence to a circuit, in six steps.
 
 <!-- id: methods.b003 -->
-Every figure starts as two (or four) plain sentences, one in clinician wording and one in patient wording, and ends as an interactive map of the computation gemma-2-2b performs on it.
+*subtitle:* Every figure starts as two (or four) plain sentences, one in clinician wording and one in patient wording, and ends as an interactive map of the computation gemma-2-2b performs on it.
 
 <!-- id: methods.b004 -->
 Step 1 · Model & features
@@ -474,6 +480,9 @@ Nothing here is medical advice, and no part of this pipeline is a deployed clini
 <!-- id: methods.b057 -->
 Two kinds of provenance appear in the gallery. Figs. 1–4 and the simulated scenarios use prompts written by an LLM and checked automatically: the scenarios are simulated, but the testing is real. The phrase dataset is the other kind: hand-built from real patient language and measured by hand.
 
+<!-- id: methods.b058 -->
+*footer (provenance):* Built with the patientwords-engine pipeline on Neuronpedia · attribution graphs by circuit-tracer · features from Gemma Scope transcoders set in Iowan Old Style & ui-monospace · every number on this page traces to a data file in this repository
+
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
 # Technical · PatientWords: watching answers form, layer by layer — `technical/index.html`
@@ -481,13 +490,13 @@ Two kinds of provenance appear in the gallery. Figs. 1–4 and the simulated sce
 > ⚑ meta description: The Jacobian lens in plain language, what it lets us ask about how a language model fails on patient phrasing, and a data dive: formation depth, capture versus hijack, and where each repair applies.
 
 <!-- id: technical.b001 -->
-Technical · the Jacobian lens · exploratory depth analytics
+*dateline:* Technical · the Jacobian lens · exploratory depth analytics
 
 <!-- id: technical.b002 -->
 ## Watching an answer form, layer by layer.
 
 <!-- id: technical.b003 -->
-A new instrument reads the model's forming answer at every depth. This page explains it, shows what it lets us ask, and opens the first data.
+*subtitle:* A new instrument reads the model's forming answer at every depth. This page explains it, shows what it lets us ask, and opens the first data.
 
 <!-- id: technical.b004 -->
 Part 1 · The instrument, in plain language
@@ -684,6 +693,9 @@ Method credit pending data load.
 <!-- id: technical.b068 -->
 Everything in the lens sections (Parts 1 to 3) is exploratory: the pairs are the ones with landed lens readouts, not a designed sample, and all of it predates the second amendment (adopted July 14), which pre-registers the confirmatory depth endpoints on batches generated after adoption. Part 4's cross-model statistics are interim numbers from the exploration split; the pre-registered confirmatory holdout is withheld from this site's data files until the registered endpoint runs. Ranks are within the lens's top-8 readout; "never formed" means never entered that readable window for two consecutive layers (one-layer blips do not count, rule adopted July 14).
 
+<!-- id: technical.b069 -->
+*footer (provenance):* Built with the patientwords-engine pipeline on Neuronpedia · attribution graphs by circuit-tracer · features from Gemma Scope transcoders set in Iowan Old Style & ui-monospace · every number on this page traces to a data file in this repository
+
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
 # Simulated scenarios — PatientWords — `simulated-scenarios/index.html`
@@ -691,13 +703,13 @@ Everything in the lens sections (Parts 1 to 3) is exploratory: the pairs are the
 > ⚑ meta description: Claude-generated patient-vs-clinical stress scenarios, programmatically validated and traced live on gemma-2-2b, kept apart from the hand-measured dataset.
 
 <!-- id: simulated-scenarios.b001 -->
-Simulated series · generated stress pairs · live renders · simulated data
+*dateline:* Simulated series · generated stress pairs · live renders · simulated data
 
 <!-- id: simulated-scenarios.b002 -->
 ## Simulated scenarios
 
 <!-- id: simulated-scenarios.b003 -->
-Stress scenarios authored by an LLM, validated, traced live on gemma-2-2b, and kept apart from the hand-measured set.
+*subtitle:* Stress scenarios authored by an LLM, validated, traced live on gemma-2-2b, and kept apart from the hand-measured set.
 
 <!-- id: simulated-scenarios.b004 -->
 *fold:* View generation methodology
@@ -732,6 +744,9 @@ click a Sim number to jump to its full trace · glyph: ● clinical → ○ pati
 <!-- id: simulated-scenarios.b014 -->
 SIMULATED DATA · these phrasings were written by an LLM (see the strip above) and passed the generator's automatic validators; they are not statements from patients and contain no real personal or clinical data. The traces are live gemma-2-2b runs via the Neuronpedia circuit tracer.
 
+<!-- id: simulated-scenarios.b015 -->
+*footer (provenance):* Built with the patientwords-engine pipeline on Neuronpedia · attribution graphs by circuit-tracer · features from Gemma Scope transcoders set in Iowan Old Style & ui-monospace · every number on this page traces to a data file in this repository · how the pipeline works
+
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
 # Wording differences — PatientWords — `wording-differences/index.html`
@@ -739,13 +754,13 @@ SIMULATED DATA · these phrasings were written by an LLM (see the strip above) a
 > ⚑ meta description: Two experiments on gemma-2-2b: swap a single word (clinical term vs. patient idiom), or hold the words and change only the grammar. Both move the next-word prediction.
 
 <!-- id: wording-differences.b001 -->
-Figs. 1–2 · one-word swap + grammar × lexicon · live renders · simulated scenarios
+*dateline:* Figs. 1–2 · one-word swap + grammar × lexicon · live renders · simulated scenarios
 
 <!-- id: wording-differences.b002 -->
 ## Wording differences
 
 <!-- id: wording-differences.b003 -->
-Swap one word, or only the grammar around it; either moves the prediction.
+*subtitle:* Swap one word, or only the grammar around it; either moves the prediction.
 
 <!-- id: wording-differences.b004 -->
 ## Swap the word · Fig. 1
@@ -801,6 +816,9 @@ Variety shift, patient column · C → D · Δ +10%
 <!-- id: wording-differences.b021 -->
 SIMULATED DATA · the phrasings here (scenario 85 and the four palpitations cells) were written by an LLM and passed the engine's automatic validators; they are not patient statements and contain no real personal or clinical data. The trace itself is a live gemma-2-2b run via the Neuronpedia circuit tracer.
 
+<!-- id: wording-differences.b022 -->
+*footer (provenance):* Built with the patientwords-engine pipeline on Neuronpedia · attribution graphs by circuit-tracer · features from Gemma Scope transcoders set in Iowan Old Style & ui-monospace · every number on this page traces to a data file in this repository
+
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
 # Dialect differences — PatientWords — `dialect-differences/index.html`
@@ -808,13 +826,13 @@ SIMULATED DATA · the phrasings here (scenario 85 and the four palpitations cell
 > ⚑ meta description: Clinical terms held fixed while each sentence is re-traced across dialect and register framings in gemma-2-2b; a minority of framings move the model's top prediction.
 
 <!-- id: dialect-differences.b001 -->
-Fig. 3 · dialect & register sweep · live render · traced July 16 and 17, 2026
+*dateline:* Fig. 3 · dialect & register sweep · live render · traced July 16 and 17, 2026
 
 <!-- id: dialect-differences.b002 -->
 ## Dialect differences
 
 <!-- id: dialect-differences.b003 -->
-The clinical term held fixed while the surrounding sentence shifts across eight LLM-approximated dialect and register framings per term.
+*subtitle:* The clinical term held fixed while the surrounding sentence shifts across eight LLM-approximated dialect and register framings per term.
 
 <!-- id: dialect-differences.b004 -->
 The clinical term stays fixed while the sentence around it is re-traced across dialect and register variants, so any shift comes from framing. The framings are Claude-written approximations: each column label is the instruction given to the generating model, not a recording of how any community speaks, and no speaker of any variety reviewed them. The sweep below holds a set of clinical terms fixed, one per row, and re-traces each across several framings; the matrix reports the exact counts. A minority of framings move the top word.
@@ -861,6 +879,9 @@ Wording style alone moves the target less than swapping the term. In the ladder 
 <!-- id: dialect-differences.b018 -->
 The graphs above are live gemma-2-2b traces. The dialect framings were written by an LLM to hold the clinical term fixed while changing the surrounding words. Treat them as probes: an LLM’s version of a dialect is an approximation and may miss how a community actually speaks.
 
+<!-- id: dialect-differences.b019 -->
+*footer (provenance):* Built with the patientwords-engine pipeline on Neuronpedia · attribution graphs by circuit-tracer · features from Gemma Scope transcoders set in Iowan Old Style & ui-monospace · every number on this page traces to a data file in this repository
+
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
 # Translation — PatientWords — `translation/index.html`
@@ -868,13 +889,13 @@ The graphs above are live gemma-2-2b traces. The dialect framings were written b
 > ⚑ meta description: An LLM translates the patient sentence into standard terminology and the raw output is traced natively. On the reviewed hardest set, translation restores the clinical continuation in 8 of 20 cases; a placebo paraphrase recovers a quarter of the probability. Live gemma-2-2b traces.
 
 <!-- id: translation.b001 -->
-Fig. 4 · translation recovery · live trace · traced July 7, 2026 · re-traced July 9, 2026
+*dateline:* Fig. 4 · translation recovery · live trace · traced July 7, 2026 · re-traced July 9, 2026
 
 <!-- id: translation.b002 -->
 ## Translation
 
 <!-- id: translation.b003 -->
-Translating the patient sentence back into clinical terms restores the prediction in 8 of the 20 hardest cases.
+*subtitle:* Translating the patient sentence back into clinical terms restores the prediction in 8 of the 20 hardest cases.
 
 <!-- id: translation.b004 -->
 The mitigation: an LLM rewrites the patient sentence in standard terms, and that rewrite is traced directly. In the cases translation fixes, the clinical features reappear and the target probability recovers; in 7 of the 20 it changes nothing, and 3 rewrites made the prediction worse.
@@ -930,6 +951,9 @@ The traces here are live gemma-2-2b runs.
 <!-- id: translation.b021 -->
 SIMULATED DATA: the sentence pairs measured across this site are written by an LLM and checked automatically. The scenarios are simulated; the testing is real. The phrase dataset is the exception: hand-built from real patient language and measured by hand.
 
+<!-- id: translation.b022 -->
+*footer (provenance):* Built with the patientwords-engine pipeline on Neuronpedia · attribution graphs by circuit-tracer · features from Gemma Scope transcoders set in Iowan Old Style & ui-monospace · every number on this page traces to a data file in this repository
+
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*
 
 # Phrase dataset — PatientWords — `phrase-dataset/index.html`
@@ -937,13 +961,13 @@ SIMULATED DATA: the sentence pairs measured across this site are written by an L
 > ⚑ meta description: The hand-built, hand-measured clinical/patient sentence pairs: observed next tokens, probabilities, and links to their Neuronpedia circuit traces.
 
 <!-- id: phrase-dataset.b001 -->
-Hand-measured · the study's ground truth (will be updated with patient language)
+*dateline:* Hand-measured · the study's ground truth (will be updated with patient language)
 
 <!-- id: phrase-dataset.b002 -->
 ## Phrase dataset
 
 <!-- id: phrase-dataset.b003 -->
-Every hand-built sentence pair.
+*subtitle:* Every hand-built sentence pair.
 
 <!-- id: phrase-dataset.b004 -->
 Each pair was built by hand and measured on gemma-2-2b via the Neuronpedia circuit tracer; the table records the observed next token, its probability, and, where captured, a link to the live trace. The simulated scenarios extend this set by machine.
@@ -962,5 +986,8 @@ Next-token probabilities as observed at measurement time.
 
 <!-- id: phrase-dataset.b009 -->
 prompts shown verbatim, including intentional misspellings
+
+<!-- id: phrase-dataset.b010 -->
+*footer (provenance):* Built with the patientwords-engine pipeline on Neuronpedia · attribution graphs by circuit-tracer · features from Gemma Scope transcoders set in Iowan Old Style & ui-monospace · every number on this page traces to a data file in this repository · how the pipeline works
 
 *Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*

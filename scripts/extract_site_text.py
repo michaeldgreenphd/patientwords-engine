@@ -6,9 +6,11 @@ h1/h2/h3/p/li/summary/figcaption element's text in document order. Extraction is
 strict: HTML entity unescaping and whitespace collapsing are the only transformations.
 Nothing is reworded, corrected, or summarized - the intentional misspellings in the
 stimuli must survive byte-for-byte. <script>/<style> content is skipped entirely, and
-so are <nav> and <footer> subtrees (the footer provenance content is protected on the
-site and is not up for editing). Text that page JS builds at runtime from the data
-files cannot be extracted statically; each page section carries one note saying so.
+so is the <nav> chrome. The page <footer> (provenance & acknowledgments) IS captured
+now, labeled ``*footer (provenance):*``, along with role labels for datelines,
+subtitles, and endnote footnotes (owner request 2026-07-17). Text that page JS builds
+at runtime from the data files cannot be extracted statically; each page section
+carries one note saying so.
 
 Every emitted block is preceded by a deterministic HTML comment id
 (<!-- id: <pageslug>.bNNN -->, a zero-padded per-page counter) so an edited Rmd can
@@ -45,10 +47,11 @@ PAGES = [
     "phrase-dataset/index.html",
 ]
 
-CAPTURE_TAGS = {"h1", "h2", "h3", "p", "li", "summary", "figcaption"}
-# Subtrees skipped wholesale: script/style are code, nav is chrome, footer is
-# the protected provenance & acknowledgments content.
-EXCLUDE_TAGS = {"script", "style", "nav", "footer"}
+CAPTURE_TAGS = {"h1", "h2", "h3", "p", "li", "summary", "figcaption", "footer"}
+# Subtrees skipped wholesale: script/style are code, nav is chrome. The footer
+# (provenance & acknowledgments) is now captured and labeled rather than
+# excluded (owner request 2026-07-17: include footnotes/titles/subtitles).
+EXCLUDE_TAGS = {"script", "style", "nav"}
 VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input",
              "link", "meta", "param", "source", "track", "wbr"}
 # Tag boundaries that imply visual separation. A space is injected at each so text
@@ -77,7 +80,22 @@ INSTRUCTIONS = "\n".join([
 PAGE_NOTE = "*Not extracted: text this page's JS generates at runtime from data files (tables, counts, chart labels).*"
 
 PREFIXES = {"h1": "## ", "h2": "## ", "h3": "### ", "p": "",
-            "li": "- ", "summary": "*fold:* ", "figcaption": "*caption:* "}
+            "li": "- ", "summary": "*fold:* ", "figcaption": "*caption:* ",
+            "footer": "*footer (provenance):* "}
+
+# Class-tagged blocks carry a role label so datelines, subtitles, and endnote
+# footnotes are identifiable in the outline (owner request 2026-07-17).
+CLASS_ROLE = {"dateline": "*dateline:* ", "lede": "*subtitle:* ",
+              "subtitle": "*subtitle:* ", "endnote": "*endnote:* "}
+
+
+def block_prefix(tag, cls):
+    """Role label for a block: a class-based role (dateline/subtitle/endnote) wins,
+    else the tag's default prefix."""
+    for token in cls.split():
+        if token in CLASS_ROLE:
+            return CLASS_ROLE[token]
+    return PREFIXES[tag]
 
 
 def collapse(text):
@@ -105,17 +123,18 @@ class PageTextParser(HTMLParser):
         self._exclude_depth = 0
         self._block_tag = None
         self._block_depth = 0
+        self._block_cls = ""
         self._buf = []
 
-    def _open(self, tag):
-        self._block_tag, self._block_depth, self._buf = tag, 0, []
+    def _open(self, tag, cls=""):
+        self._block_tag, self._block_depth, self._buf, self._block_cls = tag, 0, [], cls
 
     def _flush(self):
         if self._block_tag is not None:
             text = collapse("".join(self._buf))
             if text:  # elements empty after normalization are skipped
-                self.blocks.append((self._block_tag, text))
-        self._block_tag, self._block_depth, self._buf = None, 0, []
+                self.blocks.append((self._block_tag, text, self._block_cls))
+        self._block_tag, self._block_depth, self._buf, self._block_cls = None, 0, [], ""
 
     def handle_starttag(self, tag, attrs):
         if tag == "meta":
@@ -142,14 +161,14 @@ class PageTextParser(HTMLParser):
             if tag == self._block_tag and tag not in VOID_TAGS:
                 if tag == "p":  # HTML forbids nested <p>: a new one implicitly closes the old
                     self._flush()
-                    self._open(tag)
+                    self._open(tag, dict(attrs).get("class", ""))
                     return
                 self._block_depth += 1  # e.g. an <li> nested via an inner list
             if tag in BREAK_TAGS:
                 self._buf.append(" ")
             return
         if tag in CAPTURE_TAGS:
-            self._open(tag)
+            self._open(tag, dict(attrs).get("class", ""))
 
     def handle_endtag(self, tag):
         if tag == "title":
@@ -209,8 +228,8 @@ def render_page(rel_path, parsed):
     lines = [f"# {parsed.title or slug} — `{rel_path}`", ""]
     if parsed.meta_description:
         lines += [f"> ⚑ meta description: {parsed.meta_description}", ""]
-    for number, (tag, text) in enumerate(parsed.blocks, start=1):
-        lines += [f"<!-- id: {slug}.b{number:03d} -->", PREFIXES[tag] + text, ""]
+    for number, (tag, text, cls) in enumerate(parsed.blocks, start=1):
+        lines += [f"<!-- id: {slug}.b{number:03d} -->", block_prefix(tag, cls) + text, ""]
     lines += [PAGE_NOTE, ""]
     return "\n".join(lines)
 
