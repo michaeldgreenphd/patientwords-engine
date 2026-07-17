@@ -144,7 +144,7 @@
   },
   {
    "page": "wording-differences/index.html",
-   "snippet": "\u221265% probability (0.69 \u2192 0.04)",
+   "snippet": "−65% probability (0.69 → 0.04)",
    "source": "data/simulated_scenarios.json",
    "expr": "[round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_clinical'],2), round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_patient'],2)]",
    "expected": [
@@ -178,24 +178,24 @@
   },
   {
    "page": "methods.html",
-   "snippet": "[\u22126.9, \u22120.2], on 119 phrases",
+   "snippet": "[−5.9, −2.0], on 337 phrases",
    "source": "data/model_stats.json",
    "expr": "[round(d['per_model']['medgemma-4b-it']['penalty']['mean']*100,1), round(d['per_model']['medgemma-4b-it']['penalty']['ci95'][0]*100,1), round(d['per_model']['medgemma-4b-it']['penalty']['ci95'][1]*100,1), d['per_model']['medgemma-4b-it']['penalty']['n_phrases']]",
    "expected": [
-    -3.4,
-    -6.9,
-    -0.2,
-    119
+    -3.9,
+    -5.9,
+    -2.0,
+    337
    ],
-   "_": "medgemma sentence given n, CI, exploratory qualifier 2026-07-14 (owner decision, referee item 6)"
+   "_": "medgemma sentence n/CI; refreshed 2026-07-17 (Audit 2 F2-M01/MEDGEMMA, backfill n 119->337, owner republish)"
   },
   {
    "page": "methods.html",
-   "snippet": "crosses zero under the stricter simultaneous correction",
+   "snippet": "stays below zero even under the stricter simultaneous correction",
    "source": "data/model_stats.json",
-   "expr": "d['per_model']['medgemma-4b-it']['penalty']['ci95_simultaneous'][1] >= 0",
+   "expr": "d['per_model']['medgemma-4b-it']['penalty']['ci95_simultaneous'][1] < 0",
    "expected": true,
-   "_": "if the simultaneous interval tightens below zero on more data, this sentence overstates the caveat and needs a rewrite"
+   "_": "medgemma simultaneous interval now below zero on more data (2026-07-17); sentence states it stays below zero"
   },
   {
    "page": "technical/index.html",
@@ -229,7 +229,7 @@
   },
   {
    "page": "index.html",
-   "snippet": "0.45 after translation (clinical baseline 0.26) \u00b7 July 7 trace",
+   "snippet": "0.45 after translation (clinical baseline 0.26) · July 7 trace",
    "source": "data/provenance.json",
    "expr": "round(d['translation_cases']['grandma_laxative']['translated'][1],2)",
    "expected": 0.45
