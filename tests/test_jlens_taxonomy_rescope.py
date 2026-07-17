@@ -196,6 +196,6 @@ def test_insights_census_skips_txcorpus_lens_dirs(tmp_path):
     mk("pairs_20260711T051145Z_txopus")
     mk("pairs_20260711T051145Z_txplacebo")
     mk("urgency_downgrades_20260707T1__context")
-    per = ji.collect(troot)
+    per, _ = ji.collect(troot)
     stems = {r["dataset"] for rows in per.values() for r in rows}
     assert stems == {"pairs_20260711T000000Z"}

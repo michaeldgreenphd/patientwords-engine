@@ -13,8 +13,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections import defaultdict
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from tierb_split import (  # noqa: E402  (script-style module)
+    accepted_prompt_map, is_holdout, is_tierb_batch, tierb_start_stamp)
 
 CREDIT = ("Jacobian lens: Gurnee et al., Transformer Circuits (2026); hosted by "
           "Neuronpedia. Readout = per-layer top-8 of the forming next-token "
@@ -53,8 +58,16 @@ def lock_in_layer(layers):
 
 
 def collect(trace_root: Path):
-    """{model: [pair rows]} across every landed lens summary."""
+    """{model: [pair rows]}, holdout_excluded across every landed lens summary.
+
+    Amendment 1/3: confirmatory-holdout pairs never enter interim analyses or
+    public data files. Sealed on the ACCEPTED batch prompt (probe-extended
+    trace prompts hash differently), and on the trace-time prompt as a backstop.
+    """
     per_model = defaultdict(list)
+    start = tierb_start_stamp()
+    accept = accepted_prompt_map()
+    holdout_excluded = 0
     for part in sorted(trace_root.glob("*__jlens_*/jlens_summary.part_*.json")):
         dataset = part.parent.name.split("__jlens_")[0]
         if (dataset.startswith("txcorpus_")
@@ -82,6 +95,11 @@ def collect(trace_root: Path):
             clin, pat = depth.get("clinical") or [], depth.get("patient") or []
             if not clin or not pat:
                 continue
+            if is_tierb_batch(dataset, start) and (
+                    is_holdout(accept.get((dataset, r.get("index"))))
+                    or is_holdout((r.get("prompts") or {}).get("clinical"))):
+                holdout_excluded += 1
+                continue
             row = {
                 "dataset": dataset,
                 "index": r.get("index"),
@@ -95,7 +113,7 @@ def collect(trace_root: Path):
                 "clin_ranks": [rec.get("target_rank") for rec in clin],
             }
             per_model[model].append(row)
-    return per_model
+    return per_model, holdout_excluded
 
 
 def classify(row):
@@ -258,7 +276,7 @@ def main():
                         help="site repo root; also writes data/jlens_insights.json there")
     args = parser.parse_args()
 
-    per_model = collect(Path(args.trace_root))
+    per_model, holdout_excluded = collect(Path(args.trace_root))
     if not per_model.get(args.base_model):
         # F-H08 (audit 1, 2026-07-17): a sparse checkout must never overwrite
         # the committed census (ops + site copies) with an empty one.
@@ -266,6 +284,7 @@ def main():
               f"{args.trace_root} - not overwriting outputs")
         return 3
     payload = analyze(per_model, args.base_model, args.it_model, args.exemplars)
+    payload["holdout_excluded"] = holdout_excluded  # Amendment 1/3 seal (sealed rows dropped)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")

@@ -57,6 +57,13 @@ from pathlib import Path
 # else (steered runs, outcome-selected sets, imports, re-traces, sentinels)
 # is sensitivity-only. Mirrors scripts/convergence_tracker.py.
 _OBS_RE = re.compile(r"pairs_\d{8}T\d{6}Z")
+# POPULATION-DEF option B (owner decision 2026-07-17): the outcome-selected
+# supplementary sets (emergency/severity, claude-sonnet-5, 2026-07-13) share the
+# pairs_<STAMP> stem so _OBS_RE cannot tell them from the observational batches.
+# They are excluded from the confirmatory population by explicit stamp and
+# reported as sensitivity-only. Recorded in docs/prereg_divergence_log.md.
+_SUPPLEMENTARY_STAMPS = frozenset({
+    "pairs_20260713T031252Z", "pairs_20260713T135755Z", "pairs_20260713T050937Z"})
 # The four models fixed by docs/preregistration_tierB.md; later additions are
 # exploratory (docs/prereg_divergence_log.md) and get their own BH family.
 _PREREG_MODELS = ("gemma-2-2b", "gemma-3-4b-it", "qwen3-1.7b", "qwen3-4b")
@@ -91,6 +98,12 @@ def load_rows(path):
     if excluded:
         print(f"Amendment 1: excluded {excluded} rows across "
               f"{len(holdout_phrases)} holdout phrases from interim analysis")
+    # POPULATION-DEF option B: drop the outcome-selected supplementary sets.
+    supp = [r for r in kept if r.get("batch") in _SUPPLEMENTARY_STAMPS]
+    if supp:
+        kept = [r for r in kept if r.get("batch") not in _SUPPLEMENTARY_STAMPS]
+        print(f"POPULATION-DEF B: excluded {len(supp)} outcome-selected "
+              f"supplementary rows from the confirmatory population")
     return kept
 
 

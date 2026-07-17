@@ -56,7 +56,7 @@ def test_collect_and_analyze_end_to_end(tmp_path):
     write_summary(root, "setA", "gemma-2-2b-it", [
         result(1, [(None, "x"), (1, "y"), (1, "y")], [(None, "x"), (3, "y"), (3, "y")]),
     ])
-    per_model = collect(root)
+    per_model, _holdout_excluded = collect(root)
     assert len(per_model["gemma-2-2b"]) == 4  # error row filtered
     out = analyze(per_model, "gemma-2-2b", "gemma-2-2b-it", 3)
     assert out["n_pairs"] == 4

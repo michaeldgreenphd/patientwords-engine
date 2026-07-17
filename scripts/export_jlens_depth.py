@@ -29,8 +29,34 @@ No medical vocabulary lives in this file.
 import argparse
 import difflib
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp  # noqa: E402
+
+_TIERB_START = tierb_start_stamp()
+_ACCEPT_CACHE = {}
+
+
+def _sealed(dataset, index):
+    """Amendment 1/3 phrase-keyed holdout seal for every published aggregate:
+    True iff (dataset, index) is a Tier B pair whose ACCEPTED prompt hashes
+    holdout. Applied at every export surface (blocks, translation, steering)."""
+    if not is_tierb_batch(dataset or "", _TIERB_START):
+        return False
+    if dataset not in _ACCEPT_CACHE:
+        fp = Path("data/simulated") / f"{dataset}.json"
+        try:
+            _ACCEPT_CACHE[dataset] = json.loads(fp.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            _ACCEPT_CACHE[dataset] = None
+    pairs = _ACCEPT_CACHE[dataset]
+    idx = index or 0
+    if not pairs or not (0 < idx <= len(pairs)):
+        return False
+    return is_holdout(pairs[idx - 1].get("top_prompt"))
 
 CLASS_LABELS = {"retained": "kept", "suppressed": "lost late", "absent": "never formed"}
 METHOD_CREDIT = ("Jacobian lens: Gurnee et al., Transformer Circuits, 2026; reference "
@@ -44,7 +70,13 @@ INTEGRITY_NOTE = ("The gemma-2-2b-it model id returns lens readouts identical to
 
 def load_summary(stem, model="gemma-2-2b"):
     path = Path("trace_out") / f"{stem}__jlens_{model}" / "jlens_summary.part_01.json"
-    return json.loads(path.read_text(encoding="utf-8")), str(path)
+    summary = json.loads(path.read_text(encoding="utf-8"))
+    # Amendment 1/3: sealed holdout pairs never enter blocks, counts, examples,
+    # or the translation class join (this reader feeds all of them).
+    if is_tierb_batch(stem, _TIERB_START):
+        summary["results"] = [r for r in summary["results"]
+                              if not _sealed(stem, r.get("index"))]
+    return summary, str(path)
 
 
 def contrast_labels(clinical, patient, width=34):
@@ -138,7 +170,8 @@ def translation_split(stems, rows_path="urgency_shift.json", model="gemma-2-2b")
         classes = {r["index"]: r["patient_depth_class"] for r in summary["results"]}
         best = {}
         for row in bundle.get("rows", []):
-            if row.get("batch") != stem or row.get("model") != model:
+            if (row.get("batch") != stem or row.get("model") != model
+                    or row.get("tierb_split") == "holdout"):  # Amendment 1/3 seal
                 continue
             idx = row.get("index")
             if idx not in classes:
@@ -213,6 +246,8 @@ def steering_split(trace_root=Path("trace_out")):
         except (OSError, json.JSONDecodeError):
             continue
         for r in summary.get("results", []):
+            if _sealed(r.get("dataset"), r.get("spec_index")):
+                continue  # Amendment 1/3: sealed holdout out of the steering aggregate
             key = (r.get("dataset"), r.get("spec_index"))
             e = pairs.setdefault(key, {"class": r.get("class"), "unres": False,
                                        "restored": False, "measured": False})

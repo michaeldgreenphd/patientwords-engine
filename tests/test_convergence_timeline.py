@@ -42,11 +42,15 @@ def test_cumulative_points_grow_and_dedupe():
 
 
 def test_convergence_excludes_holdout_via_caller_contract():
-    # main() filters tierb_split == "holdout" before cumulative_points; tripwire
-    # on the source so the exclusion cannot silently disappear.
+    # main() phrase-keys the holdout exclusion before cumulative_points (a phrase
+    # flagged holdout anywhere is excluded everywhere) and drops the POPULATION-DEF
+    # option-B supplementary sets; tripwire on the source so neither can silently
+    # disappear.
     src = (Path(__file__).resolve().parents[1] / "scripts" / "convergence_tracker.py").read_text(
         encoding="utf-8")
-    assert 'r.get("tierb_split") != "holdout"' in src
+    assert 'tierb_split") == "holdout"' in src        # builds the holdout phrase set
+    assert 'clinical_prompt") not in _held' in src    # phrase-keyed exclusion
+    assert "_supp" in src                             # POPULATION-DEF B supplementary drop
 
 
 def test_timeline_batches_from_sidecars(tmp_path, monkeypatch):

@@ -23,12 +23,22 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections import defaultdict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from tierb_split import holdout_phrases  # noqa: E402  (script-style module)
+
 
 def collect(trace_root: Path):
-    """{(model, clinical, patient): [record, ...]} across every batch summary."""
+    """{(model, clinical, patient): [record, ...]} across every batch summary.
+
+    Amendment 3 (2026-07-14): a Tier B holdout phrase is sealed from every
+    public data file, keyed on the phrase and applied to every re-run stem
+    (repeatability_r*, _txopus/_txplacebo), so it is skipped here.
+    """
+    sealed = holdout_phrases()
     groups = defaultdict(list)
     for part in sorted(trace_root.glob("*/batch_summary*.json")):
         try:
@@ -47,6 +57,8 @@ def collect(trace_root: Path):
             probs = row.get("probabilities") or {}
             if not clin or not pat or probs.get("clinical") is None:
                 continue
+            if clin in sealed:
+                continue  # amendment 3: phrase-keyed holdout seal, all runs
             outputs = row.get("outputs") or {}
             spread = row.get("predictive_spread") or {}
             cmass = row.get("clinical_mass") or {}

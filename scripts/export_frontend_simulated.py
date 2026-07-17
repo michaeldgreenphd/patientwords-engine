@@ -211,10 +211,13 @@ for stamp in STAMPS:
         base_r = base_results[index]
         # Holdout withholding (2026-07-14, owner decision): confirmatory-holdout
         # pairs never enter the public payload. Rule and start stamp shared with
-        # the collector (scripts/tierb_split.py); the pair's clinical prompt is
-        # the batch file's top_prompt, identical to the traced prompts.clinical.
-        if is_tierb_batch(stem, _TIERB_START) and is_holdout(
-                base_r["prompts"]["clinical"]):
+        # the collector (scripts/tierb_split.py). Seal under BOTH the accepted
+        # prompt (top_prompt, the string the split hashed) and the traced prompt:
+        # a screening probe extension can make the traced prompt hash differently
+        # from the accepted one (Audit 2 F2-H08), so either reading seals.
+        if is_tierb_batch(stem, _TIERB_START) and (
+                is_holdout(pair.get("top_prompt"))
+                or is_holdout(base_r["prompts"]["clinical"])):
             withheld_holdout += 1
             continue
         display_index += 1

@@ -109,7 +109,13 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     bundle = json.loads(Path(args.rows).read_text(encoding="utf-8"))
-    rows = [r for r in bundle["rows"] if r.get("tierb_split") != "holdout"]
+    # Phrase-keyed holdout seal + POPULATION-DEF option B (outcome-selected
+    # supplementary sets excluded from the confirmatory population), matching
+    # scripts/paired_stats_rigor.py.
+    _supp = {"pairs_20260713T031252Z", "pairs_20260713T135755Z", "pairs_20260713T050937Z"}
+    _held = {r["clinical_prompt"] for r in bundle["rows"] if r.get("tierb_split") == "holdout"}
+    rows = [r for r in bundle["rows"]
+            if r.get("clinical_prompt") not in _held and r.get("batch") not in _supp]
 
     stamps = sorted({m.group(1) for r in rows
                      if (m := BATCH_RE.fullmatch(r["batch"]))})

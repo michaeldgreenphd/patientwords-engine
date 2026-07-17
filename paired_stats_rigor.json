@@ -2,11 +2,13 @@
  "seed": 7,
  "boot": 5000,
  "models": [
+  "apertus-8b-meditronfo",
   "gemma-2-2b",
   "gemma-2-2b-it",
   "gemma-3-4b-it",
   "llama-3.2-3b",
   "medgemma-4b-it",
+  "meditron3-8b",
   "olmo-2-1b",
   "qwen3-1.7b",
   "qwen3-4b"
@@ -24,43 +26,106 @@
    "qwen3-4b"
   ],
   "post_registration_exploratory": [
+   "apertus-8b-meditronfo",
    "gemma-2-2b-it",
    "llama-3.2-3b",
    "medgemma-4b-it",
+   "meditron3-8b",
    "olmo-2-1b"
   ]
  },
  "per_model": {
+  "apertus-8b-meditronfo": {
+   "registration": "post-registration exploratory",
+   "n_rows": 3,
+   "n_unique_phrases": 3,
+   "pseudoreplication_gap": 0,
+   "penalty": {
+    "n_rows_with_penalty": 3,
+    "n_phrases_with_penalty": 3,
+    "mean": -0.1566,
+    "ci95": [
+     -0.4667,
+     0.0347
+    ],
+    "n_phrases": 3,
+    "ci95_simultaneous": [
+     -0.4667,
+     0.0347
+    ],
+    "ci95_batch_cluster": null,
+    "ci95_topic_cluster": {
+     "n_groups": 3,
+     "ci95": [
+      -0.4667,
+      0.0347
+     ]
+    }
+   },
+   "by_generation_tier": {
+    "tier_a": {
+     "n_phrases": 0,
+     "mean": null
+    },
+    "tier_b": {
+     "n_phrases": 3,
+     "mean": -0.1566
+    }
+   },
+   "near_duplicates": {
+    "threshold": 0.8,
+    "n_phrases": 3,
+    "n_near_duplicate": 0,
+    "rate": 0.0
+   },
+   "flips": {
+    "n_flips": 2,
+    "downgrades": 1,
+    "upgrades": 0,
+    "downgrade_rate": 0.5,
+    "downgrade_rate_ci95": [
+     0.0126,
+     0.9874
+    ],
+    "ci_method": "clopper-pearson"
+   },
+   "sign_test": {
+    "downgrades": 1,
+    "upgrades": 0,
+    "p_raw": 1.0,
+    "p_bh": 1.0
+   }
+  },
   "gemma-2-2b": {
    "registration": "pre-registered",
-   "n_rows": 769,
-   "n_unique_phrases": 760,
-   "pseudoreplication_gap": 9,
+   "n_rows": 1010,
+   "n_unique_phrases": 989,
+   "pseudoreplication_gap": 21,
    "penalty": {
-    "n_rows_with_penalty": 656,
-    "n_phrases_with_penalty": 650,
-    "mean": -0.0336,
+    "n_rows_with_penalty": 852,
+    "n_phrases_with_penalty": 835,
+    "mean": -0.0313,
     "ci95": [
-     -0.0445,
-     -0.0228
+     -0.041,
+     -0.0215
     ],
-    "n_phrases": 650,
+    "n_phrases": 835,
     "ci95_simultaneous": [
-     -0.0495,
-     -0.0185
+     -0.0446,
+     -0.0184
     ],
     "ci95_batch_cluster": {
-     "n_groups": 21,
+     "n_groups": 22,
      "ci95": [
-      -0.0466,
-      -0.0197
+      -0.0422,
+      -0.0211
      ]
     },
     "ci95_topic_cluster": {
-     "n_groups": 234,
+     "n_groups": 259,
      "ci95": [
-      -0.0549,
-      -0.0126
+      -0.0494,
+      -0.0137
      ]
     }
    },
@@ -70,64 +135,64 @@
      "mean": -0.0555
     },
     "tier_b": {
-     "n_phrases": 391,
-     "mean": -0.0191
+     "n_phrases": 576,
+     "mean": -0.0204
     }
    },
    "near_duplicates": {
     "threshold": 0.8,
-    "n_phrases": 760,
-    "n_near_duplicate": 23,
-    "rate": 0.0303
+    "n_phrases": 989,
+    "n_near_duplicate": 46,
+    "rate": 0.0465
    },
    "flips": {
-    "n_flips": 297,
-    "downgrades": 48,
-    "upgrades": 13,
-    "downgrade_rate": 0.1616,
+    "n_flips": 407,
+    "downgrades": 62,
+    "upgrades": 19,
+    "downgrade_rate": 0.1523,
     "downgrade_rate_ci95": [
-     0.1216,
-     0.2085
+     0.1188,
+     0.191
     ],
     "ci_method": "clopper-pearson"
    },
    "sign_test": {
-    "downgrades": 48,
-    "upgrades": 13,
-    "p_raw": 7.665168380445453e-06,
-    "p_bh": 1.0220224507260603e-05
+    "downgrades": 62,
+    "upgrades": 19,
+    "p_raw": 1.7730682926908968e-06,
+    "p_bh": 2.626504557448848e-06
    }
   },
   "gemma-2-2b-it": {
    "registration": "post-registration exploratory",
-   "n_rows": 122,
-   "n_unique_phrases": 122,
+   "n_rows": 298,
+   "n_unique_phrases": 298,
    "pseudoreplication_gap": 0,
    "penalty": {
-    "n_rows_with_penalty": 122,
-    "n_phrases_with_penalty": 122,
-    "mean": -0.0623,
+    "n_rows_with_penalty": 298,
+    "n_phrases_with_penalty": 298,
+    "mean": -0.0442,
     "ci95": [
-     -0.0971,
-     -0.0292
+     -0.0653,
+     -0.0225
     ],
-    "n_phrases": 122,
+    "n_phrases": 298,
     "ci95_simultaneous": [
-     -0.1119,
-     -0.0192
+     -0.0745,
+     -0.0145
     ],
     "ci95_batch_cluster": {
-     "n_groups": 2,
+     "n_groups": 6,
      "ci95": [
-      -0.0853,
-      -0.0617
+      -0.0567,
+      -0.0285
      ]
     },
     "ci95_topic_cluster": {
-     "n_groups": 11,
+     "n_groups": 130,
      "ci95": [
-      -0.1232,
-      0.0029
+      -0.0757,
+      -0.0146
      ]
     }
    },
@@ -137,64 +202,64 @@
      "mean": -0.0617
     },
     "tier_b": {
-     "n_phrases": 3,
-     "mean": -0.0853
+     "n_phrases": 179,
+     "mean": -0.0326
     }
    },
    "near_duplicates": {
     "threshold": 0.8,
-    "n_phrases": 122,
-    "n_near_duplicate": 4,
-    "rate": 0.0328
+    "n_phrases": 298,
+    "n_near_duplicate": 6,
+    "rate": 0.0201
    },
    "flips": {
-    "n_flips": 41,
-    "downgrades": 6,
-    "upgrades": 2,
-    "downgrade_rate": 0.1463,
+    "n_flips": 98,
+    "downgrades": 13,
+    "upgrades": 6,
+    "downgrade_rate": 0.1327,
     "downgrade_rate_ci95": [
-     0.0557,
-     0.2917
+     0.0726,
+     0.2162
     ],
     "ci_method": "clopper-pearson"
    },
    "sign_test": {
-    "downgrades": 6,
-    "upgrades": 2,
-    "p_raw": 0.2890625,
-    "p_bh": 0.2890625
+    "downgrades": 13,
+    "upgrades": 6,
+    "p_raw": 0.1670684814453125,
+    "p_bh": 0.25060272216796875
    }
   },
   "gemma-3-4b-it": {
    "registration": "pre-registered",
-   "n_rows": 686,
-   "n_unique_phrases": 677,
-   "pseudoreplication_gap": 9,
+   "n_rows": 865,
+   "n_unique_phrases": 848,
+   "pseudoreplication_gap": 17,
    "penalty": {
-    "n_rows_with_penalty": 686,
-    "n_phrases_with_penalty": 677,
-    "mean": -0.046,
+    "n_rows_with_penalty": 865,
+    "n_phrases_with_penalty": 848,
+    "mean": -0.0497,
     "ci95": [
-     -0.0659,
-     -0.0268
+     -0.0669,
+     -0.0331
     ],
-    "n_phrases": 677,
+    "n_phrases": 848,
     "ci95_simultaneous": [
-     -0.0728,
-     -0.0199
+     -0.0733,
+     -0.0277
     ],
     "ci95_batch_cluster": {
      "n_groups": 15,
      "ci95": [
-      -0.0708,
-      -0.0243
+      -0.0691,
+      -0.0322
      ]
     },
     "ci95_topic_cluster": {
-     "n_groups": 251,
+     "n_groups": 279,
      "ci95": [
-      -0.0673,
-      -0.0216
+      -0.0674,
+      -0.0303
      ]
     }
    },
@@ -204,64 +269,64 @@
      "mean": -0.0425
     },
     "tier_b": {
-     "n_phrases": 442,
-     "mean": -0.0478
+     "n_phrases": 613,
+     "mean": -0.0525
     }
    },
    "near_duplicates": {
     "threshold": 0.8,
-    "n_phrases": 677,
-    "n_near_duplicate": 27,
-    "rate": 0.0399
+    "n_phrases": 848,
+    "n_near_duplicate": 43,
+    "rate": 0.0507
    },
    "flips": {
-    "n_flips": 324,
-    "downgrades": 41,
-    "upgrades": 8,
-    "downgrade_rate": 0.1265,
+    "n_flips": 418,
+    "downgrades": 49,
+    "upgrades": 12,
+    "downgrade_rate": 0.1172,
     "downgrade_rate_ci95": [
-     0.0924,
-     0.1677
+     0.088,
+     0.152
     ],
     "ci_method": "clopper-pearson"
    },
    "sign_test": {
-    "downgrades": 41,
-    "upgrades": 8,
-    "p_raw": 1.9646537765538596e-06,
-    "p_bh": 3.929307553107719e-06
+    "downgrades": 49,
+    "upgrades": 12,
+    "p_raw": 1.969878418086636e-06,
+    "p_bh": 2.626504557448848e-06
    }
   },
   "llama-3.2-3b": {
    "registration": "post-registration exploratory",
-   "n_rows": 122,
-   "n_unique_phrases": 122,
+   "n_rows": 337,
+   "n_unique_phrases": 337,
    "pseudoreplication_gap": 0,
    "penalty": {
-    "n_rows_with_penalty": 122,
-    "n_phrases_with_penalty": 122,
-    "mean": -0.0503,
+    "n_rows_with_penalty": 337,
+    "n_phrases_with_penalty": 337,
+    "mean": -0.0337,
     "ci95": [
-     -0.0748,
-     -0.0286
+     -0.0484,
+     -0.0201
     ],
-    "n_phrases": 122,
+    "n_phrases": 337,
     "ci95_simultaneous": [
-     -0.0847,
-     -0.0196
+     -0.0547,
+     -0.0147
     ],
     "ci95_batch_cluster": {
-     "n_groups": 2,
+     "n_groups": 6,
      "ci95": [
-      -0.052,
-      0.0162
+      -0.0484,
+      -0.0108
      ]
     },
     "ci95_topic_cluster": {
-     "n_groups": 11,
+     "n_groups": 148,
      "ci95": [
-      -0.0868,
-      -0.0157
+      -0.0531,
+      -0.0154
      ]
     }
    },
@@ -271,58 +336,64 @@
      "mean": -0.052
     },
     "tier_b": {
-     "n_phrases": 3,
-     "mean": 0.0162
+     "n_phrases": 218,
+     "mean": -0.0237
     }
    },
    "near_duplicates": {
     "threshold": 0.8,
-    "n_phrases": 122,
-    "n_near_duplicate": 4,
-    "rate": 0.0328
+    "n_phrases": 337,
+    "n_near_duplicate": 8,
+    "rate": 0.0237
    },
    "flips": {
-    "n_flips": 40,
-    "downgrades": 9,
-    "upgrades": 0,
-    "downgrade_rate": 0.225,
+    "n_flips": 118,
+    "downgrades": 15,
+    "upgrades": 3,
+    "downgrade_rate": 0.1271,
     "downgrade_rate_ci95": [
-     0.1084,
-     0.3845
+     0.0729,
+     0.201
     ],
     "ci_method": "clopper-pearson"
    },
    "sign_test": {
-    "downgrades": 9,
-    "upgrades": 0,
-    "p_raw": 0.00390625,
-    "p_bh": 0.015625
+    "downgrades": 15,
+    "upgrades": 3,
+    "p_raw": 0.007537841796875,
+    "p_bh": 0.01507568359375
    }
   },
   "medgemma-4b-it": {
    "registration": "post-registration exploratory",
-   "n_rows": 119,
-   "n_unique_phrases": 119,
+   "n_rows": 337,
+   "n_unique_phrases": 337,
    "pseudoreplication_gap": 0,
    "penalty": {
-    "n_rows_with_penalty": 119,
-    "n_phrases_with_penalty": 119,
-    "mean": -0.0339,
+    "n_rows_with_penalty": 337,
+    "n_phrases_with_penalty": 337,
+    "mean": -0.0393,
     "ci95": [
-     -0.0688,
-     -0.0022
+     -0.0592,
+     -0.0198
     ],
-    "n_phrases": 119,
+    "n_phrases": 337,
     "ci95_simultaneous": [
-     -0.0844,
-     0.0077
+     -0.0671,
+     -0.0128
     ],
-    "ci95_batch_cluster": null,
-    "ci95_topic_cluster": {
-     "n_groups": 8,
+    "ci95_batch_cluster": {
+     "n_groups": 6,
      "ci95": [
-      -0.0801,
-      0.0137
+      -0.0632,
+      -0.0214
+     ]
+    },
+    "ci95_topic_cluster": {
+     "n_groups": 148,
+     "ci95": [
+      -0.0619,
+      -0.0182
      ]
     }
    },
@@ -332,64 +403,125 @@
      "mean": -0.0339
     },
     "tier_b": {
-     "n_phrases": 0,
-     "mean": null
+     "n_phrases": 218,
+     "mean": -0.0422
     }
    },
    "near_duplicates": {
     "threshold": 0.8,
-    "n_phrases": 119,
-    "n_near_duplicate": 4,
-    "rate": 0.0336
+    "n_phrases": 337,
+    "n_near_duplicate": 8,
+    "rate": 0.0237
    },
    "flips": {
-    "n_flips": 43,
-    "downgrades": 9,
+    "n_flips": 124,
+    "downgrades": 14,
     "upgrades": 2,
-    "downgrade_rate": 0.2093,
+    "downgrade_rate": 0.1129,
     "downgrade_rate_ci95": [
-     0.1004,
-     0.3604
+     0.0631,
+     0.1822
     ],
     "ci_method": "clopper-pearson"
    },
    "sign_test": {
-    "downgrades": 9,
+    "downgrades": 14,
     "upgrades": 2,
-    "p_raw": 0.0654296875,
-    "p_bh": 0.08723958333333333
+    "p_raw": 0.004180908203125,
+    "p_bh": 0.012542724609375
+   }
+  },
+  "meditron3-8b": {
+   "registration": "post-registration exploratory",
+   "n_rows": 3,
+   "n_unique_phrases": 3,
+   "pseudoreplication_gap": 0,
+   "penalty": {
+    "n_rows_with_penalty": 3,
+    "n_phrases_with_penalty": 3,
+    "mean": -0.1492,
+    "ci95": [
+     -0.4466,
+     0.0453
+    ],
+    "n_phrases": 3,
+    "ci95_simultaneous": [
+     -0.4466,
+     0.0453
+    ],
+    "ci95_batch_cluster": null,
+    "ci95_topic_cluster": {
+     "n_groups": 3,
+     "ci95": [
+      -0.4466,
+      0.0453
+     ]
+    }
+   },
+   "by_generation_tier": {
+    "tier_a": {
+     "n_phrases": 0,
+     "mean": null
+    },
+    "tier_b": {
+     "n_phrases": 3,
+     "mean": -0.1492
+    }
+   },
+   "near_duplicates": {
+    "threshold": 0.8,
+    "n_phrases": 3,
+    "n_near_duplicate": 0,
+    "rate": 0.0
+   },
+   "flips": {
+    "n_flips": 2,
+    "downgrades": 1,
+    "upgrades": 0,
+    "downgrade_rate": 0.5,
+    "downgrade_rate_ci95": [
+     0.0126,
+     0.9874
+    ],
+    "ci_method": "clopper-pearson"
+   },
+   "sign_test": {
+    "downgrades": 1,
+    "upgrades": 0,
+    "p_raw": 1.0,
+    "p_bh": 1.0
    }
   },
   "olmo-2-1b": {
    "registration": "post-registration exploratory",
-   "n_rows": 122,
-   "n_unique_phrases": 122,
+   "n_rows": 381,
+   "n_unique_phrases": 381,
    "pseudoreplication_gap": 0,
    "penalty": {
-    "n_rows_with_penalty": 122,
-    "n_phrases_with_penalty": 122,
-    "mean": -0.0723,
+    "n_rows_with_penalty": 381,
+    "n_phrases_with_penalty": 381,
+    "mean": -0.0541,
     "ci95": [
-     -0.1036,
-     -0.0433
+     -0.0694,
+     -0.039
     ],
-    "n_phrases": 122,
+    "n_phrases": 381,
     "ci95_simultaneous": [
-     -0.1172,
-     -0.0338
+     -0.0756,
+     -0.0343
     ],
     "ci95_batch_cluster": {
-     "n_groups": 2,
+     "n_groups": 7,
      "ci95": [
-      -0.0764,
-      0.0905
+      -0.0706,
+      -0.0311
      ]
     },
     "ci95_topic_cluster": {
-     "n_groups": 11,
+     "n_groups": 170,
      "ci95": [
-      -0.1296,
-      -0.0152
+      -0.078,
+      -0.0326
      ]
     }
    },
@@ -399,64 +531,64 @@
      "mean": -0.0764
     },
     "tier_b": {
-     "n_phrases": 3,
-     "mean": 0.0905
+     "n_phrases": 262,
+     "mean": -0.0439
     }
    },
    "near_duplicates": {
     "threshold": 0.8,
-    "n_phrases": 122,
-    "n_near_duplicate": 4,
-    "rate": 0.0328
+    "n_phrases": 381,
+    "n_near_duplicate": 12,
+    "rate": 0.0315
    },
    "flips": {
-    "n_flips": 38,
-    "downgrades": 9,
-    "upgrades": 1,
-    "downgrade_rate": 0.2368,
+    "n_flips": 155,
+    "downgrades": 27,
+    "upgrades": 3,
+    "downgrade_rate": 0.1742,
     "downgrade_rate_ci95": [
-     0.1144,
-     0.4024
+     0.118,
+     0.2432
     ],
     "ci_method": "clopper-pearson"
    },
    "sign_test": {
-    "downgrades": 9,
-    "upgrades": 1,
-    "p_raw": 0.021484375,
-    "p_bh": 0.04296875
+    "downgrades": 27,
+    "upgrades": 3,
+    "p_raw": 8.430331945419312e-06,
+    "p_bh": 5.058199167251587e-05
    }
   },
   "qwen3-1.7b": {
    "registration": "pre-registered",
-   "n_rows": 686,
-   "n_unique_phrases": 677,
-   "pseudoreplication_gap": 9,
+   "n_rows": 865,
+   "n_unique_phrases": 848,
+   "pseudoreplication_gap": 17,
    "penalty": {
-    "n_rows_with_penalty": 686,
-    "n_phrases_with_penalty": 677,
-    "mean": -0.0487,
+    "n_rows_with_penalty": 865,
+    "n_phrases_with_penalty": 848,
+    "mean": -0.0513,
     "ci95": [
-     -0.0641,
-     -0.033
+     -0.0647,
+     -0.0369
     ],
-    "n_phrases": 677,
+    "n_phrases": 848,
     "ci95_simultaneous": [
-     -0.0699,
-     -0.0273
+     -0.0698,
+     -0.0324
     ],
     "ci95_batch_cluster": {
      "n_groups": 15,
      "ci95": [
-      -0.0655,
-      -0.0292
+      -0.064,
+      -0.0369
      ]
     },
     "ci95_topic_cluster": {
-     "n_groups": 251,
+     "n_groups": 279,
      "ci95": [
-      -0.0688,
-      -0.0278
+      -0.0673,
+      -0.0335
      ]
     }
    },
@@ -466,64 +598,64 @@
      "mean": -0.0666
     },
     "tier_b": {
-     "n_phrases": 442,
-     "mean": -0.0392
+     "n_phrases": 613,
+     "mean": -0.0454
     }
    },
    "near_duplicates": {
     "threshold": 0.8,
-    "n_phrases": 677,
-    "n_near_duplicate": 27,
-    "rate": 0.0399
+    "n_phrases": 848,
+    "n_near_duplicate": 43,
+    "rate": 0.0507
    },
    "flips": {
-    "n_flips": 307,
-    "downgrades": 42,
-    "upgrades": 16,
-    "downgrade_rate": 0.1368,
+    "n_flips": 389,
+    "downgrades": 45,
+    "upgrades": 19,
+    "downgrade_rate": 0.1157,
     "downgrade_rate_ci95": [
-     0.1004,
-     0.1804
+     0.0856,
+     0.1517
     ],
     "ci_method": "clopper-pearson"
    },
    "sign_test": {
-    "downgrades": 42,
-    "upgrades": 16,
-    "p_raw": 0.0008617822405421263,
-    "p_bh": 0.0008617822405421263
+    "downgrades": 45,
+    "upgrades": 19,
+    "p_raw": 0.0015627893448280279,
+    "p_bh": 0.0015627893448280279
    }
   },
   "qwen3-4b": {
    "registration": "pre-registered",
-   "n_rows": 686,
-   "n_unique_phrases": 677,
-   "pseudoreplication_gap": 9,
+   "n_rows": 773,
+   "n_unique_phrases": 760,
+   "pseudoreplication_gap": 13,
    "penalty": {
-    "n_rows_with_penalty": 686,
-    "n_phrases_with_penalty": 677,
-    "mean": -0.049,
+    "n_rows_with_penalty": 773,
+    "n_phrases_with_penalty": 760,
+    "mean": -0.0475,
     "ci95": [
-     -0.0678,
-     -0.0306
+     -0.0645,
+     -0.031
     ],
-    "n_phrases": 677,
+    "n_phrases": 760,
     "ci95_simultaneous": [
-     -0.0748,
-     -0.0231
+     -0.0719,
+     -0.0247
     ],
     "ci95_batch_cluster": {
-     "n_groups": 15,
+     "n_groups": 14,
      "ci95": [
-      -0.0709,
-      -0.0233
+      -0.0688,
+      -0.0251
      ]
     },
     "ci95_topic_cluster": {
-     "n_groups": 251,
+     "n_groups": 248,
      "ci95": [
-      -0.0744,
-      -0.0221
+      -0.0708,
+      -0.0224
      ]
     }
    },
@@ -533,32 +665,32 @@
      "mean": -0.0771
     },
     "tier_b": {
-     "n_phrases": 442,
-     "mean": -0.0341
+     "n_phrases": 525,
+     "mean": -0.0343
     }
    },
    "near_duplicates": {
     "threshold": 0.8,
-    "n_phrases": 677,
-    "n_near_duplicate": 27,
-    "rate": 0.0399
+    "n_phrases": 760,
+    "n_near_duplicate": 36,
+    "rate": 0.0474
    },
    "flips": {
-    "n_flips": 299,
-    "downgrades": 46,
-    "upgrades": 7,
-    "downgrade_rate": 0.1538,
+    "n_flips": 333,
+    "downgrades": 47,
+    "upgrades": 6,
+    "downgrade_rate": 0.1411,
     "downgrade_rate_ci95": [
-     0.1149,
-     0.1998
+     0.1056,
+     0.1832
     ],
     "ci_method": "clopper-pearson"
    },
    "sign_test": {
-    "downgrades": 46,
-    "upgrades": 7,
-    "p_raw": 4.003196174551249e-08,
-    "p_bh": 1.6012784698204996e-07
+    "downgrades": 47,
+    "upgrades": 6,
+    "p_raw": 5.805322444984995e-09,
+    "p_bh": 2.322128977993998e-08
    }
   }
  },
@@ -578,100 +710,120 @@
     ],
     "n_tests": 4,
     "adjusted": {
-     "gemma-2-2b": 1.0220224507260603e-05,
-     "gemma-3-4b-it": 3.929307553107719e-06,
-     "qwen3-1.7b": 0.0008617822405421263,
-     "qwen3-4b": 1.6012784698204996e-07
+     "gemma-2-2b": 2.626504557448848e-06,
+     "gemma-3-4b-it": 2.626504557448848e-06,
+     "qwen3-1.7b": 0.0015627893448280279,
+     "qwen3-4b": 2.322128977993998e-08
     }
    },
    "exploratory": {
     "across": [
+     "apertus-8b-meditronfo",
      "gemma-2-2b-it",
      "llama-3.2-3b",
      "medgemma-4b-it",
+     "meditron3-8b",
      "olmo-2-1b"
     ],
-    "n_tests": 4,
+    "n_tests": 6,
     "adjusted": {
-     "gemma-2-2b-it": 0.2890625,
-     "llama-3.2-3b": 0.015625,
-     "medgemma-4b-it": 0.08723958333333333,
-     "olmo-2-1b": 0.04296875
+     "apertus-8b-meditronfo": 1.0,
+     "gemma-2-2b-it": 0.25060272216796875,
+     "llama-3.2-3b": 0.01507568359375,
+     "medgemma-4b-it": 0.012542724609375,
+     "meditron3-8b": 1.0,
+     "olmo-2-1b": 5.058199167251587e-05
     }
    }
   },
   "across": [
+   "apertus-8b-meditronfo",
    "gemma-2-2b",
    "gemma-2-2b-it",
    "gemma-3-4b-it",
    "llama-3.2-3b",
    "medgemma-4b-it",
+   "meditron3-8b",
    "olmo-2-1b",
    "qwen3-1.7b",
    "qwen3-4b"
   ],
-  "n_tests": 8,
+  "n_tests": 10,
   "adjusted": {
-   "gemma-2-2b": 1.0220224507260603e-05,
-   "gemma-2-2b-it": 0.2890625,
-   "gemma-3-4b-it": 3.929307553107719e-06,
-   "llama-3.2-3b": 0.015625,
-   "medgemma-4b-it": 0.08723958333333333,
-   "olmo-2-1b": 0.04296875,
-   "qwen3-1.7b": 0.0008617822405421263,
-   "qwen3-4b": 1.6012784698204996e-07
+   "apertus-8b-meditronfo": 1.0,
+   "gemma-2-2b": 2.626504557448848e-06,
+   "gemma-2-2b-it": 0.25060272216796875,
+   "gemma-3-4b-it": 2.626504557448848e-06,
+   "llama-3.2-3b": 0.01507568359375,
+   "medgemma-4b-it": 0.012542724609375,
+   "meditron3-8b": 1.0,
+   "olmo-2-1b": 5.058199167251587e-05,
+   "qwen3-1.7b": 0.0015627893448280279,
+   "qwen3-4b": 2.322128977993998e-08
   }
  },
  "sensitivity_all_rows": {
   "_": "every collector row regardless of batch provenance (steered runs, outcome-selected sets, imports, re-traces); NOT confirmatory",
   "per_model": {
-   "gemma-2-2b": {
-    "n_unique_phrases": 811,
-    "mean_penalty": -0.0348,
-    "downgrades": 55,
-    "upgrades": 13
-   },
-   "gemma-2-2b-it": {
-    "n_unique_phrases": 122,
-    "mean_penalty": -0.0623,
-    "downgrades": 6,
-    "upgrades": 2
-   },
-   "gemma-3-4b-it": {
-    "n_unique_phrases": 682,
-    "mean_penalty": -0.0465,
-    "downgrades": 42,
-    "upgrades": 8
-   },
-   "llama-3.2-3b": {
-    "n_unique_phrases": 122,
-    "mean_penalty": -0.0503,
-    "downgrades": 9,
+   "apertus-8b-meditronfo": {
+    "n_unique_phrases": 3,
+    "mean_penalty": -0.1566,
+    "downgrades": 1,
     "upgrades": 0
    },
+   "gemma-2-2b": {
+    "n_unique_phrases": 1040,
+    "mean_penalty": -0.0329,
+    "downgrades": 68,
+    "upgrades": 19
+   },
+   "gemma-2-2b-it": {
+    "n_unique_phrases": 298,
+    "mean_penalty": -0.0442,
+    "downgrades": 13,
+    "upgrades": 6
+   },
+   "gemma-3-4b-it": {
+    "n_unique_phrases": 853,
+    "mean_penalty": -0.0501,
+    "downgrades": 50,
+    "upgrades": 12
+   },
+   "llama-3.2-3b": {
+    "n_unique_phrases": 337,
+    "mean_penalty": -0.0337,
+    "downgrades": 15,
+    "upgrades": 3
+   },
    "medgemma-4b-it": {
-    "n_unique_phrases": 119,
-    "mean_penalty": -0.0339,
-    "downgrades": 9,
+    "n_unique_phrases": 337,
+    "mean_penalty": -0.0393,
+    "downgrades": 14,
     "upgrades": 2
    },
+   "meditron3-8b": {
+    "n_unique_phrases": 3,
+    "mean_penalty": -0.1492,
+    "downgrades": 1,
+    "upgrades": 0
+   },
    "olmo-2-1b": {
-    "n_unique_phrases": 122,
-    "mean_penalty": -0.0723,
-    "downgrades": 9,
-    "upgrades": 1
+    "n_unique_phrases": 381,
+    "mean_penalty": -0.0541,
+    "downgrades": 27,
+    "upgrades": 3
    },
    "qwen3-1.7b": {
-    "n_unique_phrases": 677,
-    "mean_penalty": -0.0487,
-    "downgrades": 42,
-    "upgrades": 16
+    "n_unique_phrases": 848,
+    "mean_penalty": -0.0513,
+    "downgrades": 45,
+    "upgrades": 19
    },
    "qwen3-4b": {
-    "n_unique_phrases": 677,
-    "mean_penalty": -0.049,
-    "downgrades": 46,
-    "upgrades": 7
+    "n_unique_phrases": 760,
+    "mean_penalty": -0.0475,
+    "downgrades": 47,
+    "upgrades": 6
    }
   }
  },

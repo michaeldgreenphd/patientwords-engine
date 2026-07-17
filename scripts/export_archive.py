@@ -24,10 +24,10 @@ import sys
 from pathlib import Path
 
 try:
-    from scripts.tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
+    from scripts.tierb_split import holdout_phrases, is_holdout, is_tierb_batch, tierb_start_stamp
 except ImportError:  # direct invocation from repo root
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
+    from tierb_split import holdout_phrases, is_holdout, is_tierb_batch, tierb_start_stamp
 
 parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
 parser.add_argument("--engine", default=".", help="engine repo root (default: cwd)")
@@ -82,6 +82,11 @@ def read_model_results(stem, model):
 
 rows = []
 _TIERB_START = tierb_start_stamp(str(ENGINE / "ops/dashboard.json"))
+# Phrase-keyed seal (Amendment 3, 2026-07-14): a Tier B holdout phrase is
+# withheld wherever it re-appears, including alias/mitigation stems such as
+# pairs_<STAMP>_txopus that do not fullmatch the Tier B batch pattern.
+_HOLDOUT_PHRASES = holdout_phrases(str(ENGINE / "data/simulated"),
+                                   str(ENGINE / "ops/dashboard.json"))
 withheld_holdout = 0
 for batch_path in sorted(ENGINE.glob("data/simulated/pairs_*.json")):
     if batch_path.name.endswith(".report.json"):
@@ -95,8 +100,10 @@ for batch_path in sorted(ENGINE.glob("data/simulated/pairs_*.json")):
 
     for i, pair in enumerate(batch, start=1):
         # confirmatory holdout stays sealed: withheld from every public export
-        # until the pre-registered endpoint (amendment 1; 2026-07-14 decision)
-        if is_tierb_batch(stem, _TIERB_START) and is_holdout(pair.get("top_prompt")):
+        # until the pre-registered endpoint (amendment 1; 2026-07-14 decision).
+        # Phrase-keyed so alias/mitigation stems cannot leak a holdout phrase.
+        if ((is_tierb_batch(stem, _TIERB_START) and is_holdout(pair.get("top_prompt")))
+                or pair.get("top_prompt") in _HOLDOUT_PHRASES):
             withheld_holdout += 1
             continue
         gen = pair.get("generation", {})
