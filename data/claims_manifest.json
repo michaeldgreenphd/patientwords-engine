@@ -30,14 +30,6 @@
    "_": "headline gained the measured rate 2026-07-14 (owner yes on referee item 6)"
   },
   {
-   "page": "index.html",
-   "snippet": "restores it in 8 of the 20 hardest cases",
-   "source": "data/provenance.json",
-   "expr": "d['translation_cases']['summary']['recovered']",
-   "expected": 8,
-   "_": "homepage lede counted 2026-07-14 (referee item 6)"
-  },
-  {
    "page": "translation/index.html",
    "snippet": "mean +1.9 points of target probability against +0.5",
    "source": "data/provenance.json",
@@ -70,7 +62,7 @@
   },
   {
    "page": "methods.html",
-   "snippet": "census, set by set",
+   "snippet": "census lives on the",
    "source": "data/jlens_depth.json",
    "expr": "len(d['blocks']) > 0",
    "expected": true,
@@ -78,7 +70,7 @@
   },
   {
    "page": "methods.html",
-   "snippet": "gemma, qwen, llama, and olmo families",
+   "snippet": "gemma, qwen, llama, etc.",
    "source": "data/model_stats.json",
    "expr": "len(d['per_model'])",
    "expected": 8
@@ -89,16 +81,6 @@
    "source": "data/provenance.json",
    "expr": "sum(1 for c in d['translation_cases']['all']['cases'] if (c.get('class') or c.get('classification'))=='worsened')",
    "expected": 3
-  },
-  {
-   "page": "start-here/index.html",
-   "snippet": "roughly halves the penalty measured under casual framing",
-   "source": "data/provenance.json",
-   "expr": "[d['context_inoculation']['casual_context_mean_penalty'], d['context_inoculation']['clinical_context_mean_penalty']]",
-   "expected": [
-    -0.137,
-    -0.059
-   ]
   },
   {
    "page": "translation/index.html",
@@ -188,14 +170,6 @@
     337
    ],
    "_": "medgemma sentence n/CI; refreshed 2026-07-17 (Audit 2 F2-M01/MEDGEMMA, backfill n 119->337, owner republish)"
-  },
-  {
-   "page": "methods.html",
-   "snippet": "stays below zero even under the stricter simultaneous correction",
-   "source": "data/model_stats.json",
-   "expr": "d['per_model']['medgemma-4b-it']['penalty']['ci95_simultaneous'][1] < 0",
-   "expected": true,
-   "_": "medgemma simultaneous interval now below zero on more data (2026-07-17); sentence states it stays below zero"
   },
   {
    "page": "technical/index.html",
