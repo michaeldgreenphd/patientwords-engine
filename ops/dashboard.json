@@ -1,7 +1,7 @@
 {
  "schema_version": 1,
- "updated_utc": "2026-07-18T13:26:00Z",
- "updated_by": "routine",
+ "updated_utc": "2026-07-18T14:05:00Z",
+ "updated_by": "session",
  "queue": {
   "circuit-trace": {
    "running": {
@@ -265,8 +265,8 @@
  ],
  "blockers": [
   {
-   "id": "CRITIC-STALL",
-   "what": "Nightly orchestrator critic has produced no file since critic_20260714.md (0715/0716/0717/0718 missing = 4 days). Watchdog (routine step 6b): the 05:00 UTC critic wake chain is stalled; dashboard is kept fresh by this daily cycle. Not recreating the orchestrator trigger per 6b. Owner may want to re-establish the critic wake."
+   "id": "CRITIC-REESTABLISH",
+   "what": "Critic re-established at owner request (2026-07-18). Scope committed: docs/critic_standing_prompt.md (signal-triggered + Mon/Wed/Fri 05:00 UTC floor, fresh session, feeds new checks back into the automated layer). Daily-cycle signal-escalation wired into routine_standing_prompt.md 6b. PENDING: the scheduled Routine itself needs the owner's one-tap approval of the create-trigger permission; once approved, record its trigger id in ops/dashboard.json:critic and the standing prompt."
   },
   {
    "id": "REPUBLISH-PENDING-BACKFILL",
@@ -422,5 +422,11 @@
   "endpoint_date_registered": "2026-07-16",
   "trigger": "explicit owner instruction only",
   "deferral_note": "When 2026-07-16 passes without the instruction, record the deferral in docs/prereg_divergence_log.md (owner-directed, not a protocol breach)."
+ },
+ "critic": {
+  "status": "scope committed; scheduled Routine pending owner approval",
+  "scope_doc": "docs/critic_standing_prompt.md",
+  "cadence": "Mon/Wed/Fri 05:00 UTC floor + daily-cycle signal escalation",
+  "trigger_id": null
  }
 }
