@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "updated_utc": "2026-07-18T14:05:00Z",
+ "updated_utc": "2026-07-18T14:40:00Z",
  "updated_by": "session",
  "queue": {
   "circuit-trace": {
@@ -266,7 +266,7 @@
  "blockers": [
   {
    "id": "CRITIC-REESTABLISH",
-   "what": "Critic re-established at owner request (2026-07-18). Scope committed: docs/critic_standing_prompt.md (signal-triggered + Mon/Wed/Fri 05:00 UTC floor, fresh session, feeds new checks back into the automated layer). Daily-cycle signal-escalation wired into routine_standing_prompt.md 6b. PENDING: the scheduled Routine itself needs the owner's one-tap approval of the create-trigger permission; once approved, record its trigger id in ops/dashboard.json:critic and the standing prompt."
+   "what": "Critic re-established (owner 2026-07-18). Scope committed (docs/critic_standing_prompt.md); signal-escalation wired (routine_standing_prompt 6b). The standalone scheduled Routine is PENDING the owner's in-client approval of the create-trigger permission (chat 'go' did not satisfy the gate; two create_trigger attempts returned requires-approval). INTERIM IN FORCE: the daily 13:00 cycle runs one critic pass Mon/Wed/Fri + on signals, writing docs/critic/. Record trigger id in critic.trigger_id once the Routine is approved."
   },
   {
    "id": "REPUBLISH-PENDING-BACKFILL",
@@ -424,9 +424,9 @@
   "deferral_note": "When 2026-07-16 passes without the instruction, record the deferral in docs/prereg_divergence_log.md (owner-directed, not a protocol breach)."
  },
  "critic": {
-  "status": "scope committed; scheduled Routine pending owner approval",
+  "status": "standalone Routine PENDING owner in-client approval of create-trigger; INTERIM in force: daily cycle runs the critic pass Mon/Wed/Fri + on signals",
   "scope_doc": "docs/critic_standing_prompt.md",
-  "cadence": "Mon/Wed/Fri 05:00 UTC floor + daily-cycle signal escalation",
+  "cadence": "Mon/Wed/Fri + signal-triggered (interim via daily cycle until Routine approved)",
   "trigger_id": null
  }
 }

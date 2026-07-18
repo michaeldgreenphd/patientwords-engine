@@ -221,14 +221,16 @@ orchestrator's wake chain has stalled — say so PROMINENTLY in the digest
 carry on with this Routine's own cycle; do not attempt to recreate the
 orchestrator's triggers.
 
-**Critic re-established (2026-07-18, owner request).** The critic runs again as its
-own scheduled Routine (floor: Mon/Wed/Fri 05:00 UTC, fresh session per fire, scope in
-`docs/critic_standing_prompt.md`). Signal-escalation is this daily cycle's job: when
-you see a `claim_check` FAIL/warn, a drift/lens-sentinel DRIFT headline, a CI failure
-needing triage, or an n-milestone in `data/model_stats.json` that could flip a
-significance verdict, FIRE the critic Routine on demand (its trigger id is in
-`ops/dashboard.json:critic`). This supersedes the "do not recreate" line above for the
-critic specifically — the owner asked for it back.
+**Critic re-established (2026-07-18, owner request).** Scope in
+`docs/critic_standing_prompt.md`. The standalone scheduled Routine (Mon/Wed/Fri 05:00
+UTC, fresh session) is PENDING the owner's in-client approval of the create-trigger
+permission — a chat "go" does not satisfy that gate. **Interim, in force now:** THIS
+daily 13:00 cycle runs one critic pass per the scope doc on Mon/Wed/Fri, and on demand
+whenever it sees a `claim_check` FAIL/warn, a drift/lens DRIFT headline, a CI failure,
+or an n-milestone in `data/model_stats.json` that could flip a significance verdict —
+writing `docs/critic/critic_<date>.md`. When the Routine is approved, record its trigger
+id in `ops/dashboard.json:critic` and fire it on signals instead of running inline. This
+supersedes the "do not recreate" line above for the critic — the owner asked for it back.
 
 ## 7 · Brief, digest, commit
 
