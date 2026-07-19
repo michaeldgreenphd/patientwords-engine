@@ -34,6 +34,7 @@ import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import jlens_position_scan as jps  # noqa: E402  (script-style; imports jlens_readout as jps.jr)
@@ -137,6 +138,52 @@ def side_transport(response, target):
         "n_mid_readable": len(non_final),
         "transport_gap": bool(non_final) and not final_readable,
         "windows_first_layer": jps.window_profile(response, target),
+    }
+
+
+def lens_trace_url(model, prompt):
+    """A Neuronpedia hosted-lens link for `prompt` on `model` (the live version
+    of exactly what this figure reads out). The lens lives at
+    neuronpedia.org/<model>/jlens; the prompt query pre-fills it where the page
+    supports it and otherwise lands on the lens tool for the model."""
+    return "https://www.neuronpedia.org/" + model + "/jlens?prompt=" + quote(prompt or "", safe="")
+
+
+def _prompt_from_raw(response):
+    """Reconstruct the prompt text from a raw response's token strings (drops
+    the leading BOS marker)."""
+    toks = (response.get("tokens") or []) if isinstance(response, dict) else []
+    return "".join((t.get("token") or "") for t in toks
+                   if (t.get("token") or "").strip() != "<bos>").strip()
+
+
+def answer_prediction(response, target, model):
+    """The model's ACTUAL top-1 token + probability at the answer position
+    (final token, final layer, where the Jacobian lens equals the model output),
+    whether that token is the intended target, and a live lens link. None when
+    the raw lacks the final-layer top-token list."""
+    tokens = (response.get("tokens") or []) if isinstance(response, dict) else []
+    if not tokens:
+        return None
+    entry = next((r for r in (tokens[-1].get("results") or []) if isinstance(r, dict)), None)
+    if not entry:
+        return None
+    top_tokens = entry.get("top_tokens") or []
+    if not top_tokens or not top_tokens[-1]:
+        return None
+    token = jps.jr._token_string(top_tokens[-1][0])
+    top_probs = entry.get("top_probs") or []
+    prob = None
+    if top_probs and top_probs[-1]:
+        try:
+            prob = round(float(top_probs[-1][0]), 4)
+        except (TypeError, ValueError):
+            prob = None
+    return {
+        "token": (token or "").strip() or None,
+        "prob": prob,
+        "on_target": bool(jps.jr.target_match(token, jps.jr.target_variants(target))),
+        "trace_url": lens_trace_url(model, _prompt_from_raw(response)),
     }
 
 
@@ -275,7 +322,9 @@ def build_exemplar(trace_root, batch, index, model, topn, target):
     if clin_raw is None or pat_raw is None:
         return None
     clin = position_layer_grid(clin_raw, target, topn)
+    clin["answer"] = answer_prediction(clin_raw, target, model)
     pat = position_layer_grid(pat_raw, target, topn)
+    pat["answer"] = answer_prediction(pat_raw, target, model)
     return {
         "batch": batch,
         "index": index,

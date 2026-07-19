@@ -146,6 +146,41 @@ def test_rank_exemplars_orders_dedupes_and_limits():
     assert ext.rank_exemplars(per_pair, limit=1) == [("b", 3)]
 
 
+def _resp_with_probs(final_top_tokens, final_top_probs):
+    return {
+        "meta": {"layers_by_type": {"JACOBIAN_LENS": list(range(len(final_top_tokens)))}},
+        "tokens": [
+            {"kind": "token", "position": 0, "token": "<bos>", "results": []},
+            {"kind": "token", "position": 1, "token": " x", "results": [
+                {"type": "JACOBIAN_LENS", "top_tokens": final_top_tokens,
+                 "top_probs": final_top_probs}]},
+        ],
+    }
+
+
+def test_answer_prediction_final_layer_token_prob_and_target():
+    resp = _resp_with_probs([[" a", " b"], [" tgt", " a"]], [[0.5, 0.3], [0.71, 0.1]])
+    ans = ext.answer_prediction(resp, "tgt", "gemma-2-2b")
+    assert ans["token"] == "tgt" and ans["prob"] == 0.71 and ans["on_target"] is True
+    assert ans["trace_url"].startswith("https://www.neuronpedia.org/gemma-2-2b/jlens?prompt=")
+
+
+def test_answer_prediction_off_target():
+    resp = _resp_with_probs([[" a"], [" other", " tgt"]], [[0.9], [0.6, 0.2]])
+    ans = ext.answer_prediction(resp, "tgt", "gemma-2-2b")
+    assert ans["token"] == "other" and ans["prob"] == 0.6 and ans["on_target"] is False
+
+
+def test_answer_prediction_none_without_top_tokens():
+    assert ext.answer_prediction({"tokens": []}, "tgt", "gemma-2-2b") is None
+
+
+def test_lens_trace_url_encodes_prompt():
+    u = ext.lens_trace_url("gemma-2-2b", "I have angina, so I need a")
+    assert u.startswith("https://www.neuronpedia.org/gemma-2-2b/jlens?prompt=")
+    assert "%20" in u and " " not in u          # spaces/commas percent-encoded
+
+
 def test_collect_pairs_groups_sides_and_respects_seal(monkeypatch):
     # two pairs, both sides each; seal drops index 1 entirely.
     monkeypatch.setattr(ext, "_sealed", lambda batch, index: index == 1)
