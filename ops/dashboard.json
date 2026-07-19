@@ -1,7 +1,7 @@
 {
  "schema_version": 1,
- "updated_utc": "2026-07-19T13:45:00Z",
- "updated_by": "routine",
+ "updated_utc": "2026-07-19T15:10:00Z",
+ "updated_by": "session",
  "queue": {
   "circuit-trace": {
    "running": {
@@ -268,8 +268,8 @@
  ],
  "blockers": [
   {
-   "id": "CRITIC-REESTABLISH",
-   "what": "Critic re-established (owner 2026-07-18). Scope committed (docs/critic_standing_prompt.md); signal-escalation wired (routine_standing_prompt 6b). The standalone scheduled Routine is PENDING the owner's in-client approval of the create-trigger permission (chat 'go' did not satisfy the gate; two create_trigger attempts returned requires-approval). INTERIM IN FORCE: the daily 13:00 cycle runs one critic pass Mon/Wed/Fri + on signals, writing docs/critic/. Record trigger id in critic.trigger_id once the Routine is approved."
+   "id": "CRITIC-INTERIM-PERMANENT",
+   "what": "Owner chose Option A (2026-07-19): the interim critic (daily cycle runs the pass Mon/Wed/Fri + on signals, docs/critic_standing_prompt.md) is the PERMANENT mechanism. The standalone scheduled Routine was abandoned because the create-trigger approval channel repeatedly failed on the owner's surface (3x requires-approval + 1x stream-closed). No further action; not a blocker, kept for the record until it ages out."
   },
   {
    "id": "REPUBLISH-PENDING-BACKFILL",
@@ -396,6 +396,12 @@
  "queued_next": [
   {
    "trigger": "logits-eval",
+   "label": "txcorpus recovery-at-scale: measure remaining models",
+   "note": "Owner task 2026-07-19 (reproducible translation-at-scale). Generator translation_scale.py rewritten (self-contained, committed) + JSON republished for the 3 already-measured models (gemma-2-2b priority, gemma-3-4b-it, qwen3-1.7b full). REMAINING to measure on the full txcorpus (data/simulated/txcorpus_20260714T224455Z.json) via fire_trigger logits-eval, chunked <=240 pairs/run (8B medical models smaller): gemma-2-2b (full 1031; only priority measured), qwen3-4b, llama-3.2-3b, olmo-2-1b, gemma-2-2b-it, medgemma-4b-it, meditron3-8b, apertus-8b-meditronfo. HF_IDS already has all of these; medical/gated (medgemma/meditron3/apertus/llama/gemma-2-2b-it) need the HF_TOKEN grants - probe limit-3 before a full run. After each batch lands: git pull --rebase, run scripts/translation_scale.py --site ../patientwords, deploy. The frontend table + family-aware narrative auto-expand.",
+   "blocked_by": "logits-eval group full (daily-cycle backfill legs 10-11); fires as the group frees, accumulating over cycles"
+  },
+  {
+   "trigger": "logits-eval",
    "label": "meditron-successors-unified",
    "note": "When the joint probe lands clean: unified 122-phrase run (pairs_20260707T171223Z, both successors, limit 0) so they enter the cross-model table at the same n as the other exploratory models; then they join the nightly exploratory leg and the even-n backfill legs 4-11 (8B class: keep to 50-100 pair fires).",
    "blocked_by": "joint probe running + backfill leg 3 pending"
@@ -432,9 +438,9 @@
   "deferral_note": "When 2026-07-16 passes without the instruction, record the deferral in docs/prereg_divergence_log.md (owner-directed, not a protocol breach)."
  },
  "critic": {
-  "status": "standalone Routine PENDING owner in-client approval of create-trigger; INTERIM in force: daily cycle runs the critic pass Mon/Wed/Fri + on signals",
+  "status": "PERMANENT interim (owner chose Option A 2026-07-19): the daily cycle runs the critic pass Mon/Wed/Fri + on signals per docs/critic_standing_prompt.md. Standalone Routine abandoned - the create-trigger approval channel repeatedly failed on the owner's surface; the interim is functionally equivalent.",
   "scope_doc": "docs/critic_standing_prompt.md",
-  "cadence": "Mon/Wed/Fri + signal-triggered (interim via daily cycle until Routine approved)",
+  "cadence": "Mon/Wed/Fri + signal-triggered via the daily cycle",
   "trigger_id": null
  }
 }
