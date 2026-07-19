@@ -172,6 +172,25 @@ After any data republish, run `python scripts/jlens_insights.py --site
 ../patientwords` when new lens readouts landed (feeds the site's Technical
 page: formation depths, capture-vs-hijack taxonomy, tuning comparison).
 
+After any data republish, run `python scripts/export_pair_swaps.py --site
+../patientwords --depth ../patientwords/data/jlens_depth.json` (feeds the
+Technical page's TARGET & SWAP column; $0, offline). Run it AFTER
+`export_jlens_depth`/`jlens_insights` refresh so its `<batch>#<index>` join to
+the `jlens_depth` blocks is current; new batches show target-only until it
+re-runs. Verified byte-reproducible on this branch 2026-07-19.
+
+**NOT wired — static snapshots (owner decision 2026-07-19, j-lens handoff).**
+`scripts/export_jlens_transport.py` and `scripts/export_jlens_loglens.py` are
+committed and runnable BY HAND but must NOT be added to the cycle yet: their
+inputs are not on this branch. Transport's census-pin batch
+(`pairs_20260711T051145Z`) has only 2 of 25 `save_raw` pairs here (the rest live
+on the j-lens experiment branch), so a cycle regen would thin
+`data/jlens_transport.json` from 23 pairs to 1 and bloat it; loglens has no
+`__loglens_` runs here at all. Leave both site data files as their committed
+snapshots. To make them live later, land the missing `save_raw` / `LOGIT_LENS`
+runs on this branch (or merge them from the experiment branch), then re-verify a
+regen reproduces the live structure before wiring.
+
 After any data republish, when txcorpus logits or lens readouts landed, run
 `python scripts/translation_scale.py --site ../patientwords` (feeds the
 translation page's at-scale block and its lens recovery line; $0).
