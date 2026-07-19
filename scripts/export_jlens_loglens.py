@@ -179,8 +179,10 @@ def build_payload(trace_root, model):
     for batch, log_rows in sorted(log_by_batch.items()):
         jac_rows = jac_by_batch.get(batch, {})
         per_pair.extend(dict(p, batch=batch) for p in join_lenses(jac_rows, log_rows))
+        # both distributions over the SAME pairs (measured under both lenses) for a
+        # fair comparison; a pair only one lens parsed would skew the medians/counts.
         jac_rows_all.extend(r for idx, r in jac_rows.items() if idx in log_rows)
-        log_rows_all.extend(log_rows.values())
+        log_rows_all.extend(r for idx, r in log_rows.items() if idx in jac_rows)
 
     if not per_pair:
         return None

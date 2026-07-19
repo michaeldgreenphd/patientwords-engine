@@ -113,6 +113,20 @@ def test_build_payload_end_to_end(tmp_path, monkeypatch):
     assert payload["logit"]["class_counts"]["capture"] == 1
 
 
+def test_build_payload_distributions_over_common_pairs(tmp_path, monkeypatch):
+    # jlens measured pairs 1,2; loglens only measured pair 1 -> both per-lens
+    # distributions must cover just the common pair (1), never the unshared one.
+    monkeypatch.setattr(ext, "_sealed", lambda batch, index: False)
+    root = tmp_path / "trace_out"
+    _write_summary(root, "jlens", "gemma-2-2b", "b",
+                   [_result(1, {2, 3}, {2, 3}), _result(2, {2, 3}, set())])
+    _write_summary(root, "loglens", "gemma-2-2b", "b", [_result(1, {2, 3}, {2, 3})])
+    payload = ext.build_payload(str(root), "gemma-2-2b")
+    assert payload["agreement"]["n_paired"] == 1
+    assert payload["jacobian"]["formation"]["n"] == 1     # not 2: pair 2 excluded
+    assert payload["logit"]["formation"]["n"] == 1
+
+
 def test_build_payload_refuses_without_loglens(tmp_path, monkeypatch):
     monkeypatch.setattr(ext, "_sealed", lambda batch, index: False)
     root = tmp_path / "trace_out"
