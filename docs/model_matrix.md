@@ -14,11 +14,11 @@ bfloat16 on CPU, `low_cpu_mem_usage=True` — no per-model dtype or kwargs.
 | `gemma-3-4b-it` | `google/gemma-3-4b-it` | 4.3B | Gemma 3 (Google) | Gated — Gemma license (accepted; already runs in CI with `HF_TOKEN`) | Cross-generation Gemma, instruction-tuned |
 | `qwen3-4b` | `Qwen/Qwen3-4B` | 4.0B | Qwen3 (Alibaba) | Ungated (Apache-2.0) | Second family |
 | `qwen3-1.7b` | `Qwen/Qwen3-1.7B` | 1.7B | Qwen3 (Alibaba) | Ungated (Apache-2.0) | Second family, small scale |
-| `llama-3.2-3b` | `meta-llama/Llama-3.2-3B` | 3.2B | Llama 3.2 (Meta) | Gated — Meta contact-info form (free) | **C1** — third model family |
+| `llama-3.2-3b` | `meta-llama/Llama-3.2-3B` | 3.2B | Llama 3.2 (Meta) | Gated — Meta contact-info form (owner accepted 2026-07-19 on the CI `HF_TOKEN` account; probe-confirm pending) | **C1** — third model family |
 | `olmo-2-1b` | `allenai/OLMo-2-0425-1B` | ~1.5B | OLMo 2 (Ai2) | Ungated (Apache-2.0) | **C3** — fully-open provenance (open data, training code, checkpoints) |
 | `biomistral-7b` | `BioMistral/BioMistral-7B` | 7.2B | Mistral 7B derivative (PubMed Central continued pretraining) | **DROPPED 2026-07-13** — upstream ships pickle-only weights, incompatible with the safetensors-only posture | was **C4**; role moved to `meditron-7b` |
 | `meditron-7b` | `epfl-llm/meditron-7b` | 7B | Llama-2 derivative (PubMed continued pretraining, EPFL) | Probe pending — format verified by the limit-3 probe | **C4** — medical-domain contrast (7B chunking caution applies) |
-| `gemma-2-2b-it` | `google/gemma-2-2b-it` | 2.6B | Gemma 2 (Google) | Gated — Gemma license (likely already granted; verify via probe) | **B3** — instruction-tuning contrast: same base as `gemma-2-2b` ± IT |
+| `gemma-2-2b-it` | `google/gemma-2-2b-it` | 2.6B | Gemma 2 (Google) | Gated — Gemma license (owner confirmed access 2026-07-19 on the CI `HF_TOKEN` account; probe-confirm pending) | **B3** — instruction-tuning contrast: same base as `gemma-2-2b` ± IT |
 | `gemma-2-9b` | `google/gemma-2-9b` | 9.2B | Gemma 2 (Google) | **SKIPPED 2026-07-12** — two weight-load deaths on the standard runner; revisit only with a larger runner | **B2** — scale universality (on hold) |
 | `medgemma-4b-it` | `google/medgemma-4b-it` | 4.3B | MedGemma / Gemma 3 (Google, Health AI Developer Foundations) | Gated — HAI-DEF terms (owner accepted 2026-07-13 on the CI `HF_TOKEN` account) | Medical-tuned twin of `gemma-3-4b-it` (same base, same size): the paired contrast isolates what medical fine-tuning does to the colloquial-vs-clinical gap |
 
