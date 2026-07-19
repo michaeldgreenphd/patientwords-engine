@@ -146,6 +146,23 @@ Priority order when slots are free:
    already-generated sociolect round-2 batch
    (`data/simulated/dialects_20260708T215356Z.json`, $0, no generation
    spend) in `dialect` mode. Pure extra data; never displaces Tier B work.
+4a. **Full-coverage backfill driver** (owner directive 2026-07-19: circuit
+   TRACE + j-lens LENS-with-`save_raw` + cross-model PREDICTIONS for EVERY
+   simulation batch, not just the freshest). Run `python
+   scripts/backfill_planner.py`; it reads committed `trace_out/` DEPTH per batch
+   and prints the highest-priority next $0 fire per lane — LENS first (it
+   unblocks the static transport/loglens exporters and is the sparsest axis),
+   then TRACE, then PREDICTIONS (medical models first, then the least-covered
+   model; 8B models chunked smaller). Fire whichever of the three lanes are free
+   (one-running + one-pending each); a pre-registered Tier B leg always outranks
+   a backfill fill. The planner is depth-aware — it resumes partial batches at
+   the next `offset` and converges to COMPLETE per-pair coverage — so it
+   supersedes hand-tracking backfill legs in `queued_next`. `--json` gives the
+   machine-readable plan. Everything here is $0; the GitHub runner backlog (heavy
+   logits legs can queue for hours), not cost, is the rate limit — keep the lanes
+   full and let it converge over days. Completing lens+`save_raw` on
+   `pairs_20260711T051145Z` (25 pairs) is what finally lets transport/loglens be
+   wired live (Section 5).
 
 Stopping rules (from the pre-registration): if two consecutive batches show
 validator yield < 50%, stop firing generation and record a decision for the
