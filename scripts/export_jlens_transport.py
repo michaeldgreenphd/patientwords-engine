@@ -179,6 +179,44 @@ def pick_exemplar_index(per_pair):
     return (per_pair[0]["batch"], per_pair[0]["index"]) if per_pair else None
 
 
+def rank_exemplars(per_pair, limit=5):
+    """Up to `limit` strong contrast exemplars as (batch, index), best story
+    first, one per target.
+
+    A strong example needs a clinical-side signal (the answer reads out
+    somewhere) and a clear patient-side contrast: a transport gap, an outright
+    absence, or (failing those) a later/weaker patient reading. Deduped by
+    target so the set shows different concepts, not the same word repeated."""
+    def score(entry):
+        clin, pat = entry.get("clinical"), entry.get("patient")
+        if not clin or not pat:
+            return None
+        if not (clin["final_readable"] or clin["n_mid_readable"] > 0):
+            return None  # no clinical signal to contrast against
+        value = float(clin["n_mid_readable"])  # a richer clinical trace reads clearer
+        if pat["transport_gap"]:
+            value += 100
+        elif not pat["final_readable"] and pat["n_mid_readable"] == 0:
+            value += 50 + (10 if clin["final_readable"] else 0)  # clean absence contrast
+        elif pat["final_readable"]:
+            value += 20  # both wordings read out (hedge / later)
+        return value
+
+    scored = [(score(e), e) for e in per_pair]
+    scored = [(s, e) for s, e in scored if s is not None]
+    scored.sort(key=lambda se: se[0], reverse=True)
+    out, seen = [], set()
+    for _value, entry in scored:
+        target = (entry.get("target") or "").lower()
+        if target in seen:
+            continue
+        seen.add(target)
+        out.append((entry["batch"], entry["index"]))
+        if len(out) >= limit:
+            break
+    return out
+
+
 # --------------------------------------------------------------------------- #
 # I/O (edges)
 # --------------------------------------------------------------------------- #
@@ -251,7 +289,7 @@ def build_exemplar(trace_root, batch, index, model, topn, target):
     }
 
 
-def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None):
+def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None, max_exemplars=5):
     """The data/jlens_transport.json payload, or None when no raw exists for
     the model (caller refuses rather than overwrite the committed site copy)."""
     scan_result = jps.scan(Path(trace_root))
@@ -263,17 +301,20 @@ def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None):
     pat_records = [e["patient"] for e in per_pair if e["patient"]]
 
     if exemplar_index is not None:
-        batch = exemplar_batch or per_pair[0]["batch"]
-        chosen = (batch, exemplar_index)
+        chosen = [(exemplar_batch or per_pair[0]["batch"], exemplar_index)]
     else:
-        chosen = pick_exemplar_index(per_pair)
-    exemplar = None
-    if chosen is not None:
-        batch, index = chosen
+        chosen = rank_exemplars(per_pair, max_exemplars)
+        if not chosen:
+            fallback = pick_exemplar_index(per_pair)
+            chosen = [fallback] if fallback else []
+    exemplars = []
+    for batch, index in chosen:
         entry = next((e for e in per_pair if e["batch"] == batch and e["index"] == index), None)
         target = entry["target"] if entry else None
         _, topn = load_summary_meta(trace_root, batch, model)
-        exemplar = build_exemplar(trace_root, batch, index, model, topn, target)
+        built = build_exemplar(trace_root, batch, index, model, topn, target)
+        if built:
+            exemplars.append(built)
 
     batches = sorted({e["batch"] for e in per_pair})
     method_credit, topn = load_summary_meta(trace_root, batches[0], model)
@@ -289,7 +330,8 @@ def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None):
             "clinical": summarize_side(clin_records),
             "patient": summarize_side(pat_records),
         },
-        "exemplar": exemplar,
+        "exemplar": (exemplars[0] if exemplars else None),  # back-compat: first of the set
+        "exemplars": exemplars,
         "per_pair": per_pair,
         "source": f"trace_out/*__jlens_{model}/jlens_raw (committed save_raw responses)",
     }
@@ -302,13 +344,16 @@ def main(argv=None):
     parser.add_argument("--exemplar-batch", default=None,
                         help="batch stem for the exemplar pair (default: inferred)")
     parser.add_argument("--exemplar-index", type=int, default=None,
-                        help="1-based pair index for the exemplar (default: rule-picked)")
+                        help="1-based pair index for a single explicit exemplar")
+    parser.add_argument("--max-exemplars", type=int, default=5,
+                        help="how many strong exemplars to emit for the selector (default 5)")
     parser.add_argument("--out", default="data/jlens_transport.json")
     parser.add_argument("--site", default="../patientwords", help="'' skips the site copy")
     args = parser.parse_args(argv)
 
     payload = build_payload(args.trace_root, args.model,
-                            args.exemplar_batch, args.exemplar_index)
+                            args.exemplar_batch, args.exemplar_index,
+                            max_exemplars=args.max_exemplars)
     if payload is None:
         # Mirror jlens_insights F-H08: a sparse checkout with no committed raw
         # must never overwrite the published transport payload with an empty one.
@@ -319,11 +364,11 @@ def main(argv=None):
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
-    ex = payload.get("exemplar") or {}
+    exs = payload.get("exemplars") or []
     print(f"jlens transport: {payload['n_pairs']} pairs · "
           f"patient transport_gap {payload['census']['patient']['transport_gap']} "
           f"never {payload['census']['patient']['never_readable']} · "
-          f"exemplar {ex.get('batch')}#{ex.get('index')} -> {out}")
+          f"{len(exs)} exemplars [" + ", ".join((e.get("target") or "?") for e in exs) + f"] -> {out}")
     if args.site:
         site_copy = Path(args.site) / "data" / "jlens_transport.json"
         if site_copy.parent.is_dir():

@@ -128,6 +128,24 @@ def test_pick_exemplar_falls_back_to_most_midsentence():
     assert ext.pick_exemplar_index(per_pair) == ("b", 2)
 
 
+def test_rank_exemplars_orders_dedupes_and_limits():
+    gap = {"final_readable": False, "transport_gap": True, "n_mid_readable": 1}
+    absent = {"final_readable": False, "transport_gap": False, "n_mid_readable": 0}
+    reads = {"final_readable": True, "transport_gap": False, "n_mid_readable": 2}
+    def e(idx, target, clin, pat):
+        return {"batch": "b", "index": idx, "target": target, "clinical": clin, "patient": pat}
+    per_pair = [
+        e(1, "alpha", reads, reads),    # both read -> weakest
+        e(2, "beta", reads, absent),    # absence contrast -> strong
+        e(3, "gamma", reads, gap),      # transport gap -> strongest
+        e(4, "beta", reads, absent),    # duplicate target beta -> dropped
+        e(5, "delta", absent, absent),  # no clinical signal -> excluded
+    ]
+    ranked = ext.rank_exemplars(per_pair, limit=5)
+    assert ranked == [("b", 3), ("b", 2), ("b", 1)]   # gap, absence, both; dedup + signal filter
+    assert ext.rank_exemplars(per_pair, limit=1) == [("b", 3)]
+
+
 def test_collect_pairs_groups_sides_and_respects_seal(monkeypatch):
     # two pairs, both sides each; seal drops index 1 entirely.
     monkeypatch.setattr(ext, "_sealed", lambda batch, index: index == 1)
