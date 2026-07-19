@@ -1,0 +1,392 @@
+{
+ "generated_utc": "2026-07-19T21:25:48Z",
+ "model": "gemma-2-2b",
+ "scope": "hosted Jacobian lens vs. plain logit lens, top-8 readout per layer; EXPLORATORY robustness arm; correlational, not an intervention",
+ "method_credit": "Jacobian lens: Gurnee et al., Transformer Circuits 2026; reference implementation github.com/anthropics/jacobian-lens; hosted by neuronpedia.org",
+ "persistence_layers": 2,
+ "batches": [
+  "pairs_20260711T051145Z"
+ ],
+ "jacobian": {
+  "formation": {
+   "n": 11,
+   "q25": 18,
+   "median": 19,
+   "q75": 22
+  },
+  "never_formed": 12,
+  "class_counts": {
+   "held": 11,
+   "hijack": 2,
+   "capture": 5,
+   "unreadable": 5
+  }
+ },
+ "logit": {
+  "formation": {
+   "n": 8,
+   "q25": 18,
+   "median": 19,
+   "q75": 20
+  },
+  "never_formed": 15,
+  "class_counts": {
+   "held": 11,
+   "hijack": 0,
+   "capture": 5,
+   "unreadable": 7
+  }
+ },
+ "agreement": {
+  "n_paired": 23,
+  "class_agree": 17,
+  "formed_agree": 18
+ },
+ "per_pair": [
+  {
+   "index": 2,
+   "target": "antivirals",
+   "jacobian": {
+    "pat_formed": null,
+    "class": "capture"
+   },
+   "logit": {
+    "pat_formed": null,
+    "class": "unreadable"
+   },
+   "formed_agree": true,
+   "class_agree": false,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 3,
+   "target": "neurologist",
+   "jacobian": {
+    "pat_formed": null,
+    "class": "capture"
+   },
+   "logit": {
+    "pat_formed": null,
+    "class": "capture"
+   },
+   "formed_agree": true,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 5,
+   "target": "antihistamines",
+   "jacobian": {
+    "pat_formed": 24,
+    "class": "held"
+   },
+   "logit": {
+    "pat_formed": 19,
+    "class": "held"
+   },
+   "formed_agree": true,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 6,
+   "target": "blood pressure",
+   "jacobian": {
+    "pat_formed": 18,
+    "class": "held"
+   },
+   "logit": {
+    "pat_formed": 17,
+    "class": "held"
+   },
+   "formed_agree": true,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 7,
+   "target": "neurologist",
+   "jacobian": {
+    "pat_formed": null,
+    "class": "capture"
+   },
+   "logit": {
+    "pat_formed": null,
+    "class": "capture"
+   },
+   "formed_agree": true,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 8,
+   "target": "medication",
+   "jacobian": {
+    "pat_formed": 18,
+    "class": "held"
+   },
+   "logit": {
+    "pat_formed": 20,
+    "class": "held"
+   },
+   "formed_agree": true,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 9,
+   "target": "oxygen",
+   "jacobian": {
+    "pat_formed": 24,
+    "class": "held"
+   },
+   "logit": {
+    "pat_formed": null,
+    "class": "held"
+   },
+   "formed_agree": false,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 10,
+   "target": "cream",
+   "jacobian": {
+    "pat_formed": 21,
+    "class": "held"
+   },
+   "logit": {
+    "pat_formed": 20,
+    "class": "held"
+   },
+   "formed_agree": true,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 11,
+   "target": "monitor",
+   "jacobian": {
+    "pat_formed": null,
+    "class": "unreadable"
+   },
+   "logit": {
+    "pat_formed": null,
+    "class": "capture"
+   },
+   "formed_agree": true,
+   "class_agree": false,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 12,
+   "target": "medication",
+   "jacobian": {
+    "pat_formed": 22,
+    "class": "hijack"
+   },
+   "logit": {
+    "pat_formed": null,
+    "class": "capture"
+   },
+   "formed_agree": false,
+   "class_agree": false,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 13,
+   "target": "medication",
+   "jacobian": {
+    "pat_formed": 18,
+    "class": "held"
+   },
+   "logit": {
+    "pat_formed": 19,
+    "class": "held"
+   },
+   "formed_agree": true,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 14,
+   "target": "rheumatologist",
+   "jacobian": {
+    "pat_formed": null,
+    "class": "unreadable"
+   },
+   "logit": {
+    "pat_formed": null,
+    "class": "unreadable"
+   },
+   "formed_agree": true,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 15,
+   "target": "foods",
+   "jacobian": {
+    "pat_formed": 17,
+    "class": "held"
+   },
+   "logit": {
+    "pat_formed": 18,
+    "class": "held"
+   },
+   "formed_agree": true,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 16,
+   "target": "nerve",
+   "jacobian": {
+    "pat_formed": 19,
+    "class": "held"
+   },
+   "logit": {
+    "pat_formed": 20,
+    "class": "held"
+   },
+   "formed_agree": true,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 17,
+   "target": "thyroid",
+   "jacobian": {
+    "pat_formed": 21,
+    "class": "held"
+   },
+   "logit": {
+    "pat_formed": null,
+    "class": "held"
+   },
+   "formed_agree": false,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 18,
+   "target": "evaluation",
+   "jacobian": {
+    "pat_formed": null,
+    "class": "unreadable"
+   },
+   "logit": {
+    "pat_formed": null,
+    "class": "unreadable"
+   },
+   "formed_agree": true,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 19,
+   "target": "medication",
+   "jacobian": {
+    "pat_formed": 19,
+    "class": "hijack"
+   },
+   "logit": {
+    "pat_formed": null,
+    "class": "capture"
+   },
+   "formed_agree": false,
+   "class_agree": false,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 20,
+   "target": "scan",
+   "jacobian": {
+    "pat_formed": null,
+    "class": "unreadable"
+   },
+   "logit": {
+    "pat_formed": null,
+    "class": "unreadable"
+   },
+   "formed_agree": true,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 21,
+   "target": "triggers",
+   "jacobian": {
+    "pat_formed": null,
+    "class": "held"
+   },
+   "logit": {
+    "pat_formed": null,
+    "class": "held"
+   },
+   "formed_agree": true,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 22,
+   "target": "specialist",
+   "jacobian": {
+    "pat_formed": null,
+    "class": "held"
+   },
+   "logit": {
+    "pat_formed": 17,
+    "class": "held"
+   },
+   "formed_agree": false,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 23,
+   "target": "neurologist",
+   "jacobian": {
+    "pat_formed": null,
+    "class": "capture"
+   },
+   "logit": {
+    "pat_formed": null,
+    "class": "unreadable"
+   },
+   "formed_agree": true,
+   "class_agree": false,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 24,
+   "target": "antacids",
+   "jacobian": {
+    "pat_formed": null,
+    "class": "unreadable"
+   },
+   "logit": {
+    "pat_formed": null,
+    "class": "unreadable"
+   },
+   "formed_agree": true,
+   "class_agree": true,
+   "batch": "pairs_20260711T051145Z"
+  },
+  {
+   "index": 25,
+   "target": "gastroenterologist",
+   "jacobian": {
+    "pat_formed": null,
+    "class": "capture"
+   },
+   "logit": {
+    "pat_formed": null,
+    "class": "unreadable"
+   },
+   "formed_agree": true,
+   "class_agree": false,
+   "batch": "pairs_20260711T051145Z"
+  }
+ ]
+}
