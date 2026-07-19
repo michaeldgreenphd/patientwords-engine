@@ -1,48 +1,50 @@
 {
- "_": "EXPLORATORY translation recovery at scale: haiku-translated corpus (txcorpus batches) joined to the original patient logits rows per phrase and model. recovery = p(target|translated) - p(target|patient); gap_closed clipped to [-2, 2] and computed only where the clinical-patient gap exceeds 1pp. top_restored / top_lost count top-prediction changes relative to the clinical top. Owner request 2026-07-14.",
+ "_": "EXPLORATORY translation recovery at scale, recomputed from committed txcorpus logits (2026-07-19). recovery = p(target|translated) - p(target|patient), both from the SAME txcorpus run per model (top_prompt=translated, bottom_prompt=patient); no cross-join, no dropped rows, n = committed measured rows. n_with_headroom = phrases the translation meaningfully helped (recovery > 1pp). top_restored / top_lost = phrases whose top-1 prediction returns to / leaves the clinical target under translation vs patient wording. mean_gap_closed is null: the translated side IS the clinical rewrite, so there is no independent clinical baseline to close a gap against.",
  "corpora": [
   "txcorpus_20260714T224455Z",
-  "txcorpus_priority2_20260714T224455Z",
   "txcorpus_priority_20260714T224455Z"
  ],
  "per_model": {
   "gemma-2-2b": {
-   "n": 32,
-   "mean_recovery": 0.1239,
-   "median_recovery": 0.095,
-   "share_recovery_positive": 0.8125,
-   "n_with_headroom": 23,
-   "mean_gap_closed": 0.5607,
-   "top_restored": 16,
-   "top_lost": 0
+   "n": 37,
+   "family": "base",
+   "mean_recovery": 0.036,
+   "median_recovery": 0.033,
+   "share_recovery_positive": 0.6216,
+   "n_with_headroom": 22,
+   "mean_gap_closed": null,
+   "top_restored": 10,
+   "top_lost": 6
   },
   "gemma-3-4b-it": {
-   "n": 154,
-   "mean_recovery": 0.0054,
-   "median_recovery": 0.0,
-   "share_recovery_positive": 0.4935,
-   "n_with_headroom": 54,
-   "mean_gap_closed": 0.3513,
-   "top_restored": 27,
+   "n": 350,
+   "family": "instruction-tuned",
+   "mean_recovery": 0.0312,
+   "median_recovery": 0.0002,
+   "share_recovery_positive": 0.5286,
+   "n_with_headroom": 126,
+   "mean_gap_closed": null,
+   "top_restored": 30,
    "top_lost": 24
   },
   "qwen3-1.7b": {
-   "n": 290,
-   "mean_recovery": 0.0267,
-   "median_recovery": 0.0002,
-   "share_recovery_positive": 0.5138,
-   "n_with_headroom": 142,
-   "mean_gap_closed": 0.4371,
-   "top_restored": 43,
-   "top_lost": 27
+   "n": 350,
+   "family": "instruction-tuned",
+   "mean_recovery": 0.0315,
+   "median_recovery": 0.0001,
+   "share_recovery_positive": 0.5,
+   "n_with_headroom": 134,
+   "mean_gap_closed": null,
+   "top_restored": 40,
+   "top_lost": 18
   }
  },
  "lens_recovery": {
   "_": "Lens view of translation, gemma-2-2b, EXPLORATORY (phrases predate amendment 2 adoption): formation = readable for 2 consecutive layers in the top-8 window, per the adopted counting rules.",
-  "n_paired": 75,
-  "patient_never_formed": 29,
-  "recovered_to_formed": 10,
-  "formed_both": 42,
-  "lost_by_translation": 4
+  "n_paired": 105,
+  "patient_never_formed": 43,
+  "recovered_to_formed": 11,
+  "formed_both": 55,
+  "lost_by_translation": 7
  }
 }

@@ -78,11 +78,14 @@ def test_txcorpus_stem_never_matches_confirmatory_regex():
     assert r"pairs_\d{8}T\d{6}Z" in rigor_src
 
 
-def test_translation_scale_join_and_metrics(tmp_path):
+def test_translation_scale_self_contained_recovery(tmp_path):
+    # Recovery is computed from the ONE txcorpus run (clinical=translated,
+    # patient=patient); the old cross-join to a source-batch pairs_ run is retired.
+    # A source-batch run is present here precisely to prove it is IGNORED.
     sim = tmp_path / "simulated"
     sim.mkdir()
     _write_batch(sim, "txcorpus_20260715T000000Z", [
-        {"top_prompt": "CL1", "bottom_prompt": "TR1", "target_clinical_token": "t1",
+        {"top_prompt": "CL1", "bottom_prompt": "TR1", "target_clinical_token": " a",
          "generation": {"source_batch": "pairs_20260711T000000Z", "source_index": 2,
                         "original_patient": "PT1"}},
     ])
@@ -90,19 +93,21 @@ def test_translation_scale_join_and_metrics(tmp_path):
     (troot / "txcorpus_20260715T000000Z__m1").mkdir(parents=True)
     (troot / "txcorpus_20260715T000000Z__m1" / "batch_summary.part_01.json").write_text(json.dumps(
         {"graph_model": "m1", "results": [{
-            "index": 1, "probabilities": {"clinical": 0.5, "patient": 0.4},
-            "predictive_spread": {"clinical": [["a", 0.5]], "patient": [["a", 0.4]]}}]}))
+            "index": 1, "target_token": 'Output " a"',
+            "probabilities": {"clinical": 0.5, "patient": 0.1},
+            "predictive_spread": {"clinical": [['Output " a"', 0.5]], "patient": [['Output " b"', 0.2]]}}]}))
+    # a source-batch run the OLD cross-join would have folded in — must be ignored now
     (troot / "pairs_20260711T000000Z__m1").mkdir(parents=True)
     (troot / "pairs_20260711T000000Z__m1" / "batch_summary.part_01.json").write_text(json.dumps(
         {"graph_model": "m1", "results": [{
-            "index": 2, "probabilities": {"clinical": 0.5, "patient": 0.1},
-            "predictive_spread": {"clinical": [["a", 0.5]], "patient": [["b", 0.2]]}}]}))
+            "index": 2, "probabilities": {"clinical": 0.9, "patient": 0.9},
+            "predictive_spread": {"clinical": [["z", 0.9]], "patient": [["z", 0.9]]}}]}))
     out = ts.analyze(troot, sim)
     s = out["per_model"]["m1"]
     assert s["n"] == 1
-    assert abs(s["mean_recovery"] - 0.3) < 1e-9          # 0.4 translated vs 0.1 patient
-    assert abs(s["mean_gap_closed"] - 0.75) < 1e-9       # 0.3 recovered of the 0.4 gap
-    assert s["top_restored"] == 1 and s["top_lost"] == 0
+    assert abs(s["mean_recovery"] - 0.4) < 1e-9          # 0.5 translated - 0.1 patient, self-contained
+    assert s["mean_gap_closed"] is None                  # no independent clinical baseline
+    assert s["top_restored"] == 1 and s["top_lost"] == 0  # translated top 'a'==target, patient top 'b'
 
 
 def test_lens_recovery_join(tmp_path):
