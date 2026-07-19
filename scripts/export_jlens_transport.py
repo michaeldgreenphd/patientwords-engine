@@ -314,6 +314,23 @@ def load_summary_meta(trace_root, batch, model):
     return summary.get("method_credit") or METHOD_CREDIT_FALLBACK, summary.get("top_n") or 8
 
 
+def load_render_map(scenarios_path):
+    """{(batch, index): html} for pairs that carry a committed circuit-tracer
+    render (scenario.html), so a chosen exemplar can deep-link to the real
+    trace. Empty when the scenarios payload is missing or unreadable."""
+    try:
+        payload = json.loads(Path(scenarios_path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    for scenario in payload.get("scenarios", []):
+        html = scenario.get("html")
+        batch, index = scenario.get("batch"), scenario.get("batch_index")
+        if html and batch is not None and index is not None:
+            out[(batch, index)] = html
+    return out
+
+
 def build_exemplar(trace_root, batch, index, model, topn, target):
     """Both-phrasing position x layer grids for the exemplar pair, or None when
     its raw is missing."""
@@ -338,23 +355,37 @@ def build_exemplar(trace_root, batch, index, model, topn, target):
     }
 
 
-def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None, max_exemplars=5):
+def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None,
+                  max_exemplars=5, render_map=None, census_batch=None):
     """The data/jlens_transport.json payload, or None when no raw exists for
-    the model (caller refuses rather than overwrite the committed site copy)."""
+    the model (caller refuses rather than overwrite the committed site copy).
+
+    The census is computed over `census_batch` (a representative run) so it is
+    not skewed by the traced pairs picked for the selector; exemplars are drawn
+    from pairs that carry a committed circuit-tracer render (`render_map`) when
+    one is supplied, so each answer token can deep-link to the real trace."""
     scan_result = jps.scan(Path(trace_root))
     per_pair = collect_pairs(scan_result, model)
     if not per_pair:
         return None
+    render_map = render_map or {}
 
-    clin_records = [e["clinical"] for e in per_pair if e["clinical"]]
-    pat_records = [e["patient"] for e in per_pair if e["patient"]]
+    # census over the representative batch (unbiased by the traced-pair picks)
+    census_pairs = [e for e in per_pair if e["batch"] == census_batch] if census_batch else []
+    if not census_pairs:
+        census_pairs = per_pair
+    clin_records = [e["clinical"] for e in census_pairs if e["clinical"]]
+    pat_records = [e["patient"] for e in census_pairs if e["patient"]]
+
+    # exemplar candidates: prefer pairs with a committed circuit-tracer render
+    candidates = [e for e in per_pair if (e["batch"], e["index"]) in render_map] or per_pair
 
     if exemplar_index is not None:
         chosen = [(exemplar_batch or per_pair[0]["batch"], exemplar_index)]
     else:
-        chosen = rank_exemplars(per_pair, max_exemplars)
+        chosen = rank_exemplars(candidates, max_exemplars)
         if not chosen:
-            fallback = pick_exemplar_index(per_pair)
+            fallback = pick_exemplar_index(candidates)
             chosen = [fallback] if fallback else []
     exemplars = []
     for batch, index in chosen:
@@ -363,6 +394,7 @@ def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None, m
         _, topn = load_summary_meta(trace_root, batch, model)
         built = build_exemplar(trace_root, batch, index, model, topn, target)
         if built:
+            built["render"] = render_map.get((batch, index))  # circuit-tracer trace path
             exemplars.append(built)
 
     batches = sorted({e["batch"] for e in per_pair})
@@ -374,7 +406,8 @@ def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None, m
         "method_credit": method_credit,
         "top_n": topn,
         "windows": scan_result.get("windows", ["1", "2", "4", "8"]),
-        "n_pairs": len(per_pair),
+        "census_batch": (census_batch if census_pairs is not per_pair else None),
+        "n_pairs": len(census_pairs),
         "census": {
             "clinical": summarize_side(clin_records),
             "patient": summarize_side(pat_records),
@@ -396,13 +429,20 @@ def main(argv=None):
                         help="1-based pair index for a single explicit exemplar")
     parser.add_argument("--max-exemplars", type=int, default=5,
                         help="how many strong exemplars to emit for the selector (default 5)")
+    parser.add_argument("--scenarios", default="../patientwords/data/simulated_scenarios.json",
+                        help="site scenarios payload; its committed renders scope the exemplars "
+                             "and give each answer token a circuit-tracer deep-link ('' disables)")
+    parser.add_argument("--census-batch", default="pairs_20260711T051145Z",
+                        help="representative batch the transport census is computed over")
     parser.add_argument("--out", default="data/jlens_transport.json")
     parser.add_argument("--site", default="../patientwords", help="'' skips the site copy")
     args = parser.parse_args(argv)
 
+    render_map = load_render_map(args.scenarios) if args.scenarios else {}
     payload = build_payload(args.trace_root, args.model,
                             args.exemplar_batch, args.exemplar_index,
-                            max_exemplars=args.max_exemplars)
+                            max_exemplars=args.max_exemplars,
+                            render_map=render_map, census_batch=args.census_batch)
     if payload is None:
         # Mirror jlens_insights F-H08: a sparse checkout with no committed raw
         # must never overwrite the published transport payload with an empty one.
@@ -414,10 +454,11 @@ def main(argv=None):
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
     exs = payload.get("exemplars") or []
-    print(f"jlens transport: {payload['n_pairs']} pairs · "
-          f"patient transport_gap {payload['census']['patient']['transport_gap']} "
-          f"never {payload['census']['patient']['never_readable']} · "
-          f"{len(exs)} exemplars [" + ", ".join((e.get("target") or "?") for e in exs) + f"] -> {out}")
+    linked = sum(1 for e in exs if e.get("render"))
+    print(f"jlens transport: census {payload['n_pairs']} pairs (batch {payload.get('census_batch')}) · "
+          f"patient never {payload['census']['patient']['never_readable']} · "
+          f"{len(exs)} exemplars ({linked} circuit-linked) ["
+          + ", ".join((e.get("target") or "?") for e in exs) + f"] -> {out}")
     if args.site:
         site_copy = Path(args.site) / "data" / "jlens_transport.json"
         if site_copy.parent.is_dir():

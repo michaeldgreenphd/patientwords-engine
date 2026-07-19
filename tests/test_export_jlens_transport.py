@@ -8,6 +8,7 @@ published transport payload with an empty one).
 """
 
 import importlib.util
+import json
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -205,6 +206,40 @@ def test_collect_pairs_filters_by_model(monkeypatch):
               "n_non_final_readable_positions": 0, "transport_gap": False,
               "windows_first_layer": {}}]
     assert ext.collect_pairs({"scans": scans}, "m") == []
+
+
+def test_load_render_map_from_scenarios(tmp_path):
+    p = tmp_path / "sc.json"
+    p.write_text(json.dumps({"scenarios": [
+        {"batch": "b1", "batch_index": 7, "html": "modes/simulated/b1/index_07.html"},
+        {"batch": "b1", "batch_index": 9},                       # no render
+        {"batch": "b2", "batch_index": 3, "html": "modes/simulated/b2/index_03.html"},
+    ]}), encoding="utf-8")
+    assert ext.load_render_map(str(p)) == {
+        ("b1", 7): "modes/simulated/b1/index_07.html",
+        ("b2", 3): "modes/simulated/b2/index_03.html"}
+    assert ext.load_render_map(str(tmp_path / "missing.json")) == {}
+
+
+def test_build_payload_census_batch_and_render_restriction(monkeypatch):
+    def side(final, mid):
+        return {"final_readable": final, "n_mid_readable": mid, "transport_gap": False}
+    per_pair = [
+        {"batch": "rep", "index": 1, "target": "a", "clinical": side(True, 1), "patient": side(False, 0)},
+        {"batch": "rep", "index": 2, "target": "b", "clinical": side(True, 0), "patient": side(True, 0)},
+        {"batch": "trace", "index": 1, "target": "c", "clinical": side(True, 2), "patient": side(False, 0)},
+    ]
+    monkeypatch.setattr(ext.jps, "scan", lambda root: {"scans": [], "windows": ["1"]})
+    monkeypatch.setattr(ext, "collect_pairs", lambda scan, model: per_pair)
+    monkeypatch.setattr(ext, "load_summary_meta", lambda tr, b, m: ("credit", 8))
+    monkeypatch.setattr(ext, "build_exemplar",
+                        lambda tr, b, i, m, tn, tg: {"batch": b, "index": i, "target": tg, "sides": {}})
+    payload = ext.build_payload("trace_out", "gemma-2-2b",
+                                render_map={("trace", 1): "modes/simulated/trace/index_01.html"},
+                                census_batch="rep")
+    assert payload["n_pairs"] == 2 and payload["census_batch"] == "rep"     # census: rep only
+    assert [e["target"] for e in payload["exemplars"]] == ["c"]             # only the rendered pair
+    assert payload["exemplars"][0]["render"] == "modes/simulated/trace/index_01.html"
 
 
 def test_build_payload_refuses_empty(monkeypatch):
