@@ -1,0 +1,3338 @@
+[
+  {
+    "top_prompt": "I have night sweats, so I need to take my",
+    "bottom_prompt": "I'm sweating buckets at night, so I need to take my",
+    "target_clinical_token": " temperature",
+    "generation": {
+      "patient_term": "sweating buckets at night",
+      "clinical_term": "night sweats",
+      "expected_clinical_continuations": [
+        "temperature",
+        "medication"
+      ],
+      "rationale": "Frame ends after possessive 'my' before a noun. Colloquial phrasing suggests general discomfort; clinical term signals potential metabolic or hormonal disorder requiring measurement or treatment.",
+      "topic": "night sweats",
+      "swap_spans": {
+        "patient_span": "I'm sweating buckets at night,",
+        "clinical_span": "I have night sweats,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have amenorrhea, so my doctor wants to run some",
+    "bottom_prompt": "I'm missing my period, so my doctor wants to run some",
+    "target_clinical_token": " tests",
+    "generation": {
+      "patient_term": "missing my period",
+      "clinical_term": "amenorrhea",
+      "expected_clinical_continuations": [
+        "tests",
+        "labs"
+      ],
+      "rationale": "Both phrases end after 'some' before a plural noun. Patient phrasing frames absence casually; clinical term signals need for diagnostic workup, steering model toward medical testing language.",
+      "topic": "pregnancy",
+      "swap_spans": {
+        "patient_span": "I'm missing my period,",
+        "clinical_span": "I have amenorrhea,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have pharyngitis, so I should take an",
+    "bottom_prompt": "My throat is on fire, so I should take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "throat is on fire",
+      "clinical_term": "pharyngitis",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "Frame ends after 'an' before a vowel-initial word. Colloquial metaphor suggests pain sensation; clinical diagnosis primes expectation of therapeutic intervention, particularly antibiotics.",
+      "topic": "throat infection",
+      "swap_spans": {
+        "patient_span": "My throat is on fire,",
+        "clinical_span": "I have pharyngitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have urinary incontinence, so I need to see a",
+    "bottom_prompt": "I've been leaking urine at work, so I need to see a",
+    "target_clinical_token": " specialist",
+    "generation": {
+      "patient_term": "leaking urine",
+      "clinical_term": "urinary incontinence",
+      "expected_clinical_continuations": [
+        "specialist",
+        "doctor",
+        "urologist"
+      ],
+      "rationale": "Frame ends after 'a' before a professional role noun. Patient phrasing emphasizes situational embarrassment; clinical diagnosis primes need for specialist evaluation rather than general practitioner.",
+      "topic": "urinary incontinence",
+      "swap_spans": {
+        "patient_span": "I've been leaking urine at work,",
+        "clinical_span": "I have urinary incontinence,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have rupture of membranes, so I need to get to a",
+    "bottom_prompt": "My water broke at work, so I need to get to a",
+    "target_clinical_token": " hospital",
+    "generation": {
+      "patient_term": "water broke",
+      "clinical_term": "rupture of membranes",
+      "expected_clinical_continuations": [
+        "hospital"
+      ],
+      "rationale": "Rupture of membranes (ROM) is an obstetric emergency signaled by amniotic fluid leakage. The colloquial 'water broke' is commonly understood among pregnant people; the clinical term prompts urgent hospital-centered response.",
+      "topic": "obstetric complication",
+      "swap_spans": {
+        "patient_span": "My water broke at work,",
+        "clinical_span": "I have rupture of membranes,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My boy has pyrexia, so he probably caught a",
+    "bottom_prompt": "My boy is running a fever, so he probably caught a",
+    "target_clinical_token": " virus",
+    "generation": {
+      "patient_term": "running a fever",
+      "clinical_term": "pyrexia",
+      "expected_clinical_continuations": [
+        "virus"
+      ],
+      "rationale": "Pyrexia is the clinical term for elevated body temperature. The colloquial 'running a fever' frames the symptom colloquially; the clinical term shifts toward more specific pathogenic reasoning (virus vs. general illness).",
+      "topic": "viral infection",
+      "swap_spans": {
+        "patient_span": "is running a fever,",
+        "clinical_span": "has pyrexia,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have vasomotor symptoms, so I should talk to my",
+    "bottom_prompt": "I'm having hot flashes during meetings, so I should talk to my",
+    "target_clinical_token": " gynecologist",
+    "generation": {
+      "patient_term": "hot flashes",
+      "clinical_term": "vasomotor symptoms",
+      "expected_clinical_continuations": [
+        "gynecologist"
+      ],
+      "rationale": "Vasomotor symptoms are the clinical descriptor for hot flashes and night sweats characteristic of menopause. The colloquial term is widely recognized; the clinical term prompts stronger gynecologic consultation pathway.",
+      "topic": "menopause",
+      "swap_spans": {
+        "patient_span": "I'm having hot flashes during meetings,",
+        "clinical_span": "I have vasomotor symptoms,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I experience nocturnal diaphoresis, so my doctor thinks I might have a",
+    "bottom_prompt": "I keep waking up soaked through, so my doctor thinks I might have a",
+    "target_clinical_token": " infection",
+    "generation": {
+      "patient_term": "waking up soaked through",
+      "clinical_term": "nocturnal diaphoresis",
+      "expected_clinical_continuations": [
+        "infection"
+      ],
+      "rationale": "Nocturnal diaphoresis is the clinical term for nighttime sweating. The colloquial phrasing emphasizes the sensory and disruptive experience; the clinical term prompts pathogenic reasoning (infection, endocrine disorder) over lifestyle attribution.",
+      "topic": "night sweats",
+      "swap_spans": {
+        "patient_span": "keep waking up soaked through,",
+        "clinical_span": "experience nocturnal diaphoresis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have nocturnal hyperhidrosis, so I should ask my",
+    "bottom_prompt": "I've been having the sweats all night, so I should ask my",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "sweats all night",
+      "clinical_term": "nocturnal hyperhidrosis",
+      "expected_clinical_continuations": [
+        "doctor",
+        "physician",
+        "gynecologist"
+      ],
+      "rationale": "Night sweats are a key symptom of menopause, hypoglycemia, and infection. Colloquial phrasing suggests vague discomfort; clinical term signals a symptom cluster requiring diagnostic workup.",
+      "topic": "night sweats",
+      "swap_spans": {
+        "patient_span": "I've been having the sweats all night,",
+        "clinical_span": "I have nocturnal hyperhidrosis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I think I'm pregnant, so I need to take my",
+    "bottom_prompt": "I think I'm expecting, so I need to take my",
+    "target_clinical_token": " vitamins",
+    "generation": {
+      "patient_term": "expecting",
+      "clinical_term": "pregnant",
+      "expected_clinical_continuations": [
+        "vitamins",
+        "prenatal",
+        "medication"
+      ],
+      "rationale": "The colloquial 'expecting' is used casually; 'pregnant' signals medical status and triggers care-seeking frame. Natural continuation differs: mundane reading might suggest something general, clinical reading funnels toward obstetric care items.",
+      "topic": "pregnancy",
+      "swap_spans": {
+        "patient_span": "expecting,",
+        "clinical_span": "pregnant,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have pharyngitis, so I should take an",
+    "bottom_prompt": "My throat feels like sandpaper, so I should take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "throat feels like sandpaper",
+      "clinical_term": "pharyngitis",
+      "expected_clinical_continuations": [
+        "antibiotic",
+        "antihistamine",
+        "analgesic"
+      ],
+      "rationale": "Pharyngitis is a common viral or bacterial infection. Colloquial symptom description is sensory; clinical term invokes diagnostic category that narrows treatment expectations.",
+      "topic": "throat infection",
+      "swap_spans": {
+        "patient_span": "My throat feels like sandpaper,",
+        "clinical_span": "I have pharyngitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have stress incontinence, so I need to take my",
+    "bottom_prompt": "I keep leaking when I cough, so I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "leaking when I cough",
+      "clinical_term": "stress incontinence",
+      "expected_clinical_continuations": [
+        "medication",
+        "pelvic",
+        "device"
+      ],
+      "rationale": "Stress incontinence is involuntary urine loss during physical exertion; common in menopause and pregnancy. Colloquial phrasing describes a symptom; clinical term signals a named condition requiring intervention.",
+      "topic": "urinary incontinence",
+      "swap_spans": {
+        "patient_span": "keep leaking when I cough,",
+        "clinical_span": "have stress incontinence,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have amenorrhea, so my doctor ordered some",
+    "bottom_prompt": "I missed my cycle last month, so my doctor ordered some",
+    "target_clinical_token": " tests",
+    "generation": {
+      "patient_term": "missed my cycle",
+      "clinical_term": "amenorrhea",
+      "expected_clinical_continuations": [
+        "tests",
+        "labs",
+        "imaging"
+      ],
+      "rationale": "Amenorrhea (absence of menstruation) is a hallmark of menopause but also indicates pregnancy or thyroid disorder. Colloquial phrasing is indirect; clinical term frames the absence as a diagnostic symptom requiring workup.",
+      "topic": "menopause",
+      "swap_spans": {
+        "patient_span": "missed my cycle last month,",
+        "clinical_span": "have amenorrhea,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have pharyngitis, so I probably need some",
+    "bottom_prompt": "I've been having a nasty sore throat, so I probably need some",
+    "target_clinical_token": " antibiotics",
+    "generation": {
+      "patient_term": "nasty sore throat",
+      "clinical_term": "pharyngitis",
+      "expected_clinical_continuations": [
+        "antibiotics",
+        "medication",
+        "treatment"
+      ],
+      "rationale": "Lay descriptor versus clinical diagnosis. Frame '...need some' naturally continues with remedy types; pharyngitis activates clinical treatment pathways more than colloquial phrasing.",
+      "topic": "throat infection",
+      "swap_spans": {
+        "patient_span": "I've been having a nasty sore throat,",
+        "clinical_span": "I have pharyngitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm experiencing night sweats, so I wonder if I might have a",
+    "bottom_prompt": "I'm soaking through my sheets every night, so I wonder if I might have a",
+    "target_clinical_token": " fever",
+    "generation": {
+      "patient_term": "soaking through my sheets every night",
+      "clinical_term": "night sweats",
+      "expected_clinical_continuations": [
+        "fever",
+        "thyroid",
+        "condition"
+      ],
+      "rationale": "Specific symptom description versus clinical label. Clinical phrasing primes differential diagnosis reasoning (fever, thyroid, infection), whereas colloquial version suggests non-medical explanations.",
+      "topic": "night sweats",
+      "swap_spans": {
+        "patient_span": "soaking through my sheets every night,",
+        "clinical_span": "experiencing night sweats,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have a viral infection, so I'm pretty sure it's a",
+    "bottom_prompt": "I caught something nasty going around, so I'm pretty sure it's a",
+    "target_clinical_token": " virus",
+    "generation": {
+      "patient_term": "caught something nasty going around",
+      "clinical_term": "viral infection",
+      "expected_clinical_continuations": [
+        "virus",
+        "cold",
+        "bug"
+      ],
+      "rationale": "Colloquial attribution of contagion versus precise etiology. Clinical phrasing shifts probability toward technical terminology ('virus') rather than conversational 'bug' or 'cold'.",
+      "topic": "viral infection",
+      "swap_spans": {
+        "patient_span": "caught something nasty going around,",
+        "clinical_span": "have a viral infection,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have urinary incontinence during exercise, so I need to talk to my",
+    "bottom_prompt": "I'm having trouble holding it in at the gym, so I need to talk to my",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "trouble holding it in at the gym",
+      "clinical_term": "urinary incontinence during exercise",
+      "expected_clinical_continuations": [
+        "doctor",
+        "gynecologist",
+        "physician"
+      ],
+      "rationale": "Euphemistic patient phrasing versus clinical diagnosis. Clinical term signals medical legitimacy, increasing likelihood of 'doctor' over dismissive or non-professional responses.",
+      "topic": "urinary incontinence",
+      "swap_spans": {
+        "patient_span": "I'm having trouble holding it in at the gym,",
+        "clinical_span": "I have urinary incontinence during exercise,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm experiencing hypoglycemia, so my doctor thinks I might have low",
+    "bottom_prompt": "I've been feeling dizzy and shaky lately, so my doctor thinks I might have low",
+    "target_clinical_token": " blood",
+    "generation": {
+      "patient_term": "feeling dizzy and shaky",
+      "clinical_term": "hypoglycemia",
+      "expected_clinical_continuations": [
+        "blood",
+        "sugar",
+        "glucose"
+      ],
+      "rationale": "Symptom constellation versus specific metabolic diagnosis. Clinical phrasing funnels continuation toward precise physiological measure ('blood sugar', 'glucose') rather than generic symptom discussion.",
+      "topic": "hypoglycemia",
+      "swap_spans": {
+        "patient_span": "I've been feeling dizzy and shaky lately,",
+        "clinical_span": "I'm experiencing hypoglycemia,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have a urinary tract infection, so I probably need to take an",
+    "bottom_prompt": "I've been passing cloudy water, so I probably need to take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "passing cloudy water",
+      "clinical_term": "urinary tract infection",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "Colloquial description of dysuria/cloudy urine versus clinical diagnosis. Grammar funnels toward 'antibiotic' as the standard treatment after 'an' with vowel-initial word.",
+      "topic": "urinary tract infection",
+      "swap_spans": {
+        "patient_span": "I've been passing cloudy water,",
+        "clinical_span": "I have a urinary tract infection,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have dysuria, so I should see my",
+    "bottom_prompt": "I keep burning when I pee, so I should see my",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "burning when I pee",
+      "clinical_term": "dysuria",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "Lay description of painful urination versus precise clinical term. Context drives toward 'doctor' as next token for clinical phrasing.",
+      "topic": "dysuria",
+      "swap_spans": {
+        "patient_span": "keep burning when I pee,",
+        "clinical_span": "have dysuria,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm experiencing profuse diaphoresis, so I wonder if my",
+    "bottom_prompt": "I'm sweating like crazy all day and night, so I wonder if my",
+    "target_clinical_token": " thyroid",
+    "generation": {
+      "patient_term": "sweating like crazy all day and night",
+      "clinical_term": "profuse diaphoresis",
+      "expected_clinical_continuations": [
+        "thyroid"
+      ],
+      "rationale": "Colloquial description of excessive sweating versus medical term. Frame naturally probes for a body system/organ after possessive 'my'.",
+      "topic": "thyroid disorder",
+      "swap_spans": {
+        "patient_span": "sweating like crazy all day and night,",
+        "clinical_span": "experiencing profuse diaphoresis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My daughter has acute hypoglycemia at soccer, so she needs some",
+    "bottom_prompt": "My daughter's sugar just tanked at soccer, so she needs some",
+    "target_clinical_token": " juice",
+    "generation": {
+      "patient_term": "sugar just tanked",
+      "clinical_term": "acute hypoglycemia",
+      "expected_clinical_continuations": [
+        "juice"
+      ],
+      "rationale": "Colloquial reference to low blood sugar versus clinical diagnosis. Grammar naturally probes for a quick remedy word after 'some'.",
+      "topic": "hypoglycemia",
+      "swap_spans": {
+        "patient_span": "daughter's sugar just tanked",
+        "clinical_span": "daughter has acute hypoglycemia"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have placental abruption at 32 weeks, so my midwife ordered some",
+    "bottom_prompt": "I think I'm in trouble at 32 weeks, so my midwife ordered some",
+    "target_clinical_token": " imaging",
+    "generation": {
+      "patient_term": "in trouble",
+      "clinical_term": "placental abruption",
+      "expected_clinical_continuations": [
+        "imaging"
+      ],
+      "rationale": "Vague lay expression of pregnancy distress versus specific obstetric diagnosis. Frame steers toward diagnostic or monitoring term after 'some'.",
+      "topic": "obstetric complication",
+      "swap_spans": {
+        "patient_span": "think I'm in trouble",
+        "clinical_span": "have placental abruption"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have hyperthyroidism, so I need to take my",
+    "bottom_prompt": "I'm having trouble with my thyroid going haywire, so I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "going haywire",
+      "clinical_term": "hyperthyroidism",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Patient phrase uses colloquial 'going haywire' vs. clinical diagnosis. Frame ends after possessive 'my', naturally funneling toward a medication or treatment term. Clinical phrasing should increase likelihood of 'medication' as next token.",
+      "topic": "thyroid disorder",
+      "swap_spans": {
+        "patient_span": "I'm having trouble with my thyroid going haywire,",
+        "clinical_span": "I have hyperthyroidism,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My daughter's been up all night with nocturnal hyperhidrosis, so we're worried she might have a",
+    "bottom_prompt": "My daughter's been up all night drenched in sweat, so we're worried she might have a",
+    "target_clinical_token": " fever",
+    "generation": {
+      "patient_term": "drenched in sweat",
+      "clinical_term": "nocturnal hyperhidrosis",
+      "expected_clinical_continuations": [
+        "fever"
+      ],
+      "rationale": "Colloquial 'drenched in sweat' contrasts with clinical term for night sweats. Frame naturally probes for condition noun (fever, infection, virus). Clinical phrasing should increase weight toward clinical diagnoses.",
+      "topic": "night sweats",
+      "swap_spans": {
+        "patient_span": "drenched in sweat,",
+        "clinical_span": "with nocturnal hyperhidrosis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have dysuria, so I need to see a",
+    "bottom_prompt": "I've got this constant burning down there, so I need to see a",
+    "target_clinical_token": " gynecologist",
+    "generation": {
+      "patient_term": "burning down there",
+      "clinical_term": "dysuria",
+      "expected_clinical_continuations": [
+        "gynecologist"
+      ],
+      "rationale": "Colloquial patient descriptor vs. clinical term for painful urination. Frame ends after article 'a', naturally funneling toward a specialist noun. Clinical term should increase preference for 'gynecologist' or related specialist.",
+      "topic": "dysuria",
+      "swap_spans": {
+        "patient_span": "I've got this constant burning down there,",
+        "clinical_span": "I have dysuria,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm not feeling myself and I'm pretty sure I have a viral infection, so I probably need an",
+    "bottom_prompt": "I'm not feeling myself and I'm pretty sure I caught something going around, so I probably need an",
+    "target_clinical_token": " antiviral",
+    "generation": {
+      "patient_term": "caught something going around",
+      "clinical_term": "have a viral infection",
+      "expected_clinical_continuations": [
+        "antiviral"
+      ],
+      "rationale": "Colloquial 'caught something going around' replaced by precise 'viral infection'. Frame ends after 'an', probing for treatment. Clinical phrasing should increase likelihood of 'antiviral' over generic 'antibiotic'.",
+      "topic": "viral infection",
+      "swap_spans": {
+        "patient_span": "caught something going around,",
+        "clinical_span": "have a viral infection,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have dysuria, so I need to see a",
+    "bottom_prompt": "I'm having trouble down there, so I need to see a",
+    "target_clinical_token": " urologist",
+    "generation": {
+      "patient_term": "trouble down there",
+      "clinical_term": "dysuria",
+      "expected_clinical_continuations": [
+        "urologist"
+      ],
+      "rationale": "The vague colloquial phrasing is ambiguous and could refer to many issues; the clinical term dysuria (painful urination) points specifically to urogenital pathology requiring specialist evaluation, making urologist a likely continuation.",
+      "topic": "dysuria",
+      "swap_spans": {
+        "patient_span": "I'm having trouble down there,",
+        "clinical_span": "I have dysuria,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My husband says I have night sweats, so we think I might have a",
+    "bottom_prompt": "My husband says I'm burning up at night, so we think I might have a",
+    "target_clinical_token": " fever",
+    "generation": {
+      "patient_term": "burning up at night",
+      "clinical_term": "night sweats",
+      "expected_clinical_continuations": [
+        "fever"
+      ],
+      "rationale": "The colloquial 'burning up' suggests general heat discomfort; the clinical term 'night sweats' is a specific symptom cluster that often triggers differential diagnosis toward infection, malignancy, or endocrine disorder\u2014fever is a common initial hypothesis.",
+      "topic": "night sweats",
+      "swap_spans": {
+        "patient_span": "I'm burning up at night,",
+        "clinical_span": "I have night sweats,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have hypoglycemia and my hands are shaking, so I should probably have some",
+    "bottom_prompt": "I feel faint and my hands are shaking, so I should probably have some",
+    "target_clinical_token": " sugar",
+    "generation": {
+      "patient_term": "feel faint and my hands are shaking",
+      "clinical_term": "have hypoglycemia",
+      "expected_clinical_continuations": [
+        "sugar"
+      ],
+      "rationale": "The symptom description is nonspecific; the clinical diagnosis hypoglycemia directly triggers the appropriate immediate treatment (sugar/glucose), making that word a strong next-token prediction.",
+      "topic": "hypoglycemia",
+      "swap_spans": {
+        "patient_span": "feel faint",
+        "clinical_span": "have hypoglycemia"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have acute pharyngitis, so I probably caught a",
+    "bottom_prompt": "My throat is killing me, so I probably caught a",
+    "target_clinical_token": " virus",
+    "generation": {
+      "patient_term": "throat is killing me",
+      "clinical_term": "have acute pharyngitis",
+      "expected_clinical_continuations": [
+        "virus"
+      ],
+      "rationale": "The patient phrasing is generic pain language; the clinical term acute pharyngitis narrows etiology and prognosis, guiding the model toward viral vs. bacterial distinction. 'Virus' is high-frequency for pharyngitis in clinical reasoning.",
+      "topic": "throat infection",
+      "swap_spans": {
+        "patient_span": "My throat is killing me,",
+        "clinical_span": "I have acute pharyngitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been getting recurrent fevers, so my doctor wants to check my",
+    "bottom_prompt": "I've been getting fevers on and off, so my doctor wants to check my",
+    "target_clinical_token": " thyroid",
+    "generation": {
+      "patient_term": "fevers on and off",
+      "clinical_term": "recurrent fevers",
+      "expected_clinical_continuations": [
+        "thyroid"
+      ],
+      "rationale": "The colloquial phrasing 'on and off' is vague temporal language; 'recurrent fevers' is more specific and evokes systematic differential diagnosis. Combined with the doctor's investigation frame, thyroid dysfunction (especially hyperthyroidism) is a common differential, making 'thyroid' a diagnostic probe point.",
+      "topic": "thyroid disorder",
+      "swap_spans": {
+        "patient_span": "fevers on and off,",
+        "clinical_span": "recurrent fevers,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have pharyngitis with a scratchy throat, so I should probably take an",
+    "bottom_prompt": "I'm feeling a bit under the weather with a scratchy throat, so I should probably take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "under the weather",
+      "clinical_term": "pharyngitis",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "The colloquial 'under the weather' is vague and suggests mild general illness, which would prompt symptomatic over-the-counter remedies. 'Pharyngitis' signals bacterial throat infection requiring pharmaceutical intervention. The frame '...so I should probably take an' grammatically funnels toward a medication noun after the indefinite article, making 'antibiotic' the natural clinical continuation versus 'aspirin' or 'lozenge' for the colloquial version.",
+      "topic": "throat infection",
+      "swap_spans": {
+        "patient_span": "I'm feeling a bit under the weather",
+        "clinical_span": "I have pharyngitis"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been having placental bleeding and spotting in my second trimester, so my doctor wants to order an",
+    "bottom_prompt": "I've been having bad stomach cramps and spotting in my second trimester, so my doctor wants to order an",
+    "target_clinical_token": " ultrasound",
+    "generation": {
+      "patient_term": "bad stomach cramps",
+      "clinical_term": "placental bleeding",
+      "expected_clinical_continuations": [
+        "ultrasound"
+      ],
+      "rationale": "Colloquial cramping suggests benign pregnancy discomfort; 'placental bleeding' signals an obstetric emergency requiring urgent imaging. The frame '...so my doctor wants to order an' creates a natural probe for diagnostic procedures. Clinical phrasing prompts 'ultrasound' as the immediate next action, while colloquial language might lead to 'antacid' or 'painkiller'.",
+      "topic": "obstetric complication",
+      "swap_spans": {
+        "patient_span": "bad stomach cramps",
+        "clinical_span": "placental bleeding"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've got an upper respiratory viral infection that's going around the office, so I should probably be taking some",
+    "bottom_prompt": "I've got this awful bug that's going around the office, so I should probably be taking some",
+    "target_clinical_token": " fluids",
+    "generation": {
+      "patient_term": "awful bug",
+      "clinical_term": "upper respiratory viral infection",
+      "expected_clinical_continuations": [
+        "fluids"
+      ],
+      "rationale": "Colloquial 'bug' is lay language for any circulating illness; 'upper respiratory viral infection' specifies the infection type and severity. The frame '...so I should probably be taking some' funnels toward either symptomatic care or specific medications. Clinical phrasing more strongly suggests 'fluids' (standard viral infection care), while colloquial might default to 'vitamins' or 'medicine'.",
+      "topic": "viral infection",
+      "swap_spans": {
+        "patient_span": "this awful bug",
+        "clinical_span": "an upper respiratory viral infection"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been febrile for three days straight, so I'm wondering if I should be taking my",
+    "bottom_prompt": "I've been running a temperature for three days straight, so I'm wondering if I should be taking my",
+    "target_clinical_token": " temperature",
+    "generation": {
+      "patient_term": "running a temperature",
+      "clinical_term": "febrile",
+      "expected_clinical_continuations": [
+        "temperature"
+      ],
+      "rationale": "Colloquial 'running a temperature' is lay description of fever; 'febrile' is the clinical state designation. The frame '...so I'm wondering if I should be taking my' creates a probe where 'temperature' (measuring it) becomes the natural clinical continuation, whereas colloquial phrasing might suggest 'medication' or 'blood pressure'. The clinical term makes self-monitoring the expected action.",
+      "topic": "fever",
+      "swap_spans": {
+        "patient_span": "running a temperature",
+        "clinical_span": "febrile"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have a urinary tract infection, so I need to see a",
+    "bottom_prompt": "I'm having trouble with my woman's plumbing, so I need to see a",
+    "target_clinical_token": " doctor",
+    "generation": {
+      "patient_term": "woman's plumbing",
+      "clinical_term": "urinary tract infection",
+      "expected_clinical_continuations": [
+        "doctor"
+      ],
+      "rationale": "Colloquial euphemism for urinary system versus clinical diagnosis. The frame 'need to see a' funnels toward a healthcare provider in the clinical case but might default to other responses with the vague lay phrasing.",
+      "topic": "urinary tract infection",
+      "swap_spans": {
+        "patient_span": "I'm having trouble with my woman's plumbing,",
+        "clinical_span": "I have a urinary tract infection,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have pharyngitis, so I should probably take an",
+    "bottom_prompt": "My throat's raw and it hurts to swallow, so I should probably take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "throat's raw and it hurts to swallow",
+      "clinical_term": "pharyngitis",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "Patient describes symptom constellation versus clinical diagnosis term. The frame 'take an' before a vowel-initial word strongly biases toward medication, especially with the clinical term which signals bacterial/treatable infection.",
+      "topic": "throat infection",
+      "swap_spans": {
+        "patient_span": "My throat's raw and it hurts to swallow,",
+        "clinical_span": "I have pharyngitis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have fever with night sweats, so my doctor thinks I might have a",
+    "bottom_prompt": "I keep getting the chills and sweating buckets, so my doctor thinks I might have a",
+    "target_clinical_token": " virus",
+    "generation": {
+      "patient_term": "getting the chills and sweating buckets",
+      "clinical_term": "fever with night sweats",
+      "expected_clinical_continuations": [
+        "virus"
+      ],
+      "rationale": "Colloquial symptom description versus clinical symptom pairing. The frame 'my doctor thinks I might have a' followed by clinical terminology strongly biases the model toward naming a specific illness category rather than generic discomfort.",
+      "topic": "viral infection",
+      "swap_spans": {
+        "patient_span": "keep getting the chills and sweating buckets,",
+        "clinical_span": "have fever with night sweats,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm having vasomotor symptoms, so I should talk to my",
+    "bottom_prompt": "I'm having the hot flushes really bad this month, so I should talk to my",
+    "target_clinical_token": " gynecologist",
+    "generation": {
+      "patient_term": "hot flushes",
+      "clinical_term": "vasomotor symptoms",
+      "expected_clinical_continuations": [
+        "gynecologist"
+      ],
+      "rationale": "Lay descriptor of menopausal symptom versus precise clinical term. The clinical term signals a recognized medical condition requiring specialist input, while the colloquial phrasing might suggest general practitioner or self-management.",
+      "topic": "menopause",
+      "swap_spans": {
+        "patient_span": "the hot flushes really bad this month,",
+        "clinical_span": "vasomotor symptoms,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have placental abruption risk at six months, so my midwife ordered some",
+    "bottom_prompt": "I'm worried I'm carrying wrong at six months, so my midwife ordered some",
+    "target_clinical_token": " imaging",
+    "generation": {
+      "patient_term": "carrying wrong",
+      "clinical_term": "placental abruption risk",
+      "expected_clinical_continuations": [
+        "imaging"
+      ],
+      "rationale": "Colloquial pregnancy anxiety versus specific obstetric complication diagnosis. The clinical term signals urgent need for diagnostic testing, while the lay phrase might suggest reassurance or routine monitoring.",
+      "topic": "obstetric complication",
+      "swap_spans": {
+        "patient_span": "I'm worried I'm carrying wrong",
+        "clinical_span": "I have placental abruption risk"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have dysuria, so I should take an",
+    "bottom_prompt": "I've been having trouble with my plumbing down there, so I should take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "trouble with my plumbing down there",
+      "clinical_term": "dysuria",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "Dysuria (painful urination) typically requires antibiotic treatment. The colloquial phrasing suggests a general urinary issue, while the clinical term signals a specific symptomatic condition requiring medication. The frame 'take an' funnels toward a remedy.",
+      "topic": "dysuria",
+      "swap_spans": {
+        "patient_span": "I've been having trouble with my plumbing down there,",
+        "clinical_span": "I have dysuria,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have threatened miscarriage at three months, so my doctor wants to order an",
+    "bottom_prompt": "I'm having this weird spotting at three months, so my doctor wants to order an",
+    "target_clinical_token": " ultrasound",
+    "generation": {
+      "patient_term": "weird spotting",
+      "clinical_term": "threatened miscarriage",
+      "expected_clinical_continuations": [
+        "ultrasound"
+      ],
+      "rationale": "Threatened miscarriage is a specific obstetric diagnosis requiring immediate imaging. Colloquial 'spotting' is vague and less urgent; the clinical term triggers expectation of diagnostic imaging.",
+      "topic": "obstetric complication",
+      "swap_spans": {
+        "patient_span": "I'm having this weird spotting",
+        "clinical_span": "I have threatened miscarriage"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have pharyngitis with lymphadenopathy, so I probably caught a",
+    "bottom_prompt": "My glands are all swollen and my throat is killing me, so I probably caught a",
+    "target_clinical_token": " virus",
+    "generation": {
+      "patient_term": "glands are all swollen and my throat is killing me",
+      "clinical_term": "pharyngitis with lymphadenopathy",
+      "expected_clinical_continuations": [
+        "virus"
+      ],
+      "rationale": "Pharyngitis with lymphadenopathy describes a specific throat infection presentation. The clinical phrasing narrows the differential toward viral or bacterial infection; the colloquial version is more generic symptom description. Frame funnels toward infectious agent.",
+      "topic": "throat infection",
+      "swap_spans": {
+        "patient_span": "My glands are all swollen and my throat is killing me,",
+        "clinical_span": "I have pharyngitis with lymphadenopathy,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm experiencing nocturnal hyperhidrosis every single night this month, so I'm wondering if I'm having some",
+    "bottom_prompt": "I'm waking up drenched every single night this month, so I'm wondering if I'm having some",
+    "target_clinical_token": " hormonal",
+    "generation": {
+      "patient_term": "waking up drenched",
+      "clinical_term": "experiencing nocturnal hyperhidrosis",
+      "expected_clinical_continuations": [
+        "hormonal"
+      ],
+      "rationale": "Nocturnal hyperhidrosis is the clinical term for night sweats. The clinical phrasing in context of monthly cycling suggests hormonal etiology (menopause, thyroid). Colloquial phrasing is less specific about mechanism.",
+      "topic": "night sweats",
+      "swap_spans": {
+        "patient_span": "waking up drenched",
+        "clinical_span": "experiencing nocturnal hyperhidrosis"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have stress urinary incontinence when I laugh at parties, so I should probably talk to my",
+    "bottom_prompt": "I keep leaking a little when I laugh at parties, so I should probably talk to my",
+    "target_clinical_token": " gynecologist",
+    "generation": {
+      "patient_term": "leaking a little",
+      "clinical_term": "stress urinary incontinence",
+      "expected_clinical_continuations": [
+        "gynecologist"
+      ],
+      "rationale": "Stress urinary incontinence is a specific diagnosis requiring specialist evaluation. The clinical term signals need for gynecologic assessment; colloquial phrasing suggests minor symptom. Frame 'talk to my' expects a medical provider specialty.",
+      "topic": "urinary incontinence",
+      "swap_spans": {
+        "patient_span": "keep leaking a little",
+        "clinical_span": "have stress urinary incontinence"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have thyroid dysfunction for weeks now, so my doctor thinks my",
+    "bottom_prompt": "I've been running hot and cold for weeks now, so my doctor thinks my",
+    "target_clinical_token": " thyroid",
+    "generation": {
+      "patient_term": "running hot and cold",
+      "clinical_term": "thyroid dysfunction",
+      "expected_clinical_continuations": [
+        "thyroid"
+      ],
+      "rationale": "Thyroid dysfunction explicitly names the organ at issue. The clinical phrasing makes 'thyroid' the natural next word for laboratory findings ('think my thyroid is...'); colloquial phrasing is symptom-focused, less specific about anatomical target.",
+      "topic": "thyroid disorder",
+      "swap_spans": {
+        "patient_span": "I've been running hot and cold",
+        "clinical_span": "I have thyroid dysfunction"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have urinary incontinence, so I need to take my",
+    "bottom_prompt": "I'm having trouble with my equipment down there, so I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "trouble with my equipment down there",
+      "clinical_term": "urinary incontinence",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Patient uses euphemistic/mechanical language ('equipment'); clinical term directly names the condition. Frame funnels toward expected remedy ('take my' + medication noun). Next token should shift from vague worry language to concrete medical treatment.",
+      "topic": "urinary incontinence",
+      "swap_spans": {
+        "patient_span": "I'm having trouble with my equipment down there,",
+        "clinical_span": "I have urinary incontinence,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My pharyngitis won't quit and I keep feeling warm, so my doctor thinks I might have a",
+    "bottom_prompt": "My sore throat won't quit and I keep feeling warm, so my doctor thinks I might have a",
+    "target_clinical_token": " bacterial",
+    "generation": {
+      "patient_term": "sore throat",
+      "clinical_term": "pharyngitis",
+      "expected_clinical_continuations": [
+        "bacterial",
+        "viral",
+        "complication"
+      ],
+      "rationale": "Colloquial 'sore throat' versus medical 'pharyngitis'. Frame positions the diagnosis probe after 'might have a', where clinical term should nudge model toward more specific infection-type continuations rather than generic remedies.",
+      "topic": "throat infection",
+      "swap_spans": {
+        "patient_span": "sore throat",
+        "clinical_span": "pharyngitis"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm experiencing nocturnal hyperhidrosis most nights, so my doctor ordered some",
+    "bottom_prompt": "I'm sweating buckets at three in the morning most nights, so my doctor ordered some",
+    "target_clinical_token": " tests",
+    "generation": {
+      "patient_term": "sweating buckets at three in the morning",
+      "clinical_term": "nocturnal hyperhidrosis",
+      "expected_clinical_continuations": [
+        "tests"
+      ],
+      "rationale": "Colloquial intensity marker ('buckets') and time-specific phrasing versus clinical descriptor of pathological nighttime sweating. Context ('ordered some') funnels toward diagnostic workup rather than symptom management alone.",
+      "topic": "night sweats",
+      "swap_spans": {
+        "patient_span": "sweating buckets at three in the morning",
+        "clinical_span": "experiencing nocturnal hyperhidrosis"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have pharyngitis and hurts when I swallow, so I probably need to take an",
+    "bottom_prompt": "My throat's raw and hurts when I swallow, so I probably need to take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "My throat's raw and hurts when I swallow",
+      "clinical_term": "I have pharyngitis and hurts when I swallow",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "The patient phrase uses colloquial description of throat symptoms ('raw and hurts when I swallow'), while the clinical term 'pharyngitis' names the condition precisely. The frame 'probably need to take an' before a vowel-initial word strongly directs toward 'antibiotic' when the clinical diagnosis is stated, versus a lay person might expect 'aspirin' or 'lozenge'.",
+      "topic": "throat infection",
+      "swap_spans": {
+        "patient_span": "My throat's raw",
+        "clinical_span": "I have pharyngitis"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have a viral infection and my whole body aches, so I should probably take my",
+    "bottom_prompt": "I've got the bug that's going around and my whole body aches, so I should probably take my",
+    "target_clinical_token": " temperature",
+    "generation": {
+      "patient_term": "got the bug that's going around",
+      "clinical_term": "have a viral infection",
+      "expected_clinical_continuations": [
+        "temperature"
+      ],
+      "rationale": "The patient phrase uses colloquial 'the bug that's going around' to describe a contagious illness, while 'viral infection' is the clinical term. The frame 'take my' naturally leads to 'temperature' (checking one's temperature) in a medical context, versus the patient phrasing might elicit 'medicine' or 'time'.",
+      "topic": "viral infection",
+      "swap_spans": {
+        "patient_span": "I've got the bug that's going around",
+        "clinical_span": "I have a viral infection"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have stress incontinence at work when I sneeze or cough, so I should talk to my",
+    "bottom_prompt": "I keep having accidents at work when I sneeze or cough, so I should talk to my",
+    "target_clinical_token": " gynecologist",
+    "generation": {
+      "patient_term": "keep having accidents",
+      "clinical_term": "have stress incontinence",
+      "expected_clinical_continuations": [
+        "gynecologist"
+      ],
+      "rationale": "The patient phrase 'having accidents' is a lay euphemism for involuntary urine leakage, while 'stress incontinence' is the clinical diagnosis. The frame 'talk to my' with the clinical term directs toward medical specialists; 'gynecologist' is the expected clinical continuation, whereas 'accidents' might prompt 'boss' or 'friend'.",
+      "topic": "urinary incontinence",
+      "swap_spans": {
+        "patient_span": "keep having accidents",
+        "clinical_span": "have stress incontinence"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm worried about fetal abnormality at five months, so my doctor ordered an",
+    "bottom_prompt": "I'm worried something's wrong with my baby at five months, so my doctor ordered an",
+    "target_clinical_token": " ultrasound",
+    "generation": {
+      "patient_term": "something's wrong with my baby",
+      "clinical_term": "fetal abnormality",
+      "expected_clinical_continuations": [
+        "ultrasound"
+      ],
+      "rationale": "The patient phrase uses vague lay language 'something's wrong with my baby', while 'fetal abnormality' is the precise clinical term for potential prenatal complications. The frame 'my doctor ordered an' funnels naturally toward 'ultrasound' when the clinical diagnosis is stated, versus the colloquial phrasing might elicit 'appointment' or 'test'.",
+      "topic": "obstetric complication",
+      "swap_spans": {
+        "patient_span": "something's wrong with my baby",
+        "clinical_span": "about fetal abnormality"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have dysuria, so I should take my",
+    "bottom_prompt": "I've been having trouble with my waterworks, so I should take my",
+    "target_clinical_token": " antibiotics",
+    "generation": {
+      "patient_term": "trouble with my waterworks",
+      "clinical_term": "dysuria",
+      "expected_clinical_continuations": [
+        "antibiotics"
+      ],
+      "rationale": "Patient phrase 'trouble with my waterworks' is a lay euphemism for urinary discomfort; dysuria is the clinical term. The frame funnels toward medication names, with 'antibiotics' being the high-frequency expected continuation for urinary tract infection treatment.",
+      "topic": "dysuria",
+      "swap_spans": {
+        "patient_span": "I've been having trouble with my waterworks,",
+        "clinical_span": "I have dysuria,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have nocturnal hyperhidrosis, so my doctor thinks I might be going through some",
+    "bottom_prompt": "I keep getting those night sweats really badly, so my doctor thinks I might be going through some",
+    "target_clinical_token": " hormonal",
+    "generation": {
+      "patient_term": "those night sweats",
+      "clinical_term": "nocturnal hyperhidrosis",
+      "expected_clinical_continuations": [
+        "hormonal"
+      ],
+      "rationale": "Patient colloquialism 'night sweats' versus clinical term 'nocturnal hyperhidrosis.' The frame ending with 'going through some' funnels toward adjectives describing transition or change; clinical phrasing steers toward 'hormonal' (changes), while colloquial might default to 'rough' or 'tough.'",
+      "topic": "menopause",
+      "swap_spans": {
+        "patient_span": "keep getting those night sweats really badly,",
+        "clinical_span": "have nocturnal hyperhidrosis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm worried I have placental insufficiency at seven months, so my midwife ordered some",
+    "bottom_prompt": "I'm worried I'm carrying the baby funny at seven months, so my midwife ordered some",
+    "target_clinical_token": " bloodwork",
+    "generation": {
+      "patient_term": "carrying the baby funny",
+      "clinical_term": "placental insufficiency",
+      "expected_clinical_continuations": [
+        "bloodwork"
+      ],
+      "rationale": "Patient expression 'carrying funny' is a lay concern about pregnancy positioning; clinical diagnosis is placental insufficiency. The frame ending with 'ordered some' naturally funnels toward tests or interventions; the clinical term steers toward diagnostic workup like 'bloodwork.'",
+      "topic": "obstetric complication",
+      "swap_spans": {
+        "patient_span": "I'm carrying the baby funny",
+        "clinical_span": "I have placental insufficiency"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have stress urinary incontinence with exertion, so I should probably see a",
+    "bottom_prompt": "I keep having these little accidents when I exercise hard, so I should probably see a",
+    "target_clinical_token": " urologist",
+    "generation": {
+      "patient_term": "little accidents when I exercise hard",
+      "clinical_term": "stress urinary incontinence with exertion",
+      "expected_clinical_continuations": [
+        "urologist"
+      ],
+      "rationale": "Patient euphemism 'little accidents' versus clinical description 'stress urinary incontinence.' The frame 'should probably see a' naturally leads to specialist titles; the clinical phrasing steers more reliably toward 'urologist' rather than the vague 'doctor' that colloquial phrasing might elicit.",
+      "topic": "urinary incontinence",
+      "swap_spans": {
+        "patient_span": "keep having these little accidents when I exercise hard,",
+        "clinical_span": "have stress urinary incontinence with exertion,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have a urinary tract infection, so I need to take my",
+    "bottom_prompt": "I'm having trouble with my plumbing acting up, so I need to take my",
+    "target_clinical_token": " antibiotics",
+    "generation": {
+      "patient_term": "trouble with my plumbing acting up",
+      "clinical_term": "urinary tract infection",
+      "expected_clinical_continuations": [
+        "antibiotics"
+      ],
+      "rationale": "Patient uses vague euphemism for UTI; clinical term clarifies the condition. Frame naturally funnels toward 'antibiotics' as the first-line medication choice after a possessive.",
+      "topic": "urinary tract infection",
+      "swap_spans": {
+        "patient_span": "I'm having trouble with my plumbing acting up,",
+        "clinical_span": "I have a urinary tract infection,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have stress urinary incontinence, so I probably need to see a",
+    "bottom_prompt": "I keep having little leaks when I'm out running errands, so I probably need to see a",
+    "target_clinical_token": " specialist",
+    "generation": {
+      "patient_term": "little leaks when I'm out running errands",
+      "clinical_term": "stress urinary incontinence",
+      "expected_clinical_continuations": [
+        "specialist"
+      ],
+      "rationale": "Patient describes symptom contextually; clinical term names the specific type. Frame probes which type of provider ('specialist' vs. everyday continuations) the model prefers for the clinical phrasing.",
+      "topic": "urinary incontinence",
+      "swap_spans": {
+        "patient_span": "keep having little leaks when I'm out running errands,",
+        "clinical_span": "have stress urinary incontinence,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My daughter's been experiencing hypoglycemic episodes before lunch, so I'm wondering if she might have low",
+    "bottom_prompt": "My daughter's been feeling groggy and shaky before lunch, so I'm wondering if she might have low",
+    "target_clinical_token": " blood",
+    "generation": {
+      "patient_term": "groggy and shaky before lunch",
+      "clinical_term": "hypoglycemic episodes before lunch",
+      "expected_clinical_continuations": [
+        "blood"
+      ],
+      "rationale": "Patient describes symptoms vaguely; clinical term specifies the metabolic condition. Frame naturally leads to 'blood' (glucose) after 'low' in the clinical context.",
+      "topic": "hypoglycemia",
+      "swap_spans": {
+        "patient_span": "feeling groggy and shaky",
+        "clinical_span": "experiencing hypoglycemic episodes"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm having vasomotor symptoms all day at work, so I think I need to take my",
+    "bottom_prompt": "I'm having hot flushes all day at work, so I think I need to take my",
+    "target_clinical_token": " hormone",
+    "generation": {
+      "patient_term": "hot flushes",
+      "clinical_term": "vasomotor symptoms",
+      "expected_clinical_continuations": [
+        "hormone",
+        "medication",
+        "estrogen"
+      ],
+      "rationale": "Vasomotor symptoms is the precise clinical term for hot flushes; the frame 'take my' funnels toward hormone-replacement therapy or medications, contrasting with lay expectation of general remedies.",
+      "topic": "menopause",
+      "swap_spans": {
+        "patient_span": "hot flushes",
+        "clinical_span": "vasomotor symptoms"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing placental hemorrhage at four months, so my doctor wants to rule out a",
+    "bottom_prompt": "I've been spotting heavily at four months, so my doctor wants to rule out a",
+    "target_clinical_token": " miscarriage",
+    "generation": {
+      "patient_term": "spotting heavily",
+      "clinical_term": "placental hemorrhage",
+      "expected_clinical_continuations": [
+        "miscarriage",
+        "complication",
+        "problem"
+      ],
+      "rationale": "Placental hemorrhage is the clinical diagnosis; 'spotting' is lay language. The frame 'rule out a' after hemorrhage shifts the model toward serious outcome language, whereas spotting might prompt benign reassurance.",
+      "topic": "obstetric complication",
+      "swap_spans": {
+        "patient_span": "spotting heavily",
+        "clinical_span": "experiencing placental hemorrhage"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I woke up with dysuria in my private area, so I should probably take an",
+    "bottom_prompt": "I woke up burning in my private area, so I should probably take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "burning",
+      "clinical_term": "dysuria",
+      "expected_clinical_continuations": [
+        "antibiotic",
+        "analgesic",
+        "examination"
+      ],
+      "rationale": "Dysuria is the clinical term for painful urination; after this term, the model should favor medical interventions like antibiotics over general remedies.",
+      "topic": "dysuria",
+      "swap_spans": {
+        "patient_span": "burning",
+        "clinical_span": "with dysuria"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My daughter came home from school with a fever, so I think she's caught a",
+    "bottom_prompt": "My daughter came home from school with a high temperature, so I think she's caught a",
+    "target_clinical_token": " virus",
+    "generation": {
+      "patient_term": "high temperature",
+      "clinical_term": "fever",
+      "expected_clinical_continuations": [
+        "virus",
+        "infection",
+        "bug"
+      ],
+      "rationale": "Fever is the clinical term; 'high temperature' is colloquial. After 'fever' the model should more strongly predict infectious etiology language like virus or infection.",
+      "topic": "fever",
+      "swap_spans": {
+        "patient_span": "high temperature,",
+        "clinical_span": "fever,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I keep having stress incontinence when I laugh or sneeze, so my doctor thinks I might have some",
+    "bottom_prompt": "I keep having little accidents when I laugh or sneeze, so my doctor thinks I might have some",
+    "target_clinical_token": " pelvic",
+    "generation": {
+      "patient_term": "little accidents",
+      "clinical_term": "stress incontinence",
+      "expected_clinical_continuations": [
+        "pelvic",
+        "physical",
+        "muscle"
+      ],
+      "rationale": "Stress incontinence is the clinical diagnosis; 'little accidents' is lay phrasing. The frame 'might have some' after the clinical term should prompt anatomical or therapeutic language like 'pelvic therapy' rather than euphemistic continuations.",
+      "topic": "urinary incontinence",
+      "swap_spans": {
+        "patient_span": "little accidents",
+        "clinical_span": "stress incontinence"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have a thyroid disorder, so I need to take my",
+    "bottom_prompt": "I've been having trouble with my female plumbing acting up, so I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "female plumbing acting up",
+      "clinical_term": "thyroid disorder",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Both frames end after a possessive, funneling toward a medication or treatment noun. The colloquial 'plumbing' refers to reproductive/endocrine systems vaguely; the clinical term pinpoints thyroid, shifting the expected continuation from reproductive care to endocrine management.",
+      "topic": "thyroid disorder",
+      "swap_spans": {
+        "patient_span": "I've been having trouble with my female plumbing acting up,",
+        "clinical_span": "I have a thyroid disorder,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My boy came home from school with a fever, so I think he caught a",
+    "bottom_prompt": "My boy came home from school burning up, so I think he caught a",
+    "target_clinical_token": " virus",
+    "generation": {
+      "patient_term": "burning up",
+      "clinical_term": "fever",
+      "expected_clinical_continuations": [
+        "virus"
+      ],
+      "rationale": "Colloquial 'burning up' is vague and everyday; clinical 'fever' activates medical reasoning, steering toward medical diagnoses like virus or infection rather than casual explanations.",
+      "topic": "viral infection",
+      "swap_spans": {
+        "patient_span": "burning up,",
+        "clinical_span": "with a fever,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I wake up absolutely drenched in nocturnal diaphoresis at three in the morning, so I'm wondering if I need to take my",
+    "bottom_prompt": "I wake up absolutely soaking at three in the morning, so I'm wondering if I need to take my",
+    "target_clinical_token": " thyroid",
+    "generation": {
+      "patient_term": "soaking",
+      "clinical_term": "drenched in nocturnal diaphoresis",
+      "expected_clinical_continuations": [
+        "thyroid"
+      ],
+      "rationale": "Patient phrasing is vague and could suggest menopause; clinical term specifies night sweats as a medical symptom, directing the model toward thyroid or endocrine medication rather than hormonal replacement.",
+      "topic": "thyroid disorder",
+      "swap_spans": {
+        "patient_span": "soaking",
+        "clinical_span": "drenched in nocturnal diaphoresis"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been having dysuria, so I probably need to take an",
+    "bottom_prompt": "I've been having this burning down below when I pee, so I probably need to take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "burning down below when I pee",
+      "clinical_term": "dysuria",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "Patient phrasing is vague and colloquial; clinical term specifies painful urination as a symptom, funneling toward medical treatment (antibiotic) rather than OTC remedies or unspecified relief.",
+      "topic": "dysuria",
+      "swap_spans": {
+        "patient_span": "this burning down below when I pee,",
+        "clinical_span": "dysuria,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been feeling flushed and irritable all week, so I think I'm experiencing menopause and need some",
+    "bottom_prompt": "I've been feeling flushed and irritable all week, so I think I'm going through some",
+    "target_clinical_token": " hormone",
+    "generation": {
+      "patient_term": "going through some",
+      "clinical_term": "experiencing menopause and need some",
+      "expected_clinical_continuations": [
+        "hormone"
+      ],
+      "rationale": "The frame 'need some' after discussing flushing and irritability naturally funnels toward 'hormone' replacement therapy in clinical context, whereas the colloquial phrasing leaves the continuation more ambiguous (could be reassurance, advice, etc.). Both phrases end mid-thought before the treatment modality.",
+      "topic": "menopause",
+      "swap_spans": {
+        "patient_span": "going through",
+        "clinical_span": "experiencing menopause and need"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My breasts are tender and I'm experiencing nausea, so I should probably pick up a",
+    "bottom_prompt": "My breasts are tender and I'm feeling queasy in the mornings, so I should probably pick up a",
+    "target_clinical_token": " test",
+    "generation": {
+      "patient_term": "queasy in the mornings",
+      "clinical_term": "nausea",
+      "expected_clinical_continuations": [
+        "test"
+      ],
+      "rationale": "The colloquial 'queasy in the mornings' suggests general malaise; the clinical 'nausea' combined with breast tenderness strongly narrows to pregnancy confirmation via a test. The frame 'pick up a' naturally leads to 'test' in the pregnancy scenario.",
+      "topic": "pregnancy",
+      "swap_spans": {
+        "patient_span": "feeling queasy in the mornings,",
+        "clinical_span": "experiencing nausea,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been spotting bright red blood since yesterday and I'm experiencing abdominal pain, so my midwife wants me to get an",
+    "bottom_prompt": "I've been spotting bright red blood since yesterday and my belly is cramping bad, so my midwife wants me to get an",
+    "target_clinical_token": " ultrasound",
+    "generation": {
+      "patient_term": "my belly is cramping bad",
+      "clinical_term": "I'm experiencing abdominal pain",
+      "expected_clinical_continuations": [
+        "ultrasound"
+      ],
+      "rationale": "Both describe concerning second/third-trimester symptoms, but the clinical phrasing 'abdominal pain' in the context of bleeding raises stronger concern for placental abruption or preterm labour, making 'ultrasound' the diagnostic gold standard. The colloquial 'cramping bad' is more ambiguous.",
+      "topic": "obstetric complication",
+      "swap_spans": {
+        "patient_span": "my belly is cramping bad,",
+        "clinical_span": "I'm experiencing abdominal pain,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been achy and I'm experiencing a viral syndrome, so I think I need to take my",
+    "bottom_prompt": "I've been achy and I caught this bug from my colleague, so I think I need to take my",
+    "target_clinical_token": " temperature",
+    "generation": {
+      "patient_term": "caught this bug from my colleague",
+      "clinical_term": "experiencing a viral syndrome",
+      "expected_clinical_continuations": [
+        "temperature"
+      ],
+      "rationale": "The clinical framing 'viral syndrome' combined with 'take my' most naturally leads to 'temperature' (to monitor). The colloquial 'caught this bug' is less specific and might lead to different continuations like 'medicine' or 'time'.",
+      "topic": "viral infection",
+      "swap_spans": {
+        "patient_span": "I caught this bug from my colleague,",
+        "clinical_span": "I'm experiencing a viral syndrome,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm having vasomotor symptoms all through the day, so I think I need to take my",
+    "bottom_prompt": "I'm having hot spells all through the day, so I think I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "hot spells",
+      "clinical_term": "vasomotor symptoms",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Patient uses colloquial 'hot spells' versus clinical term for menopause-related vasomotor instability. The frame 'take my' funnels toward a remedy noun, distinguishing care-seeking medical context from casual weather complaint.",
+      "topic": "menopause",
+      "swap_spans": {
+        "patient_span": "hot spells",
+        "clinical_span": "vasomotor symptoms"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been feeling weak and tremulous before dinner, so I'm worried my",
+    "bottom_prompt": "I've been feeling weak and shaky before dinner, so I'm worried my",
+    "target_clinical_token": " blood",
+    "generation": {
+      "patient_term": "shaky",
+      "clinical_term": "tremulous",
+      "expected_clinical_continuations": [
+        "blood"
+      ],
+      "rationale": "Colloquial 'shaky' versus clinical 'tremulous' in a pre-meal context. Frame 'I'm worried my' funnels toward 'blood sugar' or similar glucose-related continuation, signaling hypoglycemia concern rather than mere fatigue.",
+      "topic": "hypoglycemia",
+      "swap_spans": {
+        "patient_span": "shaky",
+        "clinical_span": "tremulous"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I started bleeding just after I found out I was pregnant, so my doctor wants to rule out a",
+    "bottom_prompt": "I started spotting bright red just after I found out I was pregnant, so my doctor wants to rule out a",
+    "target_clinical_token": " miscarriage",
+    "generation": {
+      "patient_term": "spotting bright red",
+      "clinical_term": "bleeding",
+      "expected_clinical_continuations": [
+        "miscarriage"
+      ],
+      "rationale": "Patient's euphemistic 'spotting bright red' versus clinical 'bleeding' in early pregnancy. The frame 'rule out a' before a noun probe naturally selects toward serious diagnoses in medical context (miscarriage, ectopic) rather than reassuring continuation.",
+      "topic": "obstetric complication",
+      "swap_spans": {
+        "patient_span": "spotting bright red",
+        "clinical_span": "bleeding"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I keep waking up with hyperhidrosis and my partner's worried, so I wonder if I caught a",
+    "bottom_prompt": "I keep waking up completely drenched and my partner's worried, so I wonder if I caught a",
+    "target_clinical_token": " virus",
+    "generation": {
+      "patient_term": "completely drenched",
+      "clinical_term": "hyperhidrosis",
+      "expected_clinical_continuations": [
+        "virus"
+      ],
+      "rationale": "Colloquial 'completely drenched' versus clinical 'hyperhidrosis' in a nocturnal sweating context. The frame 'caught a' naturally probes toward infectious disease versus menopause or other non-infectious etiologies in the clinical framing.",
+      "topic": "viral infection",
+      "swap_spans": {
+        "patient_span": "completely drenched",
+        "clinical_span": "with hyperhidrosis"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been having dysuria when I go to the bathroom, so I should probably take an",
+    "bottom_prompt": "I've been having burning when I go to the bathroom, so I should probably take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "burning",
+      "clinical_term": "dysuria",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "Lay symptom description 'burning' versus clinical term 'dysuria' for painful urination. The frame 'take an' before a vowel-initial word nudges toward remedy class, disambiguating a care-seeking medical utterance from a casual complaint.",
+      "topic": "dysuria",
+      "swap_spans": {
+        "patient_span": "burning",
+        "clinical_span": "dysuria"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm worried about abnormal fetal position at nine weeks, so my midwife ordered an",
+    "bottom_prompt": "I'm worried I'm carrying wrong at nine weeks, so my midwife ordered an",
+    "target_clinical_token": " ultrasound",
+    "generation": {
+      "patient_term": "carrying wrong",
+      "clinical_term": "abnormal fetal position",
+      "expected_clinical_continuations": [
+        "ultrasound"
+      ],
+      "rationale": "The clinical phrasing 'abnormal fetal position' at nine weeks signals a potential obstetric concern requiring imaging, whereas 'carrying wrong' is vague lay language. The frame naturally probes for the diagnostic test article + noun after 'ordered an'.",
+      "topic": "obstetric complication",
+      "swap_spans": {
+        "patient_span": "I'm carrying wrong",
+        "clinical_span": "about abnormal fetal position"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have dysuria with pyuria, so I need to take my",
+    "bottom_prompt": "I'm passing cloudy water and it burns like crazy, so I need to take my",
+    "target_clinical_token": " antibiotics",
+    "generation": {
+      "patient_term": "passing cloudy water and it burns like crazy",
+      "clinical_term": "dysuria with pyuria",
+      "expected_clinical_continuations": [
+        "antibiotics"
+      ],
+      "rationale": "The clinical phrasing 'dysuria with pyuria' strongly suggests UTI requiring antibiotics, whereas colloquial 'cloudy water and burns' might prompt home remedies. The frame 'need to take my' probes for medication plural noun naturally.",
+      "topic": "urinary tract infection",
+      "swap_spans": {
+        "patient_span": "I'm passing cloudy water and it burns like crazy,",
+        "clinical_span": "I have dysuria with pyuria,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have a urinary tract infection, so I need to take my",
+    "bottom_prompt": "I'm having trouble with my waterworks acting up, so I need to take my",
+    "target_clinical_token": " antibiotics",
+    "generation": {
+      "patient_term": "waterworks acting up",
+      "clinical_term": "urinary tract infection",
+      "expected_clinical_continuations": [
+        "antibiotics"
+      ],
+      "rationale": "Patient colloquialism 'waterworks' contrasts with clinical 'UTI'. Frame '...need to take my' funnels toward a medication class. Colloquial version might prompt 'plumber' or 'tools', while clinical version strongly predicts 'antibiotics' as the standard first-line treatment.",
+      "topic": "urinary tract infection",
+      "swap_spans": {
+        "patient_span": "I'm having trouble with my waterworks acting up,",
+        "clinical_span": "I have a urinary tract infection,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been amenorrheic, so I should probably grab a",
+    "bottom_prompt": "I've been skipping my monthly visitor, so I should probably grab a",
+    "target_clinical_token": " pregnancy test",
+    "generation": {
+      "patient_term": "skipping my monthly visitor",
+      "clinical_term": "amenorrheic",
+      "expected_clinical_continuations": [
+        "pregnancy test"
+      ],
+      "rationale": "Lay term 'monthly visitor' (menstruation) versus clinical 'amenorrheic' (absence of menstruation). Frame '...grab a' steers toward a diagnostic tool or product. Colloquial might suggest 'calendar', clinical version strongly predicts 'pregnancy test'.",
+      "topic": "pregnancy",
+      "swap_spans": {
+        "patient_span": "skipping my monthly visitor,",
+        "clinical_span": "amenorrheic,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have stress incontinence when I bend over, so my doctor thinks I might have some",
+    "bottom_prompt": "I keep losing control down there when I bend over, so my doctor thinks I might have some",
+    "target_clinical_token": " weakness",
+    "generation": {
+      "patient_term": "losing control down there",
+      "clinical_term": "stress incontinence",
+      "expected_clinical_continuations": [
+        "weakness"
+      ],
+      "rationale": "Euphemism versus clinical diagnosis. Frame '...might have some' and context of triggered leaking steers toward a physical descriptor. Colloquial version might prompt 'anxiety', clinical version predicts 'weakness' (of pelvic floor muscles).",
+      "topic": "urinary incontinence",
+      "swap_spans": {
+        "patient_span": "keep losing control down there",
+        "clinical_span": "have stress incontinence"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have amenorrhea, so I should probably grab a",
+    "bottom_prompt": "I'm having trouble with my monthly visitor going missing, so I should probably grab a",
+    "target_clinical_token": " test",
+    "generation": {
+      "patient_term": "monthly visitor going missing",
+      "clinical_term": "amenorrhea",
+      "expected_clinical_continuations": [
+        "test"
+      ],
+      "rationale": "Colloquial phrasing about missed menstruation versus clinical term for absent menses. Grammar funnels toward 'test' (pregnancy test) in clinical context, versus 'calendar' or 'pad' in patient context.",
+      "topic": "pregnancy",
+      "swap_spans": {
+        "patient_span": "I'm having trouble with my monthly visitor going missing,",
+        "clinical_span": "I have amenorrhea,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have stress incontinence, so my doctor thinks I need to see a",
+    "bottom_prompt": "I keep having accidents when I laugh or bend over, so my doctor thinks I need to see a",
+    "target_clinical_token": " urologist",
+    "generation": {
+      "patient_term": "I keep having accidents when I laugh or bend over",
+      "clinical_term": "I have stress incontinence",
+      "expected_clinical_continuations": [
+        "urologist"
+      ],
+      "rationale": "Indirect patient phrasing of involuntary leakage versus precise diagnosis. Grammar funnels toward 'urologist' for clinical variant, versus 'therapist' or 'nurse' for patient variant.",
+      "topic": "urinary incontinence",
+      "swap_spans": {
+        "patient_span": "keep having accidents when I laugh or bend over,",
+        "clinical_span": "have stress incontinence,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm experiencing hot flashes with tachycardia at night, so I think I'm going through some",
+    "bottom_prompt": "I'm feeling super flushed and my heart's racing at night, so I think I'm going through some",
+    "target_clinical_token": " menopause",
+    "generation": {
+      "patient_term": "feeling super flushed and my heart's racing",
+      "clinical_term": "experiencing hot flashes with tachycardia",
+      "expected_clinical_continuations": [
+        "menopause"
+      ],
+      "rationale": "The clinical phrasing with 'hot flashes' and 'tachycardia' strongly suggests menopausal symptoms, making 'menopause' the natural completion. The patient phrasing is vaguer and could suggest various conditions, making the model less certain.",
+      "topic": "menopause",
+      "swap_spans": {
+        "patient_span": "feeling super flushed and my heart's racing",
+        "clinical_span": "experiencing hot flashes with tachycardia"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm worried the uterus is anteverted at eight weeks, so my midwife ordered an",
+    "bottom_prompt": "I'm worried I'm carrying a bit low at eight weeks, so my midwife ordered an",
+    "target_clinical_token": " ultrasound",
+    "generation": {
+      "patient_term": "carrying a bit low",
+      "clinical_term": "uterus is anteverted",
+      "expected_clinical_continuations": [
+        "ultrasound"
+      ],
+      "rationale": "The patient phrasing is an everyday positional concern; the clinical term 'anteverted uterus' frames an anatomical variation that requires imaging confirmation, not reassurance, steering toward diagnostic imaging.",
+      "topic": "pregnancy",
+      "swap_spans": {
+        "patient_span": "I'm carrying a bit low",
+        "clinical_span": "the uterus is anteverted"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I woke up with profuse diaphoresis again and my sheets are soaked, so I'm wondering if I caught a",
+    "bottom_prompt": "I woke up absolutely drenched again and my sheets are soaked, so I'm wondering if I caught a",
+    "target_clinical_token": " virus",
+    "generation": {
+      "patient_term": "absolutely drenched",
+      "clinical_term": "profuse diaphoresis",
+      "expected_clinical_continuations": [
+        "virus"
+      ],
+      "rationale": "The patient phrasing is generic night sweating; the clinical term 'profuse diaphoresis' frames a systemic symptom requiring infectious etiology investigation, steering the model toward 'virus' rather than menopause or endocrine causes.",
+      "topic": "viral infection",
+      "swap_spans": {
+        "patient_span": "absolutely drenched",
+        "clinical_span": "with profuse diaphoresis"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing hypoglycemia and my heart's pounding at night, so I think I might have some",
+    "bottom_prompt": "I've been feeling woozy and my heart's pounding at night, so I think I might have some",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "woozy",
+      "clinical_term": "hypoglycemia",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Patient term 'woozy' is vague and non-medical; clinical term 'hypoglycemia' signals a specific metabolic condition requiring intervention. The frame directs toward what medical action is needed ('might have some'), making 'medication' a plausible clinical continuation distinct from a lay reading where 'stress' or 'caffeine' might be expected.",
+      "topic": "hypoglycemia",
+      "swap_spans": {
+        "patient_span": "feeling woozy",
+        "clinical_span": "experiencing hypoglycemia"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've got pharyngitis in my throat, so my doctor thinks I might need an",
+    "bottom_prompt": "I've got this raw, scratchy feeling in my throat, so my doctor thinks I might need an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "raw, scratchy feeling",
+      "clinical_term": "pharyngitis",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "Patient term describes symptom; clinical term names the condition. The frame ('might need an') funnels toward a medical intervention. 'Antibiotic' is the expected clinical follow-up for pharyngitis, whereas lay framing might predict 'lozenge' or 'break'.",
+      "topic": "throat infection",
+      "swap_spans": {
+        "patient_span": "this raw, scratchy feeling",
+        "clinical_span": "pharyngitis"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My cycles have gone all weird and I'm having vasomotor symptoms constantly, so I'm probably going through some",
+    "bottom_prompt": "My cycles have gone all weird and I'm having these hot spells constantly, so I'm probably going through some",
+    "target_clinical_token": " change",
+    "generation": {
+      "patient_term": "hot spells",
+      "clinical_term": "vasomotor symptoms",
+      "expected_clinical_continuations": [
+        "change"
+      ],
+      "rationale": "Patient uses colloquial 'hot spells'; clinical term specifies the physiological mechanism. Frame ('going through some') with menopause context strongly predicts 'change' (the change) in clinical reading, vs. lay 'stress' or 'stress'.",
+      "topic": "menopause",
+      "swap_spans": {
+        "patient_span": "these hot spells",
+        "clinical_span": "vasomotor symptoms"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm experiencing urinary incontinence when I do heavy lifting at work, so I should probably see my",
+    "bottom_prompt": "I'm leaking a bit when I do heavy lifting at work, so I should probably see my",
+    "target_clinical_token": " urologist",
+    "generation": {
+      "patient_term": "leaking a bit",
+      "clinical_term": "urinary incontinence",
+      "expected_clinical_continuations": [
+        "urologist"
+      ],
+      "rationale": "Patient uses euphemism 'leaking'; clinical term names the condition precisely. Frame ('see my') prompts specialist. 'Urologist' is the expected clinical continuation; lay reading might predict 'boss' or 'friend'.",
+      "topic": "urinary incontinence",
+      "swap_spans": {
+        "patient_span": "leaking a bit",
+        "clinical_span": "experiencing urinary incontinence"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing dysuria when I use the bathroom, so I definitely need to take an",
+    "bottom_prompt": "I've been burning like fire down there when I use the bathroom, so I definitely need to take an",
+    "target_clinical_token": " antibiotic",
+    "generation": {
+      "patient_term": "burning like fire down there",
+      "clinical_term": "dysuria",
+      "expected_clinical_continuations": [
+        "antibiotic"
+      ],
+      "rationale": "Patient phrase is colloquial; clinical term isolates the symptom name. Frame ('need to take an') with medical context directs toward medication. 'Antibiotic' is the expected clinical continuation for presumed UTI-related dysuria.",
+      "topic": "dysuria",
+      "swap_spans": {
+        "patient_span": "burning like fire down there",
+        "clinical_span": "experiencing dysuria"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm spotting bright red and my belly is really cramping at six weeks, so my midwife wants me to rule out an",
+    "bottom_prompt": "I'm spotting bright red and my belly is really cramping at six weeks, so my midwife wants me to get an",
+    "target_clinical_token": " ultrasound",
+    "generation": {
+      "patient_term": "spotting bright red and my belly is really cramping",
+      "clinical_term": "spotting bright red and my belly is really cramping at six weeks, so my midwife wants me to rule out an",
+      "expected_clinical_continuations": [
+        "ultrasound"
+      ],
+      "rationale": "Frame change shifts from simple 'get an' (lay reading: 'exam', 'appointment') to clinical 'rule out an' (diagnostic framing). The clinical phrasing predicts 'ultrasound' or 'scan' as the test to exclude ectopic pregnancy or miscarriage; lay reading stays vague.",
+      "topic": "obstetric complication",
+      "swap_spans": {
+        "patient_span": "get",
+        "clinical_span": "rule out"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm experiencing vasomotor symptoms and my blouse is soaked, so I think I need to take my",
+    "bottom_prompt": "I'm having these hot spells at work and my blouse is soaked, so I think I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "hot spells",
+      "clinical_term": "vasomotor symptoms",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "Vasomotor symptoms is the precise clinical term for hot flashes/flushes. The frame ends after possessive 'my', naturally funneling toward a singular remedy noun. Patient phrasing suggests everyday heat discomfort; clinical phrasing signals a diagnosed menopausal condition requiring pharmacotherapy.",
+      "topic": "menopause",
+      "swap_spans": {
+        "patient_span": "having these hot spells at work",
+        "clinical_span": "experiencing vasomotor symptoms"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been experiencing polyuria and I'm exhausted all the time, so my doctor ordered some",
+    "bottom_prompt": "I've been peeing constantly and I'm exhausted all the time, so my doctor ordered some",
+    "target_clinical_token": " tests",
+    "generation": {
+      "patient_term": "peeing constantly",
+      "clinical_term": "polyuria",
+      "expected_clinical_continuations": [
+        "tests"
+      ],
+      "rationale": "Polyuria (excessive urination) is a cardinal sign of diabetes/hypoglycemia. The frame ends after 'some', naturally probing for a plural noun like 'tests' or 'labs'. Patient phrasing is a lay complaint; clinical term signals systematic investigation of metabolic disorder.",
+      "topic": "hypoglycemia",
+      "swap_spans": {
+        "patient_span": "peeing constantly",
+        "clinical_span": "experiencing polyuria"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My son's got this petechial rash spreading across his neck and chest, so the school nurse wants to rule out a",
+    "bottom_prompt": "My son's got this bright red rash spreading across his neck and chest, so the school nurse wants to rule out a",
+    "target_clinical_token": " meningococcemia",
+    "generation": {
+      "patient_term": "bright red rash",
+      "clinical_term": "petechial rash",
+      "expected_clinical_continuations": [
+        "meningococcemia"
+      ],
+      "rationale": "Petechiae describe pinpoint non-blanching hemorrhages; classically associated with serious infections like meningococcemia. Frame ends after 'a', naturally probing for a serious diagnosis. Patient phrasing describes appearance; clinical term signals urgency and specific pathology.",
+      "topic": "viral infection",
+      "swap_spans": {
+        "patient_span": "bright red",
+        "clinical_span": "petechial"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm feeling really feverish and I have lymphadenopathy, so my doctor thinks I might have a",
+    "bottom_prompt": "I'm feeling really feverish and my glands are huge, so my doctor thinks I might have a",
+    "target_clinical_token": " virus",
+    "generation": {
+      "patient_term": "glands are huge",
+      "clinical_term": "lymphadenopathy",
+      "expected_clinical_continuations": [
+        "virus"
+      ],
+      "rationale": "Lymphadenopathy is the clinical term for enlarged lymph nodes. Frame ends after 'a', probing for a diagnosis. Patient phrasing is colloquial anatomy; clinical term signals a named pathophysiologic process and more serious differential.",
+      "topic": "throat infection",
+      "swap_spans": {
+        "patient_span": "my glands are huge,",
+        "clinical_span": "I have lymphadenopathy,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've been waking up at three a.m. with nocturnal hyperhidrosis, so I'm wondering if I need to see a",
+    "bottom_prompt": "I've been waking up at three a.m. completely drenched through, so I'm wondering if I need to see a",
+    "target_clinical_token": " specialist",
+    "generation": {
+      "patient_term": "completely drenched through",
+      "clinical_term": "nocturnal hyperhidrosis",
+      "expected_clinical_continuations": [
+        "specialist"
+      ],
+      "rationale": "Nocturnal hyperhidrosis is the precise clinical descriptor for profuse night sweats. Frame ends after 'a', probing for a type of provider. Patient phrasing describes the symptom experience; clinical term flags a named condition warranting specialist evaluation.",
+      "topic": "night sweats",
+      "swap_spans": {
+        "patient_span": "completely drenched through,",
+        "clinical_span": "with nocturnal hyperhidrosis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "menopause",
+        "pregnancy",
+        "obstetric complication",
+        "fever",
+        "throat infection",
+        "viral infection",
+        "urinary tract infection",
+        "dysuria",
+        "urinary incontinence",
+        "thyroid disorder",
+        "hypoglycemia",
+        "night sweats"
+      ]
+    }
+  }
+]
