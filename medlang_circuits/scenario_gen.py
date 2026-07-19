@@ -117,7 +117,10 @@ QUADRANT_SYSTEM = (
     "punctuation. The next token is the measurement, not part of the item.\n"
     "4. The frame must make the next token diagnostic: the natural continuation should plausibly "
     "differ between a mundane everyday reading and a care-seeking/medical reading.\n"
-    "5. Vary persons, tenses, probe words, and everyday settings across items.\n"
+    "5. Prefer frames where the grammar shift alone (standard to nonstandard, term held constant) "
+    "is likely to change the TOP next token, not merely its probability - e.g. a nonstandard aspect "
+    "or copula that resolves the probe toward a different continuation.\n"
+    "6. Vary persons, tenses, probe words, and everyday settings across items.\n"
     "Output STRICT JSON only - a JSON array of objects, each with exactly these keys: "
     '{"standard_frame": str, "nonstandard_frame": str, "medical_term": str, "patient_term": str, '
     '"expected_clinical_continuations": [str, ...], "rationale": str}. Abstract shape example '

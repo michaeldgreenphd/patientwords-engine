@@ -179,6 +179,9 @@ def test_generate_quadrant_scenarios_offline(monkeypatch):
     assert "delta" in calls[0]["prompt"]
     assert "everyday life" in calls[0]["prompt"]
     assert "morphosyntax" in calls[0]["system"]
+    # rule 5 biases future batches toward the grammar axis flipping the TOP next token
+    assert "grammar shift alone" in calls[0]["system"]
+    assert "change the TOP next token" in calls[0]["system"]
 
 
 def test_parse_json_array_salvages_truncated_output():
