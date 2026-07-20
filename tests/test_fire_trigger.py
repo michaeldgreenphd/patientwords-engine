@@ -113,7 +113,8 @@ def test_resolve_clears_oldest_then_all(repo):
     assert ft.main(["resolve", "--repo", str(repo), "--trigger", "circuit-trace"]) == 0
     entries = ft.load_journal(journal_path(repo))
     assert [e["resolved"] for e in entries] == [True, False]
-    assert fire(repo, params={"mode": "2panel", "_nonce": "3"}) == 0  # slot freed
+    # slot freed; --ignore-settle acks the just-resolved run's still-open settle window
+    assert fire(repo, params={"mode": "2panel", "_nonce": "3"}, extra=["--ignore-settle"]) == 0
     assert ft.main(["resolve", "--repo", str(repo), "--trigger", "circuit-trace", "--all"]) == 0
     assert all(e["resolved"] for e in ft.load_journal(journal_path(repo)))
 
@@ -141,6 +142,7 @@ def test_unknown_keys_hard_error_for_every_trigger(repo):
     bad = {
         "circuit-trace": {"graph_modle": "g"},
         "logits-eval": {"models": ["m"], "limt": 0},
+        "activation-patching": {"pairs_file": "p.json", "offset": 0},
         "scenario-generation": {"max_spend": "1", "tsak": "pairs"},
         "model-evaluation": {"max_spend": "1", "sampel_size": "8"},
         "archive-renders": {"tag": "t", "runz": "x"},
@@ -154,12 +156,16 @@ def test_exact_verified_key_sets_accepted(repo):
     # Finding 6: the full key set each workflow's params heredoc reads must pass.
     assert fire(repo, "logits-eval", params={
         "models": "qwen3-4b", "pairs_file": "p.json", "limit": "1",
-        "commit_outputs": True, "_nonce": "k1"}) == 0
+        "offset": "60", "commit_outputs": True, "_nonce": "k1"}) == 0
     assert fire(repo, "archive-renders", params={
         "tag": "t", "runs": "trace_out/x", "no_pngs": False, "prune": False, "_nonce": "k2"}) == 0
     assert fire(repo, "model-evaluation", params={
         "model_selection": "claude-haiku-4-5", "scenario": "all",
-        "sample_size": "8", "max_spend": "1", "_nonce": "k3"}) == 0
+        "sample_size": "8", "max_spend": "1", "pairs_file": "p.json",
+        "_nonce": "k3"}) == 0
+    assert fire(repo, "activation-patching", params={
+        "pairs_file": "p.json", "limit": "5", "layers": "", "positions": "",
+        "model": "gemma-2-2b", "offsets": "0,5", "commit_outputs": True, "_nonce": "k4"}) == 0
 
 
 def test_budget_refusal_and_pass(repo):
@@ -233,6 +239,7 @@ def test_validate_params_pure_function():
     for trigger, params in [("circuit-trace", {"graph_modle": "g"}),
                             ("scenario-generation", {"tsak": "pairs"}),
                             ("logits-eval", {"limt": 0}),
+                            ("activation-patching", {"pair_file": "p.json"}),
                             ("model-evaluation", {"sampel_size": 1}),
                             ("archive-renders", {"tag": "t", "surprise": 1})]:
         with pytest.raises(ValueError):
@@ -277,9 +284,9 @@ def test_inflight_max_spend_blocks_second_paid_fire(repo, capsys):
     params = {"task": "pairs", "max_spend": "1.9", "_nonce": "i2"}
     assert fire(repo, "scenario-generation", params) == 4  # 1.9 already committed in flight
     assert "in-flight" in capsys.readouterr().err
-    # resolving the landed run releases the in-flight hold
+    # resolving the landed run releases the in-flight hold (--ignore-settle acks its settle window)
     assert ft.main(["resolve", "--repo", str(repo), "--trigger", "scenario-generation"]) == 0
-    assert fire(repo, "scenario-generation", params) == 0
+    assert fire(repo, "scenario-generation", params, extra=["--ignore-settle"]) == 0
 
 
 def test_inflight_spend_counted_across_both_paid_triggers(repo):
@@ -301,7 +308,8 @@ def test_budget_check_inflight_counts_only_active_entries_fired_today():
 
     kind, reason = ft.budget_check({"max_spend": "1.9"}, {}, today, entries=[entry()], now=now)
     assert kind == "ceiling" and "in-flight 1.90" in reason
-    for released in (entry(resolved=True), entry(evicted=True), entry(trigger="circuit-trace")):
+    for released in (entry(resolved=True), entry(evicted=True),
+                     entry(trigger="circuit-trace", max_spend=None)):
         assert ft.budget_check({"max_spend": "1.9"}, {}, today,
                                entries=[released], now=now)[0] == "ok"
     # active (expiry widened) but fired on a previous UTC date: not today's spend
@@ -420,3 +428,112 @@ def test_missing_params_file_clean_refusal_exit_3(repo, capsys):
     err = capsys.readouterr().err
     assert "refused" in err and "params-file" in err
     assert not journal_path(repo).exists()
+
+
+# --- Settle window: a same-trigger resolve may still hold the GitHub group (2026-07-09 seam) ---
+
+
+def resolved_entry(now, trigger="circuit-trace", note="landed", resolved_ago=None, fired_ago=None):
+    fired_ago = fired_ago if fired_ago is not None else timedelta(minutes=25)
+    resolved_ago = resolved_ago if resolved_ago is not None else timedelta(minutes=5)
+    return {"trigger": trigger, "fired_utc": iso(now - fired_ago), "commit": "", "note": note,
+            "resolved": True, "evicted": False, "resolved_utc": iso(now - resolved_ago)}
+
+
+def test_fire_refused_exit_6_when_same_trigger_resolved_inside_settle_window(repo, capsys):
+    now = datetime.now(timezone.utc)
+    ft.save_journal(journal_path(repo), [resolved_entry(now, resolved_ago=timedelta(minutes=5))])
+    assert fire(repo, params={"mode": "2panel", "_nonce": "s1"}) == 6
+    err = capsys.readouterr().err
+    assert "settle" in err and "queue-eviction seam" in err
+    # nothing written: no journal append, no trigger file
+    assert len(ft.load_journal(journal_path(repo))) == 1
+    assert not trigger_path(repo).exists()
+
+
+def test_fire_allowed_once_settle_window_has_passed(repo):
+    now = datetime.now(timezone.utc)
+    # resolved 20 min ago: past the default 15-minute window
+    ft.save_journal(journal_path(repo), [resolved_entry(now, resolved_ago=timedelta(minutes=20),
+                                                         fired_ago=timedelta(minutes=40))])
+    assert fire(repo, params={"mode": "2panel", "_nonce": "s2"}) == 0
+
+
+def test_ignore_settle_bypasses_the_window(repo):
+    now = datetime.now(timezone.utc)
+    ft.save_journal(journal_path(repo), [resolved_entry(now, resolved_ago=timedelta(minutes=2))])
+    assert fire(repo, params={"mode": "2panel", "_nonce": "s3"}) == 6
+    assert fire(repo, params={"mode": "2panel", "_nonce": "s3"}, extra=["--ignore-settle"]) == 0
+
+
+def test_other_triggers_recent_resolve_does_not_block(repo):
+    now = datetime.now(timezone.utc)
+    ft.save_journal(journal_path(repo),
+                    [resolved_entry(now, trigger="logits-eval", resolved_ago=timedelta(minutes=3))])
+    assert fire(repo, params={"mode": "2panel", "_nonce": "s4"}) == 0  # circuit-trace unaffected
+
+
+def test_resolve_stamps_resolved_utc(repo):
+    assert fire(repo, params={"mode": "2panel", "_nonce": "r1"}, note="run") == 0
+    assert ft.main(["resolve", "--repo", str(repo), "--trigger", "circuit-trace"]) == 0
+    entry = ft.load_journal(journal_path(repo))[0]
+    assert entry["resolved"] is True
+    stamp = ft.parse_utc(entry["resolved_utc"])
+    assert stamp is not None
+    assert abs((stamp - datetime.now(timezone.utc)).total_seconds()) < 60
+
+
+def test_recently_resolved_pure_function_respects_window_and_trigger():
+    now = datetime.now(timezone.utc)
+
+    def entry(**overrides):
+        base = {"trigger": "circuit-trace", "fired_utc": iso(now - timedelta(minutes=30)),
+                "commit": "", "note": "", "resolved": True, "resolved_utc": iso(now - timedelta(minutes=5))}
+        base.update(overrides)
+        return base
+
+    assert ft.recently_resolved([entry()], "circuit-trace", now, 15)  # inside window blocks
+    # inject a later now so the same stamp falls outside the window
+    assert not ft.recently_resolved([entry()], "circuit-trace", now + timedelta(minutes=20), 15)
+    assert not ft.recently_resolved([entry(resolved=False)], "circuit-trace", now, 15)  # not resolved
+    assert not ft.recently_resolved([entry(resolved_utc=None)], "circuit-trace", now, 15)  # no stamp
+    assert not ft.recently_resolved([entry(trigger="logits-eval")], "circuit-trace", now, 15)  # other trigger
+
+
+def test_settle_window_env_override_changes_refusal(repo, monkeypatch):
+    now = datetime.now(timezone.utc)
+    ft.save_journal(journal_path(repo), [resolved_entry(now, resolved_ago=timedelta(minutes=20),
+                                                        fired_ago=timedelta(minutes=60))])
+    monkeypatch.delenv("MEDLANG_TRIGGER_SETTLE_MINUTES", raising=False)
+    assert fire(repo, params={"mode": "2panel", "_nonce": "e1"}) == 0  # 20 min > default 15
+    monkeypatch.setenv("MEDLANG_TRIGGER_SETTLE_MINUTES", "30")  # widen past 20 min
+    assert fire(repo, params={"mode": "2panel", "_nonce": "e2"}) == 6
+
+
+def test_settle_minutes_env_rejects_nonfinite_and_nonpositive(monkeypatch, capsys):
+    for bad in ("nan", "inf", "-inf", "-3", "0", "wat"):
+        monkeypatch.setenv("MEDLANG_TRIGGER_SETTLE_MINUTES", bad)
+        assert ft.settle_minutes_from_env() == ft.DEFAULT_SETTLE_MINUTES, bad
+        assert "MEDLANG_TRIGGER_SETTLE_MINUTES" in capsys.readouterr().err
+    monkeypatch.setenv("MEDLANG_TRIGGER_SETTLE_MINUTES", "30")
+    assert ft.settle_minutes_from_env() == 30
+    monkeypatch.delenv("MEDLANG_TRIGGER_SETTLE_MINUTES", raising=False)
+    assert ft.settle_minutes_from_env() == ft.DEFAULT_SETTLE_MINUTES
+    assert capsys.readouterr().err == ""  # valid or unset values warn nothing
+
+
+def test_mitigation_fire_detection_and_inflight_counting():
+    import scripts.fire_trigger as ft
+    assert ft.is_mitigation_fire("circuit-trace", {"show_mitigation": "true"})
+    assert ft.is_mitigation_fire("circuit-trace", {"show_mitigation": "1"})
+    assert not ft.is_mitigation_fire("circuit-trace", {})
+    assert not ft.is_mitigation_fire("logits-eval", {"show_mitigation": "true"})
+    # a mitigation circuit-trace entry with a recorded imputed commitment
+    # counts toward today's in-flight spend
+    from datetime import datetime, timezone
+    now = datetime(2026, 7, 13, 12, 0, tzinfo=timezone.utc)
+    entry = {"trigger": "circuit-trace", "fired_utc": "2026-07-13T11:00:00Z",
+             "commit": "", "note": "mitigation arm", "resolved": False,
+             "evicted": False, "max_spend": ft.MITIGATION_IMPUTED_USD}
+    total = ft.inflight_max_spend([entry], "2026-07-13", now, 8.0)
+    assert total == ft.MITIGATION_IMPUTED_USD
