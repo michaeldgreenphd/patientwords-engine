@@ -42,6 +42,13 @@ MODELS = [
 MEDICAL = {"medgemma-4b-it", "meditron3-8b", "apertus-8b-meditronfo"}
 # 8B-class models trace ~2-4x slower per pair on CPU -> smaller chunks.
 BIG = {"meditron3-8b", "apertus-8b-meditronfo"}
+# The two 8B medical models are held to LAST (owner 2026-07-20): their logits jobs
+# are multi-hour (weight-load dominated), so backfilling them alongside the fast
+# models would stall the whole campaign. They are released only once every OTHER
+# axis is complete (trace, lens, and every non-deferred model's predictions), so
+# the faster models' behavior is available for decisions while these catch up in
+# the background. Toggle with --include-8b-medical.
+DEFERRED_LAST = {"meditron3-8b", "apertus-8b-meditronfo"}
 
 LENS_CHUNK = 25       # 429 caution: a mid-run window loss costs only a chunk
 LOGITS_CHUNK_BIG = 25
@@ -143,11 +150,13 @@ def _next_trace(cov: dict):
     return None
 
 
-def _next_logits(cov: dict):
+def _next_logits(cov: dict, allow_deferred: bool = True):
     """(model, batch) gap by priority: medical models first, then least-covered model;
-    resume partial batches at the next offset."""
-    covered = {m: sum(1 for b in cov if cov[b]["models"][m] >= cov[b]["n"] > 0) for m in MODELS}
-    order = sorted(MODELS, key=lambda m: (m not in MEDICAL, covered[m]))
+    resume partial batches at the next offset. When allow_deferred is False the two 8B
+    medical models are skipped entirely (held to last), so the fast models finish first."""
+    candidates = MODELS if allow_deferred else [m for m in MODELS if m not in DEFERRED_LAST]
+    covered = {m: sum(1 for b in cov if cov[b]["models"][m] >= cov[b]["n"] > 0) for m in candidates}
+    order = sorted(candidates, key=lambda m: (m not in MEDICAL, covered[m]))
     for m in order:
         chunk = LOGITS_CHUNK_BIG if m in BIG else LOGITS_CHUNK
         for b in sorted(cov):
@@ -164,9 +173,23 @@ def _next_logits(cov: dict):
     return None
 
 
-def plan(cov: dict) -> dict:
+def _others_complete(cov: dict) -> bool:
+    """True once trace, lens, and every non-deferred model's predictions are complete
+    across all batches - the gate that releases the deferred 8B-medical backfill."""
+    for r in cov.values():
+        if not _complete(r["trace"], r["n"]) or not _complete(r["lens"], r["n"]):
+            return False
+        for m in MODELS:
+            if m not in DEFERRED_LAST and not _complete(r["models"][m], r["n"]):
+                return False
+    return True
+
+
+def plan(cov: dict, defer_8b_medical: bool = True) -> dict:
+    # Hold the 8B medical models until every other axis is done, then release them.
+    allow_deferred = (not defer_8b_medical) or _others_complete(cov)
     return {"jlens-readout": _next_lens(cov), "circuit-trace": _next_trace(cov),
-            "logits-eval": _next_logits(cov)}
+            "logits-eval": _next_logits(cov, allow_deferred=allow_deferred)}
 
 
 def _fmt_cmd(step: dict) -> str:
@@ -189,14 +212,19 @@ def summarize(cov: dict) -> None:
           f"trace {trace}/{n} | lens+save_raw {lens}/{n} | fully-covered {full}/{n}")
     per = {m: sum(_complete(cov[b]["models"][m], cov[b]["n"]) for b in cov) for m in MODELS}
     print("  cross-model complete:", " ".join(f"{m.split('-')[0]}:{per[m]}" for m in MODELS))
+    released = _others_complete(cov)
+    held = ", ".join(sorted(DEFERRED_LAST))
+    print(f"  8B-medical ({held}): {'RELEASED - all other axes complete' if released else 'HELD until every other axis is complete'}")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--json", action="store_true", help="emit the plan as JSON")
+    ap.add_argument("--include-8b-medical", action="store_true",
+                    help="do not defer the 8B medical models (backfill them alongside the rest)")
     args = ap.parse_args()
     cov = coverage()
-    steps = plan(cov)
+    steps = plan(cov, defer_8b_medical=not args.include_8b_medical)
     if args.json:
         print(json.dumps({"coverage": {b: {"n": r["n"], "trace": r["trace"], "lens": r["lens"],
                                            "models_complete": sum(_complete(r["models"][m], r["n"])

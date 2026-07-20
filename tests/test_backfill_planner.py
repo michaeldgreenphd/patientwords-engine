@@ -69,6 +69,44 @@ def test_logits_priority_medical_first(tmp_path, monkeypatch):
         assert int(step["params"]["limit"]) <= bp.LOGITS_CHUNK_BIG
 
 
+def test_8b_medical_deferred_until_others_complete(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)  # sparse: trace/lens/predictions all incomplete
+    cov = bp.coverage()
+    # every axis is short, so the 8B medical models are HELD: the logits lane must
+    # offer a NON-deferred model, never meditron3-8b / apertus-8b-meditronfo.
+    assert bp._others_complete(cov) is False
+    step = bp.plan(cov)["logits-eval"]
+    assert step["params"]["models"] not in bp.DEFERRED_LAST
+    # the override releases them (default priority = medical-first, incl. the 8B pair)
+    forced = bp._next_logits(cov, allow_deferred=True)
+    assert forced["params"]["models"] in bp.MEDICAL
+
+
+def test_8b_medical_released_once_others_complete(tmp_path, monkeypatch):
+    monkeypatch.setattr(bp, "ENGINE", tmp_path)
+    sim = tmp_path / "data" / "simulated"
+    sim.mkdir(parents=True)
+    (sim / "pairs_A.json").write_text(json.dumps([{"top_prompt": "x", "bottom_prompt": "y"}]))
+    tr = tmp_path / "trace_out"
+    # trace + lens + EVERY non-deferred model complete; only the 8B medical pair is absent
+    (tr / "pairs_A").mkdir(parents=True)
+    (tr / "pairs_A" / "batch_summary.json").write_text(json.dumps(_summary([1])))
+    lens = tr / "pairs_A__jlens_gemma-2-2b"
+    (lens / "jlens_raw").mkdir(parents=True)
+    (lens / "jlens_summary.json").write_text(json.dumps(_summary([1])))
+    for side in ("clinical", "patient"):
+        (lens / "jlens_raw" / f"pair_001_{side}.json.gz").write_bytes(b"x")
+    for m in bp.MODELS:
+        if m in bp.DEFERRED_LAST:
+            continue
+        (tr / f"pairs_A__{m}").mkdir(parents=True)
+        (tr / f"pairs_A__{m}" / "batch_summary.json").write_text(json.dumps(_summary([1])))
+    cov = bp.coverage()
+    assert bp._others_complete(cov) is True
+    step = bp.plan(cov)["logits-eval"]                 # now released
+    assert step is not None and step["params"]["models"] in bp.DEFERRED_LAST
+
+
 def test_complete_batch_yields_no_fire(tmp_path, monkeypatch):
     monkeypatch.setattr(bp, "ENGINE", tmp_path)
     sim = tmp_path / "data" / "simulated"
