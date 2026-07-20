@@ -7,18 +7,33 @@ trace_out/*__loglens_<model>/) so the site can show whether the finding
 survives the lens choice - the referee-adjacent robustness question and the
 pre-approved "same depth profiles under the plain logit lens" roadmap item.
 
+Input (the robustness arm's backfill lane). Reads the committed lens SUMMARIES
+trace_out/*__loglens_<model>/jlens_summary.part_*.json (and the matching
+*__jlens_<model>/ Jacobian summaries), NOT the raw dumps - so a logit-lens
+readout does NOT need --save-raw; a plain --lens-type LOGIT_LENS jlens-readout
+fire on each batch is enough to feed this arm.
+
 For every pair with both readouts committed: the patient-side formation layer
 and failure class under each lens, whether the two lenses agree, and the class
 distribution under each. Formation and classification reuse jlens_insights so
 the numbers match the headline census exactly. Tier B holdout pairs are sealed.
-EXPLORATORY; correlational readout, not an intervention.
+per_pair is one small row per paired pair (two layer ints + two classes, no
+grids), so the file stays bounded; it is written as COMPACT JSON. EXPLORATORY;
+correlational readout, not an intervention.
+
+Graceful partial coverage. With no committed logit-lens run it REFUSES (returns
+None) and leaves the published arm untouched - it never publishes an empty or
+one-sided arm.
 
 Method credit is pulled from the summaries' method_credit, never typed.
 No medical vocabulary lives in this file.
 
-Usage:
+Frontend data contract (technical/index.html, robustness figure) - see
+FRONTEND_CONTRACT below; a validator can assert those paths after each regen.
+
+Nightly invocation:
   python scripts/export_jlens_loglens.py --model gemma-2-2b \
-      [--out data/jlens_loglens.json] [--site ../patientwords]
+      --out data/jlens_loglens.json --site ../patientwords
 """
 
 import argparse
@@ -39,6 +54,14 @@ METHOD_CREDIT_FALLBACK = (
 SCOPE = ("hosted Jacobian lens vs. plain logit lens, top-8 readout per layer; "
          "EXPLORATORY robustness arm; correlational, not an intervention")
 CLASS_ORDER = ("held", "hijack", "capture", "unreadable")
+
+# Exactly what technical/index.html's robustness figure reads from this payload.
+# A validator can assert these paths exist and are well-typed after each regen.
+FRONTEND_CONTRACT = {
+    "per_pair[].<lens>": ("pat_formed",),          # <lens> in {jacobian, logit}
+    "<lens>": ("formation.median", "never_formed"),
+    "agreement": ("n_paired", "formed_agree", "class_agree"),
+}
 
 _TIERB_START = tierb_start_stamp()
 _ACCEPT_CACHE = {}
@@ -212,6 +235,12 @@ def build_payload(trace_root, model):
     }
 
 
+def _dump(payload):
+    """Compact JSON, matching the transport arm; the frontend parses it
+    identically to indent-formatted JSON."""
+    return json.dumps(payload, separators=(",", ":")) + "\n"
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--trace-root", default="trace_out")
@@ -228,14 +257,14 @@ def main(argv=None):
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
+    out.write_text(_dump(payload), encoding="utf-8")
     ag = payload["agreement"]
     print(f"jlens loglens: {ag['n_paired']} paired · class agree {ag['class_agree']} · "
           f"formation-presence agree {ag['formed_agree']} -> {out}")
     if args.site:
         site_copy = Path(args.site) / "data" / "jlens_loglens.json"
         if site_copy.parent.is_dir():
-            site_copy.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
+            site_copy.write_text(_dump(payload), encoding="utf-8")
             print(f"site copy -> {site_copy}")
         else:
             print(f"note: site dir {site_copy.parent} absent; skipped site copy")

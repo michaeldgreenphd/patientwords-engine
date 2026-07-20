@@ -71,18 +71,36 @@ def block_stems(depth_path):
     return [b.get("id") for b in payload.get("blocks", []) if b.get("id")]
 
 
+def insights_datasets(insights_path):
+    """Distinct datasets that appear in jlens_insights.points (the capture/hijack
+    census). These extend beyond the depth-census blocks (e.g. drift_sentinel_*),
+    so the hijack tooltips + outlier labels get a base sentence on EVERY track,
+    not just the depth-census batches (owner 2026-07-20)."""
+    try:
+        payload = json.loads(Path(insights_path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return sorted({p.get("dataset") for p in payload.get("points", []) if p.get("dataset")})
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--simulated-dir", default="data/simulated")
     parser.add_argument("--depth", default="../patientwords/data/jlens_depth.json",
                         help="census payload whose block ids scope the swap map")
+    parser.add_argument("--insights", default="../patientwords/data/jlens_insights.json",
+                        help="jlens_insights payload; its points[].dataset widen coverage "
+                             "so hijack/capture tooltips cover every track ('' to skip)")
     parser.add_argument("--out", default="data/jlens_swaps.json")
     parser.add_argument("--site", default="../patientwords", help="'' skips the site copy")
     args = parser.parse_args(argv)
 
-    stems = block_stems(args.depth)
+    # Union the depth-census blocks with every dataset the capture/hijack census
+    # references, so tooltips/outlier labels get a base sentence on ALL tracks.
+    stems = sorted(set(block_stems(args.depth))
+                   | (set(insights_datasets(args.insights)) if args.insights else set()))
     if not stems:
-        print(f"refused: no block ids in {args.depth}")
+        print(f"refused: no block ids in {args.depth} or datasets in {args.insights}")
         return 3
     swaps = build_swaps(stems, args.simulated_dir)
     if not swaps:

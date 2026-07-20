@@ -1,32 +1,51 @@
 """Site dataset for the per-position transport view: data/jlens_transport.json.
 
 Promotes the per-position lens scan (scripts/jlens_position_scan.py, until now
-an ops-only artifact) to a site payload the frontend can read:
+an ops-only artifact) to a site payload the transport figure reads:
 
-- exemplar: one pair, the FULL position x layer legibility grid under both
-  phrasings (target rank within the top-N readout at every prompt position and
-  layer, or null when absent) - the clinical answer legible somewhere inside
-  the sentence even where it never reaches the answer position;
-- census: across every pair with committed raw, how the clinical target's
-  legibility resolves at the final (answer) position vs. earlier positions -
-  reaches_answer / transport_gap (legible mid-sentence but never at the answer)
-  / never_readable, per phrasing.
+- exemplars: a small PINNED set of contrast pairs (default 5), each carrying the
+  FULL position x layer legibility grid under both phrasings (the target's rank
+  within the top-N lens readout at every prompt position and layer, or null when
+  absent - the clinical answer legible somewhere inside the sentence even where
+  it never reaches the answer position) plus the model's own top prediction at
+  the answer position and a paper-style open-vocabulary `readout` (the J-lens
+  top-k decoded tokens per layer at the answer position - what the model leans
+  toward as the answer forms, e.g. doctor -> doctor -> cardio). Only the fields
+  the figure draws are kept per side (tokens, grid, answer_position, answer,
+  readout); the per-side first_layer/layers duplicates and the per-exemplar
+  transport summary are dropped to bound weight.
+- census: over the representative batch (--census-batch), how the clinical
+  target's legibility resolves at the final (answer) position vs. earlier
+  positions - reaches_answer / transport_gap (legible mid-sentence but never at
+  the answer) / never_readable, per phrasing. per_pair is the census cohort
+  (grid-free), the provenance of those counts.
 
-EXPLORATORY. The Jacobian lens is a correlational readout, not causal evidence;
-nothing here is an intervention. Reads only committed
-trace_out/*__jlens_<model>/jlens_raw/*.json.gz (runs fired with --save-raw), so
-coverage is limited to those runs. The per-position transport question and the
-top-K window sensitivity are the referee-adjacent items scripts/
-jlens_position_scan.py already answers; this file only joins that output to an
-exemplar grid and writes the site copy, mirroring export_jlens_depth.
+Stability & size. The exemplar set is PINNED (--exemplar-pins) so a nightly
+regen does not churn the figure as backfill widens coverage; without pins it
+falls back to deterministic score-ranking. per_pair is scoped to the census
+batch (not every batch), so the file stays bounded as coverage grows. The
+payload is written as COMPACT JSON - the grids are ~90% null and pretty-printing
+them dominated the file; the frontend parses compact and indented identically.
 
-Method credit is pulled from the summary's method_credit field, never typed.
-No medical vocabulary lives in this file.
+Graceful partial coverage (mirrors export_jlens_depth F-H08). Reads only
+committed trace_out/*__jlens_<model>/jlens_raw/*.json.gz (runs fired with
+--save-raw). With no committed raw, a census batch with no committed coverage,
+or no drawable exemplar, it REFUSES (returns None) and leaves the published
+payload untouched - never overwrites a good file with a degraded one.
 
-Usage:
-  python scripts/export_jlens_transport.py \
-      --model gemma-2-2b [--exemplar-batch pairs_20260711T051145Z --exemplar-index 2] \
-      [--out data/jlens_transport.json] [--site ../patientwords]
+EXPLORATORY: the Jacobian lens is a correlational readout, not causal evidence;
+nothing here is an intervention. Method credit is pulled from the summary's
+method_credit field, never typed. No medical vocabulary lives in this file
+(exemplars are pinned by (batch, index), never by term).
+
+Frontend data contract (technical/index.html, transport figure) - see
+FRONTEND_CONTRACT below; a validator can assert those paths after each regen.
+
+Nightly invocation (the pinned set the published figure shows):
+  python scripts/export_jlens_transport.py --model gemma-2-2b \
+      --census-batch pairs_20260711T051145Z \
+      --exemplar-pins pairs_20260712T163501Z:22,pairs_20260712T163501Z:7,pairs_20260712T163501Z:11,pairs_20260712T163501Z:83,pairs_20260712T163501Z:87 \
+      --out data/jlens_transport.json --site ../patientwords
 """
 
 import argparse
@@ -47,6 +66,18 @@ METHOD_CREDIT_FALLBACK = (
 )
 SCOPE = ("hosted Jacobian lens, per-position top-N readout; EXPLORATORY, "
          "correlational (not an intervention); coverage limited to save_raw runs")
+
+# Exactly what technical/index.html's transport figure reads from this payload.
+# A validator can assert these paths exist and are well-typed after each regen;
+# every other field is provenance/metadata the figure never touches.
+FRONTEND_CONTRACT = {
+    "census.patient": ("n", "reaches_answer", "transport_gap", "never_readable"),
+    "exemplars[]": ("target", "layers", "sides.clinical", "sides.patient", "render?"),
+    "exemplars[].sides.<side>": ("tokens[].token", "grid", "answer_position",
+                                 "answer.token", "answer.prob", "answer.on_target",
+                                 "answer.trace_url", "readout[].{layer,final,tokens}",
+                                 "pos_readout{pos:[top-3]}"),
+}
 
 _TIERB_START = tierb_start_stamp()
 _ACCEPT_CACHE = {}
@@ -185,6 +216,75 @@ def answer_prediction(response, target, model):
         "on_target": bool(jps.jr.target_match(token, jps.jr.target_variants(target))),
         "trace_url": lens_trace_url(model, _prompt_from_raw(response)),
     }
+
+
+# Depth ladder for the paper-style readout: the final layer plus a few samples
+# from the coherent late band (as fractions of depth). The J-lens decodes to
+# confident-but-meaningless artifacts in early/mid layers (e.g. "RenderAtEndOf"
+# at high probability), so the readout stays in the top quarter where the decode
+# is semantically meaningful - probability cannot separate the junk.
+_READOUT_FRACS = (1.0, 0.94, 0.88, 0.82, 0.76)
+
+
+def _readout_layer_idxs(n):
+    """Indices into an n-long layer axis for the readout ladder, final first."""
+    if n <= 0:
+        return []
+    last = n - 1
+    return sorted({min(last, max(0, round(f * last))) for f in _READOUT_FRACS}, reverse=True)
+
+
+def answer_readout(response, topk=3):
+    """Open-vocabulary J-lens top-k decoded tokens at the answer (final) position
+    for the depth ladder - the paper-style 'what is the model leaning toward'
+    readout as the answer forms (e.g. doctor -> doctor -> cardio). Unlike the
+    grid (which tracks one pre-chosen target), this names whatever the lens reads
+    out. Each entry: {layer, final, tokens}. [] when the raw lacks final-position
+    layer entries."""
+    tokens = (response.get("tokens") or []) if isinstance(response, dict) else []
+    if not tokens:
+        return []
+    final = tokens[-1]
+    entries = sorted(
+        (list(jps.jr._layer_entries_from_results(final, response))
+         or list(jps.jr._iter_layer_entries(final))),
+        key=lambda e: e[0],
+    )
+    if not entries:
+        return []
+    last_i = len(entries) - 1
+    out = []
+    for idx in _readout_layer_idxs(len(entries)):
+        layer, tops = entries[idx]
+        words = [w for w in (jps.jr._token_string(t).strip() for t in (tops or [])[:topk]) if w]
+        if words:
+            out.append({"layer": layer, "final": idx == last_i, "tokens": words})
+    return out
+
+
+def pos_readout(response, topk=3):
+    """Open-vocab J-lens top-k decode at the FINAL layer of EVERY prompt position
+    (the same decode as answer_readout, but across the whole sentence, not only the
+    answer slot) - the per-position concept marginalia (#3, owner 2026-07-20).
+    {position_index: [w1..wk]}, keyed by the token's array index (== side.tokens
+    index the frontend walks). Final layer only: the J-lens decode is meaningful
+    late and junk early (see answer_readout); positions with no decode are omitted,
+    keeping the file bounded."""
+    tokens = (response.get("tokens") or []) if isinstance(response, dict) else []
+    out = {}
+    for i, tok in enumerate(tokens):
+        entries = sorted(
+            (list(jps.jr._layer_entries_from_results(tok, response))
+             or list(jps.jr._iter_layer_entries(tok))),
+            key=lambda e: e[0],
+        )
+        if not entries:
+            continue
+        _layer, tops = entries[-1]  # final layer: meaningful decode band
+        words = [w for w in (jps.jr._token_string(t).strip() for t in (tops or [])[:topk]) if w]
+        if words:
+            out[i] = words
+    return out
 
 
 def summarize_side(records):
@@ -331,73 +431,100 @@ def load_render_map(scenarios_path):
     return out
 
 
+def _slim_side(grid, raw, target, model):
+    """Just the exemplar-side fields the transport figure draws: the per-position
+    tokens, the position x layer rank grid, the answer position, and the model's
+    own top prediction there. The per-side first_layer/layers arrays are dropped
+    - the figure indexes the exemplar's single shared `layers` axis, not these."""
+    return {
+        "tokens": grid.get("tokens", []),
+        "grid": grid.get("grid", []),
+        "answer_position": grid.get("answer_position"),
+        "answer": answer_prediction(raw, target, model),
+        "readout": answer_readout(raw),   # paper-style open-vocab decode per layer
+        "pos_readout": pos_readout(raw),  # per-position concept marginalia {pos: [top-3]}
+    }
+
+
 def build_exemplar(trace_root, batch, index, model, topn, target):
-    """Both-phrasing position x layer grids for the exemplar pair, or None when
-    its raw is missing."""
+    """Both-phrasing position x layer grids for the exemplar pair, slimmed to the
+    fields the figure reads, or None when its raw is missing."""
     clin_raw = load_raw(trace_root, batch, model, index, "clinical")
     pat_raw = load_raw(trace_root, batch, model, index, "patient")
     if clin_raw is None or pat_raw is None:
         return None
     clin = position_layer_grid(clin_raw, target, topn)
-    clin["answer"] = answer_prediction(clin_raw, target, model)
     pat = position_layer_grid(pat_raw, target, topn)
-    pat["answer"] = answer_prediction(pat_raw, target, model)
     return {
         "batch": batch,
         "index": index,
         "target": (target or "").strip() or None,
         "layers": clin.get("layers") or pat.get("layers") or [],
-        "sides": {"clinical": clin, "patient": pat},
-        "transport": {
-            "clinical": side_transport(clin_raw, target),
-            "patient": side_transport(pat_raw, target),
+        "sides": {
+            "clinical": _slim_side(clin, clin_raw, target, model),
+            "patient": _slim_side(pat, pat_raw, target, model),
         },
     }
 
 
 def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None,
-                  max_exemplars=5, render_map=None, census_batch=None):
-    """The data/jlens_transport.json payload, or None when no raw exists for
-    the model (caller refuses rather than overwrite the committed site copy).
+                  max_exemplars=5, render_map=None, census_batch=None,
+                  exemplar_pins=None):
+    """The data/jlens_transport.json payload, or None when the committed raw is
+    too sparse to publish honestly (no raw at all, a census batch with no
+    coverage, or no drawable exemplar) - the caller then leaves the published
+    copy untouched rather than overwrite it with a degraded one.
 
     The census is computed over `census_batch` (a representative run) so it is
-    not skewed by the traced pairs picked for the selector; exemplars are drawn
-    from pairs that carry a committed circuit-tracer render (`render_map`) when
-    one is supplied, so each answer token can deep-link to the real trace."""
+    not skewed by the traced pairs picked for the selector; per_pair carries just
+    that cohort. Exemplars come from `exemplar_pins` (an ordered committed list,
+    pins without raw skipped) when given, else from deterministic score-ranking
+    over pairs that carry a committed circuit-tracer render (`render_map`);
+    either way each answer token can deep-link to the real trace."""
     scan_result = jps.scan(Path(trace_root))
-    per_pair = collect_pairs(scan_result, model)
-    if not per_pair:
+    all_pairs = collect_pairs(scan_result, model)
+    if not all_pairs:
         return None
     render_map = render_map or {}
 
-    # census over the representative batch (unbiased by the traced-pair picks)
-    census_pairs = [e for e in per_pair if e["batch"] == census_batch] if census_batch else []
+    # census over the representative batch (unbiased by the traced-pair picks);
+    # refuse rather than silently widen the denominator to every batch, which
+    # would bias the census when the pinned batch has no coverage.
+    census_pairs = [e for e in all_pairs if e["batch"] == census_batch] if census_batch else all_pairs
     if not census_pairs:
-        census_pairs = per_pair
+        return None
     clin_records = [e["clinical"] for e in census_pairs if e["clinical"]]
     pat_records = [e["patient"] for e in census_pairs if e["patient"]]
 
-    # exemplar candidates: prefer pairs with a committed circuit-tracer render
-    candidates = [e for e in per_pair if (e["batch"], e["index"]) in render_map] or per_pair
-
+    # exemplar selection, most stable first: explicit single index > pinned list
+    # (skip pins lacking raw) > deterministic score-ranking over rendered pairs.
     if exemplar_index is not None:
-        chosen = [(exemplar_batch or per_pair[0]["batch"], exemplar_index)]
+        chosen = [(exemplar_batch or all_pairs[0]["batch"], exemplar_index)]
+    elif exemplar_pins:
+        chosen = list(exemplar_pins)
     else:
+        candidates = [e for e in all_pairs if (e["batch"], e["index"]) in render_map] or all_pairs
         chosen = rank_exemplars(candidates, max_exemplars)
         if not chosen:
             fallback = pick_exemplar_index(candidates)
             chosen = [fallback] if fallback else []
+
+    by_key = {(e["batch"], e["index"]): e for e in all_pairs}
     exemplars = []
     for batch, index in chosen:
-        entry = next((e for e in per_pair if e["batch"] == batch and e["index"] == index), None)
+        if len(exemplars) >= max_exemplars:
+            break
+        entry = by_key.get((batch, index))
         target = entry["target"] if entry else None
         _, topn = load_summary_meta(trace_root, batch, model)
         built = build_exemplar(trace_root, batch, index, model, topn, target)
         if built:
             built["render"] = render_map.get((batch, index))  # circuit-tracer trace path
             exemplars.append(built)
+    if not exemplars:                       # the chosen pairs have no committed raw
+        return None
 
-    batches = sorted({e["batch"] for e in per_pair})
+    batches = sorted({e["batch"] for e in all_pairs})
     method_credit, topn = load_summary_meta(trace_root, batches[0], model)
     return {
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -406,17 +533,36 @@ def build_payload(trace_root, model, exemplar_batch=None, exemplar_index=None,
         "method_credit": method_credit,
         "top_n": topn,
         "windows": scan_result.get("windows", ["1", "2", "4", "8"]),
-        "census_batch": (census_batch if census_pairs is not per_pair else None),
+        "census_batch": census_batch if (census_batch and census_pairs is not all_pairs) else None,
         "n_pairs": len(census_pairs),
         "census": {
             "clinical": summarize_side(clin_records),
             "patient": summarize_side(pat_records),
         },
-        "exemplar": (exemplars[0] if exemplars else None),  # back-compat: first of the set
         "exemplars": exemplars,
-        "per_pair": per_pair,
+        "per_pair": census_pairs,   # census cohort (grid-free): provenance of `census`
         "source": f"trace_out/*__jlens_{model}/jlens_raw (committed save_raw responses)",
     }
+
+
+def _dump(payload):
+    """Compact JSON (the grids are ~90% null; pretty-printing them dominated the
+    file). The frontend parses this identically to indent-formatted JSON."""
+    return json.dumps(payload, separators=(",", ":")) + "\n"
+
+
+def _parse_pins(spec):
+    """'batch:index[,batch:index...]' -> [(batch, index), ...]; '' -> None."""
+    if not spec:
+        return None
+    pins = []
+    for tok in spec.split(","):
+        tok = tok.strip()
+        if not tok:
+            continue
+        batch, _, idx = tok.rpartition(":")
+        pins.append((batch, int(idx)))
+    return pins or None
 
 
 def main(argv=None):
@@ -427,6 +573,9 @@ def main(argv=None):
                         help="batch stem for the exemplar pair (default: inferred)")
     parser.add_argument("--exemplar-index", type=int, default=None,
                         help="1-based pair index for a single explicit exemplar")
+    parser.add_argument("--exemplar-pins", default=None,
+                        help="ordered 'batch:index[,batch:index...]' exemplar pins; keeps the "
+                             "selector stable across nightly regens (pins without raw are skipped)")
     parser.add_argument("--max-exemplars", type=int, default=5,
                         help="how many strong exemplars to emit for the selector (default 5)")
     parser.add_argument("--scenarios", default="../patientwords/data/simulated_scenarios.json",
@@ -442,7 +591,8 @@ def main(argv=None):
     payload = build_payload(args.trace_root, args.model,
                             args.exemplar_batch, args.exemplar_index,
                             max_exemplars=args.max_exemplars,
-                            render_map=render_map, census_batch=args.census_batch)
+                            render_map=render_map, census_batch=args.census_batch,
+                            exemplar_pins=_parse_pins(args.exemplar_pins))
     if payload is None:
         # Mirror jlens_insights F-H08: a sparse checkout with no committed raw
         # must never overwrite the published transport payload with an empty one.
@@ -452,7 +602,7 @@ def main(argv=None):
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
+    out.write_text(_dump(payload), encoding="utf-8")
     exs = payload.get("exemplars") or []
     linked = sum(1 for e in exs if e.get("render"))
     print(f"jlens transport: census {payload['n_pairs']} pairs (batch {payload.get('census_batch')}) · "
@@ -462,7 +612,7 @@ def main(argv=None):
     if args.site:
         site_copy = Path(args.site) / "data" / "jlens_transport.json"
         if site_copy.parent.is_dir():
-            site_copy.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
+            site_copy.write_text(_dump(payload), encoding="utf-8")
             print(f"site copy -> {site_copy}")
         else:
             print(f"note: site dir {site_copy.parent} absent; skipped site copy")

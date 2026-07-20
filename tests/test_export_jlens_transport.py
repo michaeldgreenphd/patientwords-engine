@@ -34,6 +34,20 @@ def _resp(per_position_top_tokens, positions_tokens):
             "tokens": tokens, "done": {}}
 
 
+def test_pos_readout_final_layer_top3_per_position():
+    from scripts.export_jlens_transport import pos_readout
+    # two positions, two layers each; the FINAL layer's tokens drive the marginalia
+    resp = _resp(
+        [[["junk", "j2"], ["cat", "dog", "fish", "bird"]],   # pos0 final -> cat/dog/fish
+         [["k1"], ["red", "blue", "green"]]],                # pos1 final -> red/blue/green
+        [(0, "<bos>"), (1, "word")],
+    )
+    pr = pos_readout(resp)
+    assert pr[0] == ["cat", "dog", "fish"]   # top-3, final layer only
+    assert pr[1] == ["red", "blue", "green"]
+    assert pos_readout({}) == {}             # graceful on empty
+
+
 def test_position_layer_grid_ranks_and_first_layer():
     # 3 layers; target " tgt" enters at pos1 (layer1 rank1, layer2 rank2) and
     # at the final pos (layer2 rank1). pos0 never reads it out.
@@ -240,6 +254,72 @@ def test_build_payload_census_batch_and_render_restriction(monkeypatch):
     assert payload["n_pairs"] == 2 and payload["census_batch"] == "rep"     # census: rep only
     assert [e["target"] for e in payload["exemplars"]] == ["c"]             # only the rendered pair
     assert payload["exemplars"][0]["render"] == "modes/simulated/trace/index_01.html"
+    assert "exemplar" not in payload                                        # dropped: exemplars[] is canonical
+    assert [(e["batch"], e["index"]) for e in payload["per_pair"]] == [("rep", 1), ("rep", 2)]  # census cohort only
+
+
+def _side(final, mid):
+    return {"final_readable": final, "n_mid_readable": mid, "transport_gap": False}
+
+
+def test_build_payload_pins_override_ranking_and_skip_missing_raw(monkeypatch):
+    per_pair = [
+        {"batch": "rep", "index": 1, "target": "a", "clinical": _side(True, 1), "patient": _side(False, 0)},
+        {"batch": "trace", "index": 5, "target": "c", "clinical": _side(True, 2), "patient": _side(False, 0)},
+        {"batch": "trace", "index": 9, "target": "d", "clinical": _side(True, 3), "patient": _side(True, 0)},
+    ]
+    monkeypatch.setattr(ext.jps, "scan", lambda root: {"scans": [], "windows": ["1"]})
+    monkeypatch.setattr(ext, "collect_pairs", lambda scan, model: per_pair)
+    monkeypatch.setattr(ext, "load_summary_meta", lambda tr, b, m: ("credit", 8))
+    # pair 5 has no committed raw (build_exemplar returns None) -> skipped
+    monkeypatch.setattr(ext, "build_exemplar",
+                        lambda tr, b, i, m, tn, tg: None if i == 5 else {"batch": b, "index": i, "target": tg, "sides": {}})
+    # pins select these exact pairs, in order, regardless of render_map / score
+    payload = ext.build_payload("trace_out", "gemma-2-2b", census_batch="rep",
+                                exemplar_pins=[("trace", 9), ("trace", 5), ("rep", 1)])
+    assert [(e["batch"], e["index"]) for e in payload["exemplars"]] == [("trace", 9), ("rep", 1)]
+
+
+def test_build_payload_refuses_when_census_batch_uncovered(monkeypatch):
+    per_pair = [{"batch": "trace", "index": 1, "target": "c",
+                 "clinical": _side(True, 2), "patient": _side(False, 0)}]
+    monkeypatch.setattr(ext.jps, "scan", lambda root: {"scans": [], "windows": ["1"]})
+    monkeypatch.setattr(ext, "collect_pairs", lambda scan, model: per_pair)
+    # census batch has no committed coverage -> refuse rather than widen to every batch
+    assert ext.build_payload("trace_out", "gemma-2-2b", census_batch="missing") is None
+
+
+def test_build_exemplar_side_is_slim(monkeypatch):
+    resp = _resp([[[" a"], [" a"]], [[" tgt"], [" a"]]], [(0, "<bos>"), (1, " x")])
+    monkeypatch.setattr(ext, "load_raw", lambda tr, b, m, i, side: resp)
+    ex = ext.build_exemplar("tr", "b", 1, "gemma-2-2b", 8, "tgt")
+    assert set(ex) == {"batch", "index", "target", "layers", "sides"}       # no per-exemplar transport
+    for side in ("clinical", "patient"):
+        s = ex["sides"][side]
+        assert set(s) == {"tokens", "grid", "answer_position", "answer", "readout", "pos_readout"}
+        assert isinstance(s["grid"], list) and s["answer_position"] == 1
+        assert isinstance(s["readout"], list)
+
+
+def test_readout_layer_idxs_final_first_and_bounded():
+    idxs = ext._readout_layer_idxs(26)
+    assert idxs and idxs[0] == 25                      # final layer first
+    assert idxs == sorted(idxs, reverse=True)
+    assert all(0 <= i <= 25 for i in idxs) and len(idxs) <= len(ext._READOUT_FRACS)
+    assert ext._readout_layer_idxs(0) == []            # degenerate axis
+
+
+def test_answer_readout_open_vocab_ladder():
+    # 6 layers at the final position: generic "doctor" until the top layer flips
+    # to "cardio" - the paper-style trajectory the readout table shows.
+    final_layers = [[" doctor"], [" doctor"], [" doctor"],
+                    [" doctor"], [" doctor"], [" cardio", " doctor"]]
+    resp = _resp([[[" a"]] * 6, final_layers], [(0, "<bos>"), (1, " a")])
+    ro = ext.answer_readout(resp, topk=2)
+    assert ro and ro[0]["final"] is True and ro[0]["layer"] == 5    # final row first
+    assert ro[0]["tokens"][0] == "cardio"                          # decoded, target-agnostic
+    assert all(set(r) == {"layer", "final", "tokens"} for r in ro)
+    assert [r["layer"] for r in ro] == sorted([r["layer"] for r in ro], reverse=True)
 
 
 def test_build_payload_refuses_empty(monkeypatch):
