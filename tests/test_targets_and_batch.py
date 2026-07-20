@@ -147,10 +147,16 @@ def test_run_batch_offline_with_mitigation(tmp_path, monkeypatch):
     assert (out / "pair_01_translated.tagged.json").is_file()
 
     html = (out / "index_01.html").read_text(encoding="utf-8")
-    # three stacked panels with both delta badges centered in the gaps
+    # three stacked panels; the language penalty reads as an integrated subtitle under
+    # the header, while the mitigation-recovery delta stays a mid-figure gap badge
     assert html.count('<g transform="translate(0,') == 3
-    assert "Language Penalty: -41% probability (0.81 → 0.40)" in html
-    assert "Mitigation Recovery: +41% probability (0.40 → 0.81)" in html
+    pen = "Language Penalty: -41% probability (0.81 → 0.40)"
+    assert f'<p class="pen-sub" style="color:#d1584d">{pen}</p>' in html
+    assert html.count(pen) == 1                                    # not duplicated into the svg
+    # the subtitle sits above the legend and svg, not floating between the panels
+    assert html.index(pen) < html.index('<div class="lg"') < html.index("<svg")
+    rec = "Mitigation Recovery: +41% probability (0.40 → 0.81)"
+    assert rec in html and html.index("<svg") < html.index(rec)   # recovery stays in the gap
     # the predictive spread keeps the article logit visible (prob notation, no p= syntax)
     assert "“a” · prob 0.90" in html
     assert "“jumps” · prob 0.81" in html

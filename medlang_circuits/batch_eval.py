@@ -565,15 +565,20 @@ def evaluate_pair(
         _probability_for(g, target_token) for g in graphs[1:]
     ]
 
-    badges: list[Any] = [_delta_badge("Language Penalty", probs[0], probs[1])]
+    # The language penalty summarizes the whole comparison, so it reads as a subtitle
+    # under the header (render_panels_html ``subtitle``) rather than floating in the gap
+    # between the clinical and patient panels. Mid-figure badges carry only per-gap
+    # interstitials — here just the translation step's Mitigation Recovery.
+    penalty = _delta_badge("Language Penalty", probs[0], probs[1])
+    mid_badges: list[Any] = [None]
     if len(graphs) == 3:
-        badges.append(_delta_badge("Mitigation Recovery", probs[1], probs[2]))
+        mid_badges.append(_delta_badge("Mitigation Recovery", probs[1], probs[2]))
 
     panels = build_panels(graphs)
     html_path = out_dir / f"index_{index:02d}.html"
     png_path = out_dir / f"index_{index:02d}.png"
-    render_panels_html(panels, str(html_path), badges=badges)
-    render_panels_png(panels, str(png_path), badges=badges, dpi=dpi)
+    render_panels_html(panels, str(html_path), badges=mid_badges, subtitle=penalty)
+    render_panels_png(panels, str(png_path), badges=mid_badges, dpi=dpi, subtitle=penalty)
 
     # Circuit diff: the same shared-feature dimming the quadrant edge views
     # use. Features present in both prompts render as faint context, so the
@@ -588,15 +593,16 @@ def evaluate_pair(
         refs=[1, 0],
         dimmed=[dim_c, dim_p],
     )
-    diff_badge = {"lines": [
-        badges[0] or "Language Penalty: —",
+    # Penalty rides in the subtitle (as on the main figure); the gap badge carries
+    # only the shared-feature diff counts.
+    diff_badge = (
         f"circuit diff: shared features dimmed — {diff_counts['shared_features']} in both · "
-        f"{diff_counts['unique_to_a']} only clinical · {diff_counts['unique_to_b']} only patient",
-    ]}
+        f"{diff_counts['unique_to_a']} only clinical · {diff_counts['unique_to_b']} only patient"
+    )
     diff_html = out_dir / f"index_{index:02d}_diff.html"
     diff_png = out_dir / f"index_{index:02d}_diff.png"
-    render_panels_html(diff_panels, str(diff_html), badges=[diff_badge])
-    render_panels_png(diff_panels, str(diff_png), badges=[diff_badge], dpi=dpi)
+    render_panels_html(diff_panels, str(diff_html), badges=[diff_badge], subtitle=penalty)
+    render_panels_png(diff_panels, str(diff_png), badges=[diff_badge], dpi=dpi, subtitle=penalty)
 
     result_screening = {"screening": screening} if screening else {}
     return {

@@ -574,6 +574,9 @@ _CSS = (
     "main{max-width:1240px;margin:0 auto;padding:20px 16px}"
     "main.wide{max-width:2520px}"
     "h1{font-size:24px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}"
+    # integrated penalty subtitle, directly under the header (color set inline, data-driven)
+    ".pen-sub{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:18px;font-weight:700;"
+    "margin:0 0 10px;letter-spacing:-.005em}"
     ".lg{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#4b5563;"
     "margin:2px 0 16px;line-height:2}"
     ".lg .sw{display:inline-block;width:10px;height:10px;margin:0 6px 0 0;vertical-align:-1px}"
@@ -643,8 +646,12 @@ _LEGEND = (
 )
 
 
-def _document(svg_parts: list[str], data: list[list[dict]], width: int, height: int, wide: bool = False) -> str:
-    """Assemble the standalone HTML page around rendered SVG parts + tooltip payload."""
+def _document(svg_parts: list[str], data: list[list[dict]], width: int, height: int,
+              wide: bool = False, subtitle_html: str = "") -> str:
+    """Assemble the standalone HTML page around rendered SVG parts + tooltip payload.
+
+    subtitle_html, when given, is emitted directly under the <h1> as an integrated
+    subtitle (e.g. the Language Penalty line), before the legend/svg."""
     payload = json.dumps(data, separators=(",", ":")).replace("</", "<\\/")
     main_class = ' class="wide"' if wide else ""
     return (
@@ -653,6 +660,7 @@ def _document(svg_parts: list[str], data: list[list[dict]], width: int, height: 
         "<title>Attribution graph comparison</title>"
         f"<style>{_CSS}</style></head><body><main{main_class}>"
         "<h1>Attribution graph comparison</h1>"
+        f"{subtitle_html}"
         f"<div class=\"lg\">{_LEGEND}</div>"
         f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">'
         f"{''.join(svg_parts)}</svg></main>"
@@ -731,13 +739,24 @@ def render_panels_html(
     out_path: str,
     badges: list[Any] | None = None,
     max_edges: int = DEFAULT_MAX_EDGES,
+    subtitle: Any = None,
 ) -> str:
     """Write a standalone, responsive vertically-stacked comparison page; returns out_path.
 
     ``badges`` holds one optional entry per gap between panels (len(panels)-1):
     a string, {"text", "color"}, or {"lines": [...]} for multi-line interstitials
-    (e.g. the translation-step strip), rendered centered in that gap."""
+    (e.g. the translation-step strip), rendered centered in that gap.
+
+    ``subtitle`` (a badge spec: str | {"text","color"}) is emitted as an integrated
+    line directly under the <h1> header — used for the Language Penalty, which reads
+    as a subtitle of the comparison rather than a mid-figure interstitial."""
     badges = badges or []
+    subtitle_html = ""
+    if subtitle:
+        text, color = _badge_lines(subtitle)[0]
+        subtitle_html = (
+            f'<p class="pen-sub" style="color:{html.escape(color)}">{html.escape(text)}</p>'
+        )
     svg_parts: list[str] = []
     data: list[list[dict]] = []
     y_offset = 0.0
@@ -763,7 +782,7 @@ def render_panels_html(
                 y_offset += PANEL_GAP
 
     doc_width = max(PANEL_WIDTH, int(math.ceil(max_right)) + LABEL_VIEWBOX_PAD)
-    document = _document(svg_parts, data, doc_width, int(y_offset))
+    document = _document(svg_parts, data, doc_width, int(y_offset), subtitle_html=subtitle_html)
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(document)
     logger.info("Wrote standalone comparison page to %s", out_path)
@@ -966,8 +985,12 @@ def render_panels_png(
     badges: list[Any] | None = None,
     max_edges: int = DEFAULT_MAX_EDGES,
     dpi: int = 160,
+    subtitle: Any = None,
 ) -> str:
-    """Write a static vertically-stacked comparison PNG; returns out_path."""
+    """Write a static vertically-stacked comparison PNG; returns out_path.
+
+    ``subtitle`` (a badge spec) is drawn as an integrated line at the top of the
+    figure — the static-export mirror of the HTML header subtitle (Language Penalty)."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -983,6 +1006,10 @@ def render_panels_png(
     )
     axes = axes[:, 0]
     _png_legend(fig)
+    if subtitle:
+        text, color = _badge_lines(subtitle)[0]
+        fig.text(0.5, 0.972, text, ha="center", va="top", fontsize=14,
+                 fontweight="bold", color=color, family="monospace")
 
     max_badge_lines = 1
     for panel_index, (ax, prep, panel) in enumerate(zip(axes, preps, panels)):
