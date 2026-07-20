@@ -1,0 +1,193 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 1,
+  "pairs_requested": 2,
+  "completed": true,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My arrhythmia has been acting up all week, so I should probably call my",
+        "patient": "My ticker's been acting up all week, so I should probably call my"
+      },
+      "target_token": "Output \" cardio\"",
+      "probabilities": {
+        "clinical": 0.33,
+        "patient": 0.032
+      },
+      "language_penalty": -0.29800000000000004,
+      "clinical_mass": {
+        "clinical": 0.4077,
+        "patient": 0.2751
+      },
+      "error_share": {
+        "clinical": 0.0918,
+        "patient": 0.1079
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] my | first-person references related to technology i \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.424)",
+        "patient": "embedding \u2192 [L18\u00b7O] my | first-person references related to technology i \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.648)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.424
+          ],
+          [
+            "Output \" cardio\"",
+            0.33
+          ],
+          [
+            "Output \" doc\"",
+            0.065
+          ],
+          [
+            "Output \" heart\"",
+            0.015
+          ],
+          [
+            "Output \" GP\"",
+            0.013
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.648
+          ],
+          [
+            "Output \" doc\"",
+            0.113
+          ],
+          [
+            "Output \" cardio\"",
+            0.032
+          ],
+          [
+            "Output \" OB\"",
+            0.029
+          ],
+          [
+            "Output \" GP\"",
+            0.017
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 734,
+        "unique_to_a": 480,
+        "unique_to_b": 484
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260706T172135Z/index_01.html",
+        "png": "trace_out/pairs_20260706T172135Z/index_01.png",
+        "diff_html": "trace_out/pairs_20260706T172135Z/index_01_diff.html",
+        "diff_png": "trace_out/pairs_20260706T172135Z/index_01_diff.png"
+      }
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My dad's been showing signs of dementia, so we think he should visit a",
+        "patient": "My dad's been forgetting where he puts his keys all the time, so we think he should visit a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.161,
+        "patient": 0.096
+      },
+      "language_penalty": -0.065,
+      "clinical_mass": {
+        "clinical": 0.3696,
+        "patient": 0.2251
+      },
+      "error_share": {
+        "clinical": 0.0919,
+        "patient": 0.0992
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.385)",
+        "patient": "embedding \u2192 Output \" memory\" (p=0.051)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.385
+          ],
+          [
+            "Output \" neuro\"",
+            0.161
+          ],
+          [
+            "Output \" specialist\"",
+            0.076
+          ],
+          [
+            "Output \" geri\"",
+            0.052
+          ],
+          [
+            "Output \" memory\"",
+            0.046
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.379
+          ],
+          [
+            "Output \" neuro\"",
+            0.096
+          ],
+          [
+            "Output \" memory\"",
+            0.051
+          ],
+          [
+            "Output \" locksmith\"",
+            0.04
+          ],
+          [
+            "Output \" specialist\"",
+            0.04
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 705,
+        "unique_to_a": 593,
+        "unique_to_b": 663
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260706T172135Z/index_02.html",
+        "png": "trace_out/pairs_20260706T172135Z/index_02.png",
+        "diff_html": "trace_out/pairs_20260706T172135Z/index_02_diff.html",
+        "diff_png": "trace_out/pairs_20260706T172135Z/index_02_diff.png"
+      }
+    }
+  ]
+}
