@@ -282,8 +282,30 @@ def test_build_exemplar_side_is_slim(monkeypatch):
     assert set(ex) == {"batch", "index", "target", "layers", "sides"}       # no per-exemplar transport
     for side in ("clinical", "patient"):
         s = ex["sides"][side]
-        assert set(s) == {"tokens", "grid", "answer_position", "answer"}    # slim: no first_layer/layers
+        assert set(s) == {"tokens", "grid", "answer_position", "answer", "readout"}  # slim + readout
         assert isinstance(s["grid"], list) and s["answer_position"] == 1
+        assert isinstance(s["readout"], list)
+
+
+def test_readout_layer_idxs_final_first_and_bounded():
+    idxs = ext._readout_layer_idxs(26)
+    assert idxs and idxs[0] == 25                      # final layer first
+    assert idxs == sorted(idxs, reverse=True)
+    assert all(0 <= i <= 25 for i in idxs) and len(idxs) <= len(ext._READOUT_FRACS)
+    assert ext._readout_layer_idxs(0) == []            # degenerate axis
+
+
+def test_answer_readout_open_vocab_ladder():
+    # 6 layers at the final position: generic "doctor" until the top layer flips
+    # to "cardio" - the paper-style trajectory the readout table shows.
+    final_layers = [[" doctor"], [" doctor"], [" doctor"],
+                    [" doctor"], [" doctor"], [" cardio", " doctor"]]
+    resp = _resp([[[" a"]] * 6, final_layers], [(0, "<bos>"), (1, " a")])
+    ro = ext.answer_readout(resp, topk=2)
+    assert ro and ro[0]["final"] is True and ro[0]["layer"] == 5    # final row first
+    assert ro[0]["tokens"][0] == "cardio"                          # decoded, target-agnostic
+    assert all(set(r) == {"layer", "final", "tokens"} for r in ro)
+    assert [r["layer"] for r in ro] == sorted([r["layer"] for r in ro], reverse=True)
 
 
 def test_build_payload_refuses_empty(monkeypatch):

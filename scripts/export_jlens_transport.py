@@ -8,9 +8,12 @@ an ops-only artifact) to a site payload the transport figure reads:
   within the top-N lens readout at every prompt position and layer, or null when
   absent - the clinical answer legible somewhere inside the sentence even where
   it never reaches the answer position) plus the model's own top prediction at
-  the answer position. Only the fields the figure draws are kept per side
-  (tokens, grid, answer_position, answer); the per-side first_layer/layers
-  duplicates and the per-exemplar transport summary are dropped to bound weight.
+  the answer position and a paper-style open-vocabulary `readout` (the J-lens
+  top-k decoded tokens per layer at the answer position - what the model leans
+  toward as the answer forms, e.g. doctor -> doctor -> cardio). Only the fields
+  the figure draws are kept per side (tokens, grid, answer_position, answer,
+  readout); the per-side first_layer/layers duplicates and the per-exemplar
+  transport summary are dropped to bound weight.
 - census: over the representative batch (--census-batch), how the clinical
   target's legibility resolves at the final (answer) position vs. earlier
   positions - reaches_answer / transport_gap (legible mid-sentence but never at
@@ -72,7 +75,7 @@ FRONTEND_CONTRACT = {
     "exemplars[]": ("target", "layers", "sides.clinical", "sides.patient", "render?"),
     "exemplars[].sides.<side>": ("tokens[].token", "grid", "answer_position",
                                  "answer.token", "answer.prob", "answer.on_target",
-                                 "answer.trace_url"),
+                                 "answer.trace_url", "readout[].{layer,final,tokens}"),
 }
 
 _TIERB_START = tierb_start_stamp()
@@ -212,6 +215,50 @@ def answer_prediction(response, target, model):
         "on_target": bool(jps.jr.target_match(token, jps.jr.target_variants(target))),
         "trace_url": lens_trace_url(model, _prompt_from_raw(response)),
     }
+
+
+# Depth ladder for the paper-style readout: the final layer plus a few samples
+# from the coherent late band (as fractions of depth). The J-lens decodes to
+# confident-but-meaningless artifacts in early/mid layers (e.g. "RenderAtEndOf"
+# at high probability), so the readout stays in the top quarter where the decode
+# is semantically meaningful - probability cannot separate the junk.
+_READOUT_FRACS = (1.0, 0.94, 0.88, 0.82, 0.76)
+
+
+def _readout_layer_idxs(n):
+    """Indices into an n-long layer axis for the readout ladder, final first."""
+    if n <= 0:
+        return []
+    last = n - 1
+    return sorted({min(last, max(0, round(f * last))) for f in _READOUT_FRACS}, reverse=True)
+
+
+def answer_readout(response, topk=3):
+    """Open-vocabulary J-lens top-k decoded tokens at the answer (final) position
+    for the depth ladder - the paper-style 'what is the model leaning toward'
+    readout as the answer forms (e.g. doctor -> doctor -> cardio). Unlike the
+    grid (which tracks one pre-chosen target), this names whatever the lens reads
+    out. Each entry: {layer, final, tokens}. [] when the raw lacks final-position
+    layer entries."""
+    tokens = (response.get("tokens") or []) if isinstance(response, dict) else []
+    if not tokens:
+        return []
+    final = tokens[-1]
+    entries = sorted(
+        (list(jps.jr._layer_entries_from_results(final, response))
+         or list(jps.jr._iter_layer_entries(final))),
+        key=lambda e: e[0],
+    )
+    if not entries:
+        return []
+    last_i = len(entries) - 1
+    out = []
+    for idx in _readout_layer_idxs(len(entries)):
+        layer, tops = entries[idx]
+        words = [w for w in (jps.jr._token_string(t).strip() for t in (tops or [])[:topk]) if w]
+        if words:
+            out.append({"layer": layer, "final": idx == last_i, "tokens": words})
+    return out
 
 
 def summarize_side(records):
@@ -368,6 +415,7 @@ def _slim_side(grid, raw, target, model):
         "grid": grid.get("grid", []),
         "answer_position": grid.get("answer_position"),
         "answer": answer_prediction(raw, target, model),
+        "readout": answer_readout(raw),   # paper-style open-vocab decode per layer
     }
 
 
