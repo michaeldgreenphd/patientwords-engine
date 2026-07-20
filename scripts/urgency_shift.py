@@ -248,12 +248,34 @@ for model in sorted({r["model"] for r in arows}):
     # confident downgrades: the patient side commits to the downgraded action
     conf = [r for r in mf if r["flip_class"] == "downgrade"
             and (r["p_top_patient"] or 0) >= 0.2]
+    # representative downgrade for the per-model care-ladder chart annotation
+    # (#5/#11, owner 2026-07-20): the most confident downgrade, as a base sentence +
+    # top-token swap (e.g. "doctor" -> "husband"). None when the model never
+    # downgrades - the chart annotates only the extreme (downgrading) model.
+    downs = [r for r in mf if r["flip_class"] == "downgrade"]
+
+    def _clean(tok):  # prefer legible whole words over wordpiece fragments (ant, inhal)
+        t = (tok or "").strip()
+        return bool(t) and t.isalpha() and len(t) >= 3
+    pool = [r for r in downs if _clean(r["top_clinical"]) and _clean(r["top_patient"])] or downs
+    representative = None
+    if pool:
+        best = max(pool, key=lambda r: (r["p_top_patient"] or 0))
+        representative = {
+            "base": best.get("clinical_prompt"),
+            "from": (best.get("top_clinical") or "").strip() or None,
+            "to": (best.get("top_patient") or "").strip() or None,
+            "p_patient": best.get("p_top_patient"),
+            "tier_shift": best.get("tier_shift"),
+            "batch": best.get("batch"), "index": best.get("index"),
+        }
     summary["per_model"][model] = {
         "n": len(mr), "flips": len(mf),
         "downgrades": d, "upgrades": u,
         "sign_test_p": sign_test(d, u),
         "confident_downgrades_p>=0.2": len(conf),
         "mean_tier_shift": round(sum(ms) / len(ms), 4) if ms else None,
+        "representative": representative,
     }
 
 # Phrase-deduped per-model counts (mirrors scripts/paired_stats_rigor.py): a

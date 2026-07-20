@@ -282,9 +282,28 @@ def test_build_exemplar_side_is_slim(monkeypatch):
     assert set(ex) == {"batch", "index", "target", "layers", "sides"}       # no per-exemplar transport
     for side in ("clinical", "patient"):
         s = ex["sides"][side]
-        assert set(s) == {"tokens", "grid", "answer_position", "answer", "readout"}  # slim + readout
+        # slim + answer readout + per-position marginalia
+        assert set(s) == {"tokens", "grid", "answer_position", "answer", "readout", "pos_readout"}
         assert isinstance(s["grid"], list) and s["answer_position"] == 1
         assert isinstance(s["readout"], list)
+        assert isinstance(s["pos_readout"], dict)
+
+
+def test_pos_readout_only_legible_positions_top3():
+    # 2 layers; target " tgt" legible at pos1 (layer0 rank1) and the final pos,
+    # never at pos0. pos_readout must key ONLY the legible positions (1 and 2),
+    # each carrying the final-layer top-3 open-vocab decode.
+    resp = _resp(
+        [[[" a", " b"], [" a", " b"]],          # pos0: target never reads out
+         [[" tgt", " a"], [" c", " d", " e"]],  # pos1: legible at layer0
+         [[" a"], [" tgt", " f", " g"]]],       # pos2 (answer): legible at layer1
+        [(0, "<bos>"), (1, " x"), (2, " y")])
+    grid = ext.position_layer_grid(resp, "tgt", topn=8)
+    pr = ext.pos_readout(resp, grid)
+    assert set(pr) == {"1", "2"}                       # pos0 excluded (never legible)
+    assert pr["2"] == ["tgt", "f", "g"]                # final-layer top-3 at the answer
+    assert all(len(v) <= 3 for v in pr.values())       # bounded to top-3
+    assert ext.pos_readout({}, {}) == {}               # graceful on empty
 
 
 def test_readout_layer_idxs_final_first_and_bounded():

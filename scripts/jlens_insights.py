@@ -111,6 +111,7 @@ def collect(trace_root: Path):
                 "endpoint_class": r.get("patient_depth_class"),
                 "pat_ranks": [rec.get("target_rank") for rec in pat],
                 "clin_ranks": [rec.get("target_rank") for rec in clin],
+                "prompts": r.get("prompts"),  # {clinical, patient} verbatim, for exemplar sentences
             }
             per_model[model].append(row)
     return per_model, holdout_excluded
@@ -186,7 +187,23 @@ def quantiles(values):
     return {"n": len(vs), "q25": q(0.25), "median": q(0.5), "q75": q(0.75)}
 
 
-def analyze(per_model, base_model, it_model, exemplar_count):
+def render_map_from_scenarios(scenarios_path):
+    """{(batch, index): html} for pairs carrying a committed circuit render, so a
+    trajectory exemplar can deep-link to its trace (the '↗ trace' link on the
+    technical page). Empty when the scenarios payload is absent/unreadable."""
+    try:
+        payload = json.loads(Path(scenarios_path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    for s in payload.get("scenarios", []):
+        html, batch, index = s.get("html"), s.get("batch"), s.get("batch_index")
+        if html and batch is not None and index is not None:
+            out[(batch, index)] = html
+    return out
+
+
+def analyze(per_model, base_model, it_model, exemplar_count, render_map=None):
     rows = per_model.get(base_model, [])
     out = {
         "_": ("EXPLORATORY - formation-depth analytics from landed lens readouts; "
@@ -231,15 +248,28 @@ def analyze(per_model, base_model, it_model, exemplar_count):
         out["taxonomy"][name] = entry
     out["window_sensitivity"] = window_sensitivity(rows)
 
-    # exemplar trajectories for the concept figure: one held, one hijack, one capture
+    # exemplar trajectories for the concept figure: one held, one hijack, one capture.
+    # Each carries its verbatim {clinical, patient} sentences (printed above the film
+    # strip with pivot words lit) and a committed render path for the '↗ trace' link;
+    # selection prefers a candidate that has both (owner 2026-07-20).
     exemplars = []
+    rmap = render_map or {}
+
+    def _pref(r):  # prefer a candidate with sentences, then a committed render
+        return (bool((r.get("prompts") or {}).get("clinical")),
+                (r["dataset"], r["index"]) in rmap)
+
     for want in ("hijack", "capture", "held"):
-        for r in rows:
-            if classify(r) == want and r["clin_formed"] is not None:
-                exemplars.append({"dataset": r["dataset"], "index": r["index"],
-                                  "class": want, "clin_ranks": r["clin_ranks"],
-                                  "pat_ranks": r["pat_ranks"]})
-                break
+        cands = [r for r in rows if classify(r) == want and r["clin_formed"] is not None]
+        if not cands:
+            continue
+        r = max(cands, key=_pref)  # best (prompts + render) available; else first of class
+        exemplars.append({"dataset": r["dataset"], "index": r["index"],
+                          "class": want, "clin_ranks": r["clin_ranks"],
+                          "pat_ranks": r["pat_ranks"],
+                          "prompts": r.get("prompts"),  # {clinical, patient} sentences
+                          # repo-relative circuit render, '↗ trace' link (None if unrendered)
+                          "render": rmap.get((r["dataset"], r["index"]))})
         if len(exemplars) >= exemplar_count:
             break
     out["exemplars"] = exemplars
@@ -274,6 +304,9 @@ def main():
     parser.add_argument("--out", default="ops/jlens_insights.json")
     parser.add_argument("--site", default=None,
                         help="site repo root; also writes data/jlens_insights.json there")
+    parser.add_argument("--scenarios", default=None,
+                        help="site simulated_scenarios.json for exemplar trace deep-links "
+                             "(defaults to <site>/data/simulated_scenarios.json)")
     args = parser.parse_args()
 
     per_model, holdout_excluded = collect(Path(args.trace_root))
@@ -283,7 +316,10 @@ def main():
         print(f"refused: no jlens summaries for {args.base_model} under "
               f"{args.trace_root} - not overwriting outputs")
         return 3
-    payload = analyze(per_model, args.base_model, args.it_model, args.exemplars)
+    scenarios = args.scenarios or (
+        str(Path(args.site) / "data" / "simulated_scenarios.json") if args.site else None)
+    rmap = render_map_from_scenarios(scenarios) if scenarios else {}
+    payload = analyze(per_model, args.base_model, args.it_model, args.exemplars, render_map=rmap)
     payload["holdout_excluded"] = holdout_excluded  # Amendment 1/3 seal (sealed rows dropped)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)

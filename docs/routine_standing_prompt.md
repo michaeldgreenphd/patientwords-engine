@@ -170,7 +170,35 @@ editing site text personally; text edits will collide with theirs.
 
 After any data republish, run `python scripts/jlens_insights.py --site
 ../patientwords` when new lens readouts landed (feeds the site's Technical
-page: formation depths, capture-vs-hijack taxonomy, tuning comparison).
+page: formation depths, capture-vs-hijack taxonomy, tuning comparison). Its
+exemplars now carry the verbatim `prompts` + a `render` deep-link; the
+`--scenarios` path defaults to `<site>/data/simulated_scenarios.json`.
+
+**J-lens site scaffolds - emit every cycle, in perpetuity (owner 2026-07-20).**
+Each field is read live and degrades gracefully, so keep all five exporters in
+the nightly regen; the frontend figures auto-populate as data lands. All $0.
+
+1. `python scripts/export_pair_swaps.py --site ../patientwords --depth
+   ../patientwords/data/jlens_depth.json` - per-pair swap+baseline for the
+   census table. Now unions the depth-census blocks with every dataset in
+   `jlens_insights.points` (`--insights`, defaults to the site copy), so
+   capture/hijack tooltips cover EVERY track, not just census batches. Run it
+   AFTER `jlens_insights` so the widened point set is current.
+2. `python scripts/export_jlens_transport.py --site ../patientwords
+   --census-batch pairs_20260711T051145Z --exemplar-pins
+   pairs_20260712T163501Z:22,pairs_20260712T163501Z:7,pairs_20260712T163501Z:11,pairs_20260712T163501Z:83,pairs_20260712T163501Z:87`
+   - per-position transport grid + `answer_readout` + the new per-position
+   `pos_readout` marginalia. Bounded (top-3, legible positions only); it
+   refuses (leaves the committed copy untouched) when save_raw is too sparse.
+3. `python scripts/export_jspace.py --site ../patientwords` - the J-space
+   worked-example panels (methods Step 4 / technical Part 2). Reads the
+   clinical/patient/translated triple from the `urgency_downgrades_20260707T1`
+   #6 mitigation result and the middle-layer concepts from the
+   `jspace_worked_20260720` lens save_raw. It emits `empirical:true` ONLY once
+   that lens trace is committed; until then it prints a note and leaves the
+   `empirical:false` placeholder untouched (the disclaimer must never say
+   'empirical' while the panels are hand-authored). To land the trace: fire
+   `jlens-readout` with save_raw on `data/simulated/jspace_worked_20260720.json`.
 
 After any data republish, when txcorpus logits or lens readouts landed, run
 `python scripts/translation_scale.py --site ../patientwords` (feeds the

@@ -36,9 +36,37 @@ def write_summary(root: Path, dataset, model, results):
         {"graph_model": model, "results": results}), encoding="utf-8")
 
 
-def result(index, clin_spec, pat_spec, status="ok"):
-    return {"index": index, "parse_status": {"clinical": status, "patient": status},
-            "depth": {"clinical": layers(clin_spec), "patient": layers(pat_spec)}}
+def result(index, clin_spec, pat_spec, status="ok", prompts=None):
+    r = {"index": index, "parse_status": {"clinical": status, "patient": status},
+         "depth": {"clinical": layers(clin_spec), "patient": layers(pat_spec)}}
+    if prompts is not None:
+        r["prompts"] = prompts
+    return r
+
+
+def test_exemplars_carry_prompts_and_prefer_rendered(tmp_path):
+    from scripts.jlens_insights import render_map_from_scenarios
+    root = tmp_path / "trace_out"
+    # two hijack candidates; only #2 has a committed render -> exemplar prefers it
+    write_summary(root, "pairs_R", "gemma-2-2b", [
+        result(1, [(None, "x"), (1, "y"), (1, "y"), (1, "y")],
+               [(None, "x"), (5, "y"), (4, "y"), (None, "z")],
+               prompts={"clinical": "first clinical", "patient": "first patient"}),
+        result(2, [(None, "x"), (1, "y"), (1, "y"), (1, "y")],
+               [(None, "x"), (5, "y"), (4, "y"), (None, "z")],
+               prompts={"clinical": "rendered clinical", "patient": "rendered patient"}),
+    ])
+    per_model, _ = collect(root)
+    rmap = {("pairs_R", 2): "modes/simulated/pairs_R/index_02.html"}
+    out = analyze(per_model, "gemma-2-2b", "gemma-2-2b-it", 3, render_map=rmap)
+    hij = next(e for e in out["exemplars"] if e["class"] == "hijack")
+    assert hij["index"] == 2                                    # preferred the rendered pair
+    assert hij["prompts"] == {"clinical": "rendered clinical", "patient": "rendered patient"}
+    assert hij["render"] == "modes/simulated/pairs_R/index_02.html"
+    # scenarios -> {(batch, index): html}
+    scen = tmp_path / "s.json"
+    scen.write_text(json.dumps({"scenarios": [{"batch": "b", "batch_index": 5, "html": "H"}]}))
+    assert render_map_from_scenarios(str(scen)) == {("b", 5): "H"}
 
 
 def test_collect_and_analyze_end_to_end(tmp_path):

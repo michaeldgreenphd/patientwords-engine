@@ -68,7 +68,18 @@ def test_main_refuses_without_blocks(tmp_path, capsys):
     out.write_text('{"kept": 1}', encoding="utf-8")
     depth = tmp_path / "empty_depth.json"
     depth.write_text(json.dumps({"blocks": []}), encoding="utf-8")
-    rc = ext.main(["--depth", str(depth), "--out", str(out), "--site", ""])
+    rc = ext.main(["--depth", str(depth), "--insights", "", "--out", str(out), "--site", ""])
     assert rc == 3
     assert "refused" in capsys.readouterr().out
     assert out.read_text() == '{"kept": 1}'              # untouched
+
+
+def test_insights_datasets_widen_beyond_census(tmp_path):
+    # points reference a drift_sentinel track NOT in the depth census -> its base
+    # sentence must still be covered so hijack tooltips work on every track.
+    insights = tmp_path / "jlens_insights.json"
+    insights.write_text(json.dumps({"points": [
+        {"dataset": "pairs_A", "index": 1}, {"dataset": "drift_sentinel_20260720", "index": 1},
+        {"dataset": "drift_sentinel_20260720", "index": 2}, {"index": 3}]}), encoding="utf-8")
+    assert ext.insights_datasets(str(insights)) == ["drift_sentinel_20260720", "pairs_A"]
+    assert ext.insights_datasets(str(tmp_path / "missing.json")) == []
