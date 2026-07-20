@@ -163,6 +163,18 @@ Priority order when slots are free:
    full and let it converge over days. Completing lens+`save_raw` on
    `pairs_20260711T051145Z` (25 pairs) is what finally lets transport/loglens be
    wired live (Section 5).
+   **8B-medical deferral (owner 2026-07-20):** the planner now HOLDS the two 8B
+   medical models (`meditron3-8b`, `apertus-8b-meditronfo`) until trace, lens, and
+   every other model's predictions are complete, then releases them to catch up in
+   the background — so the fast models' behavior lands first for decisions. The
+   summary line prints the gate state (`8B-medical: HELD/RELEASED`). Do not pass
+   `--include-8b-medical` unless the owner asks to un-defer them.
+   **Accelerator (owner 2026-07-20):** a separate `backfill-accel` Routine fires
+   the same $0 planner lanes every ~2h so the lanes stay saturated between daily
+   cycles. It shares this queue discipline, so it never double-fires; if both this
+   cycle and the accelerator target the same lane, `fire_trigger` arbitrates. This
+   cycle still owns generation + the digest; the accelerator only fills idle $0
+   measurement slots.
 
 Stopping rules (from the pre-registration): if two consecutive batches show
 validator yield < 50%, stop firing generation and record a decision for the
