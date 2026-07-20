@@ -105,6 +105,35 @@ def test_pick_examples_rule_order_caps_and_fields(tmp_path, monkeypatch):
     assert "pat_ranks" in ex[0] and "prompts" in ex[0]
 
 
+def test_build_block_precomputes_per_class_pct(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    lens_dir = tmp_path / "trace_out" / "s__jlens_gemma-2-2b"
+    lens_dir.mkdir(parents=True)
+    results = [{"index": i, "patient_depth_class": cls, "target_token": " t",
+                "prompts": {"clinical": "c", "patient": "p"},
+                "depth": {"clinical": [], "patient": []}}
+               for i, cls in enumerate(["retained", "retained", "absent", "suppressed"], 1)]
+    (lens_dir / "jlens_summary.part_01.json").write_text(json.dumps({"results": results}))
+    block = exporter.build_block("s", "set s")
+    assert block["counts"] == {"retained": 2, "absent": 1, "suppressed": 1}
+    assert block["pct"] == {"retained": 50.0, "absent": 25.0, "suppressed": 25.0}  # count/total
+
+
+def test_translated_for_reads_mitigation_prompt(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    d = tmp_path / "trace_out" / "mit"
+    d.mkdir(parents=True)
+    (d / "batch_summary.part_01.json").write_text(json.dumps({"results": [
+        {"index": 4, "prompts": {"clinical": "clin", "patient": "pat",
+                                 "translated": "the exact clinical translation"}},
+        {"index": 5, "prompts": {"clinical": "clin", "patient": "pat"}},  # no translated
+    ]}))
+    assert exporter.translated_for("mit", 4) == "the exact clinical translation"
+    assert exporter.translated_for("mit", 5) is None        # falls back to clinical wording
+    assert exporter.translated_for("mit", 99) is None        # absent index
+    assert exporter.translated_for("absent_stem", 1) is None
+
+
 def test_translation_split_joins_class_and_recovery(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     lens_dir = tmp_path / "trace_out" / "s__jlens_gemma-2-2b"

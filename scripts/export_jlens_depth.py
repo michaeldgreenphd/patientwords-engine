@@ -139,6 +139,22 @@ def units_annotation(results, index):
             "text": f"“{tail} {target}” becomes “{tail} {winner}”"}
 
 
+def translated_for(stem, index):
+    """The verbatim clinical-translation prompt the causal-check patch injects, read
+    from the pair's 2panel --show-mitigation summary (prompts.translated). None when
+    absent - the page then falls back to the clinical wording for the 'translated:'
+    label, so this is a safe, exactness-only addition."""
+    for path in sorted((Path("trace_out") / stem).glob("batch_summary*.json")):
+        try:
+            results = json.loads(path.read_text(encoding="utf-8")).get("results", [])
+        except (OSError, ValueError):
+            continue
+        for r in results:
+            if r.get("index") == index:
+                return (r.get("prompts") or {}).get("translated") or None
+    return None
+
+
 def build_block(stem, label, annotate_index=None):
     """One unit-rows block for a lens-measured set."""
     summary, path = load_summary(stem)
@@ -148,8 +164,12 @@ def build_block(stem, label, annotate_index=None):
     counts = {}
     for u in pairs:
         counts[u["class"]] = counts.get(u["class"], 0) + 1
+    # per-class share of the block (count / group total), pre-computed so the page
+    # need not divide at render time; frontend prefers pct, falls back to counts.
+    total = len(pairs)
+    pct = {c: round(100 * n / total, 1) for c, n in counts.items()} if total else {}
     return {
-        "id": stem, "label": label, "counts": counts, "pairs": pairs,
+        "id": stem, "label": label, "counts": counts, "pct": pct, "pairs": pairs,
         "annotation": (units_annotation(summary["results"], annotate_index)
                        if annotate_index else None),
         "source": path,
@@ -311,6 +331,9 @@ def build_payload(blocks_spec, exemplar_stem, exemplar_index, annotate=None):
             "index": exemplar_index,
             "target": (ex["target_token"] or "").strip(),
             "prompts": ex["prompts"],
+            # verbatim clinical translation the patch injects ('translated: …' label
+            # above the patch track); None -> page falls back to the clinical wording
+            "translated_sentence": translated_for(exemplar_stem, exemplar_index),
             "labels": {"clinical": label_c, "patient": label_p},
             "clin_ranks": rank_map(ex["depth"]["clinical"]),
             "pat_ranks": rank_map(ex["depth"]["patient"]),

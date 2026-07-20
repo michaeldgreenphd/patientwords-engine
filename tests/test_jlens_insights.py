@@ -92,6 +92,9 @@ def test_collect_and_analyze_end_to_end(tmp_path):
         "held": 1, "hijack": 1, "capture": 1, "unreadable": 1}
     assert out["formation"]["patient_never"] == 2   # capture + unreadable rows
     assert out["formation"]["clinical_never"] == 1  # unreadable row
+    # pre-computed never-formed shares (count / n_pairs=4)
+    assert out["formation"]["clinical_never_pct"] == 25.0
+    assert out["formation"]["patient_never_pct"] == 50.0
     # the top-8 window column must equal the headline taxonomy
     assert out["window_sensitivity"]["8"]["hijack"] == 1
     assert out["window_sensitivity"]["8"]["unreadable"] == 1

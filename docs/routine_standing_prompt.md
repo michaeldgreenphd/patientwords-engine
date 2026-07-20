@@ -175,9 +175,18 @@ exemplars now carry the verbatim `prompts` + a `render` deep-link; the
 `--scenarios` path defaults to `<site>/data/simulated_scenarios.json`.
 
 **J-lens site scaffolds - emit every cycle, in perpetuity (owner 2026-07-20).**
-Each field is read live and degrades gracefully, so keep all five exporters in
+Each field is read live and degrades gracefully, so keep these exporters in
 the nightly regen; the frontend figures auto-populate as data lands. All $0.
 
+0. `python scripts/export_jlens_depth.py --block "<stem>=<label>" ... --exemplar-stem
+   <stem> --exemplar-index <n> --site ../patientwords` (use the SAME blocks +
+   exemplar the committed `data/jlens_depth.json` shows - currently the six batches
+   through Jul 13 + the reviewed downgrade set, exemplar `pairs_20260711T051145Z:19`).
+   Refuses (exit 3, leaves the good file) on a degenerate exemplar patch grid. Now
+   emits per-class `pct` on every census block (count/total) and a
+   `translated_sentence` on the exemplar (the verbatim clinical translation the
+   patch injects, from the pair's 2panel `--show-mitigation` prompts). Run FIRST -
+   `export_pair_swaps` (below) scopes its swap map to this file's blocks.
 1. `python scripts/export_pair_swaps.py --site ../patientwords --depth
    ../patientwords/data/jlens_depth.json` - per-pair swap+baseline for the
    census table. Now unions the depth-census blocks with every dataset in
@@ -199,6 +208,15 @@ the nightly regen; the frontend figures auto-populate as data lands. All $0.
    `empirical:false` placeholder untouched (the disclaimer must never say
    'empirical' while the panels are hand-authored). To land the trace: fire
    `jlens-readout` with save_raw on `data/simulated/jspace_worked_20260720.json`.
+4. `python scripts/export_tag_mass.py --site ../patientwords` - the methods Step-3
+   tagging bars. Mean three-way attribution-mass split (clin=clinical-tagged
+   features, off=off-target features, struct=reconstruction-error residual) per
+   phrasing, over the gemma-2-2b corpus (the only model with a real transcoder
+   source set; others excluded), Tier B holdout excluded. Emits `empirical:true`
+   with real corpus means (each object sums to ~100); refuses to the placeholder
+   when no measured featured pair is found. Also: `jlens_insights` (above) now
+   emits `formation.clinical_never_pct`/`patient_never_pct` (count/n_pairs) for the
+   First Readings figure - no separate step, it rides the existing insights run.
 
 After any data republish, when txcorpus logits or lens readouts landed, run
 `python scripts/translation_scale.py --site ../patientwords` (feeds the

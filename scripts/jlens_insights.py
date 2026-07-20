@@ -223,6 +223,12 @@ def analyze(per_model, base_model, it_model, exemplar_count, render_map=None):
             "patient": quantiles([r["pat_formed"] for r in rows]),
             "clinical_never": sum(1 for r in rows if r["clin_formed"] is None),
             "patient_never": sum(1 for r in rows if r["pat_formed"] is None),
+            # pre-computed never-formed shares (count / n_pairs) so the First Readings
+            # figure need not divide at render; frontend prefers these, falls back.
+            "clinical_never_pct": (round(100 * sum(1 for r in rows if r["clin_formed"] is None)
+                                         / len(rows), 1) if rows else None),
+            "patient_never_pct": (round(100 * sum(1 for r in rows if r["pat_formed"] is None)
+                                        / len(rows), 1) if rows else None),
             "lag": quantiles([r["pat_formed"] - r["clin_formed"] for r in rows
                               if r["pat_formed"] is not None and r["clin_formed"] is not None]),
             "n_layers": rows[0]["n_layers"] if rows else None,
