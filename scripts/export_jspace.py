@@ -105,10 +105,19 @@ def _final_entries(response):
     )
 
 
-def mid_concepts(response, topk=3, max_concepts=_MAX_CONCEPTS):
-    """The lens's top open-vocab tokens at the answer position across the MIDDLE
-    layer band - what the model is 'considering' halfway up the stack. Deduped in
-    first-seen order, capped. [] when the raw lacks answer-position layer entries."""
+def _legible_concept(word):
+    """True for a clean lowercase word-concept, filtering the lens's known junk
+    readouts (code tokens like 'RenderAtEndOf', all-caps 'OGND', non-Latin script,
+    sub-word fragments). The figure shows meaningful concepts, not vocab artifacts."""
+    w = (word or "").strip()
+    return bool(w) and w.isascii() and w.isalpha() and w.islower() and 2 <= len(w) <= 14
+
+
+def mid_concepts(response, topk=6, max_concepts=_MAX_CONCEPTS):
+    """The lens's top legible open-vocab tokens at the answer position across the
+    MIDDLE layer band - what the model is 'considering' halfway up the stack.
+    Junk lens readouts are filtered (see _legible_concept); deduped in first-seen
+    order, capped. [] when the raw lacks answer-position layer entries."""
     entries = _final_entries(response)
     if not entries:
         return []
@@ -118,7 +127,7 @@ def mid_concepts(response, topk=3, max_concepts=_MAX_CONCEPTS):
     for layer, tops in entries[lo:hi + 1] or entries[n // 2:n // 2 + 1]:
         for t in (tops or [])[:topk]:
             w = jps.jr._token_string(t).strip()
-            if w and w.lower() not in seen:
+            if _legible_concept(w) and w.lower() not in seen:
                 seen.add(w.lower())
                 out.append(w)
     return out[:max_concepts]
