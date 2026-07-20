@@ -43,6 +43,7 @@ from pathlib import Path
 TRIGGERS = (
     "circuit-trace",
     "logits-eval",
+    "jlens-readout",
     "scenario-generation",
     "model-evaluation",
     "archive-renders",
@@ -75,6 +76,13 @@ KNOWN_KEYS = {
     # logits_evaluation.yml `defaults` dict (verified 2026-07-09): models, pairs_file,
     # limit, commit_outputs.
     "logits-eval": frozenset({"models", "pairs_file", "limit", "commit_outputs"}),
+    # jlens_readout.yml `defaults` dict (verified 2026-07-11; lens_type and steer_spec
+    # added 2026-07-14): models, pairs_file, limit, offset, topn, lens_type, steer_spec,
+    # save_raw, commit_outputs. ($0 hosted Jacobian-lens readouts.)
+    "jlens-readout": frozenset({
+        "models", "pairs_file", "limit", "offset", "topn", "lens_type", "steer_spec",
+        "save_raw", "commit_outputs",
+    }),
     # scenario_generation.yml `defaults` dict (verified 2026-07-09): task, num, topics,
     # seed_pairs, feedback, phrase, term, target_token, num_baselines, dialects,
     # anthropic_model, max_spend, graph_models, trace_sample_size.
