@@ -70,6 +70,19 @@ Priority order when slots are free:
    `true`. One batch per fire; chain, never stack a third.
 3. **Behavior** (logits-eval slot free): fire CPU logits for Tier B batches
    not yet measured (all four models, $0).
+4. **Lens readout** (`jlens-readout` slot free, $0 hosted Jacobian-lens): the
+   internals watch that feeds the site's transport / depth / logit-lens
+   figures. In idle slots pull readouts for the oldest batch whose
+   `trace_out/<batch>__jlens_gemma-2-2b/` is absent, in ~25-pair chunks —
+   `fire --trigger jlens-readout --params '{"models":"gemma-2-2b","pairs_file":
+   "data/simulated/<batch>.json","offset":"0","limit":"25","topn":"8",
+   "save_raw":"true","commit_outputs":"true"}'`. `save_raw` `true` is required:
+   the per-position transport scan and top-K window sensitivity read only raw
+   responses. When a `data/simulated/drift_sentinel_<YYYYMMDD>.json` batch
+   exists, also fire the lens sentinel on it with `models`
+   `gemma-2-2b,gemma-2-2b-it` (the internals-drift watch that pairs with the
+   output-drift one; the two ids are byte-identical today — the day `-it`
+   diverges, the sentinel catches it). Chain, never stack a third.
 
 Stopping rules (from the pre-registration): if two consecutive batches show
 validator yield < 50%, stop firing generation and record a decision for the
@@ -82,6 +95,23 @@ If new results landed, run the export/collection chain per `CLAUDE.md`
 to `../patientwords` (push the branch, then push branch:main as sanctioned).
 Do NOT edit any page HTML, page text, figures, or labels — the owner is
 editing site text personally; text edits will collide with theirs.
+
+When new lens readouts landed under `trace_out/*__jlens_gemma-2-2b/`,
+regenerate the site's Jacobian-lens payloads before committing. All three
+site exporters REFUSE (return None, leave the good file untouched) when raw
+coverage is missing, so they are safe to run every cycle:
+
+- `python scripts/export_jlens_transport.py --model gemma-2-2b --census-batch pairs_20260711T051145Z --exemplar-pins pairs_20260712T163501Z:22,pairs_20260712T163501Z:7,pairs_20260712T163501Z:11,pairs_20260712T163501Z:83,pairs_20260712T163501Z:87 --out data/jlens_transport.json --site ../patientwords`
+  (pinned exemplars keep the figure stable across regens)
+- `python scripts/export_jlens_loglens.py --model gemma-2-2b --out
+  data/jlens_loglens.json --site ../patientwords`
+- `python scripts/jlens_insights.py --site ../patientwords`
+- `python scripts/export_jlens_depth.py` — exemplar-specific
+  `--block` / `--exemplar-stem` / `--exemplar-index`, per the docstring in
+  that file
+
+Assert the `FRONTEND_CONTRACT` paths in `export_jlens_transport.py` still hold
+after each regen before committing the site copy.
 
 ## 6 · Update the dashboard
 
