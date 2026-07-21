@@ -1,0 +1,459 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 6,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have angina when I work out, so I should take an",
+        "patient": "My chest feels tight when I work out, so I should take an"
+      },
+      "target_token": "Output \" aspirin\"",
+      "probabilities": {
+        "clinical": 0.502,
+        "patient": 0.031
+      },
+      "language_penalty": -0.471,
+      "clinical_mass": {
+        "clinical": 0.4093,
+        "patient": 0.3541
+      },
+      "error_share": {
+        "clinical": 0.0943,
+        "patient": 0.09
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" anti\" (p=0.050)",
+        "patient": "embedding \u2192 [L19\u00b7O] descriptions of people breathing | breathing \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.394)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " aspirin",
+        "observed_clinical": [
+          "Output \" aspirin\"",
+          0.502
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" aspirin\"",
+            0.502
+          ],
+          [
+            "Output \" ACE\"",
+            0.065
+          ],
+          [
+            "Output \" anti\"",
+            0.05
+          ],
+          [
+            "Output \" ant\"",
+            0.046
+          ],
+          [
+            "Output \" Asp\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.394
+          ],
+          [
+            "Output \" anti\"",
+            0.235
+          ],
+          [
+            "Output \" asthma\"",
+            0.108
+          ],
+          [
+            "Output \" ant\"",
+            0.035
+          ],
+          [
+            "Output \" aspirin\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 555,
+        "unique_to_a": 607,
+        "unique_to_b": 708
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_06.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_06.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_06_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_06_diff.png"
+      }
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have frequent urination all day, so my",
+        "patient": "I keep running to the bathroom all day, so my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.078,
+        "patient": 0.079
+      },
+      "language_penalty": 0.0010000000000000009,
+      "clinical_mass": {
+        "clinical": 0.2609,
+        "patient": 0.1826
+      },
+      "error_share": {
+        "clinical": 0.0852,
+        "patient": 0.082
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" urine\" (p=0.067)",
+        "patient": "embedding \u2192 Output \" bladder\" (p=0.056)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.078
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" bladder\"",
+            0.197
+          ],
+          [
+            "Output \" doctor\"",
+            0.078
+          ],
+          [
+            "Output \" urine\"",
+            0.067
+          ],
+          [
+            "Output \" husband\"",
+            0.067
+          ],
+          [
+            "Output \" body\"",
+            0.038
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" husband\"",
+            0.13
+          ],
+          [
+            "Output \" doctor\"",
+            0.079
+          ],
+          [
+            "Output \" bladder\"",
+            0.056
+          ],
+          [
+            "Output \" mom\"",
+            0.052
+          ],
+          [
+            "Output \" stomach\"",
+            0.045
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 565,
+        "unique_to_a": 637,
+        "unique_to_b": 694
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_07.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_07.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_07_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_07_diff.png"
+      }
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have chronic pruritus no matter what, so I need to use a",
+        "patient": "My skin won't stop itching no matter what, so I need to use a"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.054,
+        "patient": 0.093
+      },
+      "language_penalty": 0.039,
+      "clinical_mass": {
+        "clinical": 0.3568,
+        "patient": 0.2938
+      },
+      "error_share": {
+        "clinical": 0.1057,
+        "patient": 0.0872
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" lot\" (p=0.080)",
+        "patient": "embedding \u2192 Output \" good\" (p=0.044)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cream",
+        "observed_clinical": [
+          "Output \" cream\"",
+          0.054
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lotion\"",
+            0.08
+          ],
+          [
+            "Output \" lot\"",
+            0.08
+          ],
+          [
+            "Output \" topical\"",
+            0.071
+          ],
+          [
+            "Output \" moisturizer\"",
+            0.069
+          ],
+          [
+            "Output \" cream\"",
+            0.054
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" moisturizer\"",
+            0.102
+          ],
+          [
+            "Output \" lotion\"",
+            0.098
+          ],
+          [
+            "Output \" lot\"",
+            0.095
+          ],
+          [
+            "Output \" cream\"",
+            0.093
+          ],
+          [
+            "Output \" good\"",
+            0.044
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 625,
+        "unique_to_a": 769,
+        "unique_to_b": 716
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_08.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_08.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_08_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_08_diff.png"
+      }
+    },
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing confusion lately, so I should get my",
+        "patient": "I've been feeling really foggy in my head lately, so I should get my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.0709
+      },
+      "error_share": {
+        "clinical": 0.0881
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" thoughts\"",
+            0.208
+          ],
+          [
+            "Output \" head\"",
+            0.176
+          ],
+          [
+            "Output \" mind\"",
+            0.053
+          ],
+          [
+            "Output \" act\"",
+            0.046
+          ],
+          [
+            "Output \" life\"",
+            0.042
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After I eat, I experience postprandial distension, so I might need to take some",
+        "patient": "After I eat, my stomach bloats up like a balloon, so I might need to take some"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.048,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3548,
+        "patient": 0.274
+      },
+      "error_share": {
+        "clinical": 0.1034,
+        "patient": 0.0966
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" time\" (p=0.149)",
+        "patient": "embedding \u2192 Output \" time\" (p=0.132)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.048
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" time\"",
+            0.149
+          ],
+          [
+            "Output \" gas\"",
+            0.134
+          ],
+          [
+            "Output \" anti\"",
+            0.062
+          ],
+          [
+            "Output \" lax\"",
+            0.054
+          ],
+          [
+            "Output \" medication\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" time\"",
+            0.132
+          ],
+          [
+            "Output \" lax\"",
+            0.108
+          ],
+          [
+            "Output \" gas\"",
+            0.102
+          ],
+          [
+            "Output \" medicine\"",
+            0.058
+          ],
+          [
+            "Output \" anti\"",
+            0.053
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 783,
+        "unique_to_a": 618,
+        "unique_to_b": 652
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_10.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_10.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_10_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_10_diff.png"
+      }
+    }
+  ]
+}

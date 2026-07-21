@@ -1,0 +1,873 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 1,
+  "pairs_requested": 10,
+  "completed": true,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having chronic insomnia all week, so tonight I'm gonna take a",
+        "patient": "I've been tossing and turning all week, so tonight I'm gonna take a"
+      },
+      "target_token": "Output \" nap\"",
+      "probabilities": {
+        "clinical": 0.146,
+        "patient": 0.128
+      },
+      "language_penalty": -0.017999999999999988,
+      "clinical_mass": {
+        "clinical": 0.1482,
+        "patient": 0.0638
+      },
+      "error_share": {
+        "clinical": 0.0872,
+        "patient": 0.0841
+      },
+      "top_path": {
+        "clinical": "[L21\u00b7S]  \u2192 [L22\u00b7O] idioms involving the word \"a\" or \"it\" | Shot \u2192 Output \" shot\" (p=0.048)",
+        "patient": "embedding \u2192 [L18\u00b7O] attempt | the word \"attempt\" and \"attacks\" \u2192 [L22\u00b7O] idioms involving the word \"a\" or \"it\" | Shot \u2192 Output \" stab\" (p=0.053)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" nap\"",
+            0.146
+          ],
+          [
+            "Output \" break\"",
+            0.101
+          ],
+          [
+            "Output \" look\"",
+            0.079
+          ],
+          [
+            "Output \" chance\"",
+            0.061
+          ],
+          [
+            "Output \" shot\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" nap\"",
+            0.128
+          ],
+          [
+            "Output \" chance\"",
+            0.078
+          ],
+          [
+            "Output \" break\"",
+            0.078
+          ],
+          [
+            "Output \" look\"",
+            0.06
+          ],
+          [
+            "Output \" stab\"",
+            0.053
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 947,
+        "unique_to_a": 463,
+        "unique_to_b": 496
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260706T175614Z/index_01.html",
+        "png": "trace_out/pairs_20260706T175614Z/index_01.png",
+        "diff_html": "trace_out/pairs_20260706T175614Z/index_01_diff.html",
+        "diff_png": "trace_out/pairs_20260706T175614Z/index_01_diff.png"
+      }
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My acid reflux flared up after that pizza, so I reached for the",
+        "patient": "My chest is on fire after that pizza, so I reached for the"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.148,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.295,
+        "patient": 0.1546
+      },
+      "error_share": {
+        "clinical": 0.1096,
+        "patient": 0.0984
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" T\" (p=0.079)",
+        "patient": "embedding \u2192 Output \" first\" (p=0.033)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.148
+          ],
+          [
+            "Output \" Pep\"",
+            0.102
+          ],
+          [
+            "Output \" T\"",
+            0.079
+          ],
+          [
+            "Output \" bottle\"",
+            0.029
+          ],
+          [
+            "Output \" milk\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bottle\"",
+            0.117
+          ],
+          [
+            "Output \" nearest\"",
+            0.055
+          ],
+          [
+            "Output \" ice\"",
+            0.049
+          ],
+          [
+            "Output \" water\"",
+            0.033
+          ],
+          [
+            "Output \" first\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 674,
+        "unique_to_a": 659,
+        "unique_to_b": 695
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260706T175614Z/index_02.html",
+        "png": "trace_out/pairs_20260706T175614Z/index_02.png",
+        "diff_html": "trace_out/pairs_20260706T175614Z/index_02_diff.html",
+        "diff_png": "trace_out/pairs_20260706T175614Z/index_02_diff.png"
+      }
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "This migraine is splitting, so at lunch I think I'll grab a",
+        "patient": "This pounding in my head is splitting, so at lunch I think I'll grab a"
+      },
+      "target_token": "Output \" sandwich\"",
+      "probabilities": {
+        "clinical": 0.087,
+        "patient": 0.083
+      },
+      "language_penalty": -0.00399999999999999,
+      "clinical_mass": {
+        "clinical": 0.0805,
+        "patient": 0.0976
+      },
+      "error_share": {
+        "clinical": 0.0973,
+        "patient": 0.0983
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" quick\" (p=0.077)",
+        "patient": "embedding \u2192 [L22\u00b7O] food items and coffee, especially those related to F \u2192 Output \" cup\" (p=0.073)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sandwich\"",
+            0.087
+          ],
+          [
+            "Output \" quick\"",
+            0.077
+          ],
+          [
+            "Output \" bite\"",
+            0.068
+          ],
+          [
+            "Output \" salad\"",
+            0.06
+          ],
+          [
+            "Output \" slice\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sandwich\"",
+            0.083
+          ],
+          [
+            "Output \" cup\"",
+            0.073
+          ],
+          [
+            "Output \" bite\"",
+            0.05
+          ],
+          [
+            "Output \" coffee\"",
+            0.034
+          ],
+          [
+            "Output \" few\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 989,
+        "unique_to_a": 357,
+        "unique_to_b": 425
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260706T175614Z/index_03.html",
+        "png": "trace_out/pairs_20260706T175614Z/index_03.png",
+        "diff_html": "trace_out/pairs_20260706T175614Z/index_03_diff.html",
+        "diff_png": "trace_out/pairs_20260706T175614Z/index_03_diff.png"
+      }
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's got seasonal hay fever from the pollen, so he's off to buy some",
+        "patient": "He's all stuffed up and sneezy from the pollen, so he's off to buy some"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.271,
+        "patient": 0.085
+      },
+      "language_penalty": -0.186,
+      "clinical_mass": {
+        "clinical": 0.3274,
+        "patient": 0.2927
+      },
+      "error_share": {
+        "clinical": 0.1116,
+        "patient": 0.1114
+      },
+      "top_path": {
+        "clinical": "[L3\u00b7S]  \u2192 [L4\u00b7C] words describing a medical or allergic reaction | me \u2192 [L6\u00b7C] text about allergies and allergic reactions | allerg \u2192 [L18\u00b7C] words related to allergic rhinitis and asthma, plus  \u2192 [L22\u00b7C] words or phrases related to allergic reactions and t \u2192 Output \" hay\" (p=0.078)",
+        "patient": "[L24\u00b7S]  \u2192 Output \" tissues\" (p=0.140)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.271
+          ],
+          [
+            "Output \" hay\"",
+            0.078
+          ],
+          [
+            "Output \" new\"",
+            0.042
+          ],
+          [
+            "Output \" allergy\"",
+            0.042
+          ],
+          [
+            "Output \" tablets\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" tissues\"",
+            0.14
+          ],
+          [
+            "Output \" anti\"",
+            0.085
+          ],
+          [
+            "Output \" allergy\"",
+            0.075
+          ],
+          [
+            "Output \" Sud\"",
+            0.045
+          ],
+          [
+            "Output \" medicine\"",
+            0.04
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 685,
+        "unique_to_a": 817,
+        "unique_to_b": 697
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260706T175614Z/index_04.html",
+        "png": "trace_out/pairs_20260706T175614Z/index_04.png",
+        "diff_html": "trace_out/pairs_20260706T175614Z/index_04_diff.html",
+        "diff_png": "trace_out/pairs_20260706T175614Z/index_04_diff.png"
+      }
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She kept getting gastroesophageal reflux at dinner, so she asked the waiter for a",
+        "patient": "She kept getting that burning coming up her throat at dinner, so she asked the waiter for a"
+      },
+      "target_token": "Output \" glass\"",
+      "probabilities": {
+        "clinical": 0.149,
+        "patient": 0.436
+      },
+      "language_penalty": 0.28700000000000003,
+      "clinical_mass": {
+        "clinical": 0.1851,
+        "patient": 0.1138
+      },
+      "error_share": {
+        "clinical": 0.1052,
+        "patient": 0.1037
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" small\" (p=0.033)",
+        "patient": "embedding \u2192 [L22\u00b7O] food items and coffee, especially those related to F \u2192 Output \" cup\" (p=0.031)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" glass\"",
+            0.149
+          ],
+          [
+            "Output \" little\"",
+            0.062
+          ],
+          [
+            "Output \" small\"",
+            0.033
+          ],
+          [
+            "Output \" plate\"",
+            0.029
+          ],
+          [
+            "Output \" cup\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" glass\"",
+            0.436
+          ],
+          [
+            "Output \" little\"",
+            0.059
+          ],
+          [
+            "Output \" napkin\"",
+            0.031
+          ],
+          [
+            "Output \" cup\"",
+            0.031
+          ],
+          [
+            "Output \" drink\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 849,
+        "unique_to_a": 575,
+        "unique_to_b": 566
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260706T175614Z/index_05.html",
+        "png": "trace_out/pairs_20260706T175614Z/index_05.png",
+        "diff_html": "trace_out/pairs_20260706T175614Z/index_05_diff.html",
+        "diff_png": "trace_out/pairs_20260706T175614Z/index_05_diff.png"
+      }
+    },
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My migraine's been throbbing on one side all morning, so I closed the blinds and went to lie",
+        "patient": "My head's been throbbing on one side all morning, so I closed the blinds and went to lie"
+      },
+      "target_token": "Output \" down\"",
+      "probabilities": {
+        "clinical": 0.855,
+        "patient": 0.848
+      },
+      "language_penalty": -0.007000000000000006,
+      "clinical_mass": {
+        "clinical": 0.1153,
+        "patient": 0.1136
+      },
+      "error_share": {
+        "clinical": 0.0907,
+        "patient": 0.0896
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] instances of the word \"slow\" paired with \"down\" or o \u2192 [L24\u00b7O] phrases made of multiple short words related to low  \u2192 Output \" down\" (p=0.855)",
+        "patient": "embedding \u2192 [L19\u00b7O] instances of the word \"slow\" paired with \"down\" or o \u2192 [L24\u00b7O] phrases made of multiple short words related to low  \u2192 Output \" down\" (p=0.848)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" down\"",
+            0.855
+          ],
+          [
+            "Output \" in\"",
+            0.062
+          ],
+          [
+            "Output \" on\"",
+            0.062
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" down\"",
+            0.848
+          ],
+          [
+            "Output \" on\"",
+            0.069
+          ],
+          [
+            "Output \" in\"",
+            0.061
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1072,
+        "unique_to_a": 181,
+        "unique_to_b": 226
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260706T175614Z/index_06.html",
+        "png": "trace_out/pairs_20260706T175614Z/index_06.png",
+        "diff_html": "trace_out/pairs_20260706T175614Z/index_06_diff.html",
+        "diff_png": "trace_out/pairs_20260706T175614Z/index_06_diff.png"
+      }
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My allergic rhinitis is really getting to me this week, so on the way home I stopped to buy some",
+        "patient": "The pollen's really getting to me this week, so on the way home I stopped to buy some"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.054,
+        "patient": 0.109
+      },
+      "language_penalty": 0.055,
+      "clinical_mass": {
+        "clinical": 0.3211,
+        "patient": 0.189
+      },
+      "error_share": {
+        "clinical": 0.1013,
+        "patient": 0.1046
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" allergy\" (p=0.088)",
+        "patient": "embedding \u2192 Output \" allergy\" (p=0.058)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" allergy\"",
+            0.088
+          ],
+          [
+            "Output \" Sud\"",
+            0.069
+          ],
+          [
+            "Output \" Ben\"",
+            0.061
+          ],
+          [
+            "Output \" Clar\"",
+            0.054
+          ],
+          [
+            "Output \" anti\"",
+            0.054
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.109
+          ],
+          [
+            "Output \" allergy\"",
+            0.058
+          ],
+          [
+            "Output \" new\"",
+            0.04
+          ],
+          [
+            "Output \" Ben\"",
+            0.027
+          ],
+          [
+            "Output \" ear\"",
+            0.027
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 939,
+        "unique_to_a": 474,
+        "unique_to_b": 553
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260706T175614Z/index_07.html",
+        "png": "trace_out/pairs_20260706T175614Z/index_07.png",
+        "diff_html": "trace_out/pairs_20260706T175614Z/index_07_diff.html",
+        "diff_png": "trace_out/pairs_20260706T175614Z/index_07_diff.png"
+      }
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He keeps getting acid reflux creeping up after dinner, so tonight he's taking an",
+        "patient": "He keeps getting that sour burn creeping up after dinner, so tonight he's taking an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.43,
+        "patient": 0.135
+      },
+      "language_penalty": -0.295,
+      "clinical_mass": {
+        "clinical": 0.3513,
+        "patient": 0.2226
+      },
+      "error_share": {
+        "clinical": 0.0984,
+        "patient": 0.0972
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.066)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" extra\" (p=0.195)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.43
+          ],
+          [
+            "Output \" OTC\"",
+            0.075
+          ],
+          [
+            "Output \" extra\"",
+            0.075
+          ],
+          [
+            "Output \" over\"",
+            0.066
+          ],
+          [
+            "Output \" acid\"",
+            0.051
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" extra\"",
+            0.195
+          ],
+          [
+            "Output \" aspirin\"",
+            0.135
+          ],
+          [
+            "Output \" ant\"",
+            0.135
+          ],
+          [
+            "Output \" anti\"",
+            0.063
+          ],
+          [
+            "Output \" over\"",
+            0.049
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 814,
+        "unique_to_a": 518,
+        "unique_to_b": 509
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260706T175614Z/index_08.html",
+        "png": "trace_out/pairs_20260706T175614Z/index_08.png",
+        "diff_html": "trace_out/pairs_20260706T175614Z/index_08_diff.html",
+        "diff_png": "trace_out/pairs_20260706T175614Z/index_08_diff.png"
+      }
+    },
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm all stuffy and sneezing from seasonal allergic rhinitis, so before the meeting I popped a",
+        "patient": "I'm all stuffy and sneezing from the hay fever season, so before the meeting I popped a"
+      },
+      "target_token": "Output \" couple\"",
+      "probabilities": {
+        "clinical": 0.212,
+        "patient": 0.309
+      },
+      "language_penalty": 0.097,
+      "clinical_mass": {
+        "clinical": 0.3156,
+        "patient": 0.2873
+      },
+      "error_share": {
+        "clinical": 0.1096,
+        "patient": 0.1105
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7S] articles, prepositions, and other common short words \u2192 Output \" couple\" (p=0.212)",
+        "patient": "embedding \u2192 [L24\u00b7S] articles, prepositions, and other common short words \u2192 Output \" couple\" (p=0.309)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" couple\"",
+            0.212
+          ],
+          [
+            "Output \" few\"",
+            0.146
+          ],
+          [
+            "Output \" Sud\"",
+            0.069
+          ],
+          [
+            "Output \" Z\"",
+            0.061
+          ],
+          [
+            "Output \" Clar\"",
+            0.047
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" couple\"",
+            0.309
+          ],
+          [
+            "Output \" few\"",
+            0.187
+          ],
+          [
+            "Output \" tablet\"",
+            0.061
+          ],
+          [
+            "Output \" little\"",
+            0.042
+          ],
+          [
+            "Output \" Sud\"",
+            0.037
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1167,
+        "unique_to_a": 201,
+        "unique_to_b": 271
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260706T175614Z/index_09.html",
+        "png": "trace_out/pairs_20260706T175614Z/index_09.png",
+        "diff_html": "trace_out/pairs_20260706T175614Z/index_09_diff.html",
+        "diff_png": "trace_out/pairs_20260706T175614Z/index_09_diff.png"
+      }
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been battling chronic insomnia every night this week, so at the pharmacy she picked up some",
+        "patient": "She's been wide awake counting sheep every night this week, so at the pharmacy she picked up some"
+      },
+      "target_token": "Output \" sleep\"",
+      "probabilities": {
+        "clinical": 0.078,
+        "patient": 0.126
+      },
+      "language_penalty": 0.048,
+      "clinical_mass": {
+        "clinical": 0.3506,
+        "patient": 0.2788
+      },
+      "error_share": {
+        "clinical": 0.1041,
+        "patient": 0.1119
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sleep\" (p=0.078)",
+        "patient": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleeping\" (p=0.059)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" melatonin\"",
+            0.113
+          ],
+          [
+            "Output \" sleep\"",
+            0.078
+          ],
+          [
+            "Output \" sleeping\"",
+            0.068
+          ],
+          [
+            "Output \" Ny\"",
+            0.047
+          ],
+          [
+            "Output \" pills\"",
+            0.047
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" melatonin\"",
+            0.126
+          ],
+          [
+            "Output \" sleep\"",
+            0.126
+          ],
+          [
+            "Output \" sleeping\"",
+            0.059
+          ],
+          [
+            "Output \" Sleep\"",
+            0.036
+          ],
+          [
+            "Output \" Mel\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 816,
+        "unique_to_a": 548,
+        "unique_to_b": 625
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260706T175614Z/index_10.html",
+        "png": "trace_out/pairs_20260706T175614Z/index_10.png",
+        "diff_html": "trace_out/pairs_20260706T175614Z/index_10_diff.html",
+        "diff_png": "trace_out/pairs_20260706T175614Z/index_10_diff.png"
+      }
+    }
+  ]
+}

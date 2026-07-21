@@ -8,7 +8,7 @@
     "desired_logit_prob": 0.95,
     "node_threshold": 0.8,
     "edge_threshold": 0.98,
-    "max_feature_nodes": 2500
+    "max_feature_nodes": 5000
   },
   "start_index": 15,
   "screen_targets": null,
@@ -18,28 +18,34 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "Since her urinary tract was completely blocked up, they had to urgently call a",
-        "patient": "Since her water was completely blocked up, they had to urgently call a"
+        "patient": "Since her water was completely blocked up, they had to urgently call a",
+        "translated": "Since her urinary flow was completely obstructed, they had to urgently call a"
       },
       "target_token": "Output \" uro\"",
       "probabilities": {
         "clinical": 0.202,
-        "patient": null
+        "patient": null,
+        "translated": 0.275
       },
       "language_penalty": null,
       "clinical_mass": {
-        "clinical": 0.4111,
-        "patient": 0.1347
+        "clinical": 0.3684,
+        "patient": 0.1417,
+        "translated": 0.401
       },
       "error_share": {
-        "clinical": 0.1298,
-        "patient": 0.1211
+        "clinical": 0.1043,
+        "patient": 0.1051,
+        "translated": 0.1055
       },
       "top_path": {
         "clinical": "[L17\u00b7S]  \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.169)",
-        "patient": "embedding \u2192 Output \" water\" (p=0.015)"
+        "patient": "embedding \u2192 Output \" water\" (p=0.015)",
+        "translated": "embedding \u2192 Output \" uro\" (p=0.275)"
       },
       "mitigation_recovery": null,
-      "translation_method": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -85,12 +91,34 @@
             "Output \" water\"",
             0.015
           ]
+        ],
+        "translated": [
+          [
+            "Output \" uro\"",
+            0.275
+          ],
+          [
+            "Output \" doctor\"",
+            0.159
+          ],
+          [
+            "Output \" surgeon\"",
+            0.114
+          ],
+          [
+            "Output \" specialist\"",
+            0.053
+          ],
+          [
+            "Output \" catheter\"",
+            0.046
+          ]
         ]
       },
       "circuit_diff": {
-        "shared_features": 404,
-        "unique_to_a": 403,
-        "unique_to_b": 340
+        "shared_features": 711,
+        "unique_to_a": 684,
+        "unique_to_b": 477
       },
       "outputs": {
         "html": "trace_out/imported_pairs/index_15.html",
@@ -104,28 +132,34 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "Passing kidney stones again, so I'd better ring my",
-        "patient": "Passing stones again, so I'd better ring my"
+        "patient": "Passing stones again, so I'd better ring my",
+        "translated": "Passing calculi again, so I'd better ring my"
       },
       "target_token": "Output \" GP\"",
       "probabilities": {
         "clinical": 0.261,
-        "patient": null
+        "patient": null,
+        "translated": null
       },
       "language_penalty": null,
       "clinical_mass": {
-        "clinical": 0.3267,
-        "patient": 0.0571
+        "clinical": 0.2981,
+        "patient": 0.0606,
+        "translated": 0.0724
       },
       "error_share": {
-        "clinical": 0.1239,
-        "patient": 0.1097
+        "clinical": 0.1032,
+        "patient": 0.0879,
+        "translated": 0.0949
       },
       "top_path": {
         "clinical": "embedding \u2192 [L18\u00b7O] my | first-person references related to technology i \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.235)",
-        "patient": "embedding \u2192 [L25\u00b7O] text about marriage and wedding anniversaries, espec \u2192 Output \" bell\" (p=0.338)"
+        "patient": "embedding \u2192 [L25\u00b7O] text about marriage and wedding anniversaries, espec \u2192 Output \" bell\" (p=0.338)",
+        "translated": "embedding \u2192 Output \" bell\" (p=0.040)"
       },
       "mitigation_recovery": null,
-      "translation_method": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -171,12 +205,34 @@
             "Output \" doorbell\"",
             0.023
           ]
+        ],
+        "translated": [
+          [
+            "Output \" parents\"",
+            0.047
+          ],
+          [
+            "Output \" mum\"",
+            0.047
+          ],
+          [
+            "Output \" friend\"",
+            0.044
+          ],
+          [
+            "Output \" local\"",
+            0.041
+          ],
+          [
+            "Output \" bell\"",
+            0.04
+          ]
         ]
       },
       "circuit_diff": {
-        "shared_features": 391,
-        "unique_to_a": 365,
-        "unique_to_b": 323
+        "shared_features": 701,
+        "unique_to_a": 600,
+        "unique_to_b": 528
       },
       "outputs": {
         "html": "trace_out/imported_pairs/index_16.html",
@@ -190,28 +246,34 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I caught a gastroenteritis, so I should take some",
-        "patient": "I caught a bug, so I should take some"
+        "patient": "I caught a bug, so I should take some",
+        "translated": "I acquired a viral infection, so I should take some"
       },
       "target_token": "Output \" medicine\"",
       "probabilities": {
         "clinical": 0.258,
-        "patient": 0.03
+        "patient": 0.03,
+        "translated": 0.119
       },
       "language_penalty": -0.228,
       "clinical_mass": {
-        "clinical": 0.4317,
-        "patient": 0.1706
+        "clinical": 0.4004,
+        "patient": 0.1622,
+        "translated": 0.4655
       },
       "error_share": {
-        "clinical": 0.1202,
-        "patient": 0.1079
+        "clinical": 0.0986,
+        "patient": 0.0908,
+        "translated": 0.0898
       },
       "top_path": {
         "clinical": "embedding \u2192 Output \" rest\" (p=0.072)",
-        "patient": "embedding \u2192 [L18\u00b7C] language related to either illness or weakness | res \u2192 [L19\u00b7O] mentions of activities involving time. | Rest break \u2192 Output \" rest\" (p=0.082)"
+        "patient": "embedding \u2192 [L18\u00b7C] language related to either illness or weakness | res \u2192 [L19\u00b7O] mentions of activities involving time. | Rest break \u2192 Output \" rest\" (p=0.082)",
+        "translated": "embedding \u2192 Output \" antiviral\" (p=0.052)"
       },
-      "mitigation_recovery": null,
-      "translation_method": null,
+      "mitigation_recovery": 0.089,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -257,12 +319,34 @@
             "Output \" pictures\"",
             0.018
           ]
+        ],
+        "translated": [
+          [
+            "Output \" antibiotics\"",
+            0.234
+          ],
+          [
+            "Output \" medicine\"",
+            0.119
+          ],
+          [
+            "Output \" time\"",
+            0.054
+          ],
+          [
+            "Output \" medication\"",
+            0.053
+          ],
+          [
+            "Output \" antiviral\"",
+            0.052
+          ]
         ]
       },
       "circuit_diff": {
-        "shared_features": 403,
-        "unique_to_a": 348,
-        "unique_to_b": 277
+        "shared_features": 677,
+        "unique_to_a": 584,
+        "unique_to_b": 420
       },
       "outputs": {
         "html": "trace_out/imported_pairs/index_17.html",
@@ -276,28 +360,34 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I've got a muscle spasm so I'm gonna take some",
-        "patient": "I've got a charlie horse so I'm gonna take some"
+        "patient": "I've got a charlie horse so I'm gonna take some",
+        "translated": "I have a muscle cramp so I'm going to take some"
       },
       "target_token": "Output \" time\"",
       "probabilities": {
         "clinical": 0.1,
-        "patient": 0.099
+        "patient": 0.099,
+        "translated": 0.109
       },
       "language_penalty": -0.0010000000000000009,
       "clinical_mass": {
-        "clinical": 0.3866,
-        "patient": 0.2737
+        "clinical": 0.3421,
+        "patient": 0.2568,
+        "translated": 0.3288
       },
       "error_share": {
-        "clinical": 0.104,
-        "patient": 0.1083
+        "clinical": 0.0869,
+        "patient": 0.0922,
+        "translated": 0.0925
       },
       "top_path": {
         "clinical": "embedding \u2192 [L25\u00b7C] words, phrases and punctuation marks associated with \u2192 Output \" pain\" (p=0.098)",
-        "patient": "embedding \u2192 Output \" of\" (p=0.072)"
+        "patient": "embedding \u2192 Output \" of\" (p=0.072)",
+        "translated": "embedding \u2192 [L21\u00b7C] terms that describe headaches | terms related to hea \u2192 [L25\u00b7C] words, phrases and punctuation marks associated with \u2192 Output \" pain\" (p=0.061)"
       },
-      "mitigation_recovery": null,
-      "translation_method": null,
+      "mitigation_recovery": 0.009999999999999995,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -343,12 +433,34 @@
             "Output \" Ad\"",
             0.065
           ]
+        ],
+        "translated": [
+          [
+            "Output \" time\"",
+            0.109
+          ],
+          [
+            "Output \" ibuprofen\"",
+            0.093
+          ],
+          [
+            "Output \" pain\"",
+            0.061
+          ],
+          [
+            "Output \" of\"",
+            0.054
+          ],
+          [
+            "Output \" Ad\"",
+            0.045
+          ]
         ]
       },
       "circuit_diff": {
-        "shared_features": 505,
-        "unique_to_a": 308,
-        "unique_to_b": 305
+        "shared_features": 857,
+        "unique_to_a": 472,
+        "unique_to_b": 514
       },
       "outputs": {
         "html": "trace_out/imported_pairs/index_18.html",
@@ -362,28 +474,34 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I've got a muscle spasm so I'm gonna take some",
-        "patient": "I've got a charley horse so I'm gonna take some"
+        "patient": "I've got a charley horse so I'm gonna take some",
+        "translated": "I have a muscle cramp so I'm gonna take some"
       },
       "target_token": "Output \" time\"",
       "probabilities": {
         "clinical": 0.1,
-        "patient": 0.058
+        "patient": 0.058,
+        "translated": 0.107
       },
       "language_penalty": -0.042,
       "clinical_mass": {
-        "clinical": 0.3866,
-        "patient": 0.3192
+        "clinical": 0.3421,
+        "patient": 0.2961,
+        "translated": 0.3148
       },
       "error_share": {
-        "clinical": 0.104,
-        "patient": 0.1088
+        "clinical": 0.0869,
+        "patient": 0.0909,
+        "translated": 0.0942
       },
       "top_path": {
         "clinical": "embedding \u2192 [L25\u00b7C] words, phrases and punctuation marks associated with \u2192 Output \" pain\" (p=0.098)",
-        "patient": "embedding \u2192 Output \" of\" (p=0.064)"
+        "patient": "embedding \u2192 Output \" of\" (p=0.064)",
+        "translated": "[L21\u00b7S]  \u2192 [L25\u00b7C] words, phrases and punctuation marks associated with \u2192 Output \" pain\" (p=0.086)"
       },
-      "mitigation_recovery": null,
-      "translation_method": null,
+      "mitigation_recovery": 0.048999999999999995,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -429,12 +547,34 @@
             "Output \" time\"",
             0.058
           ]
+        ],
+        "translated": [
+          [
+            "Output \" time\"",
+            0.107
+          ],
+          [
+            "Output \" pain\"",
+            0.086
+          ],
+          [
+            "Output \" ibuprofen\"",
+            0.082
+          ],
+          [
+            "Output \" paink\"",
+            0.049
+          ],
+          [
+            "Output \" Ad\"",
+            0.045
+          ]
         ]
       },
       "circuit_diff": {
-        "shared_features": 472,
-        "unique_to_a": 341,
-        "unique_to_b": 380
+        "shared_features": 777,
+        "unique_to_a": 552,
+        "unique_to_b": 630
       },
       "outputs": {
         "html": "trace_out/imported_pairs/index_19.html",
@@ -448,28 +588,34 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I've got dysentery so I've gotta make a",
-        "patient": "I've got the runs so I've gotta make a"
+        "patient": "I've got the runs so I've gotta make a",
+        "translated": "I have diarrhea so I have to make a"
       },
       "target_token": "Output \" post\"",
       "probabilities": {
         "clinical": 0.098,
-        "patient": 0.037
+        "patient": 0.037,
+        "translated": null
       },
       "language_penalty": -0.061000000000000006,
       "clinical_mass": {
-        "clinical": 0.102,
-        "patient": 0.1132
+        "clinical": 0.1107,
+        "patient": 0.1128,
+        "translated": 0.1609
       },
       "error_share": {
-        "clinical": 0.1004,
-        "patient": 0.1103
+        "clinical": 0.0849,
+        "patient": 0.0921,
+        "translated": 0.0843
       },
       "top_path": {
         "clinical": "embedding \u2192 Output \" new\" (p=0.050)",
-        "patient": "embedding \u2192 Output \" run\" (p=0.193)"
+        "patient": "embedding \u2192 Output \" run\" (p=0.193)",
+        "translated": "[L20\u00b7S]  \u2192 Output \" trip\" (p=0.118)"
       },
       "mitigation_recovery": null,
-      "translation_method": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -515,12 +661,34 @@
             "Output \" post\"",
             0.037
           ]
+        ],
+        "translated": [
+          [
+            "Output \" trip\"",
+            0.118
+          ],
+          [
+            "Output \" lot\"",
+            0.071
+          ],
+          [
+            "Output \" quick\"",
+            0.069
+          ],
+          [
+            "Output \" stop\"",
+            0.052
+          ],
+          [
+            "Output \" change\"",
+            0.043
+          ]
         ]
       },
       "circuit_diff": {
-        "shared_features": 415,
-        "unique_to_a": 368,
-        "unique_to_b": 352
+        "shared_features": 718,
+        "unique_to_a": 594,
+        "unique_to_b": 523
       },
       "outputs": {
         "html": "trace_out/imported_pairs/index_20.html",
@@ -534,28 +702,34 @@
       "mode": "2panel",
       "prompts": {
         "clinical": "I could feel hypoglycemia coming on, so I quickly grabbed some",
-        "patient": "I could feel a crash coming on so I got some of the"
+        "patient": "I could feel a crash coming on so I got some of the",
+        "translated": "I could feel a prodrome coming on so I got some of the"
       },
       "target_token": "Output \" sugar\"",
       "probabilities": {
         "clinical": 0.088,
-        "patient": null
+        "patient": null,
+        "translated": null
       },
       "language_penalty": null,
       "clinical_mass": {
-        "clinical": 0.1866,
-        "patient": 0.06
+        "clinical": 0.191,
+        "patient": 0.0677,
+        "translated": 0.1019
       },
       "error_share": {
-        "clinical": 0.1178,
-        "patient": 0.1041
+        "clinical": 0.0947,
+        "patient": 0.0855,
+        "translated": 0.0956
       },
       "top_path": {
         "clinical": "embedding \u2192 [L21\u00b7O] phrasings that are about events or free offers to a  \u2192 [L22\u00b7O] words associated with food and light amounts of huma \u2192 Output \" chocolate\" (p=0.058)",
-        "patient": "embedding \u2192 Output \" other\" (p=0.040)"
+        "patient": "embedding \u2192 Output \" other\" (p=0.040)",
+        "translated": "embedding \u2192 Output \" best\" (p=0.054)"
       },
       "mitigation_recovery": null,
-      "translation_method": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
@@ -601,18 +775,724 @@
             "Output \" girls\"",
             0.03
           ]
+        ],
+        "translated": [
+          [
+            "Output \" old\"",
+            0.073
+          ],
+          [
+            "Output \" stuff\"",
+            0.067
+          ],
+          [
+            "Output \" best\"",
+            0.054
+          ],
+          [
+            "Output \" things\"",
+            0.047
+          ],
+          [
+            "Output \" good\"",
+            0.043
+          ]
         ]
       },
       "circuit_diff": {
-        "shared_features": 244,
-        "unique_to_a": 595,
-        "unique_to_b": 510
+        "shared_features": 472,
+        "unique_to_a": 918,
+        "unique_to_b": 777
       },
       "outputs": {
         "html": "trace_out/imported_pairs/index_21.html",
         "png": "trace_out/imported_pairs/index_21.png",
         "diff_html": "trace_out/imported_pairs/index_21_diff.html",
         "diff_png": "trace_out/imported_pairs/index_21_diff.png"
+      }
+    },
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After waiting to take the vaccine she went to the",
+        "patient": "After waiting to take the shot she went to the",
+        "translated": "After waiting to administer the injection she went to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.21,
+        "patient": null,
+        "translated": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2798,
+        "patient": 0.0627,
+        "translated": 0.1424
+      },
+      "error_share": {
+        "clinical": 0.0815,
+        "patient": 0.0803,
+        "translated": 0.0849
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" vaccination\" (p=0.058)",
+        "patient": "embedding \u2192 Output \" other\" (p=0.032)",
+        "translated": "embedding \u2192 Output \" back\" (p=0.047)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.21
+          ],
+          [
+            "Output \" doctor\"",
+            0.122
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.084
+          ],
+          [
+            "Output \" clinic\"",
+            0.07
+          ],
+          [
+            "Output \" vaccination\"",
+            0.058
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bathroom\"",
+            0.083
+          ],
+          [
+            "Output \" back\"",
+            0.054
+          ],
+          [
+            "Output \" side\"",
+            0.039
+          ],
+          [
+            "Output \" front\"",
+            0.037
+          ],
+          [
+            "Output \" other\"",
+            0.032
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" bathroom\"",
+            0.12
+          ],
+          [
+            "Output \" toilet\"",
+            0.063
+          ],
+          [
+            "Output \" back\"",
+            0.047
+          ],
+          [
+            "Output \" next\"",
+            0.039
+          ],
+          [
+            "Output \" kitchen\"",
+            0.038
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 663,
+        "unique_to_a": 441,
+        "unique_to_b": 510
+      },
+      "outputs": {
+        "html": "trace_out/imported_pairs/index_22.html",
+        "png": "trace_out/imported_pairs/index_22.png",
+        "diff_html": "trace_out/imported_pairs/index_22_diff.html",
+        "diff_png": "trace_out/imported_pairs/index_22_diff.png"
+      }
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She has lateral epicondylitis, so she put on a",
+        "patient": "She has tennis elbow, so she put on a",
+        "translated": "She has lateral epicondylitis, so she put on a"
+      },
+      "target_token": "Output \" brace\"",
+      "probabilities": {
+        "clinical": 0.311,
+        "patient": 0.064,
+        "translated": 0.311
+      },
+      "language_penalty": -0.247,
+      "clinical_mass": {
+        "clinical": 0.317,
+        "patient": 0.196,
+        "translated": 0.317
+      },
+      "error_share": {
+        "clinical": 0.112,
+        "patient": 0.0993,
+        "translated": 0.112
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L19\u00b7O] mentions of clothing, swimwear or being dressed | cl \u2192 [L21\u00b7C] words and phrases related to medical conditions, phy \u2192 Output \" cast\" (p=0.103)",
+        "patient": "embedding \u2192 Output \" tennis\" (p=0.049)",
+        "translated": "[L18\u00b7S]  \u2192 [L19\u00b7O] mentions of clothing, swimwear or being dressed | cl \u2192 [L21\u00b7C] words and phrases related to medical conditions, phy \u2192 Output \" cast\" (p=0.103)"
+      },
+      "mitigation_recovery": 0.247,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" brace\"",
+            0.311
+          ],
+          [
+            "Output \" splint\"",
+            0.135
+          ],
+          [
+            "Output \" cast\"",
+            0.103
+          ],
+          [
+            "Output \" sling\"",
+            0.036
+          ],
+          [
+            "Output \" wrist\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pair\"",
+            0.125
+          ],
+          [
+            "Output \" brace\"",
+            0.064
+          ],
+          [
+            "Output \" cast\"",
+            0.057
+          ],
+          [
+            "Output \" tennis\"",
+            0.049
+          ],
+          [
+            "Output \" glove\"",
+            0.036
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" brace\"",
+            0.311
+          ],
+          [
+            "Output \" splint\"",
+            0.135
+          ],
+          [
+            "Output \" cast\"",
+            0.103
+          ],
+          [
+            "Output \" sling\"",
+            0.036
+          ],
+          [
+            "Output \" wrist\"",
+            0.029
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 759,
+        "unique_to_a": 533,
+        "unique_to_b": 570
+      },
+      "outputs": {
+        "html": "trace_out/imported_pairs/index_23.html",
+        "png": "trace_out/imported_pairs/index_23.png",
+        "diff_html": "trace_out/imported_pairs/index_23_diff.html",
+        "diff_png": "trace_out/imported_pairs/index_23_diff.png"
+      }
+    },
+    {
+      "index": 24,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Before I go outside I grab my inhaler and my",
+        "patient": "Before I go outside I grab my puffer and my",
+        "translated": "Before I go outside I grab my inhaler and my"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.109,
+        "patient": null,
+        "translated": 0.109
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2461,
+        "patient": 0.089,
+        "translated": 0.2461
+      },
+      "error_share": {
+        "clinical": 0.0987,
+        "patient": 0.0935,
+        "translated": 0.0987
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] words associated with mathematics and health problem \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.109)",
+        "patient": "embedding \u2192 [L18\u00b7O] phrases related to clothing a baby | layering clothe \u2192 [L19\u00b7O] mentions of clothing, swimwear or being dressed | cl \u2192 Output \" gloves\" (p=0.053)",
+        "translated": "embedding \u2192 [L19\u00b7C] words associated with mathematics and health problem \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.109)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.109
+          ],
+          [
+            "Output \" asthma\"",
+            0.101
+          ],
+          [
+            "Output \" phone\"",
+            0.064
+          ],
+          [
+            "Output \" mask\"",
+            0.062
+          ],
+          [
+            "Output \" Epi\"",
+            0.06
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" jacket\"",
+            0.075
+          ],
+          [
+            "Output \" coat\"",
+            0.075
+          ],
+          [
+            "Output \" scarf\"",
+            0.071
+          ],
+          [
+            "Output \" hat\"",
+            0.063
+          ],
+          [
+            "Output \" gloves\"",
+            0.053
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" inhal\"",
+            0.109
+          ],
+          [
+            "Output \" asthma\"",
+            0.101
+          ],
+          [
+            "Output \" phone\"",
+            0.064
+          ],
+          [
+            "Output \" mask\"",
+            0.062
+          ],
+          [
+            "Output \" Epi\"",
+            0.06
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 937,
+        "unique_to_a": 400,
+        "unique_to_b": 329
+      },
+      "outputs": {
+        "html": "trace_out/imported_pairs/index_24.html",
+        "png": "trace_out/imported_pairs/index_24.png",
+        "diff_html": "trace_out/imported_pairs/index_24_diff.html",
+        "diff_png": "trace_out/imported_pairs/index_24_diff.png"
+      }
+    },
+    {
+      "index": 25,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He has tinea cruris, so he should put on some",
+        "patient": "He has jock itch, so he should put on some",
+        "translated": "He has tinea cruris, so he should put on some"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.163,
+        "patient": 0.045,
+        "translated": 0.163
+      },
+      "language_penalty": -0.11800000000000001,
+      "clinical_mass": {
+        "clinical": 0.3401,
+        "patient": 0.2591,
+        "translated": 0.3401
+      },
+      "error_share": {
+        "clinical": 0.1103,
+        "patient": 0.1054,
+        "translated": 0.1103
+      },
+      "top_path": {
+        "clinical": "[L3\u00b7S]  \u2192 [L4\u00b7O] scientific names of fungi | Fungi and biological sub \u2192 Output \" antifungal\" (p=0.089)",
+        "patient": "embedding \u2192 Output \" jo\" (p=0.046)",
+        "translated": "[L3\u00b7S]  \u2192 [L4\u00b7O] scientific names of fungi | Fungi and biological sub \u2192 Output \" antifungal\" (p=0.089)"
+      },
+      "mitigation_recovery": 0.11800000000000001,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cream\"",
+            0.163
+          ],
+          [
+            "Output \" antifungal\"",
+            0.089
+          ],
+          [
+            "Output \" anti\"",
+            0.07
+          ],
+          [
+            "Output \" powder\"",
+            0.066
+          ],
+          [
+            "Output \" tal\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" powder\"",
+            0.115
+          ],
+          [
+            "Output \" Jock\"",
+            0.077
+          ],
+          [
+            "Output \" Vase\"",
+            0.049
+          ],
+          [
+            "Output \" jo\"",
+            0.046
+          ],
+          [
+            "Output \" cream\"",
+            0.045
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" cream\"",
+            0.163
+          ],
+          [
+            "Output \" antifungal\"",
+            0.089
+          ],
+          [
+            "Output \" anti\"",
+            0.07
+          ],
+          [
+            "Output \" powder\"",
+            0.066
+          ],
+          [
+            "Output \" tal\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 680,
+        "unique_to_a": 769,
+        "unique_to_b": 802
+      },
+      "outputs": {
+        "html": "trace_out/imported_pairs/index_25.html",
+        "png": "trace_out/imported_pairs/index_25.png",
+        "diff_html": "trace_out/imported_pairs/index_25_diff.html",
+        "diff_png": "trace_out/imported_pairs/index_25_diff.png"
+      }
+    },
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He got a concussion, so he should get a",
+        "patient": "He got knocked out, so he should get a",
+        "translated": "He sustained a loss of consciousness, so he should get a"
+      },
+      "target_token": "Output \" break\"",
+      "probabilities": {
+        "clinical": 0.086,
+        "patient": null,
+        "translated": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2191,
+        "patient": 0.0747,
+        "translated": 0.3176
+      },
+      "error_share": {
+        "clinical": 0.0995,
+        "patient": 0.0927,
+        "translated": 0.0902
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" concussion\" (p=0.085)",
+        "patient": "embedding \u2192 Output \" new\" (p=0.090)",
+        "translated": "embedding \u2192 Output \" full\" (p=0.064)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" break\"",
+            0.086
+          ],
+          [
+            "Output \" concussion\"",
+            0.085
+          ],
+          [
+            "Output \" day\"",
+            0.079
+          ],
+          [
+            "Output \" few\"",
+            0.068
+          ],
+          [
+            "Output \" week\"",
+            0.049
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" rematch\"",
+            0.237
+          ],
+          [
+            "Output \" new\"",
+            0.09
+          ],
+          [
+            "Output \" free\"",
+            0.057
+          ],
+          [
+            "Output \" title\"",
+            0.04
+          ],
+          [
+            "Output \" chance\"",
+            0.029
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" CT\"",
+            0.248
+          ],
+          [
+            "Output \" check\"",
+            0.069
+          ],
+          [
+            "Output \" full\"",
+            0.064
+          ],
+          [
+            "Output \" concussion\"",
+            0.055
+          ],
+          [
+            "Output \" medical\"",
+            0.054
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 674,
+        "unique_to_a": 517,
+        "unique_to_b": 513
+      },
+      "outputs": {
+        "html": "trace_out/imported_pairs/index_26.html",
+        "png": "trace_out/imported_pairs/index_26.png",
+        "diff_html": "trace_out/imported_pairs/index_26_diff.html",
+        "diff_png": "trace_out/imported_pairs/index_26_diff.png"
+      }
+    },
+    {
+      "index": 27,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's got hematuria, so he should call a",
+        "patient": "He's got blood in his urine, so he should call a",
+        "translated": "He's got hematuria, so he should call a"
+      },
+      "target_token": "Output \" uro\"",
+      "probabilities": {
+        "clinical": 0.476,
+        "patient": 0.023,
+        "translated": 0.476
+      },
+      "language_penalty": -0.45299999999999996,
+      "clinical_mass": {
+        "clinical": 0.4187,
+        "patient": 0.3214,
+        "translated": 0.4187
+      },
+      "error_share": {
+        "clinical": 0.1011,
+        "patient": 0.097,
+        "translated": 0.1011
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" hemat\" (p=0.044)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.153)",
+        "translated": "embedding \u2192 Output \" hemat\" (p=0.044)"
+      },
+      "mitigation_recovery": 0.45299999999999996,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" uro\"",
+            0.476
+          ],
+          [
+            "Output \" doctor\"",
+            0.16
+          ],
+          [
+            "Output \" hemat\"",
+            0.044
+          ],
+          [
+            "Output \" nephro\"",
+            0.034
+          ],
+          [
+            "Output \" doc\"",
+            0.03
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" vet\"",
+            0.64
+          ],
+          [
+            "Output \" doctor\"",
+            0.153
+          ],
+          [
+            "Output \" veterinarian\"",
+            0.04
+          ],
+          [
+            "Output \" Vet\"",
+            0.036
+          ],
+          [
+            "Output \" uro\"",
+            0.023
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" uro\"",
+            0.476
+          ],
+          [
+            "Output \" doctor\"",
+            0.16
+          ],
+          [
+            "Output \" hemat\"",
+            0.044
+          ],
+          [
+            "Output \" nephro\"",
+            0.034
+          ],
+          [
+            "Output \" doc\"",
+            0.03
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 717,
+        "unique_to_a": 537,
+        "unique_to_b": 522
+      },
+      "outputs": {
+        "html": "trace_out/imported_pairs/index_27.html",
+        "png": "trace_out/imported_pairs/index_27.png",
+        "diff_html": "trace_out/imported_pairs/index_27_diff.html",
+        "diff_png": "trace_out/imported_pairs/index_27_diff.png"
       }
     }
   ]

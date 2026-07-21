@@ -1,0 +1,251 @@
+{
+  "mode": "2panel",
+  "backend": "logits",
+  "graph_model": "gemma-2-2b",
+  "source_set": null,
+  "generation_params": {},
+  "start_index": 1,
+  "screen_targets": null,
+  "inference": {
+    "method": "logits",
+    "hf_id": "google/gemma-2-2b",
+    "dtype": "bfloat16",
+    "revision": "c5ebcd40d208330abc697524c919956e692655cf"
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm having a stroke and my words keep slurring, so I need to call my",
+        "patient": "My arm's gone weirdly numb and my words keep slurring, so I need to call my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.2317,
+        "patient": 0.1404
+      },
+      "language_penalty": -0.0913,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.2317
+          ],
+          [
+            "Output \" mom\"",
+            0.0966
+          ],
+          [
+            "Output \" wife\"",
+            0.0586
+          ],
+          [
+            "Output \" friend\"",
+            0.0517
+          ],
+          [
+            "Output \" mother\"",
+            0.0403
+          ],
+          [
+            "Output \" therapist\"",
+            0.0314
+          ],
+          [
+            "Output \" insurance\"",
+            0.0244
+          ],
+          [
+            "Output \" sister\"",
+            0.0244
+          ],
+          [
+            "Output \" brother\"",
+            0.0244
+          ],
+          [
+            "Output \" husband\"",
+            0.0244
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.1404
+          ],
+          [
+            "Output \" mom\"",
+            0.1239
+          ],
+          [
+            "Output \" mum\"",
+            0.0965
+          ],
+          [
+            "Output \" dad\"",
+            0.0516
+          ],
+          [
+            "Output \" friend\"",
+            0.0516
+          ],
+          [
+            "Output \" mother\"",
+            0.0456
+          ],
+          [
+            "Output \" therapist\"",
+            0.0402
+          ],
+          [
+            "Output \" wife\"",
+            0.0313
+          ],
+          [
+            "Output \" sister\"",
+            0.0276
+          ],
+          [
+            "Output \" parents\"",
+            0.0244
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor.",
+          "mom": "mom. I",
+          "wife": "wife. I",
+          "friend": "friend to help"
+        },
+        "patient": {
+          "doctor": "doctor.",
+          "mom": "mom.",
+          "mum": "mum.",
+          "dad": "dad."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's going into anaphylaxis after the peanut, so we need to call an",
+        "patient": "Her lips are puffing up and her throat feels tight after the peanut, so we need to call an"
+      },
+      "target_token": "Output \" ambulance\"",
+      "probabilities": {
+        "clinical": 0.7977,
+        "patient": 0.9451
+      },
+      "language_penalty": 0.1474,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ambulance\"",
+            0.7977
+          ],
+          [
+            "Output \" Epi\"",
+            0.035
+          ],
+          [
+            "Output \" epi\"",
+            0.035
+          ],
+          [
+            "Output \" ep\"",
+            0.0309
+          ],
+          [
+            "Output \" ana\"",
+            0.0213
+          ],
+          [
+            "Output \" aller\"",
+            0.0166
+          ],
+          [
+            "Output \" emergency\"",
+            0.01
+          ],
+          [
+            "Output \" E\"",
+            0.0054
+          ],
+          [
+            "Output \" \"",
+            0.0037
+          ],
+          [
+            "Output \" AM\"",
+            0.0037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ambulance\"",
+            0.9451
+          ],
+          [
+            "Output \" emergency\"",
+            0.0082
+          ],
+          [
+            "Output \" inhal\"",
+            0.0044
+          ],
+          [
+            "Output \" end\"",
+            0.0039
+          ],
+          [
+            "Output \" EMT\"",
+            0.0034
+          ],
+          [
+            "Output \" Uber\"",
+            0.003
+          ],
+          [
+            "Output \" \"",
+            0.0023
+          ],
+          [
+            "Output \" amb\"",
+            0.0021
+          ],
+          [
+            "Output \" air\"",
+            0.0021
+          ],
+          [
+            "Output \" urgent\"",
+            0.0013
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ambulance": "ambulance.",
+          "Epi": "EpiPen.",
+          "epi": "epi pen.",
+          "ep": "epipen."
+        },
+        "patient": {
+          "ambulance": "ambulance.",
+          "emergency": "emergency meeting.",
+          "inhal": "inhaler.",
+          "end": "end to this"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    }
+  ]
+}

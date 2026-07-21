@@ -1,0 +1,416 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 26,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I can't seem to get enough air when I climb stairs, so I'm wondering if I should use an",
+        "patient": "I can't seem to get enough air when I climb stairs, so I'm wondering if I should use a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1739
+      },
+      "error_share": {
+        "clinical": 0.0983
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " inhaler",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" air\"",
+            0.208
+          ],
+          [
+            "Output \" oxygen\"",
+            0.049
+          ],
+          [
+            "Output \" adapter\"",
+            0.04
+          ],
+          [
+            "Output \" O\"",
+            0.033
+          ],
+          [
+            "Output \" external\"",
+            0.027
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 27,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been clinically fatigued every single day, so my boss wants me to get some",
+        "patient": "I've been dead on my feet every single day, so my boss wants me to get some"
+      },
+      "target_token": "Output \" help\"",
+      "probabilities": {
+        "clinical": 0.096,
+        "patient": 0.088
+      },
+      "language_penalty": -0.008000000000000007,
+      "clinical_mass": {
+        "clinical": 0.2902,
+        "patient": 0.1665
+      },
+      "error_share": {
+        "clinical": 0.0929,
+        "patient": 0.0852
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.186)",
+        "patient": "embedding \u2192 [L17\u00b7O] sleep | text about sleep apnea \u2192 [L18\u00b7C] words associated with sleeping and nights | sleep \u2192 [L19\u00b7O] mentions of sleep | sleep \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.163)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " help",
+        "observed_clinical": [
+          "Output \" help\"",
+          0.096
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.186
+          ],
+          [
+            "Output \" tests\"",
+            0.109
+          ],
+          [
+            "Output \" blood\"",
+            0.101
+          ],
+          [
+            "Output \" help\"",
+            0.096
+          ],
+          [
+            "Output \" rest\"",
+            0.085
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" rest\"",
+            0.212
+          ],
+          [
+            "Output \" sleep\"",
+            0.163
+          ],
+          [
+            "Output \" help\"",
+            0.088
+          ],
+          [
+            "Output \" exercise\"",
+            0.044
+          ],
+          [
+            "Output \" time\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 848,
+        "unique_to_a": 628,
+        "unique_to_b": 572
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T025842Z/index_27.html",
+        "png": "trace_out/pairs_20260707T025842Z/index_27.png",
+        "diff_html": "trace_out/pairs_20260707T025842Z/index_27_diff.html",
+        "diff_png": "trace_out/pairs_20260707T025842Z/index_27_diff.png"
+      }
+    },
+    {
+      "index": 28,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My skin's been showing eczematous inflammation in the creases, so I should probably grab a",
+        "patient": "My skin's been weeping and raw in the creases, so I should probably grab a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.236
+      },
+      "error_share": {
+        "clinical": 0.1049
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " steroid",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" bottle\"",
+            0.109
+          ],
+          [
+            "Output \" new\"",
+            0.073
+          ],
+          [
+            "Output \" tube\"",
+            0.056
+          ],
+          [
+            "Output \" good\"",
+            0.051
+          ],
+          [
+            "Output \" jar\"",
+            0.048
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 29,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I lie flat my heart starts showing palpitations, so I need to take my",
+        "patient": "When I lie flat my heart starts doing somersaults, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.053,
+        "patient": 0.061
+      },
+      "language_penalty": 0.008,
+      "clinical_mass": {
+        "clinical": 0.3136,
+        "patient": 0.2364
+      },
+      "error_share": {
+        "clinical": 0.1034,
+        "patient": 0.097
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.263)",
+        "patient": "embedding \u2192 Output \" heart\" (p=0.159)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.053
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" heart\"",
+            0.263
+          ],
+          [
+            "Output \" blood\"",
+            0.079
+          ],
+          [
+            "Output \" meds\"",
+            0.055
+          ],
+          [
+            "Output \" medication\"",
+            0.053
+          ],
+          [
+            "Output \" pulse\"",
+            0.04
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" heart\"",
+            0.159
+          ],
+          [
+            "Output \" meds\"",
+            0.105
+          ],
+          [
+            "Output \" blood\"",
+            0.095
+          ],
+          [
+            "Output \" medication\"",
+            0.061
+          ],
+          [
+            "Output \" medicine\"",
+            0.03
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1058,
+        "unique_to_a": 187,
+        "unique_to_b": 205
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T025842Z/index_29.html",
+        "png": "trace_out/pairs_20260707T025842Z/index_29.png",
+        "diff_html": "trace_out/pairs_20260707T025842Z/index_29_diff.html",
+        "diff_png": "trace_out/pairs_20260707T025842Z/index_29_diff.png"
+      }
+    },
+    {
+      "index": 30,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since the stressful presentation at work, I've had this anxiety disorder flare-up in my chest, so I should probably call my",
+        "patient": "Ever since the stressful presentation at work, I've had this tight knot in my chest, so I should probably call my"
+      },
+      "target_token": "Output \" therapist\"",
+      "probabilities": {
+        "clinical": 0.047,
+        "patient": 0.086
+      },
+      "language_penalty": 0.03899999999999999,
+      "clinical_mass": {
+        "clinical": 0.3214,
+        "patient": 0.2329
+      },
+      "error_share": {
+        "clinical": 0.0952,
+        "patient": 0.0989
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] my | first-person references related to technology i \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.657)",
+        "patient": "embedding \u2192 [L18\u00b7O] my | first-person references related to technology i \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.407)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " therapist",
+        "observed_clinical": [
+          "Output \" therapist\"",
+          0.047
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.657
+          ],
+          [
+            "Output \" therapist\"",
+            0.047
+          ],
+          [
+            "Output \" GP\"",
+            0.039
+          ],
+          [
+            "Output \" doc\"",
+            0.03
+          ],
+          [
+            "Output \" mom\"",
+            0.03
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.407
+          ],
+          [
+            "Output \" mom\"",
+            0.11
+          ],
+          [
+            "Output \" therapist\"",
+            0.086
+          ],
+          [
+            "Output \" boss\"",
+            0.046
+          ],
+          [
+            "Output \" GP\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1079,
+        "unique_to_a": 264,
+        "unique_to_b": 338
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T025842Z/index_30.html",
+        "png": "trace_out/pairs_20260707T025842Z/index_30.png",
+        "diff_html": "trace_out/pairs_20260707T025842Z/index_30_diff.html",
+        "diff_png": "trace_out/pairs_20260707T025842Z/index_30_diff.png"
+      }
+    }
+  ]
+}

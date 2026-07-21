@@ -1,0 +1,772 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 82,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 82,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When my kids show signs of hyperactivity and start acting out at home, I wonder if they might have a",
+        "patient": "When my kids get worked up and start acting out at home, I wonder if they might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2714
+      },
+      "error_share": {
+        "clinical": 0.0959
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " disorder",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" learning\"",
+            0.158
+          ],
+          [
+            "Output \" medical\"",
+            0.088
+          ],
+          [
+            "Output \" problem\"",
+            0.067
+          ],
+          [
+            "Output \" sensory\"",
+            0.065
+          ],
+          [
+            "Output \" neurological\"",
+            0.039
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 83,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have pharyngitis, so I should probably take an",
+        "patient": "My throat feels all scratchy and raw, so I should probably take an"
+      },
+      "target_token": "Output \" antibiotic\"",
+      "probabilities": {
+        "clinical": 0.527,
+        "patient": 0.081
+      },
+      "language_penalty": -0.446,
+      "clinical_mass": {
+        "clinical": 0.3914,
+        "patient": 0.2916
+      },
+      "error_share": {
+        "clinical": 0.0971,
+        "patient": 0.0942
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L20\u00b7C] language related to medical treatment, especially fo \u2192 [L22\u00b7C] sentences related to drug use | medications \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.120)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" allergy\" (p=0.152)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antibiotic",
+        "observed_clinical": [
+          "Output \" antibiotic\"",
+          0.527
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" antibiotic\"",
+            0.527
+          ],
+          [
+            "Output \" anti\"",
+            0.12
+          ],
+          [
+            "Output \" over\"",
+            0.03
+          ],
+          [
+            "Output \" aspirin\"",
+            0.025
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" allergy\"",
+            0.152
+          ],
+          [
+            "Output \" Ad\"",
+            0.146
+          ],
+          [
+            "Output \" aspirin\"",
+            0.081
+          ],
+          [
+            "Output \" anti\"",
+            0.081
+          ],
+          [
+            "Output \" extra\"",
+            0.074
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 576,
+        "unique_to_a": 676,
+        "unique_to_b": 698
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T163501Z/index_83.html",
+        "png": "trace_out/pairs_20260712T163501Z/index_83.png",
+        "diff_html": "trace_out/pairs_20260712T163501Z/index_83_diff.html",
+        "diff_png": "trace_out/pairs_20260712T163501Z/index_83_diff.png"
+      }
+    },
+    {
+      "index": 84,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I bend my knee, I experience crepitus, so I wonder if my",
+        "patient": "When I bend my knee, it makes this horrible grinding noise, so I wonder if my"
+      },
+      "target_token": "Output \" cartilage\"",
+      "probabilities": {
+        "clinical": 0.056,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3766,
+        "patient": 0.3134
+      },
+      "error_share": {
+        "clinical": 0.0999,
+        "patient": 0.0955
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" knee\" (p=0.244)",
+        "patient": "embedding \u2192 Output \" knee\" (p=0.365)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cartilage",
+        "observed_clinical": [
+          "Output \" cartilage\"",
+          0.056
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" knee\"",
+            0.244
+          ],
+          [
+            "Output \" pat\"",
+            0.217
+          ],
+          [
+            "Output \" men\"",
+            0.095
+          ],
+          [
+            "Output \" kne\"",
+            0.062
+          ],
+          [
+            "Output \" cartilage\"",
+            0.056
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" knee\"",
+            0.365
+          ],
+          [
+            "Output \" pat\"",
+            0.109
+          ],
+          [
+            "Output \" kne\"",
+            0.109
+          ],
+          [
+            "Output \" ACL\"",
+            0.101
+          ],
+          [
+            "Output \" men\"",
+            0.096
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 932,
+        "unique_to_a": 503,
+        "unique_to_b": 386
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T163501Z/index_84.html",
+        "png": "trace_out/pairs_20260712T163501Z/index_84.png",
+        "diff_html": "trace_out/pairs_20260712T163501Z/index_84_diff.html",
+        "diff_png": "trace_out/pairs_20260712T163501Z/index_84_diff.png"
+      }
+    },
+    {
+      "index": 85,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having panic attacks, so I think I might need my",
+        "patient": "I've been having these awful spells where I can't catch my breath and my heart races, so I think I might need my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2656
+      },
+      "error_share": {
+        "clinical": 0.0851
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " anxiolytic",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.193
+          ],
+          [
+            "Output \" medication\"",
+            0.107
+          ],
+          [
+            "Output \" anxiety\"",
+            0.071
+          ],
+          [
+            "Output \" own\"",
+            0.051
+          ],
+          [
+            "Output \" mom\"",
+            0.032
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 86,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have tremor and my hands won't stop shaking, so I think I need to take my",
+        "patient": "I've been feeling all jittery and my hands won't stop shaking, so I think I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.174,
+        "patient": 0.104
+      },
+      "language_penalty": -0.06999999999999999,
+      "clinical_mass": {
+        "clinical": 0.2998,
+        "patient": 0.2391
+      },
+      "error_share": {
+        "clinical": 0.0944,
+        "patient": 0.0914
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" medication\" (p=0.174)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] words related to cell biology experiments | antibiot \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" medication\" (p=0.104)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.174
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.208
+          ],
+          [
+            "Output \" medication\"",
+            0.174
+          ],
+          [
+            "Output \" medicine\"",
+            0.096
+          ],
+          [
+            "Output \" pills\"",
+            0.036
+          ],
+          [
+            "Output \" medications\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.299
+          ],
+          [
+            "Output \" medication\"",
+            0.104
+          ],
+          [
+            "Output \" medicine\"",
+            0.1
+          ],
+          [
+            "Output \" anxiety\"",
+            0.079
+          ],
+          [
+            "Output \" mind\"",
+            0.037
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 797,
+        "unique_to_a": 511,
+        "unique_to_b": 557
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T163501Z/index_86.html",
+        "png": "trace_out/pairs_20260712T163501Z/index_86.png",
+        "diff_html": "trace_out/pairs_20260712T163501Z/index_86_diff.html",
+        "diff_png": "trace_out/pairs_20260712T163501Z/index_86_diff.png"
+      }
+    },
+    {
+      "index": 87,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After I eat dairy, I develop lactose intolerance symptoms, so I should probably take an",
+        "patient": "After I eat dairy, my stomach gets all angry and gurgles like crazy, so I should probably take an"
+      },
+      "target_token": "Output \" enzyme\"",
+      "probabilities": {
+        "clinical": 0.359,
+        "patient": 0.042
+      },
+      "language_penalty": -0.317,
+      "clinical_mass": {
+        "clinical": 0.3273,
+        "patient": 0.3199
+      },
+      "error_share": {
+        "clinical": 0.1051,
+        "patient": 0.1025
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" enzyme\" (p=0.359)",
+        "patient": "[L18\u00b7S]  \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.232)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " enzyme",
+        "observed_clinical": [
+          "Output \" enzyme\"",
+          0.359
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" enzyme\"",
+            0.359
+          ],
+          [
+            "Output \" over\"",
+            0.145
+          ],
+          [
+            "Output \" anti\"",
+            0.103
+          ],
+          [
+            "Output \" acid\"",
+            0.072
+          ],
+          [
+            "Output \" ant\"",
+            0.066
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ant\"",
+            0.447
+          ],
+          [
+            "Output \" anti\"",
+            0.232
+          ],
+          [
+            "Output \" acid\"",
+            0.072
+          ],
+          [
+            "Output \" enzyme\"",
+            0.042
+          ],
+          [
+            "Output \" over\"",
+            0.04
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 880,
+        "unique_to_a": 366,
+        "unique_to_b": 403
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T163501Z/index_87.html",
+        "png": "trace_out/pairs_20260712T163501Z/index_87.png",
+        "diff_html": "trace_out/pairs_20260712T163501Z/index_87_diff.html",
+        "diff_png": "trace_out/pairs_20260712T163501Z/index_87_diff.png"
+      }
+    },
+    {
+      "index": 88,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My wife says I have obstructive sleep apnea, so I wonder if I might have a",
+        "patient": "My wife says I snore like a chainsaw at night, so I wonder if I might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2804
+      },
+      "error_share": {
+        "clinical": 0.0995
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " disorder",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" problem\"",
+            0.128
+          ],
+          [
+            "Output \" sleep\"",
+            0.085
+          ],
+          [
+            "Output \" heart\"",
+            0.054
+          ],
+          [
+            "Output \" small\"",
+            0.039
+          ],
+          [
+            "Output \" little\"",
+            0.034
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 89,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I get stressed out at work, I experience muscle tension, so I should probably take my",
+        "patient": "When I get stressed out at work, my whole body gets all wound up tight, so I should probably take my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2327
+      },
+      "error_share": {
+        "clinical": 0.0925
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " relaxant",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" own\"",
+            0.097
+          ],
+          [
+            "Output \" stress\"",
+            0.096
+          ],
+          [
+            "Output \" blood\"",
+            0.057
+          ],
+          [
+            "Output \" tension\"",
+            0.05
+          ],
+          [
+            "Output \" daily\"",
+            0.044
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 90,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every time I exercise, I get exercise-induced pleurisy, so I probably need to see a",
+        "patient": "Every time I exercise, I get this weird stabbing feeling in my side, so I probably need to see a"
+      },
+      "target_token": "Output \" pulmon\"",
+      "probabilities": {
+        "clinical": 0.113,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4027,
+        "patient": 0.3726
+      },
+      "error_share": {
+        "clinical": 0.0995,
+        "patient": 0.0943
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.437)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.772)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pulmonologist",
+        "observed_clinical": [
+          "Output \" pulmon\"",
+          0.113
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.437
+          ],
+          [
+            "Output \" pulmon\"",
+            0.113
+          ],
+          [
+            "Output \" specialist\"",
+            0.083
+          ],
+          [
+            "Output \" cardio\"",
+            0.081
+          ],
+          [
+            "Output \" chest\"",
+            0.032
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.772
+          ],
+          [
+            "Output \" doc\"",
+            0.041
+          ],
+          [
+            "Output \" specialist\"",
+            0.027
+          ],
+          [
+            "Output \" chi\"",
+            0.02
+          ],
+          [
+            "Output \" cardio\"",
+            0.019
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 748,
+        "unique_to_a": 606,
+        "unique_to_b": 505
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T163501Z/index_90.html",
+        "png": "trace_out/pairs_20260712T163501Z/index_90.png",
+        "diff_html": "trace_out/pairs_20260712T163501Z/index_90_diff.html",
+        "diff_png": "trace_out/pairs_20260712T163501Z/index_90_diff.png"
+      }
+    },
+    {
+      "index": 91,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My kid's been having absence seizures and staring off into nothing, so the school nurse thinks he might have a",
+        "patient": "My kid's been acting really spaced out and staring off into nothing, so the school nurse thinks he might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4421
+      },
+      "error_share": {
+        "clinical": 0.1105
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " condition",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" seizure\"",
+            0.395
+          ],
+          [
+            "Output \" brain\"",
+            0.19
+          ],
+          [
+            "Output \" tumor\"",
+            0.03
+          ],
+          [
+            "Output \" learning\"",
+            0.028
+          ],
+          [
+            "Output \" problem\"",
+            0.027
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}

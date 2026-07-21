@@ -1,0 +1,416 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 11,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I stand up too fast, I experience vertigo, so I should take an",
+        "patient": "When I stand up too fast, the room starts spinning, so I should take an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.482,
+        "patient": 0.444
+      },
+      "language_penalty": -0.03799999999999998,
+      "clinical_mass": {
+        "clinical": 0.2009,
+        "patient": 0.1993
+      },
+      "error_share": {
+        "clinical": 0.09,
+        "patient": 0.0902
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" extra\" (p=0.058)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" extra\" (p=0.039)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antihistamine",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.482
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.482
+          ],
+          [
+            "Output \" aspirin\"",
+            0.063
+          ],
+          [
+            "Output \" extra\"",
+            0.058
+          ],
+          [
+            "Output \" ace\"",
+            0.026
+          ],
+          [
+            "Output \" ant\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.444
+          ],
+          [
+            "Output \" aspirin\"",
+            0.093
+          ],
+          [
+            "Output \" ant\"",
+            0.045
+          ],
+          [
+            "Output \" extra\"",
+            0.039
+          ],
+          [
+            "Output \" iron\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 979,
+        "unique_to_a": 290,
+        "unique_to_b": 340
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_11.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_11.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_11_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_11_diff.png"
+      }
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep getting these muscle spasms in my neck, so I need to see a",
+        "patient": "I keep getting these painful knots in my neck, so I need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.064,
+        "patient": 0.05
+      },
+      "language_penalty": -0.013999999999999999,
+      "clinical_mass": {
+        "clinical": 0.4387,
+        "patient": 0.4028
+      },
+      "error_share": {
+        "clinical": 0.0918,
+        "patient": 0.0914
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.420)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.244)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " specialist",
+        "observed_clinical": [
+          "Output \" specialist\"",
+          0.064
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.42
+          ],
+          [
+            "Output \" chi\"",
+            0.18
+          ],
+          [
+            "Output \" neuro\"",
+            0.117
+          ],
+          [
+            "Output \" specialist\"",
+            0.064
+          ],
+          [
+            "Output \" physio\"",
+            0.034
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" chi\"",
+            0.364
+          ],
+          [
+            "Output \" doctor\"",
+            0.244
+          ],
+          [
+            "Output \" physio\"",
+            0.086
+          ],
+          [
+            "Output \" massage\"",
+            0.062
+          ],
+          [
+            "Output \" specialist\"",
+            0.05
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 962,
+        "unique_to_a": 298,
+        "unique_to_b": 368
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_12.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_12.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_12_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_12_diff.png"
+      }
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have a viral infection, so I should take my",
+        "patient": "I've been feeling really under the weather, so I should take my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4499
+      },
+      "error_share": {
+        "clinical": 0.0885
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" antibiotics\"",
+            0.129
+          ],
+          [
+            "Output \" medicine\"",
+            0.09
+          ],
+          [
+            "Output \" temperature\"",
+            0.074
+          ],
+          [
+            "Output \" vitamins\"",
+            0.056
+          ],
+          [
+            "Output \" meds\"",
+            0.055
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have arthritis, so I need to see a",
+        "patient": "My joints are creaking and popping, so I need to see a"
+      },
+      "target_token": "Output \" rhe\"",
+      "probabilities": {
+        "clinical": 0.075,
+        "patient": 0.086
+      },
+      "language_penalty": 0.010999999999999996,
+      "clinical_mass": {
+        "clinical": 0.3421,
+        "patient": 0.3757
+      },
+      "error_share": {
+        "clinical": 0.0911,
+        "patient": 0.0955
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.259)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.442)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " rheumatologist",
+        "observed_clinical": [
+          "Output \" rhe\"",
+          0.075
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.259
+          ],
+          [
+            "Output \" specialist\"",
+            0.119
+          ],
+          [
+            "Output \" chi\"",
+            0.082
+          ],
+          [
+            "Output \" rhe\"",
+            0.075
+          ],
+          [
+            "Output \" po\"",
+            0.06
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.442
+          ],
+          [
+            "Output \" rhe\"",
+            0.086
+          ],
+          [
+            "Output \" chi\"",
+            0.077
+          ],
+          [
+            "Output \" specialist\"",
+            0.074
+          ],
+          [
+            "Output \" physio\"",
+            0.073
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 604,
+        "unique_to_a": 553,
+        "unique_to_b": 625
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_14.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_14.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_14_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_14_diff.png"
+      }
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have anxiety, so I probably have an",
+        "patient": "My stomach is in knots before big meetings, so I probably have an"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2011
+      },
+      "error_share": {
+        "clinical": 0.084
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " issue",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" over\"",
+            0.173
+          ],
+          [
+            "Output \" irrational\"",
+            0.101
+          ],
+          [
+            "Output \" exaggerated\"",
+            0.072
+          ],
+          [
+            "Output \" unhealthy\"",
+            0.046
+          ],
+          [
+            "Output \" extra\"",
+            0.04
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}

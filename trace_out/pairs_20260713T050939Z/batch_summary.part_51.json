@@ -1,0 +1,858 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 51,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 51,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep having dissociative episodes at work, so I should probably get my",
+        "patient": "I keep getting these weird spacing-out moments at work, so I should probably get my"
+      },
+      "target_token": "Output \" head\"",
+      "probabilities": {
+        "clinical": 0.077,
+        "patient": 0.104
+      },
+      "language_penalty": 0.026999999999999996,
+      "clinical_mass": {
+        "clinical": 0.2305,
+        "patient": 0.096
+      },
+      "error_share": {
+        "clinical": 0.0956,
+        "patient": 0.0986
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" head\" (p=0.077)",
+        "patient": "embedding \u2192 [L25\u00b7O] the word \"mind\" or the letter 't' following an apost \u2192 Output \" brain\" (p=0.043)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " head",
+        "observed_clinical": [
+          "Output \" head\"",
+          0.077
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" head\"",
+            0.077
+          ],
+          [
+            "Output \" meds\"",
+            0.077
+          ],
+          [
+            "Output \" ass\"",
+            0.053
+          ],
+          [
+            "Output \" doctor\"",
+            0.053
+          ],
+          [
+            "Output \" medication\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" head\"",
+            0.104
+          ],
+          [
+            "Output \" mind\"",
+            0.091
+          ],
+          [
+            "Output \" ass\"",
+            0.063
+          ],
+          [
+            "Output \" thoughts\"",
+            0.049
+          ],
+          [
+            "Output \" brain\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 827,
+        "unique_to_a": 597,
+        "unique_to_b": 611
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_51.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_51.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_51_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_51_diff.png"
+      }
+    },
+    {
+      "index": 52,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I lie down at night I experience palpitations, so I need to take my",
+        "patient": "When I lie down at night my heart starts doing flips, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.076,
+        "patient": 0.064
+      },
+      "language_penalty": -0.011999999999999997,
+      "clinical_mass": {
+        "clinical": 0.3501,
+        "patient": 0.2476
+      },
+      "error_share": {
+        "clinical": 0.1001,
+        "patient": 0.0957
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] words and phrases related to health, especially the  \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.266)",
+        "patient": "embedding \u2192 Output \" heart\" (p=0.176)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.076
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" heart\"",
+            0.266
+          ],
+          [
+            "Output \" blood\"",
+            0.184
+          ],
+          [
+            "Output \" medication\"",
+            0.076
+          ],
+          [
+            "Output \" meds\"",
+            0.052
+          ],
+          [
+            "Output \" beta\"",
+            0.052
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" heart\"",
+            0.176
+          ],
+          [
+            "Output \" meds\"",
+            0.137
+          ],
+          [
+            "Output \" blood\"",
+            0.073
+          ],
+          [
+            "Output \" medication\"",
+            0.064
+          ],
+          [
+            "Output \" anxiety\"",
+            0.05
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 860,
+        "unique_to_a": 466,
+        "unique_to_b": 442
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_52.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_52.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_52_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_52_diff.png"
+      }
+    },
+    {
+      "index": 53,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After a long day at the office I experience paresthesia radiating down my arm, so I need to see a",
+        "patient": "After a long day at the office I get this awful pins-and-needles feeling down my arm, so I need to see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.305,
+        "patient": 0.034
+      },
+      "language_penalty": -0.271,
+      "clinical_mass": {
+        "clinical": 0.3967,
+        "patient": 0.3364
+      },
+      "error_share": {
+        "clinical": 0.1105,
+        "patient": 0.1044
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.305)",
+        "patient": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.371)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.305
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neuro\"",
+            0.305
+          ],
+          [
+            "Output \" doctor\"",
+            0.305
+          ],
+          [
+            "Output \" specialist\"",
+            0.077
+          ],
+          [
+            "Output \" Neuro\"",
+            0.036
+          ],
+          [
+            "Output \" chi\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.371
+          ],
+          [
+            "Output \" chi\"",
+            0.198
+          ],
+          [
+            "Output \" physio\"",
+            0.083
+          ],
+          [
+            "Output \" specialist\"",
+            0.039
+          ],
+          [
+            "Output \" neuro\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 908,
+        "unique_to_a": 526,
+        "unique_to_b": 620
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_53.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_53.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_53_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_53_diff.png"
+      }
+    },
+    {
+      "index": 54,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep experiencing vertigo when I'm at work, so I should probably take my",
+        "patient": "I keep getting these awful dizzy spells when I'm at work, so I should probably take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.107,
+        "patient": 0.101
+      },
+      "language_penalty": -0.0059999999999999915,
+      "clinical_mass": {
+        "clinical": 0.2468,
+        "patient": 0.2706
+      },
+      "error_share": {
+        "clinical": 0.0891,
+        "patient": 0.0996
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.040)",
+        "patient": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.188)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.107
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" medication\"",
+            0.107
+          ],
+          [
+            "Output \" meds\"",
+            0.107
+          ],
+          [
+            "Output \" medicine\"",
+            0.065
+          ],
+          [
+            "Output \" lunch\"",
+            0.058
+          ],
+          [
+            "Output \" blood\"",
+            0.04
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.188
+          ],
+          [
+            "Output \" meds\"",
+            0.114
+          ],
+          [
+            "Output \" medication\"",
+            0.101
+          ],
+          [
+            "Output \" medicine\"",
+            0.042
+          ],
+          [
+            "Output \" beta\"",
+            0.037
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 938,
+        "unique_to_a": 458,
+        "unique_to_b": 513
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_54.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_54.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_54_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_54_diff.png"
+      }
+    },
+    {
+      "index": 55,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I walk up stairs I experience leg weakness, so I should see a",
+        "patient": "When I walk up stairs my legs feel like they're made of lead, so I should see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.172,
+        "patient": 0.034
+      },
+      "language_penalty": -0.13799999999999998,
+      "clinical_mass": {
+        "clinical": 0.3647,
+        "patient": 0.3024
+      },
+      "error_share": {
+        "clinical": 0.0987,
+        "patient": 0.1008
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 [L21\u00b7C] language offering or seeking medical advice from doc \u2192 [L24\u00b7C] words related to medical treatment or legal cases |  \u2192 Output \" physical\" (p=0.038)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.465)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.172
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.322
+          ],
+          [
+            "Output \" neuro\"",
+            0.172
+          ],
+          [
+            "Output \" physio\"",
+            0.104
+          ],
+          [
+            "Output \" physical\"",
+            0.038
+          ],
+          [
+            "Output \" specialist\"",
+            0.034
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.465
+          ],
+          [
+            "Output \" physio\"",
+            0.133
+          ],
+          [
+            "Output \" doc\"",
+            0.049
+          ],
+          [
+            "Output \" specialist\"",
+            0.038
+          ],
+          [
+            "Output \" neuro\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 926,
+        "unique_to_a": 401,
+        "unique_to_b": 438
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_55.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_55.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_55_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_55_diff.png"
+      }
+    },
+    {
+      "index": 56,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After I eat dairy I experience lactose intolerance, so I'm worried I might have a",
+        "patient": "After I eat dairy I get this awful stomach upset, so I'm worried I might have a"
+      },
+      "target_token": "Output \" problem\"",
+      "probabilities": {
+        "clinical": 0.14,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3274,
+        "patient": 0.3529
+      },
+      "error_share": {
+        "clinical": 0.1114,
+        "patient": 0.1099
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" dairy\" (p=0.140)",
+        "patient": "embedding \u2192 Output \" dairy\" (p=0.328)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " problem",
+        "observed_clinical": [
+          "Output \" problem\"",
+          0.14
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dairy\"",
+            0.14
+          ],
+          [
+            "Output \" problem\"",
+            0.14
+          ],
+          [
+            "Output \" reaction\"",
+            0.096
+          ],
+          [
+            "Output \" milk\"",
+            0.096
+          ],
+          [
+            "Output \" lactose\"",
+            0.084
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dairy\"",
+            0.328
+          ],
+          [
+            "Output \" lactose\"",
+            0.176
+          ],
+          [
+            "Output \" milk\"",
+            0.155
+          ],
+          [
+            "Output \" sensitivity\"",
+            0.073
+          ],
+          [
+            "Output \" reaction\"",
+            0.039
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 930,
+        "unique_to_a": 375,
+        "unique_to_b": 348
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_56.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_56.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_56_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_56_diff.png"
+      }
+    },
+    {
+      "index": 57,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing anxiety, so I probably need to take an",
+        "patient": "I've been feeling really jittery and on edge all day, so I probably need to take an"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2539
+      },
+      "error_share": {
+        "clinical": 0.0838
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " anxiolytic",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.309
+          ],
+          [
+            "Output \" antidepress\"",
+            0.128
+          ],
+          [
+            "Output \" anxiety\"",
+            0.128
+          ],
+          [
+            "Output \" SS\"",
+            0.061
+          ],
+          [
+            "Output \" exam\"",
+            0.029
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 58,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I move my neck too fast I experience benign paroxysmal positional vertigo, so I should probably get my",
+        "patient": "When I move my neck too fast everything starts spinning around me, so I should probably get my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2912
+      },
+      "error_share": {
+        "clinical": 0.1032
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " vision",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neck\"",
+            0.35
+          ],
+          [
+            "Output \" head\"",
+            0.146
+          ],
+          [
+            "Output \" eyes\"",
+            0.113
+          ],
+          [
+            "Output \" balance\"",
+            0.054
+          ],
+          [
+            "Output \" ears\"",
+            0.042
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 59,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have cognitive impairment at work, so I need to take my",
+        "patient": "My head feels all foggy and cloudy at work, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.113,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2107,
+        "patient": 0.1667
+      },
+      "error_share": {
+        "clinical": 0.0903,
+        "patient": 0.0938
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.053)",
+        "patient": "embedding \u2192 [L25\u00b7O] the word \"mind\" or the letter 't' following an apost \u2192 Output \" brain\" (p=0.056)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.113
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" time\"",
+            0.187
+          ],
+          [
+            "Output \" medication\"",
+            0.113
+          ],
+          [
+            "Output \" lunch\"",
+            0.068
+          ],
+          [
+            "Output \" meds\"",
+            0.068
+          ],
+          [
+            "Output \" own\"",
+            0.053
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.153
+          ],
+          [
+            "Output \" mind\"",
+            0.093
+          ],
+          [
+            "Output \" medicine\"",
+            0.056
+          ],
+          [
+            "Output \" brain\"",
+            0.056
+          ],
+          [
+            "Output \" lunch\"",
+            0.056
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 675,
+        "unique_to_a": 702,
+        "unique_to_b": 666
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_59.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_59.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_59_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_59_diff.png"
+      }
+    },
+    {
+      "index": 60,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I'm around crowds I have a panic attack, so I should probably take an",
+        "patient": "When I'm around crowds I feel like I'm going to lose it, so I should probably take an"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1757
+      },
+      "error_share": {
+        "clinical": 0.0912
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " anxiolytic",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.247
+          ],
+          [
+            "Output \" anxiety\"",
+            0.17
+          ],
+          [
+            "Output \" Xan\"",
+            0.055
+          ],
+          [
+            "Output \" extra\"",
+            0.043
+          ],
+          [
+            "Output \" antidepress\"",
+            0.023
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}

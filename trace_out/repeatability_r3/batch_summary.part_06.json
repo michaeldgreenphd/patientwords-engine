@@ -1,0 +1,452 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 6,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My osteoarthritis has been giving me grief all week, so this morning I swallowed a",
+        "patient": "My trick knee's been giving me grief all week, so this morning I swallowed a"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.078,
+        "patient": 0.05
+      },
+      "language_penalty": -0.027999999999999997,
+      "clinical_mass": {
+        "clinical": 0.3231,
+        "patient": 0.2914
+      },
+      "error_share": {
+        "clinical": 0.1005,
+        "patient": 0.1016
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7S] instances of the indefinite article 'a' or 'an' near \u2192 [L24\u00b7S] articles, prepositions, and other common short words \u2192 Output \" couple\" (p=0.153)",
+        "patient": "embedding \u2192 [L18\u00b7S] instances of the indefinite article 'a' or 'an' near \u2192 [L24\u00b7S] articles, prepositions, and other common short words \u2192 Output \" couple\" (p=0.179)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" couple\"",
+            0.153
+          ],
+          [
+            "Output \" few\"",
+            0.126
+          ],
+          [
+            "Output \" pill\"",
+            0.078
+          ],
+          [
+            "Output \" handful\"",
+            0.076
+          ],
+          [
+            "Output \" dose\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" couple\"",
+            0.179
+          ],
+          [
+            "Output \" few\"",
+            0.125
+          ],
+          [
+            "Output \" bunch\"",
+            0.075
+          ],
+          [
+            "Output \" handful\"",
+            0.074
+          ],
+          [
+            "Output \" pill\"",
+            0.05
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 971,
+        "unique_to_a": 389,
+        "unique_to_b": 430
+      },
+      "outputs": {
+        "html": "trace_out/repeatability_r3/index_06.html",
+        "png": "trace_out/repeatability_r3/index_06.png",
+        "diff_html": "trace_out/repeatability_r3/index_06_diff.html",
+        "diff_png": "trace_out/repeatability_r3/index_06_diff.png"
+      }
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The pollen's brutal today and my allergic rhinitis won't quit, so before the barbecue I took an",
+        "patient": "The pollen's brutal today and my sniffles won't quit, so before the barbecue I took an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.351,
+        "patient": 0.051
+      },
+      "language_penalty": -0.3,
+      "clinical_mass": {
+        "clinical": 0.2929,
+        "patient": 0.1618
+      },
+      "error_share": {
+        "clinical": 0.1064,
+        "patient": 0.0987
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" allergy\" (p=0.113)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" hour\" (p=0.170)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.351
+          ],
+          [
+            "Output \" extra\"",
+            0.119
+          ],
+          [
+            "Output \" allergy\"",
+            0.113
+          ],
+          [
+            "Output \" hour\"",
+            0.056
+          ],
+          [
+            "Output \" over\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hour\"",
+            0.17
+          ],
+          [
+            "Output \" extra\"",
+            0.12
+          ],
+          [
+            "Output \" afternoon\"",
+            0.117
+          ],
+          [
+            "Output \" early\"",
+            0.108
+          ],
+          [
+            "Output \" anti\"",
+            0.051
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1044,
+        "unique_to_a": 240,
+        "unique_to_b": 374
+      },
+      "outputs": {
+        "html": "trace_out/repeatability_r3/index_07.html",
+        "png": "trace_out/repeatability_r3/index_07.png",
+        "diff_html": "trace_out/repeatability_r3/index_07_diff.html",
+        "diff_png": "trace_out/repeatability_r3/index_07_diff.png"
+      }
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every time the pollen hits my asthma acts up on the porch, so I keep an",
+        "patient": "Every time the pollen hits I get all wheezy on the porch, so I keep an"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.18,
+        "patient": 0.203
+      },
+      "language_penalty": 0.02300000000000002,
+      "clinical_mass": {
+        "clinical": 0.1891,
+        "patient": 0.1945
+      },
+      "error_share": {
+        "clinical": 0.1054,
+        "patient": 0.106
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] references to sight and vision | eye \u2192 Output \" eye\" (p=0.486)",
+        "patient": "embedding \u2192 [L19\u00b7O] references to sight and vision | eye \u2192 Output \" eye\" (p=0.402)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" eye\"",
+            0.486
+          ],
+          [
+            "Output \" inhal\"",
+            0.18
+          ],
+          [
+            "Output \" umbrella\"",
+            0.053
+          ],
+          [
+            "Output \" extra\"",
+            0.05
+          ],
+          [
+            "Output \" air\"",
+            0.043
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" eye\"",
+            0.402
+          ],
+          [
+            "Output \" inhal\"",
+            0.203
+          ],
+          [
+            "Output \" air\"",
+            0.074
+          ],
+          [
+            "Output \" extra\"",
+            0.053
+          ],
+          [
+            "Output \" Epi\"",
+            0.023
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 988,
+        "unique_to_a": 321,
+        "unique_to_b": 357
+      },
+      "outputs": {
+        "html": "trace_out/repeatability_r3/index_08.html",
+        "png": "trace_out/repeatability_r3/index_08.png",
+        "diff_html": "trace_out/repeatability_r3/index_08_diff.html",
+        "diff_png": "trace_out/repeatability_r3/index_08_diff.png"
+      }
+    },
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My asthma flares up and wheezy on the stairs, so at work I keep a spare",
+        "patient": "My chest gets all tight and wheezy on the stairs, so at work I keep a spare"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.539,
+        "patient": 0.373
+      },
+      "language_penalty": -0.16600000000000004,
+      "clinical_mass": {
+        "clinical": 0.2595,
+        "patient": 0.2278
+      },
+      "error_share": {
+        "clinical": 0.1143,
+        "patient": 0.1081
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.539)",
+        "patient": "embedding \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 [L22\u00b7O] words that indicate a choice between alternatives |  \u2192 Output \" set\" (p=0.096)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.539
+          ],
+          [
+            "Output \" set\"",
+            0.09
+          ],
+          [
+            "Output \" pair\"",
+            0.055
+          ],
+          [
+            "Output \" mask\"",
+            0.043
+          ],
+          [
+            "Output \" bottle\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.373
+          ],
+          [
+            "Output \" set\"",
+            0.096
+          ],
+          [
+            "Output \" pair\"",
+            0.069
+          ],
+          [
+            "Output \" oxygen\"",
+            0.067
+          ],
+          [
+            "Output \" bottle\"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1010,
+        "unique_to_a": 366,
+        "unique_to_b": 472
+      },
+      "outputs": {
+        "html": "trace_out/repeatability_r3/index_09.html",
+        "png": "trace_out/repeatability_r3/index_09.png",
+        "diff_html": "trace_out/repeatability_r3/index_09_diff.html",
+        "diff_png": "trace_out/repeatability_r3/index_09_diff.png"
+      }
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep having night sweats every night, so the doctor ordered a",
+        "patient": "I keep waking up drenched in sweat every night, so the doctor ordered a"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.232,
+        "patient": 0.094
+      },
+      "language_penalty": -0.138,
+      "clinical_mass": {
+        "clinical": 0.3863,
+        "patient": 0.285
+      },
+      "error_share": {
+        "clinical": 0.0987,
+        "patient": 0.1066
+      },
+      "top_path": {
+        "clinical": "[L14\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 Output \" test\" (p=0.072)",
+        "patient": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.305)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.232
+          ],
+          [
+            "Output \" sleep\"",
+            0.121
+          ],
+          [
+            "Output \" test\"",
+            0.072
+          ],
+          [
+            "Output \" hormone\"",
+            0.053
+          ],
+          [
+            "Output \" urine\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.305
+          ],
+          [
+            "Output \" blood\"",
+            0.094
+          ],
+          [
+            "Output \" heart\"",
+            0.069
+          ],
+          [
+            "Output \" test\"",
+            0.036
+          ],
+          [
+            "Output \" CP\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 806,
+        "unique_to_a": 700,
+        "unique_to_b": 596
+      },
+      "outputs": {
+        "html": "trace_out/repeatability_r3/index_10.html",
+        "png": "trace_out/repeatability_r3/index_10.png",
+        "diff_html": "trace_out/repeatability_r3/index_10_diff.html",
+        "diff_png": "trace_out/repeatability_r3/index_10_diff.png"
+      }
+    }
+  ]
+}

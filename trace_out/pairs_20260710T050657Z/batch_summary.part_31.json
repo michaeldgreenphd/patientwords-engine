@@ -1,0 +1,416 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 31,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have atopic dermatitis, so the dermatologist says I might have",
+        "patient": "My skin's been red and itchy everywhere, so the dermatologist says I might have"
+      },
+      "target_token": "Output \" eczema\"",
+      "probabilities": {
+        "clinical": 0.06,
+        "patient": 0.173
+      },
+      "language_penalty": 0.11299999999999999,
+      "clinical_mass": {
+        "clinical": 0.3792,
+        "patient": 0.4298
+      },
+      "error_share": {
+        "clinical": 0.0968,
+        "patient": 0.0946
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" to\" (p=0.155)",
+        "patient": "embedding \u2192 Output \" a\" (p=0.258)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " eczema",
+        "observed_clinical": [
+          "Output \" eczema\"",
+          0.06
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" a\"",
+            0.232
+          ],
+          [
+            "Output \" to\"",
+            0.155
+          ],
+          [
+            "Output \" an\"",
+            0.118
+          ],
+          [
+            "Output \" eczema\"",
+            0.06
+          ],
+          [
+            "Output \" some\"",
+            0.049
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" a\"",
+            0.258
+          ],
+          [
+            "Output \" eczema\"",
+            0.173
+          ],
+          [
+            "Output \" an\"",
+            0.107
+          ],
+          [
+            "Output \" ros\"",
+            0.087
+          ],
+          [
+            "Output \" some\"",
+            0.073
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 649,
+        "unique_to_a": 666,
+        "unique_to_b": 693
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T050657Z/index_31.html",
+        "png": "trace_out/pairs_20260710T050657Z/index_31.png",
+        "diff_html": "trace_out/pairs_20260710T050657Z/index_31_diff.html",
+        "diff_png": "trace_out/pairs_20260710T050657Z/index_31_diff.png"
+      }
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have cognitive impairment, so I should probably see a",
+        "patient": "I've been forgetting things at work a lot, so I should probably see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.202,
+        "patient": 0.048
+      },
+      "language_penalty": -0.15400000000000003,
+      "clinical_mass": {
+        "clinical": 0.3474,
+        "patient": 0.2566
+      },
+      "error_share": {
+        "clinical": 0.0899,
+        "patient": 0.0985
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.265)",
+        "patient": "[L16\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.768)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.202
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.265
+          ],
+          [
+            "Output \" neuro\"",
+            0.202
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.101
+          ],
+          [
+            "Output \" specialist\"",
+            0.089
+          ],
+          [
+            "Output \" psychologist\"",
+            0.071
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.768
+          ],
+          [
+            "Output \" neuro\"",
+            0.048
+          ],
+          [
+            "Output \" therapist\"",
+            0.03
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.026
+          ],
+          [
+            "Output \" doc\"",
+            0.02
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 495,
+        "unique_to_a": 742,
+        "unique_to_b": 706
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T050657Z/index_32.html",
+        "png": "trace_out/pairs_20260710T050657Z/index_32.png",
+        "diff_html": "trace_out/pairs_20260710T050657Z/index_32_diff.html",
+        "diff_png": "trace_out/pairs_20260710T050657Z/index_32_diff.png"
+      }
+    },
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing executive dysfunction, so I'm worried about my",
+        "patient": "I've been losing my train of thought in meetings, so I'm worried about my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1589
+      },
+      "error_share": {
+        "clinical": 0.0893
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " cognition",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" future\"",
+            0.102
+          ],
+          [
+            "Output \" ability\"",
+            0.098
+          ],
+          [
+            "Output \" job\"",
+            0.06
+          ],
+          [
+            "Output \" memory\"",
+            0.051
+          ],
+          [
+            "Output \" mental\"",
+            0.043
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 34,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep experiencing night sweats, so I should probably take an",
+        "patient": "I keep waking up drenched at night, so I should probably take an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.235,
+        "patient": 0.212
+      },
+      "language_penalty": -0.022999999999999993,
+      "clinical_mass": {
+        "clinical": 0.2452,
+        "patient": 0.1593
+      },
+      "error_share": {
+        "clinical": 0.0879,
+        "patient": 0.0911
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.047)",
+        "patient": "embedding \u2192 Output \" over\" (p=0.048)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antihistamine",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.235
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.235
+          ],
+          [
+            "Output \" extra\"",
+            0.116
+          ],
+          [
+            "Output \" evening\"",
+            0.053
+          ],
+          [
+            "Output \" over\"",
+            0.047
+          ],
+          [
+            "Output \" appointment\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.212
+          ],
+          [
+            "Output \" extra\"",
+            0.115
+          ],
+          [
+            "Output \" allergy\"",
+            0.063
+          ],
+          [
+            "Output \" aspirin\"",
+            0.048
+          ],
+          [
+            "Output \" over\"",
+            0.048
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 779,
+        "unique_to_a": 624,
+        "unique_to_b": 506
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T050657Z/index_34.html",
+        "png": "trace_out/pairs_20260710T050657Z/index_34.png",
+        "diff_html": "trace_out/pairs_20260710T050657Z/index_34_diff.html",
+        "diff_png": "trace_out/pairs_20260710T050657Z/index_34_diff.png"
+      }
+    },
+    {
+      "index": 35,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My kid's been showing signs of depression, so we should probably talk to a",
+        "patient": "My kid's been acting strange and withdrawn lately, so we should probably talk to a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.293
+      },
+      "error_share": {
+        "clinical": 0.0887
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " psychologist",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.317
+          ],
+          [
+            "Output \" therapist\"",
+            0.205
+          ],
+          [
+            "Output \" professional\"",
+            0.139
+          ],
+          [
+            "Output \" counselor\"",
+            0.082
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.052
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}

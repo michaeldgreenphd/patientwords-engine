@@ -1,0 +1,887 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 31,
+  "screen_targets": null,
+  "results": [
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep having night sweats every night, so the doctor ordered a",
+        "patient": "I keep waking up with profuse diaphoresis every night, so the doctor ordered a"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.232,
+        "patient": 0.084
+      },
+      "language_penalty": -0.14800000000000002,
+      "clinical_mass": {
+        "clinical": 0.3873,
+        "patient": 0.3712
+      },
+      "error_share": {
+        "clinical": 0.0988,
+        "patient": 0.1131
+      },
+      "top_path": {
+        "clinical": "[L14\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 Output \" test\" (p=0.066)",
+        "patient": "embedding \u2192 Output \" \" (p=0.230)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.232
+          ],
+          [
+            "Output \" sleep\"",
+            0.125
+          ],
+          [
+            "Output \" test\"",
+            0.066
+          ],
+          [
+            "Output \" hormone\"",
+            0.052
+          ],
+          [
+            "Output \" urine\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" \"",
+            0.23
+          ],
+          [
+            "Output \" sleep\"",
+            0.109
+          ],
+          [
+            "Output \" blood\"",
+            0.084
+          ],
+          [
+            "Output \" test\"",
+            0.027
+          ],
+          [
+            "Output \" stress\"",
+            0.027
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 812,
+        "unique_to_a": 694,
+        "unique_to_b": 718
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_31.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_31.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_31_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_31_diff.png"
+      }
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After that big holiday feast my constipation flared up, so at the store I grabbed a mild",
+        "patient": "After that big holiday feast my abdomen is constipated, so at the store I grabbed a mild"
+      },
+      "target_token": "Output \" lax\"",
+      "probabilities": {
+        "clinical": 0.672,
+        "patient": 0.609
+      },
+      "language_penalty": -0.06300000000000006,
+      "clinical_mass": {
+        "clinical": 0.2857,
+        "patient": 0.2466
+      },
+      "error_share": {
+        "clinical": 0.1068,
+        "patient": 0.1075
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" lax\" (p=0.672)",
+        "patient": "embedding \u2192 Output \"-\" (p=0.021)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lax\"",
+            0.672
+          ],
+          [
+            "Output \" stool\"",
+            0.03
+          ],
+          [
+            "Output \" fiber\"",
+            0.03
+          ],
+          [
+            "Output \"-\"",
+            0.02
+          ],
+          [
+            "Output \" Lax\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" lax\"",
+            0.609
+          ],
+          [
+            "Output \",\"",
+            0.024
+          ],
+          [
+            "Output \"-\"",
+            0.021
+          ],
+          [
+            "Output \" probiotic\"",
+            0.014
+          ],
+          [
+            "Output \" stool\"",
+            0.013
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1019,
+        "unique_to_a": 345,
+        "unique_to_b": 457
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_32.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_32.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_32_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_32_diff.png"
+      }
+    },
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Grandma's been constipated for a week, so before dinner she took a",
+        "patient": "Grandmother has been constipated for a week, so before dinner she took a"
+      },
+      "target_token": "Output \" lax\"",
+      "probabilities": {
+        "clinical": 0.27,
+        "patient": 0.465
+      },
+      "language_penalty": 0.195,
+      "clinical_mass": {
+        "clinical": 0.2775,
+        "patient": 0.2864
+      },
+      "error_share": {
+        "clinical": 0.0999,
+        "patient": 0.1023
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" big\" (p=0.036)",
+        "patient": "embedding \u2192 [L22\u00b7O] food items and coffee, especially those related to F \u2192 Output \" bowl\" (p=0.056)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lax\"",
+            0.27
+          ],
+          [
+            "Output \" dose\"",
+            0.068
+          ],
+          [
+            "Output \" couple\"",
+            0.068
+          ],
+          [
+            "Output \" stool\"",
+            0.036
+          ],
+          [
+            "Output \" big\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" lax\"",
+            0.465
+          ],
+          [
+            "Output \" bowl\"",
+            0.056
+          ],
+          [
+            "Output \" stool\"",
+            0.043
+          ],
+          [
+            "Output \" spoonful\"",
+            0.026
+          ],
+          [
+            "Output \" few\"",
+            0.026
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1036,
+        "unique_to_a": 372,
+        "unique_to_b": 410
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_33.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_33.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_33_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_33_diff.png"
+      }
+    },
+    {
+      "index": 34,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After that greasy meal I got acid reflux, so I reached for an",
+        "patient": "After that fatty meal I got eructation, so I reached for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.605,
+        "patient": 0.287
+      },
+      "language_penalty": -0.318,
+      "clinical_mass": {
+        "clinical": 0.286,
+        "patient": 0.2096
+      },
+      "error_share": {
+        "clinical": 0.1052,
+        "patient": 0.1081
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.072)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.044)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.605
+          ],
+          [
+            "Output \" over\"",
+            0.072
+          ],
+          [
+            "Output \" anti\"",
+            0.044
+          ],
+          [
+            "Output \" Ant\"",
+            0.034
+          ],
+          [
+            "Output \" apple\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ant\"",
+            0.287
+          ],
+          [
+            "Output \" apple\"",
+            0.105
+          ],
+          [
+            "Output \" aspirin\"",
+            0.064
+          ],
+          [
+            "Output \" anti\"",
+            0.05
+          ],
+          [
+            "Output \" ice\"",
+            0.044
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 819,
+        "unique_to_a": 436,
+        "unique_to_b": 585
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_34.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_34.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_34_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_34_diff.png"
+      }
+    },
+    {
+      "index": 35,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's constipated again, so tonight he's taking a",
+        "patient": "He is constipated again, so tonight he is taking a"
+      },
+      "target_token": "Output \" lax\"",
+      "probabilities": {
+        "clinical": 0.295,
+        "patient": 0.266
+      },
+      "language_penalty": -0.02899999999999997,
+      "clinical_mass": {
+        "clinical": 0.2639,
+        "patient": 0.2976
+      },
+      "error_share": {
+        "clinical": 0.0981,
+        "patient": 0.0971
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" little\" (p=0.027)",
+        "patient": "embedding \u2192 [L7\u00b7C] terms related to gastrointestinal and digestive heal \u2192 [L21\u00b7C] words and phrases related to gut bacteria, digestion \u2192 Output \" stool\" (p=0.110)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lax\"",
+            0.295
+          ],
+          [
+            "Output \" stool\"",
+            0.075
+          ],
+          [
+            "Output \" bath\"",
+            0.051
+          ],
+          [
+            "Output \" dose\"",
+            0.031
+          ],
+          [
+            "Output \" little\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" lax\"",
+            0.266
+          ],
+          [
+            "Output \" stool\"",
+            0.11
+          ],
+          [
+            "Output \" dose\"",
+            0.059
+          ],
+          [
+            "Output \" bath\"",
+            0.046
+          ],
+          [
+            "Output \" sup\"",
+            0.028
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1172,
+        "unique_to_a": 150,
+        "unique_to_b": 163
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_35.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_35.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_35_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_35_diff.png"
+      }
+    },
+    {
+      "index": 36,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's had chronic daytime hypersomnia from bad nights, so she scheduled a",
+        "patient": "She's been lethargic all day from poor sleep quality, so she scheduled a"
+      },
+      "target_token": "Output \" sleep\"",
+      "probabilities": {
+        "clinical": 0.312,
+        "patient": 0.162
+      },
+      "language_penalty": -0.15,
+      "clinical_mass": {
+        "clinical": 0.3526,
+        "patient": 0.2011
+      },
+      "error_share": {
+        "clinical": 0.1105,
+        "patient": 0.1019
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.312)",
+        "patient": "embedding \u2192 Output \" sleep\" (p=0.162)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.312
+          ],
+          [
+            "Output \" \"",
+            0.079
+          ],
+          [
+            "Output \" nap\"",
+            0.033
+          ],
+          [
+            "Output \" day\"",
+            0.029
+          ],
+          [
+            "Output \" night\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.162
+          ],
+          [
+            "Output \" nap\"",
+            0.126
+          ],
+          [
+            "Output \" \"",
+            0.087
+          ],
+          [
+            "Output \" visit\"",
+            0.053
+          ],
+          [
+            "Output \" doctor\"",
+            0.053
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 628,
+        "unique_to_a": 767,
+        "unique_to_b": 823
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_36.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_36.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_36_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_36_diff.png"
+      }
+    },
+    {
+      "index": 37,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since my sleep apnea is under control lately, I finally cancelled my",
+        "patient": "Since I've been sleeping soundly lately, I finally cancelled my"
+      },
+      "target_token": "Output \" appointment\"",
+      "probabilities": {
+        "clinical": 0.067,
+        "patient": 0.092
+      },
+      "language_penalty": 0.024999999999999994,
+      "clinical_mass": {
+        "clinical": 0.3042,
+        "patient": 0.0919
+      },
+      "error_share": {
+        "clinical": 0.1066,
+        "patient": 0.0954
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] words associated with sleep apnea and medical papers \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.142)",
+        "patient": "embedding \u2192 Output \" sleep\" (p=0.034)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" CP\"",
+            0.301
+          ],
+          [
+            "Output \" sleep\"",
+            0.142
+          ],
+          [
+            "Output \" appointment\"",
+            0.067
+          ],
+          [
+            "Output \" \"",
+            0.025
+          ],
+          [
+            "Output \" bi\"",
+            0.019
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" subscription\"",
+            0.104
+          ],
+          [
+            "Output \" alarm\"",
+            0.092
+          ],
+          [
+            "Output \" appointment\"",
+            0.092
+          ],
+          [
+            "Output \" \"",
+            0.049
+          ],
+          [
+            "Output \" sleep\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 702,
+        "unique_to_a": 666,
+        "unique_to_b": 709
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_37.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_37.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_37_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_37_diff.png"
+      }
+    },
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's had chronic insomnia and can't wind down at bedtime, so the clinic gave her a",
+        "patient": "She's been experiencing nervousness and cannot relax at bedtime, so the clinic gave her a"
+      },
+      "target_token": "Output \" prescription\"",
+      "probabilities": {
+        "clinical": 0.231,
+        "patient": 0.087
+      },
+      "language_penalty": -0.14400000000000002,
+      "clinical_mass": {
+        "clinical": 0.362,
+        "patient": 0.3256
+      },
+      "error_share": {
+        "clinical": 0.1001,
+        "patient": 0.1025
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sleeping\" (p=0.096)",
+        "patient": "embedding \u2192 Output \" small\" (p=0.060)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.231
+          ],
+          [
+            "Output \" sleeping\"",
+            0.096
+          ],
+          [
+            "Output \" sed\"",
+            0.075
+          ],
+          [
+            "Output \" drug\"",
+            0.04
+          ],
+          [
+            "Output \" pill\"",
+            0.04
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sed\"",
+            0.099
+          ],
+          [
+            "Output \" prescription\"",
+            0.087
+          ],
+          [
+            "Output \" small\"",
+            0.06
+          ],
+          [
+            "Output \" pill\"",
+            0.053
+          ],
+          [
+            "Output \" dose\"",
+            0.047
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 875,
+        "unique_to_a": 550,
+        "unique_to_b": 643
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_38.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_38.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_38_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_38_diff.png"
+      }
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After the holiday feast I had constipation for days, so I finally took a",
+        "patient": "After the holiday feast I was flatulent and constipated for days, so I finally took a"
+      },
+      "target_token": "Output \" lax\"",
+      "probabilities": {
+        "clinical": 0.371,
+        "patient": 0.173
+      },
+      "language_penalty": -0.198,
+      "clinical_mass": {
+        "clinical": 0.2879,
+        "patient": 0.2316
+      },
+      "error_share": {
+        "clinical": 0.099,
+        "patient": 0.1039
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" lax\" (p=0.371)",
+        "patient": "embedding \u2192 Output \" day\" (p=0.056)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lax\"",
+            0.371
+          ],
+          [
+            "Output \" stool\"",
+            0.137
+          ],
+          [
+            "Output \" look\"",
+            0.05
+          ],
+          [
+            "Output \" trip\"",
+            0.044
+          ],
+          [
+            "Output \" probiotic\"",
+            0.035
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" lax\"",
+            0.173
+          ],
+          [
+            "Output \" trip\"",
+            0.082
+          ],
+          [
+            "Output \" stool\"",
+            0.063
+          ],
+          [
+            "Output \" look\"",
+            0.063
+          ],
+          [
+            "Output \" day\"",
+            0.056
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 908,
+        "unique_to_a": 383,
+        "unique_to_b": 565
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_39.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_39.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_39_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_39_diff.png"
+      }
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been constipated for a week, so the nurse suggested she try more",
+        "patient": "She's been constipated for a week, so the nurse suggested she try more"
+      },
+      "target_token": "Output \" fiber\"",
+      "probabilities": {
+        "clinical": 0.42,
+        "patient": 0.42
+      },
+      "language_penalty": 0.0,
+      "clinical_mass": {
+        "clinical": 0.2698,
+        "patient": 0.2698
+      },
+      "error_share": {
+        "clinical": 0.0977,
+        "patient": 0.0976
+      },
+      "top_path": {
+        "clinical": "[L23\u00b7S]  \u2192 Output \" fiber\" (p=0.420)",
+        "patient": "[L23\u00b7S]  \u2192 Output \" fiber\" (p=0.420)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" fiber\"",
+            0.42
+          ],
+          [
+            "Output \" fibre\"",
+            0.106
+          ],
+          [
+            "Output \" prunes\"",
+            0.064
+          ],
+          [
+            "Output \" water\"",
+            0.039
+          ],
+          [
+            "Output \" fluids\"",
+            0.034
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" fiber\"",
+            0.42
+          ],
+          [
+            "Output \" fibre\"",
+            0.106
+          ],
+          [
+            "Output \" prunes\"",
+            0.064
+          ],
+          [
+            "Output \" water\"",
+            0.039
+          ],
+          [
+            "Output \" fluids\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1439,
+        "unique_to_a": 0,
+        "unique_to_b": 0
+      },
+      "outputs": {
+        "html": "trace_out/txcorpus_priority_20260714T224455Z/index_40.html",
+        "png": "trace_out/txcorpus_priority_20260714T224455Z/index_40.png",
+        "diff_html": "trace_out/txcorpus_priority_20260714T224455Z/index_40_diff.html",
+        "diff_png": "trace_out/txcorpus_priority_20260714T224455Z/index_40_diff.png"
+      }
+    }
+  ]
+}

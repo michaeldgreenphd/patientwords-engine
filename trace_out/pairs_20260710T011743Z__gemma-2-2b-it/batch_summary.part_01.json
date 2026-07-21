@@ -1,0 +1,367 @@
+{
+  "mode": "2panel",
+  "backend": "logits",
+  "graph_model": "gemma-2-2b-it",
+  "source_set": null,
+  "generation_params": {},
+  "start_index": 1,
+  "screen_targets": null,
+  "inference": {
+    "method": "logits",
+    "hf_id": "google/gemma-2-2b-it",
+    "dtype": "bfloat16"
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have arrhythmia, so I need to take my",
+        "patient": "My heart keeps skipping beats, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.3634,
+        "patient": 0.124
+      },
+      "language_penalty": -0.2394,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" medication\"",
+            0.3634
+          ],
+          [
+            "Output \" medications\"",
+            0.3207
+          ],
+          [
+            "Output \" meds\"",
+            0.0762
+          ],
+          [
+            "Output \" heart\"",
+            0.0557
+          ],
+          [
+            "Output \" medicine\"",
+            0.0492
+          ],
+          [
+            "Output \" blood\"",
+            0.036
+          ],
+          [
+            "Output \" prescribed\"",
+            0.0132
+          ],
+          [
+            "Output \" pills\"",
+            0.0063
+          ],
+          [
+            "Output \" medicines\"",
+            0.0055
+          ],
+          [
+            "Output \" regular\"",
+            0.0043
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.1694
+          ],
+          [
+            "Output \" heart\"",
+            0.124
+          ],
+          [
+            "Output \" medication\"",
+            0.124
+          ],
+          [
+            "Output \" pulse\"",
+            0.0586
+          ],
+          [
+            "Output \" time\"",
+            0.0428
+          ],
+          [
+            "Output \" medicine\"",
+            0.0355
+          ],
+          [
+            "Output \" mind\"",
+            0.0334
+          ],
+          [
+            "Output \" anxiety\"",
+            0.0334
+          ],
+          [
+            "Output \" meds\"",
+            0.0334
+          ],
+          [
+            "Output \" dog\"",
+            0.026
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "medication": "medication regularly.",
+          "medications": "medications regularly.",
+          "meds": "meds regularly.",
+          "heart": "heart medication regularly"
+        },
+        "patient": {
+          "blood": "blood pressure medication",
+          "heart": "heart rate down",
+          "medication": "medication.",
+          "pulse": "pulse."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have gastroenteritis, so I might need to see a",
+        "patient": "My stomach's been acting up all week, so I might need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.9552,
+        "patient": 0.9547
+      },
+      "language_penalty": -0.0005,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.9552
+          ],
+          [
+            "Output \" medical\"",
+            0.0113
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.0047
+          ],
+          [
+            "Output \" physician\"",
+            0.0047
+          ],
+          [
+            "Output \" healthcare\"",
+            0.0044
+          ],
+          [
+            "Output \" specialist\"",
+            0.0037
+          ],
+          [
+            "Output \" professional\"",
+            0.0022
+          ],
+          [
+            "Output \" GP\"",
+            0.0018
+          ],
+          [
+            "Output \" doc\"",
+            0.0013
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.9547
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.0106
+          ],
+          [
+            "Output \" doc\"",
+            0.006
+          ],
+          [
+            "Output \" professional\"",
+            0.0042
+          ],
+          [
+            "Output \" specialist\"",
+            0.0032
+          ],
+          [
+            "Output \" medical\"",
+            0.0032
+          ],
+          [
+            "Output \" gastro\"",
+            0.003
+          ],
+          [
+            "Output \" physician\"",
+            0.0027
+          ],
+          [
+            "Output \" GI\"",
+            0.002
+          ],
+          [
+            "Output \" healthcare\"",
+            0.0013
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor.",
+          "medical": "medical professional.",
+          "gastroenter": "gastroenterologist.",
+          "physician": "physician."
+        },
+        "patient": {
+          "doctor": "doctor.",
+          "gastroenter": "gastroenterologist.",
+          "doc": "doc.",
+          "professional": "professional."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have dyspnea, so my",
+        "patient": "I'm always out of breath after walking up stairs, so my"
+      },
+      "target_token": "Output \" oxygen\"",
+      "probabilities": {
+        "clinical": 0.0164,
+        "patient": 0.0003
+      },
+      "language_penalty": -0.0161,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" breathing\"",
+            0.4495
+          ],
+          [
+            "Output \" doctor\"",
+            0.2123
+          ],
+          [
+            "Output \" chest\"",
+            0.0238
+          ],
+          [
+            "Output \" heart\"",
+            0.0164
+          ],
+          [
+            "Output \" oxygen\"",
+            0.0164
+          ],
+          [
+            "Output \" lungs\"",
+            0.0128
+          ],
+          [
+            "Output \" breath\"",
+            0.0128
+          ],
+          [
+            "Output \" body\"",
+            0.0128
+          ],
+          [
+            "Output \" question\"",
+            0.0088
+          ],
+          [
+            "Output \" respiratory\"",
+            0.0082
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.7514
+          ],
+          [
+            "Output \" cardio\"",
+            0.0451
+          ],
+          [
+            "Output \" question\"",
+            0.0138
+          ],
+          [
+            "Output \" friend\"",
+            0.0129
+          ],
+          [
+            "Output \" primary\"",
+            0.0089
+          ],
+          [
+            "Output \" doc\"",
+            0.0065
+          ],
+          [
+            "Output \" family\"",
+            0.0061
+          ],
+          [
+            "Output \" husband\"",
+            0.0048
+          ],
+          [
+            "Output \" mom\"",
+            0.0045
+          ],
+          [
+            "Output \" friends\"",
+            0.0045
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "breathing": "breathing is difficult",
+          "doctor": "doctor has ordered",
+          "chest": "chest feels tight",
+          "heart": "heart rate is"
+        },
+        "patient": {
+          "doctor": "doctor has me",
+          "cardio": "cardiologist recommended",
+          "question": "question is:",
+          "friend": "friend suggested I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    }
+  ]
+}

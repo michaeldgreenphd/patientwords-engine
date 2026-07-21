@@ -1,0 +1,416 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 26,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After my car accident, I have post-traumatic headaches, so I really should take an",
+        "patient": "After my car accident, I've been getting these awful headaches that won't go away, so I really should take an"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3494
+      },
+      "error_share": {
+        "clinical": 0.0903
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " analgesic",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" aspirin\"",
+            0.233
+          ],
+          [
+            "Output \" anti\"",
+            0.186
+          ],
+          [
+            "Output \" ibuprofen\"",
+            0.088
+          ],
+          [
+            "Output \" over\"",
+            0.086
+          ],
+          [
+            "Output \" Ad\"",
+            0.067
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 27,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My kid has ADHD and can't focus in school, so the teacher says we should probably get him to a",
+        "patient": "My kid's been acting really hyperactive and can't focus in school, so the teacher says we should probably get him to a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.096,
+        "patient": 0.05
+      },
+      "language_penalty": -0.046,
+      "clinical_mass": {
+        "clinical": 0.2425,
+        "patient": 0.2938
+      },
+      "error_share": {
+        "clinical": 0.1005,
+        "patient": 0.1019
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.106)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.404)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " specialist",
+        "observed_clinical": [
+          "Output \" specialist\"",
+          0.096
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" therapist\"",
+            0.159
+          ],
+          [
+            "Output \" psychologist\"",
+            0.131
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.106
+          ],
+          [
+            "Output \" doctor\"",
+            0.106
+          ],
+          [
+            "Output \" specialist\"",
+            0.096
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.404
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.136
+          ],
+          [
+            "Output \" psychologist\"",
+            0.091
+          ],
+          [
+            "Output \" therapist\"",
+            0.068
+          ],
+          [
+            "Output \" specialist\"",
+            0.05
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 919,
+        "unique_to_a": 496,
+        "unique_to_b": 496
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_27.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_27.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_27_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_27_diff.png"
+      }
+    },
+    {
+      "index": 28,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been breaking out in urticaria that spreads and itches like crazy, so I wonder if I need to see an",
+        "patient": "I've been breaking out in a rash that spreads and itches like crazy, so I wonder if I need to see an"
+      },
+      "target_token": "Output \" aller\"",
+      "probabilities": {
+        "clinical": 0.807,
+        "patient": 0.752
+      },
+      "language_penalty": -0.05500000000000005,
+      "clinical_mass": {
+        "clinical": 0.415,
+        "patient": 0.3984
+      },
+      "error_share": {
+        "clinical": 0.1073,
+        "patient": 0.1008
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" allergy\" (p=0.085)",
+        "patient": "embedding \u2192 [L21\u00b7O] words and phrases semantically related to aging and  \u2192 [L25\u00b7O] technical language related to dermatology and immuno \u2192 Output \" dermatologist\" (p=0.013)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " allergist",
+        "observed_clinical": [
+          "Output \" aller\"",
+          0.807
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" aller\"",
+            0.807
+          ],
+          [
+            "Output \" allergy\"",
+            0.085
+          ],
+          [
+            "Output \" All\"",
+            0.01
+          ],
+          [
+            "Output \" immun\"",
+            0.009
+          ],
+          [
+            "Output \" ENT\"",
+            0.007
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" aller\"",
+            0.752
+          ],
+          [
+            "Output \" allergy\"",
+            0.066
+          ],
+          [
+            "Output \" MD\"",
+            0.017
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.013
+          ],
+          [
+            "Output \" der\"",
+            0.012
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 899,
+        "unique_to_a": 403,
+        "unique_to_b": 359
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_28.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_28.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_28_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_28_diff.png"
+      }
+    },
+    {
+      "index": 29,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing nocturnal hyperhidrosis and my clothes are soaked through, so my doctor wants me to take my",
+        "patient": "I've been waking up drenched in sweat and my clothes are soaked through, so my doctor wants me to take my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3591
+      },
+      "error_share": {
+        "clinical": 0.1113
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " temperature",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.096
+          ],
+          [
+            "Output \" meds\"",
+            0.07
+          ],
+          [
+            "Output \" clothes\"",
+            0.052
+          ],
+          [
+            "Output \" medication\"",
+            0.052
+          ],
+          [
+            "Output \" anti\"",
+            0.041
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 30,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have paresthesia in my feet, so I wonder if I should see a",
+        "patient": "I've been feeling pins and needles in my feet, so I wonder if I should see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.391,
+        "patient": 0.123
+      },
+      "language_penalty": -0.268,
+      "clinical_mass": {
+        "clinical": 0.4184,
+        "patient": 0.3937
+      },
+      "error_share": {
+        "clinical": 0.1045,
+        "patient": 0.0913
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.285)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.585)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.391
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neuro\"",
+            0.391
+          ],
+          [
+            "Output \" doctor\"",
+            0.285
+          ],
+          [
+            "Output \" specialist\"",
+            0.04
+          ],
+          [
+            "Output \" Neuro\"",
+            0.026
+          ],
+          [
+            "Output \" foot\"",
+            0.024
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.585
+          ],
+          [
+            "Output \" neuro\"",
+            0.123
+          ],
+          [
+            "Output \" doc\"",
+            0.042
+          ],
+          [
+            "Output \" po\"",
+            0.035
+          ],
+          [
+            "Output \" chi\"",
+            0.028
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 731,
+        "unique_to_a": 594,
+        "unique_to_b": 633
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_30.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_30.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_30_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_30_diff.png"
+      }
+    }
+  ]
+}

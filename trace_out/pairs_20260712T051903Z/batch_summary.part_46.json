@@ -1,0 +1,459 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 46,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 46,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have anxiety, so I should probably take my",
+        "patient": "I've been feeling all jittery and on edge, so I should probably take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.144,
+        "patient": 0.102
+      },
+      "language_penalty": -0.041999999999999996,
+      "clinical_mass": {
+        "clinical": 0.2515,
+        "patient": 0.216
+      },
+      "error_share": {
+        "clinical": 0.0859,
+        "patient": 0.0901
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" anxiety\" (p=0.095)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] words related to cell biology experiments | antibiot \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 Output \" medication\" (p=0.102)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.144
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.258
+          ],
+          [
+            "Output \" own\"",
+            0.165
+          ],
+          [
+            "Output \" medication\"",
+            0.144
+          ],
+          [
+            "Output \" anxiety\"",
+            0.095
+          ],
+          [
+            "Output \" medicine\"",
+            0.066
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.312
+          ],
+          [
+            "Output \" medication\"",
+            0.102
+          ],
+          [
+            "Output \" medicine\"",
+            0.086
+          ],
+          [
+            "Output \" anxiety\"",
+            0.063
+          ],
+          [
+            "Output \" blood\"",
+            0.035
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 668,
+        "unique_to_a": 442,
+        "unique_to_b": 652
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_46.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_46.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_46_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_46_diff.png"
+      }
+    },
+    {
+      "index": 47,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have fatigue, so I should take my",
+        "patient": "I've been feeling really under the weather lately, so I should take my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.249
+      },
+      "error_share": {
+        "clinical": 0.0832
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " vitamins",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" time\"",
+            0.106
+          ],
+          [
+            "Output \" rest\"",
+            0.103
+          ],
+          [
+            "Output \" meds\"",
+            0.071
+          ],
+          [
+            "Output \" medication\"",
+            0.061
+          ],
+          [
+            "Output \" nap\"",
+            0.06
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 48,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having trouble concentrating at my desk, so my coworker says I might have attention",
+        "patient": "I've been having trouble concentrating at my desk, so my coworker says I might have a"
+      },
+      "target_token": "Output \" deficit\"",
+      "probabilities": {
+        "clinical": 0.774,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2394,
+        "patient": 0.2466
+      },
+      "error_share": {
+        "clinical": 0.0902,
+        "patient": 0.1
+      },
+      "top_path": {
+        "clinical": "[L21\u00b7S]  \u2192 Output \" deficit\" (p=0.774)",
+        "patient": "embedding \u2192 Output \" desk\" (p=0.046)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " deficit",
+        "observed_clinical": [
+          "Output \" deficit\"",
+          0.774
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" deficit\"",
+            0.774
+          ],
+          [
+            "Output \"-\"",
+            0.078
+          ],
+          [
+            "Output \" issues\"",
+            0.041
+          ],
+          [
+            "Output \" problems\"",
+            0.039
+          ],
+          [
+            "Output \" deficiency\"",
+            0.011
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" problem\"",
+            0.197
+          ],
+          [
+            "Output \" computer\"",
+            0.053
+          ],
+          [
+            "Output \" brain\"",
+            0.046
+          ],
+          [
+            "Output \" desk\"",
+            0.046
+          ],
+          [
+            "Output \" bad\"",
+            0.044
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 862,
+        "unique_to_a": 470,
+        "unique_to_b": 591
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_48.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_48.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_48_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_48_diff.png"
+      }
+    },
+    {
+      "index": 49,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have orthostatic hypotension, so I need to get my",
+        "patient": "I've been feeling lightheaded and dizzy, so I need to get my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.57,
+        "patient": 0.594
+      },
+      "language_penalty": 0.02400000000000002,
+      "clinical_mass": {
+        "clinical": 0.3042,
+        "patient": 0.3219
+      },
+      "error_share": {
+        "clinical": 0.1085,
+        "patient": 0.0966
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.570)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.594)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.57
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.57
+          ],
+          [
+            "Output \" heart\"",
+            0.137
+          ],
+          [
+            "Output \" feet\"",
+            0.061
+          ],
+          [
+            "Output \" BP\"",
+            0.05
+          ],
+          [
+            "Output \" legs\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.594
+          ],
+          [
+            "Output \" BP\"",
+            0.056
+          ],
+          [
+            "Output \" eyes\"",
+            0.032
+          ],
+          [
+            "Output \" vit\"",
+            0.032
+          ],
+          [
+            "Output \" heart\"",
+            0.025
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 517,
+        "unique_to_a": 683,
+        "unique_to_b": 812
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_49.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_49.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_49_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_49_diff.png"
+      }
+    },
+    {
+      "index": 50,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have pleurisy, so I should probably see a",
+        "patient": "I've been getting these sharp stabbing pains in my chest, so I should probably see a"
+      },
+      "target_token": "Output \" pulmon\"",
+      "probabilities": {
+        "clinical": 0.029,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4136,
+        "patient": 0.4259
+      },
+      "error_share": {
+        "clinical": 0.1024,
+        "patient": 0.0977
+      },
+      "top_path": {
+        "clinical": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.707)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.862)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pulmonologist",
+        "observed_clinical": [
+          "Output \" pulmon\"",
+          0.029
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.707
+          ],
+          [
+            "Output \" specialist\"",
+            0.086
+          ],
+          [
+            "Output \" doc\"",
+            0.03
+          ],
+          [
+            "Output \" pulmon\"",
+            0.029
+          ],
+          [
+            "Output \" physician\"",
+            0.015
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.862
+          ],
+          [
+            "Output \" cardio\"",
+            0.05
+          ],
+          [
+            "Output \" doc\"",
+            0.027
+          ],
+          [
+            "Output \" Dr\"",
+            0.01
+          ],
+          [
+            "Output \" dr\"",
+            0.007
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 510,
+        "unique_to_a": 738,
+        "unique_to_b": 654
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_50.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_50.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_50_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_50_diff.png"
+      }
+    }
+  ]
+}

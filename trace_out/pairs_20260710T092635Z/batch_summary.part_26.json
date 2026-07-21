@@ -1,0 +1,502 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 26,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing orthostatic hypotension, so I need to check my",
+        "patient": "I've been feeling really woozy when I stand up, so I need to check my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.645,
+        "patient": 0.523
+      },
+      "language_penalty": -0.122,
+      "clinical_mass": {
+        "clinical": 0.3437,
+        "patient": 0.2753
+      },
+      "error_share": {
+        "clinical": 0.1085,
+        "patient": 0.0951
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.645)",
+        "patient": "embedding \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.523)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.645
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.645
+          ],
+          [
+            "Output \" BP\"",
+            0.139
+          ],
+          [
+            "Output \" pulse\"",
+            0.036
+          ],
+          [
+            "Output \" heart\"",
+            0.033
+          ],
+          [
+            "Output \" bp\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.523
+          ],
+          [
+            "Output \" BP\"",
+            0.123
+          ],
+          [
+            "Output \" iron\"",
+            0.026
+          ],
+          [
+            "Output \" bp\"",
+            0.021
+          ],
+          [
+            "Output \" vit\"",
+            0.019
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 561,
+        "unique_to_a": 729,
+        "unique_to_b": 929
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_26.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_26.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_26_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_26_diff.png"
+      }
+    },
+    {
+      "index": 27,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have nocturnal apnea episodes, so my partner thinks I should get my",
+        "patient": "I keep waking up gasping for air at night, so my partner thinks I should get my"
+      },
+      "target_token": "Output \" sleep\"",
+      "probabilities": {
+        "clinical": 0.309,
+        "patient": 0.134
+      },
+      "language_penalty": -0.175,
+      "clinical_mass": {
+        "clinical": 0.3084,
+        "patient": 0.2738
+      },
+      "error_share": {
+        "clinical": 0.1058,
+        "patient": 0.1018
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.309)",
+        "patient": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.134)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " sleep",
+        "observed_clinical": [
+          "Output \" sleep\"",
+          0.309
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.309
+          ],
+          [
+            "Output \" own\"",
+            0.132
+          ],
+          [
+            "Output \" tons\"",
+            0.078
+          ],
+          [
+            "Output \" CP\"",
+            0.04
+          ],
+          [
+            "Output \" nose\"",
+            0.038
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.134
+          ],
+          [
+            "Output \" blood\"",
+            0.129
+          ],
+          [
+            "Output \" ears\"",
+            0.114
+          ],
+          [
+            "Output \" thyroid\"",
+            0.071
+          ],
+          [
+            "Output \" tons\"",
+            0.048
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 755,
+        "unique_to_a": 575,
+        "unique_to_b": 661
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_27.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_27.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_27_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_27_diff.png"
+      }
+    },
+    {
+      "index": 28,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing vertigo in the morning, so I need to check my",
+        "patient": "I've been getting these awful dizzy spells in the morning, so I need to check my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.288,
+        "patient": 0.523
+      },
+      "language_penalty": 0.23500000000000004,
+      "clinical_mass": {
+        "clinical": 0.2811,
+        "patient": 0.3113
+      },
+      "error_share": {
+        "clinical": 0.0892,
+        "patient": 0.1027
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L23\u00b7O] the concept of balance, or weighing multiple options \u2192 Output \" balance\" (p=0.067)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.523)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.288
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.288
+          ],
+          [
+            "Output \" ears\"",
+            0.123
+          ],
+          [
+            "Output \" balance\"",
+            0.067
+          ],
+          [
+            "Output \" inner\"",
+            0.044
+          ],
+          [
+            "Output \" eyes\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.523
+          ],
+          [
+            "Output \" BP\"",
+            0.14
+          ],
+          [
+            "Output \" vit\"",
+            0.026
+          ],
+          [
+            "Output \" sugar\"",
+            0.024
+          ],
+          [
+            "Output \" bp\"",
+            0.02
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 870,
+        "unique_to_a": 504,
+        "unique_to_b": 565
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_28.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_28.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_28_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_28_diff.png"
+      }
+    },
+    {
+      "index": 29,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My joints have been experiencing arthralgia, so I should probably take my",
+        "patient": "My joints have been really stiff and achy, so I should probably take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.079,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3704,
+        "patient": 0.3582
+      },
+      "error_share": {
+        "clinical": 0.0958,
+        "patient": 0.0911
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" arthritis\" (p=0.051)",
+        "patient": "embedding \u2192 Output \" arthritis\" (p=0.043)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.079
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" medication\"",
+            0.079
+          ],
+          [
+            "Output \" meds\"",
+            0.078
+          ],
+          [
+            "Output \" medicine\"",
+            0.068
+          ],
+          [
+            "Output \" daily\"",
+            0.058
+          ],
+          [
+            "Output \" arthritis\"",
+            0.051
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" glucos\"",
+            0.126
+          ],
+          [
+            "Output \" supplements\"",
+            0.073
+          ],
+          [
+            "Output \" daily\"",
+            0.073
+          ],
+          [
+            "Output \" meds\"",
+            0.06
+          ],
+          [
+            "Output \" arthritis\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 949,
+        "unique_to_a": 356,
+        "unique_to_b": 395
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_29.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_29.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_29_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_29_diff.png"
+      }
+    },
+    {
+      "index": 30,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep experiencing acute asthma exacerbations, so I need to use my",
+        "patient": "I keep getting these flare-ups where I can't breathe right, so I need to use my"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.31,
+        "patient": 0.58
+      },
+      "language_penalty": 0.26999999999999996,
+      "clinical_mass": {
+        "clinical": 0.4175,
+        "patient": 0.3601
+      },
+      "error_share": {
+        "clinical": 0.1016,
+        "patient": 0.1032
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.310)",
+        "patient": "embedding \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.580)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " inhaler",
+        "observed_clinical": [
+          "Output \" inhal\"",
+          0.31
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.31
+          ],
+          [
+            "Output \" rescue\"",
+            0.1
+          ],
+          [
+            "Output \" al\"",
+            0.069
+          ],
+          [
+            "Output \" vento\"",
+            0.048
+          ],
+          [
+            "Output \" nebu\"",
+            0.045
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.58
+          ],
+          [
+            "Output \" rescue\"",
+            0.066
+          ],
+          [
+            "Output \" nebu\"",
+            0.041
+          ],
+          [
+            "Output \" al\"",
+            0.029
+          ],
+          [
+            "Output \" asthma\"",
+            0.022
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 603,
+        "unique_to_a": 664,
+        "unique_to_b": 719
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_30.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_30.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_30_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_30_diff.png"
+      }
+    }
+  ]
+}

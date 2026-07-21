@@ -1,0 +1,459 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 41,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have reactive hypoglycemia, so I'm worried about my",
+        "patient": "I get really shaky and sweaty between meals, so I'm worried about my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.457,
+        "patient": 0.219
+      },
+      "language_penalty": -0.23800000000000002,
+      "clinical_mass": {
+        "clinical": 0.3289,
+        "patient": 0.271
+      },
+      "error_share": {
+        "clinical": 0.0985,
+        "patient": 0.0967
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] words and phrases related to diabetes and its treatm \u2192 [L25\u00b7O] mentions of \"isomaltulose\" and its properties, espec \u2192 Output \" sugar\" (p=0.069)",
+        "patient": "embedding \u2192 [L19\u00b7C] words and phrases related to diabetes and its treatm \u2192 [L25\u00b7O] mentions of \"isomaltulose\" and its properties, espec \u2192 Output \" sugar\" (p=0.055)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.457
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.457
+          ],
+          [
+            "Output \" sugar\"",
+            0.069
+          ],
+          [
+            "Output \" insulin\"",
+            0.035
+          ],
+          [
+            "Output \" glucose\"",
+            0.032
+          ],
+          [
+            "Output \" body\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.219
+          ],
+          [
+            "Output \" health\"",
+            0.056
+          ],
+          [
+            "Output \" sugar\"",
+            0.055
+          ],
+          [
+            "Output \" weight\"",
+            0.052
+          ],
+          [
+            "Output \" insulin\"",
+            0.042
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 557,
+        "unique_to_a": 786,
+        "unique_to_b": 873
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_41.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_41.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_41_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_41_diff.png"
+      }
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I bend over to pick something up, I have acute lumbar strain, so I might need a",
+        "patient": "When I bend over to pick something up, my lower back seizes up, so I might need a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3222
+      },
+      "error_share": {
+        "clinical": 0.1037
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " physical",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" back\"",
+            0.137
+          ],
+          [
+            "Output \" lumbar\"",
+            0.135
+          ],
+          [
+            "Output \" little\"",
+            0.055
+          ],
+          [
+            "Output \" cane\"",
+            0.052
+          ],
+          [
+            "Output \" brace\"",
+            0.037
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep getting crepitus in my knee when I walk, so my trainer says I should probably get my",
+        "patient": "I keep getting this weird clicking and popping in my knee when I walk, so my trainer says I should probably get my"
+      },
+      "target_token": "Output \" knee\"",
+      "probabilities": {
+        "clinical": 0.534,
+        "patient": 0.622
+      },
+      "language_penalty": 0.08799999999999997,
+      "clinical_mass": {
+        "clinical": 0.3637,
+        "patient": 0.3541
+      },
+      "error_share": {
+        "clinical": 0.1041,
+        "patient": 0.1064
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" knee\" (p=0.534)",
+        "patient": "embedding \u2192 Output \" knee\" (p=0.622)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " knee",
+        "observed_clinical": [
+          "Output \" knee\"",
+          0.534
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" knee\"",
+            0.534
+          ],
+          [
+            "Output \" knees\"",
+            0.14
+          ],
+          [
+            "Output \" pat\"",
+            0.057
+          ],
+          [
+            "Output \" hips\"",
+            0.027
+          ],
+          [
+            "Output \" hip\"",
+            0.026
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" knee\"",
+            0.622
+          ],
+          [
+            "Output \" knees\"",
+            0.148
+          ],
+          [
+            "Output \" pat\"",
+            0.062
+          ],
+          [
+            "Output \" ACL\"",
+            0.018
+          ],
+          [
+            "Output \" kne\"",
+            0.016
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 920,
+        "unique_to_a": 480,
+        "unique_to_b": 361
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_43.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_43.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_43_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_43_diff.png"
+      }
+    },
+    {
+      "index": 44,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I'm at the bar with friends, I sometimes experience alcohol-induced amnesia and can't remember what happened, so I'm starting to worry about my",
+        "patient": "When I'm at the bar with friends, I sometimes black out and can't remember what happened, so I'm starting to worry about my"
+      },
+      "target_token": "Output \" drinking\"",
+      "probabilities": {
+        "clinical": 0.186,
+        "patient": 0.263
+      },
+      "language_penalty": 0.07700000000000001,
+      "clinical_mass": {
+        "clinical": 0.1641,
+        "patient": 0.1722
+      },
+      "error_share": {
+        "clinical": 0.1001,
+        "patient": 0.0959
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] words related to memory and experiments in brain fun \u2192 [L23\u00b7O] content related to memories, especially happy memori \u2192 Output \" memory\" (p=0.244)",
+        "patient": "[L17\u00b7S]  \u2192 [L21\u00b7O] descriptions of people's subjective states, especial \u2192 [L23\u00b7C] words and phrases related to alcohol consumption, tr \u2192 [L25\u00b7O] words and phrases related to alcohol consumption and \u2192 Output \" drinking\" (p=0.263)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " drinking",
+        "observed_clinical": [
+          "Output \" drinking\"",
+          0.186
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" memory\"",
+            0.244
+          ],
+          [
+            "Output \" drinking\"",
+            0.186
+          ],
+          [
+            "Output \" health\"",
+            0.066
+          ],
+          [
+            "Output \" future\"",
+            0.048
+          ],
+          [
+            "Output \" brain\"",
+            0.038
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" drinking\"",
+            0.263
+          ],
+          [
+            "Output \" memory\"",
+            0.213
+          ],
+          [
+            "Output \" health\"",
+            0.109
+          ],
+          [
+            "Output \" alcohol\"",
+            0.041
+          ],
+          [
+            "Output \" future\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1051,
+        "unique_to_a": 427,
+        "unique_to_b": 399
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_44.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_44.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_44_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_44_diff.png"
+      }
+    },
+    {
+      "index": 45,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing dysuria, so I definitely need to take my",
+        "patient": "I've been getting this awful burning feeling when I go to the bathroom, so I definitely need to take my"
+      },
+      "target_token": "Output \" antibiotics\"",
+      "probabilities": {
+        "clinical": 0.146,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3629,
+        "patient": 0.2501
+      },
+      "error_share": {
+        "clinical": 0.0971,
+        "patient": 0.0966
+      },
+      "top_path": {
+        "clinical": "[L22\u00b7S]  \u2192 Output \" antibiotic\" (p=0.041)",
+        "patient": "embedding \u2192 Output \" time\" (p=0.050)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antibiotics",
+        "observed_clinical": [
+          "Output \" antibiotics\"",
+          0.146
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" antibiotics\"",
+            0.146
+          ],
+          [
+            "Output \" meds\"",
+            0.115
+          ],
+          [
+            "Output \" medicine\"",
+            0.058
+          ],
+          [
+            "Output \" medication\"",
+            0.05
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.053
+          ],
+          [
+            "Output \" time\"",
+            0.05
+          ],
+          [
+            "Output \" vitamins\"",
+            0.047
+          ],
+          [
+            "Output \" daily\"",
+            0.04
+          ],
+          [
+            "Output \" medicine\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 685,
+        "unique_to_a": 777,
+        "unique_to_b": 792
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_45.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_45.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_45_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_45_diff.png"
+      }
+    }
+  ]
+}

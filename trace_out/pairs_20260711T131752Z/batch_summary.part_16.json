@@ -1,0 +1,362 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 16,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have intertrigo, so my dermatologist prescribed an",
+        "patient": "I've been getting rashes in my skin folds, so my dermatologist prescribed an"
+      },
+      "target_token": "Output \" antifungal\"",
+      "probabilities": {
+        "clinical": 0.225,
+        "patient": 0.139
+      },
+      "language_penalty": -0.086,
+      "clinical_mass": {
+        "clinical": 0.4604,
+        "patient": 0.4979
+      },
+      "error_share": {
+        "clinical": 0.104,
+        "patient": 0.0974
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.041)",
+        "patient": "[L17\u00b7S]  \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L22\u00b7C] sentences related to drug use | medications \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.139)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antifungal",
+        "observed_clinical": [
+          "Output \" antifungal\"",
+          0.225
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" antifungal\"",
+            0.225
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.169
+          ],
+          [
+            "Output \" anti\"",
+            0.162
+          ],
+          [
+            "Output \" ointment\"",
+            0.132
+          ],
+          [
+            "Output \" over\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" antibiotic\"",
+            0.339
+          ],
+          [
+            "Output \" anti\"",
+            0.139
+          ],
+          [
+            "Output \" antifungal\"",
+            0.131
+          ],
+          [
+            "Output \" ointment\"",
+            0.126
+          ],
+          [
+            "Output \" oral\"",
+            0.068
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 642,
+        "unique_to_a": 719,
+        "unique_to_b": 691
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_16.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_16.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_16_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_16_diff.png"
+      }
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have sciatica, so I need to ask my doctor about my",
+        "patient": "I keep getting these shooting pains down my leg, so I need to ask my doctor about my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3983
+      },
+      "error_share": {
+        "clinical": 0.0926
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " imaging",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pain\"",
+            0.105
+          ],
+          [
+            "Output \" back\"",
+            0.084
+          ],
+          [
+            "Output \" symptoms\"",
+            0.062
+          ],
+          [
+            "Output \" options\"",
+            0.04
+          ],
+          [
+            "Output \" exercise\"",
+            0.025
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have occupational stress syndrome, so I think I need to see a",
+        "patient": "I've been feeling burnt out at work, so I think I need to see a"
+      },
+      "target_token": "Output \" therapist\"",
+      "probabilities": {
+        "clinical": 0.129,
+        "patient": 0.318
+      },
+      "language_penalty": 0.189,
+      "clinical_mass": {
+        "clinical": 0.3915,
+        "patient": 0.2203
+      },
+      "error_share": {
+        "clinical": 0.0893,
+        "patient": 0.0855
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.300)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.328)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " therapist",
+        "observed_clinical": [
+          "Output \" therapist\"",
+          0.129
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.3
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.137
+          ],
+          [
+            "Output \" therapist\"",
+            0.129
+          ],
+          [
+            "Output \" psychologist\"",
+            0.104
+          ],
+          [
+            "Output \" specialist\"",
+            0.044
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.328
+          ],
+          [
+            "Output \" therapist\"",
+            0.318
+          ],
+          [
+            "Output \" counselor\"",
+            0.068
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.049
+          ],
+          [
+            "Output \" psychologist\"",
+            0.029
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 575,
+        "unique_to_a": 669,
+        "unique_to_b": 735
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_18.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_18.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_18_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have palpitations lately, so I should probably take my",
+        "patient": "My heart's been doing flip-flops lately, so I should probably take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.098,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3407,
+        "patient": 0.1015
+      },
+      "error_share": {
+        "clinical": 0.0904,
+        "patient": 0.0903
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.075)",
+        "patient": "[L19\u00b7S]  \u2192 [L21\u00b7S] possessive pronouns | possessive forms of 'own' | po \u2192 Output \" own\" (p=0.656)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.098
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.204
+          ],
+          [
+            "Output \" meds\"",
+            0.148
+          ],
+          [
+            "Output \" medication\"",
+            0.098
+          ],
+          [
+            "Output \" heart\"",
+            0.075
+          ],
+          [
+            "Output \" medicine\"",
+            0.067
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" own\"",
+            0.656
+          ],
+          [
+            "Output \" advice\"",
+            0.056
+          ],
+          [
+            "Output \" mind\"",
+            0.045
+          ],
+          [
+            "Output \" medicine\"",
+            0.035
+          ],
+          [
+            "Output \" meds\"",
+            0.03
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 592,
+        "unique_to_a": 670,
+        "unique_to_b": 687
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_19.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_19.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_19_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_19_diff.png"
+      }
+    }
+  ]
+}

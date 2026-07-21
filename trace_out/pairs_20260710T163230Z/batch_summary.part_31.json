@@ -1,0 +1,405 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 31,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My kid has morning nausea and vomiting, so we're thinking we need to get him to a",
+        "patient": "My kid's been throwing up every morning, so we're thinking we need to get him to a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.116,
+        "patient": 0.548
+      },
+      "language_penalty": 0.43200000000000005,
+      "clinical_mass": {
+        "clinical": 0.3648,
+        "patient": 0.3465
+      },
+      "error_share": {
+        "clinical": 0.1013,
+        "patient": 0.0951
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.116)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.548)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.116
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" GI\"",
+            0.128
+          ],
+          [
+            "Output \" specialist\"",
+            0.123
+          ],
+          [
+            "Output \" doctor\"",
+            0.116
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.081
+          ],
+          [
+            "Output \" pediatric\"",
+            0.078
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.548
+          ],
+          [
+            "Output \" pediatrician\"",
+            0.103
+          ],
+          [
+            "Output \" specialist\"",
+            0.04
+          ],
+          [
+            "Output \" hospital\"",
+            0.027
+          ],
+          [
+            "Output \" doc\"",
+            0.025
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 799,
+        "unique_to_a": 548,
+        "unique_to_b": 469
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_31.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_31.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_31_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_31_diff.png"
+      }
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have hypervigilance, so I think I need to take my",
+        "patient": "I feel like I'm walking on eggshells all the time, so I think I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.068,
+        "patient": 0.069
+      },
+      "language_penalty": 0.0010000000000000009,
+      "clinical_mass": {
+        "clinical": 0.1765,
+        "patient": 0.136
+      },
+      "error_share": {
+        "clinical": 0.0886,
+        "patient": 0.0859
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.109)",
+        "patient": "embedding \u2192 Output \" own\" (p=0.109)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.068
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.189
+          ],
+          [
+            "Output \" time\"",
+            0.11
+          ],
+          [
+            "Output \" own\"",
+            0.109
+          ],
+          [
+            "Output \" medication\"",
+            0.068
+          ],
+          [
+            "Output \" anxiety\"",
+            0.046
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.189
+          ],
+          [
+            "Output \" own\"",
+            0.109
+          ],
+          [
+            "Output \" medication\"",
+            0.069
+          ],
+          [
+            "Output \" anxiety\"",
+            0.067
+          ],
+          [
+            "Output \" time\"",
+            0.039
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 673,
+        "unique_to_a": 652,
+        "unique_to_b": 776
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_32.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_32.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_32_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_32_diff.png"
+      }
+    },
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have lumbar strain when I bend over at work, so I probably need to see a",
+        "patient": "My back's been acting funny when I bend over at work, so I probably need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.208,
+        "patient": 0.343
+      },
+      "language_penalty": 0.13500000000000004,
+      "clinical_mass": {
+        "clinical": 0.4004,
+        "patient": 0.3299
+      },
+      "error_share": {
+        "clinical": 0.0961,
+        "patient": 0.0958
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to medical treatment or legal cases |  \u2192 Output \" physical\" (p=0.105)",
+        "patient": "embedding \u2192 [L16\u00b7C] vocabulary related to medical treatment and physical \u2192 [L17\u00b7C] language related to physical therapy and returning t \u2192 [L21\u00b7C] descriptions of sports players who have suffered inj \u2192 [L24\u00b7C] words related to medical treatment or legal cases |  \u2192 Output \" physical\" (p=0.020)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.208
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" chi\"",
+            0.367
+          ],
+          [
+            "Output \" doctor\"",
+            0.208
+          ],
+          [
+            "Output \" physical\"",
+            0.105
+          ],
+          [
+            "Output \" physio\"",
+            0.087
+          ],
+          [
+            "Output \" PT\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" chi\"",
+            0.443
+          ],
+          [
+            "Output \" doctor\"",
+            0.343
+          ],
+          [
+            "Output \" doc\"",
+            0.034
+          ],
+          [
+            "Output \" physical\"",
+            0.02
+          ],
+          [
+            "Output \" physio\"",
+            0.019
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 738,
+        "unique_to_a": 576,
+        "unique_to_b": 571
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_33.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_33.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_33_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_33_diff.png"
+      }
+    },
+    {
+      "index": 34,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have caffeine-induced cognitive impairment after my morning coffee, so I wonder if I should cut back on my",
+        "patient": "I've been having brain fog after my morning coffee, so I wonder if I should cut back on my"
+      },
+      "target_token": "Output \" caffeine\"",
+      "probabilities": {
+        "clinical": 0.176,
+        "patient": 0.215
+      },
+      "language_penalty": 0.03900000000000001,
+      "clinical_mass": {
+        "clinical": 0.1585,
+        "patient": 0.1943
+      },
+      "error_share": {
+        "clinical": 0.1106,
+        "patient": 0.1038
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" caffeine\" (p=0.176)",
+        "patient": "embedding \u2192 Output \" coffee\" (p=0.342)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " caffeine",
+        "observed_clinical": [
+          "Output \" caffeine\"",
+          0.176
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" coffee\"",
+            0.228
+          ],
+          [
+            "Output \" caffeine\"",
+            0.176
+          ],
+          [
+            "Output \" morning\"",
+            0.137
+          ],
+          [
+            "Output \" intake\"",
+            0.095
+          ],
+          [
+            "Output \" daily\"",
+            0.082
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" coffee\"",
+            0.342
+          ],
+          [
+            "Output \" caffeine\"",
+            0.215
+          ],
+          [
+            "Output \" morning\"",
+            0.148
+          ],
+          [
+            "Output \" intake\"",
+            0.072
+          ],
+          [
+            "Output \" daily\"",
+            0.038
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 780,
+        "unique_to_a": 567,
+        "unique_to_b": 597
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_34.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_34.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_34_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_34_diff.png"
+      }
+    }
+  ]
+}

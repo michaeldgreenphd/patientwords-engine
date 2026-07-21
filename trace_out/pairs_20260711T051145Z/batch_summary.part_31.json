@@ -1,0 +1,443 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 31,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have xerophthalmia with corneal irritation, so I should probably get some",
+        "patient": "I've been noticing my eyes feel really dry and scratchy, so I should probably get some",
+        "translated": "I've been noticing my eyes feel really xerotic and have a foreign body sensation, so I should probably get some"
+      },
+      "target_token": "Output \" drops\"",
+      "probabilities": {
+        "clinical": 0.109,
+        "patient": 0.11,
+        "translated": 0.134
+      },
+      "language_penalty": 0.0010000000000000009,
+      "clinical_mass": {
+        "clinical": 0.3199,
+        "patient": 0.2555,
+        "translated": 0.2784
+      },
+      "error_share": {
+        "clinical": 0.1145,
+        "patient": 0.0955,
+        "translated": 0.1091
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7C] mentions of eyes, studies, patients, and medical ana \u2192 Output \" eye\" (p=0.123)",
+        "patient": "embedding \u2192 Output \" eye\" (p=0.355)",
+        "translated": "embedding \u2192 Output \" eye\" (p=0.162)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " drops",
+        "observed_clinical": [
+          "Output \" drops\"",
+          0.109
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": 0.024000000000000007,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" eye\"",
+            0.123
+          ],
+          [
+            "Output \" drops\"",
+            0.109
+          ],
+          [
+            "Output \" artificial\"",
+            0.081
+          ],
+          [
+            "Output \" of\"",
+            0.052
+          ],
+          [
+            "Output \" more\"",
+            0.043
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" eye\"",
+            0.355
+          ],
+          [
+            "Output \" artificial\"",
+            0.119
+          ],
+          [
+            "Output \" drops\"",
+            0.11
+          ],
+          [
+            "Output \" new\"",
+            0.066
+          ],
+          [
+            "Output \" more\"",
+            0.05
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" artificial\"",
+            0.272
+          ],
+          [
+            "Output \" eye\"",
+            0.162
+          ],
+          [
+            "Output \" drops\"",
+            0.134
+          ],
+          [
+            "Output \" lubricating\"",
+            0.055
+          ],
+          [
+            "Output \" lubricant\"",
+            0.04
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 539,
+        "unique_to_a": 784,
+        "unique_to_b": 781
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z/index_31.html",
+        "png": "trace_out/pairs_20260711T051145Z/index_31.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z/index_31_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z/index_31_diff.png"
+      }
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing dissociation, so I should probably see a",
+        "patient": "I've been feeling really spacey and out of it, so I should probably see a",
+        "translated": "I've been experiencing dizziness and altered mental status, so I should probably see a"
+      },
+      "target_token": "Output \" psychiatrist\"",
+      "probabilities": {
+        "clinical": 0.114,
+        "patient": 0.033,
+        "translated": 0.026
+      },
+      "language_penalty": -0.081,
+      "clinical_mass": {
+        "clinical": 0.3587,
+        "patient": 0.2778,
+        "translated": 0.4583
+      },
+      "error_share": {
+        "clinical": 0.0953,
+        "patient": 0.0931,
+        "translated": 0.0977
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" psychologist\" (p=0.044)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.753)",
+        "translated": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.578)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " psychiatrist",
+        "observed_clinical": [
+          "Output \" psychiatrist\"",
+          0.114
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": -0.007000000000000003,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" therapist\"",
+            0.503
+          ],
+          [
+            "Output \" doctor\"",
+            0.188
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.114
+          ],
+          [
+            "Output \" psychologist\"",
+            0.044
+          ],
+          [
+            "Output \" professional\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.753
+          ],
+          [
+            "Output \" doc\"",
+            0.042
+          ],
+          [
+            "Output \" therapist\"",
+            0.038
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.033
+          ],
+          [
+            "Output \" Dr\"",
+            0.023
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" doctor\"",
+            0.578
+          ],
+          [
+            "Output \" neuro\"",
+            0.217
+          ],
+          [
+            "Output \" doc\"",
+            0.033
+          ],
+          [
+            "Output \" physician\"",
+            0.026
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.026
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 601,
+        "unique_to_a": 616,
+        "unique_to_b": 554
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z/index_32.html",
+        "png": "trace_out/pairs_20260711T051145Z/index_32.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z/index_32_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z/index_32_diff.png"
+      }
+    },
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I experience formication, so my doctor thinks I might need a",
+        "patient": "I keep feeling like bugs are crawling under my skin, so my doctor thinks I might need a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4136
+      },
+      "error_share": {
+        "clinical": 0.0978
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " referral",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" brain\"",
+            0.056
+          ],
+          [
+            "Output \" nerve\"",
+            0.052
+          ],
+          [
+            "Output \" neuro\"",
+            0.049
+          ],
+          [
+            "Output \" spinal\"",
+            0.042
+          ],
+          [
+            "Output \" blood\"",
+            0.029
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 34,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have dysphagia, so I should probably take my",
+        "patient": "I've been having trouble swallowing my food lately, so I should probably take my",
+        "translated": "I've been having trouble with dysphagia lately, so I should probably take my"
+      },
+      "target_token": "Output \" time\"",
+      "probabilities": {
+        "clinical": 0.144,
+        "patient": null,
+        "translated": 0.058
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.231,
+        "patient": 0.3123,
+        "translated": 0.2817
+      },
+      "error_share": {
+        "clinical": 0.0979,
+        "patient": 0.0922,
+        "translated": 0.1013
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.084)",
+        "patient": "[L18\u00b7S]  \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.078)",
+        "translated": "embedding \u2192 Output \" own\" (p=0.100)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " time",
+        "observed_clinical": [
+          "Output \" time\"",
+          0.144
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" food\"",
+            0.159
+          ],
+          [
+            "Output \" time\"",
+            0.144
+          ],
+          [
+            "Output \" meds\"",
+            0.101
+          ],
+          [
+            "Output \" own\"",
+            0.084
+          ],
+          [
+            "Output \" meals\"",
+            0.059
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.181
+          ],
+          [
+            "Output \" medication\"",
+            0.079
+          ],
+          [
+            "Output \" doctor\"",
+            0.078
+          ],
+          [
+            "Output \" vitamins\"",
+            0.06
+          ],
+          [
+            "Output \" medicine\"",
+            0.049
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" meds\"",
+            0.214
+          ],
+          [
+            "Output \" own\"",
+            0.1
+          ],
+          [
+            "Output \" medication\"",
+            0.079
+          ],
+          [
+            "Output \" time\"",
+            0.058
+          ],
+          [
+            "Output \" medicine\"",
+            0.038
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 663,
+        "unique_to_a": 674,
+        "unique_to_b": 729
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z/index_34.html",
+        "png": "trace_out/pairs_20260711T051145Z/index_34.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z/index_34_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z/index_34_diff.png"
+      }
+    }
+  ]
+}

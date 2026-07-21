@@ -1,0 +1,416 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 36,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 36,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing cognitive impairment at work, so my manager suggested I might need to see a",
+        "patient": "I've been having trouble focusing at work, so my manager suggested I might need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.469,
+        "patient": 0.443
+      },
+      "language_penalty": -0.025999999999999968,
+      "clinical_mass": {
+        "clinical": 0.3632,
+        "patient": 0.2649
+      },
+      "error_share": {
+        "clinical": 0.0953,
+        "patient": 0.0921
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.469)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.443)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.469
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.469
+          ],
+          [
+            "Output \" neuro\"",
+            0.109
+          ],
+          [
+            "Output \" psychologist\"",
+            0.079
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.071
+          ],
+          [
+            "Output \" specialist\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.443
+          ],
+          [
+            "Output \" therapist\"",
+            0.117
+          ],
+          [
+            "Output \" psychologist\"",
+            0.077
+          ],
+          [
+            "Output \" counselor\"",
+            0.065
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.057
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 847,
+        "unique_to_a": 559,
+        "unique_to_b": 538
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_36.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_36.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_36_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_36_diff.png"
+      }
+    },
+    {
+      "index": 37,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My spouse says I have obstructive sleep apnea, so we're thinking I might have a",
+        "patient": "My spouse says I snore really loud at night, so we're thinking I might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3115
+      },
+      "error_share": {
+        "clinical": 0.1103
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " condition",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" CP\"",
+            0.332
+          ],
+          [
+            "Output \" sleep\"",
+            0.156
+          ],
+          [
+            "Output \" problem\"",
+            0.074
+          ],
+          [
+            "Output \" C\"",
+            0.039
+          ],
+          [
+            "Output \" devi\"",
+            0.028
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been feeling anxious, so I think I need to take my",
+        "patient": "I've been feeling like my nerves are shot, so I think I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.085,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2006,
+        "patient": 0.1858
+      },
+      "error_share": {
+        "clinical": 0.0817,
+        "patient": 0.0835
+      },
+      "top_path": {
+        "clinical": "[L19\u00b7S]  \u2192 [L20\u00b7O] instances where someone changes their mind or story  \u2192 Output \" mind\" (p=0.093)",
+        "patient": "embedding \u2192 Output \" anxiety\" (p=0.066)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.085
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.175
+          ],
+          [
+            "Output \" anxiety\"",
+            0.131
+          ],
+          [
+            "Output \" dog\"",
+            0.109
+          ],
+          [
+            "Output \" mind\"",
+            0.093
+          ],
+          [
+            "Output \" medication\"",
+            0.085
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.092
+          ],
+          [
+            "Output \" mind\"",
+            0.069
+          ],
+          [
+            "Output \" anxiety\"",
+            0.066
+          ],
+          [
+            "Output \" vitamins\"",
+            0.054
+          ],
+          [
+            "Output \" own\"",
+            0.048
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 878,
+        "unique_to_a": 398,
+        "unique_to_b": 499
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_38.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_38.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_38_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_38_diff.png"
+      }
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After I eat spicy food my acid reflux worsens, so I should probably see a",
+        "patient": "After I eat spicy food my stomach acts up, so I should probably see a"
+      },
+      "target_token": "Output \" gastroenter\"",
+      "probabilities": {
+        "clinical": 0.128,
+        "patient": 0.078
+      },
+      "language_penalty": -0.05,
+      "clinical_mass": {
+        "clinical": 0.3867,
+        "patient": 0.3582
+      },
+      "error_share": {
+        "clinical": 0.1055,
+        "patient": 0.1005
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.499)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.674)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " gastroenterologist",
+        "observed_clinical": [
+          "Output \" gastroenter\"",
+          0.128
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.499
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.128
+          ],
+          [
+            "Output \" GI\"",
+            0.083
+          ],
+          [
+            "Output \" gastro\"",
+            0.055
+          ],
+          [
+            "Output \" specialist\"",
+            0.05
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.674
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.078
+          ],
+          [
+            "Output \" GI\"",
+            0.04
+          ],
+          [
+            "Output \" doc\"",
+            0.032
+          ],
+          [
+            "Output \" gastro\"",
+            0.028
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 896,
+        "unique_to_a": 334,
+        "unique_to_b": 307
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_39.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_39.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_39_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_39_diff.png"
+      }
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing angina in my chest, so I'm worried I might need an",
+        "patient": "I've been getting these sharp shooting pains in my chest, so I'm worried I might need an"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4812
+      },
+      "error_share": {
+        "clinical": 0.0976
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " EKG",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" angio\"",
+            0.783
+          ],
+          [
+            "Output \" operation\"",
+            0.039
+          ],
+          [
+            "Output \" ablation\"",
+            0.016
+          ],
+          [
+            "Output \" angiography\"",
+            0.016
+          ],
+          [
+            "Output \" emergency\"",
+            0.012
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}

@@ -1,0 +1,373 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 21,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 21,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have gastrointestinal distress since I started that new medication, so I think I should take an",
+        "patient": "My gut's been acting up since I started that new medication, so I think I should take an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.238,
+        "patient": 0.129
+      },
+      "language_penalty": -0.10899999999999999,
+      "clinical_mass": {
+        "clinical": 0.3831,
+        "patient": 0.2802
+      },
+      "error_share": {
+        "clinical": 0.0926,
+        "patient": 0.0923
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.094)",
+        "patient": "embedding \u2192 Output \" over\" (p=0.090)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antacid",
+        "observed_clinical": [
+          "Output \" ant\"",
+          0.238
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.238
+          ],
+          [
+            "Output \" anti\"",
+            0.222
+          ],
+          [
+            "Output \" over\"",
+            0.094
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.067
+          ],
+          [
+            "Output \" extra\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ant\"",
+            0.129
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.107
+          ],
+          [
+            "Output \" over\"",
+            0.09
+          ],
+          [
+            "Output \" anti\"",
+            0.088
+          ],
+          [
+            "Output \" extra\"",
+            0.056
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 693,
+        "unique_to_a": 622,
+        "unique_to_b": 704
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_21.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_21.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_21_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_21_diff.png"
+      }
+    },
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing vasomotor symptoms all day, so I think I need to see a",
+        "patient": "I've been having hot flashes all day, so I think I need to see a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4558
+      },
+      "error_share": {
+        "clinical": 0.1007
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " gynecologist",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.413
+          ],
+          [
+            "Output \" doc\"",
+            0.085
+          ],
+          [
+            "Output \" specialist\"",
+            0.078
+          ],
+          [
+            "Output \" neuro\"",
+            0.067
+          ],
+          [
+            "Output \" new\"",
+            0.049
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have nasal congestion, so I should probably get some",
+        "patient": "My sinuses are totally clogged up, so I should probably get some"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3772
+      },
+      "error_share": {
+        "clinical": 0.093
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" saline\"",
+            0.14
+          ],
+          [
+            "Output \" nasal\"",
+            0.079
+          ],
+          [
+            "Output \" of\"",
+            0.058
+          ],
+          [
+            "Output \" decon\"",
+            0.046
+          ],
+          [
+            "Output \" allergy\"",
+            0.044
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 24,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep getting oral leukoplakia in my mouth, so my dentist wants to check my",
+        "patient": "I keep getting these white spots in my mouth, so my dentist wants to check my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4441
+      },
+      "error_share": {
+        "clinical": 0.1109
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " biopsy",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" mouth\"",
+            0.163
+          ],
+          [
+            "Output \" tongue\"",
+            0.16
+          ],
+          [
+            "Output \" gums\"",
+            0.053
+          ],
+          [
+            "Output \" throat\"",
+            0.05
+          ],
+          [
+            "Output \" thyroid\"",
+            0.049
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 25,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After my night shift I experience orthostatic hypotension, so I'm wondering if I need to take my",
+        "patient": "After my night shift I feel all woozy, so I'm wondering if I need to take my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.22,
+        "patient": 0.074
+      },
+      "language_penalty": -0.14600000000000002,
+      "clinical_mass": {
+        "clinical": 0.3771,
+        "patient": 0.3041
+      },
+      "error_share": {
+        "clinical": 0.1078,
+        "patient": 0.0979
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.220)",
+        "patient": "embedding \u2192 [L19\u00b7C] terminology related to medicine, health, and nutriti \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.074)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.22
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.22
+          ],
+          [
+            "Output \" meds\"",
+            0.103
+          ],
+          [
+            "Output \" medication\"",
+            0.083
+          ],
+          [
+            "Output \" BP\"",
+            0.048
+          ],
+          [
+            "Output \" morning\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.155
+          ],
+          [
+            "Output \" blood\"",
+            0.074
+          ],
+          [
+            "Output \" medication\"",
+            0.054
+          ],
+          [
+            "Output \" iron\"",
+            0.037
+          ],
+          [
+            "Output \" morning\"",
+            0.03
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 865,
+        "unique_to_a": 511,
+        "unique_to_b": 574
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T131752Z/index_25.html",
+        "png": "trace_out/pairs_20260711T131752Z/index_25.png",
+        "diff_html": "trace_out/pairs_20260711T131752Z/index_25_diff.html",
+        "diff_png": "trace_out/pairs_20260711T131752Z/index_25_diff.png"
+      }
+    }
+  ]
+}

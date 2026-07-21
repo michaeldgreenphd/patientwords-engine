@@ -1,0 +1,416 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 36,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 36,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I experience proximal muscle weakness when I go upstairs, so I'm worried about my",
+        "patient": "My legs feel like they're filled with lead when I go upstairs, so I'm worried about my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.351
+      },
+      "error_share": {
+        "clinical": 0.0943
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " strength",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ability\"",
+            0.08
+          ],
+          [
+            "Output \" heart\"",
+            0.047
+          ],
+          [
+            "Output \" future\"",
+            0.043
+          ],
+          [
+            "Output \" balance\"",
+            0.038
+          ],
+          [
+            "Output \" health\"",
+            0.031
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 37,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing dissociation lately, so I'm worried about my",
+        "patient": "I've been feeling really spacey and disconnected lately, so I'm worried about my"
+      },
+      "target_token": "Output \" mental\"",
+      "probabilities": {
+        "clinical": 0.349,
+        "patient": 0.212
+      },
+      "language_penalty": -0.13699999999999998,
+      "clinical_mass": {
+        "clinical": 0.2467,
+        "patient": 0.1577
+      },
+      "error_share": {
+        "clinical": 0.0921,
+        "patient": 0.086
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" mental\" (p=0.349)",
+        "patient": "[L19\u00b7S]  \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" mental\" (p=0.212)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " mental",
+        "observed_clinical": [
+          "Output \" mental\"",
+          0.349
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" mental\"",
+            0.349
+          ],
+          [
+            "Output \" health\"",
+            0.061
+          ],
+          [
+            "Output \" safety\"",
+            0.047
+          ],
+          [
+            "Output \" future\"",
+            0.032
+          ],
+          [
+            "Output \" anxiety\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" mental\"",
+            0.212
+          ],
+          [
+            "Output \" health\"",
+            0.135
+          ],
+          [
+            "Output \" ability\"",
+            0.039
+          ],
+          [
+            "Output \" brain\"",
+            0.027
+          ],
+          [
+            "Output \" anxiety\"",
+            0.026
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 719,
+        "unique_to_a": 645,
+        "unique_to_b": 729
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T050657Z/index_37.html",
+        "png": "trace_out/pairs_20260710T050657Z/index_37.png",
+        "diff_html": "trace_out/pairs_20260710T050657Z/index_37_diff.html",
+        "diff_png": "trace_out/pairs_20260710T050657Z/index_37_diff.png"
+      }
+    },
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been getting nerve pain radiating down my arm, so my doctor thinks I might have a",
+        "patient": "I've been getting these shooting pains down my arm, so my doctor thinks I might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.5199
+      },
+      "error_share": {
+        "clinical": 0.0998
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " neuropathy",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pinched\"",
+            0.542
+          ],
+          [
+            "Output \" her\"",
+            0.086
+          ],
+          [
+            "Output \" nerve\"",
+            0.083
+          ],
+          [
+            "Output \" car\"",
+            0.023
+          ],
+          [
+            "Output \" problem\"",
+            0.02
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep experiencing paresthesia in my fingers when I wake up, so I should probably see a",
+        "patient": "I keep getting this weird numbness in my fingers when I wake up, so I should probably see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.314,
+        "patient": 0.14
+      },
+      "language_penalty": -0.174,
+      "clinical_mass": {
+        "clinical": 0.4001,
+        "patient": 0.3934
+      },
+      "error_share": {
+        "clinical": 0.1052,
+        "patient": 0.1004
+      },
+      "top_path": {
+        "clinical": "[L11\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.539)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.724)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.314
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.539
+          ],
+          [
+            "Output \" neuro\"",
+            0.314
+          ],
+          [
+            "Output \" doc\"",
+            0.024
+          ],
+          [
+            "Output \" specialist\"",
+            0.021
+          ],
+          [
+            "Output \" Neuro\"",
+            0.01
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.724
+          ],
+          [
+            "Output \" neuro\"",
+            0.14
+          ],
+          [
+            "Output \" doc\"",
+            0.031
+          ],
+          [
+            "Output \" specialist\"",
+            0.015
+          ],
+          [
+            "Output \" Dr\"",
+            0.009
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 799,
+        "unique_to_a": 502,
+        "unique_to_b": 436
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T050657Z/index_39.html",
+        "png": "trace_out/pairs_20260710T050657Z/index_39.png",
+        "diff_html": "trace_out/pairs_20260710T050657Z/index_39_diff.html",
+        "diff_png": "trace_out/pairs_20260710T050657Z/index_39_diff.png"
+      }
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing angina, so I really need to take my",
+        "patient": "I've been getting these terrible shooting pains in my chest, so I really need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.093,
+        "patient": 0.087
+      },
+      "language_penalty": -0.006000000000000005,
+      "clinical_mass": {
+        "clinical": 0.3984,
+        "patient": 0.3578
+      },
+      "error_share": {
+        "clinical": 0.0907,
+        "patient": 0.0879
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.111)",
+        "patient": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.049)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.093
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.111
+          ],
+          [
+            "Output \" meds\"",
+            0.103
+          ],
+          [
+            "Output \" nit\"",
+            0.094
+          ],
+          [
+            "Output \" medication\"",
+            0.093
+          ],
+          [
+            "Output \" medicine\"",
+            0.06
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.176
+          ],
+          [
+            "Output \" blood\"",
+            0.158
+          ],
+          [
+            "Output \" medication\"",
+            0.087
+          ],
+          [
+            "Output \" medicine\"",
+            0.083
+          ],
+          [
+            "Output \" heart\"",
+            0.049
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 697,
+        "unique_to_a": 609,
+        "unique_to_b": 692
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T050657Z/index_40.html",
+        "png": "trace_out/pairs_20260710T050657Z/index_40.png",
+        "diff_html": "trace_out/pairs_20260710T050657Z/index_40_diff.html",
+        "diff_png": "trace_out/pairs_20260710T050657Z/index_40_diff.png"
+      }
+    }
+  ]
+}

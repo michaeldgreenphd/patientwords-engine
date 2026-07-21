@@ -1,0 +1,416 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 21,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 21,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After I eat, I experience postprandial abdominal distention, so I should avoid my",
+        "patient": "After I eat, my stomach feels bloated and gassy, so I should avoid my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2312
+      },
+      "error_share": {
+        "clinical": 0.1072
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " trigger",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" favorite\"",
+            0.171
+          ],
+          [
+            "Output \" meals\"",
+            0.137
+          ],
+          [
+            "Output \" meal\"",
+            0.091
+          ],
+          [
+            "Output \" evening\"",
+            0.055
+          ],
+          [
+            "Output \" usual\"",
+            0.05
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have recurrent migraines, so I need to take my",
+        "patient": "I keep getting these awful migraines that knock me out, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.202,
+        "patient": 0.094
+      },
+      "language_penalty": -0.10800000000000001,
+      "clinical_mass": {
+        "clinical": 0.4178,
+        "patient": 0.3036
+      },
+      "error_share": {
+        "clinical": 0.0905,
+        "patient": 0.0968
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" migraine\" (p=0.121)",
+        "patient": "embedding \u2192 Output \" migraine\" (p=0.053)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.202
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" medication\"",
+            0.202
+          ],
+          [
+            "Output \" migraine\"",
+            0.121
+          ],
+          [
+            "Output \" meds\"",
+            0.109
+          ],
+          [
+            "Output \" medicine\"",
+            0.095
+          ],
+          [
+            "Output \" medications\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.141
+          ],
+          [
+            "Output \" medication\"",
+            0.094
+          ],
+          [
+            "Output \" medicine\"",
+            0.093
+          ],
+          [
+            "Output \" migraine\"",
+            0.053
+          ],
+          [
+            "Output \" blood\"",
+            0.038
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 792,
+        "unique_to_a": 367,
+        "unique_to_b": 543
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_22.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_22.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_22_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_22_diff.png"
+      }
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing cognitive impairment, so I should probably get my",
+        "patient": "I've been feeling really foggy and out of it lately, so I should probably get my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2519
+      },
+      "error_share": {
+        "clinical": 0.0912
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " cognition",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" brain\"",
+            0.17
+          ],
+          [
+            "Output \" head\"",
+            0.159
+          ],
+          [
+            "Output \" blood\"",
+            0.111
+          ],
+          [
+            "Output \" memory\"",
+            0.046
+          ],
+          [
+            "Output \" eyes\"",
+            0.039
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 24,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have nocturia, so I should probably talk to a",
+        "patient": "I've been having these awful bathroom issues at night, so I should probably talk to a"
+      },
+      "target_token": "Output \" uro\"",
+      "probabilities": {
+        "clinical": 0.258,
+        "patient": 0.027
+      },
+      "language_penalty": -0.231,
+      "clinical_mass": {
+        "clinical": 0.3937,
+        "patient": 0.2657
+      },
+      "error_share": {
+        "clinical": 0.0961,
+        "patient": 0.0979
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.451)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.700)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " urologist",
+        "observed_clinical": [
+          "Output \" uro\"",
+          0.258
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.451
+          ],
+          [
+            "Output \" uro\"",
+            0.258
+          ],
+          [
+            "Output \" doc\"",
+            0.067
+          ],
+          [
+            "Output \" specialist\"",
+            0.031
+          ],
+          [
+            "Output \" Dr\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.7
+          ],
+          [
+            "Output \" doc\"",
+            0.032
+          ],
+          [
+            "Output \" Dr\"",
+            0.028
+          ],
+          [
+            "Output \" uro\"",
+            0.027
+          ],
+          [
+            "Output \" specialist\"",
+            0.018
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 508,
+        "unique_to_a": 790,
+        "unique_to_b": 710
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_24.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_24.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_24_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_24_diff.png"
+      }
+    },
+    {
+      "index": 25,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have anemia, so my doctor ordered some",
+        "patient": "I've been getting really pale and tired all the time, so my doctor ordered some"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.359,
+        "patient": 0.727
+      },
+      "language_penalty": 0.368,
+      "clinical_mass": {
+        "clinical": 0.4523,
+        "patient": 0.36
+      },
+      "error_share": {
+        "clinical": 0.0951,
+        "patient": 0.0938
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.359)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 [L19\u00b7C] words related to medical tests and procedures | labo \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.727)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " bloodwork",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.359
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.359
+          ],
+          [
+            "Output \" iron\"",
+            0.174
+          ],
+          [
+            "Output \" tests\"",
+            0.11
+          ],
+          [
+            "Output \" lab\"",
+            0.029
+          ],
+          [
+            "Output \" vitamin\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.727
+          ],
+          [
+            "Output \" tests\"",
+            0.107
+          ],
+          [
+            "Output \" lab\"",
+            0.041
+          ],
+          [
+            "Output \" labs\"",
+            0.024
+          ],
+          [
+            "Output \" vitamin\"",
+            0.009
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 633,
+        "unique_to_a": 587,
+        "unique_to_b": 742
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_25.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_25.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_25_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_25_diff.png"
+      }
+    }
+  ]
+}

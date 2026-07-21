@@ -1,0 +1,459 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 11,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have cognitive impairment, so I need to get my",
+        "patient": "I feel like my brain is in a fog, so I need to get my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1849
+      },
+      "error_share": {
+        "clinical": 0.0829
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " cognition",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hands\"",
+            0.059
+          ],
+          [
+            "Output \" medication\"",
+            0.051
+          ],
+          [
+            "Output \" thoughts\"",
+            0.039
+          ],
+          [
+            "Output \" meds\"",
+            0.037
+          ],
+          [
+            "Output \" head\"",
+            0.037
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have tremor, so I should see a",
+        "patient": "My hands shake like a leaf in the wind, so I should see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.386,
+        "patient": 0.055
+      },
+      "language_penalty": -0.331,
+      "clinical_mass": {
+        "clinical": 0.3876,
+        "patient": 0.27
+      },
+      "error_share": {
+        "clinical": 0.0964,
+        "patient": 0.0928
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.121)",
+        "patient": "embedding \u2192 Output \" hand\" (p=0.031)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.386
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neuro\"",
+            0.386
+          ],
+          [
+            "Output \" doctor\"",
+            0.121
+          ],
+          [
+            "Output \" specialist\"",
+            0.08
+          ],
+          [
+            "Output \" hand\"",
+            0.046
+          ],
+          [
+            "Output \" Neuro\"",
+            0.035
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.623
+          ],
+          [
+            "Output \" therapist\"",
+            0.083
+          ],
+          [
+            "Output \" neuro\"",
+            0.055
+          ],
+          [
+            "Output \" hand\"",
+            0.031
+          ],
+          [
+            "Output \" specialist\"",
+            0.022
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 462,
+        "unique_to_a": 719,
+        "unique_to_b": 693
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_12.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_12.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_12_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_12_diff.png"
+      }
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have chronic cough, so I'm taking an",
+        "patient": "I've been coughing my lungs out for weeks, so I'm taking an"
+      },
+      "target_token": "Output \" exp\"",
+      "probabilities": {
+        "clinical": 0.074,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4731,
+        "patient": 0.2996
+      },
+      "error_share": {
+        "clinical": 0.0875,
+        "patient": 0.0861
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" inhal\" (p=0.109)",
+        "patient": "embedding \u2192 Output \" over\" (p=0.047)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " expectorant",
+        "observed_clinical": [
+          "Output \" exp\"",
+          0.074
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.289
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.111
+          ],
+          [
+            "Output \" inhal\"",
+            0.109
+          ],
+          [
+            "Output \" over\"",
+            0.076
+          ],
+          [
+            "Output \" exp\"",
+            0.074
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" antibiotic\"",
+            0.181
+          ],
+          [
+            "Output \" extra\"",
+            0.16
+          ],
+          [
+            "Output \" anti\"",
+            0.087
+          ],
+          [
+            "Output \" over\"",
+            0.047
+          ],
+          [
+            "Output \" extended\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 670,
+        "unique_to_a": 501,
+        "unique_to_b": 588
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_13.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_13.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_13_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_13_diff.png"
+      }
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After I eat high-fat food, my stomach gets angry at me, so my",
+        "patient": "After I eat greasy food, my stomach gets angry at me, so my"
+      },
+      "target_token": "Output \" diet\"",
+      "probabilities": {
+        "clinical": 0.027,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3101,
+        "patient": 0.3083
+      },
+      "error_share": {
+        "clinical": 0.0962,
+        "patient": 0.1028
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7C] words and phrases related to gut bacteria, digestion \u2192 [L25\u00b7C] content from scientific or medical papers. | gut hea \u2192 Output \" stomach\" (p=0.237)",
+        "patient": "embedding \u2192 Output \" stomach\" (p=0.320)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " diet",
+        "observed_clinical": [
+          "Output \" diet\"",
+          0.027
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" stomach\"",
+            0.237
+          ],
+          [
+            "Output \" body\"",
+            0.098
+          ],
+          [
+            "Output \" doctor\"",
+            0.087
+          ],
+          [
+            "Output \" diet\"",
+            0.027
+          ],
+          [
+            "Output \" skin\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" stomach\"",
+            0.32
+          ],
+          [
+            "Output \" doctor\"",
+            0.085
+          ],
+          [
+            "Output \" body\"",
+            0.078
+          ],
+          [
+            "Output \" skin\"",
+            0.037
+          ],
+          [
+            "Output \" face\"",
+            0.025
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 980,
+        "unique_to_a": 284,
+        "unique_to_b": 235
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_14.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_14.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_14_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_14_diff.png"
+      }
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I'm stressed out at work, my muscles are tense, so I need a",
+        "patient": "When I'm stressed out at work, my whole body goes tight, so I need a"
+      },
+      "target_token": "Output \" massage\"",
+      "probabilities": {
+        "clinical": 0.272,
+        "patient": 0.139
+      },
+      "language_penalty": -0.133,
+      "clinical_mass": {
+        "clinical": 0.2084,
+        "patient": 0.1855
+      },
+      "error_share": {
+        "clinical": 0.0958,
+        "patient": 0.0894
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7O] way | phrases containing the word \"way\" that express \u2192 [L21\u00b7O] generic words and phrases such as \"way to\", \"are\", \" \u2192 Output \" way\" (p=0.083)",
+        "patient": "embedding \u2192 [L17\u00b7O] way | phrases containing the word \"way\" that express \u2192 [L21\u00b7O] generic words and phrases such as \"way to\", \"are\", \" \u2192 Output \" way\" (p=0.145)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " massage",
+        "observed_clinical": [
+          "Output \" massage\"",
+          0.272
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" massage\"",
+            0.272
+          ],
+          [
+            "Output \" good\"",
+            0.2
+          ],
+          [
+            "Output \" way\"",
+            0.083
+          ],
+          [
+            "Output \" deep\"",
+            0.034
+          ],
+          [
+            "Output \" relaxing\"",
+            0.033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" way\"",
+            0.145
+          ],
+          [
+            "Output \" massage\"",
+            0.139
+          ],
+          [
+            "Output \" good\"",
+            0.134
+          ],
+          [
+            "Output \" quick\"",
+            0.045
+          ],
+          [
+            "Output \" little\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1016,
+        "unique_to_a": 385,
+        "unique_to_b": 461
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T011743Z/index_15.html",
+        "png": "trace_out/pairs_20260710T011743Z/index_15.png",
+        "diff_html": "trace_out/pairs_20260710T011743Z/index_15_diff.html",
+        "diff_png": "trace_out/pairs_20260710T011743Z/index_15_diff.png"
+      }
+    }
+  ]
+}

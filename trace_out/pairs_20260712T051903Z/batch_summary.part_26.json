@@ -1,0 +1,416 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 26,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have dementia, so I should probably get my",
+        "patient": "I feel like I'm losing my marbles lately, so I should probably get my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1516
+      },
+      "error_share": {
+        "clinical": 0.0868
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " memory",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" affairs\"",
+            0.204
+          ],
+          [
+            "Output \" head\"",
+            0.1
+          ],
+          [
+            "Output \" facts\"",
+            0.089
+          ],
+          [
+            "Output \" own\"",
+            0.053
+          ],
+          [
+            "Output \" act\"",
+            0.034
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 27,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing orthostatic hypotension, so I need to check my",
+        "patient": "I've been feeling woozy when I stand up fast, so I need to check my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.645,
+        "patient": 0.522
+      },
+      "language_penalty": -0.123,
+      "clinical_mass": {
+        "clinical": 0.3437,
+        "patient": 0.2847
+      },
+      "error_share": {
+        "clinical": 0.1085,
+        "patient": 0.101
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.645)",
+        "patient": "embedding \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.522)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.645
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.645
+          ],
+          [
+            "Output \" BP\"",
+            0.139
+          ],
+          [
+            "Output \" pulse\"",
+            0.036
+          ],
+          [
+            "Output \" heart\"",
+            0.033
+          ],
+          [
+            "Output \" bp\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.522
+          ],
+          [
+            "Output \" BP\"",
+            0.156
+          ],
+          [
+            "Output \" heart\"",
+            0.043
+          ],
+          [
+            "Output \" pulse\"",
+            0.029
+          ],
+          [
+            "Output \" vit\"",
+            0.019
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 550,
+        "unique_to_a": 740,
+        "unique_to_b": 925
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_27.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_27.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_27_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_27_diff.png"
+      }
+    },
+    {
+      "index": 28,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing cognitive impairment in the mornings, so my boss thinks I need to see a",
+        "patient": "I've been feeling a bit foggy in the mornings, so my boss thinks I need to see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.181,
+        "patient": 0.102
+      },
+      "language_penalty": -0.079,
+      "clinical_mass": {
+        "clinical": 0.3778,
+        "patient": 0.3207
+      },
+      "error_share": {
+        "clinical": 0.0967,
+        "patient": 0.0965
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.551)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.650)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.181
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.551
+          ],
+          [
+            "Output \" neuro\"",
+            0.181
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.056
+          ],
+          [
+            "Output \" specialist\"",
+            0.024
+          ],
+          [
+            "Output \" Dr\"",
+            0.022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.65
+          ],
+          [
+            "Output \" neuro\"",
+            0.102
+          ],
+          [
+            "Output \" specialist\"",
+            0.029
+          ],
+          [
+            "Output \" doc\"",
+            0.026
+          ],
+          [
+            "Output \" Dr\"",
+            0.024
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 864,
+        "unique_to_a": 469,
+        "unique_to_b": 480
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_28.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_28.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_28_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_28_diff.png"
+      }
+    },
+    {
+      "index": 29,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing paresthesia in my feet, so I should probably get my",
+        "patient": "I've been getting these weird tingles in my feet, so I should probably get my"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.357
+      },
+      "error_share": {
+        "clinical": 0.1053
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " nerves",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.217
+          ],
+          [
+            "Output \" feet\"",
+            0.2
+          ],
+          [
+            "Output \" thyroid\"",
+            0.124
+          ],
+          [
+            "Output \" vitamin\"",
+            0.059
+          ],
+          [
+            "Output \" vit\"",
+            0.022
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 30,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing dyspnea on exertion, so I might have a",
+        "patient": "I've been having trouble catching my breath when I walk upstairs, so I might have a"
+      },
+      "target_token": "Output \" heart\"",
+      "probabilities": {
+        "clinical": 0.129,
+        "patient": 0.065
+      },
+      "language_penalty": -0.064,
+      "clinical_mass": {
+        "clinical": 0.4132,
+        "patient": 0.2754
+      },
+      "error_share": {
+        "clinical": 0.1013,
+        "patient": 0.0916
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" pulmonary\" (p=0.087)",
+        "patient": "embedding \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" lung\" (p=0.057)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " heart",
+        "observed_clinical": [
+          "Output \" heart\"",
+          0.129
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" heart\"",
+            0.129
+          ],
+          [
+            "Output \" pulmonary\"",
+            0.087
+          ],
+          [
+            "Output \" little\"",
+            0.064
+          ],
+          [
+            "Output \" mild\"",
+            0.056
+          ],
+          [
+            "Output \" lung\"",
+            0.05
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" problem\"",
+            0.127
+          ],
+          [
+            "Output \" little\"",
+            0.095
+          ],
+          [
+            "Output \" heart\"",
+            0.065
+          ],
+          [
+            "Output \" lung\"",
+            0.057
+          ],
+          [
+            "Output \" mild\"",
+            0.055
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 694,
+        "unique_to_a": 646,
+        "unique_to_b": 772
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260712T051903Z/index_30.html",
+        "png": "trace_out/pairs_20260712T051903Z/index_30.png",
+        "diff_html": "trace_out/pairs_20260712T051903Z/index_30_diff.html",
+        "diff_png": "trace_out/pairs_20260712T051903Z/index_30_diff.png"
+      }
+    }
+  ]
+}

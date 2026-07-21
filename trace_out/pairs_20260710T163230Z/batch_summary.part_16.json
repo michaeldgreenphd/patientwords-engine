@@ -1,0 +1,502 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 16,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have angina when walking, so I really should see a",
+        "patient": "I've been getting these sharp pains in my chest when walking, so I really should see a"
+      },
+      "target_token": "Output \" cardio\"",
+      "probabilities": {
+        "clinical": 0.353,
+        "patient": 0.058
+      },
+      "language_penalty": -0.295,
+      "clinical_mass": {
+        "clinical": 0.4261,
+        "patient": 0.4174
+      },
+      "error_share": {
+        "clinical": 0.0958,
+        "patient": 0.0961
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.033)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.799)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cardiologist",
+        "observed_clinical": [
+          "Output \" cardio\"",
+          0.353
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cardio\"",
+            0.353
+          ],
+          [
+            "Output \" doctor\"",
+            0.325
+          ],
+          [
+            "Output \" GP\"",
+            0.064
+          ],
+          [
+            "Output \" doc\"",
+            0.059
+          ],
+          [
+            "Output \" heart\"",
+            0.033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.799
+          ],
+          [
+            "Output \" cardio\"",
+            0.058
+          ],
+          [
+            "Output \" doc\"",
+            0.046
+          ],
+          [
+            "Output \" Dr\"",
+            0.018
+          ],
+          [
+            "Output \" dr\"",
+            0.014
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 597,
+        "unique_to_a": 571,
+        "unique_to_b": 619
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_16.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_16.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_16_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_16_diff.png"
+      }
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have orthostatic hypotension, so I wonder if I should take an",
+        "patient": "I've been feeling really lightheaded, so I wonder if I should take an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.196,
+        "patient": 0.08
+      },
+      "language_penalty": -0.116,
+      "clinical_mass": {
+        "clinical": 0.3403,
+        "patient": 0.2962
+      },
+      "error_share": {
+        "clinical": 0.0965,
+        "patient": 0.0863
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.048)",
+        "patient": "embedding \u2192 Output \" over\" (p=0.056)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antihistamine",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.196
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.196
+          ],
+          [
+            "Output \" extra\"",
+            0.092
+          ],
+          [
+            "Output \" aspirin\"",
+            0.051
+          ],
+          [
+            "Output \" over\"",
+            0.048
+          ],
+          [
+            "Output \" ACE\"",
+            0.047
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" aspirin\"",
+            0.125
+          ],
+          [
+            "Output \" anti\"",
+            0.08
+          ],
+          [
+            "Output \" extra\"",
+            0.068
+          ],
+          [
+            "Output \" iron\"",
+            0.062
+          ],
+          [
+            "Output \" over\"",
+            0.056
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 651,
+        "unique_to_a": 655,
+        "unique_to_b": 827
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_17.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_17.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_17_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have chronic fatigue, so I think I need to see a",
+        "patient": "I've been feeling really tired all the time, so I think I need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.438,
+        "patient": 0.799
+      },
+      "language_penalty": 0.36100000000000004,
+      "clinical_mass": {
+        "clinical": 0.431,
+        "patient": 0.3499
+      },
+      "error_share": {
+        "clinical": 0.0889,
+        "patient": 0.0836
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.438)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.799)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.438
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.438
+          ],
+          [
+            "Output \" specialist\"",
+            0.118
+          ],
+          [
+            "Output \" neuro\"",
+            0.08
+          ],
+          [
+            "Output \" rhe\"",
+            0.026
+          ],
+          [
+            "Output \" sleep\"",
+            0.022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.799
+          ],
+          [
+            "Output \" GP\"",
+            0.041
+          ],
+          [
+            "Output \" doc\"",
+            0.024
+          ],
+          [
+            "Output \" Dr\"",
+            0.022
+          ],
+          [
+            "Output \" dr\"",
+            0.019
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 619,
+        "unique_to_a": 573,
+        "unique_to_b": 512
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_18.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_18.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_18_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have paresthesia, so I wonder if I should take an",
+        "patient": "My hands keep going numb during the night, so I wonder if I should take an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.297,
+        "patient": 0.358
+      },
+      "language_penalty": 0.061,
+      "clinical_mass": {
+        "clinical": 0.3228,
+        "patient": 0.3124
+      },
+      "error_share": {
+        "clinical": 0.0974,
+        "patient": 0.0858
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.037)",
+        "patient": "embedding \u2192 Output \" over\" (p=0.051)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " anticonvulsant",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.297
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.297
+          ],
+          [
+            "Output \" aspirin\"",
+            0.069
+          ],
+          [
+            "Output \" MRI\"",
+            0.052
+          ],
+          [
+            "Output \" antidepress\"",
+            0.046
+          ],
+          [
+            "Output \" over\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.358
+          ],
+          [
+            "Output \" aspirin\"",
+            0.055
+          ],
+          [
+            "Output \" over\"",
+            0.051
+          ],
+          [
+            "Output \" ibuprofen\"",
+            0.039
+          ],
+          [
+            "Output \" extra\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 587,
+        "unique_to_a": 772,
+        "unique_to_b": 826
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_19.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_19.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_19_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_19_diff.png"
+      }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have food intolerance, so my doctor says I need to watch my",
+        "patient": "I've been feeling out of it after eating certain foods, so my doctor says I need to watch my"
+      },
+      "target_token": "Output \" diet\"",
+      "probabilities": {
+        "clinical": 0.175,
+        "patient": 0.229
+      },
+      "language_penalty": 0.05400000000000002,
+      "clinical_mass": {
+        "clinical": 0.2996,
+        "patient": 0.2658
+      },
+      "error_share": {
+        "clinical": 0.0887,
+        "patient": 0.0956
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] sentences about the effects of diet on health, inclu \u2192 Output \" diet\" (p=0.175)",
+        "patient": "embedding \u2192 [L24\u00b7O] passages discussing nutrition, diet, and micronutrie \u2192 Output \" diet\" (p=0.229)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " diet",
+        "observed_clinical": [
+          "Output \" diet\"",
+          0.175
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" diet\"",
+            0.175
+          ],
+          [
+            "Output \" sugar\"",
+            0.113
+          ],
+          [
+            "Output \" intake\"",
+            0.077
+          ],
+          [
+            "Output \" dairy\"",
+            0.066
+          ],
+          [
+            "Output \" sodium\"",
+            0.064
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" diet\"",
+            0.229
+          ],
+          [
+            "Output \" sodium\"",
+            0.081
+          ],
+          [
+            "Output \" intake\"",
+            0.071
+          ],
+          [
+            "Output \" sugar\"",
+            0.066
+          ],
+          [
+            "Output \" salt\"",
+            0.047
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 616,
+        "unique_to_a": 703,
+        "unique_to_b": 773
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_20.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_20.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_20_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_20_diff.png"
+      }
+    }
+  ]
+}

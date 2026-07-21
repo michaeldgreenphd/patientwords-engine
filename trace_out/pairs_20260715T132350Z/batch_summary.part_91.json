@@ -1,0 +1,696 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 91,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 91,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have bacterial vaginosis, so I should probably take my",
+        "patient": "My partner's been complaining about a funny smell down there, so I should probably take my"
+      },
+      "target_token": "Output \" antibiotics\"",
+      "probabilities": {
+        "clinical": 0.13,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3773,
+        "patient": 0.1051
+      },
+      "error_share": {
+        "clinical": 0.1085,
+        "patient": 0.0967
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.048)",
+        "patient": "embedding \u2192 [L21\u00b7S] the word \"in\" surrounding pronouns and possessive no \u2192 Output \" turn\" (p=0.049)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antibiotics",
+        "observed_clinical": [
+          "Output \" antibiotics\"",
+          0.13
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" antibiotics\"",
+            0.13
+          ],
+          [
+            "Output \" probiotics\"",
+            0.115
+          ],
+          [
+            "Output \" probiotic\"",
+            0.054
+          ],
+          [
+            "Output \" meds\"",
+            0.048
+          ],
+          [
+            "Output \" own\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" own\"",
+            0.221
+          ],
+          [
+            "Output \" pants\"",
+            0.081
+          ],
+          [
+            "Output \" shirt\"",
+            0.049
+          ],
+          [
+            "Output \" turn\"",
+            0.049
+          ],
+          [
+            "Output \" clothes\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 460,
+        "unique_to_a": 862,
+        "unique_to_b": 907
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_91.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_91.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_91_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_91_diff.png"
+      }
+    },
+    {
+      "index": 92,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have bacterial conjunctivitis, so I need to pick up some",
+        "patient": "My eye's been all stuck shut with gunk in the morning and it's really red, so I need to pick up some"
+      },
+      "target_token": "Output \" drops\"",
+      "probabilities": {
+        "clinical": 0.197,
+        "patient": 0.136
+      },
+      "language_penalty": -0.061,
+      "clinical_mass": {
+        "clinical": 0.4179,
+        "patient": 0.2656
+      },
+      "error_share": {
+        "clinical": 0.1043,
+        "patient": 0.106
+      },
+      "top_path": {
+        "clinical": "[L24\u00b7S]  \u2192 [L25\u00b7S] words related to liquids and dropping, as well as so \u2192 Output \" drops\" (p=0.197)",
+        "patient": "embedding \u2192 Output \" eye\" (p=0.369)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " drops",
+        "observed_clinical": [
+          "Output \" drops\"",
+          0.197
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" eye\"",
+            0.254
+          ],
+          [
+            "Output \" drops\"",
+            0.197
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.175
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.083
+          ],
+          [
+            "Output \" ointment\"",
+            0.034
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" eye\"",
+            0.369
+          ],
+          [
+            "Output \" drops\"",
+            0.136
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.044
+          ],
+          [
+            "Output \" ointment\"",
+            0.044
+          ],
+          [
+            "Output \" artificial\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 491,
+        "unique_to_a": 684,
+        "unique_to_b": 943
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_92.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_92.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_92_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_92_diff.png"
+      }
+    },
+    {
+      "index": 93,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have amenorrhea for two months now, so I might need to take a",
+        "patient": "I haven't had my period for two months now, so I might need to take a"
+      },
+      "target_token": "Output \" pregnancy\"",
+      "probabilities": {
+        "clinical": 0.309,
+        "patient": 0.742
+      },
+      "language_penalty": 0.433,
+      "clinical_mass": {
+        "clinical": 0.3269,
+        "patient": 0.3061
+      },
+      "error_share": {
+        "clinical": 0.101,
+        "patient": 0.0975
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] language found in technical documents | test, tests, \u2192 [L21\u00b7O] words and phrases related to software testing and sc \u2192 [L22\u00b7O] the word 'test' in certain contexts | Code testing \u2192 Output \" test\" (p=0.146)",
+        "patient": "[L17\u00b7S]  \u2192 [L19\u00b7O] language found in technical documents | test, tests, \u2192 [L21\u00b7O] words and phrases related to software testing and sc \u2192 [L22\u00b7O] the word 'test' in certain contexts | Code testing \u2192 Output \" test\" (p=0.165)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " pregnancy",
+        "observed_clinical": [
+          "Output \" pregnancy\"",
+          0.309
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pregnancy\"",
+            0.309
+          ],
+          [
+            "Output \" test\"",
+            0.146
+          ],
+          [
+            "Output \" break\"",
+            0.088
+          ],
+          [
+            "Output \" blood\"",
+            0.078
+          ],
+          [
+            "Output \" pill\"",
+            0.061
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pregnancy\"",
+            0.742
+          ],
+          [
+            "Output \" test\"",
+            0.165
+          ],
+          [
+            "Output \" home\"",
+            0.025
+          ],
+          [
+            "Output \" blood\"",
+            0.006
+          ],
+          [
+            "Output \" trip\"",
+            0.006
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 592,
+        "unique_to_a": 814,
+        "unique_to_b": 590
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_93.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_93.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_93_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_93_diff.png"
+      }
+    },
+    {
+      "index": 94,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have ocular pain with foreign body sensation, so I need to see an",
+        "patient": "My eye's been really painful and I've got this gritty feeling in there, so I need to see an"
+      },
+      "target_token": "Output \" ophthal\"",
+      "probabilities": {
+        "clinical": 0.285,
+        "patient": 0.06
+      },
+      "language_penalty": -0.22499999999999998,
+      "clinical_mass": {
+        "clinical": 0.4497,
+        "patient": 0.3336
+      },
+      "error_share": {
+        "clinical": 0.0974,
+        "patient": 0.097
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" eye\" (p=0.252)",
+        "patient": "embedding \u2192 Output \" eye\" (p=0.303)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " ophthalmologist",
+        "observed_clinical": [
+          "Output \" ophthal\"",
+          0.285
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ophthal\"",
+            0.285
+          ],
+          [
+            "Output \" eye\"",
+            0.252
+          ],
+          [
+            "Output \" op\"",
+            0.153
+          ],
+          [
+            "Output \" opto\"",
+            0.135
+          ],
+          [
+            "Output \" Ophthal\"",
+            0.03
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" op\"",
+            0.389
+          ],
+          [
+            "Output \" eye\"",
+            0.303
+          ],
+          [
+            "Output \" opto\"",
+            0.184
+          ],
+          [
+            "Output \" ophthal\"",
+            0.06
+          ],
+          [
+            "Output \" Ophthal\"",
+            0.01
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 541,
+        "unique_to_a": 619,
+        "unique_to_b": 628
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_94.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_94.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_94_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_94_diff.png"
+      }
+    },
+    {
+      "index": 95,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have oral thrush with a metallic taste, so I might have an",
+        "patient": "I've got this nasty white coating all over my tongue and my mouth tastes funny, so I might have an"
+      },
+      "target_token": "Output \" infection\"",
+      "probabilities": {
+        "clinical": 0.131,
+        "patient": 0.676
+      },
+      "language_penalty": 0.545,
+      "clinical_mass": {
+        "clinical": 0.3624,
+        "patient": 0.3924
+      },
+      "error_share": {
+        "clinical": 0.0937,
+        "patient": 0.1056
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" idea\" (p=0.090)",
+        "patient": "[L23\u00b7S]  \u2192 [L24\u00b7C] words related to disease and infection in a scientif \u2192 Output \" infection\" (p=0.676)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " infection",
+        "observed_clinical": [
+          "Output \" infection\"",
+          0.131
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" issue\"",
+            0.169
+          ],
+          [
+            "Output \" infection\"",
+            0.131
+          ],
+          [
+            "Output \" idea\"",
+            0.09
+          ],
+          [
+            "Output \" allergy\"",
+            0.055
+          ],
+          [
+            "Output \" oral\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" infection\"",
+            0.676
+          ],
+          [
+            "Output \" oral\"",
+            0.081
+          ],
+          [
+            "Output \" ulcer\"",
+            0.049
+          ],
+          [
+            "Output \" issue\"",
+            0.026
+          ],
+          [
+            "Output \" allergy\"",
+            0.012
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 565,
+        "unique_to_a": 764,
+        "unique_to_b": 827
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_95.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_95.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_95_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_95_diff.png"
+      }
+    },
+    {
+      "index": 96,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have pyrexia with myalgia, so I might need to take an",
+        "patient": "I've been getting a fever and my body aches all over, so I might need to take an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.297,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3694,
+        "patient": 0.2144
+      },
+      "error_share": {
+        "clinical": 0.1029,
+        "patient": 0.0936
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7O] the word \"taken\" and words/phrases around it, especi \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L22\u00b7C] sentences related to drug use | medications \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.297)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" afternoon\" (p=0.033)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antibiotic",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.297
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.297
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.109
+          ],
+          [
+            "Output \" extra\"",
+            0.059
+          ],
+          [
+            "Output \" aspirin\"",
+            0.059
+          ],
+          [
+            "Output \" NSA\"",
+            0.052
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" extended\"",
+            0.193
+          ],
+          [
+            "Output \" early\"",
+            0.17
+          ],
+          [
+            "Output \" extra\"",
+            0.133
+          ],
+          [
+            "Output \" entire\"",
+            0.038
+          ],
+          [
+            "Output \" afternoon\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 541,
+        "unique_to_a": 892,
+        "unique_to_b": 810
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_96.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_96.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_96_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_96_diff.png"
+      }
+    },
+    {
+      "index": 97,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have purulent exudate with periorbital edema, so I need to pick up some",
+        "patient": "I've got this sticky discharge and my eye's really puffy, so I need to pick up some"
+      },
+      "target_token": "Output \" antibiotics\"",
+      "probabilities": {
+        "clinical": 0.183,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4389,
+        "patient": 0.2995
+      },
+      "error_share": {
+        "clinical": 0.1165,
+        "patient": 0.1029
+      },
+      "top_path": {
+        "clinical": "[L3\u00b7S]  \u2192 [L4\u00b7C] words and phrases related to eyesight and eye diseas \u2192 [L25\u00b7C] mentions of eyes, studies, patients, and medical ana \u2192 Output \" eye\" (p=0.076)",
+        "patient": "embedding \u2192 Output \" eye\" (p=0.330)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antibiotics",
+        "observed_clinical": [
+          "Output \" antibiotics\"",
+          0.183
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" antibiotics\"",
+            0.183
+          ],
+          [
+            "Output \" eye\"",
+            0.076
+          ],
+          [
+            "Output \" anti\"",
+            0.052
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.052
+          ],
+          [
+            "Output \" medicine\"",
+            0.046
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" eye\"",
+            0.33
+          ],
+          [
+            "Output \" new\"",
+            0.057
+          ],
+          [
+            "Output \" more\"",
+            0.039
+          ],
+          [
+            "Output \" allergy\"",
+            0.039
+          ],
+          [
+            "Output \" cold\"",
+            0.027
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 534,
+        "unique_to_a": 838,
+        "unique_to_b": 883
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_97.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_97.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_97_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_97_diff.png"
+      }
+    }
+  ]
+}

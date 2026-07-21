@@ -1,0 +1,470 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 11,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm experiencing paresthesia, so I might have a",
+        "patient": "My fingers keep going numb and tingly, so I might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1827
+      },
+      "error_share": {
+        "clinical": 0.1001
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " condition",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hard\"",
+            0.134
+          ],
+          [
+            "Output \" bit\"",
+            0.081
+          ],
+          [
+            "Output \" little\"",
+            0.081
+          ],
+          [
+            "Output \" few\"",
+            0.063
+          ],
+          [
+            "Output \" problem\"",
+            0.049
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have increased urinary frequency, so my doctor thinks I have a",
+        "patient": "I'm always rushing to the bathroom, so my doctor thinks I have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4588
+      },
+      "error_share": {
+        "clinical": 0.1037
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " condition",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" UTI\"",
+            0.344
+          ],
+          [
+            "Output \" urinary\"",
+            0.185
+          ],
+          [
+            "Output \" bladder\"",
+            0.185
+          ],
+          [
+            "Output \" kidney\"",
+            0.06
+          ],
+          [
+            "Output \" uti\"",
+            0.025
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have cognitive impairment, so I need to take my",
+        "patient": "I'm feeling really foggy in my head, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.138,
+        "patient": 0.084
+      },
+      "language_penalty": -0.054000000000000006,
+      "clinical_mass": {
+        "clinical": 0.2437,
+        "patient": 0.1962
+      },
+      "error_share": {
+        "clinical": 0.0893,
+        "patient": 0.088
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.057)",
+        "patient": "[L19\u00b7S]  \u2192 [L20\u00b7O] instances where someone changes their mind or story  \u2192 [L25\u00b7O] the word \"mind\" or the letter 't' following an apost \u2192 Output \" brain\" (p=0.065)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.138
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" time\"",
+            0.227
+          ],
+          [
+            "Output \" meds\"",
+            0.156
+          ],
+          [
+            "Output \" medication\"",
+            0.138
+          ],
+          [
+            "Output \" medications\"",
+            0.074
+          ],
+          [
+            "Output \" own\"",
+            0.057
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.258
+          ],
+          [
+            "Output \" mind\"",
+            0.108
+          ],
+          [
+            "Output \" medicine\"",
+            0.084
+          ],
+          [
+            "Output \" medication\"",
+            0.084
+          ],
+          [
+            "Output \" brain\"",
+            0.065
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 605,
+        "unique_to_a": 633,
+        "unique_to_b": 734
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_13.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_13.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_13_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_13_diff.png"
+      }
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have biliary dysfunction when I eat fatty foods, so I might have a",
+        "patient": "My stomach is doing flips when I eat fatty foods, so I might have a"
+      },
+      "target_token": "Output \" problem\"",
+      "probabilities": {
+        "clinical": 0.084,
+        "patient": 0.088
+      },
+      "language_penalty": 0.00399999999999999,
+      "clinical_mass": {
+        "clinical": 0.259,
+        "patient": 0.313
+      },
+      "error_share": {
+        "clinical": 0.0948,
+        "patient": 0.1007
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] phrases of the form \"a little\" | little \u2192 Output \" little\" (p=0.096)",
+        "patient": "embedding \u2192 [L25\u00b7O] phrases of the form \"a little\" | little \u2192 Output \" little\" (p=0.077)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " problem",
+        "observed_clinical": [
+          "Output \" problem\"",
+          0.084
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" similar\"",
+            0.123
+          ],
+          [
+            "Output \" little\"",
+            0.096
+          ],
+          [
+            "Output \" problem\"",
+            0.084
+          ],
+          [
+            "Output \" bit\"",
+            0.075
+          ],
+          [
+            "Output \" different\"",
+            0.045
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" problem\"",
+            0.088
+          ],
+          [
+            "Output \" little\"",
+            0.077
+          ],
+          [
+            "Output \" bit\"",
+            0.06
+          ],
+          [
+            "Output \" sensitivity\"",
+            0.053
+          ],
+          [
+            "Output \" sensitive\"",
+            0.053
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 661,
+        "unique_to_a": 605,
+        "unique_to_b": 747
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_14.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_14.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_14_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_14_diff.png"
+      }
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have dementia, so I should talk to a",
+        "patient": "I feel like I'm losing my marbles lately, so I should talk to a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.062,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2699,
+        "patient": 0.2119
+      },
+      "error_share": {
+        "clinical": 0.0911,
+        "patient": 0.0922
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.316)",
+        "patient": "embedding \u2192 [L6\u00b7C] words and phrases relating to mental health and ment \u2192 [L17\u00b7C] mentions of insanity, mental illness, or being adjud \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" psychiatrist\" (p=0.101)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.062
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.316
+          ],
+          [
+            "Output \" specialist\"",
+            0.103
+          ],
+          [
+            "Output \" professional\"",
+            0.08
+          ],
+          [
+            "Output \" neuro\"",
+            0.062
+          ],
+          [
+            "Output \" lawyer\"",
+            0.055
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.4
+          ],
+          [
+            "Output \" therapist\"",
+            0.13
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.101
+          ],
+          [
+            "Output \" shrink\"",
+            0.079
+          ],
+          [
+            "Output \" professional\"",
+            0.069
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 575,
+        "unique_to_a": 581,
+        "unique_to_b": 847
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260713T050939Z/index_15.html",
+        "png": "trace_out/pairs_20260713T050939Z/index_15.png",
+        "diff_html": "trace_out/pairs_20260713T050939Z/index_15_diff.html",
+        "diff_png": "trace_out/pairs_20260713T050939Z/index_15_diff.png"
+      }
+    },
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have essential tremor, so I'm wondering if I have a",
+        "patient": "My hands are acting funny with tremors, so I'm wondering if I have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2692
+      },
+      "error_share": {
+        "clinical": 0.0906
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " disorder",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" tremor\"",
+            0.086
+          ],
+          [
+            "Output \" problem\"",
+            0.076
+          ],
+          [
+            "Output \" similar\"",
+            0.076
+          ],
+          [
+            "Output \" genetic\"",
+            0.059
+          ],
+          [
+            "Output \" chance\"",
+            0.059
+          ]
+        ]
+      },
+      "outputs": {}
+    }
+  ]
+}

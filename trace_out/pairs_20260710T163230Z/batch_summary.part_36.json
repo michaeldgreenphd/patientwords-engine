@@ -1,0 +1,502 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 36,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 36,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have vertigo, so I think I need to see a",
+        "patient": "I've been getting these funny spells where everything spins around me, so I think I need to see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.234,
+        "patient": 0.157
+      },
+      "language_penalty": -0.07700000000000001,
+      "clinical_mass": {
+        "clinical": 0.3971,
+        "patient": 0.291
+      },
+      "error_share": {
+        "clinical": 0.0899,
+        "patient": 0.0973
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" vestibular\" (p=0.016)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.671)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.234
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.378
+          ],
+          [
+            "Output \" neuro\"",
+            0.234
+          ],
+          [
+            "Output \" specialist\"",
+            0.124
+          ],
+          [
+            "Output \" ENT\"",
+            0.028
+          ],
+          [
+            "Output \" vestibular\"",
+            0.016
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.671
+          ],
+          [
+            "Output \" neuro\"",
+            0.157
+          ],
+          [
+            "Output \" specialist\"",
+            0.028
+          ],
+          [
+            "Output \" Doctor\"",
+            0.014
+          ],
+          [
+            "Output \" Dr\"",
+            0.014
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 507,
+        "unique_to_a": 617,
+        "unique_to_b": 752
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_36.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_36.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_36_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_36_diff.png"
+      }
+    },
+    {
+      "index": 37,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have eczema, so I probably need to see a",
+        "patient": "My skin's been really dry and flaking off in patches, so I probably need to see a"
+      },
+      "target_token": "Output \" dermatologist\"",
+      "probabilities": {
+        "clinical": 0.597,
+        "patient": 0.644
+      },
+      "language_penalty": 0.04700000000000004,
+      "clinical_mass": {
+        "clinical": 0.4226,
+        "patient": 0.3508
+      },
+      "error_share": {
+        "clinical": 0.0894,
+        "patient": 0.0918
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.171)",
+        "patient": "embedding \u2192 Output \" dermat\" (p=0.008)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " dermatologist",
+        "observed_clinical": [
+          "Output \" dermatologist\"",
+          0.597
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dermatologist\"",
+            0.597
+          ],
+          [
+            "Output \" doctor\"",
+            0.171
+          ],
+          [
+            "Output \" der\"",
+            0.072
+          ],
+          [
+            "Output \" specialist\"",
+            0.056
+          ],
+          [
+            "Output \" Dermatologist\"",
+            0.012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dermatologist\"",
+            0.644
+          ],
+          [
+            "Output \" doctor\"",
+            0.154
+          ],
+          [
+            "Output \" der\"",
+            0.115
+          ],
+          [
+            "Output \" doc\"",
+            0.012
+          ],
+          [
+            "Output \" dermat\"",
+            0.008
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 555,
+        "unique_to_a": 536,
+        "unique_to_b": 582
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_37.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_37.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_37_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_37_diff.png"
+      }
+    },
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been having panic attacks, so my friend thinks I need to see a",
+        "patient": "I've been having these episodes where I can't catch my breath and feel like I'm dying, so my friend thinks I need to see a"
+      },
+      "target_token": "Output \" therapist\"",
+      "probabilities": {
+        "clinical": 0.29,
+        "patient": 0.015
+      },
+      "language_penalty": -0.27499999999999997,
+      "clinical_mass": {
+        "clinical": 0.3563,
+        "patient": 0.3524
+      },
+      "error_share": {
+        "clinical": 0.0934,
+        "patient": 0.0969
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L19\u00b7C] language about therapy and counseling | therapy and  \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" psychologist\" (p=0.079)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.697)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " therapist",
+        "observed_clinical": [
+          "Output \" therapist\"",
+          0.29
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" therapist\"",
+            0.29
+          ],
+          [
+            "Output \" doctor\"",
+            0.271
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.172
+          ],
+          [
+            "Output \" psychologist\"",
+            0.079
+          ],
+          [
+            "Output \" counselor\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.697
+          ],
+          [
+            "Output \" cardio\"",
+            0.122
+          ],
+          [
+            "Output \" specialist\"",
+            0.019
+          ],
+          [
+            "Output \" therapist\"",
+            0.015
+          ],
+          [
+            "Output \" pulmon\"",
+            0.014
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 707,
+        "unique_to_a": 620,
+        "unique_to_b": 647
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_38.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_38.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_38_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_38_diff.png"
+      }
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have recurrent aphthous ulcers, so I probably need to talk to my",
+        "patient": "I keep getting these painful sores in my mouth that won't heal, so I probably need to talk to my"
+      },
+      "target_token": "Output \" dentist\"",
+      "probabilities": {
+        "clinical": 0.459,
+        "patient": 0.44
+      },
+      "language_penalty": -0.019000000000000017,
+      "clinical_mass": {
+        "clinical": 0.4216,
+        "patient": 0.4048
+      },
+      "error_share": {
+        "clinical": 0.1067,
+        "patient": 0.0914
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.235)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.408)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " dentist",
+        "observed_clinical": [
+          "Output \" dentist\"",
+          0.459
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dentist\"",
+            0.459
+          ],
+          [
+            "Output \" doctor\"",
+            0.235
+          ],
+          [
+            "Output \" GP\"",
+            0.114
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.043
+          ],
+          [
+            "Output \" doc\"",
+            0.024
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dentist\"",
+            0.44
+          ],
+          [
+            "Output \" doctor\"",
+            0.408
+          ],
+          [
+            "Output \" GP\"",
+            0.024
+          ],
+          [
+            "Output \" doc\"",
+            0.021
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.012
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 580,
+        "unique_to_a": 662,
+        "unique_to_b": 628
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_39.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_39.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_39_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_39_diff.png"
+      }
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After eating dairy I experience lactose intolerance, so I'm starting to think I can't digest my",
+        "patient": "After eating dairy I get really bloated and gassy, so I'm starting to think I can't digest my"
+      },
+      "target_token": "Output \" milk\"",
+      "probabilities": {
+        "clinical": 0.117,
+        "patient": 0.227
+      },
+      "language_penalty": 0.11,
+      "clinical_mass": {
+        "clinical": 0.2283,
+        "patient": 0.2565
+      },
+      "error_share": {
+        "clinical": 0.1044,
+        "patient": 0.1053
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L22\u00b7S] articles followed by proper nouns or adjectives | th \u2192 Output \" body\" (p=0.056)",
+        "patient": "embedding \u2192 Output \" dairy\" (p=0.073)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " milk",
+        "observed_clinical": [
+          "Output \" milk\"",
+          0.117
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" own\"",
+            0.284
+          ],
+          [
+            "Output \" milk\"",
+            0.117
+          ],
+          [
+            "Output \" food\"",
+            0.084
+          ],
+          [
+            "Output \" body\"",
+            0.056
+          ],
+          [
+            "Output \" protein\"",
+            0.03
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" milk\"",
+            0.227
+          ],
+          [
+            "Output \" own\"",
+            0.141
+          ],
+          [
+            "Output \" food\"",
+            0.129
+          ],
+          [
+            "Output \" dairy\"",
+            0.073
+          ],
+          [
+            "Output \" lactose\"",
+            0.067
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1098,
+        "unique_to_a": 304,
+        "unique_to_b": 316
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T163230Z/index_40.html",
+        "png": "trace_out/pairs_20260710T163230Z/index_40.png",
+        "diff_html": "trace_out/pairs_20260710T163230Z/index_40_diff.html",
+        "diff_png": "trace_out/pairs_20260710T163230Z/index_40_diff.png"
+      }
+    }
+  ]
+}

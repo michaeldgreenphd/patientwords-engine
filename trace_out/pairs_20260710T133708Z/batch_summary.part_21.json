@@ -1,0 +1,459 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 21,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 21,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have stress-induced dermatitis, so I probably need an",
+        "patient": "My skin breaks out whenever I'm nervous, so I probably need an"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2894
+      },
+      "error_share": {
+        "clinical": 0.0879
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " evaluation",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.225
+          ],
+          [
+            "Output \" emol\"",
+            0.075
+          ],
+          [
+            "Output \" extra\"",
+            0.075
+          ],
+          [
+            "Output \" oatmeal\"",
+            0.054
+          ],
+          [
+            "Output \" oil\"",
+            0.049
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have chronic fatigue, so I should talk to my",
+        "patient": "I feel like I'm always running on empty, so I should talk to my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.644,
+        "patient": 0.654
+      },
+      "language_penalty": 0.010000000000000009,
+      "clinical_mass": {
+        "clinical": 0.3715,
+        "patient": 0.19
+      },
+      "error_share": {
+        "clinical": 0.0924,
+        "patient": 0.0881
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] words or phrases giving medical advice. | Medical co \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.644)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] words or phrases giving medical advice. | Medical co \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.654)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.644
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.644
+          ],
+          [
+            "Output \" GP\"",
+            0.065
+          ],
+          [
+            "Output \" doc\"",
+            0.052
+          ],
+          [
+            "Output \" Dr\"",
+            0.029
+          ],
+          [
+            "Output \" doctors\"",
+            0.022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.654
+          ],
+          [
+            "Output \" GP\"",
+            0.053
+          ],
+          [
+            "Output \" doc\"",
+            0.04
+          ],
+          [
+            "Output \" boss\"",
+            0.02
+          ],
+          [
+            "Output \" therapist\"",
+            0.017
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 528,
+        "unique_to_a": 552,
+        "unique_to_b": 655
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_22.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_22.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_22_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_22_diff.png"
+      }
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have sciatica, so I should see a",
+        "patient": "I keep getting these awful shooting pains down my leg, so I should see a"
+      },
+      "target_token": "Output \" physical\"",
+      "probabilities": {
+        "clinical": 0.042,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4138,
+        "patient": 0.4144
+      },
+      "error_share": {
+        "clinical": 0.0971,
+        "patient": 0.0994
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to medical treatment or legal cases |  \u2192 Output \" physical\" (p=0.042)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.644)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " physical therapist",
+        "observed_clinical": [
+          "Output \" physical\"",
+          0.042
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" chi\"",
+            0.511
+          ],
+          [
+            "Output \" doctor\"",
+            0.121
+          ],
+          [
+            "Output \" specialist\"",
+            0.062
+          ],
+          [
+            "Output \" neuro\"",
+            0.057
+          ],
+          [
+            "Output \" physical\"",
+            0.042
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.644
+          ],
+          [
+            "Output \" neuro\"",
+            0.069
+          ],
+          [
+            "Output \" doc\"",
+            0.046
+          ],
+          [
+            "Output \" Dr\"",
+            0.037
+          ],
+          [
+            "Output \" GP\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 501,
+        "unique_to_a": 754,
+        "unique_to_b": 755
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_23.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_23.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_23_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_23_diff.png"
+      }
+    },
+    {
+      "index": 24,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have arthritis, so I should see a",
+        "patient": "I feel like my joints are rusting up in the mornings, so I should see a"
+      },
+      "target_token": "Output \" rhe\"",
+      "probabilities": {
+        "clinical": 0.192,
+        "patient": 0.087
+      },
+      "language_penalty": -0.10500000000000001,
+      "clinical_mass": {
+        "clinical": 0.3819,
+        "patient": 0.3386
+      },
+      "error_share": {
+        "clinical": 0.0947,
+        "patient": 0.0978
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to medical treatment or legal cases |  \u2192 Output \" physical\" (p=0.041)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.582)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " rheumatologist",
+        "observed_clinical": [
+          "Output \" rhe\"",
+          0.192
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.34
+          ],
+          [
+            "Output \" rhe\"",
+            0.192
+          ],
+          [
+            "Output \" specialist\"",
+            0.099
+          ],
+          [
+            "Output \" chi\"",
+            0.095
+          ],
+          [
+            "Output \" physical\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.582
+          ],
+          [
+            "Output \" rhe\"",
+            0.087
+          ],
+          [
+            "Output \" chi\"",
+            0.086
+          ],
+          [
+            "Output \" specialist\"",
+            0.039
+          ],
+          [
+            "Output \" physio\"",
+            0.032
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 583,
+        "unique_to_a": 520,
+        "unique_to_b": 677
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_24.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_24.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_24_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_24_diff.png"
+      }
+    },
+    {
+      "index": 25,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep getting these neuropathic symptoms on my skin, so my dermatologist says I have a",
+        "patient": "I keep getting these weird burning sensations on my skin, so my dermatologist says I have a"
+      },
+      "target_token": "Output \" condition\"",
+      "probabilities": {
+        "clinical": 0.072,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.495,
+        "patient": 0.4201
+      },
+      "error_share": {
+        "clinical": 0.1062,
+        "patient": 0.1061
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" skin\" (p=0.066)",
+        "patient": "embedding \u2192 [L25\u00b7O] technical language related to dermatology and immuno \u2192 Output \" skin\" (p=0.075)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " condition",
+        "observed_clinical": [
+          "Output \" condition\"",
+          0.072
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" nerve\"",
+            0.102
+          ],
+          [
+            "Output \" condition\"",
+            0.072
+          ],
+          [
+            "Output \" skin\"",
+            0.066
+          ],
+          [
+            "Output \" fungal\"",
+            0.06
+          ],
+          [
+            "Output \" vitamin\"",
+            0.058
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" fungal\"",
+            0.102
+          ],
+          [
+            "Output \" yeast\"",
+            0.093
+          ],
+          [
+            "Output \" skin\"",
+            0.075
+          ],
+          [
+            "Output \" fungus\"",
+            0.068
+          ],
+          [
+            "Output \" vitamin\"",
+            0.051
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 953,
+        "unique_to_a": 404,
+        "unique_to_b": 441
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T133708Z/index_25.html",
+        "png": "trace_out/pairs_20260710T133708Z/index_25.png",
+        "diff_html": "trace_out/pairs_20260710T133708Z/index_25_diff.html",
+        "diff_png": "trace_out/pairs_20260710T133708Z/index_25_diff.png"
+      }
+    }
+  ]
+}

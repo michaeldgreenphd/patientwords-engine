@@ -1,0 +1,497 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 1,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have angina, so I need to take my",
+        "patient": "My chest is acting up, so I need to take my",
+        "translated": "My chest is experiencing symptoms, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.081,
+        "patient": 0.08,
+        "translated": 0.086
+      },
+      "language_penalty": -0.0010000000000000009,
+      "clinical_mass": {
+        "clinical": 0.4495,
+        "patient": 0.3398,
+        "translated": 0.3465
+      },
+      "error_share": {
+        "clinical": 0.0927,
+        "patient": 0.0855,
+        "translated": 0.0843
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.128)",
+        "patient": "[L17\u00b7S]  \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.066)",
+        "translated": "embedding \u2192 Output \" chest\" (p=0.097)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.081
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": 0.0059999999999999915,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" nit\"",
+            0.16
+          ],
+          [
+            "Output \" blood\"",
+            0.128
+          ],
+          [
+            "Output \" medication\"",
+            0.081
+          ],
+          [
+            "Output \" Nit\"",
+            0.071
+          ],
+          [
+            "Output \" meds\"",
+            0.059
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.172
+          ],
+          [
+            "Output \" medicine\"",
+            0.086
+          ],
+          [
+            "Output \" inhal\"",
+            0.084
+          ],
+          [
+            "Output \" medication\"",
+            0.08
+          ],
+          [
+            "Output \" blood\"",
+            0.066
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" medicine\"",
+            0.112
+          ],
+          [
+            "Output \" heart\"",
+            0.109
+          ],
+          [
+            "Output \" blood\"",
+            0.099
+          ],
+          [
+            "Output \" chest\"",
+            0.097
+          ],
+          [
+            "Output \" medication\"",
+            0.086
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 531,
+        "unique_to_a": 592,
+        "unique_to_b": 695
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z/index_01.html",
+        "png": "trace_out/pairs_20260711T051145Z/index_01.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z/index_01_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z/index_01_diff.png"
+      }
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I suspect I have influenza, so I should get some",
+        "patient": "I think I'm coming down with something, so I should get some"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3366
+      },
+      "error_share": {
+        "clinical": 0.0888
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " antivirals",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" rest\"",
+            0.505
+          ],
+          [
+            "Output \" sleep\"",
+            0.096
+          ],
+          [
+            "Output \" Tam\"",
+            0.052
+          ],
+          [
+            "Output \" medicine\"",
+            0.031
+          ],
+          [
+            "Output \" medication\"",
+            0.015
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have lumbar radiculopathy, so I need to talk to a",
+        "patient": "My back is killing me, so I need to talk to a",
+        "translated": "My back is in severe pain, so I need to talk to a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.173,
+        "patient": null,
+        "translated": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4686,
+        "patient": 0.253,
+        "translated": 0.3463
+      },
+      "error_share": {
+        "clinical": 0.1028,
+        "patient": 0.0923,
+        "translated": 0.0879
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.113)",
+        "patient": "embedding \u2192 Output \" real\" (p=0.029)",
+        "translated": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.437)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.173
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neuro\"",
+            0.173
+          ],
+          [
+            "Output \" doctor\"",
+            0.113
+          ],
+          [
+            "Output \" pain\"",
+            0.103
+          ],
+          [
+            "Output \" specialist\"",
+            0.102
+          ],
+          [
+            "Output \" neuros\"",
+            0.084
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.336
+          ],
+          [
+            "Output \" chi\"",
+            0.104
+          ],
+          [
+            "Output \" professional\"",
+            0.069
+          ],
+          [
+            "Output \" therapist\"",
+            0.055
+          ],
+          [
+            "Output \" real\"",
+            0.029
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" doctor\"",
+            0.437
+          ],
+          [
+            "Output \" chi\"",
+            0.084
+          ],
+          [
+            "Output \" specialist\"",
+            0.061
+          ],
+          [
+            "Output \" professional\"",
+            0.037
+          ],
+          [
+            "Output \" therapist\"",
+            0.027
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 537,
+        "unique_to_a": 659,
+        "unique_to_b": 620
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z/index_03.html",
+        "png": "trace_out/pairs_20260711T051145Z/index_03.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z/index_03_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z/index_03_diff.png"
+      }
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have hypothyroidism, so my doctor wants me to take an",
+        "patient": "I feel foggy all the time, so my doctor wants me to take an"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4123
+      },
+      "error_share": {
+        "clinical": 0.0957
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " levothyroxine",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" extra\"",
+            0.209
+          ],
+          [
+            "Output \" anti\"",
+            0.14
+          ],
+          [
+            "Output \" iodine\"",
+            0.097
+          ],
+          [
+            "Output \" iron\"",
+            0.087
+          ],
+          [
+            "Output \" additional\"",
+            0.059
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have allergic rhinitis, so I should probably take some",
+        "patient": "My allergies are going haywire, so I should probably take some",
+        "translated": "My allergies are exacerbating, so I should probably take some"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.168,
+        "patient": 0.086,
+        "translated": 0.101
+      },
+      "language_penalty": -0.08200000000000002,
+      "clinical_mass": {
+        "clinical": 0.4251,
+        "patient": 0.3536,
+        "translated": 0.3708
+      },
+      "error_share": {
+        "clinical": 0.0945,
+        "patient": 0.0986,
+        "translated": 0.095
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" allergy\" (p=0.177)",
+        "patient": "embedding \u2192 Output \" allergy\" (p=0.221)",
+        "translated": "embedding \u2192 Output \" allergy\" (p=0.205)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " antihistamines",
+        "observed_clinical": [
+          "Output \" anti\"",
+          0.168
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": 0.015000000000000013,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" allergy\"",
+            0.177
+          ],
+          [
+            "Output \" anti\"",
+            0.168
+          ],
+          [
+            "Output \" kind\"",
+            0.099
+          ],
+          [
+            "Output \" medicine\"",
+            0.08
+          ],
+          [
+            "Output \" medication\"",
+            0.065
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" allergy\"",
+            0.221
+          ],
+          [
+            "Output \" Ben\"",
+            0.188
+          ],
+          [
+            "Output \" anti\"",
+            0.086
+          ],
+          [
+            "Output \" Clar\"",
+            0.072
+          ],
+          [
+            "Output \" medicine\"",
+            0.056
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" allergy\"",
+            0.205
+          ],
+          [
+            "Output \" Ben\"",
+            0.135
+          ],
+          [
+            "Output \" anti\"",
+            0.101
+          ],
+          [
+            "Output \" medicine\"",
+            0.06
+          ],
+          [
+            "Output \" Clar\"",
+            0.056
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 701,
+        "unique_to_a": 486,
+        "unique_to_b": 615
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260711T051145Z/index_05.html",
+        "png": "trace_out/pairs_20260711T051145Z/index_05.png",
+        "diff_html": "trace_out/pairs_20260711T051145Z/index_05_diff.html",
+        "diff_png": "trace_out/pairs_20260711T051145Z/index_05_diff.png"
+      }
+    }
+  ]
+}

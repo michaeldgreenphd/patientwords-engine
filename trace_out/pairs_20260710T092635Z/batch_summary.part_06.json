@@ -1,0 +1,315 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 6,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have diplopia, so I need to schedule an",
+        "patient": "I've been seeing double, so I need to schedule an"
+      },
+      "target_token": "Output \" appointment\"",
+      "probabilities": {
+        "clinical": 0.484,
+        "patient": 0.509
+      },
+      "language_penalty": 0.025000000000000022,
+      "clinical_mass": {
+        "clinical": 0.368,
+        "patient": 0.1855
+      },
+      "error_share": {
+        "clinical": 0.0898,
+        "patient": 0.0897
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] scheduling an appointment | appointment \u2192 Output \" appointment\" (p=0.484)",
+        "patient": "embedding \u2192 [L19\u00b7C] scheduling an appointment | appointment \u2192 Output \" appointment\" (p=0.509)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " appointment",
+        "observed_clinical": [
+          "Output \" appointment\"",
+          0.484
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" appointment\"",
+            0.484
+          ],
+          [
+            "Output \" eye\"",
+            0.271
+          ],
+          [
+            "Output \" ophthal\"",
+            0.037
+          ],
+          [
+            "Output \" exam\"",
+            0.029
+          ],
+          [
+            "Output \" app\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" appointment\"",
+            0.509
+          ],
+          [
+            "Output \" eye\"",
+            0.414
+          ],
+          [
+            "Output \" exam\"",
+            0.016
+          ],
+          [
+            "Output \" opto\"",
+            0.014
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 480,
+        "unique_to_a": 932,
+        "unique_to_b": 704
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_06.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_06.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_06_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_06_diff.png"
+      }
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My kid has pyrexia for days, so we should give him some",
+        "patient": "My kid's been running a fever for days, so we should give him some"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3774
+      },
+      "error_share": {
+        "clinical": 0.1038
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" medicine\"",
+            0.189
+          ],
+          [
+            "Output \" para\"",
+            0.076
+          ],
+          [
+            "Output \" anti\"",
+            0.066
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.065
+          ],
+          [
+            "Output \" pain\"",
+            0.036
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep experiencing paresthesia in my hands, so my doctor thinks I might have a",
+        "patient": "I keep getting pins and needles in my hands, so my doctor thinks I might have a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4525
+      },
+      "error_share": {
+        "clinical": 0.1067
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": " neuropathy",
+        "observed_clinical": null,
+        "probe_extension": "a",
+        "reason": "intended target not in the traced clinical spread (even after probe extension by 'a')"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" vitamin\"",
+            0.324
+          ],
+          [
+            "Output \" pinched\"",
+            0.067
+          ],
+          [
+            "Output \" Vitamin\"",
+            0.064
+          ],
+          [
+            "Output \" nerve\"",
+            0.062
+          ],
+          [
+            "Output \" problem\"",
+            0.057
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing orthostatic hypotension at work, so I should take my",
+        "patient": "I've been feeling light-headed at work, so I should take my"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.333,
+        "patient": 0.256
+      },
+      "language_penalty": -0.07700000000000001,
+      "clinical_mass": {
+        "clinical": 0.3337,
+        "patient": 0.259
+      },
+      "error_share": {
+        "clinical": 0.1013,
+        "patient": 0.0849
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.333)",
+        "patient": "[L17\u00b7S]  \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.256)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " blood",
+        "observed_clinical": [
+          "Output \" blood\"",
+          0.333
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.333
+          ],
+          [
+            "Output \" BP\"",
+            0.072
+          ],
+          [
+            "Output \" medication\"",
+            0.057
+          ],
+          [
+            "Output \" meds\"",
+            0.055
+          ],
+          [
+            "Output \" time\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.256
+          ],
+          [
+            "Output \" meds\"",
+            0.122
+          ],
+          [
+            "Output \" medicine\"",
+            0.07
+          ],
+          [
+            "Output \" medication\"",
+            0.065
+          ],
+          [
+            "Output \" vitamins\"",
+            0.042
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 720,
+        "unique_to_a": 654,
+        "unique_to_b": 745
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_09.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_09.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_09_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_09_diff.png"
+      }
+    }
+  ]
+}

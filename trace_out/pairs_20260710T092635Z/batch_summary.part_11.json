@@ -1,0 +1,502 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 11,
+  "screen_targets": 0.02,
+  "results": [
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have angina, so I need to take my",
+        "patient": "I keep getting these sharp chest pains, so I need to take my"
+      },
+      "target_token": "Output \" nit\"",
+      "probabilities": {
+        "clinical": 0.16,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4495,
+        "patient": 0.3508
+      },
+      "error_share": {
+        "clinical": 0.0927,
+        "patient": 0.095
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L19\u00b7O] technical information that includes numbers and unit \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.128)",
+        "patient": "embedding \u2192 [L19\u00b7C] words and phrases related to health, especially the  \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.095)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " nitroglycerin",
+        "observed_clinical": [
+          "Output \" nit\"",
+          0.16
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" nit\"",
+            0.16
+          ],
+          [
+            "Output \" blood\"",
+            0.128
+          ],
+          [
+            "Output \" medication\"",
+            0.081
+          ],
+          [
+            "Output \" Nit\"",
+            0.071
+          ],
+          [
+            "Output \" meds\"",
+            0.059
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.314
+          ],
+          [
+            "Output \" heart\"",
+            0.095
+          ],
+          [
+            "Output \" meds\"",
+            0.072
+          ],
+          [
+            "Output \" BP\"",
+            0.048
+          ],
+          [
+            "Output \" medication\"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 578,
+        "unique_to_a": 545,
+        "unique_to_b": 755
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_11.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_11.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_11_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_11_diff.png"
+      }
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have dermatitis, so I should apply a",
+        "patient": "My skin's been itchy and flaky lately, so I should apply a"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.119,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.297,
+        "patient": 0.2825
+      },
+      "error_share": {
+        "clinical": 0.0857,
+        "patient": 0.0892
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" lot\" (p=0.107)",
+        "patient": "embedding \u2192 Output \" good\" (p=0.102)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " cream",
+        "observed_clinical": [
+          "Output \" cream\"",
+          0.119
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" moisturizer\"",
+            0.163
+          ],
+          [
+            "Output \" cream\"",
+            0.119
+          ],
+          [
+            "Output \" lot\"",
+            0.107
+          ],
+          [
+            "Output \" moistur\"",
+            0.039
+          ],
+          [
+            "Output \" lotion\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" moisturizer\"",
+            0.186
+          ],
+          [
+            "Output \" good\"",
+            0.102
+          ],
+          [
+            "Output \" face\"",
+            0.073
+          ],
+          [
+            "Output \" body\"",
+            0.059
+          ],
+          [
+            "Output \" mask\"",
+            0.056
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 662,
+        "unique_to_a": 478,
+        "unique_to_b": 536
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_12.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_12.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_12_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_12_diff.png"
+      }
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have urinary incontinence, so I should talk to a",
+        "patient": "I've been having trouble holding my water lately, so I should talk to a"
+      },
+      "target_token": "Output \" uro\"",
+      "probabilities": {
+        "clinical": 0.181,
+        "patient": 0.073
+      },
+      "language_penalty": -0.108,
+      "clinical_mass": {
+        "clinical": 0.3626,
+        "patient": 0.2426
+      },
+      "error_share": {
+        "clinical": 0.0975,
+        "patient": 0.093
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.346)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.508)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " urologist",
+        "observed_clinical": [
+          "Output \" uro\"",
+          0.181
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.346
+          ],
+          [
+            "Output \" uro\"",
+            0.181
+          ],
+          [
+            "Output \" specialist\"",
+            0.061
+          ],
+          [
+            "Output \" nurse\"",
+            0.05
+          ],
+          [
+            "Output \" professional\"",
+            0.022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.508
+          ],
+          [
+            "Output \" uro\"",
+            0.073
+          ],
+          [
+            "Output \" doc\"",
+            0.035
+          ],
+          [
+            "Output \" specialist\"",
+            0.024
+          ],
+          [
+            "Output \" die\"",
+            0.022
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 507,
+        "unique_to_a": 623,
+        "unique_to_b": 736
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_13.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_13.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_13_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_13_diff.png"
+      }
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing vertigo, so I should see a",
+        "patient": "I've been getting these dizzy spells where the room spins, so I should see a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.201,
+        "patient": 0.117
+      },
+      "language_penalty": -0.084,
+      "clinical_mass": {
+        "clinical": 0.4012,
+        "patient": 0.346
+      },
+      "error_share": {
+        "clinical": 0.0921,
+        "patient": 0.1058
+      },
+      "top_path": {
+        "clinical": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.567)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.724)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " neurologist",
+        "observed_clinical": [
+          "Output \" neuro\"",
+          0.201
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.567
+          ],
+          [
+            "Output \" neuro\"",
+            0.201
+          ],
+          [
+            "Output \" specialist\"",
+            0.084
+          ],
+          [
+            "Output \" doc\"",
+            0.026
+          ],
+          [
+            "Output \" ENT\"",
+            0.018
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.724
+          ],
+          [
+            "Output \" neuro\"",
+            0.117
+          ],
+          [
+            "Output \" doc\"",
+            0.037
+          ],
+          [
+            "Output \" Dr\"",
+            0.024
+          ],
+          [
+            "Output \" dr\"",
+            0.02
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 692,
+        "unique_to_a": 491,
+        "unique_to_b": 545
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_14.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_14.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_14_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_14_diff.png"
+      }
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing migraines that won't quit, so I need to take my",
+        "patient": "I've been getting these headaches that won't quit, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.08,
+        "patient": 0.078
+      },
+      "language_penalty": -0.0020000000000000018,
+      "clinical_mass": {
+        "clinical": 0.3273,
+        "patient": 0.3045
+      },
+      "error_share": {
+        "clinical": 0.0902,
+        "patient": 0.0872
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" migraine\" (p=0.053)",
+        "patient": "embedding \u2192 [L21\u00b7O] technical documents describing blood pressure and cy \u2192 Output \" blood\" (p=0.096)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": " medication",
+        "observed_clinical": [
+          "Output \" medication\"",
+          0.08
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.118
+          ],
+          [
+            "Output \" medication\"",
+            0.08
+          ],
+          [
+            "Output \" medicine\"",
+            0.075
+          ],
+          [
+            "Output \" blood\"",
+            0.064
+          ],
+          [
+            "Output \" migraine\"",
+            0.053
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" medicine\"",
+            0.156
+          ],
+          [
+            "Output \" meds\"",
+            0.123
+          ],
+          [
+            "Output \" blood\"",
+            0.096
+          ],
+          [
+            "Output \" medication\"",
+            0.078
+          ],
+          [
+            "Output \" mind\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 974,
+        "unique_to_a": 409,
+        "unique_to_b": 443
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260710T092635Z/index_15.html",
+        "png": "trace_out/pairs_20260710T092635Z/index_15.png",
+        "diff_html": "trace_out/pairs_20260710T092635Z/index_15_diff.html",
+        "diff_png": "trace_out/pairs_20260710T092635Z/index_15_diff.png"
+      }
+    }
+  ]
+}
