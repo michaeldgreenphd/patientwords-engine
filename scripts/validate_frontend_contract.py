@@ -106,7 +106,7 @@ def check_simulated(rep: Report, site: Path, payload: dict) -> dict:
     a = "simulated_scenarios.json"
     known_keys(rep, a, payload,
                {"batches", "scenarios", "models_meta", "traced", "traced_by_model",
-                "holdout_withheld", "archive"})
+                "holdout_withheld", "archive", "traces_site"})
     batches = need(rep, a, payload, "batches", list, "$") or []
     scenarios = need(rep, a, payload, "scenarios", list, "$") or []
     models_meta = need(rep, a, payload, "models_meta", list, "$") or []

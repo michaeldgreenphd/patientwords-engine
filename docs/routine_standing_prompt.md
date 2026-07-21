@@ -194,6 +194,9 @@ happens when the instruction arrives.
 If new results landed, run the export/collection chain per `CLAUDE.md`
 (pass `--archive-url https://github.com/michaeldgreenphd/patientwords-engine/releases`
 to `export_frontend_simulated.py` so `payload.archive` stays populated)
+and then `python scripts/export_traces_site.py --stamp-only` (re-stamps every
+scenario's `trace_url` for the self-building patientwords-traces Pages repo —
+its own Action mirrors the payload nightly at 15:00 UTC)
 (exporter, urgency collector) and commit the updated **data payloads only**
 to `../patientwords` (push the branch, then push branch:main as sanctioned).
 Do NOT edit any page HTML, page text, figures, or labels — the owner is
