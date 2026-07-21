@@ -1,9 +1,11 @@
 # patientwords-engine
 
 > **Research code, work in progress.** Findings are preliminary (the care-urgency tier
-> vocabulary is pending domain review) and everything here measures language-model
-> probabilities only — nothing is medical advice or a clinical tool. If you use this
-> code or data, please cite it (see `CITATION.cff`).
+> vocabulary is pending domain review). The study measures language-model behavior:
+> next-token probabilities, and the advice deployed assistants give for the same
+> situation phrased two ways, evaluated strictly for measurement. Nothing here produces
+> medical advice that should be implemented, and nothing is a clinical tool. If you use
+> this code or data, please cite it (see `CITATION.cff`).
 
 Backend engine for [patientwords](https://github.com/michaeldgreenphd/patientwords)
 (`medlang-circuits` Python package): a pipeline for comparing attribution graphs of

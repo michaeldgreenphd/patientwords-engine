@@ -9,8 +9,10 @@ next-token predictions between colloquial patient phrasing and clinical terminol
 It generates stress-test sentence pairs with Claude, traces them as attribution graphs
 through Neuronpedia's hosted circuit-tracer, measures next-token behavior, and exports
 results to the public frontend repo (`patientwords`, expected as a sibling checkout at
-`../patientwords`). The study measures language-model probabilities only — nothing here
-generates or evaluates medical advice.
+`../patientwords`). The study measures language-model behavior: next-token
+probabilities, and the advice deployed assistants give for the same situation phrased
+two ways, evaluated strictly for measurement. Nothing here produces medical advice
+that should be implemented.
 
 ## Hard conventions (deliberate — do not "fix")
 
