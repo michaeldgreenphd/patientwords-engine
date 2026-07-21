@@ -192,6 +192,8 @@ happens when the instruction arrives.
 ## 5 · Publish data, never text
 
 If new results landed, run the export/collection chain per `CLAUDE.md`
+(pass `--archive-url https://github.com/michaeldgreenphd/patientwords-engine/releases`
+to `export_frontend_simulated.py` so `payload.archive` stays populated)
 (exporter, urgency collector) and commit the updated **data payloads only**
 to `../patientwords` (push the branch, then push branch:main as sanctioned).
 Do NOT edit any page HTML, page text, figures, or labels — the owner is
