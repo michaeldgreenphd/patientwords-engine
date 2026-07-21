@@ -38,8 +38,12 @@ def render_source(trace_root: Path, batch: str, index: int) -> Path:
     return trace_root / batch / f"index_{index:02d}.html"
 
 
-def publish(payload: dict, trace_root: Path, traces_repo: Path, base_url: str):
-    """Copy renders + stamp trace_url; returns (copied, unchanged, missing)."""
+def publish(payload: dict, trace_root: Path, traces_repo: Path | None, base_url: str):
+    """Copy renders + stamp trace_url; returns (copied, unchanged, missing).
+
+    ``traces_repo=None`` is stamp-only: set trace_url for every scenario whose
+    render exists locally, copying nothing — for when the traces repo builds
+    itself in its own CI (same payload + same render set, so the same URLs)."""
     copied = unchanged = missing = 0
     for s in payload.get("scenarios", []):
         batch, index = s.get("batch"), s.get("batch_index")
@@ -51,14 +55,17 @@ def publish(payload: dict, trace_root: Path, traces_repo: Path, base_url: str):
             missing += 1
             continue
         rel = f"t/{batch}/{src.name}"
-        dst = traces_repo / rel
-        if dst.is_file() and dst.stat().st_size == src.stat().st_size \
-                and dst.stat().st_mtime >= src.stat().st_mtime:
+        if traces_repo is None:
             unchanged += 1
         else:
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst)
-            copied += 1
+            dst = traces_repo / rel
+            if dst.is_file() and dst.stat().st_size == src.stat().st_size \
+                    and dst.stat().st_mtime >= src.stat().st_mtime:
+                unchanged += 1
+            else:
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dst)
+                copied += 1
         s["trace_url"] = f"{base_url.rstrip('/')}/{rel}"
     return copied, unchanged, missing
 
@@ -70,12 +77,18 @@ def main(argv=None):
     parser.add_argument("--traces-repo", default="../patientwords-traces")
     parser.add_argument("--base-url",
                         default="https://michaeldgreenphd.github.io/patientwords-traces")
+    parser.add_argument("--stamp-only", action="store_true",
+                        help="only stamp trace_url into the payload (no copying, no traces "
+                             "checkout needed) - for when the traces repo builds itself in "
+                             "its own CI from the same payload + render set")
     args = parser.parse_args(argv)
 
-    traces_repo = Path(args.traces_repo)
-    if not (traces_repo / ".git").exists():
-        print(f"refused: traces repo checkout not found at {traces_repo} - payload untouched")
-        return 3
+    traces_repo: Path | None = None
+    if not args.stamp_only:
+        traces_repo = Path(args.traces_repo)
+        if not (traces_repo / ".git").exists():
+            print(f"refused: traces repo checkout not found at {traces_repo} - payload untouched")
+            return 3
 
     payload_path = Path(args.payload)
     payload = json.loads(payload_path.read_text(encoding="utf-8"))
@@ -86,8 +99,9 @@ def main(argv=None):
         "_provenance": provenance("export_traces_site.py"),
     }
     payload_path.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
-    print(f"traces site: {copied} copied, {unchanged} unchanged, {missing} without a render "
-          f"-> {traces_repo} (commit+push there, then the payload's trace_url links go live)")
+    dest = "stamp-only (no copy)" if traces_repo is None else f"-> {traces_repo}"
+    print(f"traces site: {copied} copied, {unchanged} stamped/unchanged, {missing} without a "
+          f"render {dest}")
     return 0
 
 
