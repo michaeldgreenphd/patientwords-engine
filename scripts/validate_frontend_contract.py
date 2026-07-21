@@ -312,8 +312,18 @@ def check_shapes(rep: Report, site: Path, joins: dict):
 
     pairs = load(site, "stress_pairs.json", rep)
     if pairs is not None:
+        # two accepted shapes: the original bare list, or the wrapped object
+        # {pairs, featured} written by export_stress_featured.py (M3 tail)
+        if isinstance(pairs, dict):
+            feat = pairs.get("featured")
+            if feat is not None and not (isinstance(feat, dict)
+                                         and isinstance(feat.get("rows"), list)):
+                rep.err("stress_pairs.json", "$.featured",
+                        "must be an object with a rows list when present")
+            pairs = pairs.get("pairs")
         if not isinstance(pairs, list) or not pairs:
-            rep.err("stress_pairs.json", "$", "expected a non-empty list")
+            rep.err("stress_pairs.json", "$", "expected a non-empty list "
+                    "(bare or under $.pairs)")
         else:
             for i, item in enumerate(pairs):
                 for key in ("top_prompt", "bottom_prompt"):
@@ -353,8 +363,18 @@ def check_engine_copies(rep: Report, site: Path, engine: Path):
     ]
     for name, src in copies:
         dst = site / "data" / name
-        if src.is_file() and dst.is_file() and \
-                src.read_bytes().strip() != dst.read_bytes().strip():
+        if not (src.is_file() and dst.is_file()):
+            continue
+        try:
+            src_data = json.loads(src.read_text(encoding="utf-8"))
+            dst_data = json.loads(dst.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            src_data, dst_data = src.read_bytes().strip(), dst.read_bytes().strip()
+        # the site copy may be wrapped ({pairs, featured}); the engine source
+        # stays a bare list — compare the pair content, not the envelope
+        if isinstance(dst_data, dict) and "pairs" in dst_data:
+            dst_data = dst_data["pairs"]
+        if src_data != dst_data:
             rep.warn(name, "-", f"diverges from engine copy {src.name} "
                                 "(manual copy went stale)")
 

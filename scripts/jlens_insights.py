@@ -28,6 +28,17 @@ CREDIT = ("Jacobian lens: Gurnee et al., Transformer Circuits (2026); hosted by 
 
 PERSISTENCE = 2  # consecutive readable layers required to count as formation
 
+FEATURED_CLASS = "hijack"  # technical Fig-1 exemplar class (audit M3 tail)
+
+
+def featured_exemplar_index(exemplars):
+    """Index of the Fig-1 featured exemplar: first of FEATURED_CLASS, else 0;
+    None when there are no exemplars (page then keeps its own fallback)."""
+    for i, e in enumerate(exemplars):
+        if e.get("class") == FEATURED_CLASS:
+            return i
+    return 0 if exemplars else None
+
 
 def formation_layer(layers, persistence=PERSISTENCE):
     """First layer where the target enters the readout AND stays for
@@ -279,6 +290,10 @@ def analyze(per_model, base_model, it_model, exemplar_count, render_map=None):
         if len(exemplars) >= exemplar_count:
             break
     out["exemplars"] = exemplars
+    # featured pick as data (audit M3 tail): the technical Fig-1 exemplar —
+    # first hijack, exemplars[0] fallback — so the page reads the selection
+    # instead of re-deriving it (page keeps its class filter as fallback)
+    out["featured_exemplar"] = featured_exemplar_index(exemplars)
 
     # instruction-tuning comparison on datasets both models cover
     it_rows = per_model.get(it_model, [])

@@ -30,11 +30,78 @@ def bare(label: str | None) -> str:
     return (m.group(1) if m else label).strip()
 
 
+def stem(token) -> str:
+    """First 3 chars, trimmed + lowercased; missing tokens map to '' (the
+    page's `String(t||'')` guard — audit M3 verified-spec minor correction)."""
+    return str(token or "").strip().lower()[:3]
+
+
+def specimen_stats(item: dict) -> dict:
+    """cross_flips / flips_total / spread for one dialect item, exactly as the
+    home-page specimen picker computes them (audit M3 rules 1-2)."""
+    variants = item.get("variants") or []
+    tstem = stem(item.get("target_token"))
+    cross = sum(1 for v in variants
+                if v.get("flip") and stem(v.get("top_token")) != tstem)
+    flips = sum(1 for v in variants if v.get("flip"))
+    spread = max([abs(v.get("delta") or 0) for v in variants] + [0])
+    return {"cross_flips": cross, "flips_total": flips, "spread": round(spread, 6)}
+
+
+def featured_specimen(items: list[dict], show_n: int = 4):
+    """The home dialect-variance specimen pick + its displayed variants.
+
+    Item pick: sort descending by (cross_flips, flips_total, spread), stable so
+    file order breaks ties. Shown variants: weight 2 for cross-answer flips,
+    1 for flips, 0 otherwise; ties by |delta| descending; top `show_n`.
+    """
+    if not items:
+        return None
+    stats = [specimen_stats(it) for it in items]
+    order = sorted(range(len(items)),
+                   key=lambda i: (-stats[i]["cross_flips"], -stats[i]["flips_total"],
+                                  -stats[i]["spread"]))
+    pick = order[0]
+    it = items[pick]
+    tstem = stem(it.get("target_token"))
+
+    def weight(v):
+        if v.get("flip") and stem(v.get("top_token")) != tstem:
+            return 2
+        return 1 if v.get("flip") else 0
+
+    variants = sorted(it.get("variants") or [],
+                      key=lambda v: (-weight(v), -abs(v.get("delta") or 0)))
+    return {"item": pick,
+            "show_variants": [v.get("dialect") for v in variants[:show_n]],
+            "stats": stats[pick]}
+
+
+def featured_term(items: list[dict], pattern: str | None):
+    """The dialect-differences featured-term pick: first item whose term
+    matches the pins-file pattern (case-insensitive substring, mirroring the
+    page's regex), items[0] fallback — the term string itself stays in data."""
+    if not items:
+        return None
+    pick = 0
+    if pattern:
+        needle = pattern.lower()
+        for i, it in enumerate(items):
+            if needle in str(it.get("term") or "").lower():
+                pick = i
+                break
+    return {"item": pick, "term": items[pick].get("term")}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("trace_dir", help="trace_out/<dialects batch> directory")
     ap.add_argument("--out", required=True, help="output JSON path")
     ap.add_argument("--updated", default=None, help="ISO date stamp for the export")
+    ap.add_argument("--pins",
+                    default=os.path.join(os.path.dirname(os.path.dirname(
+                        os.path.abspath(__file__))), "data", "editorial_pins.json"),
+                    help="editorial pins file (dialect_featured_term_pattern)")
     args = ap.parse_args()
 
     parts = sorted(glob.glob(os.path.join(args.trace_dir, "batch_summary.part_*.json")))
@@ -86,6 +153,20 @@ def main() -> int:
         "source_set": source_set,
         "items": items,
     }
+    # featured picks as data (audit M3 tail): the home specimen is computed,
+    # the featured-term pattern comes from the pins data file (vocabulary
+    # never lives in this script). Pages keep their in-JS picks as fallback.
+    spec = featured_specimen(items)
+    if spec:
+        payload["featured_specimen"] = spec
+    try:
+        with open(args.pins, encoding="utf-8") as f:
+            pattern = json.load(f).get("dialect_featured_term_pattern")
+    except (OSError, ValueError):
+        pattern = None
+    term = featured_term(items, pattern)
+    if term:
+        payload["featured_term"] = term
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=1)
     flips = sum(1 for it in items for v in it["variants"] if v["flip"])

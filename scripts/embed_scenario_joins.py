@@ -19,6 +19,11 @@ of that into the data, matching the verified page semantics exactly
   top = half a tier below 0), diversity caps (<=2 per patient answer, <=1 per
   clinical answer), N=6 — with the token-clean test driven by
   data/display_vocab.json (vocabulary lives in data, never in this file).
+- payload.featured.care_ladder + payload.featured.tap_demo (M3 tail): the
+  start-here care-ladder pins and the home say-it-two-ways demo, resolved
+  from data/editorial_pins.json. The tap demo's bars derive from the pinned
+  scenario's measured spreads (clinical top-3; patient top-2 plus the target
+  at its rank), with display labels for wordpiece tops from the pins file.
 
 Runs AFTER urgency_shift --publish (and the depth exporter) in the publish
 chain; idempotent; refuses (payload untouched) when the payload is absent.
@@ -145,10 +150,70 @@ def redirect_gallery(payload: dict, urg: dict, vocab: dict, base_model: str) -> 
     return picks
 
 
+def _ordinal(rank: int) -> str:
+    return {1: "1st", 2: "2nd", 3: "3rd"}.get(rank, f"{rank}th")
+
+
+def embed_care_ladder(payload: dict, pins: dict) -> list[dict]:
+    """Pinned care-ladder pairs, kept only when the scenario exists."""
+    by_key = {(s.get("batch"), s.get("batch_index")): s
+              for s in payload.get("scenarios", [])}
+    return [dict(p) for p in pins.get("care_ladder", [])
+            if (p.get("batch"), p.get("batch_index")) in by_key]
+
+
+def embed_tap_demo(payload: dict, pins: dict):
+    """The home say-it-two-ways demo, derived from the pinned scenario.
+
+    Bars: clinical side = top-3 of spread_clinical; patient side = top-2 of
+    spread_patient plus the target token at its 1-based rank when it sits
+    below the top-2. Roles (page maps them to the semantic palette):
+    ``target`` = the clinical target token, ``top`` = a non-target patient
+    top prediction, ``other`` = context. Labels come from the pins file's
+    wordpiece display map (vocabulary stays in data).
+    """
+    pin = pins.get("tap_demo") or {}
+    s = next((x for x in payload.get("scenarios", [])
+              if x.get("batch") == pin.get("batch")
+              and x.get("batch_index") == pin.get("batch_index")), None)
+    if not s or not s.get("spread_clinical") or not s.get("spread_patient"):
+        return None
+    labels = {str(k).strip().lower(): v for k, v in (pin.get("labels") or {}).items()}
+    target = str(s.get("target_token") or "").strip()
+
+    def lab(tok):
+        t = str(tok).strip()
+        return labels.get(t.lower(), t)
+
+    def bar(tok, p, role):
+        return {"label": lab(tok), "p": p, "role": role}
+
+    clinical = [bar(t, p, "target" if str(t).strip() == target else "other")
+                for t, p in s["spread_clinical"][:3]]
+    patient = []
+    for j, (t, p) in enumerate(s["spread_patient"][:2]):
+        role = "target" if str(t).strip() == target else ("top" if j == 0 else "other")
+        patient.append(bar(t, p, role))
+    if not any(b["role"] == "target" for b in patient):
+        for rank, (t, p) in enumerate(s["spread_patient"], start=1):
+            if str(t).strip() == target:
+                b = bar(t, p, "target")
+                b["label"] += f" ({_ordinal(rank)})"
+                patient.append(b)
+                break
+    return {"batch": pin.get("batch"), "batch_index": pin.get("batch_index"),
+            "model": pin.get("model"), "sim_index": s.get("index"),
+            "clinical": {"swap": s.get("clinical_term"), "bars": clinical},
+            "patient": {"swap": s.get("patient_term"), "bars": patient}}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--site", default="../patientwords")
     parser.add_argument("--base-model", default="gemma-2-2b")
+    parser.add_argument("--pins",
+                        default=str(Path(__file__).resolve().parents[1]
+                                    / "data" / "editorial_pins.json"))
     args = parser.parse_args(argv)
 
     data = Path(args.site) / "data"
@@ -168,9 +233,18 @@ def main(argv=None):
     if gallery:
         payload.setdefault("featured", {})["redirect_gallery"] = gallery
 
+    pins = load_json(Path(args.pins)) or {}
+    ladder = embed_care_ladder(payload, pins)
+    if ladder:
+        payload.setdefault("featured", {})["care_ladder"] = ladder
+    tap = embed_tap_demo(payload, pins)
+    if tap:
+        payload.setdefault("featured", {})["tap_demo"] = tap
+
     payload_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     print(f"embedded: {n_urg} urgency joins, {n_depth} depth classes, "
-          f"{len(gallery)} gallery picks"
+          f"{len(gallery)} gallery picks, {len(ladder)} ladder pins, "
+          f"tap demo {'yes' if tap else 'no'}"
           + ("" if vocab else " (display_vocab.json absent: no clean bonuses)"))
     return 0
 
