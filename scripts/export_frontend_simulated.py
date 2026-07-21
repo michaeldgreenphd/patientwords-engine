@@ -35,6 +35,11 @@ import shutil
 import sys
 from pathlib import Path
 
+try:
+    from scripts.tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
+except ImportError:  # invoked as `python scripts/export_frontend_simulated.py`
+    from tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
+
 # The circuit-tracer models, in registry order (gemma-2-2b is the base/default).
 # Only gemma-2-2b has a transcoder source set, so clinical-feature attribution
 # (the "Med circuit" meter, auto-interp accents) is meaningful for it alone;
@@ -171,6 +176,8 @@ scenarios = []
 traced_by_model = {}
 display_index = 0
 first_preview = None
+_TIERB_START = tierb_start_stamp(str(ENGINE / "ops/dashboard.json"))
+withheld_holdout = 0
 
 for stamp in STAMPS:
     stem = f"pairs_{stamp}"
@@ -200,10 +207,21 @@ for stamp in STAMPS:
         sys.exit(f"no trace dirs for stamp {stamp} - pull the engine branch first")
 
     for index in sorted(base_results):
-        display_index += 1
         pair = batch[index - 1]
-        gen = pair.get("generation", {})
         base_r = base_results[index]
+        # Holdout withholding (2026-07-14, owner decision): confirmatory-holdout
+        # pairs never enter the public payload. Rule and start stamp shared with
+        # the collector (scripts/tierb_split.py). Seal under BOTH the accepted
+        # prompt (top_prompt, the string the split hashed) and the traced prompt:
+        # a screening probe extension can make the traced prompt hash differently
+        # from the accepted one (Audit 2 F2-H08), so either reading seals.
+        if is_tierb_batch(stem, _TIERB_START) and (
+                is_holdout(pair.get("top_prompt"))
+                or is_holdout(base_r["prompts"]["clinical"])):
+            withheld_holdout += 1
+            continue
+        display_index += 1
+        gen = pair.get("generation", {})
 
         models_obj = {m: build_model_obj(res[index], pair, m in FEATURED)
                       for m, res in results_by_model.items() if index in res}
@@ -334,6 +352,7 @@ models_meta = [
 payload = {
     "batches": batches,
     "traced": traced_by_model.get(BASE_MODEL, {}),
+    "holdout_withheld": withheld_holdout,
     "traced_by_model": traced_by_model,
     "models_meta": models_meta,
     "scenarios": scenarios,
@@ -346,7 +365,8 @@ measured_n = sum(1 for s in scenarios
                  if not (s.get("screening") or {}).get("status") == "screened_out")
 data_only = len(scenarios) - copied
 model_line = ", ".join(f"{mm['id']} ({mm['n_traced']})" for mm in models_meta) or "none"
-print(f"{len(scenarios)} scenarios ({measured_n} measured) across {len(batches)} batch(es) -> {out_data}")
+print(f"{len(scenarios)} scenarios ({measured_n} measured) across {len(batches)} batch(es) "
+      f"-> {out_data} ({withheld_holdout} confirmatory-holdout pairs withheld)")
 print(f"  models: {model_line}")
 print(f"  {copied} interactive renders published (cap {args.max_renders or 'none'}); "
       f"{data_only} scenarios are data-only on the public site")

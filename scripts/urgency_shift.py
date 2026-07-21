@@ -22,6 +22,7 @@ import argparse
 import glob
 import json
 import re
+from collections import Counter
 from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -159,6 +160,13 @@ seen = set()
 for part in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
     run_dir = Path(part).parent.name
     stem, _, model_suffix = run_dir.partition("__")
+    if stem.startswith("txcorpus_"):
+        # translated-corpus measurements are NOT patient rows: their "patient"
+        # side is the haiku rewrite. They are analyzed only by
+        # scripts/translation_scale.py; ingesting them here would let
+        # translated sentences masquerade as patient measurements in the
+        # all-rows sensitivity and the urgency aggregates (2026-07-14).
+        continue
     summary = json.loads(Path(part).read_text(encoding="utf-8"))
     model = summary.get("graph_model") or model_suffix or "gemma-2-2b"
     for r in summary.get("results", []):
@@ -170,11 +178,16 @@ for part in sorted(glob.glob("trace_out/*/batch_summary.part_*.json")):
             return [[bare(t), p] for t, p in (sp.get(side) or []) if bare(t)]
 
         cont = r.get("continuations") or {}
+        n_before = len(rows)
         add(model, stem, r["index"], r.get("prompts"), clean("clinical"), clean("patient"),
             topic=topics.get((stem, r["index"])),
             penalty=r.get("language_penalty"), spread_t=clean("translated") or None,
             cont_c=cont.get("clinical"), cont_p=cont.get("patient"))
-        seen.add((model, stem, r["index"]))
+        # mark seen only when a row landed: summaries without predictive
+        # spreads (e.g. activation-patching outputs) must not shadow a later
+        # real 2panel summary for the same (model, stem, index)
+        if len(rows) > n_before:
+            seen.add((model, stem, r["index"]))
 
 # site payload fills anything the engine tree lacks
 if site.is_file():
@@ -189,13 +202,22 @@ if site.is_file():
                 topic=s.get("topic") or topics.get((s.get("batch"), s.get("batch_index"))),
                 penalty=m.get("language_penalty"))
 
-flips = [r for r in rows if r["flipped"]]
+# Amendment 1 (pre-registered): stamp Tier B rows with their analysis split.
+# Aggregates below use ONLY the exploration split (arows); the row files keep
+# every row, flagged, so the holdout stays auditable and is analyzed exactly
+# once after collection ends.
+from tierb_split import stamp_rows  # noqa: E402  (script-style module)
+n_holdout = stamp_rows(rows)
+arows = [r for r in rows if r.get("tierb_split") != "holdout"]
+
+flips = [r for r in arows if r["flipped"]]
 down = [r for r in flips if r["flip_class"] == "downgrade"]
 up = [r for r in flips if r["flip_class"] == "upgrade"]
-shifts = [r["tier_shift"] for r in rows if r["tier_shift"] is not None]
+shifts = [r["tier_shift"] for r in arows if r["tier_shift"] is not None]
 
 summary = {
-    "measurements": len(rows),
+    "measurements": len(arows),
+    "tierb_holdout_rows_excluded": n_holdout,
     "flips": len(flips),
     "flip_classes": {
         "downgrade": len(down), "upgrade": len(up),
@@ -217,8 +239,8 @@ def sign_test(k_down, k_up):
     return round(min(1.0, 2 * p), 5)
 
 
-for model in sorted({r["model"] for r in rows}):
-    mr = [r for r in rows if r["model"] == model]
+for model in sorted({r["model"] for r in arows}):
+    mr = [r for r in arows if r["model"] == model]
     ms = [r["tier_shift"] for r in mr if r["tier_shift"] is not None]
     mf = [r for r in mr if r["flipped"]]
     d = sum(1 for r in mf if r["flip_class"] == "downgrade")
@@ -226,18 +248,74 @@ for model in sorted({r["model"] for r in rows}):
     # confident downgrades: the patient side commits to the downgraded action
     conf = [r for r in mf if r["flip_class"] == "downgrade"
             and (r["p_top_patient"] or 0) >= 0.2]
+    # representative downgrade for the per-model care-ladder chart annotation
+    # (#11, owner 2026-07-20): the most confident downgrade, as a base sentence +
+    # top-token swap (e.g. "doctor" -> "husband"). None when the model never
+    # downgrades - the chart annotates only the extreme (downgrading) model.
+    downs = [r for r in mf if r["flip_class"] == "downgrade"]
+
+    def _clean(tok):  # prefer legible whole words over wordpiece fragments (ant, inhal)
+        t = (tok or "").strip()
+        return bool(t) and t.isalpha() and len(t) >= 3
+    pool = [r for r in downs if _clean(r["top_clinical"]) and _clean(r["top_patient"])] or downs
+    representative = None
+    if pool:
+        best = max(pool, key=lambda r: (r["p_top_patient"] or 0))
+        representative = {
+            "base": best.get("clinical_prompt"),
+            "from": (best.get("top_clinical") or "").strip() or None,
+            "to": (best.get("top_patient") or "").strip() or None,
+            "p_patient": best.get("p_top_patient"),
+            "tier_shift": best.get("tier_shift"),
+            "batch": best.get("batch"), "index": best.get("index"),
+        }
     summary["per_model"][model] = {
         "n": len(mr), "flips": len(mf),
         "downgrades": d, "upgrades": u,
         "sign_test_p": sign_test(d, u),
         "confident_downgrades_p>=0.2": len(conf),
         "mean_tier_shift": round(sum(ms) / len(ms), 4) if ms else None,
+        "representative": representative,
+    }
+
+# Phrase-deduped per-model counts (mirrors scripts/paired_stats_rigor.py): a
+# re-traced phrase lands as several rows sharing a clinical_prompt, so the raw
+# per_model tallies above pseudoreplicate. Each phrase collapses to ONE flip
+# label by majority vote over its rows; ties break least-alarming-first so a
+# tie can never manufacture the directional asymmetry the study tests for.
+NONFLIP = "none"
+TIE_ORDER = [NONFLIP, "uninformative", "lateral", "upgrade", "downgrade"]
+summary["per_model_deduped"] = {}
+for model in sorted({r["model"] for r in arows}):
+    groups: dict = {}
+    for r in arows:
+        if r["model"] != model:
+            continue
+        key = r.get("clinical_prompt") or f"{r['batch']}#{r['index']}"
+        groups.setdefault(key, []).append(r)
+    labels, pen_means = [], []
+    for group in groups.values():
+        votes = Counter((g.get("flip_class") or NONFLIP) if g.get("flipped") else NONFLIP
+                        for g in group)
+        top = max(votes.values())
+        tied = [lab for lab, c in votes.items() if c == top]
+        labels.append(next((lab for lab in TIE_ORDER if lab in tied), sorted(tied)[0]))
+        pens = [g["language_penalty"] for g in group
+                if isinstance(g.get("language_penalty"), (int, float))]
+        if pens:
+            pen_means.append(sum(pens) / len(pens))
+    summary["per_model_deduped"][model] = {
+        "n_phrases": len(groups),
+        "flips": sum(1 for lab in labels if lab != NONFLIP),
+        "downgrades": labels.count("downgrade"),
+        "upgrades": labels.count("upgrade"),
+        "mean_penalty": round(sum(pen_means) / len(pen_means), 4) if pen_means else None,
     }
 
 # Cross-model concordance: do the models downgrade on the SAME phrases?
 # Correlated downgrades point at the language; uncorrelated ones at the model.
 by_phrase = {}
-for r in rows:
+for r in arows:
     by_phrase.setdefault((r["batch"], r["index"]), {})[r["model"]] = r
 multi = {k: v for k, v in by_phrase.items() if len(v) >= 2}
 conc = {
@@ -255,7 +333,7 @@ for k, v in multi.items():
         conc["downgrade_on_2plus_models"] += 1
     if len(fl) >= 2:
         conc["flip_on_2plus_models"] += 1
-models_seen = sorted({r["model"] for r in rows})
+models_seen = sorted({r["model"] for r in arows})
 for i, a in enumerate(models_seen):
     for b in models_seen[i + 1:]:
         both = [v for v in multi.values() if a in v and b in v]
@@ -270,10 +348,10 @@ summary["concordance"] = conc
 
 # Per-condition breakdown: where do the downgrades live?
 by_topic = {}
-for r in rows:
+for r in arows:
     t = r.get("topic") or "(unlabeled)"
     by_topic.setdefault(t, []).append(r)
-translated = [r for r in rows if r.get("urgency_recovery") is not None]
+translated = [r for r in arows if r.get("urgency_recovery") is not None]
 if translated:
     summary["mitigation"] = {
         "n": len(translated),
@@ -297,15 +375,53 @@ Path(args.out).write_text(json.dumps({"summary": summary, "rows": rows}, indent=
                           encoding="utf-8")
 if args.publish:
     vocab_meta = json.loads(Path(args.tiers).read_text(encoding="utf-8"))
+    # Holdout withholding (2026-07-14, owner decision): confirmatory-holdout
+    # phrases are withheld from the public per-pair rows entirely, not just
+    # from aggregates. Phrase-keyed, matching the rigor loader, so re-runs of
+    # a holdout phrase in split-less batches are withheld too. The full row
+    # file stays engine-side for the sealed endpoint analysis.
+    _holdout_phrases = {r["clinical_prompt"] for r in rows
+                        if r.get("tierb_split") == "holdout"}
+    pub_rows = [r for r in rows if r["clinical_prompt"] not in _holdout_phrases]
+    if len(pub_rows) != len(rows):
+        print(f"holdout withheld from site copy: {len(rows) - len(pub_rows)} rows "
+              f"({len(_holdout_phrases)} phrases)")
     trimmed = [{k: r.get(k) for k in ("batch", "index", "model", "tier_top_clinical",
                                       "tier_top_patient", "flip_class", "tier_shift",
                                       "urgency_recovery")}
-               for r in rows if r["flipped"] or r.get("tier_shift") is not None]
+               for r in pub_rows if r["flipped"] or r.get("tier_shift") is not None]
+    # measured example words per tier, so the site can explain the tiers in
+    # plain language without linking readers to a data file; base model only,
+    # readable whole-word tokens, most frequent first. Wordpiece fragments are
+    # excluded via the vocabulary's own review notes (data-driven, no
+    # vocabulary in source).
+    vocab_tokens = vocab_meta.get("tokens", {})
+    tier_counts: dict = {}
+    for r in pub_rows:
+        if r.get("model") != "gemma-2-2b":
+            continue
+        for tok_key, tier_key in (("top_clinical", "tier_top_clinical"),
+                                  ("top_patient", "tier_top_patient")):
+            tok, tr_ = r.get(tok_key), r.get(tier_key)
+            if tr_ is None or not isinstance(tok, str):
+                continue
+            tok = tok.strip()
+            if len(tok) < 3 or not tok.replace("-", "").isalpha():
+                continue
+            note = (vocab_tokens.get(tok) or {}).get("note", "")
+            if "fragment" in note:
+                continue
+            tier_counts.setdefault(str(tr_), {})
+            tier_counts[str(tr_)][tok] = tier_counts[str(tr_)].get(tok, 0) + 1
+    tier_examples = {t: [w for w, _ in sorted(c.items(), key=lambda kv: -kv[1])[:3]]
+                     for t, c in tier_counts.items()}
     site_payload = {
         "vocabulary_status": vocab_meta.get("status", "draft pending domain review"),
         "tiers": vocab_meta.get("tiers"),
+        "tier_examples": tier_examples,
         "summary": {k: summary[k] for k in ("measurements", "flips", "flip_classes",
-                                            "per_model", "concordance", "mitigation")
+                                            "per_model", "per_model_deduped",
+                                            "concordance", "mitigation")
                     if k in summary},
         "rows": trimmed,
     }
