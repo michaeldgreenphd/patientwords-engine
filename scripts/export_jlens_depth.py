@@ -301,6 +301,58 @@ def steering_split(trace_root=Path("trace_out")):
     }
 
 
+RECOVERY_THRESHOLD = 0.95  # "full" patch recovery vs the clean probability
+
+
+def exemplar_annotations(clin_ranks, patched, clean_prob, layers=26):
+    """The methods figure's layer annotations as data (audit M8), with the
+    page's exact semantics: first layer where the clinical answer is legible
+    (any rank), first layer it reaches rank 1, the best patch layer (argmax
+    of non-null patched probability over non-final layers, first on ties,
+    0 when nothing qualifies), and whether that patch recovers >= 95 pct of
+    the clean probability (None when unmeasured)."""
+    first_legible = next((lyr for lyr in range(layers)
+                          if clin_ranks.get(str(lyr))), None)
+    first_rank1 = next((lyr for lyr in range(layers)
+                        if clin_ranks.get(str(lyr)) == 1), None)
+    best = 0
+    for lyr, prob in enumerate(patched or []):
+        if prob is None or lyr >= layers - 1:
+            continue
+        cur = (patched[best] if patched[best] is not None else -1)
+        if prob > cur:
+            best = lyr
+    best_p = (patched[best] if patched and patched[best] is not None else None)
+    full = (best_p >= clean_prob * RECOVERY_THRESHOLD
+            if best_p is not None and isinstance(clean_prob, (int, float))
+            else None)
+    return {"first_legible": first_legible, "first_rank1": first_rank1,
+            "best_patch_layer": best, "patch_recovery_full": full,
+            "recovery_threshold": RECOVERY_THRESHOLD}
+
+
+def census_groups(blocks):
+    """The technical page's depth-census grouping as data (audit M9):
+    generated ``pairs_*`` blocks merge into one All-Batches group (run date
+    is not a finding, and the group is stable as sets land nightly); every
+    other block stays its own group. Pair entries carry their set label for
+    the per-square hover, mirroring the page exactly."""
+    groups, batch_pairs = [], []
+    for b in blocks:
+        name = b.get("label") or b.get("id")
+        tagged = [{"index": u.get("index"), "class": u.get("class"),
+                   "target": u.get("target"), "set": name}
+                  for u in b.get("pairs") or []]
+        if str(b.get("id") or "").startswith("pairs_"):
+            batch_pairs.extend(tagged)
+        else:
+            groups.append({"label": name, "pairs": tagged})
+    if batch_pairs:
+        groups.insert(0, {"label": "Simulated Scenarios (All Batches)",
+                          "pairs": batch_pairs})
+    return groups
+
+
 def build_payload(blocks_spec, exemplar_stem, exemplar_index, annotate=None):
     """blocks_spec: list of (stem, label); annotate: (stem, index) or None."""
     blocks = []
@@ -322,6 +374,7 @@ def build_payload(blocks_spec, exemplar_stem, exemplar_index, annotate=None):
         "integrity_note": INTEGRITY_NOTE,
         "class_labels": CLASS_LABELS,
         "blocks": blocks,
+        "census_groups": census_groups(blocks),
         "units": blocks[0],  # back-compat alias: first block is the newest batch
         "translation": translation_split([b["id"] for b in blocks]),
         "steering": steering_split(),
@@ -337,6 +390,8 @@ def build_payload(blocks_spec, exemplar_stem, exemplar_index, annotate=None):
             "labels": {"clinical": label_c, "patient": label_p},
             "clin_ranks": rank_map(ex["depth"]["clinical"]),
             "pat_ranks": rank_map(ex["depth"]["patient"]),
+            "annotations": exemplar_annotations(
+                rank_map(ex["depth"]["clinical"]), patched, clean),
             "layers": 26,
             "clean_prob": clean,
             "corrupt_prob": corrupt,

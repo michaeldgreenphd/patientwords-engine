@@ -157,3 +157,38 @@ def test_translation_split_joins_class_and_recovery(tmp_path, monkeypatch):
     assert split["by_class"] == {"retained": {"n": 1, "mean_recovery": 0.4},
                                  "absent": {"n": 1, "mean_recovery": 0.1}}
     assert len(split["pairs"]) == 2  # duplicate row with None recovery never wins
+
+
+def test_census_groups_merge_batches_keep_reviewed_separate():
+    # audit M9: pairs_* blocks merge into one leading All-Batches group; other
+    # blocks stay their own groups; entries carry their set label for hovers
+    blocks = [
+        {"id": "pairs_a", "label": "batch of A", "pairs": [
+            {"index": 1, "class": "retained", "target": "x"}]},
+        {"id": "reviewed", "label": "Reviewed set", "pairs": [
+            {"index": 2, "class": "absent", "target": "y"}]},
+        {"id": "pairs_b", "label": "batch of B", "pairs": [
+            {"index": 3, "class": "suppressed", "target": "z"}]},
+    ]
+    groups = exporter.census_groups(blocks)
+    assert [g["label"] for g in groups] == [
+        "Simulated Scenarios (All Batches)", "Reviewed set"]
+    assert [(p["index"], p["set"]) for p in groups[0]["pairs"]] == [
+        (1, "batch of A"), (3, "batch of B")]
+    assert groups[1]["pairs"][0]["set"] == "Reviewed set"
+    assert exporter.census_groups([]) == []
+
+
+def test_exemplar_annotations_layer_picks_and_recovery_class():
+    # audit M8: first-legible (any rank), first-rank-1, best patch layer
+    # (argmax non-null over non-final layers, first on ties), 0.95 recovery
+    clin = {"3": 5, "4": 1, "5": 1}
+    patched = [None, 0.2, 0.8, 0.8, None, 0.9]   # layer 5 is final: excluded
+    ann = exporter.exemplar_annotations(clin, patched, clean_prob=0.8, layers=6)
+    assert ann["first_legible"] == 3 and ann["first_rank1"] == 4
+    assert ann["best_patch_layer"] == 2            # tie with 3 -> first wins
+    assert ann["patch_recovery_full"] is True      # 0.8 >= 0.8*0.95
+    assert ann["recovery_threshold"] == 0.95
+    none = exporter.exemplar_annotations({}, [None, None], None, layers=2)
+    assert none["first_legible"] is None and none["first_rank1"] is None
+    assert none["best_patch_layer"] == 0 and none["patch_recovery_full"] is None
