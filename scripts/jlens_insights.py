@@ -286,6 +286,22 @@ def analyze(per_model, base_model, it_model, exemplar_count, render_map=None):
     # instead of re-deriving it (page keeps its class filter as fallback)
     out["featured_exemplar"] = featured_exemplar_index(exemplars)
 
+    # claims as data (audit M7): the technical page's two derived sentences —
+    # the window check ("capture exceeds hijack at every top-K window") and
+    # the dominant-failure comparative — with the page's exact semantics.
+    # None when the underlying counts are absent (page then omits the clause).
+    ws = out.get("window_sensitivity") or {}
+    ws_keys = [k for k in ("1", "2", "4", "8") if k in ws]
+    nc = (out["taxonomy"].get("capture") or {}).get("n", 0)
+    nh = (out["taxonomy"].get("hijack") or {}).get("n", 0)
+    out["claims"] = {
+        "window_capture_exceeds_hijack_at_every_k":
+            all(ws[k]["capture"] > ws[k]["hijack"] for k in ws_keys)
+            if ws_keys else None,
+        "dominant_failure_class":
+            "capture" if nc > nh else ("hijack" if nh > nc else None),
+    }
+
     # instruction-tuning comparison on datasets both models cover
     it_rows = per_model.get(it_model, [])
     if it_rows:

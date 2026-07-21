@@ -581,6 +581,21 @@ def main(argv=None):
              for m, v in bundle["per_model"].items()
              if v["penalty"]["n_phrases"] < MIN_SITE_PHRASES],
             key=lambda r: r["id"])
+        # claims as data (audit M7): the comparison page's interval-aware
+        # zero-crosser sentence — which floor-passing models' 95pct CI upper
+        # bounds reach zero, per-model and under the stricter simultaneous
+        # interval. A null bound counts as not crossing.
+        def _crosses(ci):
+            return bool(ci) and isinstance(ci[1], (int, float)) and ci[1] >= 0
+        site_bundle["claims"] = {
+            "zero_crossers_per_model": [
+                m for m in site_bundle["models"]
+                if _crosses(site_bundle["per_model"][m]["penalty"].get("ci95"))],
+            "zero_crossers_simultaneous": [
+                m for m in site_bundle["models"]
+                if _crosses(site_bundle["per_model"][m]["penalty"]
+                            .get("ci95_simultaneous"))],
+        }
         payload_path = Path(args.site) / "data" / "simulated_scenarios.json"
         try:
             payload = json.loads(payload_path.read_text(encoding="utf-8"))

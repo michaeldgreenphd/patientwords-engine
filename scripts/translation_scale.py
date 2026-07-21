@@ -206,7 +206,19 @@ def analyze(trace_root: Path, simulated_dir: Path) -> dict:
             "top_restored": sum(1 for r in rows if r["top_restored"]),
             "top_lost": sum(1 for r in rows if r["top_lost"]),
         }
+    # claim as data (audit M7): the page's minority-lift sentence for the
+    # instruction-tuned family — mean lift positive but median near zero on
+    # EVERY instruction-tuned model — with its threshold recorded. None when
+    # the family has no measured models (the page then omits the clause).
+    it_models = [m for m, s in summary.items() if s["family"] == "instruction-tuned"]
+    claims = {
+        "median_near_zero_threshold": 0.01,
+        "instruction_tuned_minority_lift":
+            all(s["mean_recovery"] > 0 and abs(s["median_recovery"]) < 0.01
+                for s in (summary[m] for m in it_models)) if it_models else None,
+    }
     return {
+        "claims": claims,
         "_": ("EXPLORATORY translation recovery at scale, recomputed from committed "
               "txcorpus logits (2026-07-19). recovery = p(target|translated) - "
               "p(target|patient), both from the SAME txcorpus run per model "
