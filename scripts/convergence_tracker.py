@@ -140,7 +140,22 @@ def main(argv=None):
         mrows = [r for r in rows if r["model"] == model]
         pts = cumulative_points(mrows, stamps, args.seed, args.boot)
         if pts:
-            payload["models"][model] = {"points": pts}
+            last = pts[-1]
+            ends_below = bool(last.get("ci95") and last["ci95"][1] is not None
+                              and last["ci95"][1] < 0)
+            payload["models"][model] = {"points": pts,
+                                        "ends_below_zero": ends_below}
+
+    # claim as data (audit M7): the accumulation fold's "every band ends
+    # below zero" sentence — true iff every non-primary model's final CI
+    # upper bound is negative (primary = first model in display order).
+    # None when there is at most one model (the fold is not rendered).
+    mids = list(payload["models"])
+    payload["claims"] = {
+        "all_secondary_end_below_zero":
+            all(payload["models"][m]["ends_below_zero"] for m in mids[1:])
+            if len(mids) > 1 else None,
+    }
 
     payload["_provenance"] = provenance("convergence_tracker.py")
     out = Path(args.out)
