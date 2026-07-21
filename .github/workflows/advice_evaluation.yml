@@ -23,7 +23,7 @@ on:
         type: string
         default: ""
       models:
-        description: "Space/comma-separated Anthropic model ids to elicit"
+        description: "Space/comma-separated specs: 'provider' (registry consumer default), 'provider:model', or bare Anthropic id"
         type: string
         default: "claude-haiku-4-5"
       arms:
@@ -178,11 +178,20 @@ jobs:
           python-version: "3.11"
 
       - name: Install package
-        run: pip install --quiet -e ".[llm]"
+        run: pip install --quiet -e ".[llm]" requests
 
       - name: Elicit (paid, ceiling-enforced, append-only archive)
         env:
+          # Provider keys per data/advice_providers.json key_env fields; secrets
+          # that are not configured render empty and only fail the specific
+          # provider spec that needs them (with a clear message).
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           STIMULI: ${{ needs.params.outputs.stimuli_file }}
           MODELS: ${{ needs.params.outputs.models }}
           ARMS: ${{ needs.params.outputs.arms }}

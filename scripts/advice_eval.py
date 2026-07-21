@@ -80,6 +80,56 @@ def _translate_system() -> str:
         return _TRANSLATE_SYSTEM_FALLBACK
 
 
+# ------------------------------------------------------------ provider registry
+
+DEFAULT_PROVIDERS = "data/advice_providers.json"
+# Anthropic works with no registry file so single-vendor runs stay zero-config.
+_BUILTIN_PROVIDERS = {
+    "anthropic": {"api": "anthropic", "consumer_product": "claude.ai free tier"},
+}
+
+
+def _load_providers(path: str | Path) -> dict:
+    """Registry of consumer products -> API endpoints/models. Data, not code.
+
+    The registry pins, per provider: the OpenAI-compatible base_url, the env var
+    naming its key (Actions secret), the consumer_default model (the study's
+    average-consumer proxy - the free/default tier of the product), pricing for
+    the ceiling math, and a consumer_proxy_note documenting how faithful the API
+    proxy is to the real product. Providers whose consumer product has no public
+    API (api: "manual_ui") are measured only via import-manual-responses.
+    """
+    p = Path(path)
+    registry = dict(_BUILTIN_PROVIDERS)
+    if p.is_file():
+        loaded = _load_json(p)
+        for name, cfg in loaded.items():
+            if isinstance(cfg, dict) and not name.startswith("_"):
+                registry[name] = {**registry.get(name, {}), **cfg}
+    return registry
+
+
+def _resolve_spec(spec: str, registry: dict) -> dict:
+    """'provider:model' | 'provider' (consumer default) | bare model (anthropic)."""
+    if ":" in spec:
+        provider, model = spec.split(":", 1)
+    elif spec in registry:
+        provider, model = spec, ""
+    else:
+        provider, model = "anthropic", spec
+    cfg = registry.get(provider)
+    if cfg is None:
+        raise SystemExit(f"unknown provider {provider!r}; registry knows: {sorted(registry)} "
+                         f"(copy data/advice_providers.example.json to {DEFAULT_PROVIDERS} and review)")
+    if cfg.get("api") == "manual_ui":
+        raise SystemExit(f"provider {provider!r} has no public API for its consumer product - "
+                         "capture responses in the real product UI and use import-manual-responses")
+    model = model or cfg.get("consumer_default", "")
+    if not model:
+        raise SystemExit(f"provider {provider!r}: no model given and no consumer_default in the registry")
+    return {"spec": f"{provider}:{model}", "provider": provider, "model": model, "cfg": cfg}
+
+
 # --------------------------------------------------------------------------- utils
 
 
@@ -144,18 +194,23 @@ def _read_jsonl(path: str | Path) -> list[dict]:
 class CostTracker:
     """Hard spend ceiling; sized to this pipeline's max_tokens rather than the eval defaults."""
 
-    def __init__(self, max_spend: float, max_output_tokens: int):
+    def __init__(self, max_spend: float, max_output_tokens: int, custom_pricing: dict | None = None):
         if not (max_spend > 0) or max_spend != max_spend or max_spend == float("inf"):
             raise SystemExit("--max-spend must be a finite positive number")
         self.max_spend = float(max_spend)
         self.max_output_tokens = int(max_output_tokens)
+        self.custom_pricing = dict(custom_pricing or {})  # spec/model -> (in, out) USD per Mtok
         self.spent = 0.0
         self.truncated = False
         self.per_model: dict[str, dict] = {}
 
-    @staticmethod
-    def _price(model: str) -> tuple[float, float]:
-        return _PRICING.get(model, _FALLBACK_PRICING)
+    def _price(self, key: str) -> tuple[float, float]:
+        for candidate in (key, key.split(":", 1)[-1]):
+            if candidate in self.custom_pricing:
+                return tuple(self.custom_pricing[candidate])
+            if candidate in _PRICING:
+                return _PRICING[candidate]
+        return _FALLBACK_PRICING
 
     def can_afford(self, model: str) -> bool:
         in_p, out_p = self._price(model)
@@ -212,6 +267,38 @@ def _send(client, model: str, system: str | None, user_text: str, max_tokens: in
     usage = getattr(response, "usage", None)
     raw = response.model_dump() if hasattr(response, "model_dump") else json.loads(response.json())
     return text, getattr(usage, "input_tokens", 0), getattr(usage, "output_tokens", 0), raw
+
+
+def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
+                 max_tokens: int, temperature: float):
+    """One OpenAI-compatible chat call (OpenAI, Gemini, xAI, DeepSeek, Moonshot,
+    OpenRouter, ... all expose this shape). Same return tuple as _send; same
+    monkeypatch seam for tests. The provider's key comes from the env var named
+    in the registry (an Actions secret in CI - never a local file)."""
+    try:
+        import requests
+    except ImportError as exc:  # pragma: no cover
+        raise SystemExit("requests package unavailable - pip install requests") from exc
+    key_env = cfg.get("key_env", "")
+    key = os.environ.get(key_env, "")
+    if not key:
+        raise SystemExit(f"{key_env or 'provider key env'} unset - add it as an Actions secret "
+                         "and pass it through the workflow env block")
+    base_url = cfg["base_url"].rstrip("/")
+    messages = ([{"role": "system", "content": system}] if system else []) + [
+        {"role": "user", "content": user_text}
+    ]
+    resp = requests.post(
+        f"{base_url}/chat/completions",
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        json={"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature},
+        timeout=180,
+    )
+    resp.raise_for_status()
+    raw = resp.json()
+    text = ((raw.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+    usage = raw.get("usage") or {}
+    return text.strip(), usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0), raw
 
 
 # ------------------------------------------------------------------- hash chain
@@ -402,9 +489,21 @@ def elicit(args) -> Path:
     for arm in arms:
         if arm not in ARMS:
             raise SystemExit(f"unknown arm {arm!r}; expected any of {ARMS}")
-    models = [m.strip() for m in args.models.replace(",", " ").split() if m.strip()]
-    if not models:
-        raise SystemExit("--models is required (comma/space separated)")
+    registry = _load_providers(args.providers)
+    specs = [m.strip() for m in args.models.replace(",", " ").split() if m.strip()]
+    if not specs:
+        raise SystemExit("--models is required: 'provider' (consumer default), 'provider:model', "
+                         "or a bare Anthropic model id")
+    resolved = {}
+    for s in specs:
+        r = _resolve_spec(s, registry)
+        resolved[r["spec"]] = r
+    models = list(resolved)  # canonical provider:model spec strings
+    custom_pricing = {}
+    for r in resolved.values():
+        pricing = (r["cfg"].get("pricing") or {}).get(r["model"]) or r["cfg"].get("default_pricing")
+        if pricing:
+            custom_pricing[r["spec"]] = (float(pricing[0]), float(pricing[1]))
 
     stem = Path(args.stimuli).stem
     out_path = Path(args.out_dir) / f"responses_{stem}.jsonl"
@@ -433,8 +532,14 @@ def elicit(args) -> Path:
     if args.dry_run:
         return out_path
 
-    tracker = CostTracker(args.max_spend, args.max_tokens)
-    client = _client()
+    tracker = CostTracker(args.max_spend, args.max_tokens, custom_pricing)
+    client_box: list = []  # Anthropic client, created only when an anthropic-api call happens
+
+    def anthropic_client():
+        if not client_box:
+            client_box.append(_client())
+        return client_box[0]
+
     ask_suffix = stimuli_doc.get("ask_suffix", "")
     base_env = {"engine_sha": engine_sha(), "stimuli_sha256": sha256_text(canonical_json(stimuli_doc))}
     n_written = 0
@@ -449,16 +554,25 @@ def elicit(args) -> Path:
         prev_sha = sealed["record_sha256"]
         n_written += 1
 
-    def timed_send(model, system, text, max_tokens, temperature):
+    def timed_send(spec_key, system, text, max_tokens, temperature):
+        r = resolved.get(spec_key)  # None for the bare-model translator: anthropic path
         sent = utc_now_iso()
         t0 = time.monotonic()
-        out_text, in_tok, out_tok, raw = _send(client, model, system, text, max_tokens, temperature)
+        if r is None or r["cfg"].get("api", "anthropic") == "anthropic":
+            endpoint = "anthropic"
+            model = r["model"] if r else spec_key
+            out_text, in_tok, out_tok, raw = _send(anthropic_client(), model, system, text, max_tokens, temperature)
+        else:
+            endpoint = r["cfg"].get("base_url", "")
+            out_text, in_tok, out_tok, raw = _send_compat(r["cfg"], r["model"], system, text,
+                                                          max_tokens, temperature)
         latency_ms = int((time.monotonic() - t0) * 1000)
-        cost = tracker.record(model, in_tok, out_tok)
+        cost = tracker.record(spec_key, in_tok, out_tok)
         return out_text, raw, {
             "sent_utc": sent, "received_utc": utc_now_iso(), "latency_ms": latency_ms,
             "input_tokens": in_tok, "output_tokens": out_tok, "cost_usd": round(cost, 6),
             "model_returned": raw.get("model"),
+            "provider": (r or {}).get("provider", "anthropic"), "endpoint": endpoint,
         }
 
     try:
@@ -518,6 +632,8 @@ def elicit(args) -> Path:
         _write_json(sidecar_path, {
             "run_utc": utc_now_iso(), "engine_sha": base_env["engine_sha"],
             "stimuli_file": str(args.stimuli), "models": models, "arms": arms,
+            "providers_registry": str(args.providers),
+            "providers": {spec: r["provider"] for spec, r in resolved.items()},
             "samples": args.samples, "temperature": args.temperature, "max_tokens": args.max_tokens,
             "translator_model": args.translator_model if "translated" in arms else None,
             "max_spend_usd": args.max_spend, "cost_usd": round(tracker.spent, 6),
@@ -529,6 +645,89 @@ def elicit(args) -> Path:
     print(f"appended {n_written} record(s) -> {out_path} (cost ${tracker.spent:.4f} / ceiling ${args.max_spend})")
     if stopped_reason:
         print(f"STOPPED EARLY: {stopped_reason}")
+    return out_path
+
+
+# ------------------------------------------------------- import-manual-responses
+
+
+def import_manual(args) -> Path:
+    """Append UI-captured responses (products with no consumer API) to the audit chain.
+
+    For Copilot / Meta AI-class products the average consumer's product has no
+    public API; responses are captured by hand in the real product UI and imported
+    here. Records enter the same hash chain with record_type "advice" (so judge
+    and analyze treat them uniformly) plus a capture block that marks the
+    provenance manual_ui - never disguised as API output (response_raw is null).
+    """
+    stimuli_doc = _load_json(args.stimuli)
+    items = {i["id"]: i for i in stimuli_doc["items"]}
+    entries = _load_json(args.manual_in)
+    if not isinstance(entries, list) or not entries:
+        raise SystemExit(f"{args.manual_in}: expected a non-empty JSON array")
+
+    stem = Path(args.stimuli).stem
+    out_path = Path(args.out_dir) / f"responses_{stem}.jsonl"
+    sidecar_path = Path(args.out_dir) / f"responses_{stem}.report.json"
+    existing = _read_jsonl(out_path)
+    ok, msg = verify_chain(existing)
+    if not ok:
+        raise SystemExit(f"{out_path}: existing archive fails chain verification ({msg}); refusing to append")
+    prev_sha = existing[-1]["record_sha256"] if existing else None
+    next_k: dict[tuple, int] = {}
+    for r in existing:
+        if r.get("record_type") == "advice":
+            key = (r["stimulus_id"], r["arm"], r["model_requested"])
+            next_k[key] = max(next_k.get(key, 0), r["sample_k"] or 0)
+
+    base_env = {"engine_sha": engine_sha(), "stimuli_sha256": sha256_text(canonical_json(stimuli_doc))}
+    n = 0
+    with open(out_path, "a", encoding="utf-8") as f:
+        for i, e in enumerate(entries):
+            where = f"{args.manual_in}: entry {i + 1}"
+            sid, arm = e.get("stimulus_id"), e.get("arm")
+            if sid not in items:
+                raise SystemExit(f"{where}: unknown stimulus_id {sid!r} (not in {args.stimuli})")
+            if arm not in ("clinical", "patient"):
+                raise SystemExit(f"{where}: arm must be 'clinical' or 'patient' (the translated arm "
+                                 "requires the pipeline's logged translation step)")
+            product = (e.get("product") or "").strip()
+            text = (e.get("response_text") or "").strip()
+            captured = e.get("captured_utc")
+            if not product or not text or not captured:
+                raise SystemExit(f"{where}: product, response_text, and captured_utc are required")
+            spec = f"{product}:consumer_ui"
+            key = (sid, arm, spec)
+            next_k[key] = next_k.get(key, 0) + 1
+            record = _seal_record({
+                "record_type": "advice", "stimulus_id": sid, "arm": arm,
+                "model_requested": spec, "sample_k": next_k[key],
+                "request": {"system": None, "message": items[sid][f"{arm}_message"],
+                            "temperature": None, "max_tokens": None},
+                "response_text": text, "response_sha256": sha256_text(text),
+                "stop_reason": None, "response_raw": None, "translation_sha256": None,
+                "capture": {"method": "manual_ui", "product": product,
+                            "model_claimed": e.get("model_claimed"), "captured_utc": captured,
+                            "note": e.get("note")},
+                "sent_utc": captured, "received_utc": captured, "latency_ms": None,
+                "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0,
+                "model_returned": e.get("model_claimed"), "provider": product,
+                "endpoint": "manual_ui", **base_env,
+            }, prev_sha)
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            prev_sha = record["record_sha256"]
+            n += 1
+
+    all_rows = _read_jsonl(out_path)
+    sidecar = _load_json(sidecar_path) if sidecar_path.is_file() else {"cost_usd": 0.0}
+    sidecar.update({
+        "chain_head": all_rows[-1]["record_sha256"], "records_total": len(all_rows),
+        "manual_imports": (sidecar.get("manual_imports") or []) + [
+            {"imported_utc": utc_now_iso(), "source": str(args.manual_in), "records": n}
+        ],
+    })
+    _write_json(sidecar_path, sidecar)
+    print(f"imported {n} manual UI record(s) -> {out_path} (provenance capture.method=manual_ui, cost $0)")
     return out_path
 
 
@@ -793,7 +992,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     e = sub.add_parser("elicit", help="paid: sample advice per stimulus x arm x model")
     e.add_argument("--stimuli", required=True)
-    e.add_argument("--models", required=True, help="comma/space separated Anthropic model ids")
+    e.add_argument("--models", required=True,
+                   help="comma/space separated: 'provider' (registry consumer default = the "
+                        "average-consumer proxy), 'provider:model', or a bare Anthropic model id")
+    e.add_argument("--providers", default=DEFAULT_PROVIDERS,
+                   help="provider registry JSON (copy data/advice_providers.example.json and review)")
     e.add_argument("--arms", default="clinical,patient")
     e.add_argument("--samples", type=int, default=DEFAULT_SAMPLES)
     e.add_argument("--temperature", type=float, default=1.0)
@@ -823,6 +1026,14 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--seed", type=int, default=7)
     a.add_argument("--out")
 
+    m = sub.add_parser("import-manual-responses",
+                       help="append UI-captured responses (products with no consumer API) to the chain")
+    m.add_argument("--stimuli", required=True)
+    m.add_argument("--in", dest="manual_in", required=True,
+                   help="JSON array: {stimulus_id, arm, product, model_claimed?, captured_utc, "
+                        "response_text, note?}")
+    m.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
+
     v = sub.add_parser("verify-chain", help="audit: recompute the archive hash chain")
     v.add_argument("--responses", required=True)
     v.add_argument("--sidecar")
@@ -839,6 +1050,8 @@ def main(argv=None) -> None:
         build_stimuli(args)
     elif args.command == "elicit":
         elicit(args)
+    elif args.command == "import-manual-responses":
+        import_manual(args)
     elif args.command == "judge":
         judge(args)
     elif args.command == "analyze":

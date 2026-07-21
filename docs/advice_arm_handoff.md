@@ -1,75 +1,86 @@
-# Frontier-advice arm — handoff (2026-07-21)
+# Frontier-advice arm — handoff (2026-07-21, rev 2: multi-provider consumer-tier)
 
 Standalone handoff for the session integrating the new **advice evaluation arm**.
 It assumes the 2026-07-21 audit handoff (`docs/audit_2026-07-21.md`, Appendix B
-queue) has been worked; nothing here depends on unmerged audit items except where
-marked. Everything below landed on branch
-`claude/patientwords-audit-reflection-alwovz`; the code is complete and tested
-(297-test suite green, ruff clean), but the arm is **deliberately not wired into
-the firing path** — steps 1–4 below do that, in order, with owner sign-off where
-marked.
+queue) has been worked. Everything below landed on branch
+`claude/patientwords-audit-reflection-alwovz`; code complete and tested (suite
+green at 303, ruff clean), **not wired into the firing path** — the steps below
+do that, in order, with owner sign-off where marked.
+
+Owner decisions recorded 2026-07-21 (design constraints, not suggestions):
+
+- **Pilot budget: $5 for the whole experiment**, Anthropic side on haiku.
+- **No Claude-only scale run** — Claude's guardrails make single-vendor scale
+  uninformative; the question is cross-vendor.
+- **Target vendors:** Claude, OpenAI, Gemini, Grok, Copilot, DeepSeek (main
+  consumer products); optionally Kimi, Llama/Meta AI. (Thinking Machines has no
+  consumer chat product/API as of 2026-07 — re-check at integration.)
+- **Consumer-tier default:** each provider defaults to the model its FREE /
+  default consumer tier serves — the experiment measures what the average
+  consumer gets — while remaining overridable per run (`provider:model`).
 
 ## What this arm is
 
 The next-token study measures probabilities. This arm measures the **advice**
-deployed assistant models actually give for the same clinical situation phrased
-two ways, with three run modes matching the owner's design:
+deployed assistant products give for the same clinical situation phrased two
+ways. Three run modes: (1) stimuli from situations the study already validated
+(published payload — screened-in, measured, holdout-withheld by construction);
+(2) owner-authored manual vignettes; (3) a translated arm that runs the
+production patient→clinical translation before elicitation, testing whether
+translation recovers the *advice*.
 
-1. **Stress-test known-good situations** — stimuli built from the published site
-   payload (screened-in, measured, holdout-withheld by construction), e.g. the
-   200 measured flips.
-2. **Manual paired vignettes** — owner-authored clinical + patient scripts.
-3. **Translation-recovery arm** — an LLM patient→clinical translation step runs
-   before elicitation, so recovery of the advice (not just the token) is
-   measured, mirroring the study's translation-mitigation panel.
+Elicitation is unrepeatable by nature, so the design is **auditable, not
+reproducible**: append-only JSONL, one record per call with full request, full
+raw response, the exact model version string the provider returned, UTC
+timestamps, latency, per-call cost, engine sha, and a per-record sha256 chain
+whose head lands in the cost sidecar in the same commit as the data (public
+repo ⇒ third-party timestamps). Judge and analyze are fully reproducible from
+the archive forever.
 
-Elicitation is unrepeatable by nature, so the design goal is **auditable, not
-reproducible**: an append-only JSONL archive, one record per API call with the
-full request, full raw response, exact returned model version string, UTC
-timestamps, latency, per-call cost, engine sha, and a per-record sha256 hash
-chain whose head is committed in the cost sidecar in the same commit as the data
-(public repo ⇒ third-party timestamps). Judging and analysis are fully
-reproducible from the archive forever.
+## The consumer-proxy caveat (state it in every writeup)
+
+API models are **proxies** for consumer products: no product system prompt, no
+product-layer safety wrapper, no memory, no UI nudges. Two mitigations are built
+in: (a) the registry records a `consumer_proxy_note` per provider documenting
+the mapping and its fidelity; (b) products with **no public consumer API**
+(Microsoft Copilot, Meta AI) are captured by hand in the real product UI and
+imported via `import-manual-responses` — same audit chain, provenance
+`capture.method=manual_ui`, never disguised as API output. Recommended: also
+hand-run a ~5-stimulus calibration subset in the real UIs of the API-reachable
+products, so the API-vs-product gap is measured rather than assumed.
 
 ## What exists on this branch
 
 | Path | What |
 |---|---|
-| `scripts/advice_eval.py` | the pipeline: `build-stimuli` / `elicit` / `judge` / `analyze` / `verify-chain` |
-| `.github/workflows/advice_evaluation.yml` | CI workflow (dispatch form + push-path on `.github/trigger/advice-eval.json`; per-branch concurrency group, `cancel-in-progress: false`) |
-| `data/advice_rubric.example.json` | rubric skeleton (tiers, flags, judge instructions) — **example only, needs domain review** |
-| `data/advice/README.md` | archive schema + audit-chain contract + rules |
-| `tests/test_advice_eval.py` | 15 offline tests: stimulus validation, holdout guard (incl. the null-`start_utc` trap), chain/resume/tamper/ceiling, judge idempotence, analysis classes, workflow defaults-dict wiring |
+| `scripts/advice_eval.py` | `build-stimuli` / `elicit` (multi-provider) / `import-manual-responses` / `judge` / `analyze` / `verify-chain` |
+| `data/advice_providers.example.json` | provider registry skeleton: per vendor base_url, key_env, consumer_default (**every default is a VERIFY placeholder**), pricing, proxy note; `manual_ui` entries for Copilot/Meta AI |
+| `.github/workflows/advice_evaluation.yml` | CI workflow (dispatch + push-path trigger; per-branch concurrency; provider secrets passed through) |
+| `data/advice_rubric.example.json` | rubric skeleton — **needs domain review** |
+| `data/advice/README.md` | archive schema + audit-chain contract |
+| `tests/test_advice_eval.py` | 21 offline tests incl. spec resolution, compat-client path, registry pricing, manual-import chain/judging, holdout guard, tamper/ceiling/resume |
 
-Deliberately **absent**, by design:
-
-- `.github/trigger/advice-eval.json` — a hand-committed trigger file fires the
-  paid workflow on push (including merges). The first sanctioned
-  `fire_trigger.py` fire creates it. Never create it by hand.
-- `fire_trigger.py` registration — step 2 below, applied by the integrating
-  session so it composes with whatever the audit's E10 hygiene work did to that
-  file.
-- `data/advice_rubric.json` — only the reviewed copy may carry that name.
+Deliberately absent: `.github/trigger/advice-eval.json` (first sanctioned fire
+creates it — NEVER create by hand; it fires a paid workflow on any push
+including merges), `fire_trigger.py` registration (step 2),
+`data/advice_rubric.json` and `data/advice_providers.json` (only reviewed
+copies carry those names).
 
 ## Integration steps (in order)
 
 ### 1. Land the code
-
-Bring this branch's five paths onto the working branch/main per the current
-branch strategy. This branch touches **no trigger files**, so merging it cannot
-fire anything.
+Bring the six paths above onto the working branch/main per the current branch
+strategy. No trigger files are touched — merging cannot fire anything.
 
 ### 2. Register the trigger in `scripts/fire_trigger.py`
-
-Three edits (then extend `tests/test_fire_trigger.py`'s key-set/paid coverage to
-match — the repo convention is that KNOWN_KEYS is verified against the workflow
-heredoc, so cite `advice_evaluation.yml` and today's date in the comment):
+Three edits (then extend `tests/test_fire_trigger.py` key-set/paid coverage;
+cite `advice_evaluation.yml` + date in the KNOWN_KEYS comment per convention):
 
 ```python
 # in TRIGGERS, after "archive-renders":
     "advice-eval",
 
-# PAID_TRIGGERS — this arm spends Anthropic tokens on elicit AND judge:
+# PAID_TRIGGERS — elicit AND judge spend Anthropic/provider tokens:
 PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval"})
 
 # in KNOWN_KEYS (verified against advice_evaluation.yml `defaults` dict, 2026-07-21):
@@ -80,118 +91,109 @@ PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-ev
     }),
 ```
 
-Note the budget guard counts `max_spend` for paid triggers; `judge_max_spend` is
-a second ceiling the guard does not see — keep `max_spend + judge_max_spend`
-inside the day's remaining headroom when firing with `judge: true` (or extend
-the guard to sum both keys — cleaner; add a regression test if so).
+The budget guard counts `max_spend`; `judge_max_spend` is a second ceiling it
+does not see — keep the sum inside the day's headroom, or extend the guard to
+sum both keys (cleaner; add a regression test).
 
-### 3. Rubric domain review (owner + domain reviewer — blocking for judged runs)
+### 3. Provider registry + secrets (consumer-tier defaults)
+Copy `data/advice_providers.example.json` → `data/advice_providers.json` and
+**verify every `consumer_default` and pricing entry against the vendors'
+current free-tier docs** — they are deliberately placeholders (consumer tiers
+drift; the registry is data so corrections are config fixes, and the archive
+records the exact resolved model per call regardless). Note the Anthropic
+entry's recorded tension: claude.ai's free tier is sonnet-class, but the pilot
+runs haiku as the owner's cost floor — whichever is used, record the choice in
+the pre-registration. Then add the Actions secrets for the vendors in scope:
+`OPENAI_API_KEY`, `GEMINI_API_KEY`, `XAI_API_KEY`, `DEEPSEEK_API_KEY`,
+`MOONSHOT_API_KEY`, and/or a single prepaid `OPENROUTER_API_KEY` (one key, hard
+external ceiling, covers Llama-family too). Missing secrets fail only the spec
+that needs them, with a clear message. Model spec syntax everywhere:
+`provider` (consumer default) · `provider:model` (override) · bare id
+(Anthropic). Copilot / Meta AI are `manual_ui` — API elicitation refuses them
+and points at `import-manual-responses`.
 
-Copy `data/advice_rubric.example.json` → `data/advice_rubric.json` after review.
-The judge records `rubric_sha256` and version on every judgment, so later rubric
-revisions never contaminate earlier codings — re-judging under a new rubric is a
-new, distinguishable pass over the same archive. Un-judged elicitation (steps
-5–6) may proceed before review; judged/claim-grade output may not.
+### 4. Rubric domain review (owner + domain reviewer — blocks judged runs)
+Copy `data/advice_rubric.example.json` → `data/advice_rubric.json` after
+review. Judgments record the rubric sha, so revisions never contaminate earlier
+codings. Un-judged elicitation may proceed before review; claim-grade output
+may not.
 
-### 4. Pre-register before the first paid fire (owner sign-off)
+### 5. Pre-register before the first paid fire (owner sign-off)
+`docs/preregistration_advice.md`, Tier B style: endpoints (mean tier-rank
+difference patient−clinical per provider; advice downgrade rate;
+disclaimer/refusal rate difference by arm; translation recovery; within-prompt
+variance), direction + refutation criteria (**register the null**: no
+phrasing-dependent advice difference in consumer products is a reportable
+result), the provider→model map actually used (frozen registry copy), K,
+temperature, stimulus source and n, rubric version, judge model, seed. Also:
+the engine README's "nothing here generates or evaluates medical advice" line
+needs an owner-approved amendment ("…evaluates assistant advice for
+measurement; never dispenses it") — owner prose, redline it.
 
-Write `docs/preregistration_advice.md` in the Tier B document's style. Minimum
-contents: endpoints (mean tier rank difference patient−clinical; advice
-downgrade rate; disclaimer/refusal rate difference by arm; translation recovery
-rate; within-prompt variance by arm), direction and refutation criteria
-(register the null explicitly: no phrasing-dependent advice difference in
-frontier models is a reportable result), models and exact snapshot policy, K,
-temperature, stimulus source and n, rubric version, judge model, exclusion
-rules, and analysis code pointer (`advice_eval.py analyze`, seed recorded).
-Sign-off note: the engine README's "nothing here generates or evaluates medical
-advice" line needs an owner-approved amendment ("…evaluates assistant advice for
-measurement; it never dispenses advice") — owner prose, redline it.
-
-### 5. Build and review stimuli ($0, local)
-
+### 6. Build and review stimuli ($0, local)
 ```bash
-# Mode 1 — situations the study has already validated (holdout-safe by construction):
 python scripts/advice_eval.py build-stimuli --source payload --only-flips --max-items 25
-
-# Mode 2 — owner-authored pairs:
-#   my_situations.json: [{"id": "...", "clinical": "...", "patient": "...", "notes": "..."}]
 python scripts/advice_eval.py build-stimuli --source manual --manual-in my_situations.json
-
-# (also available: --source pairs <batch.json> — excludes Tier B holdout via tierb_split
-#  and HARD-ERRORS if the dashboard's tierb.start_utc is null; point --dashboard at the
-#  ops-truth copy, never a stale main checkout)
 ```
+Review the assembled messages by eye (payload vignettes are probe prompts
+finished with a fixed ask suffix, identical on both sides — the minimal pair
+holds; manual mode is where polished vignettes come from). Commit the stimuli
+file — the workflow reads it from the repo.
 
-**Review the assembled messages by eye before eliciting** — payload-sourced
-vignettes are probe prompts finished with a fixed ask suffix ("… — anyway, what
-should I do?"), which reads conversationally but is not hand-polished; the same
-suffix goes on both sides verbatim so the minimal-pair property holds. Manual
-mode is where polished vignettes come from. Commit the stimuli file (the
-workflow reads it from the repo).
-
-### 6. Pilot fire (paid — the arm's first live run)
+### 7. Pilot fire — the $5 cross-provider experiment
+Fire per provider group (or one fire listing several specs; chunk with
+`offset`/`limit` under queue discipline). Example first fire:
 
 ```bash
 python scripts/fire_trigger.py fire --trigger advice-eval --params '{
   "stimuli_file": "data/advice/stimuli_<STAMP>.json",
-  "models": "claude-haiku-4-5",
+  "models": "anthropic:claude-haiku-4-5 openai google deepseek",
   "arms": "clinical,patient,translated",
-  "samples": "3", "max_spend": "0.50",
+  "samples": "3", "max_spend": "1.50",
   "judge": "false",
   "commit_outputs": "true",
-  "_note": "advice arm pilot — rubric pending review, elicit only"
+  "_note": "advice arm pilot 1/2 — consumer defaults, elicit only, rubric pending"
 }'
 ```
+A second fire adds `xai moonshot` (dearer tiers) and, once the rubric clears
+review, a judge-only re-fire (`"judge":"true"` — elicit resumes and skips
+everything archived). This first fire **creates** the trigger file; thereafter
+the merge/copy danger rule covers it like the other six. After landing:
+harvest, `resolve`, then `verify-chain` locally. Copilot/Meta AI: hand-capture
+in the real UIs and `import-manual-responses` (validated, chained, $0).
 
-This first fire **creates** `.github/trigger/advice-eval.json` (the jlens
-pattern) — thereafter the merge/copy danger rule applies to it like the other
-five. After the run lands: harvest, `fire_trigger.py resolve --trigger
-advice-eval`, then verify the archive locally:
+**$5 pilot arithmetic** (25 stimuli × 3 arms × K=3 = 225 advice calls per
+provider, ~200 in / ~500 out tokens per call): haiku ≈ $0.55; mini/flash-class
+consumer defaults ≈ $0.15–0.45 each; DeepSeek ≈ $0.15; Grok-class ≈ $1.20 —
+five API vendors ≈ **$2.50–3.00**, plus a haiku judge pass over ~1,200
+responses ≈ **$1.10**, translations ≈ $0.05. Total ≈ **$3.70–4.20, inside $5.**
+The script's pre-call check reserves the worst case, so a ceiling of $X
+guarantees spend < $X per fire; the paid-trigger guard counts each fire against
+the $2/day ceiling — two fires of $1.50 + a $1.00 judge fire fit a two-day
+window without touching the ceiling.
 
-```bash
-python scripts/advice_eval.py verify-chain \
-  --responses data/advice/responses_stimuli_<STAMP>.jsonl \
-  --sidecar   data/advice/responses_stimuli_<STAMP>.report.json
-```
+### 8. After the pilot
+Validate the judge against a blinded human-coded sample
+(`judge --human-sample 25`; report agreement); run `analyze`; write the pilot
+note. Only then decide any scale-up — and per the owner: scale means **more
+vendors/stimuli at cheap consumer tiers**, not a Claude-only scale run. When
+the arm becomes routine, add the advice drift sentinel (small pinned weekly
+probe per provider) before making cross-week comparisons — consumer tiers
+change silently; every record's `model_returned` string is the tripwire.
 
-Once the rubric is reviewed: fire again with `"judge": "true"` (same stimuli —
-elicit resumes/skips everything already archived and only the judge pass runs),
-or run judge+analyze locally in CI-less form only if a key ever becomes
-available locally (it should not; keys live in Actions secrets only).
-
-### 7. Scale run
-
-Only after: pilot chain verified, judge validated against a human-coded sample
-(`judge --human-sample 25` exports the blinded CSV; report agreement), and the
-pre-registration committed. Chunk with `offset`/`limit` per the queue
-discipline; elicit resume makes re-fires idempotent.
-
-## Budget arithmetic (size ceilings with headroom)
-
-Per-call cost ≈ (in_tokens × in_price + out_tokens × out_price)/1e6; the
-script's pre-call check reserves the **worst case** (max_tokens full), so runs
-stop early rather than breach — a ceiling of $X guarantees spend < $X.
-
-| Run | Calls | Est. actual | Suggested max_spend |
-|---|---|---|---|
-| Pilot: 25 stimuli × 3 arms × K=3, haiku + haiku translator | 25 + 225 | ~$0.55 | 1.00 |
-| Judge pass on that pilot (haiku) | 225 | ~$0.20 | 0.50 |
-| Scale: 100 stimuli × 3 arms × K=5, sonnet-class | 100 + 1500 | ~$13 | 15 — **needs an owner-approved daily-ceiling plan; $2/day will refuse it** (chunk across days or raise the ceiling deliberately) |
-
-## Guardrails (absolute, inherited + arm-specific)
+## Guardrails (absolute)
 
 - Fire ONLY via `scripts/fire_trigger.py`; never touch `.github/trigger/` by
   hand; never `--force-evict`/`--override-budget`; chain, never stack.
-- `data/advice/` is **append-only**; `elicit` refuses to append to a broken
-  chain; a tampered archive is reported to the owner, never repaired in place.
-- Holdout seal: never quote or paraphrase Tier B holdout phrases anywhere —
-  the `--source pairs` guard is mechanical, but reports and chat replies are on
-  you. Payload-sourced stimuli are safe by construction.
-- Judge blinding: the judge sees response text only; keep it that way.
-- No medical vocabulary in Python — stimuli, tiers, and judge wording are data.
+- `data/advice/` is append-only and hash-chained; `elicit` and
+  `import-manual-responses` refuse a broken chain; tampering is reported to the
+  owner, never repaired in place.
+- Never quote or paraphrase Tier B holdout phrases anywhere; payload-sourced
+  stimuli are seal-safe by construction, the pairs-source guard is mechanical,
+  chat replies and reports are on you.
+- Judge stays blinded (response text only). Manual-UI records are never
+  disguised as API output. No medical vocabulary in Python — stimuli, tiers,
+  judge wording, and the provider map are data.
 - Both repos public: no secrets, ever; keys exist only as Actions secrets.
-- This arm **evaluates** advice for measurement; it never dispenses advice, and
+- This arm evaluates advice for measurement; it never dispenses advice, and
   published framing must say so (owner-approved prose).
-- Model endpoints drift: every record logs the returned model version string;
-  when the arm becomes routine, add a small pinned weekly probe (the advice
-  drift sentinel) before making cross-week comparisons.

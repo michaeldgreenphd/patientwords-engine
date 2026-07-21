@@ -307,6 +307,108 @@ def test_modal_tier_tie_breaks_most_urgent():
     assert ae._modal_tier([], rank) is None
 
 
+# ----------------------------------------------------- multi-provider elicit
+
+
+REGISTRY = {
+    "fakeai": {"api": "openai-compat", "base_url": "https://fake.example/v1",
+               "consumer_product": "fake consumer app", "consumer_default": "model-z",
+               "key_env": "FAKEAI_API_KEY", "default_pricing": [0.5, 2.0]},
+    "no_api": {"api": "manual_ui", "consumer_product": "ui-only product"},
+}
+
+
+def test_resolve_spec_variants(tmp_path):
+    reg_path = tmp_path / "providers.json"
+    reg_path.write_text(json.dumps(REGISTRY), encoding="utf-8")
+    reg = ae._load_providers(reg_path)
+    assert ae._resolve_spec("fakeai", reg)["spec"] == "fakeai:model-z"  # consumer default
+    assert ae._resolve_spec("fakeai:model-q", reg)["model"] == "model-q"  # explicit override
+    bare = ae._resolve_spec("claude-haiku-4-5", reg)  # bare id -> anthropic builtin
+    assert bare["provider"] == "anthropic" and bare["spec"] == "anthropic:claude-haiku-4-5"
+    with pytest.raises(SystemExit, match="unknown provider"):
+        ae._resolve_spec("nosuch:model", reg)
+    with pytest.raises(SystemExit, match="import-manual-responses"):
+        ae._resolve_spec("no_api", reg)  # manual_ui providers cannot be elicited via API
+
+
+def test_elicit_openai_compat_provider(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    reg_path = tmp_path / "providers.json"
+    reg_path.write_text(json.dumps(REGISTRY), encoding="utf-8")
+
+    def stub_compat(cfg, model, system, user_text, max_tokens, temperature):
+        assert cfg["base_url"] == "https://fake.example/v1" and model == "model-z"
+        return "compat advice text", 100, 200, {"model": "model-z-live", "usage": {}}
+
+    monkeypatch.setattr(ae, "_send_compat", stub_compat)
+    monkeypatch.setattr(ae, "_send", _stub_send)
+    monkeypatch.setattr(ae, "_client", lambda: object())
+    ae.main(["elicit", "--stimuli", str(stim_path), "--models", "fakeai", "--providers", str(reg_path),
+             "--arms", "clinical,patient", "--samples", "1", "--max-spend", "1.0",
+             "--out-dir", str(stim_path.parent)])
+    rows = [json.loads(x) for x in
+            (stim_path.parent / f"responses_{stim_path.stem}.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert len(rows) == 2
+    assert all(r["model_requested"] == "fakeai:model-z" and r["provider"] == "fakeai" for r in rows)
+    assert all(r["model_returned"] == "model-z-live" and r["endpoint"] == "https://fake.example/v1"
+               for r in rows)
+    side = json.loads((stim_path.parent / f"responses_{stim_path.stem}.report.json")
+                      .read_text(encoding="utf-8"))
+    # registry pricing, not the conservative fallback: (100*0.5 + 200*2.0)/1e6 per call, 2 calls
+    assert side["cost_usd"] == pytest.approx(2 * (100 * 0.5 + 200 * 2.0) / 1e6)
+    assert side["providers"] == {"fakeai:model-z": "fakeai"}
+
+
+def test_import_manual_responses(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path)  # existing API records first
+    manual = tmp_path / "captured.json"
+    manual.write_text(json.dumps([
+        {"stimulus_id": "s1", "arm": "patient", "product": "uiprod", "model_claimed": "ui-model-1",
+         "captured_utc": "2026-07-21T12:00:00Z", "response_text": "ui advice one"},
+        {"stimulus_id": "s1", "arm": "patient", "product": "uiprod",
+         "captured_utc": "2026-07-21T12:05:00Z", "response_text": "ui advice two"},
+    ]), encoding="utf-8")
+    ae.main(["import-manual-responses", "--stimuli", str(stim_path), "--in", str(manual),
+             "--out-dir", str(stim_path.parent)])
+    rows = [json.loads(x) for x in resp.read_text(encoding="utf-8").splitlines()]
+    ok, msg = ae.verify_chain(rows)
+    assert ok, msg
+    ui = [r for r in rows if r.get("endpoint") == "manual_ui"]
+    assert [r["sample_k"] for r in ui] == [1, 2]  # auto-incremented per (stimulus, arm, product)
+    assert all(r["model_requested"] == "uiprod:consumer_ui" and r["cost_usd"] == 0.0 for r in ui)
+    assert ui[0]["capture"]["method"] == "manual_ui" and ui[0]["response_raw"] is None
+    side = json.loads((stim_path.parent / f"responses_{stim_path.stem}.report.json")
+                      .read_text(encoding="utf-8"))
+    assert side["chain_head"] == rows[-1]["record_sha256"]
+    assert side["manual_imports"][0]["records"] == 2
+
+    # judge treats manual records uniformly (they are record_type advice)
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(json.dumps(RUBRIC), encoding="utf-8")
+    monkeypatch.setattr(ae, "_send", _stub_send)
+    monkeypatch.setattr(ae, "_client", lambda: object())
+    ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric_path),
+             "--judge-model", "judge-x", "--max-spend", "1.0"])
+    jpath = resp.with_name(resp.stem.replace("responses_", "judgments_") + ".jsonl")
+    assert len(jpath.read_text(encoding="utf-8").splitlines()) == 8  # 6 API + 2 manual
+
+
+@pytest.mark.parametrize("bad", [
+    {"stimulus_id": "nope", "arm": "patient", "product": "p", "captured_utc": "x", "response_text": "t"},
+    {"stimulus_id": "s1", "arm": "translated", "product": "p", "captured_utc": "x", "response_text": "t"},
+    {"stimulus_id": "s1", "arm": "patient", "product": "", "captured_utc": "x", "response_text": "t"},
+])
+def test_import_manual_rejects_bad_entries(tmp_path, monkeypatch, bad):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    manual = tmp_path / "captured.json"
+    manual.write_text(json.dumps([bad]), encoding="utf-8")
+    with pytest.raises(SystemExit):
+        ae.main(["import-manual-responses", "--stimuli", str(stim_path), "--in", str(manual),
+                 "--out-dir", str(stim_path.parent)])
+
+
 # ----------------------------------------------------------- workflow wiring
 
 
