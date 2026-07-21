@@ -40,6 +40,11 @@ try:
 except ImportError:  # invoked as `python scripts/export_frontend_simulated.py`
     from tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
 
+try:
+    from scripts.payload_summary import build_summary
+except ImportError:
+    from payload_summary import build_summary
+
 # The circuit-tracer models, in registry order (gemma-2-2b is the base/default).
 # Only gemma-2-2b has a transcoder source set, so clinical-feature attribution
 # (the "Med circuit" meter, auto-interp accents) is meaningful for it alone;
@@ -353,8 +358,12 @@ models_meta = [
     if any(m in s.get("models", {}) for s in scenarios)
 ]
 
+accepted_total = sum((b.get("generated") or {}).get("accepted") or 0 for b in batches)
+
 payload = {
     "batches": batches,
+    "summary": build_summary(scenarios, accepted_total, withheld_holdout,
+                             base_model=BASE_MODEL),
     "traced": traced_by_model.get(BASE_MODEL, {}),
     "holdout_withheld": withheld_holdout,
     "traced_by_model": traced_by_model,
