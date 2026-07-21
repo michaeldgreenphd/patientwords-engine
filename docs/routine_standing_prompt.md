@@ -229,6 +229,12 @@ After any data republish, run `python scripts/jlens_insights.py --site
 ../patientwords` when new lens readouts landed (feeds the site's Technical
 page: formation depths, capture-vs-hijack taxonomy, tuning comparison).
 
+After any data republish (AFTER the urgency collector and depth exporter), run
+`python scripts/embed_scenario_joins.py --site ../patientwords` — embeds the
+pages' urgency/depth joins per scenario, urgency_meta, and the redirect-gallery
+featured list (token blocklist from data/display_vocab.json) into the payload
+(audit M2+M3; idempotent, refuses without a payload).
+
 After any data republish, run `python scripts/export_pair_swaps.py --site
 ../patientwords --depth ../patientwords/data/jlens_depth.json` (feeds the
 Technical page's TARGET & SWAP column; $0, offline). Run it AFTER
