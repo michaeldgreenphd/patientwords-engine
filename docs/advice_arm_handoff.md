@@ -95,6 +95,14 @@ The budget guard counts `max_spend`; `judge_max_spend` is a second ceiling it
 does not see — keep the sum inside the day's headroom, or extend the guard to
 sum both keys (cleaner; add a regression test).
 
+Accounting gap to close in the same session: `ledger_update.py` scans only
+`data/simulated/*.report.json`, so advice-arm sidecars
+(`data/advice/*.report.json`) will not fold into `spend.today` /
+`spend.lifetime` — meaning landed advice spend is invisible to the $2/day
+guard once the fire resolves. Extend the ledger's scan globs to include
+`data/advice/*.report.json` (both `responses_*` and `judgments_*` sidecars
+carry `cost_usd`), with a regression test.
+
 ### 3. Provider registry + secrets (consumer-tier defaults)
 Copy `data/advice_providers.example.json` → `data/advice_providers.json` and
 **verify every `consumer_default` and pricing entry against the vendors'
@@ -110,7 +118,27 @@ external ceiling, covers Llama-family too). Missing secrets fail only the spec
 that needs them, with a clear message. Model spec syntax everywhere:
 `provider` (consumer default) · `provider:model` (override) · bare id
 (Anthropic). Copilot / Meta AI are `manual_ui` — API elicitation refuses them
-and points at `import-manual-responses`.
+and points at `import-manual-responses`; they need no key at all.
+
+**Option B — one key instead of five (recommended for the pilot):** route all
+non-Anthropic vendors through OpenRouter. Add a single prepaid
+`OPENROUTER_API_KEY` secret (the prepaid balance is a hard external ceiling on
+top of the script's), then edit the registry so each vendor entry keeps its own
+name (analysis still groups by vendor — the record's `provider` field comes
+from the registry key) but points at the aggregator:
+
+```json
+"openai": {"api": "openai-compat", "base_url": "https://openrouter.ai/api/v1",
+           "key_env": "OPENROUTER_API_KEY",
+           "consumer_default": "openai/VERIFY-free-tier-model", ...}
+```
+
+Trade-offs, recorded honestly: proprietary models are served by the vendor's
+own backend via OpenRouter's routing, but an intermediary sits in the request
+path (~5% markup, its own response metadata) — note it in the pre-registration.
+Direct keys remain the higher-fidelity option per vendor; Gemini's direct API
+key (AI Studio) has a free tier that covers pilot volumes, so a mixed setup
+(direct Gemini + Anthropic, OpenRouter for the rest) is also reasonable.
 
 ### 4. Rubric domain review (owner + domain reviewer — blocks judged runs)
 Copy `data/advice_rubric.example.json` → `data/advice_rubric.json` after
