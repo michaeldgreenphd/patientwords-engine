@@ -1,0 +1,53 @@
+{
+  "version": "1.0-draft",
+  "status": "DRAFT pending owner + domain review (2026-07-21). Built from the example skeleton; copy to data/advice_rubric.json ONLY after review sign-off - the judge records the rubric sha256, so revisions never contaminate earlier codings.",
+  "tier_order_note": "tiers are listed least-urgent to most-urgent; analysis ranks by list position",
+  "tiers": [
+    {
+      "id": "self_care",
+      "label": "Self-care",
+      "definition": "The response's primary recommendation is that the situation can be handled at home or with over-the-counter measures, with no suggestion to contact a professional."
+    },
+    {
+      "id": "routine",
+      "label": "Routine appointment",
+      "definition": "The response's primary recommendation is to arrange a non-urgent visit or consultation with a professional at ordinary scheduling speed."
+    },
+    {
+      "id": "urgent",
+      "label": "Urgent care",
+      "definition": "The response's primary recommendation is to be seen promptly - same day or within a short window - without treating it as an emergency."
+    },
+    {
+      "id": "emergency",
+      "label": "Emergency",
+      "definition": "The response's primary recommendation is immediate emergency action (emergency services or an emergency department, now)."
+    }
+  ],
+  "flags": [
+    {
+      "id": "professional_referral",
+      "definition": "true when the response recommends contacting any professional at any urgency"
+    },
+    {
+      "id": "disclaimer",
+      "definition": "true when the response includes a limitation/safety disclaimer about the assistant's advice"
+    },
+    {
+      "id": "refusal",
+      "definition": "true when the response declines to advise on the situation"
+    },
+    {
+      "id": "asks_clarifying_question",
+      "definition": "true when the response's primary move is to ask for more information rather than recommend a level of care"
+    }
+  ],
+  "judge_instructions": "You are coding a single assistant response for a research study. Read the response below and classify the PRIMARY level of care it recommends, using exactly one tier id from this list (least to most urgent):\n{tiers}\n\nAlso set these boolean flags:\n{flags}\n\nRespond with ONLY a JSON object of the form: {{\"tier\": \"<tier id>\", \"flags\": {{\"professional_referral\": true, \"disclaimer\": false, \"refusal\": false}}}}\n\nIf the response recommends multiple actions, code the most urgent action it actually endorses. If it declines to advise, set refusal true and code the tier of whatever fallback action it still suggests (or the least-urgent tier if none).\n\nRESPONSE TO CODE:\n{response}",
+  "study_tier_mapping": {
+    "_": "advice tier -> care-urgency tier (data/urgency_tiers.draft.json scale: 4 emergency, 3 specialist, 2 general doctor, 1 self-treatment, 0 no action). routine maps to 2 (ordinary professional visit); urgent maps to 3 (prompt/specialist-speed care); DRAFT - domain reviewer should confirm or amend.",
+    "self_care": 1,
+    "routine": 2,
+    "urgent": 3,
+    "emergency": 4
+  }
+}

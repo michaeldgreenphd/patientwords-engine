@@ -537,3 +537,86 @@ def test_mitigation_fire_detection_and_inflight_counting():
              "evicted": False, "max_spend": ft.MITIGATION_IMPUTED_USD}
     total = ft.inflight_max_spend([entry], "2026-07-13", now, 8.0)
     assert total == ft.MITIGATION_IMPUTED_USD
+
+
+# ---- advice-eval registration + judge-ceiling accounting (handoff rev 2) ----
+
+def _advice_params(**over):
+    p = {"stimuli_file": "data/advice/stimuli_x.json",
+         "models": "anthropic:claude-haiku-4-5 openai google",
+         "arms": "clinical,patient,translated", "samples": "3",
+         "temperature": "1.0", "max_tokens": "1024",
+         "translator_model": "claude-haiku-4-5", "max_spend": "1.50",
+         "judge": "false", "judge_model": "claude-haiku-4-5",
+         "judge_max_spend": "0.50", "rubric": "data/advice_rubric.json",
+         "offset": "0", "limit": "0", "commit_outputs": "true"}
+    p.update(over)
+    return p
+
+
+def test_advice_eval_registered_paid_with_exact_verified_keys(repo):
+    assert "advice-eval" in ft.TRIGGERS
+    assert "advice-eval" in ft.PAID_TRIGGERS
+    write_dashboard(repo, spent=0.0)
+    assert fire(repo, "advice-eval", _advice_params(_nonce="a1")) == 0
+    assert trigger_path(repo, "advice-eval").exists()
+
+
+def test_advice_eval_unknown_key_hard_error(repo):
+    write_dashboard(repo, spent=0.0)
+    assert fire(repo, "advice-eval",
+                _advice_params(modles="typo", _nonce="a2")) != 0
+    assert not trigger_path(repo, "advice-eval").exists()
+
+
+def test_fire_commitment_sums_judge_ceiling_only_when_judging():
+    assert ft.fire_commitment({"max_spend": "1.0"}) == (1.0, None)
+    total, err = ft.fire_commitment(
+        {"max_spend": "1.0", "judge": "true", "judge_max_spend": "0.5"})
+    assert (total, err) == (1.5, None)
+    # judge off: judge_max_spend present but NOT committed
+    total, err = ft.fire_commitment(
+        {"max_spend": "1.0", "judge": "false", "judge_max_spend": "0.5"})
+    assert (total, err) == (1.0, None)
+    # judge on without a usable judge ceiling: invalid, with a clear reason
+    total, err = ft.fire_commitment({"max_spend": "1.0", "judge": "true"})
+    assert total is None and "judge_max_spend" in err
+    total, err = ft.fire_commitment(
+        {"max_spend": "1.0", "judge": "true", "judge_max_spend": "nan"})
+    assert total is None
+
+
+def test_judged_fire_counts_both_ceilings_against_the_day(repo):
+    write_dashboard(repo, spent=0.0)
+    # 1.2 elicit + 0.9 judge = 2.1 > 2.0 ceiling: refused even though
+    # max_spend alone would fit
+    assert fire(repo, "advice-eval", _advice_params(
+        max_spend="1.2", judge="true", judge_max_spend="0.9", _nonce="j1")) == 4
+    assert not trigger_path(repo, "advice-eval").exists()
+    # same fire un-judged fits
+    assert fire(repo, "advice-eval", _advice_params(
+        max_spend="1.2", judge="false", judge_max_spend="0.9", _nonce="j2")) == 0
+
+
+def test_judged_fire_without_judge_ceiling_is_invalid_never_overridable(repo):
+    write_dashboard(repo, spent=0.0)
+    params = _advice_params(judge="true", _nonce="j3")
+    del params["judge_max_spend"]
+    assert fire(repo, "advice-eval", params) == 4
+    assert fire(repo, "advice-eval", dict(params, _nonce="j4"),
+                extra=("--override-budget",)) == 4  # invalid, not ceiling
+
+
+def test_judged_fire_journal_entry_records_summed_commitment(repo):
+    write_dashboard(repo, spent=0.0)
+    assert fire(repo, "advice-eval", _advice_params(
+        max_spend="0.60", judge="true", judge_max_spend="0.40", _nonce="j5")) == 0
+    entry = json.loads(journal_path(repo).read_text().splitlines()[-1])
+    assert entry["trigger"] == "advice-eval"
+    assert entry["max_spend"] == pytest.approx(1.0)
+    # a second paid fire the same day sees the full 1.0 in-flight: 1.2 would
+    # break the 2.0 ceiling (1.0 + 1.2), 0.9 fits
+    assert fire(repo, "scenario-generation", {
+        "task": "pairs", "num": "5", "max_spend": "1.2", "_nonce": "j6"}) == 4
+    assert fire(repo, "scenario-generation", {
+        "task": "pairs", "num": "5", "max_spend": "0.9", "_nonce": "j7"}) == 0

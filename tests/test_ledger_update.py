@@ -31,15 +31,20 @@ def write_sidecar(sim_dir, name, **fields):
 def tree(tmp_path):
     sim = tmp_path / "data" / "simulated"
     sim.mkdir(parents=True)
+    adv = tmp_path / "data" / "advice"
+    adv.mkdir()
     docs = tmp_path / "docs"
     docs.mkdir()
     ledger = docs / "overnight_ledger_20260708.md"
     ledger.write_text("# Overnight session ledger\n\nProse the script must not touch.\n", encoding="utf-8")
-    return {"sim": sim, "dash": tmp_path / "ops" / "dashboard.json", "ledger": ledger}
+    return {"sim": sim, "adv": adv, "dash": tmp_path / "ops" / "dashboard.json", "ledger": ledger}
 
 
 def run(tree, *extra):
-    argv = ["--simulated-dir", str(tree["sim"]), "--dashboard", str(tree["dash"]),
+    # --advice-dir always pinned to the fixture so a real sidecar landing in
+    # the repo's data/advice/ can never leak into these hermetic tests
+    argv = ["--simulated-dir", str(tree["sim"]), "--advice-dir", str(tree["adv"]),
+            "--dashboard", str(tree["dash"]),
             "--ledger", str(tree["ledger"]), "--date", TODAY, *extra]
     return ledger_update.main(argv)
 
@@ -392,3 +397,29 @@ def test_sample_dashboard_arithmetic_consistent():
     landed_sidecars = {b["file"][:-len(".json")] + ".report.json"
                        for b in batches if b["status"] != "generating"}
     assert landed_sidecars == set(spend["entries_seen"])
+
+
+def test_advice_sidecars_fold_into_spend_totals(tree):
+    # handoff rev 2 accounting gap: advice-arm sidecars must reach the same
+    # totals the $2/day guard reads, or landed advice spend is invisible
+    write_sidecar(tree["adv"], "responses_20260722T010101Z.report.json",
+                  cost_usd=0.42, model="advice-elicit",
+                  run_timestamp=f"{TODAY}T01:01:01Z")
+    write_sidecar(tree["adv"], "judgments_20260722T020202Z.report.json",
+                  cost_usd=0.11, model="claude-haiku-4-5",
+                  run_timestamp=f"{TODAY}T02:02:02Z")
+    write_sidecar(tree["sim"], "pairs_20260722T000000Z.report.json",
+                  cost_usd=0.05, model="claude-haiku-4-5", accepted=5,
+                  task="pairs", run_timestamp=f"{TODAY}T00:00:00Z")
+    assert run(tree) == 0
+    dash = load_dash(tree)
+    spend = dash["spend"]
+    assert spend["by_day"][TODAY] == pytest.approx(0.58)
+    assert spend["today"] == {"date": TODAY, "spent_usd": pytest.approx(0.58)}
+    seen = set(spend["entries_seen"])
+    assert {"responses_20260722T010101Z.report.json",
+            "judgments_20260722T020202Z.report.json",
+            "pairs_20260722T000000Z.report.json"} <= seen
+    # idempotent on re-run
+    assert run(tree) == 0
+    assert load_dash(tree)["spend"]["by_day"][TODAY] == pytest.approx(0.58)

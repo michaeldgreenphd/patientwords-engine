@@ -1,0 +1,84 @@
+{
+  "_readme": "Provider registry for scripts/advice_eval.py (copy to data/advice_providers.json after review). MEASUREMENT INTENT: each provider's consumer_default is the study's average-consumer proxy - the model the FREE / default tier of that vendor's consumer product serves, not the strongest API model. Every consumer_default and pricing entry below is a PLACEHOLDER TO VERIFY at integration time against the vendor's current free-tier docs (consumer tiers drift; this file is data so a wrong guess is a config fix, and the elicit archive records the exact resolved model per call regardless). API models are PROXIES for consumer products: no product system prompt, no product safety wrapper, no memory - document the gap via a hand-run manual_ui calibration subset (import-manual-responses). pricing = [input, output] USD per Mtok, used only by the local spend-ceiling math; the true bill is the provider's. key_env names a GitHub Actions secret - keys never live in either repo or any local file.",
+
+  "anthropic": {
+    "api": "anthropic",
+    "consumer_product": "Claude (claude.ai) free tier",
+    "consumer_default": "claude-haiku-4-5",
+    "consumer_proxy_note": "VERIFY: claude.ai's free tier serves a sonnet-class model with usage caps; haiku is set here as the pilot's cost floor per owner decision 2026-07-21. For the consumer-proxy arm proper, switch to the verified free-tier model and record the change in the pre-registration.",
+    "key_env": "ANTHROPIC_API_KEY"
+  },
+
+  "openai": {
+    "api": "openai-compat",
+    "base_url": "https://api.openai.com/v1",
+    "consumer_product": "ChatGPT free tier",
+    "consumer_default": "VERIFY-current-free-tier-model",
+    "consumer_proxy_note": "VERIFY: set to the model ChatGPT's free tier currently serves by default (historically a mini-class model, with limited flagship access that falls back to mini). Record which you chose and why.",
+    "key_env": "OPENAI_API_KEY",
+    "default_pricing": [1.0, 4.0]
+  },
+
+  "google": {
+    "api": "openai-compat",
+    "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "consumer_product": "Gemini app free tier",
+    "consumer_default": "VERIFY-current-flash-class-default",
+    "consumer_proxy_note": "VERIFY: the free Gemini app has served a flash-class default. Google exposes an OpenAI-compatible endpoint; confirm the path and the exact model id.",
+    "key_env": "GEMINI_API_KEY",
+    "default_pricing": [0.5, 2.0]
+  },
+
+  "xai": {
+    "api": "openai-compat",
+    "base_url": "https://api.x.ai/v1",
+    "consumer_product": "Grok free tier (X / grok.com)",
+    "consumer_default": "VERIFY-current-grok-default",
+    "consumer_proxy_note": "VERIFY: set to the model the free Grok consumer surface serves by default.",
+    "key_env": "XAI_API_KEY",
+    "default_pricing": [3.0, 15.0]
+  },
+
+  "deepseek": {
+    "api": "openai-compat",
+    "base_url": "https://api.deepseek.com/v1",
+    "consumer_product": "DeepSeek app/web (free)",
+    "consumer_default": "deepseek-chat",
+    "consumer_proxy_note": "VERIFY: deepseek-chat (V3-class) has been the free app's non-reasoning default; the app's DeepThink toggle maps to deepseek-reasoner - consider it a second, non-default arm.",
+    "key_env": "DEEPSEEK_API_KEY",
+    "default_pricing": [0.3, 1.1]
+  },
+
+  "moonshot": {
+    "api": "openai-compat",
+    "base_url": "https://api.moonshot.ai/v1",
+    "consumer_product": "Kimi (free)",
+    "consumer_default": "VERIFY-current-kimi-default",
+    "consumer_proxy_note": "VERIFY: set to the model the free Kimi consumer app serves by default (k2-class).",
+    "key_env": "MOONSHOT_API_KEY",
+    "default_pricing": [0.6, 2.5]
+  },
+
+  "openrouter": {
+    "api": "openai-compat",
+    "base_url": "https://openrouter.ai/api/v1",
+    "consumer_product": "aggregator (not itself a consumer product)",
+    "consumer_proxy_note": "Route to any vendor's model with ONE prepaid key (a hard external spend ceiling on top of the script's). Use for Llama-family models (Meta AI's consumer app has no public API; an open-weights Llama via openrouter:meta-llama/... is a stated-and-recorded approximation, and true Meta AI behavior belongs in the manual_ui arm) or to consolidate vendors under one secret. Always pass an explicit openrouter:<vendor/model> spec - no consumer_default on purpose.",
+    "key_env": "OPENROUTER_API_KEY",
+    "default_pricing": [3.0, 15.0]
+  },
+
+  "copilot": {
+    "api": "manual_ui",
+    "consumer_product": "Microsoft Copilot (consumer)",
+    "consumer_proxy_note": "No public API for the consumer Copilot product. Capture responses by hand in the real UI and import with: advice_eval.py import-manual-responses. Records land in the same audit chain with capture.method=manual_ui."
+  },
+
+  "meta_ai": {
+    "api": "manual_ui",
+    "consumer_product": "Meta AI (consumer app)",
+    "consumer_proxy_note": "No public API for the consumer product; same manual_ui path as copilot. Open-weights Llama via openrouter is a separate, clearly-labeled approximation arm."
+  },
+
+  "_thinking_machines_note": "No consumer chat product/API known as of 2026-07 - their public offering targets fine-tuning, not a consumer assistant. Re-check at integration; if a consumer product exists by then, add an entry (openai-compat or manual_ui as appropriate)."
+}
