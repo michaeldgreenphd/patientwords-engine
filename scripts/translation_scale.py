@@ -38,6 +38,13 @@ import statistics
 import sys
 from pathlib import Path
 
+try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
+    from scripts.provenance_stamp import provenance
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from provenance_stamp import provenance
+
 ENGINE = Path(__file__).resolve().parents[1]
 
 # Model -> family, for the frontend's base / instruction-tuned / medical grouping.
@@ -225,6 +232,7 @@ def main() -> int:
     args = parser.parse_args()
     result = analyze(Path(args.trace_root), Path(args.simulated_dir))
     result["lens_recovery"] = lens_recovery(Path(args.trace_root), Path(args.simulated_dir))
+    result["_provenance"] = provenance("translation_scale.py")
     Path(args.out).write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
     for model, s in result["per_model"].items():
         print(f"{model} [{s['family']}]: n={s['n']} mean recovery {s['mean_recovery']:+.4f} "

@@ -19,6 +19,13 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
+    from scripts.provenance_stamp import provenance
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from provenance_stamp import provenance
+
 MILESTONE_FILES = [
     ("docs/preregistration_tierB.md", "Tier B pre-registration committed"),
 ]
@@ -109,6 +116,7 @@ def main(argv=None):
         },
     }
 
+    payload["_provenance"] = provenance("study_timeline.py")
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")

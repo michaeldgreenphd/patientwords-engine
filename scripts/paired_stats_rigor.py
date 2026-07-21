@@ -53,6 +53,13 @@ import re
 from collections import Counter, defaultdict
 from pathlib import Path
 
+try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
+    from scripts.provenance_stamp import provenance
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from provenance_stamp import provenance
+
 # Observational generation batches: the confirmatory population. Everything
 # else (steered runs, outcome-selected sets, imports, re-traces, sentinels)
 # is sensitivity-only. Mirrors scripts/convergence_tracker.py.
@@ -551,6 +558,7 @@ def main(argv=None):
     rows = load_rows(args.rows)
     bundle = analyze(rows, models=args.models, boot=args.boot, seed=args.seed)
     bundle["source"] = str(args.rows)
+    bundle["_provenance"] = provenance("paired_stats_rigor.py")
     Path(args.out).write_text(json.dumps(bundle, indent=1) + "\n", encoding="utf-8")
     if args.site:
         # site copy for model-evaluations/: same claim-grade numbers plus the

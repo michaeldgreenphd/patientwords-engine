@@ -20,6 +20,13 @@ import difflib
 import json
 from pathlib import Path
 
+try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
+    from scripts.provenance_stamp import provenance
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from provenance_stamp import provenance
+
 
 def patient_swap(top_prompt, bottom_prompt, width=44):
     """The patient-side differing span vs the clinical prompt (the colloquial
@@ -114,6 +121,7 @@ def main(argv=None):
     }
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
+    payload["_provenance"] = provenance("export_pair_swaps.py")
     out.write_text(json.dumps(payload, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"jlens swaps: {len(swaps)} pairs -> {out}")
     if args.site:

@@ -27,6 +27,13 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
+    from scripts.provenance_stamp import provenance
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from provenance_stamp import provenance
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from tierb_split import holdout_phrases  # noqa: E402  (script-style module)
 
@@ -149,6 +156,7 @@ def main():
     }
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
+    payload["_provenance"] = provenance("retrace_consistency.py")
     out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
     if not rows:

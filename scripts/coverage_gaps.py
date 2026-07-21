@@ -15,6 +15,13 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
+    from scripts.provenance_stamp import provenance
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from provenance_stamp import provenance
+
 
 def topic_lookup(map_payload: dict) -> dict:
     lookup = {}
@@ -83,6 +90,7 @@ def main():
                          .read_text(encoding="utf-8")).get("rows", [])
     payload = build(map_payload, scenarios, urgency, args.base_model,
                     args.steer_n, args.thin_threshold)
+    payload["_provenance"] = provenance("coverage_gaps.py")
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

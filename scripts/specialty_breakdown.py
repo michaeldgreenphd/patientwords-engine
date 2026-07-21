@@ -19,6 +19,13 @@ try:  # imported as scripts.specialty_breakdown (tests) vs run from scripts/ (CL
 except ImportError:
     from coverage_gaps import topic_lookup
 
+try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
+    from scripts.provenance_stamp import provenance
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from provenance_stamp import provenance
+
 
 def penalties_by_specialty(map_payload: dict, scenarios: list, urgency_rows: list):
     lookup = topic_lookup(map_payload)
@@ -92,6 +99,7 @@ def main():
         "min_n": args.min_n,
         "specialties": dict(sorted(shown.items())),
     }
+    payload["_provenance"] = provenance("specialty_breakdown.py")
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

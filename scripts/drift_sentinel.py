@@ -18,6 +18,13 @@ import json
 import re
 from pathlib import Path
 
+try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
+    from scripts.provenance_stamp import provenance
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from provenance_stamp import provenance
+
 DIR_PATTERN = re.compile(r"drift_sentinel_(\d{8})$")
 DEFAULT_THRESHOLD = 0.01
 
@@ -108,6 +115,7 @@ def main():
                "stable": not breached}
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
+    payload["_provenance"] = provenance("drift_sentinel.py")
     out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     if args.site:
         site_copy = Path(args.site) / "data" / "drift_series.json"

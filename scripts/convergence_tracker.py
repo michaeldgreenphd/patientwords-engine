@@ -31,6 +31,13 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
+try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
+    from scripts.provenance_stamp import provenance
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from provenance_stamp import provenance
+
 BATCH_RE = re.compile(r"pairs_(\d{8}T\d{6}Z)")
 NONFLIP = "none"
 TIE_ORDER = [NONFLIP, "uninformative", "lateral", "upgrade", "downgrade"]
@@ -135,6 +142,7 @@ def main(argv=None):
         if pts:
             payload["models"][model] = {"points": pts}
 
+    payload["_provenance"] = provenance("convergence_tracker.py")
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")

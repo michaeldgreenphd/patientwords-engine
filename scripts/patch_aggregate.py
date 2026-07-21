@@ -31,6 +31,13 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+try:  # invoked from the repo root (CLI/nightly) vs loaded by path (tests)
+    from scripts.provenance_stamp import provenance
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from provenance_stamp import provenance
+
 
 def load_pairs(stem):
     """Per-pair patching blocks from every part file, keyed by index."""
@@ -141,6 +148,7 @@ def main(argv=None):
                                "the swapped span itself is never patchable"),
     }
     payload.update(aggregate(pairs))
+    payload["_provenance"] = provenance("patch_aggregate.py")
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
