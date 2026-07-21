@@ -75,8 +75,7 @@ FRONTEND_CONTRACT = {
     "exemplars[]": ("target", "layers", "sides.clinical", "sides.patient", "render?"),
     "exemplars[].sides.<side>": ("tokens[].token", "grid", "answer_position",
                                  "answer.token", "answer.prob", "answer.on_target",
-                                 "answer.trace_url", "readout[].{layer,final,tokens}",
-                                 "pos_readout{<pos>:[top-3]}"),
+                                 "answer.trace_url", "readout[].{layer,final,tokens}"),
 }
 
 _TIERB_START = tierb_start_stamp()
@@ -262,30 +261,6 @@ def answer_readout(response, topk=3):
     return out
 
 
-def pos_readout(response, grid, topk=3):
-    """Per-position open-vocab marginalia: the top-k decoded tokens at each prompt
-    position where the TARGET is legible (grid.first_layer set), using the same
-    final-layer open-vocab decode as answer_readout. Bounded on purpose - only
-    legible positions, top-k each - so the file stays small. Keyed by the grid
-    row index (aligns with side.tokens / side.grid). {} when nothing is legible."""
-    tokens = (response.get("tokens") or []) if isinstance(response, dict) else []
-    first_layer = grid.get("first_layer") or []
-    out = {}
-    for i, tok in enumerate(tokens):
-        if i >= len(first_layer) or first_layer[i] is None:
-            continue  # only positions where the target is legible (keeps it bounded)
-        entries = sorted(
-            (list(jps.jr._layer_entries_from_results(tok, response))
-             or list(jps.jr._iter_layer_entries(tok))),
-            key=lambda e: e[0],
-        )
-        if not entries:
-            continue
-        _layer, tops = entries[-1]  # final-layer readout at this position
-        words = [w for w in (jps.jr._token_string(t).strip() for t in (tops or [])[:topk]) if w]
-        if words:
-            out[str(i)] = words
-    return out
 
 
 def summarize_side(records):
@@ -443,8 +418,6 @@ def _slim_side(grid, raw, target, model):
         "answer_position": grid.get("answer_position"),
         "answer": answer_prediction(raw, target, model),
         "readout": answer_readout(raw),   # paper-style open-vocab decode per layer
-        # per-position marginalia: top-3 decoded tokens at each legible position
-        "pos_readout": pos_readout(raw, grid),
     }
 
 
