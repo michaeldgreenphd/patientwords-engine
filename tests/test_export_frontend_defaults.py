@@ -31,3 +31,9 @@ def test_pngs_off_by_default_with_optback():
 def test_og_preview_raster_still_special_cased():
     # one raster must survive --no-pngs: the link-unfurl og:image
     assert 'modes/simulated/preview.png' in _SRC
+
+
+def test_exporter_emits_payload_summary():
+    # audit M1: the ONE definition of the headline numbers rides in the payload
+    assert '"summary": build_summary(scenarios, accepted_total, withheld_holdout' in _SRC
+    assert "from payload_summary import build_summary" in _SRC
