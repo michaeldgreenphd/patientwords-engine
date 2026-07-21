@@ -1,0 +1,273 @@
+name: Advice Evaluation (medlang-circuits)
+
+# Frontier-model ADVICE arm: paired clinical/patient vignettes elicited against
+# Anthropic models, with an optional LLM translation arm and an optional judge
+# pass mapping responses to the domain-reviewed rubric. PAID (Anthropic tokens):
+# every run requires max_spend and writes a cost sidecar; the elicitation
+# archive is append-only and hash-chained (see data/advice/README.md).
+# This workflow EVALUATES model advice for measurement; it never dispenses advice.
+#
+# Start it from the Actions tab (workflow_dispatch) or by pushing a params file
+# to .github/trigger/advice-eval.json via scripts/fire_trigger.py ONLY, e.g.
+#   {"stimuli_file":"data/advice/stimuli_20260722T090000Z.json",
+#    "models":"claude-haiku-4-5 claude-sonnet-5","arms":"clinical,patient,translated",
+#    "samples":"3","max_spend":"1.00","judge":"true","commit_outputs":"true"}
+# NOTE: the trigger file is created by the first sanctioned fire — never by hand
+# (a hand-committed trigger file fires this paid workflow on push, including merges).
+
+on:
+  workflow_dispatch:
+    inputs:
+      stimuli_file:
+        description: "Repo path of the stimuli JSON (from advice_eval.py build-stimuli)"
+        type: string
+        default: ""
+      models:
+        description: "Space/comma-separated Anthropic model ids to elicit"
+        type: string
+        default: "claude-haiku-4-5"
+      arms:
+        description: "Comma-separated arms: clinical,patient[,translated]"
+        type: string
+        default: "clinical,patient"
+      samples:
+        description: "Samples per stimulus x arm x model (within-prompt variance)"
+        type: string
+        default: "3"
+      temperature:
+        description: "Sampling temperature for advice elicitation"
+        type: string
+        default: "1.0"
+      max_tokens:
+        description: "Max output tokens per advice response"
+        type: string
+        default: "1024"
+      translator_model:
+        description: "Model for the translated arm's patient->clinical step"
+        type: string
+        default: "claude-haiku-4-5"
+      max_spend:
+        description: "HARD elicitation spend ceiling in USD (required, counted by the guard)"
+        type: string
+        default: "0.50"
+      judge:
+        description: "Also run the judge pass after elicitation"
+        type: boolean
+        default: false
+      judge_model:
+        description: "Judge model (blinded: sees response text only)"
+        type: string
+        default: "claude-haiku-4-5"
+      judge_max_spend:
+        description: "HARD judge spend ceiling in USD"
+        type: string
+        default: "0.50"
+      rubric:
+        description: "Rubric path (domain-reviewed copy, not the .example)"
+        type: string
+        default: "data/advice_rubric.json"
+      offset:
+        description: "Skip the first N stimuli (chunking)"
+        type: string
+        default: "0"
+      limit:
+        description: "Elicit only N stimuli after offset (0 = all)"
+        type: string
+        default: "0"
+      commit_outputs:
+        description: "Commit archive/sidecars/judgments back to the branch"
+        type: boolean
+        default: false
+  push:
+    paths:
+      - ".github/trigger/advice-eval.json"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: advice-eval-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  params:
+    runs-on: ubuntu-latest
+    outputs:
+      stimuli_file: ${{ steps.params.outputs.stimuli_file }}
+      models: ${{ steps.params.outputs.models }}
+      arms: ${{ steps.params.outputs.arms }}
+      samples: ${{ steps.params.outputs.samples }}
+      temperature: ${{ steps.params.outputs.temperature }}
+      max_tokens: ${{ steps.params.outputs.max_tokens }}
+      translator_model: ${{ steps.params.outputs.translator_model }}
+      max_spend: ${{ steps.params.outputs.max_spend }}
+      judge: ${{ steps.params.outputs.judge }}
+      judge_model: ${{ steps.params.outputs.judge_model }}
+      judge_max_spend: ${{ steps.params.outputs.judge_max_spend }}
+      rubric: ${{ steps.params.outputs.rubric }}
+      offset: ${{ steps.params.outputs.offset }}
+      limit: ${{ steps.params.outputs.limit }}
+      commit_outputs: ${{ steps.params.outputs.commit_outputs }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve parameters
+        id: params
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IN_STIMULI_FILE: ${{ inputs.stimuli_file }}
+          IN_MODELS: ${{ inputs.models }}
+          IN_ARMS: ${{ inputs.arms }}
+          IN_SAMPLES: ${{ inputs.samples }}
+          IN_TEMPERATURE: ${{ inputs.temperature }}
+          IN_MAX_TOKENS: ${{ inputs.max_tokens }}
+          IN_TRANSLATOR_MODEL: ${{ inputs.translator_model }}
+          IN_MAX_SPEND: ${{ inputs.max_spend }}
+          IN_JUDGE: ${{ inputs.judge }}
+          IN_JUDGE_MODEL: ${{ inputs.judge_model }}
+          IN_JUDGE_MAX_SPEND: ${{ inputs.judge_max_spend }}
+          IN_RUBRIC: ${{ inputs.rubric }}
+          IN_OFFSET: ${{ inputs.offset }}
+          IN_LIMIT: ${{ inputs.limit }}
+          IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          # The push-path defaults dict MUST contain every trigger key (unknown
+          # keys in the trigger file are silently ignored by design; the fire
+          # guard's KNOWN_KEYS mirrors this set).
+          defaults = {"stimuli_file": "",
+                      "models": "claude-haiku-4-5",
+                      "arms": "clinical,patient",
+                      "samples": "3", "temperature": "1.0", "max_tokens": "1024",
+                      "translator_model": "claude-haiku-4-5",
+                      "max_spend": "0.50",
+                      "judge": "false", "judge_model": "claude-haiku-4-5",
+                      "judge_max_spend": "0.50", "rubric": "data/advice_rubric.json",
+                      "offset": "0", "limit": "0", "commit_outputs": "false"}
+          p = dict(defaults)
+          if os.environ["EVENT_NAME"] == "push":
+              with open(".github/trigger/advice-eval.json", encoding="utf-8") as f:
+                  cfg = json.load(f)
+              if isinstance(cfg.get("models"), list):
+                  cfg["models"] = " ".join(str(m) for m in cfg["models"])
+              p.update({k: (str(v).lower() if isinstance(v, bool) else str(v))
+                        for k, v in cfg.items() if k in defaults})
+          else:
+              for k in defaults:
+                  v = os.environ.get("IN_" + k.upper(), "")
+                  if v:
+                      p[k] = v
+          if not p["stimuli_file"]:
+              raise SystemExit("stimuli_file is required (build stimuli first, commit, then fire)")
+          float(p["max_spend"]); float(p["judge_max_spend"])  # fail fast on malformed ceilings
+          out = os.environ["GITHUB_OUTPUT"]
+          with open(out, "a", encoding="utf-8") as f:
+              for k in defaults:
+                  f.write(k + "=" + p[k] + "\n")
+          print(" | ".join(f"{k}={p[k]}" for k in sorted(defaults)))
+          EOF
+
+  advice:
+    needs: params
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package
+        run: pip install --quiet -e ".[llm]"
+
+      - name: Elicit (paid, ceiling-enforced, append-only archive)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          STIMULI: ${{ needs.params.outputs.stimuli_file }}
+          MODELS: ${{ needs.params.outputs.models }}
+          ARMS: ${{ needs.params.outputs.arms }}
+          SAMPLES: ${{ needs.params.outputs.samples }}
+          TEMPERATURE: ${{ needs.params.outputs.temperature }}
+          MAX_TOKENS: ${{ needs.params.outputs.max_tokens }}
+          TRANSLATOR: ${{ needs.params.outputs.translator_model }}
+          MAX_SPEND: ${{ needs.params.outputs.max_spend }}
+          OFFSET: ${{ needs.params.outputs.offset }}
+          LIMIT: ${{ needs.params.outputs.limit }}
+        run: |
+          python scripts/advice_eval.py elicit --stimuli "$STIMULI" \
+            --models "$MODELS" --arms "$ARMS" --samples "$SAMPLES" \
+            --temperature "$TEMPERATURE" --max-tokens "$MAX_TOKENS" \
+            --translator-model "$TRANSLATOR" --max-spend "$MAX_SPEND" \
+            --offset "$OFFSET" --limit "$LIMIT"
+
+      - name: Judge + analyze (optional)
+        if: ${{ needs.params.outputs.judge == 'true' }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          STIMULI: ${{ needs.params.outputs.stimuli_file }}
+          JUDGE_MODEL: ${{ needs.params.outputs.judge_model }}
+          JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
+          RUBRIC: ${{ needs.params.outputs.rubric }}
+        run: |
+          STEM=$(basename "$STIMULI" .json)
+          python scripts/advice_eval.py judge \
+            --responses "data/advice/responses_${STEM}.jsonl" \
+            --rubric "$RUBRIC" --judge-model "$JUDGE_MODEL" --max-spend "$JUDGE_MAX_SPEND"
+          python scripts/advice_eval.py analyze \
+            --judgments "data/advice/judgments_${STEM}.jsonl" --rubric "$RUBRIC"
+
+      - name: Verify archive chain
+        if: always()
+        env:
+          STIMULI: ${{ needs.params.outputs.stimuli_file }}
+        run: |
+          STEM=$(basename "$STIMULI" .json)
+          F="data/advice/responses_${STEM}.jsonl"
+          if [ -f "$F" ]; then
+            python scripts/advice_eval.py verify-chain --responses "$F" \
+              --sidecar "data/advice/responses_${STEM}.report.json"
+          fi
+
+      - name: Commit outputs to the branch
+        if: ${{ always() && needs.params.outputs.commit_outputs == 'true' }}
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          git add -f data/advice/ || true
+          if git diff --cached --quiet; then echo "No outputs to commit"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Advice eval: $(basename "${{ needs.params.outputs.stimuli_file }}" .json) (append-only archive + sidecars)"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 2))
+          done
+          exit 1
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: advice-eval-outputs
+          path: data/advice/
+          if-no-files-found: warn
+
+      - name: Job summary
+        if: always()
+        env:
+          STIMULI: ${{ needs.params.outputs.stimuli_file }}
+        run: |
+          STEM=$(basename "$STIMULI" .json)
+          {
+            echo "## Advice evaluation ($STEM)"
+            echo '```'
+            for f in "data/advice/responses_${STEM}.report.json" \
+                     "data/advice/judgments_${STEM}.report.json"; do
+              if [ -f "$f" ]; then cat "$f"; fi
+            done
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
