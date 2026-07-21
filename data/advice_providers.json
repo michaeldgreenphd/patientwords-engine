@@ -1,85 +1,92 @@
 {
-  "_readme": "Provider registry for scripts/advice_eval.py — REVIEWED COPY (consumer tiers verified 2026-07-21 against vendor free-tier docs and current coverage; sources in the integration notes). MEASUREMENT INTENT: each provider's consumer_default is the study's average-consumer proxy — the model the FREE / default tier of that vendor's consumer product serves, not the strongest API model. API models are PROXIES for consumer products: no product system prompt, no product safety wrapper, no memory — document the gap via a hand-run manual_ui calibration subset (import-manual-responses). Consumer tiers drift: every record archives the provider's exact resolved model string per call, and the pre-registration freezes a copy of this file. pricing = [input, output] USD per Mtok, used only by the local spend-ceiling math (worst-case, cache-miss rates); the true bill is the provider's. key_env names a GitHub Actions secret — keys never live in either repo or any local file.",
-
+  "_readme": "Provider registry for scripts/advice_eval.py \u2014 REVIEWED COPY (consumer tiers verified 2026-07-21 against vendor free-tier docs and current coverage; sources in the integration notes). MEASUREMENT INTENT: each provider's consumer_default is the study's average-consumer proxy \u2014 the model the FREE / default tier of that vendor's consumer product serves, not the strongest API model. API models are PROXIES for consumer products: no product system prompt, no product safety wrapper, no memory \u2014 document the gap via a hand-run manual_ui calibration subset (import-manual-responses). Consumer tiers drift: every record archives the provider's exact resolved model string per call, and the pre-registration freezes a copy of this file. pricing = [input, output] USD per Mtok, used only by the local spend-ceiling math (worst-case, cache-miss rates); the true bill is the provider's. key_env names a GitHub Actions secret \u2014 keys never live in either repo or any local file.",
   "anthropic": {
     "api": "anthropic",
     "consumer_product": "Claude (claude.ai) free tier",
     "consumer_default": "claude-haiku-4-5",
-    "consumer_proxy_note": "VERIFIED 2026-07-21: claude.ai's free tier defaults to Claude Sonnet 5 (free/Pro default since 2026-07-01), with Haiku 4.5 selectable. haiku stays set here as the pilot's cost floor per owner decision 2026-07-21 — a deliberate mismatch with the free-tier default, recorded in the pre-registration; the consumer-proxy arm proper should run anthropic:claude-sonnet-5 as an override.",
-    "key_env": "ANTHROPIC_API_KEY",
-    "default_pricing": [1.0, 5.0]
+    "consumer_proxy_note": "VERIFIED 2026-07-21: claude.ai's free tier defaults to Claude Sonnet 5 (free/Pro default since 2026-07-01), with Haiku 4.5 selectable. haiku stays set here as the pilot's cost floor per owner decision 2026-07-21 \u2014 a deliberate mismatch with the free-tier default, recorded in the pre-registration; the consumer-proxy arm proper should run anthropic:claude-sonnet-5 as an override. No default_pricing on purpose: the script's conservative built-in fallback prices Anthropic calls for the ceiling reserve (deliberate, matches the example; the ceiling test pins this).",
+    "key_env": "ANTHROPIC_API_KEY"
   },
-
   "openai": {
     "api": "openai-compat",
     "base_url": "https://api.openai.com/v1",
     "consumer_product": "ChatGPT free tier",
     "consumer_default": "chat-latest",
-    "consumer_proxy_note": "VERIFIED 2026-07-21: ChatGPT's free tier serves GPT-5.5 Instant (free default since 2026-05-05). chat-latest is OpenAI's own API alias for the Instant model ChatGPT currently serves — the highest-fidelity consumer proxy available (snapshot updates with the product; each record archives the resolved snapshot string). Pricing set to GPT-5.5's last published rate as the ceiling-math worst case.",
+    "consumer_proxy_note": "VERIFIED 2026-07-21: ChatGPT's free tier serves GPT-5.5 Instant (free default since 2026-05-05). chat-latest is OpenAI's own API alias for the Instant model ChatGPT currently serves \u2014 the highest-fidelity consumer proxy available (snapshot updates with the product; each record archives the resolved snapshot string). Pricing set to GPT-5.5's last published rate as the ceiling-math worst case.",
     "key_env": "OPENAI_API_KEY",
-    "default_pricing": [5.0, 30.0]
+    "default_pricing": [
+      5.0,
+      30.0
+    ]
   },
-
   "google": {
     "api": "openai-compat",
     "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
     "consumer_product": "Gemini app free tier",
     "consumer_default": "gemini-3.5-flash",
-    "consumer_proxy_note": "VERIFIED 2026-07-21: the free Gemini app defaults to Gemini 3.5 Flash (consumer default since 2026-05-19, Google I/O). The free tier also carries a small daily allowance of 3.1 Pro for hard questions — the Flash default is the average-consumer path. OpenAI-compatible endpoint path confirmed.",
+    "consumer_proxy_note": "VERIFIED 2026-07-21: the free Gemini app defaults to Gemini 3.5 Flash (consumer default since 2026-05-19, Google I/O). The free tier also carries a small daily allowance of 3.1 Pro for hard questions \u2014 the Flash default is the average-consumer path. OpenAI-compatible endpoint path confirmed.",
     "key_env": "GEMINI_API_KEY",
-    "default_pricing": [1.5, 9.0]
+    "default_pricing": [
+      1.5,
+      9.0
+    ]
   },
-
   "xai": {
     "api": "openai-compat",
     "base_url": "https://api.x.ai/v1",
     "consumer_product": "Grok free tier (X / grok.com)",
     "consumer_default": "grok-4.3",
-    "consumer_proxy_note": "VERIFIED 2026-07-21: the free grok.com / X surface serves limited Grok 4.3 access (~10 prompts per 2 h). API id grok-4.3 at $1.25/$2.50 per Mtok — cheaper than the registry's earlier placeholder assumed.",
+    "consumer_proxy_note": "VERIFIED 2026-07-21: the free grok.com / X surface serves limited Grok 4.3 access (~10 prompts per 2 h). API id grok-4.3 at $1.25/$2.50 per Mtok \u2014 cheaper than the registry's earlier placeholder assumed.",
     "key_env": "XAI_API_KEY",
-    "default_pricing": [1.25, 2.5]
+    "default_pricing": [
+      1.25,
+      2.5
+    ]
   },
-
   "deepseek": {
     "api": "openai-compat",
     "base_url": "https://api.deepseek.com/v1",
     "consumer_product": "DeepSeek app/web (free)",
     "consumer_default": "deepseek-v4-flash",
-    "consumer_proxy_note": "VERIFIED 2026-07-21: the free app now serves the V4 generation (V3.2 retired from the default path); current API ids are deepseek-v4-flash / deepseek-v4-pro, and the app's Expert/DeepThink toggle maps to the pro/reasoner — a second, NON-default arm. deepseek-v4-flash is the non-reasoning consumer default proxy; the legacy deepseek-chat alias is not relied on post-V4. Sources conflict on whether the free web default is flash- or pro-class — flash chosen as the conservative default; revisit at the calibration subset.",
+    "consumer_proxy_note": "VERIFIED 2026-07-21: the free app now serves the V4 generation (V3.2 retired from the default path); current API ids are deepseek-v4-flash / deepseek-v4-pro, and the app's Expert/DeepThink toggle maps to the pro/reasoner \u2014 a second, NON-default arm. deepseek-v4-flash is the non-reasoning consumer default proxy; the legacy deepseek-chat alias is not relied on post-V4. Sources conflict on whether the free web default is flash- or pro-class \u2014 flash chosen as the conservative default; revisit at the calibration subset.",
     "key_env": "DEEPSEEK_API_KEY",
-    "default_pricing": [0.14, 0.28]
+    "default_pricing": [
+      0.14,
+      0.28
+    ]
   },
-
   "moonshot": {
     "api": "openai-compat",
     "base_url": "https://api.moonshot.ai/v1",
     "consumer_product": "Kimi (free)",
     "consumer_default": "kimi-k2.5",
-    "consumer_proxy_note": "VERIFIED 2026-07-21: free kimi.com serves a lighter variant than the paid default (K2.6 is the Moderato+ default; K3 flagship shipped 2026-07-16, paid). kimi-k2.5 ($0.60/$3.00) is the closest API match for the free consumer tier; kimi-latest and the kimi-k2 series were discontinued (2026-01-28 / 2026-05-25). Exact free-tier variant is not published — recorded as an approximation; the manual_ui calibration subset measures the gap.",
+    "consumer_proxy_note": "VERIFIED 2026-07-21: free kimi.com serves a lighter variant than the paid default (K2.6 is the Moderato+ default; K3 flagship shipped 2026-07-16, paid). kimi-k2.5 ($0.60/$3.00) is the closest API match for the free consumer tier; kimi-latest and the kimi-k2 series were discontinued (2026-01-28 / 2026-05-25). Exact free-tier variant is not published \u2014 recorded as an approximation; the manual_ui calibration subset measures the gap.",
     "key_env": "MOONSHOT_API_KEY",
-    "default_pricing": [0.6, 3.0]
+    "default_pricing": [
+      0.6,
+      3.0
+    ]
   },
-
   "openrouter": {
     "api": "openai-compat",
     "base_url": "https://openrouter.ai/api/v1",
     "consumer_product": "aggregator (not itself a consumer product)",
-    "consumer_proxy_note": "Route to any vendor's model with ONE prepaid key (a hard external spend ceiling on top of the script's). Use for Llama-family models (Meta AI's consumer app has no public API; an open-weights Llama via openrouter:meta-llama/... is a stated-and-recorded approximation, and true Meta AI behavior belongs in the manual_ui arm) or to consolidate vendors under one secret (~5% markup, an intermediary in the request path — record in the pre-registration if used). Always pass an explicit openrouter:<vendor/model> spec — no consumer_default on purpose.",
+    "consumer_proxy_note": "Route to any vendor's model with ONE prepaid key (a hard external spend ceiling on top of the script's). Use for Llama-family models (Meta AI's consumer app has no public API; an open-weights Llama via openrouter:meta-llama/... is a stated-and-recorded approximation, and true Meta AI behavior belongs in the manual_ui arm) or to consolidate vendors under one secret (~5% markup, an intermediary in the request path \u2014 record in the pre-registration if used). Always pass an explicit openrouter:<vendor/model> spec \u2014 no consumer_default on purpose.",
     "key_env": "OPENROUTER_API_KEY",
-    "default_pricing": [5.0, 30.0]
+    "default_pricing": [
+      5.0,
+      30.0
+    ]
   },
-
   "copilot": {
     "api": "manual_ui",
     "consumer_product": "Microsoft Copilot (consumer)",
     "consumer_proxy_note": "No public API for the consumer Copilot product (re-checked 2026-07-21). Capture responses by hand in the real UI and import with: advice_eval.py import-manual-responses. Records land in the same audit chain with capture.method=manual_ui."
   },
-
   "meta_ai": {
     "api": "manual_ui",
     "consumer_product": "Meta AI (consumer app)",
     "consumer_proxy_note": "No public API for the consumer product; same manual_ui path as copilot. Open-weights Llama via openrouter is a separate, clearly-labeled approximation arm."
   },
-
-  "_thinking_machines_note": "Re-checked 2026-07-21: still no consumer chat product — their shipped products are Tinker (fine-tuning API), the open-weights Inkling model (2026-07-15), and research-preview interaction models. No entry; re-check at the next revision."
+  "_thinking_machines_note": "Re-checked 2026-07-21: still no consumer chat product \u2014 their shipped products are Tinker (fine-tuning API), the open-weights Inkling model (2026-07-15), and research-preview interaction models. No entry; re-check at the next revision."
 }
