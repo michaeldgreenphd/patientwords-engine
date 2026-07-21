@@ -278,6 +278,19 @@ for model in sorted({r["model"] for r in arows}):
         "representative": representative,
     }
 
+# tierForest reliability gate + headline pick as data (audit M4): the page's
+# n>=100 axis/annotation gate and its "strongest reliable downgrader" pick
+# become recorded analysis parameters instead of page-JS constants. The pick
+# mirrors the page exactly: among gate-passing models with a numeric mean
+# tier shift, the most negative mean; None when no model passes the gate.
+RELIABILITY_GATE_N = 100
+summary["reliability_gate_n"] = RELIABILITY_GATE_N
+_reliable = {m: v["mean_tier_shift"] for m, v in summary["per_model"].items()
+             if v["n"] >= RELIABILITY_GATE_N
+             and isinstance(v["mean_tier_shift"], (int, float))}
+summary["headline_downgrader"] = (
+    min(_reliable, key=lambda m: (_reliable[m], m)) if _reliable else None)
+
 # Phrase-deduped per-model counts (mirrors scripts/paired_stats_rigor.py): a
 # re-traced phrase lands as several rows sharing a clinical_prompt, so the raw
 # per_model tallies above pseudoreplicate. Each phrase collapses to ONE flip
