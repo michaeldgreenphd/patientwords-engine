@@ -121,8 +121,8 @@ jobs:
 
       - name: Install CPU torch + transformers
         run: |
-          pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
-          pip install --quiet transformers accelerate
+          pip install --quiet -c constraints.txt torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet -c constraints.txt transformers accelerate
 
       # 7B/9B models exceed runner RAM during load (exit 137 on the 07-11
       # probe); the same swap provision that fixed the patching workflow.

@@ -136,8 +136,8 @@ jobs:
 
       - name: Install CPU torch + transformers + transformer-lens
         run: |
-          pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
-          pip install --quiet transformers accelerate transformer-lens
+          pip install --quiet -c constraints.txt torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet -c constraints.txt transformers accelerate transformer-lens
 
       # transformer-lens builds its HookedTransformer in fp32 before casting,
       # so conversion peaks past the 16 GB runner even with a bf16 hf_model
