@@ -60,3 +60,25 @@ def test_featured_term_pattern_substring_and_fallback():
     assert dm.featured_term(items, "absent")["item"] == 0
     assert dm.featured_term(items, None)["item"] == 0
     assert dm.featured_term([], "x") is None
+
+
+def test_function_word_classification_and_headline_counts(tmp_path):
+    import json
+    vocab = tmp_path / "display_vocab.json"
+    vocab.write_text(json.dumps(
+        {"function_word_targets": {"tokens": ["My", "the"]}}))
+    fw = dm.function_word_set(str(vocab))
+    assert fw == {"my", "the"}
+    items = [
+        item("t1", " My ", [v("d1", "x", True, 0.1), v("d2", "y", False, 0.2)]),
+        item("t2", "alpha", [v("d1", "x", True, 0.1), v("d2", "y", True, 0.2),
+                             v("d3", "z", False, 0.3)]),
+    ]
+    dm.classify_function_targets(items, fw)
+    assert items[0]["target_is_function"] is True
+    assert items[1]["target_is_function"] is False
+    assert dm.headline_counts(items) == {"cells": 5, "flips": 2, "func_flips": 1}
+
+
+def test_function_word_set_missing_file_is_none(tmp_path):
+    assert dm.function_word_set(str(tmp_path / "nope.json")) is None

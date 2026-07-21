@@ -77,6 +77,42 @@ def featured_specimen(items: list[dict], show_n: int = 4):
             "stats": stats[pick]}
 
 
+def function_word_set(vocab_path):
+    """Function-word target vocabulary from the site's display_vocab.json
+    (single definition, shared with the page); None when unavailable."""
+    try:
+        with open(vocab_path, encoding="utf-8") as f:
+            tokens = json.load(f)["function_word_targets"]["tokens"]
+        return {str(t).strip().lower() for t in tokens}
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def classify_function_targets(items: list[dict], func_words: set) -> None:
+    """Mark each item whose target is a function word (audit M5): those rows
+    measure the sentence frame, not the clinical concept, and leave the
+    headline flip count. Exact case-insensitive match on the trimmed token."""
+    for it in items:
+        tok = str(it.get("target_token") or "").strip().lower()
+        it["target_is_function"] = tok in func_words
+
+
+def headline_counts(items: list[dict]) -> dict:
+    """The matrix page's headline tallies: framing cells, concept-target
+    flips, and function-word-target flips (kept out of the headline)."""
+    cells = concept = func = 0
+    for it in items:
+        isf = bool(it.get("target_is_function"))
+        for v in it.get("variants") or []:
+            cells += 1
+            if v.get("flip"):
+                if isf:
+                    func += 1
+                else:
+                    concept += 1
+    return {"cells": cells, "flips": concept, "func_flips": func}
+
+
 def featured_term(items: list[dict], pattern: str | None):
     """The dialect-differences featured-term pick: first item whose term
     matches the pins-file pattern (case-insensitive substring, mirroring the
@@ -102,6 +138,8 @@ def main() -> int:
                     default=os.path.join(os.path.dirname(os.path.dirname(
                         os.path.abspath(__file__))), "data", "editorial_pins.json"),
                     help="editorial pins file (dialect_featured_term_pattern)")
+    ap.add_argument("--vocab", default=None,
+                    help="display_vocab.json path (default: alongside --out)")
     args = ap.parse_args()
 
     parts = sorted(glob.glob(os.path.join(args.trace_dir, "batch_summary.part_*.json")))
@@ -153,6 +191,16 @@ def main() -> int:
         "source_set": source_set,
         "items": items,
     }
+    # function-word target classification + headline tallies as data (audit
+    # M5): vocabulary comes from the site's display_vocab.json, never this
+    # script. The page keeps its inline FUNC set + counting as fallback.
+    vocab_path = args.vocab or os.path.join(os.path.dirname(args.out),
+                                            "display_vocab.json")
+    fw = function_word_set(vocab_path)
+    if fw is not None:
+        classify_function_targets(items, fw)
+        payload["headline"] = headline_counts(items)
+
     # featured picks as data (audit M3 tail): the home specimen is computed,
     # the featured-term pattern comes from the pins data file (vocabulary
     # never lives in this script). Pages keep their in-JS picks as fallback.
