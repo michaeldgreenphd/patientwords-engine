@@ -231,9 +231,16 @@ page: formation depths, capture-vs-hijack taxonomy, tuning comparison).
 
 After any data republish (AFTER the urgency collector and depth exporter), run
 `python scripts/embed_scenario_joins.py --site ../patientwords` — embeds the
-pages' urgency/depth joins per scenario, urgency_meta, and the redirect-gallery
-featured list (token blocklist from data/display_vocab.json) into the payload
+pages' urgency/depth joins per scenario, urgency_meta, the redirect-gallery
+featured list (token blocklist from data/display_vocab.json), and the
+care-ladder/tap-demo pins from data/editorial_pins.json into the payload
 (audit M2+M3; idempotent, refuses without a payload).
+
+If the hand-measured dataset copy (site data/stress_pairs.json) is ever
+updated, re-run `python scripts/export_stress_featured.py --site
+../patientwords` afterward — it rewraps the file as {pairs, featured} with the
+home teaser's consequence ranking (audit M3 tail; idempotent). Dialect and
+jlens featured picks re-emit automatically from their own exporters.
 
 After any data republish, run `python scripts/export_pair_swaps.py --site
 ../patientwords --depth ../patientwords/data/jlens_depth.json` (feeds the

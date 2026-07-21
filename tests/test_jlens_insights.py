@@ -98,3 +98,11 @@ def test_collect_and_analyze_end_to_end(tmp_path):
     it = out["instruction_tuning"]
     assert it["n_paired"] == 1 and it["pairs"][0] == {"index": 1, "base": 1, "it": 1}
     assert len(out["exemplars"]) >= 2  # hijack + capture found (held needs clin_formed too)
+
+
+def test_featured_exemplar_index_first_hijack_else_zero_else_none():
+    from scripts.jlens_insights import featured_exemplar_index
+    assert featured_exemplar_index([{"class": "capture"}, {"class": "hijack"},
+                                    {"class": "hijack"}]) == 1
+    assert featured_exemplar_index([{"class": "capture"}, {"class": "held"}]) == 0
+    assert featured_exemplar_index([]) is None

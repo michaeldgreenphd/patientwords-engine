@@ -100,6 +100,59 @@ def test_gallery_scoring_untiered_caps_and_blocklist(tmp_path):
     assert [x["rank"] for x in g] == [1, 2, 3]
 
 
+def test_care_ladder_and_tap_demo_pins(tmp_path):
+    payload = {"scenarios": [
+        {"batch": "b1", "batch_index": 5, "index": 1,
+         "target_token": "alp", "clinical_term": "term-c", "patient_term": "term-p",
+         "spread_clinical": [["alp", .7], ["bet", .05], ["gam", .03], ["kap", .01]],
+         "spread_patient": [["del", .18], ["eps", .07], ["zet", .06],
+                            ["eta", .05], ["alp", .04]],
+         "models": {BASE: {}}},
+        scen("b2", 2, 2),
+    ]}
+    pins = {"tap_demo": {"batch": "b1", "batch_index": 5, "model": BASE,
+                         "labels": {"alp": "alpha", "del": "delta-"}},
+            "care_ladder": [
+                {"batch": "b1", "batch_index": 5, "model": BASE, "x": 100},
+                {"batch": "zz", "batch_index": 9, "model": BASE, "x": 200}]}
+    pins_path = tmp_path / "pins.json"
+    pins_path.write_text(json.dumps(pins))
+    p = write_site(tmp_path, payload)
+    assert ej.main(["--site", str(tmp_path), "--pins", str(pins_path)]) == 0
+    out = json.loads(p.read_text())
+    feat = out["featured"]
+    # unresolvable pin dropped; resolvable one kept verbatim (incl. layout x)
+    assert feat["care_ladder"] == [{"batch": "b1", "batch_index": 5,
+                                    "model": BASE, "x": 100}]
+    tap = feat["tap_demo"]
+    assert tap["sim_index"] == 1
+    assert tap["clinical"]["swap"] == "term-c" and tap["patient"]["swap"] == "term-p"
+    # clinical: top-3, target labeled via the pins map
+    assert [(b["label"], b["role"]) for b in tap["clinical"]["bars"]] == [
+        ("alpha", "target"), ("bet", "other"), ("gam", "other")]
+    # patient: top-2 plus the target at its 1-based rank (5th here)
+    assert [(b["label"], b["role"]) for b in tap["patient"]["bars"]] == [
+        ("delta-", "top"), ("eps", "other"), ("alpha (5th)", "target")]
+    assert tap["patient"]["bars"][2]["p"] == .04
+
+
+def test_tap_demo_target_in_top2_gets_no_rank_suffix(tmp_path):
+    payload = {"scenarios": [
+        {"batch": "b1", "batch_index": 1, "index": 1, "target_token": "alp",
+         "clinical_term": "c", "patient_term": "p",
+         "spread_clinical": [["alp", .9]],
+         "spread_patient": [["alp", .5], ["bet", .1]],
+         "models": {BASE: {}}}]}
+    pins = {"tap_demo": {"batch": "b1", "batch_index": 1, "model": BASE}}
+    pins_path = tmp_path / "pins.json"
+    pins_path.write_text(json.dumps(pins))
+    p = write_site(tmp_path, payload)
+    assert ej.main(["--site", str(tmp_path), "--pins", str(pins_path)]) == 0
+    tap = json.loads(p.read_text())["featured"]["tap_demo"]
+    assert [(b["label"], b["role"]) for b in tap["patient"]["bars"]] == [
+        ("alp", "target"), ("bet", "other")]
+
+
 def test_refuses_without_payload_and_survives_missing_joins(tmp_path):
     (tmp_path / "data").mkdir()
     assert ej.main(["--site", str(tmp_path)]) == 3             # no payload: refusal

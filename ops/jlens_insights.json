@@ -3,24 +3,24 @@
   "persistence_layers": 2,
   "method_credit": "Jacobian lens: Gurnee et al., Transformer Circuits (2026); hosted by Neuronpedia. Readout = per-layer top-8 of the forming next-token distribution, rank recorded when the target appears.",
   "model": "gemma-2-2b",
-  "n_pairs": 559,
+  "n_pairs": 565,
   "formation": {
     "clinical": {
-      "n": 391,
+      "n": 395,
       "q25": 17,
       "median": 19,
       "q75": 22
     },
     "patient": {
-      "n": 345,
+      "n": 349,
       "q25": 18,
       "median": 19,
       "q75": 22
     },
-    "clinical_never": 168,
-    "patient_never": 214,
+    "clinical_never": 170,
+    "patient_never": 216,
     "lag": {
-      "n": 316,
+      "n": 320,
       "q25": 0,
       "median": 0,
       "q75": 1
@@ -38,7 +38,7 @@
       }
     },
     "held": {
-      "n": 344
+      "n": 348
     },
     "hijack": {
       "n": 29,
@@ -56,7 +56,7 @@
       }
     },
     "unreadable": {
-      "n": 129
+      "n": 131
     }
   },
   "points": [
@@ -139,6 +139,48 @@
     },
     {
       "dataset": "drift_sentinel_20260719",
+      "index": 3,
+      "clin_formed": 7,
+      "pat_formed": 7,
+      "class": "held"
+    },
+    {
+      "dataset": "drift_sentinel_20260720",
+      "index": 1,
+      "clin_formed": null,
+      "pat_formed": null,
+      "class": "unreadable"
+    },
+    {
+      "dataset": "drift_sentinel_20260720",
+      "index": 2,
+      "clin_formed": 7,
+      "pat_formed": 8,
+      "class": "held"
+    },
+    {
+      "dataset": "drift_sentinel_20260720",
+      "index": 3,
+      "clin_formed": 7,
+      "pat_formed": 7,
+      "class": "held"
+    },
+    {
+      "dataset": "drift_sentinel_20260721",
+      "index": 1,
+      "clin_formed": null,
+      "pat_formed": null,
+      "class": "unreadable"
+    },
+    {
+      "dataset": "drift_sentinel_20260721",
+      "index": 2,
+      "clin_formed": 7,
+      "pat_formed": 8,
+      "class": "held"
+    },
+    {
+      "dataset": "drift_sentinel_20260721",
       "index": 3,
       "clin_formed": 7,
       "pat_formed": 7,
@@ -3976,36 +4018,36 @@
   ],
   "window_sensitivity": {
     "1": {
-      "held": 124,
-      "unreadable": 335,
+      "held": 128,
+      "unreadable": 337,
       "capture": 61,
       "hijack": 39,
-      "clinical_never": 358,
-      "patient_never": 396
+      "clinical_never": 360,
+      "patient_never": 398
     },
     "2": {
-      "held": 191,
-      "unreadable": 254,
+      "held": 195,
+      "unreadable": 256,
       "capture": 71,
       "hijack": 43,
-      "clinical_never": 297,
-      "patient_never": 350
+      "clinical_never": 299,
+      "patient_never": 352
     },
     "4": {
-      "held": 276,
-      "unreadable": 173,
+      "held": 280,
+      "unreadable": 175,
       "capture": 76,
       "hijack": 34,
-      "clinical_never": 227,
-      "patient_never": 287
+      "clinical_never": 229,
+      "patient_never": 289
     },
     "8": {
-      "held": 344,
-      "unreadable": 129,
+      "held": 348,
+      "unreadable": 131,
       "capture": 57,
       "hijack": 29,
-      "clinical_never": 168,
-      "patient_never": 214
+      "clinical_never": 170,
+      "patient_never": 216
     }
   },
   "exemplars": [
@@ -4208,22 +4250,43 @@
       "render": "modes/simulated/pairs_20260711T051145Z/index_27.html"
     }
   ],
+  "featured_exemplar": 0,
   "instruction_tuning": {
     "it_model": "gemma-2-2b-it",
-    "n_paired": 31,
+    "n_paired": 35,
     "base_median": {
-      "n": 31,
+      "n": 35,
       "q25": 8,
       "median": 18,
       "q75": 21
     },
     "it_median": {
-      "n": 31,
+      "n": 35,
       "q25": 8,
       "median": 18,
       "q75": 21
     },
     "pairs": [
+      {
+        "index": 2,
+        "base": 8,
+        "it": 8
+      },
+      {
+        "index": 3,
+        "base": 7,
+        "it": 7
+      },
+      {
+        "index": 2,
+        "base": 8,
+        "it": 8
+      },
+      {
+        "index": 3,
+        "base": 7,
+        "it": 7
+      },
       {
         "index": 2,
         "base": 8,
