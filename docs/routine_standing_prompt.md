@@ -48,6 +48,29 @@ main; trace outputs land on this branch — they interleave).
 - Never assume a silent queue means success; a missing expected output goes
   into `blockers`, not down the memory hole.
 
+## 2b · Integrity checks ($0, local-only — audit 2026-07-21 R-A/R-C/R-F fold)
+
+- **Seal check (every cycle):** `python scripts/seal_check.py`. Exit 1 = LEAK:
+  STOP all publishing this cycle, follow the 2026-07-14 remediation precedent
+  (redact/purge in-tree, never quote the text, history rewrite is an OWNER
+  decision), put the path+label hit list in the digest headline. Exit 2 =
+  config error (empty sealed set — wrong branch); fix before proceeding.
+  First live run (2026-07-21) caught 8 sealed phrases in the 07-12 reviewer
+  packet; redacted same day.
+- **Contract assertion (every cycle):** run
+  `python scripts/validate_frontend_contract.py --site ../patientwords` and
+  `python scripts/claim_check.py` against the COMMITTED site copies even when
+  nothing republished. New errors = flag in digest; fields no engine exporter
+  emits = hand-edit detector, list them. NEVER repair site payloads from this
+  check (two writers would race the publish path).
+- **Doc-accuracy sweep (Mondays):** mechanical cross-checks — fire_trigger
+  TRIGGERS vs .github/trigger/ files vs workflows (three-way parity); frontend
+  CLAUDE.md data contracts vs data/ inventory vs engine script inventory;
+  extract_site_text.py PAGES vs live pages; amendments cited in code vs
+  docs/preregistration_amendments.md; handoff docs vs the actual tree. Output:
+  dated report under docs/audits/, ONE digest line; owner-needing items go to
+  decisions_pending. Do not "fix" drift inside the sweep.
+
 ## 3 · Account
 
 Run `python scripts/ledger_update.py`. It scans cost sidecars, updates the
