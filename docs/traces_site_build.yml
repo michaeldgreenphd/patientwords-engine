@@ -1,0 +1,91 @@
+# Reference copy of the patientwords-traces build workflow (audit-era, 2026-07-21).
+# CANONICAL LOCATION: .github/workflows/build.yml in michaeldgreenphd/patientwords-traces.
+# The traces repo is self-building: this workflow pulls everything it needs from the
+# two public study repos, so no cross-repo tokens exist anywhere. This copy is for
+# review/versioning only — editing it here changes nothing; edit it in the traces repo.
+#
+# What it does, nightly and on demand:
+#   1. sparse-clones the engine branch that carries the committed interactive renders
+#      (HTML only, diffs excluded — blob filter keeps the download ~1.5 GB);
+#   2. fetches the PUBLISHED site payload from the patientwords repo (main);
+#   3. copies the render for exactly the scenarios the payload publishes into t/<batch>/
+#      — seal-safe by construction: nothing under the Tier B holdout is in the payload,
+#      so nothing under it can appear here;
+#   4. commits and pushes to its own main, which GitHub Pages serves.
+
+name: Build traces site
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 15 * * *"   # nightly, after the study's daily cycle publishes data
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-traces
+  cancel-in-progress: false
+
+env:
+  # branch of patientwords-engine carrying committed renders; after the engine's
+  # branch consolidation this becomes "main"
+  ENGINE_RENDER_BRANCH: claude/gemma-clinical-colloquial-interp-mavx04
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sparse-clone engine renders (HTML only, no diffs)
+        run: |
+          git clone --depth 1 --filter=blob:none --no-checkout \
+            -b "$ENGINE_RENDER_BRANCH" \
+            https://github.com/michaeldgreenphd/patientwords-engine eng
+          cd eng
+          git sparse-checkout init --no-cone
+          git sparse-checkout set 'trace_out/*/index_*.html' '!trace_out/*/index_*_diff.html'
+          git checkout
+
+      - name: Fetch the published site payload
+        run: |
+          curl -fsSL \
+            https://raw.githubusercontent.com/michaeldgreenphd/patientwords/main/data/simulated_scenarios.json \
+            -o payload.json
+
+      - name: Copy payload-listed renders into t/
+        run: |
+          python3 - <<'EOF'
+          import json, pathlib, shutil
+          payload = json.load(open("payload.json"))
+          copied = unchanged = missing = 0
+          for s in payload.get("scenarios", []):
+              batch, idx = s.get("batch"), s.get("batch_index")
+              if not batch or not isinstance(idx, int):
+                  continue
+              src = pathlib.Path("eng/trace_out") / batch / f"index_{idx:02d}.html"
+              if not src.is_file():
+                  missing += 1
+                  continue
+              dst = pathlib.Path("t") / batch / src.name
+              if dst.is_file() and dst.stat().st_size == src.stat().st_size:
+                  unchanged += 1
+                  continue
+              dst.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(src, dst)
+              copied += 1
+          pathlib.Path(".nojekyll").write_text("")
+          print(f"{copied} copied, {unchanged} unchanged, {missing} scenarios without a render")
+          EOF
+          rm -rf eng payload.json
+
+      - name: Commit and push
+        run: |
+          git config user.name "traces-build"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A t/ .nojekyll
+          git diff --cached --quiet && echo "no changes" || {
+            git commit -m "Build: sync payload-listed renders from the engine"
+            git push
+          }

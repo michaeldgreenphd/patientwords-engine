@@ -71,3 +71,18 @@ def test_main_writes_traces_site_block(tmp_path, monkeypatch):
     assert out["traces_site"]["base_url"] == BASE
     assert out["traces_site"]["_provenance"]["generator"] == "scripts/export_traces_site.py"
     assert out["scenarios"][0]["trace_url"].endswith("/t/pairs_A/index_05.html")
+
+
+def test_stamp_only_needs_no_repo_and_copies_nothing(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    scenarios = [{"batch": "pairs_A", "batch_index": 5},
+                 {"batch": "pairs_B", "batch_index": 1}]           # no render
+    trace_root, _, payload_path = setup(tmp_path, scenarios, renders=[("pairs_A", 5)])
+    rc = ets.main(["--payload", str(payload_path), "--trace-root", str(trace_root),
+                   "--traces-repo", str(tmp_path / "absent"), "--base-url", BASE,
+                   "--stamp-only"])
+    assert rc == 0                                                 # no refusal without checkout
+    out = json.loads(payload_path.read_text())
+    assert out["scenarios"][0]["trace_url"] == f"{BASE}/t/pairs_A/index_05.html"
+    assert "trace_url" not in out["scenarios"][1]
+    assert not (tmp_path / "absent").exists()                      # nothing written anywhere
