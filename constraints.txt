@@ -1,0 +1,20 @@
+# Environment constraints (audit 2026-07-21, E3 / P0-3).
+#
+# CI installs resolve against this file so measurement runs stop drifting
+# silently with upstream releases. Pin provenance: engine deps are the
+# versions in the dev container on 2026-07-21; the ML stack is what CI's
+# unpinned installs resolved on 2026-07-21 (PyPI latest; the same day's runs
+# used them). Runner: actions/setup-python 3.11 on ubuntu-24.04.
+#
+# Update policy: bump DELIBERATELY, one commit per bump, and note it in the
+# ledger — every batch summary now records its actual versions in its
+# `environment` block, so a bump is attributable in the measurement record.
+requests==2.33.1
+matplotlib==3.11.0
+anthropic==0.116.0
+PyYAML==6.0.1
+numpy==2.4.6
+torch==2.13.0
+transformers==5.14.1
+accelerate==1.14.0
+transformer-lens==3.5.1

@@ -23,7 +23,39 @@ Usage:
 
 import argparse
 import json
+import os
+import platform
+import subprocess
 from pathlib import Path
+
+
+def _engine_sha():
+    """Commit of the running checkout (git, else CI env, else None)."""
+    try:
+        return subprocess.run(["git", "rev-parse", "--short=12", "HEAD"],
+                              capture_output=True, text=True, check=True).stdout.strip()
+    except (subprocess.CalledProcessError, OSError):
+        env = os.environ.get("GITHUB_SHA", "")
+        return env[:12] if env else None
+
+
+def environment():
+    """Measurement environment record (audit 2026-07-21 E3/P0-3): the versions
+    that produced these probabilities, so future drift is attributable between
+    service changes and dependency changes. Lazy + tolerant: heavy ML imports
+    resolve to None offline (tests), real versions in CI."""
+    env = {
+        "python": platform.python_version(),
+        "platform": platform.platform(),
+        "engine_sha": _engine_sha(),
+        "runner_image": os.environ.get("ImageVersion"),  # GitHub Actions image tag
+    }
+    for mod in ("torch", "transformers", "accelerate"):
+        try:
+            env[mod] = __import__(mod).__version__
+        except Exception:
+            env[mod] = None
+    return env
 
 # Short id -> Hugging Face repo. Mirrors graph_client.MODEL_REGISTRY but kept
 # local so this script has no dependency on the graph stack.
@@ -122,7 +154,8 @@ def build_summary(model_id, hf_id, results):
         "generation_params": {},
         "start_index": 1,
         "screen_targets": None,
-        "inference": {"method": "logits", "hf_id": hf_id, "dtype": "bfloat16"},
+        "inference": {"method": "logits", "hf_id": hf_id, "dtype": "bfloat16",
+                      "environment": environment()},
         "results": results,
     }
 

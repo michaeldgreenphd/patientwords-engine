@@ -54,10 +54,14 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
+import platform
+import subprocess
 import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+
 
 from medlang_circuits.compare_viz import (
     CATEGORY_COLORS,
@@ -86,6 +90,7 @@ from medlang_circuits.steering import (
     top_offtarget_features,
     top_random_features,
 )
+
 from medlang_circuits.targets import (
     display_token,
     TOP_K_SPREAD_DEFAULT,
@@ -96,6 +101,24 @@ from medlang_circuits.targets import (
     target_probability,
 )
 from medlang_circuits.translate import translate_to_clinical
+
+
+def _environment() -> dict[str, Any]:
+    """Run-environment record for the batch summary (audit 2026-07-21 E3):
+    which code and interpreter produced these measurements. The hosted graph
+    numbers come from Neuronpedia's servers, so python + engine commit +
+    runner image are the locally attributable parts."""
+    try:
+        sha = subprocess.run(["git", "rev-parse", "--short=12", "HEAD"],
+                             capture_output=True, text=True, check=True).stdout.strip()
+    except (subprocess.CalledProcessError, OSError):
+        env = os.environ.get("GITHUB_SHA", "")
+        sha = env[:12] if env else None
+    return {
+        "python": platform.python_version(),
+        "engine_sha": sha,
+        "runner_image": os.environ.get("ImageVersion"),
+    }
 
 logger = logging.getLogger(__name__)
 
@@ -1029,6 +1052,7 @@ def run_batch(
         "generation_params": generation_params or {},
         "start_index": start_index,
         "screen_targets": screen_targets,
+        "environment": _environment(),
         "results": results,
     }
     for i, pair in enumerate(pairs, start=start_index):
