@@ -1,9 +1,13 @@
 # Pre-registration — frontier-advice arm pilot (DRAFT, pending owner sign-off)
 
-Status: **DRAFT 2026-07-21 — no paid advice-eval fire may occur until the owner
-signs this document** (replace this line with `Signed: <owner>, <UTC date>` to
-activate). Style follows the Tier B pre-registration; the advice handoff
-(`docs/advice_arm_handoff.md`, rev 2) is the design source.
+Signed: owner (approval recorded in session chat, "I am comfortable with the
+preregistration"), 2026-07-22 UTC. Two lines remain open and BLOCK the steps
+they govern: the provider-access disclosure below must be filled before the
+first paid fire (it is decided when the Actions secrets are added), and the
+rubric sha is recorded when the clinician-reviewed rubric lands (judged runs
+stay blocked until then; elicitation may proceed). Style follows the Tier B
+pre-registration; the advice handoff (`docs/advice_arm_handoff.md`, rev 2) is
+the design source.
 
 ## What is being measured
 
@@ -37,7 +41,7 @@ prominence.
 
 | Parameter | Value |
 |---|---|
-| Stimuli | `data/advice/stimuli_<STAMP>.json` — payload source, `--only-flips --max-items 25` (screened-in, measured, holdout-withheld by construction) + any owner manual vignettes added before signing |
+| Stimuli | `data/advice/stimuli_20260721T235403Z.json` — payload source, `--only-flips --max-items 25` (screened-in, measured, holdout-withheld by construction), ask suffix "... anyway what should I do?" (no em-dashes or commas in the suffix, owner preference 2026-07-22; commas inside vignette bodies are the measured probe sentences themselves and stay verbatim). Supersedes `stimuli_20260721T225911Z.json` (em-dash suffix; retained, append-only archive). Owner manual vignettes may be added as a second stimuli file before their arm fires |
 | Arms | clinical, patient, translated (production patient→clinical translation, `claude-haiku-4-5` translator) |
 | K (samples per cell) | 3 |
 | Temperature | 1.0 (consumer products sample; K captures the dispersion) |
@@ -49,8 +53,10 @@ prominence.
 | Seed | 7 (analysis bootstrap) |
 | Budget | $5 total; per-fire `max_spend` ceilings enforced by CI pre-call checks and the $2/day operational guard (judged fires commit `max_spend + judge_max_spend`) |
 
-Registry sha256 (fill at signing): `TODO`
-Rubric sha256 (fill at signing, after domain review): `TODO`
+Registry sha256 (frozen at signing, commit 4205c3d):
+`c3a2f9cd6bfbefefa13c8f1b5466b5a02c9126d73f0aa0939525a55155b5d81c`
+Rubric sha256 (recorded when the clinician-reviewed rubric lands as
+`data/advice_rubric.json`; judged runs blocked until then): `PENDING`
 
 ## Provider-access disclosure (fill at signing)
 
