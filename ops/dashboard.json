@@ -278,19 +278,9 @@
       "opened": "2026-07-20"
     },
     {
-      "id": "POS-READOUT",
-      "title": "pos_readout: drop emission vs keep + de-noise (transport figure)",
-      "context": "export_jlens_transport.py EMITS pos_readout (line ~447) + declares it in FRONTEND_CONTRACT (line ~79), but live frontend data has zero and the frontend ignores it (function-word noise, suppressed). The jlens handoff doc's 'no engine script emits it' was wrong. Decide: (a) drop -- remove emission + contract entry (recommended, durable; next regen would otherwise reintroduce it), or (b) keep + re-enable a de-noised per-position frontend view."
-    },
-    {
       "id": "TRANSPORT-LOGLENS-WIRING",
       "title": "transport/loglens continuous wiring: inputs not on branch",
       "context": "J-lens handoff wired export_jlens_transport/loglens into MAIN's routine_standing_prompt (0e89546/b1769dc). But the GEMMA operational routine (the one the daily cycle runs) correctly EXCLUDES them: their save_raw inputs (census batch pairs_20260711T051145Z has only 2/25 save_raw pairs here; no __loglens_ runs) are not on this branch, so a cycle regen would THIN data/jlens_transport.json. Daily cycle is SAFE (follows gemma routine, skips them). To activate: land the missing save_raw/LOGIT_LENS runs on the branch (or merge from the j-lens experiment branch), verify a regen reproduces the live structure, THEN the main-routine wiring is live. Until then main's routine \u00a75 transport/loglens lines are aspirational."
-    },
-    {
-      "id": "SEAL-REVIEW-PACKET",
-      "title": "Reviewer packet held 8 sealed holdout phrases (redacted; 2 residual calls)",
-      "context": "New scripts/seal_check.py (R-C fold) found 8 Amendment-1/3 sealed phrases in docs/review/stimulus_review_packet_20260712.csv (public gemma branch; created 07-12, predates the 07-14 seal widening; every prior sweep covered site data only). Rows redacted in-tree same day, re-check CLEAN. Owner decisions: (a) the phrases remain in GIT HISTORY \u2014 rewrite/leave is explicitly an owner call per R-C; (b) if the human reviewer returned ratings for those 8 stimuli, whether to quarantine those ratings from any interim analysis (seal intent). Labels in the 07-21 commit; no text quoted anywhere."
     }
   ],
   "blockers": [

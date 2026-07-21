@@ -75,8 +75,7 @@ FRONTEND_CONTRACT = {
     "exemplars[]": ("target", "layers", "sides.clinical", "sides.patient", "render?"),
     "exemplars[].sides.<side>": ("tokens[].token", "grid", "answer_position",
                                  "answer.token", "answer.prob", "answer.on_target",
-                                 "answer.trace_url", "readout[].{layer,final,tokens}",
-                                 "pos_readout{pos:[top-3]}"),
+                                 "answer.trace_url", "readout[].{layer,final,tokens}"),
 }
 
 _TIERB_START = tierb_start_stamp()
@@ -262,29 +261,6 @@ def answer_readout(response, topk=3):
     return out
 
 
-def pos_readout(response, topk=3):
-    """Open-vocab J-lens top-k decode at the FINAL layer of EVERY prompt position
-    (the same decode as answer_readout, but across the whole sentence, not only the
-    answer slot) - the per-position concept marginalia (#3, owner 2026-07-20).
-    {position_index: [w1..wk]}, keyed by the token's array index (== side.tokens
-    index the frontend walks). Final layer only: the J-lens decode is meaningful
-    late and junk early (see answer_readout); positions with no decode are omitted,
-    keeping the file bounded."""
-    tokens = (response.get("tokens") or []) if isinstance(response, dict) else []
-    out = {}
-    for i, tok in enumerate(tokens):
-        entries = sorted(
-            (list(jps.jr._layer_entries_from_results(tok, response))
-             or list(jps.jr._iter_layer_entries(tok))),
-            key=lambda e: e[0],
-        )
-        if not entries:
-            continue
-        _layer, tops = entries[-1]  # final layer: meaningful decode band
-        words = [w for w in (jps.jr._token_string(t).strip() for t in (tops or [])[:topk]) if w]
-        if words:
-            out[i] = words
-    return out
 
 
 def summarize_side(records):
@@ -442,7 +418,6 @@ def _slim_side(grid, raw, target, model):
         "answer_position": grid.get("answer_position"),
         "answer": answer_prediction(raw, target, model),
         "readout": answer_readout(raw),   # paper-style open-vocab decode per layer
-        "pos_readout": pos_readout(raw),  # per-position concept marginalia {pos: [top-3]}
     }
 
 

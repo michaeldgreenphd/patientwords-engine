@@ -34,19 +34,6 @@ def _resp(per_position_top_tokens, positions_tokens):
             "tokens": tokens, "done": {}}
 
 
-def test_pos_readout_final_layer_top3_per_position():
-    from scripts.export_jlens_transport import pos_readout
-    # two positions, two layers each; the FINAL layer's tokens drive the marginalia
-    resp = _resp(
-        [[["junk", "j2"], ["cat", "dog", "fish", "bird"]],   # pos0 final -> cat/dog/fish
-         [["k1"], ["red", "blue", "green"]]],                # pos1 final -> red/blue/green
-        [(0, "<bos>"), (1, "word")],
-    )
-    pr = pos_readout(resp)
-    assert pr[0] == ["cat", "dog", "fish"]   # top-3, final layer only
-    assert pr[1] == ["red", "blue", "green"]
-    assert pos_readout({}) == {}             # graceful on empty
-
 
 def test_position_layer_grid_ranks_and_first_layer():
     # 3 layers; target " tgt" enters at pos1 (layer1 rank1, layer2 rank2) and
@@ -296,7 +283,7 @@ def test_build_exemplar_side_is_slim(monkeypatch):
     assert set(ex) == {"batch", "index", "target", "layers", "sides"}       # no per-exemplar transport
     for side in ("clinical", "patient"):
         s = ex["sides"][side]
-        assert set(s) == {"tokens", "grid", "answer_position", "answer", "readout", "pos_readout"}
+        assert set(s) == {"tokens", "grid", "answer_position", "answer", "readout"}
         assert isinstance(s["grid"], list) and s["answer_position"] == 1
         assert isinstance(s["readout"], list)
 
