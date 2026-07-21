@@ -73,15 +73,19 @@ parser.add_argument("--preview-models", choices=["base", "all"], default="base",
                     help="'base' publishes only gemma renders for the demo cap (the site "
                          "stays a lightweight preview); 'all' also publishes each other "
                          "model's render for the same top scenarios")
-parser.add_argument("--no-pngs", action="store_true",
-                    help="skip PNG copies (recommended for large series - the interactive "
-                         "HTML renders are the essential artifact and GitHub Pages repos "
-                         "should stay light)")
-parser.add_argument("--max-renders", type=int, default=25,
+parser.add_argument("--no-pngs", action="store_true", default=True,
+                    help="skip PNG copies (the default since 2026-07-21 - the interactive "
+                         "HTML renders are the essential artifact, no page references the "
+                         "per-scenario PNGs, and GitHub Pages repos should stay light; the "
+                         "og:image preview raster is still published)")
+parser.add_argument("--with-pngs", action="store_false", dest="no_pngs",
+                    help="also copy the per-scenario PNG renders (pre-2026-07-21 behavior)")
+parser.add_argument("--max-renders", type=int, default=200,
                     help="cap interactive renders copied to the public site to the N most "
                          "consequential scenarios (flips first, then largest language penalty); "
-                         "every scenario still gets its lightweight numbers. 0 = no cap. The "
-                         "full render set lives in the engine repo / a run archive.")
+                         "every scenario still gets its lightweight numbers. 0 = no cap. "
+                         "Default 200 (owner decision 2026-07-21; was 25). The full render "
+                         "set lives in the engine repo / a run archive.")
 parser.add_argument("--archive-url", default="",
                     help="URL of the back-end render archive (a GitHub Release on the engine "
                          "repo). Recorded in the payload so data-only scenarios can point at "

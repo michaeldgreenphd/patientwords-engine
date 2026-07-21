@@ -118,8 +118,9 @@ flat per-(pair × model) collaborator CSV.
 **Publishing (`scripts/export_frontend_simulated.py`).** Merges every model's trace dir per
 batch stamp into `scenario.models[<id>]`, mirrors the gemma base to the top level for
 backward compatibility, emits `models_meta` (the frontend model-selector's source of
-truth), and caps public interactive renders at the 25 most consequential (`--max-renders`;
-flips first, then |language penalty|). Full render sets go to GitHub Releases via
+truth), and caps public interactive renders at the 200 most consequential (`--max-renders`,
+HTML-only by default since 2026-07-21 — `--with-pngs` restores rasters; flips first,
+then |language penalty|). Full render sets go to GitHub Releases via
 `scripts/archive_run.py` + the archive workflow (`docs/archiving.md`); pass the Release URL
 back with `--archive-url`.
 
