@@ -107,11 +107,18 @@ def main():
     days = collect_days(Path(args.trace_root))
     deltas = day_over_day(days)
     breached = [d for d in deltas if d["max_abs_delta"] > args.threshold]
+    # first movement as data (audit M8): the earliest day the sentinel moved
+    # at all — the methods page's "largest daily delta on the day the drift
+    # sentinel first moved" figure. None while every delta is zero.
+    first_moved = next((d for d in deltas if d["max_abs_delta"] > 0), None)
     payload = {"pairs_file": "data/simulated/drift_sentinel.json",
                "threshold": args.threshold,
                "days_measured": sorted(days),
                "series": {day: days[day] for day in sorted(days)},
                "deltas": deltas,
+               "first_moved": ({"date": first_moved["date"],
+                                "max_abs_delta": first_moved["max_abs_delta"]}
+                               if first_moved else None),
                "stable": not breached}
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
