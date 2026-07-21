@@ -40,6 +40,9 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--simulated-dir", default="data/simulated",
                         help="directory holding <batch>.report.json cost sidecars")
+    parser.add_argument("--advice-dir", default="data/advice",
+                        help="advice-arm archive; its responses_*/judgments_* "
+                             ".report.json sidecars fold into the same totals")
     parser.add_argument("--dashboard", default="ops/dashboard.json")
     parser.add_argument("--ledger", default=None,
                         help="ledger markdown file (default: lexicographically newest docs/*ledger*.md, "
@@ -206,18 +209,24 @@ def main(argv=None):
     by_day = spend.setdefault("by_day", {})
 
     bullets = []
-    for path, report in scan_new_sidecars(Path(args.simulated_dir), set(entries_seen)):
-        cost = float(report.get("cost_usd") or 0.0)
-        run_ts = parse_ts(report.get("run_timestamp"))
-        # Bucket by the actual UTC day: offset timestamps book to the day they
-        # land in UTC, and an unparseable stamp falls back to --date instead of
-        # minting a garbage key.
-        day = run_ts.astimezone(timezone.utc).date().isoformat() if run_ts else date
-        spend["lifetime_generation_usd"] = round(float(spend.get("lifetime_generation_usd") or 0.0) + cost, 4)
-        by_day[day] = round(float(by_day.get(day) or 0.0) + cost, 4)
-        entries_seen.append(path.name)
-        attribute_tierb(dashboard, spend, report, path.name, cost)
-        bullets.append(ledger_bullet(path.name, cost, report))
+    # advice-arm sidecars (data/advice/*.report.json — both responses_* and
+    # judgments_* carry cost_usd) fold into the same spend totals; without
+    # this the $2/day guard never sees landed advice spend once the fire
+    # resolves (advice handoff rev 2 accounting gap, closed 2026-07-21).
+    # attribute_tierb's task/model gate keeps them out of Tier B rows.
+    for scan_dir in (Path(args.simulated_dir), Path(args.advice_dir)):
+        for path, report in scan_new_sidecars(scan_dir, set(entries_seen)):
+            cost = float(report.get("cost_usd") or 0.0)
+            run_ts = parse_ts(report.get("run_timestamp"))
+            # Bucket by the actual UTC day: offset timestamps book to the day
+            # they land in UTC, and an unparseable stamp falls back to --date
+            # instead of minting a garbage key.
+            day = run_ts.astimezone(timezone.utc).date().isoformat() if run_ts else date
+            spend["lifetime_generation_usd"] = round(float(spend.get("lifetime_generation_usd") or 0.0) + cost, 4)
+            by_day[day] = round(float(by_day.get(day) or 0.0) + cost, 4)
+            entries_seen.append(path.name)
+            attribute_tierb(dashboard, spend, report, path.name, cost)
+            bullets.append(ledger_bullet(path.name, cost, report))
 
     if bullets:
         spend["today"] = {"date": date, "spent_usd": float(by_day.get(date) or 0.0)}

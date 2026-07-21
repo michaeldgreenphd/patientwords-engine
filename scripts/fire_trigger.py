@@ -57,8 +57,10 @@ TRIGGERS = (
     "scenario-generation",
     "model-evaluation",
     "archive-renders",
+    "advice-eval",
 )
-PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation"})
+# advice-eval: elicit AND judge spend Anthropic/provider tokens (2026-07-21)
+PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval"})
 # A circuit-trace fire with show_mitigation=true makes Anthropic translation
 # calls (the only paid path outside PAID_TRIGGERS). Its cost has no max_spend
 # param, so the guard imputes a conservative flat commitment per fire.
@@ -122,6 +124,15 @@ KNOWN_KEYS = {
     # archive_renders.yml push path reads exactly cfg["tag"], cfg["runs"],
     # cfg.get("no_pngs"), cfg.get("prune") (verified 2026-07-09).
     "archive-renders": frozenset({"tag", "runs", "no_pngs", "prune"}),
+    # advice_evaluation.yml `defaults` dict (verified 2026-07-21): stimuli_file,
+    # models, arms, samples, temperature, max_tokens, translator_model,
+    # max_spend, judge, judge_model, judge_max_spend, rubric, offset, limit,
+    # commit_outputs.
+    "advice-eval": frozenset({
+        "stimuli_file", "models", "arms", "samples", "temperature", "max_tokens",
+        "translator_model", "max_spend", "judge", "judge_model", "judge_max_spend",
+        "rubric", "offset", "limit", "commit_outputs",
+    }),
 }
 
 
@@ -295,6 +306,33 @@ def parse_max_spend(value):
     return parsed
 
 
+def judge_is_on(params):
+    return str(params.get("judge", "")).lower() in ("true", "1")
+
+
+def fire_commitment(params):
+    """(commitment, error) — the fire's full worst-case spend the daily
+    ceiling must absorb: max_spend, plus judge_max_spend when the fire judges
+    (advice-eval's judge pass has its own ceiling CI enforces separately; the
+    guard would otherwise never see it — handoff rev 2 accounting gap). A
+    judged fire without a usable judge_max_spend is invalid: CI would fall
+    back to the workflow default, invisible to this guard."""
+    max_spend = parse_max_spend(params.get("max_spend"))
+    if max_spend is None:
+        return None, (
+            f"max_spend must be a finite number > 0 (str/int/float), got {params.get('max_spend')!r}"
+        )
+    if judge_is_on(params):
+        judge = parse_max_spend(params.get("judge_max_spend"))
+        if judge is None:
+            return None, (
+                "judge=true requires a usable judge_max_spend (finite number > 0): the judge "
+                f"pass is a second ceiling the daily guard must count, got {params.get('judge_max_spend')!r}"
+            )
+        max_spend += judge
+    return max_spend, None
+
+
 def inflight_max_spend(entries, today, now, expire_hours):
     """Sum of max_spend across ACTIVE journal entries of BOTH paid triggers
     fired on `today` (YYYY-MM-DD UTC): spend already committed to CI but not
@@ -328,11 +366,9 @@ def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DE
     """
     if "max_spend" not in params:
         return "invalid", "paid trigger params must include max_spend"
-    max_spend = parse_max_spend(params["max_spend"])
+    max_spend, commit_err = fire_commitment(params)
     if max_spend is None:
-        return "invalid", (
-            f"max_spend must be a finite number > 0 (str/int/float), got {params['max_spend']!r}"
-        )
+        return "invalid", commit_err
     spend = dashboard.get("spend") if isinstance(dashboard, dict) else None
     if not isinstance(spend, dict):
         spend = {}
@@ -520,7 +556,9 @@ def cmd_fire(args):
         else:
             print(f"refused: {reason}", file=sys.stderr)
             return 4
-        max_spend = parse_max_spend(budget_params["max_spend"])  # valid here: budget_check vetted it
+        # full commitment (max_spend + judge_max_spend on judged fires) so the
+        # journal entry's in-flight figure matches what budget_check counted
+        max_spend, _ = fire_commitment(budget_params)  # valid here: budget_check vetted it
 
     # 5. Refuse a no-op fire: identical trigger-file content means the push would
     # not change the file, so CI would NOT fire, yet a journal entry would hold a
