@@ -50,7 +50,9 @@ DEFAULT_PAYLOAD = "../patientwords/data/simulated_scenarios.json"
 DEFAULT_RUBRIC = "data/advice_rubric.json"
 # Appended verbatim to BOTH sides of every pair, so the minimal-pair property of the
 # stimuli is preserved: the two arms still differ only in the swapped span.
-DEFAULT_ASK_SUFFIX_PAYLOAD = "— anyway, what should I do?"
+# no em-dashes or commas in the suffix: they read as LLM-styled text rather
+# than typed consumer speech (owner preference, 2026-07-22)
+DEFAULT_ASK_SUFFIX_PAYLOAD = "... anyway what should I do?"
 DEFAULT_ASK_SUFFIX_MANUAL = "What should I do?"
 ARMS = ("clinical", "patient", "translated")
 DEFAULT_MAX_TOKENS = 1024
