@@ -76,6 +76,17 @@ direct OpenAI key remains the higher-fidelity upgrade path. Registry re-frozen
 at this revision:
 `3342a30d4aff91236914e3d984343d8c6f47541d64450ca23d05f587d7f8f4a2`
 
+Access mode change (recorded 2026-07-22, before the affected fires):
+google's direct AI Studio free tier proved daily-quota-capped — run 1b and
+the first hedge run died on sustained 429s despite 10 s pacing and transient
+retries. Per the owner's conditional pre-approval (session chat 2026-07-22),
+the google arm's REMAINDER routes via OpenRouter
+(`openrouter:google/gemini-3.5-flash`, vendor-served, ~5% markup, aggregator
+in the request path). Records carry the exact spec they were elicited under;
+the direct-path records stand unchanged; cells re-elicited under the new spec
+are additional records, never replacements. Analysis joins google's two
+access paths by `model_returned`.
+
 ## The consumer-proxy caveat (repeat in every writeup)
 
 API models are proxies for consumer products: no product system prompt, no
