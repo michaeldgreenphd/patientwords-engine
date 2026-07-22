@@ -62,11 +62,19 @@ Rubric sha256 (recorded when the clinician-reviewed rubric lands as
 
 Access mode, phase 1 (recorded 2026-07-22): **direct vendor keys — Anthropic
 plus Google (AI Studio free tier)**; no intermediary in the request path for
-either. Remaining vendors (openai, xai, deepseek, moonshot) fire only after
-their access is added; if OpenRouter carries any of them, this line gains that
-disclosure before the fire (~5% markup, an intermediary in the request path,
-vendor backend still serves the model). Direct keys stay the higher-fidelity
-option per vendor.
+either.
+
+Access mode, phase 2 (recorded 2026-07-22, before those vendors' first fire):
+**openai, xai, deepseek, moonshot via OpenRouter** (owner's prepaid key — a
+hard external ceiling; ~5% markup; an aggregator sits in the request path;
+the vendor's own backend still serves each model). Verified slugs:
+`openai/gpt-5.5`, `x-ai/grok-4.3`, `deepseek/deepseek-v4-flash`,
+`moonshotai/kimi-k2.5`. One recorded fidelity gap: ChatGPT's free tier serves
+the product-tuned GPT-5.5 *Instant* (OpenAI's `chat-latest` alias), which
+OpenRouter does not list — `openai/gpt-5.5` is the stated approximation; a
+direct OpenAI key remains the higher-fidelity upgrade path. Registry re-frozen
+at this revision:
+`3342a30d4aff91236914e3d984343d8c6f47541d64450ca23d05f587d7f8f4a2`
 
 ## The consumer-proxy caveat (repeat in every writeup)
 

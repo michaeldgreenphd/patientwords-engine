@@ -271,12 +271,23 @@ def _send(client, model: str, system: str | None, user_text: str, max_tokens: in
     return text, getattr(usage, "input_tokens", 0), getattr(usage, "output_tokens", 0), raw
 
 
+RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
+COMPAT_RETRIES = 5
+COMPAT_BACKOFF_SECONDS = (2, 4, 8, 16, 32)
+
+
 def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
                  max_tokens: int, temperature: float):
     """One OpenAI-compatible chat call (OpenAI, Gemini, xAI, DeepSeek, Moonshot,
     OpenRouter, ... all expose this shape). Same return tuple as _send; same
     monkeypatch seam for tests. The provider's key comes from the env var named
-    in the registry (an Actions secret in CI - never a local file)."""
+    in the registry (an Actions secret in CI - never a local file).
+
+    Transient statuses (429/500/502/503/504 - free consumer tiers throw these
+    routinely; run 1 died on a single Gemini 503, 2026-07-22) retry with
+    exponential backoff, honoring Retry-After when the provider sends one.
+    Anything else, or exhaustion, raises: the elicit loop archives what landed
+    and a re-fire resumes past it."""
     try:
         import requests
     except ImportError as exc:  # pragma: no cover
@@ -290,17 +301,28 @@ def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
     messages = ([{"role": "system", "content": system}] if system else []) + [
         {"role": "user", "content": user_text}
     ]
-    resp = requests.post(
-        f"{base_url}/chat/completions",
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        json={"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature},
-        timeout=180,
-    )
-    resp.raise_for_status()
-    raw = resp.json()
-    text = ((raw.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
-    usage = raw.get("usage") or {}
-    return text.strip(), usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0), raw
+    for attempt in range(COMPAT_RETRIES + 1):
+        resp = requests.post(
+            f"{base_url}/chat/completions",
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+            json={"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature},
+            timeout=180,
+        )
+        if resp.status_code in RETRYABLE_STATUSES and attempt < COMPAT_RETRIES:
+            try:
+                wait = float(resp.headers.get("Retry-After", ""))
+            except (TypeError, ValueError):
+                wait = COMPAT_BACKOFF_SECONDS[min(attempt, len(COMPAT_BACKOFF_SECONDS) - 1)]
+            wait = min(max(wait, 1.0), 120.0)
+            print(f"transient {resp.status_code} from {base_url} ({model}); "
+                  f"retry {attempt + 1}/{COMPAT_RETRIES} in {wait:.0f}s")
+            time.sleep(wait)
+            continue
+        resp.raise_for_status()
+        raw = resp.json()
+        text = ((raw.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+        usage = raw.get("usage") or {}
+        return text.strip(), usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0), raw
 
 
 # ------------------------------------------------------------------- hash chain

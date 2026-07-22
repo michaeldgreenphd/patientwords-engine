@@ -9,14 +9,14 @@
   },
   "openai": {
     "api": "openai-compat",
-    "base_url": "https://api.openai.com/v1",
+    "base_url": "https://openrouter.ai/api/v1",
     "consumer_product": "ChatGPT free tier",
-    "consumer_default": "chat-latest",
-    "consumer_proxy_note": "VERIFIED 2026-07-21: ChatGPT's free tier serves GPT-5.5 Instant (free default since 2026-05-05). chat-latest is OpenAI's own API alias for the Instant model ChatGPT currently serves \u2014 the highest-fidelity consumer proxy available (snapshot updates with the product; each record archives the resolved snapshot string). Pricing set to GPT-5.5's last published rate as the ceiling-math worst case.",
-    "key_env": "OPENAI_API_KEY",
+    "consumer_default": "openai/gpt-5.5",
+    "consumer_proxy_note": "PHASE 2 (2026-07-22, owner decision): routed via OpenRouter with the owner's prepaid key. ChatGPT's free tier serves GPT-5.5 Instant; OpenAI's chat-latest alias (the exact product-tuned Instant model) is NOT listed on OpenRouter, so openai/gpt-5.5 is the stated approximation - the same model family without the ChatGPT product tune. Recorded fidelity gap; a direct OPENAI_API_KEY pointing at chat-latest is the higher-fidelity upgrade path. Pricing = GPT-5.5 rate + ~5% aggregator margin, worst case for the ceiling math.",
+    "key_env": "OPENROUTER_API_KEY",
     "default_pricing": [
-      5.0,
-      30.0
+      5.25,
+      31.5
     ]
   },
   "google": {
@@ -33,38 +33,38 @@
   },
   "xai": {
     "api": "openai-compat",
-    "base_url": "https://api.x.ai/v1",
+    "base_url": "https://openrouter.ai/api/v1",
     "consumer_product": "Grok free tier (X / grok.com)",
-    "consumer_default": "grok-4.3",
-    "consumer_proxy_note": "VERIFIED 2026-07-21: the free grok.com / X surface serves limited Grok 4.3 access (~10 prompts per 2 h). API id grok-4.3 at $1.25/$2.50 per Mtok \u2014 cheaper than the registry's earlier placeholder assumed.",
-    "key_env": "XAI_API_KEY",
+    "consumer_default": "x-ai/grok-4.3",
+    "consumer_proxy_note": "PHASE 2 (2026-07-22): via OpenRouter (verified slug x-ai/grok-4.3, $1.25/$2.50 vendor rate + ~5%). The free grok.com / X surface serves limited Grok 4.3 access (~10 prompts per 2 h); same model id as the consumer default, vendor backend serves it.",
+    "key_env": "OPENROUTER_API_KEY",
     "default_pricing": [
-      1.25,
-      2.5
+      1.32,
+      2.63
     ]
   },
   "deepseek": {
     "api": "openai-compat",
-    "base_url": "https://api.deepseek.com/v1",
+    "base_url": "https://openrouter.ai/api/v1",
     "consumer_product": "DeepSeek app/web (free)",
-    "consumer_default": "deepseek-v4-flash",
-    "consumer_proxy_note": "VERIFIED 2026-07-21: the free app now serves the V4 generation (V3.2 retired from the default path); current API ids are deepseek-v4-flash / deepseek-v4-pro, and the app's Expert/DeepThink toggle maps to the pro/reasoner \u2014 a second, NON-default arm. deepseek-v4-flash is the non-reasoning consumer default proxy; the legacy deepseek-chat alias is not relied on post-V4. Sources conflict on whether the free web default is flash- or pro-class \u2014 flash chosen as the conservative default; revisit at the calibration subset.",
-    "key_env": "DEEPSEEK_API_KEY",
+    "consumer_default": "deepseek/deepseek-v4-flash",
+    "consumer_proxy_note": "PHASE 2 (2026-07-22): via OpenRouter (verified slug deepseek/deepseek-v4-flash). Free app serves the V4 generation; the Expert/DeepThink toggle maps to the pro/reasoner - a second, NON-default arm. Flash chosen as the conservative non-reasoning consumer default; sources conflict on flash- vs pro-class for the web default - revisit at the calibration subset. Pricing = vendor rate + ~5%.",
+    "key_env": "OPENROUTER_API_KEY",
     "default_pricing": [
-      0.14,
-      0.28
+      0.15,
+      0.3
     ]
   },
   "moonshot": {
     "api": "openai-compat",
-    "base_url": "https://api.moonshot.ai/v1",
+    "base_url": "https://openrouter.ai/api/v1",
     "consumer_product": "Kimi (free)",
-    "consumer_default": "kimi-k2.5",
-    "consumer_proxy_note": "VERIFIED 2026-07-21: free kimi.com serves a lighter variant than the paid default (K2.6 is the Moderato+ default; K3 flagship shipped 2026-07-16, paid). kimi-k2.5 ($0.60/$3.00) is the closest API match for the free consumer tier; kimi-latest and the kimi-k2 series were discontinued (2026-01-28 / 2026-05-25). Exact free-tier variant is not published \u2014 recorded as an approximation; the manual_ui calibration subset measures the gap.",
-    "key_env": "MOONSHOT_API_KEY",
+    "consumer_default": "moonshotai/kimi-k2.5",
+    "consumer_proxy_note": "PHASE 2 (2026-07-22): via OpenRouter (slug moonshotai/kimi-k2.5, $0.60/$3.00 vendor rate + ~5%). Free kimi.com serves a lighter variant than the paid K2.6 default; k2.5 is the closest match and the exact free-tier variant is unpublished - recorded approximation; the manual_ui calibration subset measures the gap.",
+    "key_env": "OPENROUTER_API_KEY",
     "default_pricing": [
-      0.6,
-      3.0
+      0.63,
+      3.15
     ]
   },
   "openrouter": {

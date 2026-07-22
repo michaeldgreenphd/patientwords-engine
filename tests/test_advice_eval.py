@@ -422,3 +422,66 @@ def test_workflow_defaults_cover_every_dispatch_input():
     # push-path pitfall: the heredoc defaults dict must contain every trigger key
     for key in inputs:
         assert f'"{key}"' in params_run, f"workflow defaults dict is missing {key}"
+
+
+def test_send_compat_retries_transient_statuses_then_succeeds(monkeypatch):
+    # run 1 (2026-07-22) died on a single Gemini 503: transient statuses must
+    # retry with backoff, honoring Retry-After, before giving up
+    calls = []
+
+    class FakeResp:
+        def __init__(self, status, body=None, retry_after=None):
+            self.status_code = status
+            self.headers = {"Retry-After": retry_after} if retry_after else {}
+            self._body = body or {}
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise RuntimeError(f"HTTP {self.status_code}")
+
+        def json(self):
+            return self._body
+
+    ok = {"choices": [{"message": {"content": "fine"}}],
+          "usage": {"prompt_tokens": 5, "completion_tokens": 7}}
+    seq = [FakeResp(503), FakeResp(429, retry_after="2"), FakeResp(200, ok)]
+
+    class FakeRequests:
+        @staticmethod
+        def post(url, **kw):
+            calls.append(url)
+            return seq[len(calls) - 1]
+
+    naps = []
+    monkeypatch.setattr(ae.time, "sleep", lambda s: naps.append(s))
+    monkeypatch.setitem(__import__("sys").modules, "requests", FakeRequests)
+    monkeypatch.setenv("FAKE_KEY", "k")
+    cfg = {"api": "openai-compat", "base_url": "https://x.example/v1", "key_env": "FAKE_KEY"}
+    text, in_tok, out_tok, raw = ae._send_compat(cfg, "m", None, "hello", 64, 1.0)
+    assert (text, in_tok, out_tok) == ("fine", 5, 7)
+    assert len(calls) == 3 and len(naps) == 2
+    assert naps[1] == 2.0          # Retry-After honored on the 429
+
+
+def test_send_compat_exhausts_retries_and_raises(monkeypatch):
+    class FakeResp:
+        status_code = 503
+        headers = {}
+
+        def raise_for_status(self):
+            raise RuntimeError("HTTP 503")
+
+        def json(self):  # pragma: no cover
+            return {}
+
+    class FakeRequests:
+        @staticmethod
+        def post(url, **kw):
+            return FakeResp()
+
+    monkeypatch.setattr(ae.time, "sleep", lambda s: None)
+    monkeypatch.setitem(__import__("sys").modules, "requests", FakeRequests)
+    monkeypatch.setenv("FAKE_KEY", "k")
+    cfg = {"api": "openai-compat", "base_url": "https://x.example/v1", "key_env": "FAKE_KEY"}
+    with pytest.raises(RuntimeError, match="503"):
+        ae._send_compat(cfg, "m", None, "hello", 64, 1.0)
