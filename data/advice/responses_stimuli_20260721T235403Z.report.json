@@ -1,11 +1,10 @@
 {
- "run_utc": "2026-07-22T19:51:07Z",
- "engine_sha": "7687786c8edfb28f1317776aad35ede858660aeb",
+ "run_utc": "2026-07-22T20:20:47Z",
+ "engine_sha": "4f5a8f53159de5f9ea0c511e796d77bca6464e8a",
  "stimuli_file": "data/advice/stimuli_20260721T235403Z.json",
  "models": [
-  "xai:x-ai/grok-4.3",
-  "deepseek:deepseek/deepseek-v4-flash",
-  "moonshot:moonshotai/kimi-k2.5"
+  "anthropic:claude-haiku-4-5",
+  "openrouter:google/gemini-3.5-flash"
  ],
  "arms": [
   "clinical",
@@ -14,18 +13,17 @@
  ],
  "providers_registry": "data/advice_providers.json",
  "providers": {
-  "xai:x-ai/grok-4.3": "xai",
-  "deepseek:deepseek/deepseek-v4-flash": "deepseek",
-  "moonshot:moonshotai/kimi-k2.5": "moonshot"
+  "anthropic:claude-haiku-4-5": "anthropic",
+  "openrouter:google/gemini-3.5-flash": "openrouter"
  },
  "samples": 3,
  "temperature": 1.0,
  "max_tokens": 1024,
  "translator_model": "claude-haiku-4-5",
- "max_spend_usd": 0.12,
- "cost_usd": 1.319888,
+ "max_spend_usd": 0.35,
+ "cost_usd": 1.657913,
  "cost_basis": "cumulative_from_records",
- "run_cost_usd": 0.063768,
+ "run_cost_usd": 0.338025,
  "per_model": {
   "claude-haiku-4-5": {
    "calls": 25,
@@ -62,37 +60,25 @@
    "input_tokens": 7115,
    "output_tokens": 229487,
    "cost": 0.7273580000000001
+  },
+  "openrouter:google/gemini-3.5-flash": {
+   "calls": 11,
+   "input_tokens": 285,
+   "output_tokens": 11220,
+   "cost": 0.338025
   }
  },
  "run_per_model": {
-  "moonshot:moonshotai/kimi-k2.5": {
-   "calls": 10,
-   "input_tokens": 341,
-   "output_tokens": 11851,
-   "cost": 0.03754548
-  },
-  "claude-haiku-4-5": {
-   "calls": 1,
-   "input_tokens": 86,
-   "output_tokens": 28,
-   "cost": 0.000226
-  },
-  "xai:x-ai/grok-4.3": {
-   "calls": 9,
-   "input_tokens": 1957,
-   "output_tokens": 7615,
-   "cost": 0.02261069
-  },
-  "deepseek:deepseek/deepseek-v4-flash": {
-   "calls": 9,
-   "input_tokens": 361,
-   "output_tokens": 11105,
-   "cost": 0.00338565
+  "openrouter:google/gemini-3.5-flash": {
+   "calls": 11,
+   "input_tokens": 285,
+   "output_tokens": 11220,
+   "cost": 0.338025
   }
  },
- "records_appended": 29,
- "records_total": 735,
- "truncated": false,
- "stopped_reason": null,
- "chain_head": "86acfa76e8988406acc73ca0c9e3d86fda7c5daf8711fb1b3271e740b54fa6ac"
+ "records_appended": 11,
+ "records_total": 746,
+ "truncated": true,
+ "stopped_reason": "max_spend ceiling ($0.35) at pairs_20260706T201750Z#2/clinical/openrouter:google/gemini-3.5-flash/k3",
+ "chain_head": "f8042c752723a741bd60215ad8d2cd39bddfbef2f1b8dad91e23c25f77b65769"
 }
