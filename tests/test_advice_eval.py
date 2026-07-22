@@ -643,3 +643,18 @@ def test_human_sample_stratified_by_arm(tmp_path, monkeypatch):
     arms = [rows[s]["arm"] for s in shas if s in rows]
     # 1 stimulus x 3 arms x K=2 archive: a 4-row sample must span >1 arm
     assert len(set(arms)) >= 2
+
+
+def test_pace_spaces_same_provider_calls(monkeypatch):
+    naps = []
+    clock = {"t": 100.0}
+    monkeypatch.setattr(ae.time, "monotonic", lambda: clock["t"])
+    monkeypatch.setattr(ae.time, "sleep", lambda s: naps.append(round(s, 3)))
+    ae._LAST_CALL_AT.clear()
+    cfg = {"min_interval_seconds": 10}
+    ae._pace("g", cfg)             # first call: no wait
+    clock["t"] = 103.0
+    ae._pace("g", cfg)             # 3s later: wait the remaining 7
+    ae._pace("other", {})          # unpaced provider: never waits
+    assert naps == [7.0]
+    ae._LAST_CALL_AT.clear()

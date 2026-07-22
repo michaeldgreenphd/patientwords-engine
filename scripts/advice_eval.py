@@ -272,6 +272,26 @@ def _send(client, model: str, system: str | None, user_text: str, max_tokens: in
     return text, getattr(usage, "input_tokens", 0), getattr(usage, "output_tokens", 0), raw
 
 
+_LAST_CALL_AT: dict[str, float] = {}
+
+
+def _pace(provider: str, cfg: dict) -> None:
+    """Space calls to one provider by the registry's min_interval_seconds.
+
+    Free consumer tiers enforce tight request budgets, and retries alone make
+    it WORSE — every retry is itself a request against the quota (run 1b died
+    on sustained Gemini free-tier 429s after 16 successes, 2026-07-22).
+    Pacing is data: the registry entry decides, per provider."""
+    interval = cfg.get("min_interval_seconds")
+    if not interval:
+        return
+    last = _LAST_CALL_AT.get(provider)
+    now = time.monotonic()
+    if last is not None and now - last < float(interval):
+        time.sleep(float(interval) - (now - last))
+    _LAST_CALL_AT[provider] = time.monotonic()
+
+
 RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
 COMPAT_RETRIES = 5
 COMPAT_BACKOFF_SECONDS = (2, 4, 8, 16, 32)
@@ -606,6 +626,8 @@ def elicit(args) -> Path:
 
     def timed_send(spec_key, system, text, max_tokens, temperature):
         r = resolved.get(spec_key)  # None for the bare-model translator: anthropic path
+        if r is not None:
+            _pace(r["provider"], r["cfg"])
         sent = utc_now_iso()
         t0 = time.monotonic()
         if r is None or r["cfg"].get("api", "anthropic") == "anthropic":

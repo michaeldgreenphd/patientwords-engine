@@ -24,12 +24,13 @@
     "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
     "consumer_product": "Gemini app free tier",
     "consumer_default": "gemini-3.5-flash",
-    "consumer_proxy_note": "VERIFIED 2026-07-21: the free Gemini app defaults to Gemini 3.5 Flash (consumer default since 2026-05-19, Google I/O). The free tier also carries a small daily allowance of 3.1 Pro for hard questions \u2014 the Flash default is the average-consumer path. OpenAI-compatible endpoint path confirmed.",
+    "consumer_proxy_note": "VERIFIED 2026-07-21: the free Gemini app defaults to Gemini 3.5 Flash (consumer default since 2026-05-19, Google I/O). The free tier also carries a small daily allowance of 3.1 Pro for hard questions \u2014 the Flash default is the average-consumer path. OpenAI-compatible endpoint path confirmed. min_interval_seconds=10 (2026-07-22): the AI Studio free tier throttled run 1b after 16 calls with sustained 429s that outlast retry backoff - pace to ~6 requests/min including retry attempts.",
     "key_env": "GEMINI_API_KEY",
     "default_pricing": [
       1.5,
       9.0
-    ]
+    ],
+    "min_interval_seconds": 10
   },
   "xai": {
     "api": "openai-compat",
