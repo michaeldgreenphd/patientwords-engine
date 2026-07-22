@@ -812,3 +812,34 @@ def test_payload_complete_override(tmp_path):
     with pytest.raises(SystemExit, match="requires"):
         ae.main(["build-stimuli", "--source", "payload", "--payload", str(src),
                  "--complete-override", '{"pairs_x#1": "widget kit"}', "--out-dir", str(out_dir)])
+
+
+def test_anthropic_send_retries_transient_statuses(monkeypatch):
+    class Boom(Exception):
+        def __init__(self, status, body=None):
+            self.status_code = status
+            self.body = body
+
+    calls = {"n": 0}
+
+    def flaky(client, model, system, user_text, max_tokens, temperature):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise Boom(522, {"retry_after": 3})
+        if calls["n"] == 2:
+            raise Boom(529)
+        return "ok", 1, 2, {"model": model}
+
+    naps = []
+    monkeypatch.setattr(ae, "_send", flaky)
+    monkeypatch.setattr(ae.time, "sleep", lambda s: naps.append(s))
+    out = ae._send_anthropic_retrying(object(), "model-a", None, "hi", 10, 0.0)
+    assert out[0] == "ok" and calls["n"] == 3
+    assert naps == [3.0, 4]  # retry_after honored, then default backoff step 2
+
+    # a non-retryable status raises immediately
+    def hard_fail(client, model, system, user_text, max_tokens, temperature):
+        raise Boom(400)
+    monkeypatch.setattr(ae, "_send", hard_fail)
+    with pytest.raises(Boom):
+        ae._send_anthropic_retrying(object(), "model-a", None, "hi", 10, 0.0)

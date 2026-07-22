@@ -295,9 +295,34 @@ def _pace(provider: str, cfg: dict) -> None:
     _LAST_CALL_AT[provider] = time.monotonic()
 
 
-RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
+RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504, 522, 529})
 COMPAT_RETRIES = 5
 COMPAT_BACKOFF_SECONDS = (2, 4, 8, 16, 32)
+
+
+def _send_anthropic_retrying(client, model, system, user_text, max_tokens, temperature):
+    """_send plus transient-status retries, mirroring _send_compat's policy.
+
+    The Anthropic path originally had none: pilot 2b died mid-run on a single
+    Cloudflare 522 from api.anthropic.com during a translation call after the
+    SDK's own quick retries gave up (run 29913634215, 2026-07-22). Honors the
+    error body's retry_after when present (1-120 s cap)."""
+    for attempt in range(COMPAT_RETRIES + 1):
+        try:
+            return _send(client, model, system, user_text, max_tokens, temperature)
+        except Exception as exc:
+            status = getattr(exc, "status_code", None)
+            if status not in RETRYABLE_STATUSES or attempt >= COMPAT_RETRIES:
+                raise
+            wait = COMPAT_BACKOFF_SECONDS[min(attempt, len(COMPAT_BACKOFF_SECONDS) - 1)]
+            body = getattr(exc, "body", None)
+            if isinstance(body, dict) and body.get("retry_after") is not None:
+                try:
+                    wait = max(1.0, min(float(body["retry_after"]), 120.0))
+                except (TypeError, ValueError):
+                    pass
+            print(f"anthropic {model}: transient {status}; retry {attempt + 1}/{COMPAT_RETRIES} in {wait}s")
+            time.sleep(wait)
 
 
 def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
@@ -691,7 +716,8 @@ def elicit(args) -> Path:
         if r is None or r["cfg"].get("api", "anthropic") == "anthropic":
             endpoint = "anthropic"
             model = r["model"] if r else spec_key
-            out_text, in_tok, out_tok, raw = _send(anthropic_client(), model, system, text, max_tokens, temperature)
+            out_text, in_tok, out_tok, raw = _send_anthropic_retrying(
+                anthropic_client(), model, system, text, max_tokens, temperature)
         else:
             endpoint = r["cfg"].get("base_url", "")
             out_text, in_tok, out_tok, raw = _send_compat(r["cfg"], r["model"], system, text,
@@ -950,7 +976,7 @@ def judge(args) -> Path:
                     print(f"STOPPED EARLY: judge max_spend ceiling (${args.max_spend})")
                     break
                 # Blinding: the judge sees the response text only - never the prompt or arm.
-                raw_text, in_tok, out_tok, raw = _send(
+                raw_text, in_tok, out_tok, raw = _send_anthropic_retrying(
                     client, args.judge_model, None, _judge_prompt(rubric, r["response_text"]), 300, 0.0
                 )
                 tracker.record(args.judge_model, in_tok, out_tok)
