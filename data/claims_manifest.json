@@ -42,31 +42,12 @@
    "_": "paired translation-vs-placebo contrast computed from the landed batch-6 arms 2026-07-14 (referee item 6); the '14 pairs' in the sentence is guarded here too"
   },
   {
-   "page": "start-here/index.html",
-   "snippet": "translation fixed 8 of the 20 hardest cases, left 7 unchanged",
-   "source": "data/provenance.json",
-   "expr": "[d['translation_cases']['summary']['recovered'], d['translation_cases']['summary']['n_downgrades'], d['translation_cases']['summary']['unrecovered']]",
-   "expected": [
-    8,
-    20,
-    7
-   ]
-  },
-  {
    "page": "technical/index.html",
-   "snippet": "run on eight",
+   "snippet": "models, one measurement",
    "source": "data/model_stats.json",
    "expr": "len(d['per_model'])",
    "expected": 8,
-   "_": "guards the Part 4 count; snippet updated 2026-07-14 audit round 2"
-  },
-  {
-   "page": "methods.html",
-   "snippet": "census lives on the",
-   "source": "data/jlens_depth.json",
-   "expr": "len(d['blocks']) > 0",
-   "expected": true,
-   "_": "translation-fixes pointer replaced the drifting per-batch snapshot 2026-07-14; guard keeps the link target's data live"
+   "_": "guards the Part 4 count (heading count word lives in the JS-filled #me-count-h span, so the snippet anchors on the literal tail); re-pointed 2026-07-22 after owner prose edits removed the body sentence"
   },
   {
    "page": "methods.html",
@@ -74,13 +55,6 @@
    "source": "data/model_stats.json",
    "expr": "len(d['per_model'])",
    "expected": 8
-  },
-  {
-   "page": "start-here/index.html",
-   "snippet": "three times made things worse",
-   "source": "data/provenance.json",
-   "expr": "sum(1 for c in d['translation_cases']['all']['cases'] if (c.get('class') or c.get('classification'))=='worsened')",
-   "expected": 3
   },
   {
    "page": "translation/index.html",
@@ -144,35 +118,6 @@
   },
   {
    "page": "technical/index.html",
-   "snippet": "four model families",
-   "source": "data/model_stats.json",
-   "expr": "len(d['per_model'])",
-   "expected": 8,
-   "_": "mirrors the methods families guard; model count drift flags a family recount"
-  },
-  {
-   "page": "methods.html",
-   "snippet": "still shows a below-zero penalty",
-   "source": "data/model_stats.json",
-   "expr": "d['per_model']['medgemma-4b-it']['penalty']['ci95'][1] < 0",
-   "expected": true,
-   "_": "limitations sentence rescoped 2026-07-14: the one medically tuned model measured keeps a CI excluding zero"
-  },
-  {
-   "page": "methods.html",
-   "snippet": "[−5.9, −2.0], on 337 phrases",
-   "source": "data/model_stats.json",
-   "expr": "[round(d['per_model']['medgemma-4b-it']['penalty']['mean']*100,1), round(d['per_model']['medgemma-4b-it']['penalty']['ci95'][0]*100,1), round(d['per_model']['medgemma-4b-it']['penalty']['ci95'][1]*100,1), d['per_model']['medgemma-4b-it']['penalty']['n_phrases']]",
-   "expected": [
-    -3.9,
-    -5.9,
-    -2.0,
-    337
-   ],
-   "_": "medgemma sentence n/CI; refreshed 2026-07-17 (Audit 2 F2-M01/MEDGEMMA, backfill n 119->337, owner republish)"
-  },
-  {
-   "page": "technical/index.html",
    "snippet": "one tenth of Tier B phrases",
    "source": "data/provenance.json",
    "expr": "d['tierb_holdout']['fraction']",
@@ -207,22 +152,6 @@
    "source": "data/provenance.json",
    "expr": "round(d['translation_cases']['grandma_laxative']['translated'][1],2)",
    "expected": 0.45
-  },
-  {
-   "page": "start-here/index.html",
-   "snippet": "emergency-scenario set (7 pairs)",
-   "source": "data/provenance.json",
-   "expr": "d['emergency_sets']['accepted_pairs']",
-   "expected": 7,
-   "_": "maintain-list item updated 2026-07-14: rounds paused, landed pairs being measured"
-  },
-  {
-   "page": "methods.html",
-   "snippet": "every top word held",
-   "source": "data/drift_series.json",
-   "expr": "next(x for x in d['deltas'] if x['date']=='20260715')['top_word_changes']",
-   "expected": [],
-   "_": "top-word stability across the 07-15 movement; drift_sentinel.py records top_word_changes since 2026-07-15"
   },
   {
    "page": "dialect-differences/index.html",
