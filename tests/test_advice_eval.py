@@ -786,3 +786,29 @@ def test_payload_complete_with_target(tmp_path):
     with pytest.raises(SystemExit, match="only applies"):
         ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(src),
                  "--complete-with-target", "--out-dir", str(out_dir)])
+
+
+def test_payload_complete_override(tmp_path):
+    payload = {"scenarios": [
+        {"batch": "pairs_x", "batch_index": 1, "clinical_prompt": "alpha frame so I reached for a",
+         "patient_prompt": "alpha variant frame so I reached for a", "flipped": True,
+         "language_penalty": -0.2, "screening": {"status": "passed"},
+         "intended_target": "wid"},
+    ]}
+    src = tmp_path / "payload.json"
+    src.write_text(json.dumps(payload), encoding="utf-8")
+    out_dir = tmp_path / "advice"
+    ae.main(["build-stimuli", "--source", "payload", "--payload", str(src), "--only-flips",
+             "--complete-with-target", "--complete-override", '{"pairs_x#1": "widget kit"}',
+             "--out-dir", str(out_dir)])
+    doc = json.loads(next(out_dir.glob("stimuli_*.json")).read_text(encoding="utf-8"))
+    it = doc["items"][0]
+    # the owner-approved word wins over the payload's partial intended_target
+    assert it["clinical_body"].endswith("reached for a widget kit.")
+    assert it["meta"]["completed_with"] == "widget kit"
+    assert it["meta"]["completion_override"] is True
+    assert doc["source"]["complete_overrides"] == {"pairs_x#1": "widget kit"}
+    # override without the completion flag is a usage error
+    with pytest.raises(SystemExit, match="requires"):
+        ae.main(["build-stimuli", "--source", "payload", "--payload", str(src),
+                 "--complete-override", '{"pairs_x#1": "widget kit"}', "--out-dir", str(out_dir)])

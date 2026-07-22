@@ -431,6 +431,9 @@ def build_stimuli(args) -> Path:
     items = []
     if args.source == "payload":
         complete = bool(getattr(args, "complete_with_target", False))
+        overrides = json.loads(getattr(args, "complete_override", None) or "{}")
+        if overrides and not complete:
+            raise SystemExit("--complete-override requires --complete-with-target")
         ask = args.ask_suffix if args.ask_suffix is not None else (
             DEFAULT_ASK_SUFFIX_COMPLETED if complete else DEFAULT_ASK_SUFFIX_PAYLOAD)
         payload = _load_json(args.payload)
@@ -454,23 +457,29 @@ def build_stimuli(args) -> Path:
                 continue
             ref = {"batch": s.get("batch"), "batch_index": s.get("batch_index")}
             meta = {"language_penalty": penalty, "flipped": bool(s.get("flipped")), "topic": s.get("topic")}
+            item_id = f"{s.get('batch')}#{s.get('batch_index')}"
             c_body, p_body = s["clinical_prompt"], s["patient_prompt"]
             if complete:
                 # Finish the measured probe sentence with the pair's own
                 # intended word (payload data, e.g. the full word behind a
                 # wordpiece target) so the stimulus is a complete thought.
                 # Same word on both sides: the single-swap discipline holds.
-                word = str(s.get("intended_target") or s.get("target_token") or "").strip()
+                # Owner-approved overrides (data passed at build time) cover
+                # pairs whose intended word is not a complete noun.
+                word = str(overrides.get(item_id) or s.get("intended_target")
+                           or s.get("target_token") or "").strip()
                 if not word:
-                    print(f"skip {s.get('batch')}#{s.get('batch_index')}: nothing to complete with "
+                    print(f"skip {item_id}: nothing to complete with "
                           "(no intended_target/target_token in the payload)")
                     continue
                 c_body = f"{c_body.rstrip()} {word}."
                 p_body = f"{p_body.rstrip()} {word}."
                 meta["completed_with"] = word
+                if item_id in overrides:
+                    meta["completion_override"] = True
             items.append(
                 _stimulus(
-                    f"{s.get('batch')}#{s.get('batch_index')}",
+                    item_id,
                     c_body,
                     p_body,
                     ask,
@@ -488,6 +497,7 @@ def build_stimuli(args) -> Path:
             "only_hedges": bool(getattr(args, "only_hedges", False)),
             "min_abs_penalty": args.min_abs_penalty,
             "complete_with_target": complete,
+            "complete_overrides": overrides,
             "note": "published payload withholds Tier B holdout rows upstream (holdout_withheld)",
         }
         if complete:
@@ -1357,6 +1367,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="payload source: finish each probe sentence with the pair's intended "
                         "word so stimuli are complete thoughts instead of trailing off "
                         "(same word both sides; default suffix drops the ellipsis)")
+    b.add_argument("--complete-override", default=None,
+                   help="JSON object mapping item ids to owner-approved completion words "
+                        "(overrides intended_target for pairs whose word is not a complete noun)")
     b.add_argument("--max-items", type=int, default=0)
     b.add_argument("--pairs", nargs="+", default=[], help="pairs source: batch JSON file(s)")
     b.add_argument("--dashboard", default="ops/dashboard.json", help="pairs source: dashboard for the holdout gate")
