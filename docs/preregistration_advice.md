@@ -129,6 +129,18 @@ labeled exploratory. First such set: `stimuli_20260722T003502Z.json` — 9
 `--only-hedges --min-abs-penalty 0.25`), asking whether advice shifts even
 when the next-token top does not.
 
+Second set (built 2026-07-22, not yet fired):
+`stimuli_20260722T111215Z.json` — the same 25 registered flip pairs with each
+probe sentence **completed by its own pair's intended word**
+(`--complete-with-target`; suffix "Anyway what should I do?", ellipsis
+dropped, wording otherwise identical). Motivation: the registered stimuli
+trail off mid-sentence by construction (they are the measured next-token
+probes), and pilot responses show models reacting to the truncation itself;
+this set measures that artifact by differing from the registered set only in
+the target word being present. Two items (`pairs_20260706T201750Z#1`, `#10`,
+intended word "sleeping") do not read as complete nouns and are excluded or
+owner-completed before any fire.
+
 ## Exclusions and integrity
 
 - Tier B holdout phrases never appear in stimuli (payload sourcing is

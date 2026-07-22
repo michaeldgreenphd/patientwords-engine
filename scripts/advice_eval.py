@@ -55,6 +55,9 @@ DEFAULT_RUBRIC = "data/advice_rubric.json"
 # than typed consumer speech (owner preference, 2026-07-22)
 DEFAULT_ASK_SUFFIX_PAYLOAD = "... anyway what should I do?"
 DEFAULT_ASK_SUFFIX_MANUAL = "What should I do?"
+# --complete-with-target keeps "anyway" so the completed set differs from the
+# truncated registered set ONLY in the target word being present vs cut off.
+DEFAULT_ASK_SUFFIX_COMPLETED = "Anyway what should I do?"
 ARMS = ("clinical", "patient", "translated")
 DEFAULT_MAX_TOKENS = 1024
 DEFAULT_SAMPLES = 3
@@ -427,7 +430,9 @@ def _stimulus(item_id, clinical_text, patient_text, ask_suffix, source_ref=None,
 def build_stimuli(args) -> Path:
     items = []
     if args.source == "payload":
-        ask = args.ask_suffix if args.ask_suffix is not None else DEFAULT_ASK_SUFFIX_PAYLOAD
+        complete = bool(getattr(args, "complete_with_target", False))
+        ask = args.ask_suffix if args.ask_suffix is not None else (
+            DEFAULT_ASK_SUFFIX_COMPLETED if complete else DEFAULT_ASK_SUFFIX_PAYLOAD)
         payload = _load_json(args.payload)
         scenarios = payload.get("scenarios") or []
         picked = 0
@@ -449,11 +454,25 @@ def build_stimuli(args) -> Path:
                 continue
             ref = {"batch": s.get("batch"), "batch_index": s.get("batch_index")}
             meta = {"language_penalty": penalty, "flipped": bool(s.get("flipped")), "topic": s.get("topic")}
+            c_body, p_body = s["clinical_prompt"], s["patient_prompt"]
+            if complete:
+                # Finish the measured probe sentence with the pair's own
+                # intended word (payload data, e.g. the full word behind a
+                # wordpiece target) so the stimulus is a complete thought.
+                # Same word on both sides: the single-swap discipline holds.
+                word = str(s.get("intended_target") or s.get("target_token") or "").strip()
+                if not word:
+                    print(f"skip {s.get('batch')}#{s.get('batch_index')}: nothing to complete with "
+                          "(no intended_target/target_token in the payload)")
+                    continue
+                c_body = f"{c_body.rstrip()} {word}."
+                p_body = f"{p_body.rstrip()} {word}."
+                meta["completed_with"] = word
             items.append(
                 _stimulus(
                     f"{s.get('batch')}#{s.get('batch_index')}",
-                    s["clinical_prompt"],
-                    s["patient_prompt"],
+                    c_body,
+                    p_body,
                     ask,
                     ref,
                     meta,
@@ -468,8 +487,12 @@ def build_stimuli(args) -> Path:
             "only_flips": bool(args.only_flips),
             "only_hedges": bool(getattr(args, "only_hedges", False)),
             "min_abs_penalty": args.min_abs_penalty,
+            "complete_with_target": complete,
             "note": "published payload withholds Tier B holdout rows upstream (holdout_withheld)",
         }
+        if complete:
+            for it in items:
+                print("  completed:", it["patient_message"])
     elif args.source == "pairs":
         ask = args.ask_suffix if args.ask_suffix is not None else DEFAULT_ASK_SUFFIX_PAYLOAD
         tierb = _load_tierb_split()
@@ -1330,6 +1353,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="payload source: non-flips with a negative penalty only "
                         "(top held, probability collapsed); combine with --min-abs-penalty")
     b.add_argument("--min-abs-penalty", type=float, default=0.0)
+    b.add_argument("--complete-with-target", action="store_true",
+                   help="payload source: finish each probe sentence with the pair's intended "
+                        "word so stimuli are complete thoughts instead of trailing off "
+                        "(same word both sides; default suffix drops the ellipsis)")
     b.add_argument("--max-items", type=int, default=0)
     b.add_argument("--pairs", nargs="+", default=[], help="pairs source: batch JSON file(s)")
     b.add_argument("--dashboard", default="ops/dashboard.json", help="pairs source: dashboard for the holdout gate")
@@ -1409,6 +1436,8 @@ def main(argv=None) -> None:
             raise SystemExit("--source pairs requires --pairs <file...>")
         if args.source == "manual" and not args.manual_in:
             raise SystemExit("--source manual requires --manual-in <file>")
+        if args.complete_with_target and args.source != "payload":
+            raise SystemExit("--complete-with-target only applies to --source payload")
         build_stimuli(args)
     elif args.command == "elicit":
         elicit(args)

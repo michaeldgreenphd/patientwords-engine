@@ -753,3 +753,36 @@ def test_recover_archive_refuses_corrupt_interior_line(tmp_path, monkeypatch):
     (restored_dir / resp.name).write_bytes(b"".join(ln + b"\n" for ln in lines))
     with pytest.raises(SystemExit, match="corrupt interior"):
         _recover(stim_path, restored_dir, resp.parent)
+
+
+def test_payload_complete_with_target(tmp_path):
+    payload = {"scenarios": [
+        {"batch": "pairs_x", "batch_index": 1, "clinical_prompt": "alpha frame so I reached for a",
+         "patient_prompt": "alpha variant frame so I reached for a", "flipped": True,
+         "language_penalty": -0.2, "screening": {"status": "passed"},
+         "target_token": "wid", "intended_target": "widget"},
+        {"batch": "pairs_x", "batch_index": 2, "clinical_prompt": "beta frame with a",
+         "patient_prompt": "beta variant frame with a", "flipped": True,
+         "language_penalty": -0.3, "screening": {"status": "passed"}},
+    ]}
+    src = tmp_path / "payload.json"
+    src.write_text(json.dumps(payload), encoding="utf-8")
+    out_dir = tmp_path / "advice"
+    ae.main(["build-stimuli", "--source", "payload", "--payload", str(src),
+             "--only-flips", "--complete-with-target", "--out-dir", str(out_dir)])
+    doc = json.loads(next(out_dir.glob("stimuli_*.json")).read_text(encoding="utf-8"))
+    # item 2 has no intended_target/target_token: skipped with a notice
+    assert [i["id"] for i in doc["items"]] == ["pairs_x#1"]
+    it = doc["items"][0]
+    # full intended word (not the wordpiece), same on both sides, sentence closed
+    assert it["clinical_body"].endswith("reached for a widget.")
+    assert it["patient_body"].endswith("reached for a widget.")
+    assert it["meta"]["completed_with"] == "widget"
+    # completed default suffix drops the ellipsis but keeps the same words
+    assert doc["ask_suffix"] == "Anyway what should I do?"
+    assert it["clinical_message"].endswith("widget. Anyway what should I do?")
+    assert doc["source"]["complete_with_target"] is True
+    # flag is payload-only
+    with pytest.raises(SystemExit, match="only applies"):
+        ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(src),
+                 "--complete-with-target", "--out-dir", str(out_dir)])
