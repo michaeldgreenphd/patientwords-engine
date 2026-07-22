@@ -332,6 +332,16 @@ def test_resolve_spec_variants(tmp_path):
         ae._resolve_spec("no_api", reg)  # manual_ui providers cannot be elicited via API
 
 
+def test_finish_reason_captured_across_api_shapes():
+    # Critic item 2026-07-22: compat-path records archived stop_reason=None, so a
+    # Gemini max-token truncation was unattributable in the convenience field.
+    assert ae._finish_reason({"stop_reason": "end_turn"}) == "end_turn"  # anthropic shape
+    assert ae._finish_reason({"choices": [{"finish_reason": "length"}]}) == "length"  # compat shape
+    assert ae._finish_reason({"choices": []}) is None
+    assert ae._finish_reason({}) is None
+    assert ae._finish_reason(None) is None
+
+
 def test_registry_prices_rerouted_gemini_slug():
     # 2026-07-22: runs 1c and hedge-resume choked their max_spend ceilings because the
     # rerouted openrouter:google/gemini-3.5-flash spec fell through to the aggregator's

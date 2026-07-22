@@ -325,6 +325,20 @@ def _send_anthropic_retrying(client, model, system, user_text, max_tokens, tempe
             time.sleep(wait)
 
 
+def _finish_reason(raw) -> str | None:
+    """Why generation stopped, across API shapes: Anthropic surfaces stop_reason at the
+    top level; OpenAI-compatible providers (all compat-path vendors incl. OpenRouter)
+    put finish_reason on the first choice. Without this, a max-token truncation on the
+    compat path is unattributable in the archive's convenience field (the full raw
+    response is archived either way, so older records remain recoverable)."""
+    if not isinstance(raw, dict):
+        return None
+    if raw.get("stop_reason") is not None:
+        return raw.get("stop_reason")
+    choices = raw.get("choices") or [{}]
+    return (choices[0] or {}).get("finish_reason")
+
+
 def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
                  max_tokens: int, temperature: float):
     """One OpenAI-compatible chat call (OpenAI, Gemini, xAI, DeepSeek, Moonshot,
@@ -778,7 +792,7 @@ def elicit(args) -> Path:
                 "request": {"system": None, "message": message, "temperature": args.temperature,
                             "max_tokens": args.max_tokens},
                 "response_text": text, "response_sha256": sha256_text(text),
-                "stop_reason": raw.get("stop_reason"), "response_raw": raw,
+                "stop_reason": _finish_reason(raw), "response_raw": raw,
                 "translation_sha256": (translations.get((item["id"], args.translator_model)) or {}).get(
                     "output_sha256") if arm == "translated" else None,
                 **env, **base_env,
