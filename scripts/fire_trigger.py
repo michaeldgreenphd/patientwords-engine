@@ -74,6 +74,7 @@ DEFAULT_SETTLE_MINUTES = 15.0
 DEFAULT_DAILY_CEILING_USD = 2.0
 JOURNAL_RELPATH = Path("ops") / "trigger_journal.jsonl"
 DASHBOARD_RELPATH = Path("ops") / "dashboard.json"
+OVERRIDES_RELPATH = Path("ops") / "budget_overrides.json"
 TRIGGER_DIR_RELPATH = Path(".github") / "trigger"
 PUSH_BACKOFF_SECONDS = (2, 4, 8, 16)
 
@@ -355,7 +356,8 @@ def inflight_max_spend(entries, today, now, expire_hours):
     return total
 
 
-def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DEFAULT_EXPIRE_HOURS):
+def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DEFAULT_EXPIRE_HOURS,
+                 overrides=None):
     """(kind, reason) against the daily spend ceiling for a paid trigger.
 
     kind is "ok", "ceiling" (over the daily ceiling - the only refusal
@@ -377,6 +379,14 @@ def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DE
         ceiling = float(spend.get("daily_ceiling_usd", DEFAULT_DAILY_CEILING_USD))
     except (TypeError, ValueError):
         ceiling = DEFAULT_DAILY_CEILING_USD
+    override_note = ""
+    ov = (overrides or {}).get(today)
+    if isinstance(ov, dict):
+        try:
+            ceiling = float(ov["ceiling_usd"])
+            override_note = f" [owner ceiling override for {today}: {ov.get('reason', 'no reason recorded')}]"
+        except (KeyError, TypeError, ValueError):
+            pass  # malformed override: fail closed to the standing ceiling
     today_rec = spend.get("today")
     landed = 0.0
     if isinstance(today_rec, dict) and today_rec.get("date") == today:
@@ -392,11 +402,11 @@ def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DE
         return "ceiling", (
             f"max_spend {max_spend:.2f} + today's committed {committed:.2f} "
             f"(landed {landed:.2f} + in-flight {inflight:.2f}) "
-            f"would exceed the daily ceiling {ceiling:.2f} USD"
+            f"would exceed the daily ceiling {ceiling:.2f} USD{override_note}"
         )
     return "ok", (
         f"max_spend {max_spend:.2f} + today's committed {committed:.2f} "
-        f"(landed {landed:.2f} + in-flight {inflight:.2f}) within the daily ceiling {ceiling:.2f} USD"
+        f"(landed {landed:.2f} + in-flight {inflight:.2f}) within the daily ceiling {ceiling:.2f} USD{override_note}"
     )
 
 
@@ -419,6 +429,21 @@ def queue_view(entries, now, expire_hours):
 
 def load_dashboard(path):
     """Dashboard dict; {} when the file is missing or does not parse."""
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def load_budget_overrides(path):
+    """Owner-authorized dated ceiling raises: {"YYYY-MM-DD": {"ceiling_usd": N, "reason": "..."}}.
+
+    A committed, self-expiring alternative to --override-budget (which stays
+    forbidden in ops practice): the raise applies to exactly one UTC day and the
+    authorization travels with the file in git. Missing or malformed file means
+    no overrides - the guard fails closed to the standing ceiling.
+    """
     try:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -548,8 +573,10 @@ def cmd_fire(args):
         budget_params = params if args.trigger in PAID_TRIGGERS \
             else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
         dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
+        overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
         kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),
-                                    entries=entries, now=now, expire_hours=expire_hours)
+                                    entries=entries, now=now, expire_hours=expire_hours,
+                                    overrides=overrides)
         if kind == "ok":
             print(reason)
         elif kind == "ceiling" and args.override_budget:

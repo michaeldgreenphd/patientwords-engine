@@ -232,6 +232,24 @@ def test_budget_check_pure_function_returns_structured_kind():
     assert ft.budget_check({"max_spend": float("nan")}, dash, "2026-07-09")[0] == "invalid"
 
 
+def test_budget_dated_ceiling_override():
+    # Owner-authorized dated raise (ops/budget_overrides.json): applies to exactly
+    # its UTC date, carries its reason into the guard message, and a malformed
+    # entry fails closed to the standing ceiling.
+    ov = {"2026-07-23": {"ceiling_usd": 5.0, "reason": "build day"}}
+    kind, reason = ft.budget_check({"max_spend": "4.5"}, {}, "2026-07-23", overrides=ov)
+    assert kind == "ok" and "owner ceiling override" in reason and "build day" in reason
+    # any other date: standing default 2.0 refuses the same fire
+    assert ft.budget_check({"max_spend": "4.5"}, {}, "2026-07-24", overrides=ov)[0] == "ceiling"
+    # the raised day still refuses past the raised ceiling
+    assert ft.budget_check({"max_spend": "5.5"}, {}, "2026-07-23", overrides=ov)[0] == "ceiling"
+    # malformed override entry -> fail closed to the standing ceiling
+    bad = {"2026-07-23": {"ceiling_usd": "lots"}}
+    assert ft.budget_check({"max_spend": "4.5"}, {}, "2026-07-23", overrides=bad)[0] == "ceiling"
+    # loader tolerates a missing file
+    assert ft.load_budget_overrides("/nonexistent/budget_overrides.json") == {}
+
+
 def test_validate_params_pure_function():
     assert ft.validate_params("circuit-trace", {"graph_model": "g", "_note": "n"}) is None
     with pytest.raises(ValueError):
