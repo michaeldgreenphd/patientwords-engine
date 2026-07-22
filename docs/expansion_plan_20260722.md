@@ -28,7 +28,7 @@ lanes first; every paid piece needs explicit owner approval before firing.
 |---|---|---|---|---|---|
 | 6 | Activation patching 9 → 50 | activation-patching ($0) | $0 | — | BLOCKED: restore activation_patching.yml to main first (audit item) |
 | 7 | Quadrants 4 → 50 (~$0.006/item) | scenario-generation (paid) | ~$0.28 | 0.40 | APPROVED 2026-07-22 |
-| 8 | Model-eval audit 10 → 100 items per model (haiku) | model-evaluation (paid) | ~$0.40 | 0.60 | HELD by owner pending item-source answer (see re-proposal in session log 2026-07-22) |
+| 8 | Model-eval audit 10 → 100 items per model (haiku) | model-evaluation (paid) | ~$0.40 | 0.60 | APPROVED 2026-07-22 (rev): Claude-generated items + stress-pair validation discipline + 20-item owner review sample BEFORE any eval fire; ~$0.50 actual, 0.70 ceiling incl. authoring |
 | 9 | jlens depth router classes (10/18/4) + transport census (23/side) | jlens backfill ($0) | $0 | — | already converging via the backfill loop |
 
 ## P3
