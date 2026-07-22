@@ -485,3 +485,27 @@ def test_send_compat_exhausts_retries_and_raises(monkeypatch):
     cfg = {"api": "openai-compat", "base_url": "https://x.example/v1", "key_env": "FAKE_KEY"}
     with pytest.raises(RuntimeError, match="503"):
         ae._send_compat(cfg, "m", None, "hello", 64, 1.0)
+
+
+def test_build_stimuli_only_hedges_filter(tmp_path, monkeypatch):
+    # hedges: not flipped, penalty negative and past the magnitude floor
+    payload = {"scenarios": [
+        {"batch": "b", "batch_index": 1, "clinical_prompt": "c1", "patient_prompt": "p1",
+         "flipped": True, "language_penalty": -0.5},                  # flip: excluded
+        {"batch": "b", "batch_index": 2, "clinical_prompt": "c2", "patient_prompt": "p2",
+         "flipped": False, "language_penalty": -0.4},                 # hedge: kept
+        {"batch": "b", "batch_index": 3, "clinical_prompt": "c3", "patient_prompt": "p3",
+         "flipped": False, "language_penalty": 0.2},                  # gained: excluded
+        {"batch": "b", "batch_index": 4, "clinical_prompt": "c4", "patient_prompt": "p4",
+         "flipped": False, "language_penalty": -0.05},                # below floor: excluded
+    ]}
+    pp = tmp_path / "payload.json"
+    pp.write_text(json.dumps(payload))
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data" / "advice").mkdir(parents=True)
+    ae.main(["build-stimuli", "--source", "payload", "--payload", str(pp),
+             "--only-hedges", "--min-abs-penalty", "0.25"])
+    out = sorted((tmp_path / "data" / "advice").glob("stimuli_*.json"))[-1]
+    d = json.loads(out.read_text())
+    assert [it["id"] for it in d["items"]] == ["b#2"]
+    assert d["source"]["only_hedges"] is True

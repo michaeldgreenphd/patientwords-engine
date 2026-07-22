@@ -395,6 +395,12 @@ def build_stimuli(args) -> Path:
             penalty = s.get("language_penalty")
             if args.min_abs_penalty and (penalty is None or abs(penalty) < args.min_abs_penalty):
                 continue
+            # hedges: the next-token top HELD but its probability collapsed -
+            # the complementary stress condition to --only-flips (does the
+            # advice shift even when the top prediction did not?)
+            if getattr(args, "only_hedges", False) and (
+                    s.get("flipped") or penalty is None or penalty >= 0):
+                continue
             ref = {"batch": s.get("batch"), "batch_index": s.get("batch_index")}
             meta = {"language_penalty": penalty, "flipped": bool(s.get("flipped")), "topic": s.get("topic")}
             items.append(
@@ -414,6 +420,7 @@ def build_stimuli(args) -> Path:
             "kind": "payload",
             "path": str(args.payload),
             "only_flips": bool(args.only_flips),
+            "only_hedges": bool(getattr(args, "only_hedges", False)),
             "min_abs_penalty": args.min_abs_penalty,
             "note": "published payload withholds Tier B holdout rows upstream (holdout_withheld)",
         }
@@ -1006,6 +1013,9 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--source", choices=("payload", "pairs", "manual"), required=True)
     b.add_argument("--payload", default=DEFAULT_PAYLOAD)
     b.add_argument("--only-flips", action="store_true", help="payload source: measured flips only")
+    b.add_argument("--only-hedges", action="store_true",
+                   help="payload source: non-flips with a negative penalty only "
+                        "(top held, probability collapsed); combine with --min-abs-penalty")
     b.add_argument("--min-abs-penalty", type=float, default=0.0)
     b.add_argument("--max-items", type=int, default=0)
     b.add_argument("--pairs", nargs="+", default=[], help="pairs source: batch JSON file(s)")

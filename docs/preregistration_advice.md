@@ -85,6 +85,16 @@ products with no API (Copilot, Meta AI), never disguised as API output; and a
 ~5-stimulus hand-run calibration subset in the real UIs of API-reachable
 products so the API-vs-product gap is measured, not assumed.
 
+## Supplementary exploratory sets
+
+Owner-invited cheap exploratory runs (2026-07-22, "a few more experiments...
+situations that stress the models") use their own stamped stimuli files and
+are **excluded from the registered endpoints above**, reported separately and
+labeled exploratory. First such set: `stimuli_20260722T003502Z.json` — 9
+"hedge" pairs (top prediction held, probability collapsed ≥25 pp, no flip;
+`--only-hedges --min-abs-penalty 0.25`), asking whether advice shifts even
+when the next-token top does not.
+
 ## Exclusions and integrity
 
 - Tier B holdout phrases never appear in stimuli (payload sourcing is
