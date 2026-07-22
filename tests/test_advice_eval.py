@@ -509,3 +509,137 @@ def test_build_stimuli_only_hedges_filter(tmp_path, monkeypatch):
     d = json.loads(out.read_text())
     assert [it["id"] for it in d["items"]] == ["b#2"]
     assert d["source"]["only_hedges"] is True
+
+
+# ---------------- evaluation extensions (A-items + B-schema, 2026-07-22) ----
+
+
+def test_manual_passthrough_reference_situation_variant(tmp_path, monkeypatch):
+    manual = write_manual(tmp_path, [
+        {"id": "v1", "clinical": "flurb alpha with a", "patient": "flurb allo wobbly with a",
+         "reference": {"tier": "routine", "source": "clinician_panel",
+                       "adjudicated_by": "dr-x", "date": "2026-07-22"},
+         "situation_id": "sit_1", "variant": "neutral"},
+        {"id": "v2", "clinical": "flurb beta with a", "patient": "flurb bee all weird with a",
+         "situation_id": "sit_1", "variant": "misattributed"},
+    ])
+    out_dir = tmp_path / "advice"
+    ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual),
+             "--out-dir", str(out_dir)])
+    doc = json.loads(next(out_dir.glob("stimuli_*.json")).read_text(encoding="utf-8"))
+    v1, v2 = doc["items"]
+    assert v1["reference"]["tier"] == "routine" and v1["reference"]["adjudicated_by"] == "dr-x"
+    assert "reference" not in v2
+    assert (v1["situation_id"], v1["variant"]) == ("sit_1", "neutral")
+    assert (v2["situation_id"], v2["variant"]) == ("sit_1", "misattributed")
+
+
+def test_manual_reference_must_be_object_with_tier(tmp_path, monkeypatch):
+    manual = write_manual(tmp_path, [
+        {"id": "v1", "clinical": "a1 with a", "patient": "a2 with a", "reference": {"source": "x"}}])
+    with pytest.raises(SystemExit, match="reference"):
+        ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual),
+                 "--out-dir", str(tmp_path / "advice")])
+
+
+def _write_rubric(tmp_path):
+    rubric = {"version": "t", "tiers": [{"id": "low", "label": "L", "definition": "d"},
+                                        {"id": "mid", "label": "M", "definition": "d"},
+                                        {"id": "high", "label": "H", "definition": "d"}],
+              "flags": [], "judge_instructions": "{tiers}{flags}{response}"}
+    p = tmp_path / "rubric.json"
+    p.write_text(json.dumps(rubric), encoding="utf-8")
+    return p
+
+
+def _jrow(stim, model, arm, tier, k=1):
+    return {"stimulus_id": stim, "model": model, "arm": arm, "tier": tier, "sample_k": k,
+            "response_sha256": f"{stim}{model}{arm}{k}", "rubric_sha256": "r",
+            "judge_model": "j", "flags": {}}
+
+
+def test_analyze_reference_scoring_and_thesis_endpoint(tmp_path):
+    rubric = _write_rubric(tmp_path)
+    stimuli = {"items": [
+        {"id": "s1", "reference": {"tier": "high"}},
+        {"id": "s2", "reference": {"tier": "mid"}}]}
+    sp = tmp_path / "stimuli.json"
+    sp.write_text(json.dumps(stimuli), encoding="utf-8")
+    rows = [
+        # model A: correct on clinical, under-triages patient on both stimuli
+        _jrow("s1", "A", "clinical", "high"), _jrow("s1", "A", "patient", "low"),
+        _jrow("s2", "A", "clinical", "mid"), _jrow("s2", "A", "patient", "low"),
+        # model B: over-triages s2 clinical, matches elsewhere
+        _jrow("s1", "B", "clinical", "high"), _jrow("s1", "B", "patient", "high"),
+        _jrow("s2", "B", "clinical", "high"), _jrow("s2", "B", "patient", "mid"),
+    ]
+    jp = tmp_path / "judgments_x.jsonl"
+    jp.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    ae.main(["analyze", "--judgments", str(jp), "--rubric", str(rubric),
+             "--stimuli", str(sp), "--bootstrap", "50", "--seed", "1"])
+    out = json.loads((tmp_path / "analysis_x.json").read_text(encoding="utf-8"))
+    ref = out["reference_scoring"]
+    assert ref["n_referenced_stimuli"] == 2
+    a_clin = ref["by_model_arm"]["A|clinical"]
+    a_pat = ref["by_model_arm"]["A|patient"]
+    assert a_clin == {"n": 2, "accuracy": 1.0, "under_triage_rate": 0.0, "over_triage_rate": 0.0}
+    assert a_pat["under_triage_rate"] == 1.0
+    b_clin = ref["by_model_arm"]["B|clinical"]
+    assert b_clin["over_triage_rate"] == 0.5 and b_clin["accuracy"] == 0.5
+    # thesis endpoint: A under-triages patient but not clinical -> +1.0 mean
+    thesis_a = ref["under_triage_patient_minus_clinical"]["A"]
+    assert thesis_a["mean"] == 1.0
+    assert out["dispersion"]["consumer_lottery_by_arm"]["patient"] is not None
+
+
+def test_analyze_dispersion_and_covariates(tmp_path):
+    rubric = _write_rubric(tmp_path)
+    rows = [
+        # s1 clinical: A and B disagree (high vs low) -> lottery 1.0
+        _jrow("s1", "A", "clinical", "high"), _jrow("s1", "B", "clinical", "low"),
+        # s2 clinical: A and B agree -> lottery 0.0
+        _jrow("s2", "A", "clinical", "mid"), _jrow("s2", "B", "clinical", "mid"),
+        # self-lottery: model A s3 clinical, K=2 disagreeing samples
+        _jrow("s3", "A", "clinical", "low", k=1), _jrow("s3", "A", "clinical", "high", k=2),
+    ]
+    jp = tmp_path / "judgments_y.jsonl"
+    jp.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    resp = [
+        {"record_type": "advice", "model_requested": "A", "arm": "clinical",
+         "response_text": "Take a rest. Then call someone."},
+        {"record_type": "advice", "model_requested": "A", "arm": "clinical",
+         "response_text": "Rest now."},
+        {"record_type": "translation", "model_requested": "T", "response_text": "ignored"},
+    ]
+    rp = tmp_path / "responses_y.jsonl"
+    rp.write_text("\n".join(json.dumps(r) for r in resp) + "\n", encoding="utf-8")
+    ae.main(["analyze", "--judgments", str(jp), "--rubric", str(rubric),
+             "--responses", str(rp), "--bootstrap", "50", "--seed", "1"])
+    out = json.loads((tmp_path / "analysis_y.json").read_text(encoding="utf-8"))
+    disp = out["dispersion"]
+    # consumer lottery over s1 (1.0), s2 (0.0); s3 has a single model -> excluded
+    assert disp["consumer_lottery_by_arm"]["clinical"] == 0.5
+    assert disp["inter_model_agreement_by_arm"]["clinical"] == 0.5
+    # self lottery: only s3 has K>=2 for A -> 1.0; B has no multi-sample cell
+    assert disp["self_lottery_by_model"]["A"] == 1.0
+    assert disp["self_lottery_by_model"]["B"] is None
+    assert disp["tier_range_across_models_by_arm"]["clinical"]["max"] == 2
+    cov = out["response_covariates"]["A|clinical"]
+    assert cov["n"] == 2 and cov["mean_words"] == 4.0
+    assert isinstance(cov["mean_fk_grade"], float)
+
+
+def test_human_sample_stratified_by_arm(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, sidecar = _elicit(tmp_path, monkeypatch, stim_path)
+    rubric = _write_rubric(tmp_path)
+    out = tmp_path / "judgments_z.jsonl"
+    ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric),
+             "--out", str(out), "--human-sample", "4", "--max-spend", "0.1", "--dry-run"])
+    csv_path = out.with_name(out.stem + "_human_sample.csv")
+    lines = csv_path.read_text(encoding="utf-8").splitlines()
+    shas = [ln.split(",")[0] for ln in lines[1:]]
+    rows = {r["response_sha256"]: r for r in ae._read_jsonl(resp) if r.get("record_type") == "advice"}
+    arms = [rows[s]["arm"] for s in shas if s in rows]
+    # 1 stimulus x 3 arms x K=2 archive: a 4-row sample must span >1 arm
+    assert len(set(arms)) >= 2

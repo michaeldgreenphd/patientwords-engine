@@ -38,6 +38,7 @@ import importlib.util
 import json
 import os
 import random
+import re
 import statistics
 import subprocess
 import time
@@ -473,10 +474,28 @@ def build_stimuli(args) -> Path:
             if item_id in seen_ids:
                 raise SystemExit(f"{args.manual_in}: duplicate id {item_id}")
             seen_ids.add(item_id)
-            items.append(
-                _stimulus(item_id, clinical_text, patient_text, ask, {"manual": True},
-                          {"notes": entry.get("notes")})
-            )
+            item = _stimulus(item_id, clinical_text, patient_text, ask, {"manual": True},
+                             {"notes": entry.get("notes")})
+            # A2: optional clinician-adjudicated reference tier (data authored
+            # by owner + domain reviewer; analyze scores accuracy/under/over
+            # against it). Passed through verbatim; tier validity is checked
+            # at analyze time against the rubric actually in force.
+            ref = entry.get("reference")
+            if ref is not None:
+                if not isinstance(ref, dict) or not ref.get("tier"):
+                    raise SystemExit(f"{args.manual_in}: item {item_id}: 'reference' must be an "
+                                     "object with at least a 'tier'")
+                item["reference"] = ref
+            # B2/B3/B4 schema: optional situation grouping + variant tag so
+            # manual vignettes can carry misattribution / paraphrase /
+            # messiness designs; analyze-side comparisons come in phase 2.
+            for key in ("situation_id", "variant"):
+                if entry.get(key) is not None:
+                    if not isinstance(entry[key], str) or not entry[key].strip():
+                        raise SystemExit(f"{args.manual_in}: item {item_id}: '{key}' must be a "
+                                         "non-empty string when present")
+                    item[key] = entry[key].strip()
+            items.append(item)
         source_desc = {"kind": "manual", "path": str(args.manual_in)}
 
     if not items:
@@ -805,7 +824,26 @@ def judge(args) -> Path:
     todo = [r for r in advice if (r["response_sha256"], rubric_sha, args.judge_model) not in done]
 
     if args.human_sample:
-        sample = random.Random(args.seed).sample(advice, min(args.human_sample, len(advice)))
+        # A4: stratify by arm — the judge cannot be fully blinded to register
+        # (responses echo the user's words), so judge-vs-human agreement must
+        # be reportable PER ARM at comparable n. Rows stay blinded (text only).
+        rng = random.Random(args.seed)
+        by_arm: dict[str, list[dict]] = {}
+        for r in advice:
+            by_arm.setdefault(r.get("arm") or "?", []).append(r)
+        arms_present = sorted(by_arm)
+        want = min(args.human_sample, len(advice))
+        per_arm = max(1, want // max(1, len(arms_present)))
+        sample = []
+        for arm in arms_present:
+            pool = by_arm[arm]
+            sample.extend(rng.sample(pool, min(per_arm, len(pool))))
+        # top up to the requested n from the remainder, still seeded
+        if len(sample) < want:
+            chosen = {id(r) for r in sample}
+            rest = [r for r in advice if id(r) not in chosen]
+            sample.extend(rng.sample(rest, min(want - len(sample), len(rest))))
+        rng.shuffle(sample)  # no arm-blocked ordering hints for the coder
         human_path = out_path.with_name(out_path.stem + "_human_sample.csv")
         with open(human_path, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
@@ -872,6 +910,34 @@ def _modal_tier(tiers: list[str], rank: dict[str, int]) -> str | None:
     best = max(counts.values())
     # deterministic tie-break: among modal tiers, take the most urgent (highest rank)
     return max((t for t, c in counts.items() if c == best), key=lambda t: rank.get(t, -1))
+
+
+def _pairwise_disagreement(labels: list) -> float | None:
+    """P(two randomly chosen labels differ); None with fewer than 2 labels.
+    The 'lottery' primitive (A3): applied to models' modal tiers it is the
+    consumer lottery, applied to one model's K samples the self-lottery."""
+    n = len(labels)
+    if n < 2:
+        return None
+    counts: dict = {}
+    for lab in labels:
+        counts[lab] = counts.get(lab, 0) + 1
+    same = sum(k * (k - 1) for k in counts.values())
+    return 1.0 - same / (n * (n - 1))
+
+
+def _text_covariates(text: str) -> tuple[int, float]:
+    """(word count, Flesch-Kincaid grade). Arithmetic only — no vocabulary:
+    sentences = runs of .!? ; syllables = vowel groups per word (min 1)."""
+    words = [w.strip(".,;:!?()[]\"'") for w in text.split()]
+    words = [w for w in words if w]
+    n_words = len(words)
+    if not n_words:
+        return 0, 0.0
+    n_sent = max(1, len([s for s in re.split(r"[.!?]+", text) if s.strip()]))
+    n_syl = sum(max(1, len(re.findall(r"[aeiouyAEIOUY]+", w))) for w in words)
+    grade = 0.39 * (n_words / n_sent) + 11.8 * (n_syl / n_words) - 15.59
+    return n_words, round(grade, 2)
 
 
 def analyze(args) -> Path:
@@ -963,6 +1029,112 @@ def analyze(args) -> Path:
             },
         }
 
+    def _mean3(vals):
+        return round(statistics.fmean(vals), 3) if vals else None
+
+    # A2: reference-tier scoring — clinician ground truth from the stimuli
+    # file (data authored by owner + domain reviewer, never Python). Turns
+    # difference into quality: accuracy / under- / over-triage per model x
+    # arm, and the thesis endpoint under_triage_patient_minus_clinical.
+    reference_scoring = None
+    if getattr(args, "stimuli", None):
+        refs = {}
+        for it in _load_json(args.stimuli).get("items", []):
+            tier = (it.get("reference") or {}).get("tier")
+            if tier is not None:
+                if tier not in rank:
+                    raise SystemExit(f"{args.stimuli}: item {it.get('id')}: reference tier "
+                                     f"{tier!r} is not a tier id of the rubric in force")
+                refs[it["id"]] = rank[tier]
+        if refs:
+            per_ma: dict[tuple, dict] = {}
+            for (stim, model, arm), cell in per_cell.items():
+                if stim not in refs or cell["modal"] is None:
+                    continue
+                d = rank[cell["modal"]] - refs[stim]
+                rec = per_ma.setdefault((model, arm), {"n": 0, "correct": 0, "under": 0, "over": 0})
+                rec["n"] += 1
+                rec["correct"] += int(d == 0)
+                rec["under"] += int(d < 0)
+                rec["over"] += int(d > 0)
+            thesis = {}
+            for model in sorted({m for (_s, m) in stim_models}):
+                diffs: dict[str, list[float]] = {}
+                for stim in refs:
+                    c = per_cell.get((stim, model, "clinical"))
+                    p = per_cell.get((stim, model, "patient"))
+                    if c and p and c["modal"] and p["modal"]:
+                        u_c = 1.0 if rank[c["modal"]] < refs[stim] else 0.0
+                        u_p = 1.0 if rank[p["modal"]] < refs[stim] else 0.0
+                        diffs[stim] = [u_p - u_c]
+                if diffs:
+                    thesis[model] = _boot(diffs, statistics.fmean, args.bootstrap, args.seed + 2)
+            reference_scoring = {
+                "n_referenced_stimuli": len(refs),
+                "by_model_arm": {
+                    f"{m}|{a}": {"n": v["n"], "accuracy": round(v["correct"] / v["n"], 3),
+                                 "under_triage_rate": round(v["under"] / v["n"], 3),
+                                 "over_triage_rate": round(v["over"] / v["n"], 3)}
+                    for (m, a), v in sorted(per_ma.items())},
+                "under_triage_patient_minus_clinical": thesis,
+            }
+
+    # A3: dispersion — the "wide-ranging" statistics, computed from the same
+    # judged cells (no new spend).
+    modal_by_stim_arm: dict[tuple, list[str]] = {}
+    ranks_all_samples: dict[tuple, list[int]] = {}
+    for (stim, model, arm), tiers in cells.items():
+        modal = per_cell[(stim, model, arm)]["modal"]
+        if modal is not None:
+            modal_by_stim_arm.setdefault((stim, arm), []).append(modal)
+        ranks_all_samples.setdefault((stim, arm), []).extend(rank[t] for t in tiers)
+    consumer_by_arm = {}
+    range_models_by_arm = {}
+    range_samples_by_arm = {}
+    for arm in sorted({a for (_s, a) in modal_by_stim_arm}):
+        ds = [_pairwise_disagreement(v) for (s, a), v in modal_by_stim_arm.items() if a == arm]
+        ds = [d for d in ds if d is not None]
+        consumer_by_arm[arm] = _mean3(ds)
+        rm = [max(rank[t] for t in v) - min(rank[t] for t in v)
+              for (s, a), v in modal_by_stim_arm.items() if a == arm and len(v) >= 2]
+        range_models_by_arm[arm] = {"mean": _mean3(rm), "max": max(rm) if rm else None}
+        rs = [max(v) - min(v)
+              for (s, a), v in ranks_all_samples.items() if a == arm and len(v) >= 2]
+        range_samples_by_arm[arm] = {"mean": _mean3(rs), "max": max(rs) if rs else None}
+    self_lottery = {}
+    for model in sorted({m for (_s, m, _a) in cells}):
+        ds = [_pairwise_disagreement(tiers) for (s, m, a), tiers in cells.items() if m == model]
+        ds = [d for d in ds if d is not None]
+        self_lottery[model] = _mean3(ds)
+    dispersion = {
+        "_": ("consumer lottery = P(two randomly chosen models' modal tiers disagree) per "
+              "stimulus x arm; self lottery = P(two of one model's K samples disagree); "
+              "agreement = 1 - consumer lottery (models-as-raters proportion, deliberately "
+              "not a kappa family); ranges are max-min tier rank"),
+        "consumer_lottery_by_arm": consumer_by_arm,
+        "inter_model_agreement_by_arm": {
+            a: (None if v is None else round(1 - v, 3)) for a, v in consumer_by_arm.items()},
+        "self_lottery_by_model": self_lottery,
+        "tier_range_across_models_by_arm": range_models_by_arm,
+        "tier_range_across_samples_by_arm": range_samples_by_arm,
+    }
+
+    # A3: length + readability covariates from the raw responses (length
+    # confounds every quality measure; readability-by-register is an equity
+    # finding in itself).
+    response_covariates = None
+    if getattr(args, "responses", None):
+        cov_cells: dict[tuple, list[tuple]] = {}
+        for r in _read_jsonl(args.responses):
+            if r.get("record_type") != "advice" or not r.get("response_text"):
+                continue
+            cov_cells.setdefault((r.get("model_requested"), r.get("arm")),
+                                 []).append(_text_covariates(r["response_text"]))
+        response_covariates = {
+            f"{m}|{a}": {"n": len(v), "mean_words": _mean3([x[0] for x in v]),
+                         "mean_fk_grade": _mean3([x[1] for x in v])}
+            for (m, a), v in sorted(cov_cells.items())}
+
     out = {
         "generated_utc": utc_now_iso(), "engine_sha": engine_sha(),
         "rubric_sha256": sha256_text(canonical_json(rubric)), "rubric_version": rubric.get("version"),
@@ -972,6 +1144,9 @@ def analyze(args) -> Path:
             arm: {flag: round(statistics.fmean(vals), 3) for flag, vals in flags.items()}
             for arm, flags in flags_by_arm.items()
         },
+        "reference_scoring": reference_scoring,
+        "dispersion": dispersion,
+        "response_covariates": response_covariates,
         "per_model": by_model, "paired": paired, "recovery": recovery,
     }
     out_path = Path(args.out) if args.out else Path(args.judgments).with_name(
@@ -1056,6 +1231,11 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("analyze", help="offline: paired tier stats, recovery, variance decomposition")
     a.add_argument("--judgments", required=True)
     a.add_argument("--rubric", default=DEFAULT_RUBRIC)
+    a.add_argument("--stimuli", default=None,
+                   help="stimuli file whose items may carry clinician reference tiers "
+                        "(A2: enables accuracy / under- / over-triage scoring)")
+    a.add_argument("--responses", default=None,
+                   help="responses archive for length + readability covariates (A3)")
     a.add_argument("--bootstrap", type=int, default=2000)
     a.add_argument("--seed", type=int, default=7)
     a.add_argument("--out")

@@ -85,6 +85,40 @@ products with no API (Copilot, Meta AI), never disguised as API output; and a
 ~5-stimulus hand-run calibration subset in the real UIs of API-reachable
 products so the API-vs-product gap is measured, not assumed.
 
+## Amendment 1 (2026-07-22, owner-directed): evaluation extensions A1–A5
+
+Adopted from `docs/advice_arm_extensions.md` before any judged run; the
+signature above stands and this amendment is owner-directed in session chat.
+
+**Primary confirmatory endpoint (supersedes the endpoint ranking above once
+clinician reference tiers are adjudicated):**
+`under_triage_patient_minus_clinical` — the difference in under-triage rate
+(modal tier below the clinician-adjudicated reference tier) between patient
+and clinical phrasing, per provider, cluster-bootstrap CI over stimuli.
+Direction: patient > clinical. **Registered null:** no difference is a
+reportable result. Endpoints 1–5 above become secondary. Reference tiers are
+data in the stimuli file (`reference` block, owner + domain reviewer);
+`analyze --stimuli` computes accuracy / under_triage_rate / over_triage_rate
+per model × arm.
+
+**Descriptive secondaries (A3, registered as descriptive — no directional
+claim):** consumer lottery (P two randomly chosen models' modal tiers
+disagree, per arm), self-lottery per model, per-stimulus tier ranges across
+models and samples, inter-model agreement (1 − lottery; models-as-raters
+proportion, deliberately not a kappa family), and response covariates (length
+in words, Flesch–Kincaid grade) by model × arm — length is a confound to
+report, readability-by-register an equity observation.
+
+**Flag secondaries (A1):** rates of `safety_netting` and
+`clarifying_question` (rubric rev 1.1-draft) by arm × provider. Registered
+null: no difference by arm.
+
+**Measurement limitation (A4):** the judge cannot be fully blinded to
+register (responses echo the asker's words). The human-coding sample is drawn
+stratified by arm and judge-vs-human agreement is reported per arm; a
+material per-arm agreement gap bounds every register-difference claim and is
+stated in the limitations text.
+
 ## Supplementary exploratory sets
 
 Owner-invited cheap exploratory runs (2026-07-22, "a few more experiments...
