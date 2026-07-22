@@ -1,10 +1,11 @@
 {
- "run_utc": "2026-07-22T00:40:16Z",
- "engine_sha": "7fa9ffec83004768e0b2eb0dfc410e49d72eb47e",
+ "run_utc": "2026-07-22T12:14:16Z",
+ "engine_sha": "329d2f7c58ab5bae3f6d2b5a868d310da6b13a34",
  "stimuli_file": "data/advice/stimuli_20260721T235403Z.json",
  "models": [
-  "anthropic:claude-haiku-4-5",
-  "google:gemini-3.5-flash"
+  "xai:x-ai/grok-4.3",
+  "deepseek:deepseek/deepseek-v4-flash",
+  "moonshot:moonshotai/kimi-k2.5"
  ],
  "arms": [
   "clinical",
@@ -13,38 +14,85 @@
  ],
  "providers_registry": "data/advice_providers.json",
  "providers": {
-  "anthropic:claude-haiku-4-5": "anthropic",
-  "google:gemini-3.5-flash": "google"
+  "xai:x-ai/grok-4.3": "xai",
+  "deepseek:deepseek/deepseek-v4-flash": "deepseek",
+  "moonshot:moonshotai/kimi-k2.5": "moonshot"
  },
  "samples": 3,
  "temperature": 1.0,
  "max_tokens": 1024,
  "translator_model": "claude-haiku-4-5",
- "max_spend_usd": 1.5,
- "cost_usd": 0.039069,
+ "max_spend_usd": 0.6,
+ "cost_usd": 0.964616,
+ "cost_basis": "cumulative_from_records",
+ "run_cost_usd": 0.267956,
  "per_model": {
-  "google:gemini-3.5-flash": {
-   "calls": 16,
-   "input_tokens": 419,
-   "output_tokens": 2113,
-   "cost": 0.019645499999999996
+  "claude-haiku-4-5": {
+   "calls": 19,
+   "input_tokens": 1529,
+   "output_tokens": 415,
+   "cost": 0.003603999999999999
   },
   "anthropic:claude-haiku-4-5": {
-   "calls": 15,
-   "input_tokens": 498,
-   "output_tokens": 3745,
-   "cost": 0.019223000000000004
+   "calls": 18,
+   "input_tokens": 606,
+   "output_tokens": 4511,
+   "cost": 0.023161
   },
-  "claude-haiku-4-5": {
-   "calls": 1,
-   "input_tokens": 81,
-   "output_tokens": 24,
-   "cost": 0.000201
+  "google:gemini-3.5-flash": {
+   "calls": 17,
+   "input_tokens": 447,
+   "output_tokens": 2344,
+   "cost": 0.021767
+  },
+  "xai:x-ai/grok-4.3": {
+   "calls": 171,
+   "input_tokens": 36657,
+   "output_tokens": 122515,
+   "cost": 0.37060000000000015
+  },
+  "deepseek:deepseek/deepseek-v4-flash": {
+   "calls": 171,
+   "input_tokens": 5453,
+   "output_tokens": 123262,
+   "cost": 0.037797
+  },
+  "moonshot:moonshotai/kimi-k2.5": {
+   "calls": 171,
+   "input_tokens": 5375,
+   "output_tokens": 160098,
+   "cost": 0.5076870000000002
   }
  },
- "records_appended": 32,
- "records_total": 37,
+ "run_per_model": {
+  "deepseek:deepseek/deepseek-v4-flash": {
+   "calls": 47,
+   "input_tokens": 1705,
+   "output_tokens": 41664,
+   "cost": 0.012754950000000003
+  },
+  "moonshot:moonshotai/kimi-k2.5": {
+   "calls": 48,
+   "input_tokens": 1465,
+   "output_tokens": 47798,
+   "cost": 0.15148664999999994
+  },
+  "claude-haiku-4-5": {
+   "calls": 5,
+   "input_tokens": 404,
+   "output_tokens": 103,
+   "cost": 0.0009190000000000001
+  },
+  "xai:x-ai/grok-4.3": {
+   "calls": 45,
+   "input_tokens": 9621,
+   "output_tokens": 34257,
+   "cost": 0.10279563000000003
+  }
+ },
+ "records_appended": 145,
+ "records_total": 567,
  "truncated": false,
  "stopped_reason": null,
- "chain_head": "0b321d166d01a64bc9ffab91297170515853df08bdbc72fb990f965e9b607291"
+ "chain_head": "fbfb2f1b92ce2fbd978629a7d5b30070ee2c12487f939fd065be23b3d045e4a2"
 }
