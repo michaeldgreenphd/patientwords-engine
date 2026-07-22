@@ -109,6 +109,11 @@ def test_export_contract(archive, monkeypatch):
     assert c["n"] == 4 and c["mean_words"] > 0  # 2 stimuli x 2 attempts
     assert c["tier_counts"] == {"routine": 4}
     assert c["tier_mean_rank"] == 2.0  # every stub judgment is 'routine', rank 2 of tier_order
+    # answer-stability block: identical stub text per cell -> re-asked overlap is 1.0;
+    # the two wordings produce different stub texts -> re-worded overlap drops below it
+    sim = ms[0]["similarity"]
+    assert sim["n_stimuli"] == 2
+    assert sim["reasked"] == 1.0 and 0 < sim["reworded"] < 1.0
     assert (site / "data" / "advice_scenarios.json").is_file()
 
 

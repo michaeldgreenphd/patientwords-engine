@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -191,9 +192,53 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
             "tier_mean_rank": None,  # filled in main once the rubric's tier order is known
         }
 
+    # Answer stability vs wording: per model, mean pairwise word-set overlap
+    # (Jaccard) between attempts at the IDENTICAL wording (the model's natural
+    # variation) and between the clinical and patient wordings of the same
+    # stimulus. Purely mechanical - lowercased [a-z'] word sets, no vocabulary,
+    # no grading. If re-wording moves the answer more than re-asking does, the
+    # wording itself changed the advice.
+    def _wordset(text: str) -> frozenset:
+        return frozenset(re.findall(r"[a-z']+", text.lower()))
+
+    def _jaccard(a: frozenset, b: frozenset) -> float | None:
+        u = a | b
+        return len(a & b) / len(u) if u else None
+
+    def _similarity(spec: str) -> dict | None:
+        within: list[float] = []
+        between: list[float] = []
+        stim_ids = set()
+        for (sid, _a, sp), _recs in cells.items():
+            if sp == spec:
+                stim_ids.add(sid)
+        for sid in stim_ids:
+            sets = {}
+            for arm in ("clinical", "patient"):
+                sets[arm] = [_wordset(r["response_text"])
+                             for r in cells.get((sid, arm, spec), []) if r.get("response_text")]
+            for arm in ("clinical", "patient"):
+                s = sets[arm]
+                for i in range(len(s)):
+                    for j in range(i + 1, len(s)):
+                        v = _jaccard(s[i], s[j])
+                        if v is not None:
+                            within.append(v)
+            for a in sets["clinical"]:
+                for b in sets["patient"]:
+                    v = _jaccard(a, b)
+                    if v is not None:
+                        between.append(v)
+        if not within or not between:
+            return None
+        return {"reasked": round(sum(within) / len(within), 3),
+                "reworded": round(sum(between) / len(between), 3),
+                "n_stimuli": len(stim_ids)}
+
     model_summary = [{"model": spec,
                       "clinical": _arm_stats(spec, "clinical"),
-                      "patient": _arm_stats(spec, "patient")}
+                      "patient": _arm_stats(spec, "patient"),
+                      "similarity": _similarity(spec)}
                      for spec in model_order]
 
     sidecar = json.loads(sidecar_path.read_text(encoding="utf-8")) if sidecar_path.is_file() else {}

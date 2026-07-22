@@ -143,6 +143,30 @@ stratified by arm and judge-vs-human agreement is reported per arm; a
 material per-arm agreement gap bounds every register-difference claim and is
 stated in the limitations text.
 
+## Amendment 2 (2026-07-22, owner-directed): provisional machine coding
+
+Owner direction (session chat 2026-07-22): before the clinician-reviewed
+rubric lands, a PROVISIONAL machine coding pass may run so the site's figures
+can show placeholder grades. Terms, all binding:
+
+- Judge `claude-haiku-4-5`, blinded exactly as registered (response text
+  only), against the committed draft rubric `data/advice_rubric.draft.json`
+  (version 1.1-draft; sha256 recorded per judgment as always).
+- Every surface showing these codings labels them machine-coded and
+  provisional pending clinician review; the rubric version string carries
+  `-draft` and the site derives the label from it mechanically.
+- Provisional codings are EXCLUDED from every registered endpoint and any
+  claim-grade use. The registered gate stands: no claim-grade judged use
+  before the clinician-reviewed rubric and the blinded human-coded agreement
+  sample.
+- When the clinician-reviewed rubric lands, the judge re-runs under it and
+  the new judgments supersede the provisional ones everywhere they are
+  published. Clinician re-grades of individual items enter through the same
+  judgments path. Provisional judgment files are retained append-only for
+  audit; nothing is rewritten.
+- Reproducibility: each judgment record carries the judge model, the rubric
+  sha256 it was coded under, and the sha256 of the exact response text coded.
+
 ## Supplementary exploratory sets
 
 Owner-invited cheap exploratory runs (2026-07-22, "a few more experiments...
