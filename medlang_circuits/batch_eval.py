@@ -8,7 +8,7 @@ medlang_circuits.targets). Mode-specific fields:
 
 --mode 2panel (default) - direct lexical swap:
     {"top_prompt": "...", "bottom_prompt": "..."}
-    The polished two-panel stacked view with the Language Penalty badge.
+    The polished two-panel stacked view with the Wording gap badge.
     (--show-mitigation appends the legacy third translated panel.)
 
 --mode 4quadrant - the morphosyntax-vs-lexicon matrix:
@@ -339,7 +339,7 @@ def shared_feature_dimming(
 
 
 def _delta_badge(kind: str, p_from: float | None, p_to: float | None) -> dict[str, str] | None:
-    """Badge spec for a probability delta, e.g. 'Language Penalty: -45% probability (0.86 -> 0.41)'."""
+    """Badge spec for a probability delta, e.g. 'Wording gap: -45% probability (0.86 -> 0.41)'."""
     if p_from is None or p_to is None:
         return None
     delta = p_to - p_from
@@ -586,11 +586,11 @@ def evaluate_pair(
         _probability_for(g, target_token) for g in graphs[1:]
     ]
 
-    # The language penalty summarizes the whole comparison, so it reads as a subtitle
+    # The wording gap summarizes the whole comparison, so it reads as a subtitle
     # under the header (render_panels_html ``subtitle``) rather than floating in the gap
     # between the clinical and patient panels. Mid-figure badges carry only per-gap
     # interstitials — here just the translation step's Mitigation Recovery.
-    penalty = _delta_badge("Language Penalty", probs[0], probs[1])
+    penalty = _delta_badge("Wording gap", probs[0], probs[1])
     mid_badges: list[Any] = [None]
     if len(graphs) == 3:
         mid_badges.append(_delta_badge("Mitigation Recovery", probs[1], probs[2]))

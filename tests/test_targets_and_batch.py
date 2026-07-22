@@ -150,7 +150,7 @@ def test_run_batch_offline_with_mitigation(tmp_path, monkeypatch):
     # three stacked panels; the language penalty reads as an integrated subtitle under
     # the header, while the mitigation-recovery delta stays a mid-figure gap badge
     assert html.count('<g transform="translate(0,') == 3
-    pen = "Language Penalty: -41% probability (0.81 → 0.40)"
+    pen = "Wording gap: -41% probability (0.81 → 0.40)"
     assert f'<p class="pen-sub" style="color:#d1584d">{pen}</p>' in html
     assert html.count(pen) == 1                                    # not duplicated into the svg
     # the subtitle sits above the legend and svg, not floating between the panels

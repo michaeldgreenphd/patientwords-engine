@@ -87,7 +87,7 @@ parser.add_argument("--with-pngs", action="store_false", dest="no_pngs",
                     help="also copy the per-scenario PNG renders (pre-2026-07-21 behavior)")
 parser.add_argument("--max-renders", type=int, default=200,
                     help="cap interactive renders copied to the public site to the N most "
-                         "consequential scenarios (flips first, then largest language penalty); "
+                         "consequential scenarios (flips first, then largest wording gap); "
                          "every scenario still gets its lightweight numbers. 0 = no cap. "
                          "Default 200 (owner decision 2026-07-21; was 25). The full render "
                          "set lives in the engine repo / a run archive.")
@@ -273,7 +273,7 @@ for stamp in STAMPS:
     })
 
 # Public site keeps interactive renders only for the most consequential
-# scenarios (flips first, then largest |language penalty|); every scenario
+# scenarios (flips first, then largest |wording gap|); every scenario
 # still carries its numbers. The full render set is archived separately.
 def _consequence(e):
     lp = e.get("language_penalty")
