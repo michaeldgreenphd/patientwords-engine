@@ -105,6 +105,52 @@ def test_export_contract(archive, monkeypatch):
     assert (site / "data" / "advice_scenarios.json").is_file()
 
 
+def test_export_merges_rerouted_google_paths(tmp_path, monkeypatch):
+    # 2026-07-22 access amendment: google's arm rerouted to OpenRouter mid-pilot.
+    # Display rows merge the two access paths into one model family; duplicated
+    # attempts keep the direct-path record; provenance lists both raw specs.
+    manual = tmp_path / "manual.json"
+    manual.write_text(json.dumps([
+        {"id": "s1", "clinical": "clinical body one, so I track it with a",
+         "patient": "everyday body one, so I track it with a"},
+    ]), encoding="utf-8")
+    out_dir = tmp_path / "advice"
+    ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual), "--out-dir", str(out_dir)])
+    stim = next(out_dir.glob("stimuli_*.json"))
+    registry = tmp_path / "providers.json"
+    registry.write_text(json.dumps({
+        "google": {"api": "openai-compat", "base_url": "https://g.example/v1",
+                   "key_env": "G_KEY", "default_pricing": [1.0, 4.0]},
+        "openrouter": {"api": "openai-compat", "base_url": "https://or.example/v1",
+                       "key_env": "OR_KEY", "default_pricing": [5.0, 30.0]},
+    }), encoding="utf-8")
+
+    def stub_compat(cfg, model, system, user_text, max_tokens, temperature):
+        return f"advice for [{user_text[:18]}]", 10, 20, {"model": model + "-served", "usage": {}}
+
+    monkeypatch.setattr(ae, "_client", lambda: object())
+    monkeypatch.setattr(ae, "_send_compat", stub_compat)
+    ae.main(["elicit", "--stimuli", str(stim), "--models", "google:gemini-3.5-flash",
+             "--providers", str(registry), "--arms", "clinical", "--samples", "2",
+             "--max-spend", "5.0", "--out-dir", str(out_dir)])
+    ae.main(["elicit", "--stimuli", str(stim), "--models", "openrouter:google/gemini-3.5-flash",
+             "--providers", str(registry), "--arms", "clinical", "--samples", "3",
+             "--max-spend", "5.0", "--out-dir", str(out_dir)])
+
+    out = tmp_path / "advice_scenarios.json"
+    ex.main(["--stimuli", str(out_dir / stim.name), "--out", str(out)])
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    rs = payload["scenarios"][0]["clinical"]["responses"]
+    assert [r["model"] for r in rs] == ["google:gemini-3.5-flash"]  # one display row
+    samples = rs[0]["samples"]
+    assert [sm["k"] for sm in samples] == [1, 2, 3]
+    assert samples[0]["model_returned"] == "gemini-3.5-flash-served"
+    assert samples[1]["model_returned"] == "gemini-3.5-flash-served"
+    assert samples[2]["model_returned"] == "google/gemini-3.5-flash-served"
+    specs = {m["spec"]: m["n_responses"] for m in payload["run"]["models"]}
+    assert specs == {"google:gemini-3.5-flash": 2, "openrouter:google/gemini-3.5-flash": 3}
+
+
 def test_export_refuses_tampered_chain(archive):
     resp = archive["out_dir"] / f"responses_{archive['stim'].stem}.jsonl"
     lines = resp.read_text(encoding="utf-8").splitlines()

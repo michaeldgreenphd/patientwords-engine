@@ -35,6 +35,14 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+# One display row per model family when a provider's arm changed access path mid-run
+# (pre-registration access amendments name each reroute). Keys are the rerouted spec,
+# values the family's canonical display spec. Provenance (run.models) always lists the
+# raw per-path specs; only scenario rows merge.
+DISPLAY_ALIASES = {
+    "openrouter:google/gemini-3.5-flash": "google:gemini-3.5-flash",  # AI Studio daily quota reroute, 2026-07-22
+}
+
 
 def _load_advice_eval():
     path = Path(__file__).resolve().parent / "advice_eval.py"
@@ -75,12 +83,30 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
                 rubric_version = j.get("rubric_version") or rubric_version
 
     # ALL samples per (stimulus, arm, model), sorted by attempt number — the page
-    # carries an attempt switcher, so every draw is published, not a chosen one
+    # carries an attempt switcher, so every draw is published, not a chosen one.
+    # Display aliasing: google's arm was rerouted to OpenRouter mid-pilot when the direct
+    # AI Studio free tier hit its daily quota (pre-registration access amendment,
+    # 2026-07-22). Records keep the exact spec they were elicited under; for display the
+    # two access paths are one model row, joined as the analysis joins them. A (stimulus,
+    # arm, k) cell elicited under both paths keeps the direct-path record; each published
+    # sample still carries its own model_returned, so the serving path stays visible.
     cells: dict[tuple, list] = {}
     for r in advice:
-        cells.setdefault((r["stimulus_id"], r["arm"], r["model_requested"]), []).append(r)
-    for recs in cells.values():
-        recs.sort(key=lambda r: (r.get("sample_k") or 0))
+        spec = DISPLAY_ALIASES.get(r["model_requested"], r["model_requested"])
+        cells.setdefault((r["stimulus_id"], r["arm"], spec), []).append(r)
+    for key, recs in cells.items():
+        display_spec = key[2]
+        recs.sort(key=lambda r: ((r.get("sample_k") or 0),
+                                 r["model_requested"] != display_spec,  # direct path wins the tie
+                                 r.get("sent_utc") or ""))
+        seen_k: set = set()
+        deduped = []
+        for r in recs:
+            if r.get("sample_k") in seen_k:
+                continue
+            seen_k.add(r.get("sample_k"))
+            deduped.append(r)
+        cells[key] = deduped
 
     def sample_entry(r: dict) -> dict:
         judged = tiers.get(r.get("response_sha256"))
@@ -93,18 +119,19 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
             "model_returned": r.get("model_returned"),
         }
 
-    def model_block(recs: list) -> dict:
+    def model_block(spec: str, recs: list) -> dict:
         return {
-            "model": recs[0]["model_requested"],
-            "provider": recs[0].get("provider"),
+            "model": spec,
+            "provider": spec.split(":", 1)[0],
             "model_returned": next((r.get("model_returned") for r in recs if r.get("model_returned")), None),
             "samples": [sample_entry(r) for r in recs],
         }
 
     model_order: list[str] = []
     for r in advice:
-        if r["model_requested"] not in model_order:
-            model_order.append(r["model_requested"])
+        spec = DISPLAY_ALIASES.get(r["model_requested"], r["model_requested"])
+        if spec not in model_order:
+            model_order.append(spec)
 
     scenarios = []
     for item in stimuli_doc.get("items", []):
@@ -114,7 +141,7 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
             for spec in model_order:
                 recs = cells.get((sid, arm, spec))
                 if recs:
-                    responses.append(model_block(recs))
+                    responses.append(model_block(spec, recs))
             if not responses and message is None:
                 return None
             return {"message": message, "responses": responses}
@@ -143,8 +170,12 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
 
     sidecar = json.loads(sidecar_path.read_text(encoding="utf-8")) if sidecar_path.is_file() else {}
     sent = sorted(r["sent_utc"] for r in advice if r.get("sent_utc"))
+    # provenance stays per access path: raw specs, never display aliases
+    raw_order: list[str] = []
     per_model_counts: dict[str, int] = {}
     for r in advice:
+        if r["model_requested"] not in raw_order:
+            raw_order.append(r["model_requested"])
         per_model_counts[r["model_requested"]] = per_model_counts.get(r["model_requested"], 0) + 1
     returned: dict[str, str] = {}
     for r in advice:
@@ -175,7 +206,7 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
             "temperature": sidecar.get("temperature"),
             "models": [{"spec": spec, "provider": spec.split(":", 1)[0],
                         "model_returned": returned.get(spec),
-                        "n_responses": per_model_counts.get(spec, 0)} for spec in model_order],
+                        "n_responses": per_model_counts.get(spec, 0)} for spec in raw_order],
         },
         "chain_head": sidecar.get("chain_head") or (rows[-1]["record_sha256"] if rows else None),
         "rubric_version": rubric_version,

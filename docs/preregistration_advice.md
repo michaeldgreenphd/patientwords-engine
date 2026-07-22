@@ -87,6 +87,19 @@ the direct-path records stand unchanged; cells re-elicited under the new spec
 are additional records, never replacements. Analysis joins google's two
 access paths by `model_returned`.
 
+Metering amendment (recorded 2026-07-22, after runs 1c and hedge-resume):
+the registry's aggregator catch-all `default_pricing` (5, 30 USD/Mtok, sized
+for GPT-tier slugs) metered the rerouted `openrouter:google/gemini-3.5-flash`
+calls at ~12x the flash-tier rate, so both runs hit their `max_spend`
+ceilings early (11 and 7 gemini records landed before truncation). The
+archives stand as written — the per-record `cost_usd` values for those
+records carry the inflated metering rate, the token counts are the measured
+truth, and real cost is recomputable from them. The registry now carries a
+per-model rate for the slug ([0.35, 2.75] USD/Mtok = vendor list + markup +
+margin; regression test `test_registry_prices_rerouted_gemini_slug`).
+Registry re-frozen at this revision:
+`84acef3606cb8afa10cabe5a0c72cc772a5838a8111a47f297e8cf6f7ae59fee`
+
 ## The consumer-proxy caveat (repeat in every writeup)
 
 API models are proxies for consumer products: no product system prompt, no

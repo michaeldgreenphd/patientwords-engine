@@ -332,6 +332,20 @@ def test_resolve_spec_variants(tmp_path):
         ae._resolve_spec("no_api", reg)  # manual_ui providers cannot be elicited via API
 
 
+def test_registry_prices_rerouted_gemini_slug():
+    # 2026-07-22: runs 1c and hedge-resume choked their max_spend ceilings because the
+    # rerouted openrouter:google/gemini-3.5-flash spec fell through to the aggregator's
+    # GPT-tier default_pricing (5, 30) - ~12x the flash-tier rate. The committed registry
+    # must carry a per-model entry, resolved ahead of default_pricing exactly as elicit does.
+    reg = ae._load_providers(Path(__file__).resolve().parents[1] / "data" / "advice_providers.json")
+    r = ae._resolve_spec("openrouter:google/gemini-3.5-flash", reg)
+    pricing = (r["cfg"].get("pricing") or {}).get(r["model"]) or r["cfg"].get("default_pricing")
+    assert tuple(pricing) == (0.35, 2.75)
+    other = ae._resolve_spec("openrouter:meta-llama/llama-4-maverick", reg)
+    fallback = (other["cfg"].get("pricing") or {}).get(other["model"]) or other["cfg"].get("default_pricing")
+    assert tuple(fallback) == (5.0, 30.0)  # arbitrary slugs keep the conservative catch-all
+
+
 def test_elicit_openai_compat_provider(tmp_path, monkeypatch):
     stim_path = build_manual_stimuli(tmp_path, monkeypatch)
     reg_path = tmp_path / "providers.json"
