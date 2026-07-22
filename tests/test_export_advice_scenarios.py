@@ -89,12 +89,13 @@ def test_export_contract(archive, monkeypatch):
     assert s1["clinical"]["message"].startswith("clinical body one")
     assert s1["patient"]["message"].startswith("everyday body one")
     assert s1["translated"]["message"]  # assembled translated wording captured
-    # one displayed response per model per arm, in stable model order
+    # one block per model per arm in stable order, carrying EVERY attempt
     assert [r["model"] for r in s1["clinical"]["responses"]] == ["prov-x:model-1", "prov-y:model-2"]
     r0 = s1["clinical"]["responses"][0]
-    assert r0["sample_k"] == 1 and r0["n_samples"] == 2
-    assert r0["tier"] == "routine" and r0["refusal"] is False
+    assert [sm["k"] for sm in r0["samples"]] == [1, 2]
+    assert all(sm["tier"] == "routine" and sm["refusal"] is False for sm in r0["samples"])
     assert r0["model_returned"] == "model-1-served"
+    assert r0["samples"][0]["model_returned"] == "model-1-served"
     run = payload["run"]
     assert run["n_calls"] == len(ae._read_jsonl(archive["out_dir"] / f"responses_{archive['stim'].stem}.jsonl"))
     assert run["cost_usd"] > 0 and run["cost_per_scenario"] > 0
@@ -135,6 +136,6 @@ def test_export_without_judgments(archive):
     out = archive["tmp"] / "advice_scenarios.json"
     ex.main(["--stimuli", str(archive["stim"]), "--out", str(out)])
     payload = json.loads(out.read_text(encoding="utf-8"))
-    r0 = payload["scenarios"][0]["clinical"]["responses"][0]
-    assert r0["tier"] is None and r0["refusal"] is None
+    sm = payload["scenarios"][0]["clinical"]["responses"][0]["samples"][0]
+    assert sm["tier"] is None and sm["refusal"] is None
     assert payload["rubric_version"] is None and payload["tier_order"] is None

@@ -5,8 +5,8 @@ the judgments file) from data/advice/, and writes data/advice_scenarios.json —
 the contract the frontend page llm/index.html renders: per scenario, the clinical
 wording with every model's response beneath it, then the patient wording with the
 same models' responses, then (when the translation arm ran) the machine-translated
-wording and its responses. One displayed sample per (scenario, wording, model);
-the archive keeps all K.
+wording and its responses. Every sample per (scenario, wording, model) is
+published — the page pairs its scenario pager with an attempt switcher.
 
 Safety properties, matching the other site exporters:
 - verifies the archive hash chain first and REFUSES (exit 3, site file untouched)
@@ -31,7 +31,6 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
-import statistics
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -50,7 +49,7 @@ def _refuse(reason: str) -> "SystemExit":
     return SystemExit(3)
 
 
-def build_payload(stimuli_path: Path, ae, sample_k: int = 1, max_scenarios: int = 0,
+def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
                   archive_url: str | None = None) -> dict:
     stimuli_doc = json.loads(stimuli_path.read_text(encoding="utf-8"))
     stem = stimuli_path.stem
@@ -75,29 +74,31 @@ def build_payload(stimuli_path: Path, ae, sample_k: int = 1, max_scenarios: int 
                 tiers[j["response_sha256"]] = j  # later passes overwrite earlier ones
                 rubric_version = j.get("rubric_version") or rubric_version
 
-    # one displayed record per (stimulus, arm, model): prefer sample_k, else lowest k
-    cells: dict[tuple, dict] = {}
-    kmax: dict[tuple, int] = {}
+    # ALL samples per (stimulus, arm, model), sorted by attempt number — the page
+    # carries an attempt switcher, so every draw is published, not a chosen one
+    cells: dict[tuple, list] = {}
     for r in advice:
-        key = (r["stimulus_id"], r["arm"], r["model_requested"])
-        kmax[key] = max(kmax.get(key, 0), r.get("sample_k") or 0)
-        cur = cells.get(key)
-        if cur is None or (r.get("sample_k") == sample_k and cur.get("sample_k") != sample_k) \
-                or (cur.get("sample_k") != sample_k and (r.get("sample_k") or 9e9) < (cur.get("sample_k") or 9e9)):
-            cells[key] = r
+        cells.setdefault((r["stimulus_id"], r["arm"], r["model_requested"]), []).append(r)
+    for recs in cells.values():
+        recs.sort(key=lambda r: (r.get("sample_k") or 0))
 
-    def resp_entry(r: dict, key: tuple) -> dict:
+    def sample_entry(r: dict) -> dict:
         judged = tiers.get(r.get("response_sha256"))
         return {
-            "model": r.get("model_requested"),
-            "provider": r.get("provider"),
+            "k": r.get("sample_k"),
             "text": r.get("response_text"),
             "tier": judged.get("tier") if judged else None,
             "refusal": bool((judged.get("flags") or {}).get("refusal")) if judged else None,
-            "sample_k": r.get("sample_k"),
-            "n_samples": kmax.get(key),
             "sent_utc": r.get("sent_utc"),
             "model_returned": r.get("model_returned"),
+        }
+
+    def model_block(recs: list) -> dict:
+        return {
+            "model": recs[0]["model_requested"],
+            "provider": recs[0].get("provider"),
+            "model_returned": next((r.get("model_returned") for r in recs if r.get("model_returned")), None),
+            "samples": [sample_entry(r) for r in recs],
         }
 
     model_order: list[str] = []
@@ -111,19 +112,19 @@ def build_payload(stimuli_path: Path, ae, sample_k: int = 1, max_scenarios: int 
         def arm_block(arm: str, message: str | None):
             responses = []
             for spec in model_order:
-                r = cells.get((sid, arm, spec))
-                if r is not None:
-                    responses.append(resp_entry(r, (sid, arm, spec)))
+                recs = cells.get((sid, arm, spec))
+                if recs:
+                    responses.append(model_block(recs))
             if not responses and message is None:
                 return None
             return {"message": message, "responses": responses}
 
         clinical = arm_block("clinical", item.get("clinical_message"))
         patient = arm_block("patient", item.get("patient_message"))
-        translated_cells = [cells[k] for k in cells if k[0] == sid and k[1] == "translated"]
+        translated_recs = [recs for key, recs in cells.items() if key[0] == sid and key[1] == "translated"]
         translated = None
-        if translated_cells:
-            t_msg = (translated_cells[0].get("request") or {}).get("message")
+        if translated_recs:
+            t_msg = (translated_recs[0][0].get("request") or {}).get("message")
             translated = arm_block("translated", t_msg)
         if not any(b and b["responses"] for b in (clinical, patient, translated)):
             continue  # stimulus never elicited (offset/limit chunking) — skip, don't blank
@@ -169,7 +170,8 @@ def build_payload(stimuli_path: Path, ae, sample_k: int = 1, max_scenarios: int 
             "cost_usd": cost,
             "cost_per_scenario": round(cost / n_scenario_ids, 4)
                                  if isinstance(cost, (int, float)) and n_scenario_ids else None,
-            "samples_per_cell": sidecar.get("samples") or (statistics.mode(kmax.values()) if kmax else None),
+            "samples_per_cell": sidecar.get("samples")
+                                or (max((len(recs) for recs in cells.values()), default=None)),
             "temperature": sidecar.get("temperature"),
             "models": [{"spec": spec, "provider": spec.split(":", 1)[0],
                         "model_returned": returned.get(spec),
@@ -185,8 +187,6 @@ def build_payload(stimuli_path: Path, ae, sample_k: int = 1, max_scenarios: int 
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--stimuli", required=True)
-    parser.add_argument("--sample-k", type=int, default=1,
-                        help="which sample to display per cell (archive keeps all K)")
     parser.add_argument("--max-scenarios", type=int, default=0)
     parser.add_argument("--archive-url", default=None,
                         help="GitHub Release URL for the full archive, if one exists")
@@ -197,7 +197,7 @@ def main(argv=None) -> None:
     args = parser.parse_args(argv)
 
     ae = _load_advice_eval()
-    payload = build_payload(Path(args.stimuli), ae, args.sample_k, args.max_scenarios, args.archive_url)
+    payload = build_payload(Path(args.stimuli), ae, args.max_scenarios, args.archive_url)
     if payload["rubric_version"] and Path(args.rubric).is_file():
         rubric = json.loads(Path(args.rubric).read_text(encoding="utf-8"))
         payload["tier_order"] = [t["id"] for t in rubric.get("tiers", [])] or None
