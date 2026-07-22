@@ -168,6 +168,34 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
     if not scenarios:
         raise _refuse("no stimulus has any archived responses")
 
+    # Per-model figure block: mechanical measures now (n, mean words), coded-tier
+    # aggregates whenever judgments exist. Clinician re-grades re-enter through the
+    # judgments file, so re-running this exporter moves the published figure.
+    def _arm_stats(spec: str, arm: str) -> dict:
+        words: list[int] = []
+        tier_counts: dict[str, int] = {}
+        for (_sid, a, sp), recs in cells.items():
+            if a != arm or sp != spec:
+                continue
+            for r in recs:
+                text = r.get("response_text") or ""
+                if text:
+                    words.append(len(text.split()))
+                judged = tiers.get(r.get("response_sha256"))
+                if judged and judged.get("tier"):
+                    tier_counts[judged["tier"]] = tier_counts.get(judged["tier"], 0) + 1
+        return {
+            "n": len(words),
+            "mean_words": round(sum(words) / len(words)) if words else None,
+            "tier_counts": tier_counts or None,
+            "tier_mean_rank": None,  # filled in main once the rubric's tier order is known
+        }
+
+    model_summary = [{"model": spec,
+                      "clinical": _arm_stats(spec, "clinical"),
+                      "patient": _arm_stats(spec, "patient")}
+                     for spec in model_order]
+
     sidecar = json.loads(sidecar_path.read_text(encoding="utf-8")) if sidecar_path.is_file() else {}
     sent = sorted(r["sent_utc"] for r in advice if r.get("sent_utc"))
     # provenance stays per access path: raw specs, never display aliases
@@ -211,6 +239,7 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
         "chain_head": sidecar.get("chain_head") or (rows[-1]["record_sha256"] if rows else None),
         "rubric_version": rubric_version,
         "tier_order": None,  # filled from the rubric when judgments exist (see main)
+        "model_summary": model_summary,
         "scenarios": scenarios,
     }
 
@@ -232,6 +261,15 @@ def main(argv=None) -> None:
     if payload["rubric_version"] and Path(args.rubric).is_file():
         rubric = json.loads(Path(args.rubric).read_text(encoding="utf-8"))
         payload["tier_order"] = [t["id"] for t in rubric.get("tiers", [])] or None
+    if payload["tier_order"]:
+        ranks = {t: i + 1 for i, t in enumerate(payload["tier_order"])}
+        for m in payload["model_summary"]:
+            for arm in ("clinical", "patient"):
+                tc = m[arm].get("tier_counts")
+                if tc:
+                    total = sum(tc.values())
+                    m[arm]["tier_mean_rank"] = round(
+                        sum(ranks.get(t, 0) * c for t, c in tc.items()) / total, 2)
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)

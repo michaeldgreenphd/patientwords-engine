@@ -102,6 +102,13 @@ def test_export_contract(archive, monkeypatch):
     assert {m["spec"] for m in run["models"]} == {"prov-x:model-1", "prov-y:model-2"}
     assert payload["chain_head"] and payload["rubric_version"] == "t1"
     assert payload["tier_order"] == ["self_care", "routine"]
+    # per-model figure block: mechanical stats plus coded-tier aggregates
+    ms = payload["model_summary"]
+    assert [m["model"] for m in ms] == ["prov-x:model-1", "prov-y:model-2"]
+    c = ms[0]["clinical"]
+    assert c["n"] == 4 and c["mean_words"] > 0  # 2 stimuli x 2 attempts
+    assert c["tier_counts"] == {"routine": 4}
+    assert c["tier_mean_rank"] == 2.0  # every stub judgment is 'routine', rank 2 of tier_order
     assert (site / "data" / "advice_scenarios.json").is_file()
 
 
@@ -185,3 +192,6 @@ def test_export_without_judgments(archive):
     sm = payload["scenarios"][0]["clinical"]["responses"][0]["samples"][0]
     assert sm["tier"] is None and sm["refusal"] is None
     assert payload["rubric_version"] is None and payload["tier_order"] is None
+    # figure block still present: words computable, tier fields stay null until judged
+    c = payload["model_summary"][0]["clinical"]
+    assert c["mean_words"] > 0 and c["tier_counts"] is None and c["tier_mean_rank"] is None
