@@ -60,10 +60,13 @@ Rubric sha256 (recorded when the clinician-reviewed rubric lands as
 
 ## Provider-access disclosure (fill at signing)
 
-Access mode: `TODO — direct keys per vendor / single prepaid OpenRouter key /
-hybrid`. If OpenRouter carries any vendor: an intermediary sits in the request
-path (~5% markup, its own response metadata); proprietary models are still
-served by the vendor's backend. Direct keys are the higher-fidelity option.
+Access mode, phase 1 (recorded 2026-07-22): **direct vendor keys — Anthropic
+plus Google (AI Studio free tier)**; no intermediary in the request path for
+either. Remaining vendors (openai, xai, deepseek, moonshot) fire only after
+their access is added; if OpenRouter carries any of them, this line gains that
+disclosure before the fire (~5% markup, an intermediary in the request path,
+vendor backend still serves the model). Direct keys stay the higher-fidelity
+option per vendor.
 
 ## The consumer-proxy caveat (repeat in every writeup)
 
