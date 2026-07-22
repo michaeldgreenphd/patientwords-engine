@@ -124,14 +124,15 @@ KNOWN_KEYS = {
     # archive_renders.yml push path reads exactly cfg["tag"], cfg["runs"],
     # cfg.get("no_pngs"), cfg.get("prune") (verified 2026-07-09).
     "archive-renders": frozenset({"tag", "runs", "no_pngs", "prune"}),
-    # advice_evaluation.yml `defaults` dict (verified 2026-07-21): stimuli_file,
+    # advice_evaluation.yml `defaults` dict (verified 2026-07-22): stimuli_file,
     # models, arms, samples, temperature, max_tokens, translator_model,
     # max_spend, judge, judge_model, judge_max_spend, rubric, offset, limit,
-    # commit_outputs.
+    # commit_outputs, restore_artifact_run_id (recovery merge of a killed
+    # run's uploaded archive artifact before elicit resumes).
     "advice-eval": frozenset({
         "stimuli_file", "models", "arms", "samples", "temperature", "max_tokens",
         "translator_model", "max_spend", "judge", "judge_model", "judge_max_spend",
-        "rubric", "offset", "limit", "commit_outputs",
+        "rubric", "offset", "limit", "commit_outputs", "restore_artifact_run_id",
     }),
 }
 

@@ -356,6 +356,31 @@ def _seal_record(record: dict, prev_sha: str | None) -> dict:
     return record
 
 
+def _cumulative_from_records(rows: list[dict]) -> tuple[float, dict]:
+    """Ledger-facing totals recomputed from the archive itself.
+
+    Sidecars overwrite per stimuli-stem, so a per-run cost_usd silently drops
+    earlier runs' spend from the daily guard once a resume overwrites it. The
+    records are the durable source: every paid record carries its own cost_usd,
+    so the archive-cumulative sum is always the true total for the stem."""
+    total = 0.0
+    per_model: dict[str, dict] = {}
+    for r in rows:
+        if "cost_usd" not in r:
+            continue  # advice_skipped and other zero-call bookkeeping records
+        cost = float(r.get("cost_usd") or 0.0)
+        bucket = per_model.setdefault(
+            r.get("model_requested") or "?",
+            {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0},
+        )
+        bucket["calls"] += 1
+        bucket["input_tokens"] += int(r.get("input_tokens") or 0)
+        bucket["output_tokens"] += int(r.get("output_tokens") or 0)
+        bucket["cost"] += cost
+        total += cost
+    return round(total, 6), per_model
+
+
 def verify_chain(rows: list[dict]) -> tuple[bool, str]:
     prev = None
     for i, row in enumerate(rows):
@@ -701,6 +726,7 @@ def elicit(args) -> Path:
             })
     finally:
         all_rows = _read_jsonl(out_path)
+        cum_cost, cum_per_model = _cumulative_from_records(all_rows)
         _write_json(sidecar_path, {
             "run_utc": utc_now_iso(), "engine_sha": base_env["engine_sha"],
             "stimuli_file": str(args.stimuli), "models": models, "arms": arms,
@@ -708,8 +734,11 @@ def elicit(args) -> Path:
             "providers": {spec: r["provider"] for spec, r in resolved.items()},
             "samples": args.samples, "temperature": args.temperature, "max_tokens": args.max_tokens,
             "translator_model": args.translator_model if "translated" in arms else None,
-            "max_spend_usd": args.max_spend, "cost_usd": round(tracker.spent, 6),
-            "per_model": tracker.per_model, "records_appended": n_written,
+            "max_spend_usd": args.max_spend,
+            "cost_usd": cum_cost, "cost_basis": "cumulative_from_records",
+            "run_cost_usd": round(tracker.spent, 6),
+            "per_model": cum_per_model, "run_per_model": tracker.per_model,
+            "records_appended": n_written,
             "records_total": len(all_rows), "truncated": tracker.truncated,
             "stopped_reason": stopped_reason,
             "chain_head": all_rows[-1]["record_sha256"] if all_rows else None,
@@ -1185,6 +1214,93 @@ def analyze(args) -> Path:
 # ------------------------------------------------------------------ verify-chain
 
 
+def recover_archive(args) -> Path:
+    """Land an archive snapshot from a CI artifact after a killed run (append-only).
+
+    A job-timeout kill leaves the elicited records only in the run's uploaded
+    artifact: the archive JSONL is intact (each append is a complete line) but
+    the sidecar was never rewritten and the commit step could not push. This
+    lands that snapshot so a resume fire skips the already-paid records.
+
+    Guards: the restored file must be a byte-prefix extension of the committed
+    archive with an intact hash chain. Only a trailing partially-written line
+    may be dropped (the kill can interrupt the final append; it never completed,
+    so it is not a record). Anything else — a divergent prefix, a corrupt
+    interior line, a broken chain — is reported and refused, never repaired.
+    The sidecar is rebuilt from the records themselves (cumulative cost basis,
+    which is what the ledger folds)."""
+    stem = Path(args.stimuli).stem
+    committed_path = Path(args.out_dir) / f"responses_{stem}.jsonl"
+    sidecar_path = Path(args.out_dir) / f"responses_{stem}.report.json"
+    restored_path = Path(args.restored_dir) / f"responses_{stem}.jsonl"
+    if not restored_path.is_file():
+        raise SystemExit(f"{restored_path}: no restored archive found")
+
+    raw = restored_path.read_bytes()
+    lines = raw.split(b"\n")
+    dropped_partial = False
+    if lines and lines[-1] == b"":
+        lines = lines[:-1]  # normal trailing newline
+    elif lines:
+        try:
+            json.loads(lines[-1].decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            dropped_partial = True
+            lines = lines[:-1]
+    rows = []
+    for line_no, ln in enumerate(lines, 1):
+        text = ln.decode("utf-8").strip()
+        if not text:
+            continue
+        try:
+            rows.append(json.loads(text))
+        except ValueError as exc:
+            raise SystemExit(
+                f"{restored_path}:{line_no}: corrupt interior JSONL line ({exc}); "
+                "refusing to recover — report, never repair"
+            ) from exc
+    if not rows:
+        raise SystemExit(f"{restored_path}: no complete records to recover")
+    ok, msg = verify_chain(rows)
+    if not ok:
+        raise SystemExit(f"{restored_path}: restored archive fails chain verification ({msg}); refusing")
+
+    content = b"".join(ln + b"\n" for ln in lines if ln.strip())
+    committed_rows = _read_jsonl(committed_path)
+    if committed_rows:
+        committed_bytes = committed_path.read_bytes()
+        if not content.startswith(committed_bytes):
+            raise SystemExit(
+                f"{restored_path}: not a byte-prefix extension of the committed archive "
+                f"({committed_path}); refusing to recover — report, never repair"
+            )
+    appended = len(rows) - len(committed_rows)
+    if appended < 0:
+        raise SystemExit(
+            f"{restored_path}: fewer records ({len(rows)}) than the committed archive "
+            f"({len(committed_rows)}); refusing"
+        )
+
+    committed_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(committed_path, "wb") as f:
+        f.write(content)
+    cum_cost, cum_per_model = _cumulative_from_records(rows)
+    _write_json(sidecar_path, {
+        "run_utc": utc_now_iso(), "engine_sha": engine_sha(),
+        "stimuli_file": str(args.stimuli),
+        "recovered_from_run_id": args.source_run_id or None,
+        "cost_usd": cum_cost, "cost_basis": "cumulative_from_records",
+        "per_model": cum_per_model,
+        "records_appended": appended, "records_total": len(rows),
+        "dropped_partial_final_line": dropped_partial,
+        "chain_head": rows[-1]["record_sha256"],
+    })
+    print(f"recovered {appended} record(s) -> {committed_path} "
+          f"({len(rows)} total, cumulative cost ${cum_cost:.4f}"
+          f"{', dropped 1 partial final line' if dropped_partial else ''})")
+    return committed_path
+
+
 def cmd_verify_chain(args) -> None:
     rows = _read_jsonl(args.responses)
     ok, msg = verify_chain(rows)
@@ -1273,6 +1389,16 @@ def build_parser() -> argparse.ArgumentParser:
     v = sub.add_parser("verify-chain", help="audit: recompute the archive hash chain")
     v.add_argument("--responses", required=True)
     v.add_argument("--sidecar")
+
+    rec = sub.add_parser("recover-archive",
+                         help="land a CI-artifact archive snapshot after a killed run "
+                              "(append-only byte-prefix extension, chain-verified)")
+    rec.add_argument("--restored-dir", required=True,
+                     help="directory holding the downloaded artifact's data/advice files")
+    rec.add_argument("--stimuli", required=True)
+    rec.add_argument("--source-run-id", default="",
+                     help="CI run id the artifact came from (provenance, recorded in the sidecar)")
+    rec.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
     return parser
 
 
@@ -1294,6 +1420,8 @@ def main(argv=None) -> None:
         analyze(args)
     elif args.command == "verify-chain":
         cmd_verify_chain(args)
+    elif args.command == "recover-archive":
+        recover_archive(args)
 
 
 if __name__ == "__main__":

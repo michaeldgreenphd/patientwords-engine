@@ -658,3 +658,98 @@ def test_pace_spaces_same_provider_calls(monkeypatch):
     ae._pace("other", {})          # unpaced provider: never waits
     assert naps == [7.0]
     ae._LAST_CALL_AT.clear()
+
+
+# ---------------------------------------------------------------- recover-archive
+
+
+def test_sidecar_cost_is_cumulative_across_resumes(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, sidecar = _elicit(tmp_path, monkeypatch, stim_path)
+    first = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert first["cost_basis"] == "cumulative_from_records"
+    assert first["cost_usd"] == pytest.approx(first["run_cost_usd"], abs=1e-5)
+    _elicit(tmp_path, monkeypatch, stim_path)  # resume appends nothing
+    second = json.loads(sidecar.read_text(encoding="utf-8"))
+    # the overwritten sidecar keeps the archive's full spend for the ledger
+    assert second["run_cost_usd"] == 0.0
+    assert second["cost_usd"] == pytest.approx(first["cost_usd"])
+
+
+def _recover(stim_path, restored_dir, out_dir):
+    ae.main(["recover-archive", "--restored-dir", str(restored_dir), "--stimuli", str(stim_path),
+             "--source-run-id", "424242", "--out-dir", str(out_dir)])
+
+
+def test_recover_archive_lands_extension(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, sidecar = _elicit(tmp_path, monkeypatch, stim_path)
+    full = resp.read_bytes()
+    rows = [json.loads(x) for x in full.decode("utf-8").splitlines()]
+    restored_dir = tmp_path / "restore"
+    restored_dir.mkdir()
+    (restored_dir / resp.name).write_bytes(full)
+    # committed archive truncated to its first 3 records: the killed-run state
+    resp.write_bytes(b"".join(line + b"\n" for line in full.splitlines()[:3]))
+    _recover(stim_path, restored_dir, resp.parent)
+    assert resp.read_bytes() == full
+    side = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert side["records_total"] == len(rows)
+    assert side["records_appended"] == len(rows) - 3
+    assert side["chain_head"] == rows[-1]["record_sha256"]
+    assert side["recovered_from_run_id"] == "424242"
+    assert side["cost_basis"] == "cumulative_from_records"
+    assert side["cost_usd"] == pytest.approx(
+        sum(float(r.get("cost_usd") or 0.0) for r in rows if "cost_usd" in r))
+    # idempotent: recovering the same snapshot again changes nothing
+    _recover(stim_path, restored_dir, resp.parent)
+    assert resp.read_bytes() == full
+
+
+def test_recover_archive_drops_only_partial_final_line(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, sidecar = _elicit(tmp_path, monkeypatch, stim_path)
+    full = resp.read_bytes()
+    n = len(full.decode("utf-8").splitlines())
+    restored_dir = tmp_path / "restore"
+    restored_dir.mkdir()
+    # the kill can interrupt the final append mid-line (no trailing newline)
+    (restored_dir / resp.name).write_bytes(full + b'{"record_type": "advice", "half-writ')
+    resp.unlink()  # no committed archive at all (nothing landed before the kill)
+    _recover(stim_path, restored_dir, resp.parent)
+    assert resp.read_bytes() == full
+    side = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert side["dropped_partial_final_line"] is True and side["records_total"] == n
+
+
+def test_recover_archive_refuses_divergent_prefix(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path)
+    rows = ae._read_jsonl(resp)
+    # restored file with an intact chain that does NOT extend the committed
+    # bytes: drop the first record and re-seal from a fresh chain root
+    prev = None
+    resealed = []
+    for r in rows[1:]:
+        body = {k: v for k, v in r.items() if k not in ("record_sha256", "prev_sha256")}
+        sealed = ae._seal_record(body, prev)
+        prev = sealed["record_sha256"]
+        resealed.append(sealed)
+    restored_dir = tmp_path / "restore"
+    restored_dir.mkdir()
+    (restored_dir / resp.name).write_text(
+        "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in resealed), encoding="utf-8")
+    with pytest.raises(SystemExit, match="refusing"):
+        _recover(stim_path, restored_dir, resp.parent)
+
+
+def test_recover_archive_refuses_corrupt_interior_line(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path)
+    lines = resp.read_bytes().splitlines()
+    lines[1] = b"not json at all"
+    restored_dir = tmp_path / "restore"
+    restored_dir.mkdir()
+    (restored_dir / resp.name).write_bytes(b"".join(ln + b"\n" for ln in lines))
+    with pytest.raises(SystemExit, match="corrupt interior"):
+        _recover(stim_path, restored_dir, resp.parent)
