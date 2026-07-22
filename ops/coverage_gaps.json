@@ -1,23 +1,23 @@
 {
   "_": "coverage report - counts are corpus composition, not findings. steer_topics lists the thinnest specialties' topic vocabulary for generation `topics` params.",
   "base_model": "gemma-2-2b",
-  "scenarios_total": 748,
+  "scenarios_total": 765,
   "per_specialty": {
     "Brain & nerves": 136,
     "Digestion": 134,
     "Heart & circulation": 87,
     "Sleep": 68,
+    "Breathing & allergies": 62,
     "Mental health": 62,
-    "Breathing & allergies": 61,
     "Bones, joints & muscles": 59,
     "Skin": 40,
     "General & whole-body": 25,
     "Eyes, ears & mouth": 21,
-    "Hormones & metabolism": 17,
+    "Hormones & metabolism": 20,
+    "Kidneys & urinary": 15,
+    "Infections & fever": 14,
     "Other": 13,
-    "Kidneys & urinary": 11,
-    "Reproductive & sexual health": 7,
-    "Infections & fever": 7
+    "Reproductive & sexual health": 9
   },
   "tier_matrix": {
     "Bones, joints & muscles": {
@@ -62,12 +62,13 @@
     },
     "Hormones & metabolism": {
       "2": 8,
-      "0": 2
+      "0": 2,
+      "1": 1
     },
     "Infections & fever": {
       "1": 2,
-      "2": 1,
-      "0": 1
+      "2": 2,
+      "0": 2
     },
     "Kidneys & urinary": {
       "2": 6
@@ -100,8 +101,7 @@
   "thin_specialties": [
     "Reproductive & sexual health",
     "Infections & fever",
-    "Kidneys & urinary",
-    "Hormones & metabolism"
+    "Kidneys & urinary"
   ],
   "steer_topics": {
     "Reproductive & sexual health": [
@@ -126,21 +126,11 @@
       "urinary tract infection",
       "urological",
       "urology"
-    ],
-    "Hormones & metabolism": [
-      "endocrine",
-      "endocrine disorder",
-      "endocrine dysfunction",
-      "excessive night sweating",
-      "excessive perspiration",
-      "hyperhidrosis",
-      "hypoglycemia",
-      "metabolic",
-      "metabolic disorder",
-      "night sweats",
-      "polyuria / diabetes",
-      "thermoregulation symptom",
-      "thyroid disorder"
     ]
+  },
+  "_provenance": {
+    "generator": "scripts/coverage_gaps.py",
+    "engine_sha": "6d29b2967042+dirty",
+    "generated_utc": "2026-07-22T13:22:44Z"
   }
 }
