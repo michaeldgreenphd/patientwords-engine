@@ -41,6 +41,7 @@ PAGES = [
     "methods.html",
     "technical/index.html",
     "simulated-scenarios/index.html",
+    "llm/index.html",
     "wording-differences/index.html",
     "dialect-differences/index.html",
     "translation/index.html",
