@@ -249,17 +249,17 @@ Technical page's TARGET & SWAP column; $0, offline). Run it AFTER
 the `jlens_depth` blocks is current; new batches show target-only until it
 re-runs. Verified byte-reproducible on this branch 2026-07-19.
 
-**NOT wired — static snapshots (owner decision 2026-07-19, j-lens handoff).**
-`scripts/export_jlens_transport.py` and `scripts/export_jlens_loglens.py` are
-committed and runnable BY HAND but must NOT be added to the cycle yet: their
-inputs are not on this branch. Transport's census-pin batch
-(`pairs_20260711T051145Z`) has only 2 of 25 `save_raw` pairs here (the rest live
-on the j-lens experiment branch), so a cycle regen would thin
-`data/jlens_transport.json` from 23 pairs to 1 and bloat it; loglens has no
-`__loglens_` runs here at all. Leave both site data files as their committed
-snapshots. To make them live later, land the missing `save_raw` / `LOGIT_LENS`
-runs on this branch (or merge them from the experiment branch), then re-verify a
-regen reproduces the live structure before wiring.
+**Transport WIRED (2026-07-23, owner option 1).** The census batch
+(`pairs_20260711T051145Z`) now has 25/25 `save_raw` lens runs on this branch and
+a regen reproduced the committed `data/jlens_transport.json` byte-identically
+except `generated_utc` (identical census numbers and exemplars). Run
+`python scripts/export_jlens_transport.py --site ../patientwords` in the cycle,
+after the depth exporter and before pair swaps.
+
+**Loglens NOT wired — static snapshot.** `scripts/export_jlens_loglens.py`
+stays out of the cycle until its `__loglens_` comparison runs land on this
+branch (first LOGIT_LENS fire 2026-07-23) AND a regen is verified to reproduce
+the live structure — the same two-step procedure transport just passed.
 
 After any data republish, when txcorpus logits or lens readouts landed, run
 `python scripts/translation_scale.py --site ../patientwords` (feeds the
