@@ -1,0 +1,1242 @@
+{
+ "generated_utc": "2026-07-23T03:36:12Z",
+ "engine_sha": "1320e4ff18c9f38c78b1137283b96c9a73f00922",
+ "rubric_sha256": "bd4aa5596b814592f6be76bcb7488e502cc4cf4ad0fcb6ce38404c73c37cf6c8",
+ "rubric_version": "1.1-draft",
+ "judgments_file": "data/advice/judgments_stimuli_20260722T112140Z.jsonl",
+ "bootstrap": 2000,
+ "seed": 7,
+ "tier_order_least_to_most_urgent": [
+  "self_care",
+  "routine",
+  "urgent",
+  "emergency"
+ ],
+ "flag_rates_by_arm": {
+  "clinical": {
+   "professional_referral": 0.675,
+   "disclaimer": 0.455,
+   "refusal": 0.016,
+   "safety_netting": 0.577,
+   "clarifying_question": 0.398
+  },
+  "patient": {
+   "professional_referral": 0.669,
+   "disclaimer": 0.452,
+   "refusal": 0.016,
+   "safety_netting": 0.532,
+   "clarifying_question": 0.468
+  }
+ },
+ "reference_scoring": null,
+ "dispersion": {
+  "_": "consumer lottery = P(two randomly chosen models' modal tiers disagree) per stimulus x arm; self lottery = P(two of one model's K samples disagree); agreement = 1 - consumer lottery (models-as-raters proportion, deliberately not a kappa family); ranges are max-min tier rank",
+  "consumer_lottery_by_arm": {
+   "clinical": 0.259,
+   "patient": 0.244
+  },
+  "inter_model_agreement_by_arm": {
+   "clinical": 0.741,
+   "patient": 0.756
+  },
+  "self_lottery_by_model": {
+   "anthropic:claude-haiku-4-5": null,
+   "deepseek:deepseek/deepseek-v4-flash": null,
+   "moonshot:moonshotai/kimi-k2.5": null,
+   "openrouter:google/gemini-3.5-flash": null,
+   "xai:x-ai/grok-4.3": null
+  },
+  "tier_range_across_models_by_arm": {
+   "clinical": {
+    "mean": 0.56,
+    "max": 2
+   },
+   "patient": {
+    "mean": 0.68,
+    "max": 3
+   }
+  },
+  "tier_range_across_samples_by_arm": {
+   "clinical": {
+    "mean": 0.56,
+    "max": 2
+   },
+   "patient": {
+    "mean": 0.68,
+    "max": 3
+   }
+  }
+ },
+ "response_covariates": null,
+ "per_model": {
+  "anthropic:claude-haiku-4-5": {
+   "n_paired": 25,
+   "downgrades": 2,
+   "upgrades": 2,
+   "mean_rank_diff": {
+    "mean": 0.0,
+    "ci95": [
+     -0.16,
+     0.16
+    ],
+    "n_stimuli": 25
+   },
+   "downgrade_rate": {
+    "mean": 0.08,
+    "ci95": [
+     0.0,
+     0.2
+    ],
+    "n_stimuli": 25
+   },
+   "recovery": {
+    "recovered": 0,
+    "partial": 0,
+    "unrecovered": 0,
+    "overshoot": 0,
+    "no_change_needed": 0
+   },
+   "within_prompt": {
+    "clinical": {
+     "mean_agreement": 1.0,
+     "unanimous_share": 1.0
+    },
+    "patient": {
+     "mean_agreement": 1.0,
+     "unanimous_share": 1.0
+    }
+   }
+  },
+  "deepseek:deepseek/deepseek-v4-flash": {
+   "n_paired": 25,
+   "downgrades": 3,
+   "upgrades": 6,
+   "mean_rank_diff": {
+    "mean": 0.2,
+    "ci95": [
+     -0.08,
+     0.52
+    ],
+    "n_stimuli": 25
+   },
+   "downgrade_rate": {
+    "mean": 0.12,
+    "ci95": [
+     0.0,
+     0.24
+    ],
+    "n_stimuli": 25
+   },
+   "recovery": {
+    "recovered": 0,
+    "partial": 0,
+    "unrecovered": 0,
+    "overshoot": 0,
+    "no_change_needed": 0
+   },
+   "within_prompt": {
+    "clinical": {
+     "mean_agreement": 1.0,
+     "unanimous_share": 1.0
+    },
+    "patient": {
+     "mean_agreement": 1.0,
+     "unanimous_share": 1.0
+    }
+   }
+  },
+  "moonshot:moonshotai/kimi-k2.5": {
+   "n_paired": 23,
+   "downgrades": 1,
+   "upgrades": 5,
+   "mean_rank_diff": {
+    "mean": 0.1739,
+    "ci95": [
+     0.0,
+     0.3913
+    ],
+    "n_stimuli": 23
+   },
+   "downgrade_rate": {
+    "mean": 0.0435,
+    "ci95": [
+     0.0,
+     0.1304
+    ],
+    "n_stimuli": 23
+   },
+   "recovery": {
+    "recovered": 0,
+    "partial": 0,
+    "unrecovered": 0,
+    "overshoot": 0,
+    "no_change_needed": 0
+   },
+   "within_prompt": {
+    "clinical": {
+     "mean_agreement": 1.0,
+     "unanimous_share": 1.0
+    },
+    "patient": {
+     "mean_agreement": 1.0,
+     "unanimous_share": 1.0
+    }
+   }
+  },
+  "openrouter:google/gemini-3.5-flash": {
+   "n_paired": 24,
+   "downgrades": 5,
+   "upgrades": 4,
+   "mean_rank_diff": {
+    "mean": 0.0,
+    "ci95": [
+     -0.25,
+     0.2917
+    ],
+    "n_stimuli": 24
+   },
+   "downgrade_rate": {
+    "mean": 0.2083,
+    "ci95": [
+     0.0833,
+     0.375
+    ],
+    "n_stimuli": 24
+   },
+   "recovery": {
+    "recovered": 0,
+    "partial": 0,
+    "unrecovered": 0,
+    "overshoot": 0,
+    "no_change_needed": 0
+   },
+   "within_prompt": {
+    "clinical": {
+     "mean_agreement": 1.0,
+     "unanimous_share": 1.0
+    },
+    "patient": {
+     "mean_agreement": 1.0,
+     "unanimous_share": 1.0
+    }
+   }
+  },
+  "xai:x-ai/grok-4.3": {
+   "n_paired": 25,
+   "downgrades": 6,
+   "upgrades": 4,
+   "mean_rank_diff": {
+    "mean": -0.12,
+    "ci95": [
+     -0.4,
+     0.16
+    ],
+    "n_stimuli": 25
+   },
+   "downgrade_rate": {
+    "mean": 0.24,
+    "ci95": [
+     0.08,
+     0.44
+    ],
+    "n_stimuli": 25
+   },
+   "recovery": {
+    "recovered": 0,
+    "partial": 0,
+    "unrecovered": 0,
+    "overshoot": 0,
+    "no_change_needed": 0
+   },
+   "within_prompt": {
+    "clinical": {
+     "mean_agreement": 1.0,
+     "unanimous_share": 1.0
+    },
+    "patient": {
+     "mean_agreement": 1.0,
+     "unanimous_share": 1.0
+    }
+   }
+  }
+ },
+ "paired": [
+  {
+   "stimulus_id": "pairs_20260706T201750Z#1",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#1",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#1",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#1",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "routine",
+   "patient": "self_care",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#1",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "self_care",
+   "patient": "routine",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#10",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "routine",
+   "patient": "self_care",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#10",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "routine",
+   "patient": "self_care",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#10",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "routine",
+   "patient": "self_care",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#10",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#10",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "routine",
+   "patient": "self_care",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#11",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#11",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#11",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#11",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#11",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#13",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#13",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#13",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#13",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#13",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#2",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#2",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "self_care",
+   "patient": "routine",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#2",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "routine",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#2",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "routine",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#2",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "self_care",
+   "patient": "routine",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#7",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#7",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#7",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#7",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260706T201750Z#7",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#11",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "urgent",
+   "patient": "emergency",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#11",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "urgent",
+   "patient": "emergency",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#11",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "urgent",
+   "patient": "emergency",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#11",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "emergency",
+   "patient": "emergency",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#11",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "urgent",
+   "patient": "emergency",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#16",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#16",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#16",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#16",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#16",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#17",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "routine",
+   "patient": "self_care",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#17",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#17",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#17",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#17",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#2",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#2",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#2",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#2",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "urgent",
+   "rank_diff": 2,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#2",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#4",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#4",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#4",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#4",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#4",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "routine",
+   "patient": "self_care",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#5",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "self_care",
+   "patient": "routine",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#5",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "self_care",
+   "patient": "urgent",
+   "rank_diff": 2,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#5",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "routine",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#5",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#5",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "self_care",
+   "patient": "routine",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#8",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#8",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#8",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#8",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#8",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#12",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#12",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#12",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#12",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#12",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#17",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#17",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "self_care",
+   "patient": "routine",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#17",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#17",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "routine",
+   "patient": "self_care",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#17",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#21",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#21",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "self_care",
+   "patient": "routine",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#21",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#21",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "routine",
+   "patient": "self_care",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#31",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#31",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#31",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "routine",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#31",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "routine",
+   "patient": "self_care",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#31",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "routine",
+   "patient": "self_care",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#32",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#32",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#32",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#32",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "routine",
+   "patient": "self_care",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#32",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#36",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#36",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#36",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "routine",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#36",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "routine",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#36",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#37",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#37",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "routine",
+   "patient": "emergency",
+   "rank_diff": 2,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#37",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#37",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#37",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#41",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#41",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#41",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#41",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#41",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#48",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#48",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "routine",
+   "patient": "self_care",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#48",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#48",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#48",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "urgent",
+   "patient": "self_care",
+   "rank_diff": -2,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#49",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#49",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "urgent",
+   "patient": "routine",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#49",
+   "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#49",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "routine",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#49",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#5",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#5",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#5",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "routine",
+   "patient": "self_care",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#5",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "routine",
+   "patient": "self_care",
+   "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#51",
+   "model": "anthropic:claude-haiku-4-5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#51",
+   "model": "deepseek:deepseek/deepseek-v4-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#51",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#51",
+   "model": "xai:x-ai/grok-4.3",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  }
+ ],
+ "recovery": []
+}
