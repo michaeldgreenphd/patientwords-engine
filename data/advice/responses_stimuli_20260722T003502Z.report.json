@@ -1,11 +1,13 @@
 {
- "run_utc": "2026-07-22T20:41:21Z",
- "engine_sha": "0e659376224d43a872ef825fc263934b13a0a67c",
+ "run_utc": "2026-07-23T10:17:29Z",
+ "engine_sha": "996bba31e5eae3b01c43d70c77939f408e15dd62",
  "stimuli_file": "data/advice/stimuli_20260722T003502Z.json",
  "models": [
   "anthropic:claude-haiku-4-5",
   "openrouter:google/gemini-3.5-flash",
-  "deepseek:deepseek/deepseek-v4-flash"
+  "xai:x-ai/grok-4.3",
+  "deepseek:deepseek/deepseek-v4-flash",
+  "moonshot:moonshotai/kimi-k2.5"
  ],
  "arms": [
   "clinical",
@@ -16,16 +18,18 @@
  "providers": {
   "anthropic:claude-haiku-4-5": "anthropic",
   "openrouter:google/gemini-3.5-flash": "openrouter",
-  "deepseek:deepseek/deepseek-v4-flash": "deepseek"
+  "xai:x-ai/grok-4.3": "xai",
+  "deepseek:deepseek/deepseek-v4-flash": "deepseek",
+  "moonshot:moonshotai/kimi-k2.5": "moonshot"
  },
  "samples": 3,
  "temperature": 1.0,
  "max_tokens": 1024,
  "translator_model": "claude-haiku-4-5",
- "max_spend_usd": 0.25,
+ "max_spend_usd": 0.9,
  "cost_usd": 0.229045,
  "cost_basis": "cumulative_from_records",
- "run_cost_usd": 0.224644,
+ "run_cost_usd": 0.0,
  "per_model": {
   "claude-haiku-4-5": {
    "calls": 1,
@@ -52,29 +56,10 @@
    "cost": 0.0014129999999999998
   }
  },
- "run_per_model": {
-  "openrouter:google/gemini-3.5-flash": {
-   "calls": 7,
-   "input_tokens": 154,
-   "output_tokens": 7140,
-   "cost": 0.21496999999999997
-  },
-  "deepseek:deepseek/deepseek-v4-flash": {
-   "calls": 6,
-   "input_tokens": 156,
-   "output_tokens": 4634,
-   "cost": 0.0014136
-  },
-  "anthropic:claude-haiku-4-5": {
-   "calls": 6,
-   "input_tokens": 180,
-   "output_tokens": 1616,
-   "cost": 0.008259999999999998
-  }
- },
- "records_appended": 19,
+ "run_per_model": {},
+ "records_appended": 0,
  "records_total": 23,
- "truncated": true,
- "stopped_reason": "max_spend ceiling ($0.25) at pairs_20260707T154345Z#9/translated/openrouter:google/gemini-3.5-flash/k2",
+ "truncated": false,
+ "stopped_reason": null,
  "chain_head": "9ef11a2563f8b2cc90cda6a86c235f025ea773d2db6381cea561e6dbbacd38b2"
 }
