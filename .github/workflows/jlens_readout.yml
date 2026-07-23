@@ -79,6 +79,16 @@ jobs:
       commit_outputs: ${{ steps.params.outputs.commit_outputs }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            medlang_circuits
+            docs
+            ops
+            tests
       - name: Resolve parameters
         id: params
         env:
@@ -140,6 +150,16 @@ jobs:
         model: ${{ fromJson(needs.params.outputs.models) }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            medlang_circuits
+            docs
+            ops
+            tests
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -199,9 +219,9 @@ jobs:
           FOUND=0
           for f in "$OUT_DIR/jlens_summary.$PART.json" "$OUT_DIR/jlens_probe.json" \
                    "$OUT_DIR/jsteer_summary.$PART.json" "$OUT_DIR/jsteer_probe.json"; do
-            if [ -f "$f" ]; then git add -f "$f"; FOUND=1; fi
+            if [ -f "$f" ]; then git add --sparse -f "$f"; FOUND=1; fi
           done
-          if [ -d "$OUT_DIR/jlens_raw" ]; then git add -f "$OUT_DIR/jlens_raw"; FOUND=1; fi
+          if [ -d "$OUT_DIR/jlens_raw" ]; then git add --sparse -f "$OUT_DIR/jlens_raw"; FOUND=1; fi
           if [ "$FOUND" = "0" ]; then echo "No outputs to commit"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

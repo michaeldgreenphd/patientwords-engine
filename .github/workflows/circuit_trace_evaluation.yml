@@ -103,6 +103,16 @@ jobs:
       models: ${{ steps.params.outputs.models }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            medlang_circuits
+            docs
+            ops
+            tests
 
       - name: Resolve run parameters
         id: params
@@ -188,6 +198,16 @@ jobs:
         offset: ${{ fromJson(needs.params.outputs.offsets) }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            medlang_circuits
+            docs
+            ops
+            tests
 
       - uses: actions/setup-python@v5
         with:
@@ -305,7 +325,7 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f "${FILES[@]}"
+          git add --sparse -f "${FILES[@]}"
           git commit -m "Trace outputs: $OUT_DIR pairs starting at ${START} (${{ matrix.model }}, ${{ fromJson(needs.params.outputs.config).mode }})"
           PUSHED=0
           for i in 1 2 3 4 5; do

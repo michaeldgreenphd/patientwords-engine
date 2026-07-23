@@ -60,6 +60,16 @@ jobs:
       commit_outputs: ${{ steps.params.outputs.commit_outputs }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            medlang_circuits
+            docs
+            ops
+            tests
       - name: Resolve parameters
         id: params
         env:
@@ -115,6 +125,16 @@ jobs:
         model: ${{ fromJson(needs.params.outputs.models) }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            medlang_circuits
+            docs
+            ops
+            tests
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -166,7 +186,7 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f "$OUT_DIR/batch_summary.$PART.json"
+          git add --sparse -f "$OUT_DIR/batch_summary.$PART.json"
           git commit -m "Logits eval: $OUT_DIR (${{ matrix.model }}, next-token behavior)"
           for i in 1 2 3 4 5; do
             # -X theirs: during rebase "theirs" is the run's own commit, so a

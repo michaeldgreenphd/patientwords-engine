@@ -116,6 +116,16 @@ jobs:
       restore_artifact_run_id: ${{ steps.params.outputs.restore_artifact_run_id }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            medlang_circuits
+            docs
+            ops
+            tests
       - name: Resolve parameters
         id: params
         env:
@@ -185,6 +195,16 @@ jobs:
     timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            medlang_circuits
+            docs
+            ops
+            tests
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
