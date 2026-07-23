@@ -203,6 +203,17 @@ version in `ops/disclosure_log.jsonl` (append-only, public, no
 vendor-private contact details), and a STALE pack with a recorded send is a
 digest-level escalation until an updated pack is owed and sent.
 
+## Amendment 4 (2026-07-23, owner-directed): free-tier fidelity arms
+
+Two arms join the registered design, both at the full 25 x 3 arms x K=3:
+`anthropic:claude-sonnet-5` — the actual free claude.ai default since
+2026-07-01, closing the recorded haiku mismatch (haiku records stand as the
+labeled cost-floor arm) — and `openai:openai/gpt-5.5-mini` — the model the
+free ChatGPT tier falls back to when a session exhausts its GPT-5.5 quota,
+labeled as the free-tier OVERFLOW arm, never as the default. Both are judged
+under the same provisional machine-coding terms as Amendment 2 and carry the
+Amendment 3 build forensics.
+
 ## Supplementary exploratory sets
 
 Owner-invited cheap exploratory runs (2026-07-22, "a few more experiments...
