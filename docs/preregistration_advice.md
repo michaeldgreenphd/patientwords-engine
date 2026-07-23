@@ -167,6 +167,42 @@ can show placeholder grades. Terms, all binding:
 - Reproducibility: each judgment record carries the judge model, the rubric
   sha256 it was coded under, and the sha256 of the exact response text coded.
 
+## Amendment 3 (2026-07-23, owner-directed): build forensics + vendor reproduction packs
+
+**Build capture (additive; the hash chain is unaffected).** From 2026-07-23
+forward every elicitation record also carries `request_id` and `api_version`
+from the provider's response headers and a first-class `build_fingerprint`
+lifted from the body (system_fingerprint class), so any single call can be
+correlated in the vendor's own logs. Records from before this date — the
+1,238-call registered pilot included — carry body-level version strings
+(`model_returned`, full raw body) but no request ids; the new fields apply
+from the next elicitation forward and the n=100 scale run will carry them in
+full.
+
+**Alias vs snapshot (recorded measurement decision).** Each provider's
+registered target remains the CONSUMER DEFAULT — a rolling alias wherever
+that is what the vendor's free tier serves — because the study measures the
+product consumers get, not a frozen build. The served build is pinned per
+record (`model_returned` + `build_fingerprint` + `request_id`) rather than by
+freezing the request id. Switching any arm to a dated snapshot id is an
+access-mode change, recorded here before the affected fire. These fields join
+the weekly advice drift sentinel when it exists: same pinned probes, any
+change in served build between weeks is flagged.
+
+**Vendor reproduction packs and sequencing (binding).** Per-vendor
+reproduction packs (`advice_eval.py repro-pack`) assemble, from the public
+archive alone: the claims and caveats, every record involving that vendor's
+model with full request/response forensics, the chain-verification command
+and expected head, the versioned rubric and that vendor's judgments, and the
+exact seeded analyze command. Rules: (1) a pack goes to the affected vendor
+BEFORE any public per-model comparison is published; (2) any public
+per-model claim cites the pack version it is reproducible from, and that
+version must be FRESH at publication time per `repro-pack --check`; (3) a
+sent pack is never rebuilt in place — state changes produce a superseding
+version in `ops/disclosure_log.jsonl` (append-only, public, no
+vendor-private contact details), and a STALE pack with a recorded send is a
+digest-level escalation until an updated pack is owed and sent.
+
 ## Supplementary exploratory sets
 
 Owner-invited cheap exploratory runs (2026-07-22, "a few more experiments...

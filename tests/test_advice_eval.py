@@ -481,7 +481,7 @@ def test_send_compat_retries_transient_statuses_then_succeeds(monkeypatch):
     monkeypatch.setitem(__import__("sys").modules, "requests", FakeRequests)
     monkeypatch.setenv("FAKE_KEY", "k")
     cfg = {"api": "openai-compat", "base_url": "https://x.example/v1", "key_env": "FAKE_KEY"}
-    text, in_tok, out_tok, raw = ae._send_compat(cfg, "m", None, "hello", 64, 1.0)
+    text, in_tok, out_tok, raw, headers = ae._send_compat(cfg, "m", None, "hello", 64, 1.0)
     assert (text, in_tok, out_tok) == ("fine", 5, 7)
     assert len(calls) == 3 and len(naps) == 2
     assert naps[1] == 2.0          # Retry-After honored on the 429
@@ -867,3 +867,89 @@ def test_anthropic_send_retries_transient_statuses(monkeypatch):
     monkeypatch.setattr(ae, "_send", hard_fail)
     with pytest.raises(Boom):
         ae._send_anthropic_retrying(object(), "model-a", None, "hi", 10, 0.0)
+
+
+# ------------------------------------------------------- build-info capture
+
+
+def test_send_captures_headers_via_raw_response():
+    # A1 (2026-07-23): the anthropic seam must surface response headers so records
+    # can carry request ids and api versions for vendor-side log correlation
+    class Usage:
+        input_tokens, output_tokens = 3, 4
+
+    class Block:
+        type, text = "text", "hi"
+
+    class Parsed:
+        content, usage = [Block()], Usage()
+
+        def model_dump(self):
+            return {"model": "m-1", "system_fingerprint": "fp_abc"}
+
+    class Wrapped:
+        headers = {"Request-Id": "req_123", "anthropic-version": "2023-06-01"}
+
+        def parse(self):
+            return Parsed()
+
+    class RawAPI:
+        def create(self, **kw):
+            return Wrapped()
+
+    class Messages:
+        with_raw_response = RawAPI()
+
+    class Client:
+        messages = Messages()
+
+    text, i, o, raw, headers = ae._send(Client(), "m", None, "u", 64, 1.0)
+    assert text == "hi" and headers["request-id"] == "req_123"
+    assert ae._build_info(raw, headers) == {
+        "request_id": "req_123", "api_version": "2023-06-01", "build_fingerprint": "fp_abc"}
+
+
+def test_send_compat_returns_headers(monkeypatch):
+    class Resp:
+        status_code = 200
+        headers = {"X-Request-Id": "rq9", "openai-version": "v2"}
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices": [{"message": {"content": "ok"}}],
+                    "usage": {"prompt_tokens": 1, "completion_tokens": 2},
+                    "system_fingerprint": "fp_z"}
+
+    class FakeRequests:
+        @staticmethod
+        def post(*a, **k):
+            return Resp()
+
+    monkeypatch.setitem(__import__("sys").modules, "requests", FakeRequests)
+    monkeypatch.setenv("FAKE_KEY", "k")
+    cfg = {"api": "openai-compat", "base_url": "https://x.example/v1", "key_env": "FAKE_KEY"}
+    text, i, o, raw, headers = ae._send_compat(cfg, "m", None, "u", 64, 1.0)
+    assert ae._build_info(raw, headers) == {
+        "request_id": "rq9", "api_version": "v2", "build_fingerprint": "fp_z"}
+
+
+def test_elicit_records_carry_build_info(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+
+    def stub5(client, model, system, user_text, max_tokens, temperature):
+        raw = {"model": model + "-served", "system_fingerprint": "fp_e2e"}
+        return "advice placeholder", 5, 6, raw, {"request-id": "req_e2e"}
+
+    monkeypatch.setattr(ae, "_client", lambda: object())
+    monkeypatch.setattr(ae, "_send", stub5)
+    ae.main(["elicit", "--stimuli", str(stim_path), "--models", "model-x",
+             "--arms", "clinical", "--samples", "1",
+             "--max-spend", "1.0", "--out-dir", str(tmp_path / "advice")])
+    rows = [json.loads(line) for line in
+            (tmp_path / "advice" / f"responses_{stim_path.stem}.jsonl").read_text().splitlines()]
+    adv = [r for r in rows if r["record_type"] == "advice"][0]
+    assert adv["request_id"] == "req_e2e"
+    assert adv["build_fingerprint"] == "fp_e2e"
+    assert adv["api_version"] is None

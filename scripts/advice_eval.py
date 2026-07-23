@@ -256,9 +256,12 @@ def _client():
 
 
 def _send(client, model: str, system: str | None, user_text: str, max_tokens: int, temperature: float):
-    """One Messages call. Returns (text, input_tokens, output_tokens, raw_dict).
+    """One Messages call. Returns (text, input_tokens, output_tokens, raw_dict, headers).
 
-    Module-level seam: tests monkeypatch this; nothing else in the module touches the network.
+    Module-level seam: tests monkeypatch this; nothing else in the module touches the
+    network. Headers ride along for build forensics (request id, api version) - the
+    SDK's with_raw_response wrapper exposes them; older stubs returning a 4-tuple are
+    tolerated by every caller (headers default to {}).
     """
     kwargs = dict(
         model=model,
@@ -268,11 +271,18 @@ def _send(client, model: str, system: str | None, user_text: str, max_tokens: in
     )
     if system:
         kwargs["system"] = system
-    response = client.messages.create(**kwargs)
+    headers: dict = {}
+    raw_api = getattr(client.messages, "with_raw_response", None)
+    if raw_api is not None:
+        wrapped = raw_api.create(**kwargs)
+        headers = {str(k).lower(): str(v) for k, v in dict(getattr(wrapped, "headers", {}) or {}).items()}
+        response = wrapped.parse()
+    else:  # pragma: no cover - older SDKs without the wrapper
+        response = client.messages.create(**kwargs)
     text = "".join(b.text for b in response.content if getattr(b, "type", "") == "text").strip()
     usage = getattr(response, "usage", None)
     raw = response.model_dump() if hasattr(response, "model_dump") else json.loads(response.json())
-    return text, getattr(usage, "input_tokens", 0), getattr(usage, "output_tokens", 0), raw
+    return text, getattr(usage, "input_tokens", 0), getattr(usage, "output_tokens", 0), raw, headers
 
 
 _LAST_CALL_AT: dict[str, float] = {}
@@ -385,7 +395,28 @@ def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
         raw = resp.json()
         text = ((raw.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
         usage = raw.get("usage") or {}
-        return text.strip(), usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0), raw
+        headers = {str(k).lower(): str(v) for k, v in dict(resp.headers or {}).items()}
+        return text.strip(), usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0), raw, headers
+
+
+def _build_info(raw, headers) -> dict:
+    """Forensic fields for a call: request id and api-version from response headers,
+    plus any body-level build fingerprint (system_fingerprint class) lifted to a
+    first-class field. Provider absence -> nulls; the full raw body is archived
+    regardless, so nothing is lost when a vendor renames these."""
+    headers = headers or {}
+    def pick(*names):
+        for n in names:
+            v = headers.get(n)
+            if v:
+                return v
+        return None
+    raw = raw if isinstance(raw, dict) else {}
+    return {
+        "request_id": pick("request-id", "x-request-id", "openrouter-request-id", "x-amzn-requestid"),
+        "api_version": pick("anthropic-version", "openai-version", "api-version"),
+        "build_fingerprint": raw.get("system_fingerprint") or raw.get("build_fingerprint"),
+    }
 
 
 # ------------------------------------------------------------------- hash chain
@@ -730,12 +761,14 @@ def elicit(args) -> Path:
         if r is None or r["cfg"].get("api", "anthropic") == "anthropic":
             endpoint = "anthropic"
             model = r["model"] if r else spec_key
-            out_text, in_tok, out_tok, raw = _send_anthropic_retrying(
+            res = _send_anthropic_retrying(
                 anthropic_client(), model, system, text, max_tokens, temperature)
         else:
             endpoint = r["cfg"].get("base_url", "")
-            out_text, in_tok, out_tok, raw = _send_compat(r["cfg"], r["model"], system, text,
-                                                          max_tokens, temperature)
+            res = _send_compat(r["cfg"], r["model"], system, text,
+                               max_tokens, temperature)
+        out_text, in_tok, out_tok, raw = res[:4]
+        headers = res[4] if len(res) > 4 else {}
         latency_ms = int((time.monotonic() - t0) * 1000)
         cost = tracker.record(spec_key, in_tok, out_tok)
         return out_text, raw, {
@@ -743,6 +776,7 @@ def elicit(args) -> Path:
             "input_tokens": in_tok, "output_tokens": out_tok, "cost_usd": round(cost, 6),
             "model_returned": raw.get("model"),
             "provider": (r or {}).get("provider", "anthropic"), "endpoint": endpoint,
+            **_build_info(raw, headers),
         }
 
     try:
@@ -990,9 +1024,11 @@ def judge(args) -> Path:
                     print(f"STOPPED EARLY: judge max_spend ceiling (${args.max_spend})")
                     break
                 # Blinding: the judge sees the response text only - never the prompt or arm.
-                raw_text, in_tok, out_tok, raw = _send_anthropic_retrying(
+                res = _send_anthropic_retrying(
                     client, args.judge_model, None, _judge_prompt(rubric, r["response_text"]), 300, 0.0
                 )
+                raw_text, in_tok, out_tok, raw = res[:4]
+                judge_headers = res[4] if len(res) > 4 else {}
                 tracker.record(args.judge_model, in_tok, out_tok)
                 parsed = _extract_json_object(raw_text)
                 entry = {
@@ -1001,6 +1037,7 @@ def judge(args) -> Path:
                     "judge_model": args.judge_model, "rubric_sha256": rubric_sha,
                     "rubric_version": rubric.get("version"), "judged_utc": utc_now_iso(),
                     "judge_raw": raw_text,
+                    "judge_request_id": _build_info(raw, judge_headers).get("request_id"),
                 }
                 if parsed and parsed.get("tier") in tier_ids:
                     entry["tier"] = parsed["tier"]

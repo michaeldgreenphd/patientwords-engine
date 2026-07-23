@@ -286,6 +286,25 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
     for r in advice:
         if r.get("model_returned") and r["model_requested"] not in returned:
             returned[r["model_requested"]] = r["model_returned"]
+    # A3 (2026-07-23): every DISTINCT served build per spec - (model_returned,
+    # build_fingerprint) with its first/last sent window - so the page can show
+    # exactly which vendor builds produced the archive, and the drift sentinel
+    # can diff weeks. Old records lack build_fingerprint; they aggregate as null.
+    builds_by_spec: dict[str, dict] = {}
+    for r in advice:
+        spec = r["model_requested"]
+        key = (r.get("model_returned"), r.get("build_fingerprint"))
+        b = builds_by_spec.setdefault(spec, {}).setdefault(key, {
+            "model_returned": r.get("model_returned"),
+            "build_fingerprint": r.get("build_fingerprint"),
+            "n": 0, "first_sent_utc": None, "last_sent_utc": None})
+        b["n"] += 1
+        su = r.get("sent_utc")
+        if su:
+            if b["first_sent_utc"] is None or su < b["first_sent_utc"]:
+                b["first_sent_utc"] = su
+            if b["last_sent_utc"] is None or su > b["last_sent_utc"]:
+                b["last_sent_utc"] = su
     cost = sidecar.get("cost_usd")
     n_scenario_ids = len({r["stimulus_id"] for r in advice})
 
@@ -311,7 +330,9 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
             "temperature": sidecar.get("temperature"),
             "models": [{"spec": spec, "provider": spec.split(":", 1)[0],
                         "model_returned": returned.get(spec),
-                        "n_responses": per_model_counts.get(spec, 0)} for spec in raw_order],
+                        "n_responses": per_model_counts.get(spec, 0),
+                        "builds": sorted(builds_by_spec.get(spec, {}).values(),
+                                         key=lambda b: (b["first_sent_utc"] or ""))} for spec in raw_order],
         },
         "chain_head": sidecar.get("chain_head") or (rows[-1]["record_sha256"] if rows else None),
         "rubric_version": rubric_version,

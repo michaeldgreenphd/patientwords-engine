@@ -100,6 +100,10 @@ def test_export_contract(archive, monkeypatch):
     assert run["n_calls"] == len(ae._read_jsonl(archive["out_dir"] / f"responses_{archive['stim'].stem}.jsonl"))
     assert run["cost_usd"] > 0 and run["cost_per_scenario"] > 0
     assert {m["spec"] for m in run["models"]} == {"prov-x:model-1", "prov-y:model-2"}
+    # A3: distinct served builds per spec with sent window
+    b = run["models"][0]["builds"]
+    assert len(b) == 1 and b[0]["model_returned"] == "model-1-served"
+    assert b[0]["n"] > 0 and b[0]["first_sent_utc"] <= b[0]["last_sent_utc"]
     assert payload["chain_head"] and payload["rubric_version"] == "t1"
     assert payload["tier_order"] == ["self_care", "routine"]
     # per-model figure block: mechanical stats plus coded-tier aggregates
