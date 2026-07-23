@@ -174,6 +174,53 @@ def test_export_merges_rerouted_google_paths(tmp_path, monkeypatch):
     assert specs == {"google:gemini-3.5-flash": 2, "openrouter:google/gemini-3.5-flash": 3}
 
 
+def test_export_joins_trace_and_rationale_from_site_payload(tmp_path, monkeypatch):
+    # scenarios keyed "<batch>#<index>" pick up the site payload's verified render
+    # path and the generator's rationale; scenarios without a published render
+    # keep trace_html None (the page must not fabricate a link for them)
+    manual = tmp_path / "manual.json"
+    manual.write_text(json.dumps([
+        {"id": "b1#1", "clinical": "clinical body one, so I track it with a",
+         "patient": "everyday body one, so I track it with a"},
+        {"id": "b1#2", "clinical": "clinical body two, so I track it with a",
+         "patient": "everyday body two, so I track it with a"},
+    ]), encoding="utf-8")
+    out_dir = tmp_path / "advice"
+    ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual), "--out-dir", str(out_dir)])
+    stim = next(out_dir.glob("stimuli_*.json"))
+    registry = tmp_path / "providers.json"
+    registry.write_text(json.dumps({
+        "prov-x": {"api": "openai-compat", "base_url": "https://x.example/v1",
+                   "key_env": "X_KEY", "default_pricing": [1.0, 4.0]},
+    }), encoding="utf-8")
+
+    def stub_compat(cfg, model, system, user_text, max_tokens, temperature):
+        return f"advice for [{user_text[:18]}]", 10, 20, {"model": model + "-served", "usage": {}}
+
+    monkeypatch.setattr(ae, "_client", lambda: object())
+    monkeypatch.setattr(ae, "_send_compat", stub_compat)
+    ae.main(["elicit", "--stimuli", str(stim), "--models", "prov-x:model-1",
+             "--providers", str(registry), "--arms", "clinical", "--samples", "1",
+             "--max-spend", "5.0", "--out-dir", str(out_dir)])
+
+    site = tmp_path / "site"
+    (site / "data").mkdir(parents=True)
+    (site / "data" / "simulated_scenarios.json").write_text(json.dumps({"scenarios": [
+        {"batch": "b1", "batch_index": 1, "language_penalty": -0.12,
+         "html": "modes/simulated/b1/index_01.html", "rationale": "tests a plain-language swap"},
+        {"batch": "b1", "batch_index": 2, "language_penalty": -0.05,
+         "html": None, "rationale": None},
+    ]}), encoding="utf-8")
+    out = tmp_path / "advice_scenarios.json"
+    ex.main(["--stimuli", str(out_dir / stim.name), "--out", str(out), "--site", str(site)])
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    s1, s2 = payload["scenarios"]
+    assert s1["wording_gap"] == -0.12
+    assert s1["trace_html"] == "modes/simulated/b1/index_01.html"
+    assert s1["generation_rationale"] == "tests a plain-language swap"
+    assert s2["trace_html"] is None and s2["generation_rationale"] is None
+
+
 def test_export_refuses_tampered_chain(archive):
     resp = archive["out_dir"] / f"responses_{archive['stim'].stem}.jsonl"
     lines = resp.read_text(encoding="utf-8").splitlines()

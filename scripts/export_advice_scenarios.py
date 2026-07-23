@@ -394,13 +394,20 @@ def main(argv=None) -> None:
             site_payload = json.loads(Path(cand).read_text(encoding="utf-8"))
             break
     if site_payload:
-        gaps = {}
+        gaps, traces, rationales = {}, {}, {}
         for sc in site_payload.get("scenarios", []):
             if sc.get("batch") is not None and sc.get("batch_index") is not None:
-                gaps[f"{sc['batch']}#{sc['batch_index']}"] = sc.get("language_penalty")
+                key = f"{sc['batch']}#{sc['batch_index']}"
+                gaps[key] = sc.get("language_penalty")
+                traces[key] = sc.get("html")
+                rationales[key] = sc.get("rationale")
         for s in payload["scenarios"]:
             if s["id"] in gaps:
                 s["wording_gap"] = gaps[s["id"]]
+            # site-verified render path + the generator's own note for the pair;
+            # trace_html stays None when the scenario has no published render
+            s["trace_html"] = traces.get(s["id"])
+            s["generation_rationale"] = rationales.get(s["id"])
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
