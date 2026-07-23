@@ -43,11 +43,12 @@ python scripts/urgency_shift.py --publish ../patientwords
 Writes the site's `data/urgency_shift.json`. Tier vocabulary is a draft data file; the
 site's "draft pending domain review" labels stay exactly as they are.
 
-**3. Wired j-lens exporters — these four ONLY, in this order.**
+**3. Wired j-lens exporters — these five ONLY, in this order.**
 ```
 python scripts/jlens_insights.py --site ../patientwords
 python scripts/export_jlens_depth.py --block ... --exemplar-stem ... --exemplar-index ... --site ../patientwords
 python scripts/export_jlens_transport.py --site ../patientwords
+python scripts/export_jlens_loglens.py --site ../patientwords
 python scripts/export_pair_swaps.py --site ../patientwords --depth ../patientwords/data/jlens_depth.json
 ```
 - For `export_jlens_depth.py`, reuse the pins of the committed
@@ -59,14 +60,11 @@ python scripts/export_pair_swaps.py --site ../patientwords --depth ../patientwor
   payload past a refusal.
 - `export_pair_swaps.py` runs AFTER depth/insights so its `<batch>#<index>` join is
   current; new batches show target-only until it re-runs. That is expected.
-- **Transport wired 2026-07-23 (owner option 1):** the census batch's 25/25 `save_raw`
-  runs landed on this branch and a regen reproduced the committed file byte-identically
-  except `generated_utc` (identical census numbers and exemplars). It now runs in the
-  cycle, after depth and before pair swaps.
-- **NOT wired — do not run in the cycle:** `export_jlens_loglens.py`. Its `__loglens_`
-  comparison runs are still landing on this branch (first LOGIT_LENS fire 2026-07-23);
-  leave the site file as its committed snapshot until a regen is verified to reproduce
-  the live structure, same procedure as transport.
+- **Transport and loglens wired 2026-07-23 (owner option 1).** The census batch's
+  25/25 `save_raw` JACOBIAN_LENS runs and its `__loglens_` LOGIT_LENS runs both landed
+  on this branch, and each exporter's regen reproduced its committed site file
+  byte-identically except `generated_utc` (identical census numbers, exemplars, and
+  agreement counts). All five j-lens exporters now run in the cycle.
 
 **4. Trace-URL restamp.** `python scripts/export_traces_site.py --stamp-only`
 Re-stamps every scenario's `trace_url` in the payload for the self-building

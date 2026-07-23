@@ -249,17 +249,15 @@ Technical page's TARGET & SWAP column; $0, offline). Run it AFTER
 the `jlens_depth` blocks is current; new batches show target-only until it
 re-runs. Verified byte-reproducible on this branch 2026-07-19.
 
-**Transport WIRED (2026-07-23, owner option 1).** The census batch
-(`pairs_20260711T051145Z`) now has 25/25 `save_raw` lens runs on this branch and
-a regen reproduced the committed `data/jlens_transport.json` byte-identically
-except `generated_utc` (identical census numbers and exemplars). Run
-`python scripts/export_jlens_transport.py --site ../patientwords` in the cycle,
-after the depth exporter and before pair swaps.
-
-**Loglens NOT wired — static snapshot.** `scripts/export_jlens_loglens.py`
-stays out of the cycle until its `__loglens_` comparison runs land on this
-branch (first LOGIT_LENS fire 2026-07-23) AND a regen is verified to reproduce
-the live structure — the same two-step procedure transport just passed.
+**Transport and loglens WIRED (2026-07-23, owner option 1).** The census batch
+(`pairs_20260711T051145Z`) now has 25/25 `save_raw` JACOBIAN_LENS runs and its
+`__loglens_` LOGIT_LENS runs on this branch; each exporter's regen reproduced
+its committed site file byte-identically except `generated_utc` (identical
+census numbers, exemplars, and agreement counts — loglens: 23 paired, class
+agree 17, formation agree 18). Run in the cycle after the depth exporter and
+before pair swaps:
+`python scripts/export_jlens_transport.py --site ../patientwords`
+`python scripts/export_jlens_loglens.py --site ../patientwords`
 
 After any data republish, when txcorpus logits or lens readouts landed, run
 `python scripts/translation_scale.py --site ../patientwords` (feeds the
