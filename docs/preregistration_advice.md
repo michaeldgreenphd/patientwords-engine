@@ -208,11 +208,22 @@ digest-level escalation until an updated pack is owed and sent.
 Two arms join the registered design, both at the full 25 x 3 arms x K=3:
 `anthropic:claude-sonnet-5` — the actual free claude.ai default since
 2026-07-01, closing the recorded haiku mismatch (haiku records stand as the
-labeled cost-floor arm) — and `openai:openai/gpt-5.5-mini` — the model the
+labeled cost-floor arm) — and a mini-class arm approximating the model the
 free ChatGPT tier falls back to when a session exhausts its GPT-5.5 quota,
 labeled as the free-tier OVERFLOW arm, never as the default. Both are judged
 under the same provisional machine-coding terms as Amendment 2 and carry the
 Amendment 3 build forensics.
+
+**Slug correction (2026-07-23, first fire):** the amendment as drafted named
+`openai:openai/gpt-5.5-mini` with the slug explicitly unverified. The first
+fire confirmed it does not exist on OpenRouter (400 Bad Request, run
+30011607927, $0 spent, no records). The overflow arm runs
+`openai:openai/gpt-5.4-mini` instead — the newest mini generation OpenRouter
+lists (verified 2026-07-23 against OpenRouter's public model pages). The
+exact mini variant the consumer product falls back to is unpublished and
+public sources conflict; this is a recorded access-mode approximation of the
+overflow experience, same status as the `openai/gpt-5.5` ≈ chat-latest
+approximation, and the manual_ui calibration subset measures the gap.
 
 ## Supplementary exploratory sets
 
