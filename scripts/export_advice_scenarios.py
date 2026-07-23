@@ -174,6 +174,9 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
         scenarios.append({
             "id": sid,
             "topic": (item.get("meta") or {}).get("topic"),
+            # the suffix that turned this pair's sentence into an explicit advice
+            # request; carried per scenario so mixed future builds stay accurate
+            "ask_suffix": stimuli_doc.get("ask_suffix"),
             "wording_gap": None,  # joined in main from the next-token payload when available
             "tier_counts_by_model": tc or None,
             "clinical": clinical,

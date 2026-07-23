@@ -222,6 +222,9 @@ def test_export_joins_trace_and_rationale_from_site_payload(tmp_path, monkeypatc
     # the page's generation note reads the stimuli build's selection rule + suffix
     assert payload["ask_suffix"]  # manual build's default suffix passes through
     assert payload["selection"]["kind"] == "manual"
+    # carried per scenario too, so future mixed builds stay accurate per row
+    assert s1["ask_suffix"] == payload["ask_suffix"]
+    assert s2["ask_suffix"] == payload["ask_suffix"]
 
 
 def test_export_refuses_tampered_chain(archive):
