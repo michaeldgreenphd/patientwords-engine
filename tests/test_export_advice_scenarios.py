@@ -219,6 +219,9 @@ def test_export_joins_trace_and_rationale_from_site_payload(tmp_path, monkeypatc
     assert s1["trace_html"] == "modes/simulated/b1/index_01.html"
     assert s1["generation_rationale"] == "tests a plain-language swap"
     assert s2["trace_html"] is None and s2["generation_rationale"] is None
+    # the page's generation note reads the stimuli build's selection rule + suffix
+    assert payload["ask_suffix"]  # manual build's default suffix passes through
+    assert payload["selection"]["kind"] == "manual"
 
 
 def test_export_refuses_tampered_chain(archive):

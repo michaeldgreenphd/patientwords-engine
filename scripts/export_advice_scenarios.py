@@ -311,6 +311,11 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
     return {
         "generated_utc": ae.utc_now_iso(),
         "engine_sha": ae.engine_sha(),
+        # the page's generation note reads these: how the pairs were selected
+        # (e.g. only_flips) and the fixed suffix that turned each traced
+        # sentence into a full question
+        "selection": stimuli_doc.get("source"),
+        "ask_suffix": stimuli_doc.get("ask_suffix"),
         "source": {
             "stimuli_file": str(stimuli_path).replace(str(REPO_ROOT) + "/", ""),
             "responses_file": str(responses_path).replace(str(REPO_ROOT) + "/", ""),
