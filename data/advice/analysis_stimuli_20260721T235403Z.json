@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-07-23T04:43:17Z",
- "engine_sha": "7c6c39b579ce802056acd5b882d480ce3b9c8833",
+ "generated_utc": "2026-07-23T11:16:01Z",
+ "engine_sha": "a40b5e31132f11ba623cbd17abe8f61e38c69593",
  "rubric_sha256": "bd4aa5596b814592f6be76bcb7488e502cc4cf4ad0fcb6ce38404c73c37cf6c8",
  "rubric_version": "1.1-draft",
  "judgments_file": "data/advice/judgments_stimuli_20260721T235403Z.jsonl",
@@ -14,46 +14,46 @@
  ],
  "flag_rates_by_arm": {
   "clinical": {
-   "professional_referral": 0.638,
-   "disclaimer": 0.462,
-   "refusal": 0.015,
-   "safety_netting": 0.571,
-   "clarifying_question": 0.598
-  },
-  "patient": {
-   "professional_referral": 0.615,
-   "disclaimer": 0.36,
-   "refusal": 0.025,
-   "safety_netting": 0.536,
+   "professional_referral": 0.667,
+   "disclaimer": 0.487,
+   "refusal": 0.013,
+   "safety_netting": 0.61,
    "clarifying_question": 0.608
   },
+  "patient": {
+   "professional_referral": 0.641,
+   "disclaimer": 0.401,
+   "refusal": 0.022,
+   "safety_netting": 0.581,
+   "clarifying_question": 0.623
+  },
   "translated": {
-   "professional_referral": 0.698,
-   "disclaimer": 0.463,
-   "refusal": 0.028,
-   "safety_netting": 0.57,
-   "clarifying_question": 0.6
+   "professional_referral": 0.712,
+   "disclaimer": 0.493,
+   "refusal": 0.024,
+   "safety_netting": 0.617,
+   "clarifying_question": 0.613
   }
  },
  "reference_scoring": null,
  "dispersion": {
   "_": "consumer lottery = P(two randomly chosen models' modal tiers disagree) per stimulus x arm; self lottery = P(two of one model's K samples disagree); agreement = 1 - consumer lottery (models-as-raters proportion, deliberately not a kappa family); ranges are max-min tier rank",
   "consumer_lottery_by_arm": {
-   "clinical": 0.275,
-   "patient": 0.237,
-   "translated": 0.328
+   "clinical": 0.27,
+   "patient": 0.235,
+   "translated": 0.325
   },
   "inter_model_agreement_by_arm": {
-   "clinical": 0.725,
-   "patient": 0.763,
-   "translated": 0.672
+   "clinical": 0.73,
+   "patient": 0.765,
+   "translated": 0.675
   },
   "self_lottery_by_model": {
    "anthropic:claude-haiku-4-5": 0.151,
    "deepseek:deepseek/deepseek-v4-flash": 0.227,
    "google:gemini-3.5-flash": 0.278,
    "moonshot:moonshotai/kimi-k2.5": 0.156,
-   "openai:openai/gpt-5.5": null,
+   "openai:openai/gpt-5.5": 0.204,
    "openrouter:google/gemini-3.5-flash": 0.307,
    "xai:x-ai/grok-4.3": 0.204
   },
@@ -63,25 +63,25 @@
     "max": 3
    },
    "patient": {
-    "mean": 0.8,
+    "mean": 0.72,
     "max": 3
    },
    "translated": {
-    "mean": 1.04,
+    "mean": 1.12,
     "max": 3
    }
   },
   "tier_range_across_samples_by_arm": {
    "clinical": {
-    "mean": 1.12,
+    "mean": 1.32,
     "max": 3
    },
    "patient": {
-    "mean": 0.96,
+    "mean": 1.16,
     "max": 3
    },
    "translated": {
-    "mean": 1.36,
+    "mean": 1.4,
     "max": 3
    }
   }
@@ -257,44 +257,44 @@
    }
   },
   "openai:openai/gpt-5.5": {
-   "n_paired": 24,
-   "downgrades": 2,
-   "upgrades": 6,
+   "n_paired": 25,
+   "downgrades": 3,
+   "upgrades": 4,
    "mean_rank_diff": {
-    "mean": 0.2083,
+    "mean": 0.04,
     "ci95": [
-     -0.1667,
-     0.625
+     -0.32,
+     0.4
     ],
-    "n_stimuli": 24
+    "n_stimuli": 25
    },
    "downgrade_rate": {
-    "mean": 0.0833,
+    "mean": 0.12,
     "ci95": [
      0.0,
-     0.2083
+     0.24
     ],
-    "n_stimuli": 24
+    "n_stimuli": 25
    },
    "recovery": {
     "recovered": 2,
     "partial": 1,
     "unrecovered": 4,
     "overshoot": 0,
-    "no_change_needed": 16
+    "no_change_needed": 18
    },
    "within_prompt": {
     "clinical": {
-     "mean_agreement": 1.0,
-     "unanimous_share": 1.0
+     "mean_agreement": 0.893,
+     "unanimous_share": 0.68
     },
     "patient": {
-     "mean_agreement": 1.0,
-     "unanimous_share": 1.0
+     "mean_agreement": 0.88,
+     "unanimous_share": 0.64
     },
     "translated": {
-     "mean_agreement": 1.0,
-     "unanimous_share": 1.0
+     "mean_agreement": 0.92,
+     "unanimous_share": 0.76
     }
    }
   },
@@ -620,8 +620,8 @@
    "stimulus_id": "pairs_20260706T201750Z#2",
    "model": "openai:openai/gpt-5.5",
    "clinical": "self_care",
-   "patient": "emergency",
-   "rank_diff": 3,
+   "patient": "urgent",
+   "rank_diff": 2,
    "class": "upgrade"
   },
   {
@@ -956,9 +956,9 @@
    "stimulus_id": "pairs_20260707T154345Z#5",
    "model": "openai:openai/gpt-5.5",
    "clinical": "emergency",
-   "patient": "emergency",
-   "rank_diff": 0,
-   "class": "same"
+   "patient": "urgent",
+   "rank_diff": -1,
+   "class": "downgrade"
   },
   {
    "stimulus_id": "pairs_20260707T154345Z#5",
@@ -1147,10 +1147,10 @@
   {
    "stimulus_id": "pairs_20260707T171223Z#21",
    "model": "openai:openai/gpt-5.5",
-   "clinical": "self_care",
+   "clinical": "routine",
    "patient": "routine",
-   "rank_diff": 1,
-   "class": "upgrade"
+   "rank_diff": 0,
+   "class": "same"
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#21",
@@ -1339,10 +1339,10 @@
   {
    "stimulus_id": "pairs_20260707T171223Z#37",
    "model": "openai:openai/gpt-5.5",
-   "clinical": "urgent",
+   "clinical": "emergency",
    "patient": "emergency",
-   "rank_diff": 1,
-   "class": "upgrade"
+   "rank_diff": 0,
+   "class": "same"
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#37",
@@ -1578,6 +1578,14 @@
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#51",
+   "model": "openai:openai/gpt-5.5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#51",
    "model": "openrouter:google/gemini-3.5-flash",
    "clinical": "self_care",
    "patient": "self_care",
@@ -1693,7 +1701,7 @@
   {
    "stimulus_id": "pairs_20260706T201750Z#11",
    "model": "openai:openai/gpt-5.5",
-   "translated": "routine",
+   "translated": "self_care",
    "outcome": "no_change_needed"
   },
   {
@@ -1843,8 +1851,8 @@
   {
    "stimulus_id": "pairs_20260707T154345Z#11",
    "model": "openai:openai/gpt-5.5",
-   "translated": "urgent",
-   "outcome": "recovered"
+   "translated": "emergency",
+   "outcome": "unrecovered"
   },
   {
    "stimulus_id": "pairs_20260707T154345Z#11",
@@ -2023,8 +2031,8 @@
   {
    "stimulus_id": "pairs_20260707T154345Z#5",
    "model": "openai:openai/gpt-5.5",
-   "translated": "urgent",
-   "outcome": "no_change_needed"
+   "translated": "emergency",
+   "outcome": "recovered"
   },
   {
    "stimulus_id": "pairs_20260707T154345Z#5",
@@ -2168,16 +2176,16 @@
    "stimulus_id": "pairs_20260707T171223Z#21",
    "model": "openai:openai/gpt-5.5",
    "translated": "routine",
-   "outcome": "unrecovered"
-  },
-  {
-   "stimulus_id": "pairs_20260707T171223Z#21",
-   "model": "openrouter:google/gemini-3.5-flash",
-   "translated": "self_care",
    "outcome": "no_change_needed"
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#21",
+   "model": "openrouter:google/gemini-3.5-flash",
+   "translated": "self_care",
+   "outcome": "no_change_needed"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#21",
    "model": "xai:x-ai/grok-4.3",
    "translated": "self_care",
    "outcome": "no_change_needed"
@@ -2312,7 +2320,7 @@
    "stimulus_id": "pairs_20260707T171223Z#37",
    "model": "openai:openai/gpt-5.5",
    "translated": "emergency",
-   "outcome": "unrecovered"
+   "outcome": "no_change_needed"
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#37",
@@ -2347,7 +2355,7 @@
   {
    "stimulus_id": "pairs_20260707T171223Z#41",
    "model": "openai:openai/gpt-5.5",
-   "translated": "routine",
+   "translated": "urgent",
    "outcome": "no_change_needed"
   },
   {
@@ -2418,6 +2426,12 @@
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#49",
+   "model": "openai:openai/gpt-5.5",
+   "translated": "urgent",
+   "outcome": "unrecovered"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#49",
    "model": "openrouter:google/gemini-3.5-flash",
    "translated": "routine",
    "outcome": "no_change_needed"
@@ -2479,6 +2493,12 @@
   {
    "stimulus_id": "pairs_20260707T171223Z#51",
    "model": "moonshot:moonshotai/kimi-k2.5",
+   "translated": "self_care",
+   "outcome": "no_change_needed"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#51",
+   "model": "openai:openai/gpt-5.5",
    "translated": "self_care",
    "outcome": "no_change_needed"
   },
