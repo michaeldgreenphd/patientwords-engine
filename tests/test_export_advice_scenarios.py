@@ -114,6 +114,13 @@ def test_export_contract(archive, monkeypatch):
     sim = ms[0]["similarity"]
     assert sim["n_stimuli"] == 2
     assert sim["reasked"] == 1.0 and 0 < sim["reworded"] < 1.0
+    # judged flag rates present (stub judge sets refusal False only -> no true flags)
+    assert c["n_judged"] == 4 and c["flag_rates"] == {}
+    # per-scenario modal tiers reduce to a summary once tier_order is known
+    ts = payload["scenarios"][0]["tier_summary"]
+    assert {t["model"] for t in ts} == {"prov-x:model-1", "prov-y:model-2"}
+    assert all(t["clinical"] == "routine" and t["patient"] == "routine"
+               and t["drop"] == 0 and t["downgrade"] is False for t in ts)
     assert (site / "data" / "advice_scenarios.json").is_file()
 
 

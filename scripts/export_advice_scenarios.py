@@ -156,9 +156,26 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
             translated = arm_block("translated", t_msg)
         if not any(b and b["responses"] for b in (clinical, patient, translated)):
             continue  # stimulus never elicited (offset/limit chunking) — skip, don't blank
+        # per-model judged tier counts for this scenario, both arms — main() reduces
+        # these to modal tiers + downgrade flags once the rubric's tier order is known
+        tc: dict[str, dict] = {}
+        for spec in model_order:
+            per_arm = {}
+            for arm in ("clinical", "patient"):
+                counts: dict[str, int] = {}
+                for r in cells.get((sid, arm, spec), []):
+                    judged = tiers.get(r.get("response_sha256"))
+                    if judged and judged.get("tier"):
+                        counts[judged["tier"]] = counts.get(judged["tier"], 0) + 1
+                if counts:
+                    per_arm[arm] = counts
+            if len(per_arm) == 2:
+                tc[spec] = per_arm
         scenarios.append({
             "id": sid,
             "topic": (item.get("meta") or {}).get("topic"),
+            "wording_gap": None,  # joined in main from the next-token payload when available
+            "tier_counts_by_model": tc or None,
             "clinical": clinical,
             "patient": patient,
             "translated": translated,
@@ -175,6 +192,8 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
     def _arm_stats(spec: str, arm: str) -> dict:
         words: list[int] = []
         tier_counts: dict[str, int] = {}
+        flag_counts: dict[str, int] = {}
+        n_judged = 0
         for (_sid, a, sp), recs in cells.items():
             if a != arm or sp != spec:
                 continue
@@ -185,11 +204,24 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
                 judged = tiers.get(r.get("response_sha256"))
                 if judged and judged.get("tier"):
                     tier_counts[judged["tier"]] = tier_counts.get(judged["tier"], 0) + 1
+                    n_judged += 1
+                    fl = judged.get("flags") or {}
+                    for k, v in fl.items():
+                        if v:
+                            flag_counts[k] = flag_counts.get(k, 0) + 1
+                    # derived interaction patterns (owner direction 2026-07-23):
+                    # probing en route to a referral vs probing instead of advising
+                    if fl.get("clarifying_question") and fl.get("professional_referral"):
+                        flag_counts["question_then_referral"] = flag_counts.get("question_then_referral", 0) + 1
+                    if fl.get("clarifying_question") and fl.get("refusal"):
+                        flag_counts["question_no_advice"] = flag_counts.get("question_no_advice", 0) + 1
         return {
             "n": len(words),
             "mean_words": round(sum(words) / len(words)) if words else None,
             "tier_counts": tier_counts or None,
             "tier_mean_rank": None,  # filled in main once the rubric's tier order is known
+            "n_judged": n_judged,
+            "flag_rates": {k: round(c / n_judged, 3) for k, c in sorted(flag_counts.items())} if n_judged else None,
         }
 
     # Answer stability vs wording: per model, mean pairwise word-set overlap
@@ -315,6 +347,39 @@ def main(argv=None) -> None:
                     total = sum(tc.values())
                     m[arm]["tier_mean_rank"] = round(
                         sum(ranks.get(t, 0) * c for t, c in tc.items()) / total, 2)
+
+        def modal(counts: dict) -> str:
+            # ties break toward the more urgent tier - the safety-conservative reading
+            return max(counts, key=lambda t: (counts[t], ranks.get(t, 0)))
+
+        for s in payload["scenarios"]:
+            tcbm = s.get("tier_counts_by_model")
+            if not tcbm:
+                continue
+            summary = []
+            for spec, per_arm in tcbm.items():
+                c, p = modal(per_arm["clinical"]), modal(per_arm["patient"])
+                drop = ranks.get(c, 0) - ranks.get(p, 0)  # positive = patient coded less urgent
+                summary.append({"model": spec, "clinical": c, "patient": p,
+                                "drop": drop, "downgrade": drop > 0})
+            s["tier_summary"] = summary
+
+    # join the next-token wording gap per scenario (id = "<batch>#<index>") from the
+    # simulated payload, so the site can plot advice drops against the token-level gap
+    site_payload = None
+    for cand in ([Path(args.site) / "data" / "simulated_scenarios.json"] if args.site else []) + \
+                [REPO_ROOT.parent / "patientwords" / "data" / "simulated_scenarios.json"]:
+        if Path(cand).is_file():
+            site_payload = json.loads(Path(cand).read_text(encoding="utf-8"))
+            break
+    if site_payload:
+        gaps = {}
+        for sc in site_payload.get("scenarios", []):
+            if sc.get("batch") is not None and sc.get("batch_index") is not None:
+                gaps[f"{sc['batch']}#{sc['batch_index']}"] = sc.get("language_penalty")
+        for s in payload["scenarios"]:
+            if s["id"] in gaps:
+                s["wording_gap"] = gaps[s["id"]]
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
