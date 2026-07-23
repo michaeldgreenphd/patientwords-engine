@@ -1428,6 +1428,192 @@ def cmd_verify_chain(args) -> None:
 # --------------------------------------------------------------------------- CLI
 
 
+
+# ---------------------------------------------------------------- repro packs
+
+DEFAULT_DISCLOSURE_LOG = "ops/disclosure_log.jsonl"
+PACK_README_TEMPLATE = "docs/repro_pack_readme_template.md"
+
+
+def _sha256_file(path):
+    p = Path(path)
+    if not p.is_file():
+        return None
+    return hashlib.sha256(p.read_bytes()).hexdigest()
+
+
+def _vendor_match(spec: str, vendor: str) -> bool:
+    """A record belongs to a vendor when its provider prefix matches OR the model slug
+    is that vendor's (openrouter:google/... belongs to google's pack)."""
+    provider, _, model = str(spec or "").partition(":")
+    return provider == vendor or model.startswith(vendor + "/")
+
+
+def pack_state(stimuli_path, rubric_path, registry_path, seed) -> dict:
+    """Current value of every manifest input - the freshness basis for --check."""
+    stem = Path(stimuli_path).stem
+    adv_dir = Path(stimuli_path).parent
+    responses = adv_dir / f"responses_{stem}.jsonl"
+    judgments = adv_dir / f"judgments_{stem}.jsonl"
+    rows = _read_jsonl(responses) if responses.is_file() else []
+    jrows = _read_jsonl(judgments) if judgments.is_file() else []
+    rubric = {}
+    if Path(rubric_path).is_file():
+        rubric = json.loads(Path(rubric_path).read_text(encoding="utf-8"))
+    return {
+        "stimuli_file": str(stimuli_path), "stimuli_sha256": _sha256_file(stimuli_path),
+        "responses_chain_head": rows[-1]["record_sha256"] if rows else None,
+        "responses_count": len(rows),
+        "rubric_sha256": _sha256_file(rubric_path), "rubric_version": rubric.get("version"),
+        "judgments_sha256": _sha256_file(judgments), "judgments_count": len(jrows),
+        "registry_sha256": _sha256_file(registry_path),
+        "analyze_seed": int(seed),
+    }
+
+
+def _log_entries(log_path) -> list[dict]:
+    p = Path(log_path)
+    return _read_jsonl(p) if p.is_file() else []
+
+
+def repro_pack(args) -> Path:
+    """Assemble a per-vendor reproduction bundle from the public archive alone.
+
+    DETERMINISTIC: same inputs -> byte-identical bundle. No wall clock enters the
+    bundle - the manifest's generated_utc is the newest received_utc in the archive
+    (a state timestamp), and pack_version is a content hash over the manifest inputs
+    plus the engine commit. Wall-clock time appears only in the disclosure LOG entry
+    (built_utc), which is not part of the bundle."""
+    state = pack_state(args.stimuli, args.rubric, args.providers, args.seed)
+    stem = Path(args.stimuli).stem
+    adv_dir = Path(args.stimuli).parent
+    rows_raw = [ln for ln in Path(adv_dir / f"responses_{stem}.jsonl").read_text(encoding="utf-8").splitlines() if ln]
+    vendor_lines, vendor_rows = [], []
+    for ln in rows_raw:
+        r = json.loads(ln)
+        if r.get("record_type") == "advice" and _vendor_match(r.get("model_requested"), args.vendor):
+            vendor_lines.append(ln)
+            vendor_rows.append(r)
+    if not vendor_rows:
+        raise SystemExit(f"no advice records match vendor {args.vendor!r}")
+    jpath = adv_dir / f"judgments_{stem}.jsonl"
+    j_lines = []
+    if jpath.is_file():
+        for ln in jpath.read_text(encoding="utf-8").splitlines():
+            if ln and _vendor_match(json.loads(ln).get("model"), args.vendor):
+                j_lines.append(ln)
+    received = [r.get("received_utc") or r.get("sent_utc") or "" for r in vendor_rows]
+    sents = sorted(r.get("sent_utc") or "" for r in vendor_rows)
+    builds = sorted({(r.get("model_returned"), r.get("build_fingerprint")) for r in vendor_rows})
+    manifest = dict(state)
+    manifest.update({
+        "vendor": args.vendor, "vendor_records": len(vendor_rows),
+        "vendor_judgments": len(j_lines),
+        "engine_commit": engine_sha(),
+        "generated_utc": max(received) or None,  # state timestamp, not wall clock (determinism)
+    })
+    manifest["pack_version"] = "v" + sha256_text(canonical_json(manifest))[:12]
+    out_root = Path(args.out)
+    bundle = out_root / f"advice_repro_{args.vendor}_{manifest['pack_version']}"
+    bundle.mkdir(parents=True, exist_ok=True)
+    (bundle / "MANIFEST.json").write_text(canonical_json(manifest) + "\n", encoding="utf-8")
+    (bundle / "records.jsonl").write_text("\n".join(vendor_lines) + "\n", encoding="utf-8")
+    csv_cols = ["stimulus_id", "arm", "sample_k", "sent_utc", "latency_ms", "model_requested",
+                "model_returned", "request_id", "build_fingerprint", "response_sha256"]
+    csv_lines = [",".join(csv_cols)]
+    for r in vendor_rows:
+        csv_lines.append(",".join("" if r.get(c) is None else str(r.get(c)).replace(",", ";") for c in csv_cols))
+    (bundle / "records.csv").write_text("\n".join(csv_lines) + "\n", encoding="utf-8")
+    if j_lines:
+        (bundle / "judgments.jsonl").write_text("\n".join(j_lines) + "\n", encoding="utf-8")
+    if Path(args.rubric).is_file():
+        (bundle / "rubric.json").write_bytes(Path(args.rubric).read_bytes())
+    build_txt = "; ".join(f"{m or '-'}" + (f" ({f})" if f else "") for m, f in builds)
+    tmpl_path = REPO_ROOT_PATH / PACK_README_TEMPLATE if (REPO_ROOT_PATH / PACK_README_TEMPLATE).is_file() \
+        else Path(PACK_README_TEMPLATE)
+    tmpl = tmpl_path.read_text(encoding="utf-8")
+    readme = tmpl.format(
+        vendor=args.vendor, n_records=len(vendor_rows), n_judgments=len(j_lines),
+        window=(sents[0][:10] + " to " + sents[-1][:10]) if sents and sents[0] else "-",
+        builds=build_txt, rubric_version=state.get("rubric_version") or "none yet",
+        chain_head=state.get("responses_chain_head"), pack_version=manifest["pack_version"],
+        responses_file=f"data/advice/responses_{stem}.jsonl",
+        stimuli_file=str(args.stimuli), seed=args.seed,
+    )
+    (bundle / "README.md").write_text(readme, encoding="utf-8")
+    # disclosure log: one build event per NEW pack_version (idempotent rebuilds skip)
+    entries = _log_entries(args.log)
+    if not any(e.get("pack_version") == manifest["pack_version"] for e in entries):
+        prior = [e for e in entries if e.get("vendor") == args.vendor]
+        entry = {"pack_version": manifest["pack_version"], "vendor": args.vendor,
+                 "manifest": manifest, "built_utc": utc_now_iso(), "sent_utc": None,
+                 "sent_to": None,
+                 "supersedes": prior[-1]["pack_version"] if prior else None,
+                 "note": args.note or "built"}
+        Path(args.log).parent.mkdir(parents=True, exist_ok=True)
+        with open(args.log, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    print(f"pack {manifest['pack_version']} for {args.vendor}: {len(vendor_rows)} records -> {bundle}")
+    return bundle
+
+
+_CHECK_FIELDS = ("stimuli_sha256", "responses_chain_head", "responses_count", "rubric_sha256",
+                 "rubric_version", "judgments_sha256", "judgments_count", "registry_sha256")
+
+
+def repro_pack_check(args) -> int:
+    """FRESH/STALE per logged pack vs the archive's current state; exit 2 when a
+    vendor's latest SENT pack is stale (the vendor holds an outdated bundle)."""
+    entries = _log_entries(args.log)
+    if not entries:
+        print("disclosure log empty - no packs to check")
+        return 0
+    escalate = False
+    latest_by_vendor: dict[str, dict] = {}
+    latest_sent: dict[str, dict] = {}
+    for e in entries:
+        latest_by_vendor[e["vendor"]] = e
+        if e.get("sent_utc"):
+            latest_sent[e["vendor"]] = e
+    for vendor, e in sorted(latest_by_vendor.items()):
+        man = e["manifest"]
+        cur = pack_state(man["stimuli_file"], args.rubric, args.providers, man.get("analyze_seed", args.seed))
+        moved = []
+        for f in _CHECK_FIELDS:
+            if man.get(f) != cur.get(f):
+                moved.append(f"{f}: {man.get(f)} -> {cur.get(f)}")
+        status = "FRESH" if not moved else "STALE"
+        print(f"{status}  {e['pack_version']}  {vendor}" + ("" if not moved else "  | " + "; ".join(moved)))
+        sent = latest_sent.get(vendor)
+        if sent and status == "STALE" and sent["pack_version"] == e["pack_version"]:
+            print(f"ESCALATION: sent pack {e['pack_version']} ({vendor}, sent {sent['sent_utc']}) is stale - "
+                  f"an updated pack is owed")
+            escalate = True
+        elif sent and sent["pack_version"] != e["pack_version"]:
+            print(f"note: {vendor} last SENT pack is {sent['pack_version']}; latest built is {e['pack_version']} "
+                  f"(unsent) - send the superseding pack")
+            escalate = True
+    return 2 if escalate else 0
+
+
+def repro_pack_record_sent(args) -> None:
+    entries = _log_entries(args.log)
+    match = [e for e in entries if e.get("pack_version") == args.record_sent]
+    if not match:
+        raise SystemExit(f"pack {args.record_sent!r} not in {args.log}")
+    base = match[-1]
+    entry = dict(base)
+    entry.update({"sent_utc": utc_now_iso(), "sent_to": args.sent_to or "unspecified role",
+                  "supersedes": base.get("supersedes"), "note": args.note or "sent"})
+    with open(args.log, "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    print(f"recorded send of {args.record_sent} to {entry['sent_to']}")
+
+
+REPO_ROOT_PATH = Path(__file__).resolve().parents[1]
+
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1516,6 +1702,24 @@ def build_parser() -> argparse.ArgumentParser:
     rec.add_argument("--source-run-id", default="",
                      help="CI run id the artifact came from (provenance, recorded in the sidecar)")
     rec.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
+
+    rp = sub.add_parser("repro-pack",
+                        help="assemble a deterministic per-vendor reproduction bundle (dist/, never "
+                             "committed); --check audits pack freshness against the disclosure log")
+    rp.add_argument("--stimuli", help="stimuli file whose archive feeds the pack (build mode)")
+    rp.add_argument("--vendor", help="provider name; matches provider prefix or vendor/model slugs")
+    rp.add_argument("--rubric", default="data/advice_rubric.draft.json")
+    rp.add_argument("--providers", default="data/advice_providers.json")
+    rp.add_argument("--seed", type=int, default=7)
+    rp.add_argument("--out", default="dist")
+    rp.add_argument("--log", default=DEFAULT_DISCLOSURE_LOG)
+    rp.add_argument("--note", default="")
+    rp.add_argument("--check", action="store_true",
+                    help="recompute every manifest input; FRESH/STALE per logged pack; exit 2 when a "
+                         "sent pack is stale or superseded-but-unsent")
+    rp.add_argument("--record-sent", metavar="PACK_VERSION",
+                    help="append a send event for an existing pack version")
+    rp.add_argument("--sent-to", default="", help="role/channel reference only - never private contact details")
     return parser
 
 
@@ -1541,6 +1745,15 @@ def main(argv=None) -> None:
         cmd_verify_chain(args)
     elif args.command == "recover-archive":
         recover_archive(args)
+    elif args.command == "repro-pack":
+        if args.check:
+            raise SystemExit(repro_pack_check(args))
+        if args.record_sent:
+            repro_pack_record_sent(args)
+        elif not (args.stimuli and args.vendor):
+            raise SystemExit("repro-pack build mode requires --stimuli and --vendor")
+        else:
+            repro_pack(args)
 
 
 if __name__ == "__main__":

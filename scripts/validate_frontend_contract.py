@@ -429,6 +429,23 @@ def main():
         sys.exit(2)
     rep = validate(site, Path(args.engine) if args.engine else None, strict=args.strict)
 
+    # repro-pack currency (owner directive 2026-07-23): a sent vendor pack that has
+    # gone stale against the archive must surface within a daily cycle, not wait for
+    # someone to remember. The disclosure log lives in the engine checkout.
+    engine_root = Path(args.engine) if args.engine else Path(__file__).resolve().parents[1]
+    log = engine_root / "ops" / "disclosure_log.jsonl"
+    if log.is_file() and log.stat().st_size > 0:
+        import subprocess
+        r = subprocess.run(
+            [sys.executable, str(engine_root / "scripts" / "advice_eval.py"), "repro-pack", "--check",
+             "--log", str(log)],
+            capture_output=True, text=True, cwd=str(engine_root))
+        if not args.quiet and r.stdout.strip():
+            print(r.stdout.strip())
+        if r.returncode == 2:
+            rep.errors.append("repro-pack --check: a SENT vendor pack is stale or superseded-unsent "
+                              "(see lines above) - an updated pack is owed before any per-model publication")
+
     if not args.quiet:
         for w in rep.warnings:
             print("warn:", w)
