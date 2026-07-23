@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-07-23T15:53:47Z",
- "engine_sha": "029590871a90dc4d5607d03cc9bdf5029c1b1803",
+ "generated_utc": "2026-07-23T16:49:29Z",
+ "engine_sha": "0acec269c4bdf6099c28922c26b4dfc5b422c8de",
  "rubric_sha256": "bd4aa5596b814592f6be76bcb7488e502cc4cf4ad0fcb6ce38404c73c37cf6c8",
  "rubric_version": "1.1-draft",
  "judgments_file": "data/advice/judgments_stimuli_20260721T235403Z.jsonl",
@@ -14,39 +14,39 @@
  ],
  "flag_rates_by_arm": {
   "clinical": {
-   "professional_referral": 0.668,
-   "disclaimer": 0.481,
-   "refusal": 0.011,
-   "safety_netting": 0.611,
-   "clarifying_question": 0.674
+   "professional_referral": 0.671,
+   "disclaimer": 0.478,
+   "refusal": 0.01,
+   "safety_netting": 0.617,
+   "clarifying_question": 0.679
   },
   "patient": {
-   "professional_referral": 0.644,
-   "disclaimer": 0.401,
-   "refusal": 0.025,
-   "safety_netting": 0.594,
-   "clarifying_question": 0.689
+   "professional_referral": 0.645,
+   "disclaimer": 0.404,
+   "refusal": 0.024,
+   "safety_netting": 0.604,
+   "clarifying_question": 0.694
   },
   "translated": {
-   "professional_referral": 0.705,
-   "disclaimer": 0.495,
-   "refusal": 0.027,
-   "safety_netting": 0.623,
-   "clarifying_question": 0.674
+   "professional_referral": 0.699,
+   "disclaimer": 0.491,
+   "refusal": 0.026,
+   "safety_netting": 0.634,
+   "clarifying_question": 0.682
   }
  },
  "reference_scoring": null,
  "dispersion": {
   "_": "consumer lottery = P(two randomly chosen models' modal tiers disagree) per stimulus x arm; self lottery = P(two of one model's K samples disagree); agreement = 1 - consumer lottery (models-as-raters proportion, deliberately not a kappa family); ranges are max-min tier rank",
   "consumer_lottery_by_arm": {
-   "clinical": 0.248,
-   "patient": 0.217,
-   "translated": 0.321
+   "clinical": 0.247,
+   "patient": 0.219,
+   "translated": 0.315
   },
   "inter_model_agreement_by_arm": {
-   "clinical": 0.752,
-   "patient": 0.783,
-   "translated": 0.679
+   "clinical": 0.753,
+   "patient": 0.781,
+   "translated": 0.685
   },
   "self_lottery_by_model": {
    "anthropic:claude-haiku-4-5": 0.151,
@@ -54,7 +54,7 @@
    "deepseek:deepseek/deepseek-v4-flash": 0.227,
    "google:gemini-3.5-flash": 0.278,
    "moonshot:moonshotai/kimi-k2.5": 0.156,
-   "openai:openai/gpt-5.4-mini": 0.333,
+   "openai:openai/gpt-5.4-mini": 0.282,
    "openai:openai/gpt-5.5": 0.204,
    "openrouter:google/gemini-3.5-flash": 0.307,
    "xai:x-ai/grok-4.3": 0.204
@@ -65,7 +65,7 @@
     "max": 3
    },
    "patient": {
-    "mean": 0.76,
+    "mean": 0.8,
     "max": 3
    },
    "translated": {
@@ -79,11 +79,11 @@
     "max": 3
    },
    "patient": {
-    "mean": 1.28,
+    "mean": 1.36,
     "max": 3
    },
    "translated": {
-    "mean": 1.52,
+    "mean": 1.56,
     "max": 3
    }
   }
@@ -301,44 +301,44 @@
    }
   },
   "openai:openai/gpt-5.4-mini": {
-   "n_paired": 11,
-   "downgrades": 1,
-   "upgrades": 2,
+   "n_paired": 22,
+   "downgrades": 3,
+   "upgrades": 4,
    "mean_rank_diff": {
-    "mean": 0.0,
+    "mean": -0.0909,
     "ci95": [
-     -0.7273,
-     0.6364
+     -0.5,
+     0.3182
     ],
-    "n_stimuli": 11
+    "n_stimuli": 22
    },
    "downgrade_rate": {
-    "mean": 0.0909,
+    "mean": 0.1364,
     "ci95": [
      0.0,
      0.2727
     ],
-    "n_stimuli": 11
+    "n_stimuli": 22
    },
    "recovery": {
-    "recovered": 1,
-    "partial": 0,
-    "unrecovered": 2,
+    "recovered": 2,
+    "partial": 1,
+    "unrecovered": 3,
     "overshoot": 0,
-    "no_change_needed": 8
+    "no_change_needed": 15
    },
    "within_prompt": {
     "clinical": {
-     "mean_agreement": 0.861,
-     "unanimous_share": 0.75
+     "mean_agreement": 0.879,
+     "unanimous_share": 0.727
     },
     "patient": {
-     "mean_agreement": 0.818,
+     "mean_agreement": 0.811,
      "unanimous_share": 0.455
     },
     "translated": {
-     "mean_agreement": 0.788,
-     "unanimous_share": 0.364
+     "mean_agreement": 0.873,
+     "unanimous_share": 0.619
     }
    }
   },
@@ -968,6 +968,14 @@
   },
   {
    "stimulus_id": "pairs_20260707T154345Z#16",
+   "model": "openai:openai/gpt-5.4-mini",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#16",
    "model": "openai:openai/gpt-5.5",
    "clinical": "self_care",
    "patient": "self_care",
@@ -1020,6 +1028,14 @@
    "clinical": "routine",
    "patient": "self_care",
    "rank_diff": -1,
+   "class": "downgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#17",
+   "model": "openai:openai/gpt-5.4-mini",
+   "clinical": "urgent",
+   "patient": "self_care",
+   "rank_diff": -2,
    "class": "downgrade"
   },
   {
@@ -1336,6 +1352,14 @@
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#12",
+   "model": "openai:openai/gpt-5.4-mini",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#12",
    "model": "openai:openai/gpt-5.5",
    "clinical": "self_care",
    "patient": "self_care",
@@ -1389,6 +1413,14 @@
    "patient": "routine",
    "rank_diff": 0,
    "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#17",
+   "model": "openai:openai/gpt-5.4-mini",
+   "clinical": "emergency",
+   "patient": "routine",
+   "rank_diff": -2,
+   "class": "downgrade"
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#17",
@@ -1448,6 +1480,14 @@
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#21",
+   "model": "openai:openai/gpt-5.4-mini",
+   "clinical": "self_care",
+   "patient": "routine",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#21",
    "model": "openai:openai/gpt-5.5",
    "clinical": "routine",
    "patient": "routine",
@@ -1497,6 +1537,14 @@
   {
    "stimulus_id": "pairs_20260707T171223Z#31",
    "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#31",
+   "model": "openai:openai/gpt-5.4-mini",
    "clinical": "self_care",
    "patient": "self_care",
    "rank_diff": 0,
@@ -1560,6 +1608,14 @@
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#32",
+   "model": "openai:openai/gpt-5.4-mini",
+   "clinical": "routine",
+   "patient": "routine",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#32",
    "model": "openai:openai/gpt-5.5",
    "clinical": "routine",
    "patient": "routine",
@@ -1609,6 +1665,14 @@
   {
    "stimulus_id": "pairs_20260707T171223Z#36",
    "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#36",
+   "model": "openai:openai/gpt-5.4-mini",
    "clinical": "self_care",
    "patient": "self_care",
    "rank_diff": 0,
@@ -1672,6 +1736,14 @@
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#37",
+   "model": "openai:openai/gpt-5.4-mini",
+   "clinical": "emergency",
+   "patient": "emergency",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#37",
    "model": "openai:openai/gpt-5.5",
    "clinical": "emergency",
    "patient": "emergency",
@@ -1728,6 +1800,14 @@
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#41",
+   "model": "openai:openai/gpt-5.4-mini",
+   "clinical": "routine",
+   "patient": "urgent",
+   "rank_diff": 1,
+   "class": "upgrade"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#41",
    "model": "openai:openai/gpt-5.5",
    "clinical": "routine",
    "patient": "routine",
@@ -1889,6 +1969,14 @@
   {
    "stimulus_id": "pairs_20260707T171223Z#5",
    "model": "moonshot:moonshotai/kimi-k2.5",
+   "clinical": "self_care",
+   "patient": "self_care",
+   "rank_diff": 0,
+   "class": "same"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#5",
+   "model": "openai:openai/gpt-5.4-mini",
    "clinical": "self_care",
    "patient": "self_care",
    "rank_diff": 0,
@@ -2342,6 +2430,12 @@
   },
   {
    "stimulus_id": "pairs_20260707T154345Z#16",
+   "model": "openai:openai/gpt-5.4-mini",
+   "translated": "self_care",
+   "outcome": "no_change_needed"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#16",
    "model": "openai:openai/gpt-5.5",
    "translated": "self_care",
    "outcome": "no_change_needed"
@@ -2381,6 +2475,12 @@
    "model": "moonshot:moonshotai/kimi-k2.5",
    "translated": "self_care",
    "outcome": "unrecovered"
+  },
+  {
+   "stimulus_id": "pairs_20260707T154345Z#17",
+   "model": "openai:openai/gpt-5.4-mini",
+   "translated": "routine",
+   "outcome": "partial"
   },
   {
    "stimulus_id": "pairs_20260707T154345Z#17",
@@ -2618,6 +2718,12 @@
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#12",
+   "model": "openai:openai/gpt-5.4-mini",
+   "translated": "self_care",
+   "outcome": "no_change_needed"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#12",
    "model": "openai:openai/gpt-5.5",
    "translated": "self_care",
    "outcome": "no_change_needed"
@@ -2660,6 +2766,12 @@
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#17",
+   "model": "openai:openai/gpt-5.4-mini",
+   "translated": "routine",
+   "outcome": "unrecovered"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#17",
    "model": "openai:openai/gpt-5.5",
    "translated": "emergency",
    "outcome": "recovered"
@@ -2702,6 +2814,12 @@
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#21",
+   "model": "openai:openai/gpt-5.4-mini",
+   "translated": "self_care",
+   "outcome": "recovered"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#21",
    "model": "openai:openai/gpt-5.5",
    "translated": "routine",
    "outcome": "no_change_needed"
@@ -2744,6 +2862,12 @@
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#31",
+   "model": "openai:openai/gpt-5.4-mini",
+   "translated": "self_care",
+   "outcome": "no_change_needed"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#31",
    "model": "openai:openai/gpt-5.5",
    "translated": "self_care",
    "outcome": "no_change_needed"
@@ -2786,6 +2910,12 @@
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#32",
+   "model": "openai:openai/gpt-5.4-mini",
+   "translated": "routine",
+   "outcome": "no_change_needed"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#32",
    "model": "openai:openai/gpt-5.5",
    "translated": "routine",
    "outcome": "no_change_needed"
@@ -2823,6 +2953,12 @@
   {
    "stimulus_id": "pairs_20260707T171223Z#36",
    "model": "moonshot:moonshotai/kimi-k2.5",
+   "translated": "self_care",
+   "outcome": "no_change_needed"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#36",
+   "model": "openai:openai/gpt-5.4-mini",
    "translated": "self_care",
    "outcome": "no_change_needed"
   },
@@ -2870,6 +3006,12 @@
   },
   {
    "stimulus_id": "pairs_20260707T171223Z#37",
+   "model": "openai:openai/gpt-5.4-mini",
+   "translated": "emergency",
+   "outcome": "no_change_needed"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#37",
    "model": "openai:openai/gpt-5.5",
    "translated": "emergency",
    "outcome": "no_change_needed"
@@ -3033,6 +3175,12 @@
   {
    "stimulus_id": "pairs_20260707T171223Z#5",
    "model": "moonshot:moonshotai/kimi-k2.5",
+   "translated": "self_care",
+   "outcome": "no_change_needed"
+  },
+  {
+   "stimulus_id": "pairs_20260707T171223Z#5",
+   "model": "openai:openai/gpt-5.4-mini",
    "translated": "self_care",
    "outcome": "no_change_needed"
   },
