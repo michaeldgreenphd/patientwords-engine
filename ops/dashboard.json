@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "updated_utc": "2026-07-24T13:21:16Z",
+ "updated_utc": "2026-07-24T13:37:57Z",
  "updated_by": "routine",
  "queue": {
   "circuit-trace": {
@@ -314,12 +314,6 @@
    "context": "docs/skeptic_read_20260709.md: single-case caveat, word-diff example mismatch, model-eval softening are yours to phrase when back. (The pooled-count dedupe half of this item is DONE - deduped stats published site-wide 2026-07-09.)"
   },
   {
-   "id": "BACKFILL-ACCEL-BLOCKED",
-   "title": "Every-2h backfill accelerator can't be auto-created (create-trigger approval fails on owner surface)",
-   "context": "Owner asked (2026-07-20) to accelerate all backfill except the 2 8B-medical models and let those catch up last. Deferral is DONE + live (planner). The every-2h autonomous Routine that would saturate the lanes is blocked by the SAME create-trigger approval channel that killed the standalone critic Routine. Options: (a) accept daily-cycle + manual pace (weeks, 8B-medical last); (b) owner creates the Routine on a surface where approval works; (c) session-live driving for near-term speed. 8B-medical deferral holds regardless.",
-   "opened": "2026-07-20"
-  },
-  {
    "id": "LEDGER-DELTA-FOLD",
    "title": "ledger_update.py: fold deltas of grown cumulative sidecars (critic 07-23 HIGH)",
    "context": "scan_new_sidecars keys entries_seen by filename, so a sidecar that grows after first fold never re-folds (advice arms understated 07-23 by ~$3.9 on fold-date basis; totals self-correct at full value once, on first-seen date). Fix: track {name: last_folded_cost}, book the delta, regression test. Queued next engineering slot; no spend risk today (all queued work $0)."
@@ -336,6 +330,7 @@
   }
  ],
  "notes": [
+  "2026-07-24 OWNER DECISION (in-session): backfill acceleration = option (c), session-live driving; no every-2h Routine will be created. Owner on vacation - orchestrator session chains lanes via check-in timers with unconditional re-arm; the daily 13:00 Routine firing into this session is the self-healing backstop (a container reclaim pauses chaining at most until the next 13:00 fire, when timers re-arm). 8B-medical models stay HELD until explicit owner release. Vacation posture: anything ambiguous goes to decisions_pending, never acted on.",
   "2026-07-24: Neuronpedia 429 throttling since 07-23 21:50 caps trace runs at ~70min windows (~15 pairs or ~4-5 baselines each). Orchestrator session chains continuations round-the-clock; jlens lane HELD until trace backfill completes (cross-lane concurrency triggered the 429 cascade). Weekend plan per docs/handoff_20260724_trace_pace.md: Sunday republish ships regardless; 17T/18T/19T tail may finish Mon-Tue via nightly cycle.",
   "DISCLOSURE 2026-07-23/24: several non-Routine fires wrote the dashboard queue view via fire_trigger git publish (queue-view-only); overnight fires used --no-git + revert correctly. Also spend.by_day understates real spend-dates: ledger books grown/late-seen sidecars on fold date (e.g. judgments_stimuli_20260722T003502Z $0.3484 booked 07-24, incurred 07-22); lifetime total is correct.",
   "2026-07-23 cycle: CRITIC HIGH (docs/critic/critic_20260723.md) - ledger_update never re-folds grown cumulative advice sidecars; spend.today understates landed advice spend (booked $1.23 for 07-23 vs ~$5.1+ per-record). Today's fires governed by the orchestrator's independent worst-case tally (<=$9.08 vs $9.50 owner override); delta-folding fix + regression test queued. Amendment 4 arms in flight: hedge running, sonnet pending, mini (0.45) chains when a slot frees. Generation skipped (advice chain owns the paid budget; floor batch on branch).",
