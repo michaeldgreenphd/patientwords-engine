@@ -658,3 +658,4 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - judgments_stimuli_20260722T112140Z.report.json · $0.2726 · alias · accepted — · —
 - responses_stimuli_20260722T003502Z.report.json · $0.2290 · alias · accepted — · —
 - responses_stimuli_20260722T112140Z.report.json · $0.4657 · alias · accepted — · —
+- judgments_stimuli_20260722T003502Z.report.json · $0.3484 · alias · accepted — · —
