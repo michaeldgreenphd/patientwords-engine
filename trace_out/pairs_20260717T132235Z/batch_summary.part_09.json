@@ -1,0 +1,1764 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 9,
+  "pairs_requested": 20,
+  "completed": true,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "00a025a2edc7",
+    "runner_image": "20260720.247.2"
+  },
+  "results": [
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing polyuria, so I'm worried I might have a",
+        "patient": "I've been peeing all the time lately, so I'm worried I might have a"
+      },
+      "target_token": "Output \" UTI\"",
+      "probabilities": {
+        "clinical": 0.357,
+        "patient": 0.699
+      },
+      "language_penalty": 0.34199999999999997,
+      "clinical_mass": {
+        "clinical": 0.3904,
+        "patient": 0.3393
+      },
+      "error_share": {
+        "clinical": 0.1012,
+        "patient": 0.1014
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L20\u00b7C] words related to medical procedures, especially rela \u2192 [L25\u00b7C] medical terminology and symptoms related to kidney f \u2192 Output \" kidney\" (p=0.218)",
+        "patient": "embedding \u2192 [L4\u00b7C] words and abbreviations related to medical tests and \u2192 [L6\u00b7C] words or phrases related to bodily functions and the \u2192 [L18\u00b7O] words related to the process of urination, particula \u2192 [L20\u00b7C] words related to medical procedures, especially rela \u2192 [L25\u00b7C] medical terminology and symptoms related to kidney f \u2192 Output \" kidney\" (p=0.024)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" UTI\"",
+            0.357
+          ],
+          [
+            "Output \" kidney\"",
+            0.218
+          ],
+          [
+            "Output \" urinary\"",
+            0.091
+          ],
+          [
+            "Output \" uti\"",
+            0.033
+          ],
+          [
+            "Output \" bladder\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" UTI\"",
+            0.699
+          ],
+          [
+            "Output \" bladder\"",
+            0.083
+          ],
+          [
+            "Output \" urinary\"",
+            0.074
+          ],
+          [
+            "Output \" uti\"",
+            0.065
+          ],
+          [
+            "Output \" kidney\"",
+            0.024
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 549,
+        "unique_to_a": 906,
+        "unique_to_b": 848
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_09.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_09.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_09_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_09_diff.png"
+      }
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing edema, so I should probably see a",
+        "patient": "I've been retaining water something awful, so I should probably see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.559,
+        "patient": 0.684
+      },
+      "language_penalty": 0.125,
+      "clinical_mass": {
+        "clinical": 0.3957,
+        "patient": 0.2897
+      },
+      "error_share": {
+        "clinical": 0.0912,
+        "patient": 0.0958
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.559)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.684)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.559
+          ],
+          [
+            "Output \" doc\"",
+            0.059
+          ],
+          [
+            "Output \" specialist\"",
+            0.046
+          ],
+          [
+            "Output \" cardio\"",
+            0.046
+          ],
+          [
+            "Output \" po\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.684
+          ],
+          [
+            "Output \" doc\"",
+            0.093
+          ],
+          [
+            "Output \" dr\"",
+            0.044
+          ],
+          [
+            "Output \" Dr\"",
+            0.034
+          ],
+          [
+            "Output \" specialist\"",
+            0.013
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 672,
+        "unique_to_a": 540,
+        "unique_to_b": 516
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_10.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_10.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_10_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_10_diff.png"
+      }
+    },
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I think I have low sperm motility, so we should probably get my",
+        "patient": "I think my swimmers are slow, so we should probably get my"
+      },
+      "target_token": "Output \" husband\"",
+      "probabilities": {
+        "clinical": 0.336,
+        "patient": 0.083
+      },
+      "language_penalty": -0.253,
+      "clinical_mass": {
+        "clinical": 0.2254,
+        "patient": 0.1056
+      },
+      "error_share": {
+        "clinical": 0.0998,
+        "patient": 0.0943
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sperm\" (p=0.035)",
+        "patient": "embedding \u2192 Output \" \" (p=0.073)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" husband\"",
+            0.336
+          ],
+          [
+            "Output \" wife\"",
+            0.262
+          ],
+          [
+            "Output \" partner\"",
+            0.058
+          ],
+          [
+            "Output \" tubes\"",
+            0.058
+          ],
+          [
+            "Output \" sperm\"",
+            0.035
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" son\"",
+            0.094
+          ],
+          [
+            "Output \" husband\"",
+            0.083
+          ],
+          [
+            "Output \" \"",
+            0.073
+          ],
+          [
+            "Output \" daughter\"",
+            0.057
+          ],
+          [
+            "Output \" kids\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 631,
+        "unique_to_a": 582,
+        "unique_to_b": 586
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_11.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_11.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_11_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_11_diff.png"
+      }
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have vasomotor symptoms, so my doctor wants to check my",
+        "patient": "I've been getting hot flashes like crazy, so my doctor wants to check my"
+      },
+      "target_token": "Output \" hormones\"",
+      "probabilities": {
+        "clinical": 0.048,
+        "patient": 0.151
+      },
+      "language_penalty": 0.103,
+      "clinical_mass": {
+        "clinical": 0.5034,
+        "patient": 0.3773
+      },
+      "error_share": {
+        "clinical": 0.108,
+        "patient": 0.0971
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] scientific text that discusses hormones | hormones/s \u2192 [L21\u00b7C] scientific or medical terminology, especially relate \u2192 [L25\u00b7C] content related to hormones and immunity | Scientifi \u2192 Output \" hormone\" (p=0.037)",
+        "patient": "embedding \u2192 [L19\u00b7O] terms related to hormones and pituitary glands | rel \u2192 [L25\u00b7C] content related to hormones and immunity | Scientifi \u2192 Output \" hormone\" (p=0.104)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" thyroid\"",
+            0.167
+          ],
+          [
+            "Output \" blood\"",
+            0.13
+          ],
+          [
+            "Output \" estrogen\"",
+            0.115
+          ],
+          [
+            "Output \" hormones\"",
+            0.048
+          ],
+          [
+            "Output \" hormone\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" thyroid\"",
+            0.412
+          ],
+          [
+            "Output \" hormones\"",
+            0.151
+          ],
+          [
+            "Output \" hormone\"",
+            0.104
+          ],
+          [
+            "Output \" estrogen\"",
+            0.063
+          ],
+          [
+            "Output \" blood\"",
+            0.063
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 637,
+        "unique_to_a": 791,
+        "unique_to_b": 819
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_12.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_12.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_12_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_12_diff.png"
+      }
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing nocturnal diaphoresis, so I'm wondering if I might have a",
+        "patient": "I've been sweating buckets at night, so I'm wondering if I might have a"
+      },
+      "target_token": "Output \" thyroid\"",
+      "probabilities": {
+        "clinical": 0.104,
+        "patient": 0.089
+      },
+      "language_penalty": -0.015,
+      "clinical_mass": {
+        "clinical": 0.3928,
+        "patient": 0.25
+      },
+      "error_share": {
+        "clinical": 0.1064,
+        "patient": 0.0981
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sleep\" (p=0.092)",
+        "patient": "embedding \u2192 Output \" sleep\" (p=0.054)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" thyroid\"",
+            0.104
+          ],
+          [
+            "Output \" sleep\"",
+            0.092
+          ],
+          [
+            "Output \" problem\"",
+            0.063
+          ],
+          [
+            "Output \" condition\"",
+            0.056
+          ],
+          [
+            "Output \" hyper\"",
+            0.034
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" thyroid\"",
+            0.089
+          ],
+          [
+            "Output \" sinus\"",
+            0.069
+          ],
+          [
+            "Output \" yeast\"",
+            0.054
+          ],
+          [
+            "Output \" sleep\"",
+            0.054
+          ],
+          [
+            "Output \" problem\"",
+            0.037
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 714,
+        "unique_to_a": 854,
+        "unique_to_b": 812
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_13.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_13.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_13_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_13_diff.png"
+      }
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I woke up with fever last night, so I think I might have a",
+        "patient": "I woke up burning up last night, so I think I might have a"
+      },
+      "target_token": "Output \" cold\"",
+      "probabilities": {
+        "clinical": 0.543,
+        "patient": 0.237
+      },
+      "language_penalty": -0.30600000000000005,
+      "clinical_mass": {
+        "clinical": 0.3613,
+        "patient": 0.2862
+      },
+      "error_share": {
+        "clinical": 0.095,
+        "patient": 0.0985
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L19\u00b7C] words and phrases related to being sick and medical  \u2192 Output \" cold\" (p=0.543)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7C] words and phrases related to being sick and medical  \u2192 Output \" cold\" (p=0.237)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cold\"",
+            0.543
+          ],
+          [
+            "Output \" mild\"",
+            0.039
+          ],
+          [
+            "Output \" little\"",
+            0.039
+          ],
+          [
+            "Output \" slight\"",
+            0.035
+          ],
+          [
+            "Output \" bad\"",
+            0.035
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" fever\"",
+            0.268
+          ],
+          [
+            "Output \" cold\"",
+            0.237
+          ],
+          [
+            "Output \" little\"",
+            0.047
+          ],
+          [
+            "Output \" mild\"",
+            0.036
+          ],
+          [
+            "Output \" virus\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 852,
+        "unique_to_a": 409,
+        "unique_to_b": 408
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_14.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_14.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_14_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_14_diff.png"
+      }
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My partner has erectile dysfunction, so we should probably get his",
+        "patient": "My man's been acting strange down there, so we should probably get his"
+      },
+      "target_token": "Output \" testosterone\"",
+      "probabilities": {
+        "clinical": 0.055,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2776,
+        "patient": 0.1963
+      },
+      "error_share": {
+        "clinical": 0.1014,
+        "patient": 0.0939
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" penis\" (p=0.038)",
+        "patient": "[L20\u00b7S]  \u2192 [L22\u00b7O] text related to sexual activity | Balls \u2192 [L24\u00b7C] words and phrases relating to unwanted sexual intere \u2192 Output \" balls\" (p=0.086)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.17
+          ],
+          [
+            "Output \" doctor\"",
+            0.071
+          ],
+          [
+            "Output \" testosterone\"",
+            0.055
+          ],
+          [
+            "Output \" prostate\"",
+            0.038
+          ],
+          [
+            "Output \" penis\"",
+            0.038
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" prostate\"",
+            0.182
+          ],
+          [
+            "Output \" balls\"",
+            0.086
+          ],
+          [
+            "Output \" blood\"",
+            0.076
+          ],
+          [
+            "Output \" testi\"",
+            0.036
+          ],
+          [
+            "Output \" nuts\"",
+            0.022
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 556,
+        "unique_to_a": 704,
+        "unique_to_b": 826
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_15.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_15.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_15_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_15_diff.png"
+      }
+    },
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since my thyroid became dysregulated, I've been needing to take an",
+        "patient": "Ever since my thyroid went haywire, I've been needing to take an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.224,
+        "patient": 0.196
+      },
+      "language_penalty": -0.027999999999999997,
+      "clinical_mass": {
+        "clinical": 0.294,
+        "patient": 0.2844
+      },
+      "error_share": {
+        "clinical": 0.0996,
+        "patient": 0.0968
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" iodine\" (p=0.082)",
+        "patient": "embedding \u2192 Output \" iodine\" (p=0.082)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.224
+          ],
+          [
+            "Output \" extra\"",
+            0.12
+          ],
+          [
+            "Output \" iodine\"",
+            0.082
+          ],
+          [
+            "Output \" additional\"",
+            0.073
+          ],
+          [
+            "Output \" iron\"",
+            0.05
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.196
+          ],
+          [
+            "Output \" extra\"",
+            0.173
+          ],
+          [
+            "Output \" iodine\"",
+            0.082
+          ],
+          [
+            "Output \" iron\"",
+            0.063
+          ],
+          [
+            "Output \" additional\"",
+            0.044
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1093,
+        "unique_to_a": 257,
+        "unique_to_b": 268
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_16.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_16.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_16_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_16_diff.png"
+      }
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have vulvovaginitis, so I need to get a",
+        "patient": "I've got a nasty itch down there, so I need to get a"
+      },
+      "target_token": "Output \" prescription\"",
+      "probabilities": {
+        "clinical": 0.188,
+        "patient": 0.032
+      },
+      "language_penalty": -0.156,
+      "clinical_mass": {
+        "clinical": 0.3557,
+        "patient": 0.1901
+      },
+      "error_share": {
+        "clinical": 0.1097,
+        "patient": 0.0969
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" new\" (p=0.079)",
+        "patient": "embedding \u2192 Output \" new\" (p=0.268)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.188
+          ],
+          [
+            "Output \" new\"",
+            0.079
+          ],
+          [
+            "Output \" good\"",
+            0.061
+          ],
+          [
+            "Output \" vaginal\"",
+            0.054
+          ],
+          [
+            "Output \" yeast\"",
+            0.033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" new\"",
+            0.268
+          ],
+          [
+            "Output \" good\"",
+            0.099
+          ],
+          [
+            "Output \" prescription\"",
+            0.032
+          ],
+          [
+            "Output \" little\"",
+            0.028
+          ],
+          [
+            "Output \" razor\"",
+            0.022
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 607,
+        "unique_to_a": 734,
+        "unique_to_b": 802
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_17.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_17.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_17_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_17_diff.png"
+      }
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I woke up with flank pain, so I'm worried my",
+        "patient": "I woke up with my back absolutely throbbing, so I'm worried my"
+      },
+      "target_token": "Output \" kidney\"",
+      "probabilities": {
+        "clinical": 0.082,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3772,
+        "patient": 0.2926
+      },
+      "error_share": {
+        "clinical": 0.1036,
+        "patient": 0.0868
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" kidney\" (p=0.082)",
+        "patient": "[L16\u00b7S]  \u2192 [L18\u00b7C] mentions of sports injuries. | injuries \u2192 [L21\u00b7C] descriptions of sports players who have suffered inj \u2192 [L22\u00b7C] medical terminology related to bone density and spin \u2192 Output \" back\" (p=0.322)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dog\"",
+            0.082
+          ],
+          [
+            "Output \" kidney\"",
+            0.082
+          ],
+          [
+            "Output \" appendix\"",
+            0.056
+          ],
+          [
+            "Output \" kidneys\"",
+            0.05
+          ],
+          [
+            "Output \" uterus\"",
+            0.044
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" back\"",
+            0.322
+          ],
+          [
+            "Output \" spine\"",
+            0.044
+          ],
+          [
+            "Output \" neck\"",
+            0.039
+          ],
+          [
+            "Output \" sleeping\"",
+            0.034
+          ],
+          [
+            "Output \" posture\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 734,
+        "unique_to_a": 657,
+        "unique_to_b": 564
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_18.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_18.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_18_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing hypothyroid symptoms all week, so my doctor checked my",
+        "patient": "I've been feeling foggy and sluggish all week, so my doctor checked my"
+      },
+      "target_token": "Output \" thyroid\"",
+      "probabilities": {
+        "clinical": 0.291,
+        "patient": 0.381
+      },
+      "language_penalty": 0.09000000000000002,
+      "clinical_mass": {
+        "clinical": 0.4279,
+        "patient": 0.3884
+      },
+      "error_share": {
+        "clinical": 0.0974,
+        "patient": 0.0904
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" thyroid\" (p=0.291)",
+        "patient": "[L24\u00b7S]  \u2192 [L25\u00b7O] words related to blood and violence | blood and bloo \u2192 Output \" blood\" (p=0.204)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" thyroid\"",
+            0.291
+          ],
+          [
+            "Output \" TSH\"",
+            0.258
+          ],
+          [
+            "Output \" levels\"",
+            0.156
+          ],
+          [
+            "Output \" blood\"",
+            0.065
+          ],
+          [
+            "Output \" T\"",
+            0.065
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" thyroid\"",
+            0.381
+          ],
+          [
+            "Output \" blood\"",
+            0.204
+          ],
+          [
+            "Output \" iron\"",
+            0.052
+          ],
+          [
+            "Output \" vitamin\"",
+            0.052
+          ],
+          [
+            "Output \" levels\"",
+            0.035
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 759,
+        "unique_to_a": 636,
+        "unique_to_b": 638
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_19.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_19.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_19_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_19_diff.png"
+      }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have night sweats, so I'm worried I might have a",
+        "patient": "I woke up drenched in sweat, so I'm worried I might have a"
+      },
+      "target_token": "Output \" fever\"",
+      "probabilities": {
+        "clinical": 0.088,
+        "patient": 0.609
+      },
+      "language_penalty": 0.521,
+      "clinical_mass": {
+        "clinical": 0.3445,
+        "patient": 0.2521
+      },
+      "error_share": {
+        "clinical": 0.0949,
+        "patient": 0.1057
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" problem\" (p=0.037)",
+        "patient": "embedding \u2192 [L19\u00b7O] mentions of dreaming or dream-like states | dream \u2192 Output \" dream\" (p=0.050)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" tumor\"",
+            0.088
+          ],
+          [
+            "Output \" fever\"",
+            0.088
+          ],
+          [
+            "Output \" UTI\"",
+            0.088
+          ],
+          [
+            "Output \" miscarriage\"",
+            0.047
+          ],
+          [
+            "Output \" problem\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" fever\"",
+            0.609
+          ],
+          [
+            "Output \" nightmare\"",
+            0.12
+          ],
+          [
+            "Output \" dream\"",
+            0.05
+          ],
+          [
+            "Output \" bad\"",
+            0.024
+          ],
+          [
+            "Output \" cold\"",
+            0.024
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 640,
+        "unique_to_a": 844,
+        "unique_to_b": 718
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_20.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_20.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_20_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_20_diff.png"
+      }
+    },
+    {
+      "index": 21,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have hyperglycemia, so my doctor wants me to take an",
+        "patient": "My blood sugar has been bouncing around, so my doctor wants me to take an"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.066,
+        "patient": 0.031
+      },
+      "language_penalty": -0.035,
+      "clinical_mass": {
+        "clinical": 0.4035,
+        "patient": 0.3755
+      },
+      "error_share": {
+        "clinical": 0.0975,
+        "patient": 0.0991
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" A\" (p=0.059)",
+        "patient": "embedding \u2192 Output \" insulin\" (p=0.264)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" insulin\"",
+            0.297
+          ],
+          [
+            "Output \" oral\"",
+            0.204
+          ],
+          [
+            "Output \" anti\"",
+            0.066
+          ],
+          [
+            "Output \" A\"",
+            0.059
+          ],
+          [
+            "Output \" extra\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" insulin\"",
+            0.264
+          ],
+          [
+            "Output \" oral\"",
+            0.264
+          ],
+          [
+            "Output \" hour\"",
+            0.036
+          ],
+          [
+            "Output \" extra\"",
+            0.036
+          ],
+          [
+            "Output \" anti\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 712,
+        "unique_to_a": 517,
+        "unique_to_b": 486
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_21.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_21.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_21_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_21_diff.png"
+      }
+    },
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have erectile dysfunction, so we should probably see a",
+        "patient": "My plumbing's been acting up down there, so we should probably see a"
+      },
+      "target_token": "Output \" uro\"",
+      "probabilities": {
+        "clinical": 0.148,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3125,
+        "patient": 0.1849
+      },
+      "error_share": {
+        "clinical": 0.1026,
+        "patient": 0.0969
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.404)",
+        "patient": "embedding \u2192 Output \" plumber\" (p=0.402)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.404
+          ],
+          [
+            "Output \" uro\"",
+            0.148
+          ],
+          [
+            "Output \" therapist\"",
+            0.08
+          ],
+          [
+            "Output \" specialist\"",
+            0.07
+          ],
+          [
+            "Output \" sex\"",
+            0.026
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" plumber\"",
+            0.402
+          ],
+          [
+            "Output \" doctor\"",
+            0.355
+          ],
+          [
+            "Output \" specialist\"",
+            0.037
+          ],
+          [
+            "Output \" professional\"",
+            0.018
+          ],
+          [
+            "Output \" doc\"",
+            0.018
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 480,
+        "unique_to_a": 682,
+        "unique_to_b": 832
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_22.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_22.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_22_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_22_diff.png"
+      }
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have a high fever, so I'm pretty sure I've got a",
+        "patient": "I've been burning up with fever for three days, so I'm pretty sure I've got a"
+      },
+      "target_token": "Output \" cold\"",
+      "probabilities": {
+        "clinical": 0.49,
+        "patient": 0.383
+      },
+      "language_penalty": -0.10699999999999998,
+      "clinical_mass": {
+        "clinical": 0.3882,
+        "patient": 0.347
+      },
+      "error_share": {
+        "clinical": 0.0851,
+        "patient": 0.0876
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L19\u00b7C] words and phrases related to being sick and medical  \u2192 Output \" cold\" (p=0.490)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7C] words and phrases related to being sick and medical  \u2192 Output \" cold\" (p=0.383)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cold\"",
+            0.49
+          ],
+          [
+            "Output \" virus\"",
+            0.075
+          ],
+          [
+            "Output \" bad\"",
+            0.052
+          ],
+          [
+            "Output \" sinus\"",
+            0.035
+          ],
+          [
+            "Output \" bug\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cold\"",
+            0.383
+          ],
+          [
+            "Output \" virus\"",
+            0.097
+          ],
+          [
+            "Output \" bad\"",
+            0.085
+          ],
+          [
+            "Output \" nasty\"",
+            0.052
+          ],
+          [
+            "Output \" case\"",
+            0.04
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 901,
+        "unique_to_a": 365,
+        "unique_to_b": 494
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_23.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_23.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_23_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_23_diff.png"
+      }
+    },
+    {
+      "index": 24,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have amenorrhea for two months, so I probably need to take a",
+        "patient": "I haven't had my monthlies in two months, so I probably need to take a"
+      },
+      "target_token": "Output \" pregnancy\"",
+      "probabilities": {
+        "clinical": 0.289,
+        "patient": 0.555
+      },
+      "language_penalty": 0.26600000000000007,
+      "clinical_mass": {
+        "clinical": 0.3371,
+        "patient": 0.2387
+      },
+      "error_share": {
+        "clinical": 0.1018,
+        "patient": 0.0978
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] language found in technical documents | test, tests, \u2192 [L21\u00b7O] words and phrases related to software testing and sc \u2192 [L22\u00b7O] the word 'test' in certain contexts | Code testing \u2192 Output \" test\" (p=0.094)",
+        "patient": "[L17\u00b7S]  \u2192 [L19\u00b7O] language found in technical documents | test, tests, \u2192 [L21\u00b7O] words and phrases related to software testing and sc \u2192 [L22\u00b7O] the word 'test' in certain contexts | Code testing \u2192 Output \" test\" (p=0.181)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pregnancy\"",
+            0.289
+          ],
+          [
+            "Output \" test\"",
+            0.094
+          ],
+          [
+            "Output \" blood\"",
+            0.083
+          ],
+          [
+            "Output \" break\"",
+            0.057
+          ],
+          [
+            "Output \" pill\"",
+            0.05
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pregnancy\"",
+            0.555
+          ],
+          [
+            "Output \" test\"",
+            0.181
+          ],
+          [
+            "Output \" break\"",
+            0.028
+          ],
+          [
+            "Output \" home\"",
+            0.022
+          ],
+          [
+            "Output \" trip\"",
+            0.019
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 579,
+        "unique_to_a": 830,
+        "unique_to_b": 850
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_24.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_24.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_24_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_24_diff.png"
+      }
+    },
+    {
+      "index": 25,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have menstrual irregularity, so my doctor wants to run some",
+        "patient": "I've been a bit irregular with my flow lately, so my doctor wants to run some"
+      },
+      "target_token": "Output \" tests\"",
+      "probabilities": {
+        "clinical": 0.496,
+        "patient": 0.578
+      },
+      "language_penalty": 0.08199999999999996,
+      "clinical_mass": {
+        "clinical": 0.409,
+        "patient": 0.3395
+      },
+      "error_share": {
+        "clinical": 0.0988,
+        "patient": 0.1063
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 [L21\u00b7O] words and phrases related to software testing and sc \u2192 [L22\u00b7O] the word 'test' in certain contexts | Code testing \u2192 Output \" tests\" (p=0.496)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 [L19\u00b7C] words related to radiology and medical imaging | Med \u2192 [L21\u00b7O] words and phrases related to software testing and sc \u2192 [L22\u00b7O] the word 'test' in certain contexts | Code testing \u2192 Output \" tests\" (p=0.578)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" tests\"",
+            0.496
+          ],
+          [
+            "Output \" blood\"",
+            0.233
+          ],
+          [
+            "Output \" hormone\"",
+            0.052
+          ],
+          [
+            "Output \" labs\"",
+            0.025
+          ],
+          [
+            "Output \" more\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" tests\"",
+            0.578
+          ],
+          [
+            "Output \" blood\"",
+            0.213
+          ],
+          [
+            "Output \" more\"",
+            0.032
+          ],
+          [
+            "Output \" hormone\"",
+            0.022
+          ],
+          [
+            "Output \" extra\"",
+            0.017
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 752,
+        "unique_to_a": 513,
+        "unique_to_b": 575
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_25.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_25.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_25_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_25_diff.png"
+      }
+    },
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "We have had sexual dysfunction, so he wants to check his",
+        "patient": "We've been having trouble in the bedroom, so he wants to check his"
+      },
+      "target_token": "Output \" hormones\"",
+      "probabilities": {
+        "clinical": 0.049,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3301,
+        "patient": 0.1427
+      },
+      "error_share": {
+        "clinical": 0.0945,
+        "patient": 0.0863
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sperm\" (p=0.080)",
+        "patient": "[L21\u00b7S]  \u2192 Output \" testosterone\" (p=0.163)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" testosterone\"",
+            0.192
+          ],
+          [
+            "Output \" prostate\"",
+            0.17
+          ],
+          [
+            "Output \" blood\"",
+            0.116
+          ],
+          [
+            "Output \" sperm\"",
+            0.08
+          ],
+          [
+            "Output \" hormones\"",
+            0.049
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" testosterone\"",
+            0.163
+          ],
+          [
+            "Output \" sperm\"",
+            0.144
+          ],
+          [
+            "Output \" prostate\"",
+            0.077
+          ],
+          [
+            "Output \" blood\"",
+            0.053
+          ],
+          [
+            "Output \" pulse\"",
+            0.041
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 593,
+        "unique_to_a": 716,
+        "unique_to_b": 722
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_26.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_26.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_26_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_26_diff.png"
+      }
+    },
+    {
+      "index": 27,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have urinary dysfunction, so we should schedule a",
+        "patient": "My plumbing's been acting weird down below, so we should schedule a"
+      },
+      "target_token": "Output \" uro\"",
+      "probabilities": {
+        "clinical": 0.036,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2956,
+        "patient": 0.1306
+      },
+      "error_share": {
+        "clinical": 0.0895,
+        "patient": 0.0955
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" uro\" (p=0.036)",
+        "patient": "embedding \u2192 Output \" plumbing\" (p=0.063)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" visit\"",
+            0.126
+          ],
+          [
+            "Output \" time\"",
+            0.098
+          ],
+          [
+            "Output \" meeting\"",
+            0.076
+          ],
+          [
+            "Output \" consultation\"",
+            0.052
+          ],
+          [
+            "Output \" uro\"",
+            0.036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" plumber\"",
+            0.283
+          ],
+          [
+            "Output \" visit\"",
+            0.134
+          ],
+          [
+            "Output \" service\"",
+            0.092
+          ],
+          [
+            "Output \" plumbing\"",
+            0.063
+          ],
+          [
+            "Output \" repair\"",
+            0.03
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 531,
+        "unique_to_a": 802,
+        "unique_to_b": 883
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_27.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_27.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_27_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_27_diff.png"
+      }
+    },
+    {
+      "index": 28,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My wife says I have erectile dysfunction, so I'm worried I might need a",
+        "patient": "My wife says I'm getting soft down there, so I'm worried I might need a"
+      },
+      "target_token": "Output \" penis\"",
+      "probabilities": {
+        "clinical": 0.143,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3407,
+        "patient": 0.1943
+      },
+      "error_share": {
+        "clinical": 0.1036,
+        "patient": 0.0965
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" new\" (p=0.052)",
+        "patient": "embedding \u2192 Output \" new\" (p=0.130)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" penis\"",
+            0.143
+          ],
+          [
+            "Output \" prescription\"",
+            0.098
+          ],
+          [
+            "Output \" Viagra\"",
+            0.086
+          ],
+          [
+            "Output \" new\"",
+            0.052
+          ],
+          [
+            "Output \" little\"",
+            0.041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" new\"",
+            0.13
+          ],
+          [
+            "Output \" little\"",
+            0.13
+          ],
+          [
+            "Output \" prostate\"",
+            0.048
+          ],
+          [
+            "Output \" vase\"",
+            0.042
+          ],
+          [
+            "Output \" catheter\"",
+            0.029
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 776,
+        "unique_to_a": 477,
+        "unique_to_b": 660
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_28.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_28.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_28_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_28_diff.png"
+      }
+    }
+  ]
+}
