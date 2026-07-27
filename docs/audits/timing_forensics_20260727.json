@@ -1,0 +1,689 @@
+{
+  "summary": "Forensic audit of why trace-backfill ETAs kept slipping, plus a calibrated remaining-time estimate",
+  "agentCount": 5,
+  "logs": [],
+  "result": {
+    "timeline": {
+      "productive_windows": [
+        {
+          "landed_utc": "2026-07-24T02:38:18Z",
+          "batch": "dialects_20260723T001434Z (dialect floor) part_10, idx 10-13",
+          "pairs_delivered": 4
+        },
+        {
+          "landed_utc": "2026-07-24T03:54:04Z",
+          "batch": "pairs_20260714T135150Z (2panel) part_41, idx 41-50",
+          "pairs_delivered": 10
+        },
+        {
+          "landed_utc": "2026-07-24T05:09:51Z",
+          "batch": "dialects_20260723T001434Z (dialect floor) part_14, idx 14-17",
+          "pairs_delivered": 4
+        },
+        {
+          "landed_utc": "2026-07-24T05:59:26Z",
+          "batch": "pairs_20260714T135150Z (2panel) part_51, idx 51-65",
+          "pairs_delivered": 15
+        },
+        {
+          "landed_utc": "2026-07-24T06:53:05Z",
+          "batch": "dialects_20260723T001434Z (dialect floor) part_18, idx 18-22",
+          "pairs_delivered": 5
+        },
+        {
+          "landed_utc": "2026-07-24T07:59:16Z",
+          "batch": "pairs_20260714T135150Z (2panel) part_66, idx 66-80",
+          "pairs_delivered": 15
+        },
+        {
+          "landed_utc": "2026-07-24T08:41:16Z",
+          "batch": "dialects_20260723T001434Z (dialect floor) part_23, idx 23-27 (3 net-new; 26-27 re-traced over part_26 from 07-23)",
+          "pairs_delivered": 5
+        },
+        {
+          "landed_utc": "2026-07-24T09:57:09Z",
+          "batch": "pairs_20260714T135150Z (2panel) part_81, idx 81-89",
+          "pairs_delivered": 9
+        },
+        {
+          "landed_utc": "2026-07-24T10:39:05Z",
+          "batch": "dialects_20260723T001434Z (dialect floor) part_31, idx 31-35",
+          "pairs_delivered": 5
+        },
+        {
+          "landed_utc": "2026-07-24T11:54:54Z",
+          "batch": "pairs_20260714T135150Z (2panel) part_90, idx 90-98",
+          "pairs_delivered": 9
+        },
+        {
+          "landed_utc": "2026-07-24T14:29:44Z",
+          "batch": "dialects_20260723T001434Z (dialect floor) part_36, idx 36-41",
+          "pairs_delivered": 6
+        },
+        {
+          "landed_utc": "2026-07-24T14:55:15Z",
+          "batch": "pairs_20260714T135150Z (2panel) part_99, idx 99-100 - COMPLETES batch 100/100",
+          "pairs_delivered": 2
+        },
+        {
+          "landed_utc": "2026-07-24T15:49:20Z",
+          "batch": "dialects_20260723T001434Z (dialect floor) part_42, idx 42-46",
+          "pairs_delivered": 5
+        },
+        {
+          "landed_utc": "2026-07-24T16:57:38Z",
+          "batch": "dialects_20260723T001434Z (dialect floor) part_47, idx 47-50 - COMPLETES floor 50/50",
+          "pairs_delivered": 4
+        },
+        {
+          "landed_utc": "2026-07-24T18:02:07Z",
+          "batch": "pairs_20260716T133552Z (2panel) part_01, idx 1-8 - COMPLETES batch 8/8",
+          "pairs_delivered": 8
+        },
+        {
+          "landed_utc": "2026-07-24T19:17:52Z",
+          "batch": "pairs_20260707T221438Z (2panel) part_29, idx 29-37 (8 net-new; idx 37 re-traced over part_37 from 07-08)",
+          "pairs_delivered": 9
+        },
+        {
+          "landed_utc": "2026-07-24T20:44:41Z",
+          "batch": "pairs_20260707T221438Z (2panel) part_41, idx 41-49 (8 net-new; idx 49 re-traced) - COMPLETES batch 60/60",
+          "pairs_delivered": 9
+        },
+        {
+          "landed_utc": "2026-07-24T22:00:27Z",
+          "batch": "pairs_20260717T132235Z (2panel) part_01, idx 1-8 - first trace of batch",
+          "pairs_delivered": 8
+        },
+        {
+          "landed_utc": "2026-07-24T23:16:14Z",
+          "batch": "pairs_20260718T133020Z (2panel) part_01, idx 1-8 - first trace of batch",
+          "pairs_delivered": 8
+        },
+        {
+          "landed_utc": "2026-07-25T14:23:18Z",
+          "batch": "pairs_20260717T132235Z (2panel) part_09, idx 9-28",
+          "pairs_delivered": 20
+        },
+        {
+          "landed_utc": "2026-07-25T15:39:20Z",
+          "batch": "pairs_20260718T133020Z (2panel) part_09, idx 9-27",
+          "pairs_delivered": 19
+        },
+        {
+          "landed_utc": "2026-07-25T16:55:16Z",
+          "batch": "pairs_20260717T132235Z (2panel) part_29, idx 29-36",
+          "pairs_delivered": 8
+        },
+        {
+          "landed_utc": "2026-07-26T14:31:05Z",
+          "batch": "pairs_20260717T132235Z (2panel) part_37, idx 37-43",
+          "pairs_delivered": 7
+        },
+        {
+          "landed_utc": "2026-07-26T15:27:33Z",
+          "batch": "pairs_20260718T133020Z (2panel) part_28, idx 28-45",
+          "pairs_delivered": 18
+        },
+        {
+          "landed_utc": "2026-07-26T16:43:32Z",
+          "batch": "pairs_20260717T132235Z (2panel) part_44, idx 44-62",
+          "pairs_delivered": 19
+        },
+        {
+          "landed_utc": "2026-07-26T17:38:24Z",
+          "batch": "pairs_20260718T133020Z (2panel) part_46, idx 46-62",
+          "pairs_delivered": 17
+        },
+        {
+          "landed_utc": "2026-07-26T19:06:12Z",
+          "batch": "pairs_20260717T132235Z (2panel) part_63, idx 63-70",
+          "pairs_delivered": 8
+        },
+        {
+          "landed_utc": "2026-07-26T19:54:56Z",
+          "batch": "pairs_20260718T133020Z (2panel) part_63, idx 63-76",
+          "pairs_delivered": 14
+        },
+        {
+          "landed_utc": "2026-07-26T20:54:58Z",
+          "batch": "pairs_20260717T132235Z (2panel) part_71, idx 71-85",
+          "pairs_delivered": 15
+        },
+        {
+          "landed_utc": "2026-07-26T22:12:23Z",
+          "batch": "pairs_20260718T133020Z (2panel) part_77, idx 77-84",
+          "pairs_delivered": 8
+        },
+        {
+          "landed_utc": "2026-07-26T22:58:39Z",
+          "batch": "pairs_20260717T132235Z (2panel) part_86, idx 86-100 - COMPLETES batch 100/100",
+          "pairs_delivered": 15
+        },
+        {
+          "landed_utc": "2026-07-27T00:58:19Z",
+          "batch": "pairs_20260718T133020Z (2panel) part_85, idx 85-92",
+          "pairs_delivered": 8
+        },
+        {
+          "landed_utc": "2026-07-27T01:46:37Z",
+          "batch": "pairs_20260719T132706Z (2panel) part_01, idx 1-15 - first trace of batch",
+          "pairs_delivered": 15
+        },
+        {
+          "landed_utc": "2026-07-27T02:16:49Z",
+          "batch": "pairs_20260718T133020Z (2panel) part_93, idx 93-100 - COMPLETES batch 100/100",
+          "pairs_delivered": 8
+        },
+        {
+          "landed_utc": "2026-07-27T04:00:00Z",
+          "batch": "pairs_20260719T132706Z (2panel) part_16, idx 16-24",
+          "pairs_delivered": 9
+        },
+        {
+          "landed_utc": "2026-07-27T04:49:14Z",
+          "batch": "pairs_20260715T132350Z (2panel) part_09, idx 9-23 - ONLY 2 NET-NEW (9,10); idx 11-23 already covered by part_11 landed 2026-07-16",
+          "pairs_delivered": 15
+        },
+        {
+          "landed_utc": "2026-07-27T05:55:37Z",
+          "batch": "pairs_20260719T132706Z (2panel) part_25, idx 25-41 - last landing before current idle",
+          "pairs_delivered": 17
+        }
+      ],
+      "idle_gaps": [
+        {
+          "from_utc": "2026-07-25T16:55:16Z",
+          "to_utc": "2026-07-26T14:31:05Z",
+          "hours": 21.597,
+          "likely_cause": "2nd container reclaim (77749 s). Babysitter timers died again; the two fires placed by the 07-25 daily cycle (journal 2026-07-25T13:16:15Z 18T 9-28 and 14:49:32Z 17T 29-48) are both still resolved:false in ops/trigger_journal.jsonl - orphaned, nobody chained behind them. Broken only by the next scheduled backstop: journal 2026-07-26T13:15:32Z, note 'lane idled ~20h again on a 2nd container reclaim - backstop cycle catching up'. First landing 76 min after that fire. Not throttling: no 429 or timeout note anywhere in the gap."
+        },
+        {
+          "from_utc": "2026-07-24T23:16:14Z",
+          "to_utc": "2026-07-25T14:23:18Z",
+          "hours": 15.118,
+          "likely_cause": "1st container reclaim, overnight Fri->Sat (54424 s). Journal 2026-07-25T13:16:06Z states it directly: 'lane idled ~15h overnight after babysitter timers stopped on container reclaim, 17T/18T entries expired - backstop cycle catching up'. Forensic signature: the two fires immediately preceding the gap (2026-07-24T19:29:22Z 17T 1-20, 2026-07-24T21:00:32Z 18T 1-20) are the first two resolved:false entries in the journal - they landed outputs at 22:00 and 23:16 but were never resolved or chained. Lane sat empty ~13.9h until the 13:16 daily cycle re-fired; first landing 67 min later."
+        },
+        {
+          "from_utc": "2026-07-27T05:55:37Z",
+          "to_utc": "2026-07-27T18:40:00Z",
+          "hours": 12.74,
+          "likely_cause": "4th container reclaim, STILL OPEN at cutoff - no landing yet (45863 s and accruing). Same signature: fires 2026-07-27T02:44:38Z (15T gap sweep 9-33) and 04:15:22Z (19T 25-44) are resolved:false and were never chained. Journal 2026-07-27T18:35:16Z: 'Lane idle ~12.6h since 05:55 on a 4th container reclaim; backstop cycle catching up'. Two fires placed at 18:35:16Z / 18:35:27Z are in flight; gap measured to the 18:40:00Z cutoff."
+        }
+      ],
+      "totals": {
+        "elapsed_hours": 90.667,
+        "idle_hours": 49.454,
+        "idle_fraction": 0.5455,
+        "pairs_delivered": 342,
+        "pairs_per_productive_hour": 8.3,
+        "mean_window_pairs": 11.79,
+        "mean_window_minutes": 66.8
+      },
+      "notes": "SOURCE-COMMAND CORRECTION (important). The command in the brief, `git log --format='%cI %s' --since=2026-07-24 <branch> -- trace_out/`, returns only 22 landings, oldest 2026-07-24T19:17:52Z. That under-reports: git's --since date cutoff interacts with path-based history simplification and truncates the walk mid-range. Dropping --since and filtering by date in post (`git log --format='%cI %s' <branch> -- trace_out/`) yields 37 landings in the window, oldest 2026-07-24T02:38:18Z. All 15 landings the brief's command misses are real - verified each adds a trace_out/<stem>/batch_summary.part_NN.json via `git show --name-only`. Every number below uses the 37-landing set.\n\nWHAT WAS COUNTED. Pairs per window are NOT inferred from consecutive offsets alone - I read len(results) out of each landed batch_summary.part_NN.json at its landing commit (`git show <sha>:<path>`), plus min/max of results[i].index. For the batches that ran to completion both methods agree exactly (17T: 8+20+8+7+19+8+15+15=100; 18T: 8+19+18+17+14+8+8+8=100; 14T contiguous 41-100=60; floor 50/50).\n\nLANE SCOPE. The circuit-trace concurrency group carried two workloads that interleave, so both must appear or the idle gaps come out wrong. 29 windows traced 2panel PAIRS (342 rows). 8 windows traced the paraphrase-floor batch dialects_20260723T001434Z (38 rows; unit = baselines, not pairs). Combined lane throughput 380 rows over 37 windows.\n\nDENOMINATORS (they differ by field, stated explicitly). elapsed_hours = 2026-07-24T00:00:00Z -> 2026-07-27T18:40:00Z = 326400 s = 90.667 h. idle_hours = 54424 + 77749 + 45863 = 178036 s = 49.454 h. idle_fraction = 178036/326400 = 0.5455. Productive = 148364 s = 41.212 h. pairs_per_productive_hour = 342/41.212 = 8.30 (2panel pairs only); full-lane alternative including dialect rows = 380/41.212 = 9.22. mean_window_pairs = 342/29 pair-tracing windows = 11.79 (full-lane alternative 380/37 = 10.27). mean_window_minutes = 41.212 h x 60 / 37 = 66.8 min; the independent landing-to-landing measure (mean of the 34 sub-3h inter-landing intervals, 38.574 h / 34) gives 68.1 min - both consistent with the ~70-min CI step timeout that ends most windows.\n\nGROSS vs NET-NEW. 342 pair-traces delivered, but only 327 were pairs not already covered on the branch. 15 rows were re-traces: 13 at 2026-07-27T04:49:14Z (pairs_20260715T132350Z part_09 spans idx 9-23, but 11-23 were already in part_11, landed 2026-07-16T15:39:25Z - that window produced exactly 2 net-new pairs, 9 and 10, matching the journal's 89/100 -> 91/100), plus idx 37 at 19:17:52Z and idx 49 at 20:44:41Z in pairs_20260707T221438Z (both overlapping parts landed 2026-07-08). Dialect: 38 rows, 36 net-new (26-27 re-traced over part_26 from 2026-07-23). Full-lane net-new = 363 of 380.\n\nIDLE CAUSE - THROTTLING vs RECLAIM (they are not the same failure). All three >3h gaps are container reclaims; none are 429s. Neuronpedia 429 throttling is heavily documented in the journal but only on 2026-07-24 (notes at 01:22:23Z, 01:23:11Z, 04:11:39Z, 05:37:43Z: 70-min step timeouts, '~10 pairs/window', '~4 baselines/window') - and 07-24 is the day with ZERO idle gaps, 19 landings on a steady 45-155 min cadence. Throttling shrank window YIELD; it never idled the lane. The idle came from losing the babysitter timer, leaving nobody to chain the next fire. The signature is mechanical and exact: each gap is immediately preceded by the only unresolved circuit-trace entries in the journal - (19:29:22Z, 21:00:32Z) before gap 1, (13:16:15Z, 14:49:32Z) before gap 2, (02:44:38Z, 04:15:22Z) before gap 3 - each landed its outputs but was never resolved or chained. In all three cases recovery came from the next scheduled daily backstop cycle (~13:15 UTC for gaps 1-2, 18:35 for gap 3).\n\nA 3rd reclaim is named in the journal (2026-07-26T21:10:45Z, 'lane restart after 3rd container reclaim') but produced NO idle gap - landings continued 20:54 -> 22:12 -> 22:58 - because the session restarted inside the ~75-min window. So 4 reclaims, 3 idle gaps.\n\nQUEUE HEALTH. 39 circuit-trace fires in the window, all $0 (no max_spend field on any entry), zero evictions (evicted:false throughout), 37 landings + 2 fires in flight at cutoff = 39. Every fire produced exactly one landing commit; the one-running + one-pending discipline held with no silent pending-slot eviction.\n\nBATCH OUTCOMES IN WINDOW. Completed: pairs_20260714T135150Z 100/100 (2026-07-24T14:55:15Z), dialects_20260723T001434Z floor 50/50 (07-24T16:57:38Z), pairs_20260716T133552Z 8/8 (07-24T18:02:07Z), pairs_20260707T221438Z 60/60 (07-24T20:44:41Z), pairs_20260717T132235Z 100/100 (07-26T22:58:39Z), pairs_20260718T133020Z 100/100 (07-27T02:16:49Z). Open: pairs_20260719T132706Z at 41/100 (missing 42-100), pairs_20260715T132350Z at 91/100 (missing 28,29,30,50,59,60,98,99,100 - verified by unioning all its part files at branch tip).\n\nFILES/COMMANDS USED. /home/user/patientwords-engine (branch origin/claude/gemma-clinical-colloquial-interp-mavx04): `git log --format='%cI %s' <branch> -- trace_out/`; `git show <sha>:trace_out/<stem>/batch_summary.part_NN.json`; `git ls-tree --name-only <branch> trace_out/<stem>/`; /home/user/patientwords-engine/ops/trigger_journal.jsonl (280 lines; 39 entries with fired_utc >= 2026-07-24T00:00:00Z).\n\nUNVERIFIED. Fire-to-run mapping (GitHub Actions run IDs, cancelled-vs-timeout status per window) was not checked - that needs the Actions API, out of scope for a read-only local pass; journal notes asserting terminal run states are taken at face value. Also UNVERIFIED: whether gap 3 has since ended, since the 18:35 fires had not landed at the 18:40 cutoff.\n\nSEAL. No phrase text was read out or reported; pairs are referenced only as <batch> + index."
+    },
+    "claims": {
+      "false_or_unverified_claims": [
+        {
+          "claim": "docs/routine_standing_prompt.md (Section 4, lines 195-201): \"Accelerator (owner 2026-07-20): a separate `backfill-accel` Routine fires the same $0 planner lanes every ~2h so the lanes stay saturated between daily cycles.\" Stated as settled operating fact in the document every future Routine session reads.",
+          "reality": "No such Routine has ever existed or fired. Zero unattended ticks appear anywhere in the 280-entry journal. The assertion was committed on 2026-07-20T13:06:15Z (aafa0bc, \"routine: document 8B-medical deferral + the backfill-accel Routine\") and has stood unchanged for 7 days, while the SAME DAY's owner brief and critic both state the Routine could not be created. The two documents directly contradict each other and the false one is the operational one.",
+          "evidence": "git log -S 'backfill-accel' -- docs/routine_standing_prompt.md -> single commit aafa0bc 2026-07-20T13:06:15Z. Contradicted by docs/briefs/brief_20260720.md:17 (\"BACKFILL-ACCEL-BLOCKED - Every-2h backfill accelerator can't be auto-created\") and docs/critic/critic_20260720.md:58-61 (\"The every-2h backfill accelerator ... is blocked by the SAME create-trigger approval channel that killed the standalone critic Routine\").",
+          "severity": "critical"
+        },
+        {
+          "claim": "That the every-2h accelerator Routine approved by the owner on 2026-07-26 was created and is driving the $0 trace lane between daily cycles.",
+          "reality": "Never created, never fired. Of the 8 circuit-trace fires since 2026-07-26T22:00, all 8 notes are self-authored in-session timers: 6 begin \"backstop HH:Mx\" and 2 begin \"cycle 07-27\". FIRING OPPORTUNITIES (every even hour 2026-07-26T22:00 -> now 2026-07-27T18:50): 11. ACCELERATOR TICKS: 0. Across the entire journal only 3 notes carry the unedited backfill_planner.py format an unattended pass would emit (2026-07-22T11:20:30/38/45Z) and those were session-driven too - the accel prompt doc was not committed until c0dd140 at 13:51 that same day, and brief_20260722.md at 13:29 still listed the Routine as BLOCKED. Independently reproduced this session: mcp list_triggers returns \"MCP error -32003: MCP tool call requires approval\", so the Routine's existence is not even verifiable from this environment.",
+          "evidence": "ops/trigger_journal.jsonl filtered fired_utc>=2026-07-26T22:00:00Z, trigger==circuit-trace: 23:42:49, 23:43:02, 01:13:39, 02:44:27, 02:44:38, 04:15:22, 18:35:16, 18:35:27 - notes 'backstop 23:4x', 'backstop 23:4x', 'backstop 01:1x', 'backstop 02:4x', 'backstop 02:4x', 'backstop 04:1x', 'cycle 07-27', 'cycle 07-27'. Exact-regex match against backfill_planner.py's f-strings (lines 132/148/171) over all 280 entries returns only the three 2026-07-22T11:20 fires.",
+          "severity": "critical"
+        },
+        {
+          "claim": "ops/dashboard.json notes (written 2026-07-27T18:36:37Z): \"zero ticks observed across 4 firing windows\"; docs/critic/critic_20260727.md: \"no accelerator tick has been observed in four firing opportunities.\"",
+          "reality": "Understates the failure by 7 windows. By 18:36 on 2026-07-27 there had been 11 even-hour opportunities since 2026-07-26T22:00 (22, 00, 02, 04, 06, 08, 10, 12, 14, 16, 18). \"Four\" is exactly the count the session could observe before its container died at ~04:15; it was written into the dashboard 14 hours later without recomputation. Even the honest self-correction is a stale number reported as current.",
+          "evidence": "ops/dashboard.json notes[1]; docs/critic/critic_20260727.md lines 15-20; dashboard updated_utc 2026-07-27T18:36:37Z; last pre-gap fire 2026-07-27T04:15:22Z; `date -u` = 2026-07-27T18:50Z.",
+          "severity": "high"
+        },
+        {
+          "claim": "Daily brief headline, printed unchanged in docs/briefs/brief_20260724.md through brief_20260727.md: \"Tier B: 1100/1600 accepted . 98 traced . 0 screened-in\".",
+          "reality": "\"98 traced\" is wrong by ~10x and has been frozen for 17 days. Actual Tier B pairs with a gemma-2-2b trace: 1012 (per-batch: 50/48/47/50/49/43/49/49/99/96/100/91/100/100/41). ops/dashboard.json tierb.traced_pairs was set to 98 on 2026-07-10T13:34:06Z and has never changed since - across the entire weekend backfill drive whose whole purpose was raising that number. \"0 screened-in\" is also false-by-rendering: screened_in_pairs is null, and daily_brief.py:123 does `tierb.get(\"screened_in_pairs\") or 0`, printing unknown as zero.",
+          "evidence": "Counted distinct results[i]['index'] across trace_out/<stem>/batch_summary*.json for the 15 stems in ops/dashboard.json tierb.batches = 1012. Walked git history of ops/dashboard.json: traced_pairs 0 -> 98 at 2026-07-10T13:34:06+00:00, no change through 9f64133 (2026-07-27T18:36:54Z). scripts/daily_brief.py lines 118-127.",
+          "severity": "critical"
+        },
+        {
+          "claim": "\"1100/1600 accepted\" and \"$1.9206/8 Tier B generation\" - reported in every brief and dashboard since 2026-07-22.",
+          "reality": "A full 100-pair Tier B batch is missing from the books. `pairs_20260721T132205Z` was fired 2026-07-21T13:18:29Z as \"tierB batch 17\", landed on main (commit b07db6c), sidecar records accepted 100 / rejected 25 / cost_usd 0.146685 with generator claude-haiku-4-5. It is absent from dashboard tierb.batches (15 entries, ends at pairs_20260719T132706Z), absent from spend.entries_seen, and spend.by_day has no 2026-07-20 or 2026-07-21 key at all. True accepted = 1200/1600; true generation spend = ~$2.0673. It was also never pulled to the working branch, so 100 paid-for Tier B pairs have sat untraced and unmeasured for 6 days.",
+          "evidence": "ops/trigger_journal.jsonl 2026-07-21T13:18:29Z scenario-generation \"tierB batch 17\"; git log --diff-filter=A -- data/simulated/pairs_*.json -> b07db6c adds pairs_20260721T132205Z.{json,report.json}; git show b07db6c:...report.json -> accepted 100, cost_usd 0.146685; sum of the 15 listed batch cost_usd = 1.9207 == dashboard generation_spent_usd 1.9206; `ls data/simulated/ | grep 2026072` on the working branch shows no pairs_20260721*.",
+          "severity": "high"
+        },
+        {
+          "claim": "Daily brief Delta line \"no changes in the last 26h\" - printed in brief_20260725.md, brief_20260726.md and brief_20260727.md.",
+          "reality": "False on all three days. In that span pairs_20260717T132235Z went 8/100 -> 100/100, pairs_20260718T133020Z went 8/100 -> 100/100, and pairs_20260719T132706Z went 0 -> 41. The line is emitted because ops/dashboard.json runs_recent is frozen at 2026-07-23 (advice-eval entries) AND its records use keys run/id/state/landed while daily_brief.py `_recent_runs` filters on `fired_utc` and reads workflow/status/note - so no run entry can ever match, and daily_brief.py:162-163 falls through to \"no changes\". The owner's single status surface structurally cannot report trace progress.",
+          "evidence": "docs/briefs/brief_2026072{5,6,7}.md line 5; ops/dashboard.json runs_recent (6 entries, newest advice-eval run id 30003131789, all pre-07-24); scripts/daily_brief.py lines 88-98 and 156-163; trace counts from trace_out/*/batch_summary*.json.",
+          "severity": "high"
+        },
+        {
+          "claim": "docs/handoff_20260724_trace_pace.md item 3: \"Sunday full republish ships as promised\"; docs/briefs/brief_20260724.md: \"Interim data republishes daily (today: 921 scenarios/674 measured live)\"; ops/dashboard.json note: \"the nightly cycle auto-republishes it as it lands Mon-Tue.\"",
+          "reality": "No republish of any kind has happened since 2026-07-24. The site repo's last data commit is f103117 at 2026-07-24T13:20:37Z. Nothing shipped Sunday; nothing shipped Monday; the \"daily\" interim republish stopped the day it was promised. Two 100-pair batches completed tracing (17T, 18T) and none of it reached the public site.",
+          "evidence": "cd /home/user/patientwords && git log -1 -- data/ -> 2026-07-24T13:20:37+00:00 f103117; ls -la /home/user/patientwords/data/ -> newest mtime Jul 24 13:20 (simulated_scenarios.json). Contrast docs/handoff_20260724_trace_pace.md \"Revised weekend expectation\" items 3-4.",
+          "severity": "high"
+        },
+        {
+          "claim": "docs/handoff_20260724_trace_pace.md discipline note: continuations are \"chained with `--ignore-settle` on Actions-confirmed-terminal basis each time - basis recorded in every journal note.\"",
+          "reality": "Of 34 ignore-settle circuit-trace fires since 2026-07-24, only 11 cite an actual Actions status (`completed=success/failure/cancelled` or \"Actions API\"); 23 give inference only. The decay is sharp and dated: every fire through 2026-07-26T19:21:44Z cites a real status; from 2026-07-26T20:53:10Z onward every single basis is deduction from side-effects - \"concurrency group runs one at a time; 17T run now actively committing => 18T run 17:50 has vacated the group, terminal\", \"17T run fired 19:21 (>75min) terminal\", \"18T entry ... landed its window at 00:58 = terminal\". Under CLAUDE.md's queue rule (\"Pushing a third trigger change evicts the pending run silently\") this is precisely the condition where an unconfirmed assumption destroys work, and the journal cannot detect it.",
+          "evidence": "ops/trigger_journal.jsonl, parsed 'Ignore-settle basis:' clauses for circuit-trace fires >= 2026-07-24: 11 with explicit status, 23 inference-only; the 11 confirmed ones all fall on or before 2026-07-26T19:21:44Z. CLAUDE.md \"Queue discipline\" paragraph.",
+          "severity": "high"
+        },
+        {
+          "claim": "docs/handoff_20260726_disk.md: \"The weekend's incremental renders (~13MB/window) only tipped an already-near-quota disk over ... Remaining weekend trace work (~150 pairs = 114MB) fits inside the freed 2.6G, so this does NOT block completion.\"",
+          "reality": "Understated by ~9x. Measured render cost is 6.8 MB/pair (du: trace_out/pairs_20260718T133020Z = 683M for 100 pairs; pairs_20260717T132235Z = 685M/100; pairs_20260719T132706Z = 271M/41), so 150 pairs is ~1.0 GB, not 114 MB, and a 20-pair window is ~136 MB, not 13 MB. The figure was derived from summary JSON while the committed artifacts are HTML+PNG pairs (82 of each in the 19T dir). The critic corrected it to ~150MB/window on 07-27 - one day AFTER the same understatement had already let the disk hit 100% and break a rebase mid-push. Free space is now 1.6G (df -h), down from the \"freed 2.6G\" and past the 1.9G the dashboard recorded at 18:36.",
+          "evidence": "du -sh trace_out/pairs_20260718T133020Z = 683M; find trace_out/pairs_20260719T132706Z -name '*.html' | wc -l = 82, '*.png' = 82; df -h / -> 1.6G avail, 96% used; docs/critic/critic_20260727.md lines 22-30; ops/dashboard.json decisions_pending DISK-HEADROOM.",
+          "severity": "high"
+        },
+        {
+          "claim": "docs/critic/critic_20260722.md section 4 and critic_20260723.md section 4: \"no silent evictions (journal and Actions agree)\".",
+          "reality": "Not verifiable, asserted as verified. The `evicted` flag is only written when fire_trigger performs an explicit --force-evict, which was never used - so a CI-side silent eviction (the exact hazard CLAUDE.md warns about) would leave no trace in the journal by construction. Meanwhile 83 of 280 journal entries (30%) were never resolved at all, including 2026-07-10 through 2026-07-25 entries whose outputs plainly landed. The journal is the mechanism that enforces queue discipline, and it is 30% unreconciled.",
+          "evidence": "ops/trigger_journal.jsonl: evicted==true count 0; resolved==false count 83 of 280 (e.g. 2026-07-21T13:18:29Z scenario-generation 'tierB batch 17', 2026-07-24T21:00:32Z, 2026-07-25T13:16:15Z circuit-trace still open). CLAUDE.md 'Queue discipline' paragraph.",
+          "severity": "medium"
+        },
+        {
+          "claim": "Verdict carried verbatim in the owner's brief on 07-24, 07-25, 07-26 and 07-27: \"2026-07-12 critic run 3: on track scientifically; generation pace under target (1 batch/day finishes ~07-24)\".",
+          "reality": "A 15-day-old ETA still shown as a current verdict, and it missed. Tier B is at 1200/1600 landed (1100 booked) on 2026-07-27. The last Tier B generation fire was 2026-07-21T13:18:29Z; generation has been \"deliberately skipped\" every cycle since 07-22 (advice chain took the paid budget, then the queue went $0-only). Nothing in the brief tells the owner the 07-24 target was missed or that generation has been idle for 6 days.",
+          "evidence": "docs/briefs/brief_2026072{4,5,6,7}.md Verdicts list, item 4; ops/trigger_journal.jsonl last scenario-generation fire 2026-07-21T13:18:29Z; ops/dashboard.json notes for 07-22 and 07-23 (\"GENERATION DELIBERATELY SKIPPED\").",
+          "severity": "medium"
+        },
+        {
+          "claim": "ops/dashboard.json spend block, written at updated_utc 2026-07-27T18:36:37Z, carries today = {date: \"2026-07-24\", spent_usd: 0.3484}.",
+          "reality": "The dashboard's spend state is 3 days stale. The brief's guard correctly masks it as an em-dash, so the owner sees \"$-/2 today\" rather than a wrong number - but the $2/day operational ceiling that fire_trigger enforces reads this ledger, and whether a 3-day-stale today-date weakens that guard is UNVERIFIED from this read-only pass. Combined with the unfolded 2026-07-21 batch and the known-unfixed LEDGER-DELTA-FOLD HIGH (carried unfixed since 07-23), the spend ledger cannot currently be trusted for same-day ceiling checks.",
+          "evidence": "ops/dashboard.json updated_utc vs spend.today; scripts/daily_brief.py lines 136-142 (stale-date guard); docs/critic/critic_20260723.md and critic_20260727.md HIGH (ledger delta-folding, still unfixed); spend.by_day missing 2026-07-20 and 2026-07-21 keys.",
+          "severity": "medium"
+        },
+        {
+          "claim": "docs/backfill_accel_prompt.md header: \"Exact prompt text for the `backfill-accel` scheduled Routine (owner-approved 2026-07-22 in session chat). Committed so anyone can audit precisely what the accelerator does.\"",
+          "reality": "Documents the behaviour of a Routine that has never existed, in the present tense, with no status caveat. It is contradicted two days later by the dashboard's own record of the 2026-07-24 owner decision: \"backfill acceleration = option (c), session-live driving; no every-2h Routine will be created.\" A reader auditing \"what the accelerator does\" gets a complete, confident answer about a process that has produced zero ticks.",
+          "evidence": "docs/backfill_accel_prompt.md lines 1-6 (committed c0dd140, 2026-07-22T13:51:33Z); ops/dashboard.json notes[3] (2026-07-24 OWNER DECISION); zero matching journal entries.",
+          "severity": "medium"
+        },
+        {
+          "claim": "docs/critic/critic_20260727.md: \"Cumulative idle is roughly 2.8 days against ~4 days elapsed.\"",
+          "reality": "Approximately right on ratio, loose on both terms and the window is unstated. Measured from the first to the last circuit-trace fire after the 07-24 cycle (2026-07-24T13:16:39Z -> 2026-07-27T18:35:16Z, span 77.3h): 55.6h sits in gaps longer than 2h = 72% idle, i.e. 2.32 days idle over 3.22 days elapsed. Individual gaps: 16.26h, 22.43h, 2.53h, 14.33h. Noting it because it is the one estimate in the series that erred pessimistically rather than optimistically.",
+          "evidence": "ops/trigger_journal.jsonl, consecutive circuit-trace fired_utc deltas since 2026-07-24T13:00:00Z.",
+          "severity": "low"
+        }
+      ],
+      "eta_history": [
+        {
+          "stated_when": "2026-07-12 (critic run 3), still printed verbatim as a current verdict in briefs 07-24, 07-25, 07-26 and 07-27",
+          "eta_given": "Tier B generation at 1 batch/day \"finishes ~07-24\"",
+          "outcome": "MISSED and never retracted. On 2026-07-27 Tier B stands at 1200/1600 landed (1100 booked). Last generation fire 2026-07-21T13:18:29Z; generation deliberately skipped every cycle since 07-22. The brief still shows the 07-24 target to the owner 15 days after it was made and 3 days after it lapsed."
+        },
+        {
+          "stated_when": "on or before 2026-07-23 (the target the 07-24 handoff revises away from; journal note 2026-07-23T20:30:39Z calls it the \"weekend completion drive\")",
+          "eta_given": "Full trace backfill complete by Saturday 2026-07-25",
+          "outcome": "MISSED before Saturday even arrived - revised on 2026-07-24T05:38 in docs/handoff_20260724_trace_pace.md (\"completes mid-next-week, not Saturday\"). Cause given: sustained Neuronpedia 429 throttling from 2026-07-23 ~21:50Z. This was a compute-throughput miss, the only one in the series with an external cause."
+        },
+        {
+          "stated_when": "2026-07-24T05:38 (docs/handoff_20260724_trace_pace.md, \"Revised weekend expectation\")",
+          "eta_given": "(i) floor + 135150Z + mid-batches + stragglers complete by ~Saturday; (ii) 17T/18T/19T absorb every remaining window through Sunday, ~150-200 of their 300 pairs; (iii) \"Sunday full republish ships as promised\"; (iv) full backfill mid-next-week",
+          "outcome": "SPLIT. (i) MET - paraphrase floor hit 50/50 and pairs_20260714T135150Z hit 100/100 on 2026-07-24. (ii) BEATEN on raw pairs - 241/300 as of 2026-07-27T18:50 (17T 100/100, 18T 100/100, 19T 41/100), above the 150-200 band. (iii) FAILED OUTRIGHT - the site repo has had no data commit since 2026-07-24T13:20:37Z; nothing shipped Sunday and nothing has shipped Monday. (iv) still open. The item that failed is the only one that was a promise to the owner rather than a measurement forecast."
+        },
+        {
+          "stated_when": "2026-07-24T13:21 (docs/briefs/brief_20260724.md, REPUBLISH-PENDING-BACKFILL)",
+          "eta_given": "\"Interim data republishes daily (today: 921 scenarios/674 measured live); one full republish ... when tracing completes (Sun target, tail disclosed if throttling persists)\"",
+          "outcome": "BOTH FAILED. Zero site-data commits on 07-25, 07-26 and 07-27. The \"daily\" interim republish stopped on the day it was described as daily. By brief_20260725 the wording had silently changed to \"Interim data stays live\" with no acknowledgement that the daily cadence had stopped."
+        },
+        {
+          "stated_when": "2026-07-25T13:16 (docs/briefs/brief_20260725.md)",
+          "eta_given": "\"Recoverable; on the Mon-Tue horizon at throttled pace\"",
+          "outcome": "MON HALF ALREADY FAILED. At 2026-07-27T18:50 there are still 68 untraced pairs (19T 41/100 + 15T 9 gaps). At the measured 12.5 pairs/window that is 5.4 windows, and at the measured wall-clock rate (241 big-three pairs over the 77.3h since 07-24T13:16 = 3.1 pairs/h) it is ~22 more hours - Tuesday afternoon at the earliest, and only if no fifth container reclaim occurs after four in four days."
+        },
+        {
+          "stated_when": "2026-07-26T13:16 (docs/briefs/brief_20260726.md and ops/dashboard.json RECLAIM-DEFEATS-ACCEL)",
+          "eta_given": "\"the weekend completion target slipped to mid-next-week\"; option-(c) driving \"is delivering roughly option-(a) daily-cycle pace\"",
+          "outcome": "OPEN, and the first honest estimate in the series - it is the first one that prices in container reclaims rather than compute. It arrived after the 2nd and 3rd reclaims, i.e. two failures too late, and it still left the standing prompt's every-2h claim in place."
+        },
+        {
+          "stated_when": "2026-07-26T20:57 (docs/handoff_20260726_disk.md)",
+          "eta_given": "\"Remaining weekend trace work (~150 pairs = 114MB) fits inside the freed 2.6G, so this does NOT block completion\"",
+          "outcome": "WRONG BY ~9x. Measured 6.8 MB/pair means 150 pairs is ~1.0 GB. Free space went 2.6G -> 1.9G (dashboard, 07-27T18:36) -> 1.6G (df -h, 07-27T18:50) with only 68 pairs done since. Not yet blocking, but the safety margin the owner was given was fictitious, and it was computed the same wrong way that had caused the 100%-full incident the night before."
+        },
+        {
+          "stated_when": "2026-07-27T18:36 (ops/dashboard.json notes[0], current)",
+          "eta_given": "\"Remaining: 19T 41/100 + 15T 9 gaps = 68 pairs (~4 windows)\"",
+          "outcome": "OPEN, and still framed in compute units. 68 pairs at the measured 12.5 pairs/window is 5.4 windows, not 4. More importantly \"windows\" is not time: the lane has been idle 55.6h of the last 77.3h (72%), so 4-5 windows of compute has been costing 20-24h of wall-clock. No calendar date is attached, which makes the estimate unfalsifiable rather than accurate."
+        }
+      ],
+      "root_causes": [
+        "ESTIMATES MODELLED COMPUTE, NEVER DRIVER SURVIVAL. Every ETA in the series is pairs divided by pairs-per-window. Not one carries a term for 'the container hosting the babysitter dies'. The measured reality since 2026-07-24T13:16 is 55.6h idle out of a 77.3h span (72%), in gaps of 16.26h, 22.43h, 2.53h and 14.33h, across four container reclaims in four days. The throughput model was never wrong about throughput - 12.5 pairs/window is close to the handoff's own figure - it was wrong because throughput was the wrong variable. After the very first reclaim (2026-07-24T21:00 -> 2026-07-25T13:16) the correct estimator was already 'daily-cycle pace'; that was not written down until 2026-07-26.",
+        "AN UNCONFIRMED TOOL CALL WAS PROMOTED TO OPERATING FACT AND THEN INHERITED. docs/routine_standing_prompt.md has asserted since 2026-07-20T13:06:15Z that a backfill-accel Routine 'fires ... every ~2h', while brief_20260720.md and critic_20260720.md written the same day say it could not be created. The 2026-07-26 re-attempt returned an approval error, the re-issued call was left pending, and the verification call was denied - and the pace assumption was carried forward anyway until the 07-27 critic caught it. Reproduced independently in this audit: mcp list_triggers returns 'MCP error -32003: MCP tool call requires approval', so the Routine's existence is not verifiable from this environment at all. The damage is not the failed call; it is that an unverifiable state was written in the present tense into the document every future session treats as ground truth, where it has been sitting unchallenged for 7 days.",
+        "PRIORS WERE RE-DERIVED OPTIMISTICALLY AFTER EACH FAILURE INSTEAD OF UPDATED. Saturday (pre-07-24) -> 'mid-next-week' but with 'Sunday republish ships as promised' (07-24 05:38) -> 'Sun target' restated the same day (07-24 13:21) -> 'Mon-Tue horizon' (07-25) -> 'mid-next-week' (07-26) -> '~4 windows' (07-27). Five revisions in four days, each re-anchored on the same throughput arithmetic and each silent about the base rate of the failure that had just occurred. After three reclaims on three consecutive nights, a Laplace estimate puts the next night's survival below 50%; no ETA in the series reflects anything like that. The one estimate that finally did price in reclaim risk (07-26) still left the every-2h claim standing in the operating doc.",
+        "PROGRESS INSTRUMENTATION IS HAND-MAINTAINED, SO IT ROTS SILENTLY AND THE OPERATOR REPORTS FROM FICTION. ops/README.md documents tierb counts as maintained by 'the Routine's own edits' - no code writes them, so nothing can fail loudly. Consequences, all live right now: tierb.traced_pairs frozen at 98 since 2026-07-10T13:34 while the true count is 1012; runs_recent frozen at 07-23 AND structurally unreadable by daily_brief._recent_runs (keys run/id/state/landed vs the fired_utc/workflow/status/note it filters on), so the brief printed 'no changes in the last 26h' on three consecutive days of heavy activity; spend.today.date stuck at 2026-07-24; and an entire 100-pair Tier B batch (pairs_20260721T132205Z, $0.146685, accepted 100) that landed on main on 07-21 was never folded into the ledger, never counted in accepted_pairs, never pulled to the branch and never traced. The operator's ETAs were built on top of a state description that had drifted 10x from reality.",
+        "VERIFICATION STANDARDS DECAYED EXACTLY WHEN THE ENVIRONMENT BECAME UNRELIABLE. Every --ignore-settle chain fire through 2026-07-26T19:21:44Z cites a real Actions status (completed=success/failure/cancelled). From 2026-07-26T20:53:10Z - immediately after the 3rd reclaim, when the session was racing to catch up - every single basis becomes inference from side-effects: 'concurrency group runs one at a time => vacated', '>75min terminal', 'outputs landed = terminal'. The handoff doc still claims each chain is 'on Actions-confirmed-terminal basis each time'. Under CLAUDE.md's queue rule this is the precise condition in which a third trigger change silently evicts a pending run, and the journal cannot detect it: `evicted` is only ever set by an explicit --force-evict, while 83 of 280 entries (30%) were never resolved at all. 'Journal and Actions agree, no silent evictions' (critic 07-22 and 07-23) is therefore an unverifiable claim asserted as verified. Time pressure produced weaker evidence standards precisely when the evidence mattered most.",
+        "PHYSICAL-RESOURCE ESTIMATES WERE TAKEN FROM THE WRONG ARTIFACT CLASS, AND THE ERROR WAS REUSED AFTER IT HAD ALREADY CAUSED AN OUTAGE. The disk handoff sized renders at ~13MB/window by counting batch_summary JSON, not the HTML+PNG pairs actually committed (82 of each in the 19T directory); measured cost is 6.8 MB/pair, 683M for 100 pairs. That is the same ~10x understatement that let the disk reach 100% and break a rebase mid-push on Sunday night - and the recovery note then reused it to declare the remaining 150 pairs 'does NOT block completion' at 114MB when the true figure is ~1.0 GB. Free space has since gone 2.6G -> 1.9G -> 1.6G. An instrumentation error that has already produced a visible failure must be re-derived from measurement, not restated with more confidence.",
+        "BAD NEWS WAS STRUCTURALLY DEMOTED: TRUE REASSURANCES IN FRONT, THE FAILURE IN A SUBORDINATE CLAUSE, AND THE HEADLINE NUMBER WRONG. 'No data at risk (all $0, nothing lost, daily cycle always catches up)' is true and leads the paragraph in which the chosen acceleration strategy is admitted to have stopped working. Meanwhile the number the owner actually reads at the top of the brief - '98 traced' - was wrong by 10x the entire time, and the Delta section said 'no changes' on the three busiest days. The accurate accounting lived only in hand-written prose notes that the assistant composed; the generated owner-facing surface was never validated against the artifacts on disk. No gate anywhere asks the two questions that would have caught all of this: 'does the automation I claim exists actually emit ticks?' and 'does the number I am about to print match what is on disk?'"
+      ]
+    },
+    "state": {
+      "batches": [
+        {
+          "stem": "pairs_20260717T132235Z",
+          "traced": 100,
+          "total": 100,
+          "missing_indices": "none — COMPLETE (8 parts: 01,09,29,37,44,63,71,86)"
+        },
+        {
+          "stem": "pairs_20260718T133020Z",
+          "traced": 100,
+          "total": 100,
+          "missing_indices": "none — COMPLETE (8 parts: 01,09,28,46,63,77,85,93)"
+        },
+        {
+          "stem": "pairs_20260719T132706Z",
+          "traced": 41,
+          "total": 100,
+          "missing_indices": "42-100 (59 pairs; contiguous tail, 3 parts: 01,16,25)"
+        },
+        {
+          "stem": "pairs_20260715T132350Z",
+          "traced": 91,
+          "total": 100,
+          "missing_indices": "28-30,50,59-60,98-100 (9 pairs; 11 parts)"
+        }
+      ],
+      "total_remaining_pairs": 68,
+      "queue_state": "circuit-trace lane FULL (1 running + 1 pending) — the only occupied lane; logits-eval, jlens-readout, activation-patching, scenario-generation, model-evaluation, archive-renders, advice-eval all 0 active. RUNNING: fired 2026-07-27T18:35:16Z, 19T window 42-61 (20 pairs). PENDING: fired 2026-07-27T18:35:27Z, 15T gap sweep 28-39 (window of 12, but only covers gaps 28,29,30 = 3 of its 9 missing). Both $0. Do NOT fire a third circuit-trace change — it would silently evict the pending 15T sweep. After both land: 19T 61/100, 15T 94/100, total remaining drops 68 -> 45. Journal shows recent windows resolving in ~1.5h each (01:13->02:44, 02:44->04:15), but the lane sat idle ~12.6h today on a 4th container reclaim, so wall-clock to finish 45 pairs (3 more windows) is ~4.5h at pace, materially longer if reclaims recur. Dashboard last written 2026-07-27T18:36:37Z by routine. Source: `python scripts/fire_trigger.py status`, ops/trigger_journal.jsonl tail.",
+      "disk_free": "1.6G free of 252G, 96% used on /dev/vda (`df -h /home`). THIS IS THE BINDING CONSTRAINT, not the queue. Breakdown: trace_out/ 13G, engine .git 9.3G, ../patientwords 1.2G (`du -sh`). Measured render cost: trace_out/pairs_20260719T132706Z = 271M for 41 pairs (82 HTML @ 91M + 82 PNG @ 180M + 3 summaries) = ~6.6 MB/pair. Projection: the 68 remaining pairs land ~450MB of renders in the working tree plus roughly-equal .git objects (PNGs do not compress) = ~900MB; the publish chain then writes ~200 capped HTML renders (~210MB, site modes/simulated is already 259 HTML/271M + 43 PNG/90M) plus site git objects. Total projected need ~1.3G against 1.6G free — it fits only with near-zero margin. NOTE a documented discrepancy: docs/handoff_20260726_disk.md estimates ~13MB/window (~150 pairs = 114MB), which is ~10x below the 6.6MB/pair I measured from du on the live 19T dir; that handoff's remaining-work sizing should not be relied on. Also per that handoff, `git gc --aggressive` (the real fix for the 9.3G .git) needs >5G scratch and is therefore NOT currently possible. Recommend the sparse-checkout cone excluding trace_out/** render HTML/PNG (ops only needs batch_summary*.json) before, not after, the remaining tracing lands.",
+      "downstream_steps": [
+        {
+          "step": "1. Exporter — export_frontend_simulated.py --frontend ../patientwords --stamps <full list> --archive-url <releases>. LOCAL COMPUTE, no CI. Must extend the stamp list: the published payload currently holds 16 stamps ending at pairs_20260715T132350Z (921 scenarios); 16T/17T/18T/19T are NOT yet published, and 15T is published at 80 scenarios vs 91 now traced. Never shrink the stamp list. Do not pass --max-renders or --with-pngs (current defaults are the policy). Cost is dominated by copying ~200 capped HTML renders (~210MB) on a 96%-full disk.",
+          "est_minutes": 12,
+          "blocking": true
+        },
+        {
+          "step": "2. Urgency collector — urgency_shift.py --publish ../patientwords. LOCAL COMPUTE, no CI. Reads site payload + every trace_out/*/batch_summary.part_*: measured 526 files / 9615 results, 18s just to parse cold, then tier scoring and a 1.3MB write.",
+          "est_minutes": 5,
+          "blocking": true
+        },
+        {
+          "step": "3. Five j-lens exporters in order — jlens_insights.py; export_jlens_depth.py (reuse the committed pins: blocks incl. pairs_20260713T050939Z, exemplar stem pairs_20260711T051145Z index 19 — never change pins ad hoc; exit 3 = degenerate-exemplar refusal, treat as success-with-no-change); export_jlens_transport.py; export_jlens_loglens.py; export_pair_swaps.py --depth ../patientwords/data/jlens_depth.json (must run last so its <batch>#<index> join is current). ALL LOCAL COMPUTE, no CI.",
+          "est_minutes": 15,
+          "blocking": true
+        },
+        {
+          "step": "4. Trace-URL restamp — export_traces_site.py --stamp-only. LOCAL COMPUTE, no CI, no traces-repo checkout needed. Rewrites trace_url across all scenarios in the 6.2MB payload.",
+          "est_minutes": 2,
+          "blocking": true
+        },
+        {
+          "step": "5. Translation at scale — translation_scale.py --site ../patientwords. SKIP THIS CYCLE: gated on new txcorpus logits/lens landing, and no txcorpus run has landed since the 20260714T224455Z dirs. If it ever does run, the at-scale TABLE is sanctioned but any framing SENTENCE needs owner approval via decisions_pending.",
+          "est_minutes": 0,
+          "blocking": false
+        },
+        {
+          "step": "6. Coverage — coverage_gaps.py. LOCAL COMPUTE, no CI. Its steer_topics block feeds the topics param of the NEXT generation fire, so it does not gate the site update.",
+          "est_minutes": 2,
+          "blocking": false
+        },
+        {
+          "step": "7. Contract gate — validate_frontend_contract.py --site ../patientwords. LOCAL. Report mode (no --strict). Must be re-run after export; currently exit 0 with 1 warning (see gates_status).",
+          "est_minutes": 2,
+          "blocking": true
+        },
+        {
+          "step": "8. Claim gate — claim_check.py. LOCAL. Re-run after export; refreshed numbers can newly invalidate a hardcoded site sentence. On exit 1 do NOT edit prose — put the exact FAIL line in the digest headline and decisions_pending for the owner.",
+          "est_minutes": 1,
+          "blocking": true
+        },
+        {
+          "step": "8b. Holdout-seal gate — seal_check.py --site ../patientwords. LOCAL. Mandatory, exit 0 required to proceed; exit 1 aborts the publish (breach protocol), exit 2 (empty sealed set) is a config error, never a pass.",
+          "est_minutes": 2,
+          "blocking": true
+        },
+        {
+          "step": "9. Commit + push both repos — LOCAL + NETWORK, no CI queue. Site: git status first, only data/*.json and exporter-written modes/simulated/ may have changed; commit, push branch, then push branch:main as sanctioned. Engine: commit ops/*.json + data/jlens_*.json, git pull --rebase before pushing. This is the slowest step — dominated by pushing ~200MB+ of new render blobs, and it is the step most likely to fail on the 1.6G disk (a disk-full mid-rebase is exactly what broke 2026-07-26).",
+          "est_minutes": 20,
+          "blocking": true
+        }
+      ],
+      "gates_status": "All three gates PASS right now (run from /home/user/patientwords-engine against the current, pre-republish site data). (1) `python scripts/seal_check.py --site ../patientwords` -> EXIT 0: \"seal check: CLEAN - 108 sealed phrases, no hits across 3 root(s)\". (2) `python scripts/validate_frontend_contract.py --site ../patientwords` -> EXIT 0: \"contract check: 0 error(s), 1 warning(s)\"; the single warning is \"urgency_shift.json :: $.rows :: 689/5685 rows join no published scenario (dead weight in the public payload)\" — this is the known F-M27 orphan-row issue the gate is deliberately kept in report (non-strict) mode for, and it should shrink once 16T/17T/18T/19T are actually published, since those orphans are urgency rows for traced-but-unpublished stamps. (3) `python scripts/claim_check.py` -> EXIT 0: \"claim check: all claims verified against their sources\", no warn: line. IMPORTANT CAVEAT: these are pre-export results. The contract and claim gates must be re-run after the exporter/collector chain — adding ~4 new stamps and lifting 15T from 80 to 91+ scenarios changes the numbers that claim_check verifies against hardcoded site sentences, so a currently-green claim gate is not evidence it will be green post-republish."
+    },
+    "diag": {
+      "why_estimates_failed": [
+        "THE BOTTLENECK WAS NEVER COMPUTE. From 2026-07-24T00:00Z to now (2026-07-27T18:53Z, `date -u`) is 90.9h elapsed. 49.7h of that is three idle gaps with an empty lane (15.12h, 21.60h, and 12.96h still open at this moment) = 54.7% of the window doing nothing. Throughput itself was never the problem and never degraded: 342 pair-traces in 41.2 productive hours = 8.3 pairs/productive-hour across the whole window, and 10.8 net-new pairs/hour over the last clean stretch (07-26T13:15Z -> 07-27T05:55Z, 15 landings, mean 66 min apart). The entire job that remains is 7.5 lane-hours. The idle already burned is 6.6x the total remaining compute budget. Source: engine `git log --format='%cI %s' <branch> -- trace_out/` (37 landings), ops/trigger_journal.jsonl.",
+        "THE ONE REAL COMPUTE MISS WAS THE FIRST ONE, AND IT WAS NOT REPEATED. Neuronpedia 429 throttling from 2026-07-23 ~21:50Z cut window yield to ~10 pairs and legitimately killed 'Saturday'. But 07-24 -- the most heavily throttled day, four separate 429/timeout notes in the journal -- had ZERO idle gaps and 19 landings on a steady 45-155 min cadence. Throttling shrank yield per window; it never stopped the lane. Every slip after 07-24 was the driver process dying, not the compute being slow. Those two failures were reported to you interchangeably; they are not the same thing and they have opposite fixes.",
+        "THE DRIVER IS A SESSION-LOCAL TIMER WITH NO RETRY, AND RECOVERY IS PINNED TO A CLOCK, NOT TO THE FAILURE. Four container reclaims in four days (one per ~22.7h). Each one kills the babysitter timer. The fires already in flight land their outputs and are then never resolved and never chained -- the mechanical signature is exact: the only unresolved circuit-trace journal entries in the whole window are the two immediately preceding each gap ((19:29:22Z, 21:00:32Z) before gap 1, (13:16:15Z, 14:49:32Z) before gap 2, (02:44:38Z, 04:15:22Z) before gap 3). Nothing retries. All three gaps ended only when the next scheduled daily backstop fired (~13:15Z, ~13:15Z, 18:35Z). So the cost of a reclaim is not proportional to anything -- it is 'time until the next backstop'. A reclaim at 21:00Z costs ~16h; one at 04:15Z costs ~14h. No ETA in the series contained that term.",
+        "THE PLAN'S ANSWER TO 'WHAT IF THE SESSION DIES' WAS A ROUTINE THAT DOES NOT EXIST. docs/routine_standing_prompt.md has stated since 2026-07-20T13:06:15Z (commit aafa0bc) that a `backfill-accel` Routine 'fires the same $0 planner lanes every ~2h so the lanes stay saturated between daily cycles.' It has never fired: zero unattended ticks in 280 journal entries; 11 even-hour firing opportunities since 2026-07-26T22:00Z and 0 ticks; all 8 circuit-trace fires in that span are self-authored in-session timers ('backstop HH:Mx' x6, 'cycle 07-27' x2). The same day it was written, brief_20260720.md and critic_20260720.md both recorded that the Routine could NOT be created -- and the false document is the one every subsequent session reads as ground truth. An unconfirmed tool call was promoted to operating fact and then inherited for 7 days. That is why the pace assumption survived four contacts with reality.",
+        "ESTIMATES WERE RE-DERIVED, NOT UPDATED. Six ETAs in four days -- Saturday -> 'mid-next-week but Sunday republish ships as promised' (07-24 05:38) -> 'Sun target' restated the same day (07-24 13:21) -> 'Mon-Tue horizon' (07-25) -> 'mid-next-week' (07-26) -> '~4 windows' (07-27). Every one is pairs divided by pairs-per-window. Every one is silent about the failure that had just happened. After three reclaims on three consecutive nights, the honest survival prior for a fourth night was well under 50%; nothing in the series reflected that. The first estimate to price in reclaims at all was 07-26 -- two failures late -- and it still left the every-2h claim standing in the operating doc.",
+        "THE REMAINING-WORK ARITHMETIC IS ALSO STILL WRONG, IN THE SAME DIRECTION. Today's dashboard says '68 pairs (~4 windows)'. It is 6 windows: 19T needs 42-61 (in flight), 62-81, 82-100 = 3 windows at ~20 pairs; 15T needs three separate gap sweeps for 28-30, 50/59/60, and 98-100, each of which burns a full ~70-min window to deliver 3 net-new pairs. The tail is window-bound, not pair-bound. Dividing 68 by 12.5 pairs/window understates it by two windows -- and 'windows' is not time anyway: 4-5 windows of compute has been costing 20-24h of wall clock.",
+        "'REPORTED AS WORKING WHEN IT WASN'T' IS MOSTLY STRUCTURAL, NOT RHETORICAL -- THE STATUS SURFACE CANNOT SEE THE ARTIFACTS. ops/dashboard.json tierb.traced_pairs has been frozen at 98 since 2026-07-10T13:34:06Z; the true count is 1012. That is the headline number at the top of every brief you read, wrong by 10x for the entire duration of the backfill drive whose only purpose was raising it. Separately, dashboard runs_recent is frozen at 07-23 AND its records use keys run/id/state/landed while scripts/daily_brief.py:_recent_runs filters on fired_utc and reads workflow/status/note -- so no run entry can ever match and the Delta line falls through to 'no changes in the last 26h', which it printed on 07-25, 07-26 and 07-27: the three busiest days on record (17T 8->100, 18T 8->100, 19T 0->41). No gate anywhere asks 'does the number I am about to print match what is on disk?'.",
+        "THE PROMISE THAT ACTUALLY BROKE WAS THE PUBLISH, NOT THE TRACE -- AND IT WAS NEVER BLOCKED BY ANYTHING. Tracing beat its own forecast: 17T and 18T are complete at 100/100 (verified by unioning results[i].index across trace_out/<stem>/batch_summary*.json), and the big three are at 241/300 against a forecast band of 150-200. But the site's last data commit is 2026-07-24T13:20:37Z (f103117) and the published payload still holds 921 scenarios across 16 stamps. Across the six recent stamps, 440 pairs are traced on disk and 172 are published -- 268 measured scenarios have been sitting unpublished since Friday. The publish chain is ~59 min of LOCAL, $0 compute with no CI dependency. It was held for a single end-of-run ship, so every reclaim that delayed tracing also delayed everything you could see.",
+        "VERIFICATION STANDARDS DECAYED EXACTLY WHEN THE ENVIRONMENT BECAME UNRELIABLE. Of 34 --ignore-settle chain fires since 07-24, 11 cite a real Actions status -- and all 11 fall on or before 2026-07-26T19:21:44Z. From 2026-07-26T20:53:10Z onward (immediately after the 3rd reclaim, while catching up) every single basis is inference from side-effects ('>75min terminal', 'outputs landed = terminal'), while docs/handoff_20260724_trace_pace.md still claims each chain is fired 'on Actions-confirmed-terminal basis each time'. Under CLAUDE.md's queue rule this is precisely the condition where a third trigger change silently evicts the pending run, and the journal cannot detect it: `evicted` is only ever written by an explicit --force-evict (count of evicted==true: 0) and 83 of 280 entries (30%) were never resolved at all. 'No silent evictions, journal and Actions agree' (critic 07-22, 07-23) is an unverifiable claim asserted as verified. UNVERIFIED here too: I did not query the Actions API this pass.",
+        "DISK WAS SIZED FROM THE WRONG ARTIFACT CLASS, AND THE ERROR WAS RESTATED WITH MORE CONFIDENCE AFTER IT HAD ALREADY CAUSED AN OUTAGE. docs/handoff_20260726_disk.md put renders at ~13MB/window and '150 pairs = 114MB'. Measured: trace_out/pairs_20260719T132706Z is 271M for 41 pairs (82 HTML + 82 PNG) = 6.6 MB/pair, so 150 pairs is ~1.0GB -- a ~9x understatement, derived by counting summary JSON instead of the HTML+PNG actually committed. The same understatement is what let the disk hit 100% and break a rebase mid-push on 07-26, and the recovery note then reused it to declare the remaining work 'does NOT block completion'. `df -h` right now: 1.6G free, 96% used. The remaining 68 pairs (~450MB tree + ~450MB git objects) plus the publish chain (~210MB of capped renders) need ~1.3G against 1.6G. It fits with near-zero margin, and disk -- not the queue -- is the binding constraint."
+      ],
+      "remaining_compute_hours": 7.5,
+      "scenarios": [
+        {
+          "name": "No interruption",
+          "assumption": "The session and its timers survive continuously for ~8.5h from 18:53Z: 6 chained CI windows at the measured ~70-75 min each (19T 42-61 already fired 18:35Z, 15T 28-39 pending, then 19T 62-81, 19T 82-100, 15T 50/59/60, 15T 98-100), then the ~59-min local publish chain (exporter -> urgency collector -> 5 j-lens exporters -> trace restamp -> contract/claim/seal gates -> push both repos). Also assumes no 5th container reclaim, disk holds (~1.3G needed vs 1.6G free), and the contract + claim gates stay green after the export -- they are green NOW but that is pre-export and is not evidence, since adding 4 stamps and lifting 15T from 80 to 91 scenarios changes the numbers claim_check verifies against hardcoded site sentences.",
+          "finish_utc": "2026-07-28T03:30:00Z",
+          "probability": "~20%. Base rate is 4 reclaims in 90.9h = one per 22.7h, which memorylessly gives P(survive 8.5h) ~= 0.69 -- but this path runs entirely through the 19:00-06:00Z overnight band, and every one of the last four nights produced a reclaim. Laplace on 4-for-4 gives ~17%. I would not plan on this."
+        },
+        {
+          "name": "One interruption",
+          "assumption": "A reclaim hits tonight after roughly 3 of the 6 windows land (~23:00Z). Nothing retries: the in-flight fires land their outputs and are never chained, exactly as in all three observed gaps. The lane then sits empty until the next scheduled daily backstop at ~13:15Z on 07-28, with first landing 67-76 min later (~14:25Z, the observed recovery latency in gaps 1 and 2), then 3 more windows at ~75 min and the ~59-min publish chain. This is the modal outcome and the one I would tell you to plan against.",
+          "finish_utc": "2026-07-28T18:30:00Z",
+          "probability": "~45%"
+        },
+        {
+          "name": "Two interruptions",
+          "assumption": "As above, plus a second reclaim on the night of 07-28 with ~2 windows still outstanding; recovery again pinned to the 07-29 ~13:15Z backstop, first landing ~14:25Z, 2 windows, then publish. Note the asymmetry that makes this scenario expensive: the cost of a reclaim is not the work lost (nothing is lost, all $0, all outputs land) -- it is the up-to-18h wait for the next backstop.",
+          "finish_utc": "2026-07-29T17:00:00Z",
+          "probability": "~25%, with a residual ~10% for three or more interruptions, which pushes finish to 2026-07-30 or later. That tail is exactly what a rate of one reclaim per 22.7h implies over a multi-day horizon, and it does not shrink on its own."
+        }
+      ],
+      "what_would_actually_derisk_it": [
+        "1. PUBLISH NOW INSTEAD OF WAITING FOR THE TAIL -- ASSISTANT ALONE, ~1h, $0, NO CI. 268 already-measured scenarios are sitting on disk unpublished (440 traced vs 172 published across the six recent stamps; site last data commit f103117, 2026-07-24T13:20:37Z). Running the chain today takes the public site from 921 to ~1189 scenarios and completely decouples the thing you can see from the reclaim lottery -- after which the remaining 68 pairs are a follow-up republish, not a release blocker. This is the single largest risk reduction available and it needs nothing from you except the acceptance that 19T ships partial at 41/100, disclosed as such. Caveats I will not paper over: the contract and claim gates must be re-run AFTER the export (green now is pre-export and proves nothing), and item 2 should happen first.",
+        "2. FREE DISK BEFORE THE TAIL LANDS, NOT AFTER -- ASSISTANT ALONE, MINUTES. 1.6G free, 96% used; projected need ~1.3G. This is the binding constraint, not the queue, and the estimate that said otherwise was wrong by 9x and has already caused one disk-full mid-rebase. `git gc --aggressive` on the 9.3G .git is NOT available (needs >5G scratch per docs/handoff_20260726_disk.md). The lever that is available is a sparse-checkout cone excluding trace_out/** HTML and PNG -- ops only ever reads batch_summary*.json. Do it before the next windows land, not after a failure.",
+        "3. CUT THE RECOVERY LATENCY -- REQUIRES YOU. Everything else is second-order next to this: a reclaim currently costs 14-18h because recovery is pinned to a single ~13:15Z daily backstop. Two options. (a) Approve the create_trigger call so a real every-2h Routine exists. Be aware I cannot verify this from here at all -- `list_triggers` returns 'MCP error -32003: MCP tool call requires approval' -- so if you approve it, the acceptance test is a journal entry with an unattended tick, nothing less. (b) If you would rather not add a Routine, add a second daily backstop cycle (e.g. 01:15Z and 13:15Z). That alone roughly halves worst-case idle with no new infrastructure. Without one of these, every future overnight reclaim costs a working day and no ETA I give you can be better than a coin flip.",
+        "4. DELETE THE FALSE CLAIM FROM THE OPERATING DOC TODAY -- ASSISTANT ALONE, MINUTES. docs/routine_standing_prompt.md Section 4 (lines ~195-201) asserts the backfill-accel Routine 'fires the same $0 planner lanes every ~2h'. It has never fired once. docs/backfill_accel_prompt.md describes its behaviour in the present tense with no status caveat, and is contradicted by your own 2026-07-24 decision recorded in the dashboard ('no every-2h Routine will be created'). Every future session reads those files as ground truth. Until they are corrected the same wrong pace assumption gets re-inherited by whoever runs the next cycle.",
+        "5. MAKE THE BRIEF READ FROM DISK INSTEAD OF FROM HAND-MAINTAINED STATE -- ASSISTANT ALONE, ~1h, but it is a code change you should know about. Two concrete fixes: (a) have daily_brief.py compute tierb traced counts by globbing trace_out/*/batch_summary*.json (the exact method used in this audit: 98 printed vs 1012 actual); (b) fix _recent_runs to read the journal's fired_utc/note keys instead of the dashboard's run/id/state/landed, which is why 'no changes in the last 26h' printed on three record-breaking days. Rule going forward: a number that is not derived from an artifact does not get printed. Also drop the `or 0` on line 123 that renders unknown screened_in_pairs as a confident zero.",
+        "6. BOOK THE MISSING BATCH AND RETIRE THE DEAD ETA -- ASSISTANT ALONE for the accounting, YOUR CALL on generation. pairs_20260721T132205Z (100 accepted, $0.146685, landed on main 07-21 as b07db6c) is absent from dashboard tierb.batches, absent from spend.entries_seen, missing from spend.by_day entirely, never pulled to the working branch and never traced. True Tier B is 1200/1600 accepted, not 1100/1600; true generation spend ~$2.0673, not $1.9206. Related: today's brief still prints the 2026-07-12 verdict 'generation ... finishes ~07-24' as a current verdict, and generation has in fact been idle since 2026-07-21T13:18:29Z. That was a series of deliberate skips to protect the paid budget -- it should be your explicit decision, not something you discover in an audit.",
+        "7. STOP CHAINING ON INFERRED TERMINAL STATE, OR SAY SO IN THE JOURNAL -- ASSISTANT ALONE, costs some throughput. From 2026-07-26T20:53:10Z every ignore-settle basis is deduction from side-effects while the handoff claims Actions confirmation each time. Either confirm via the Actions API before each chain fire, or write 'basis: inference' in the note so the record is honest. The queue rule means an unconfirmed third fire silently evicts the pending run, `evicted` is never set except by explicit --force-evict, and 83/280 journal entries are unresolved -- so the repo currently cannot prove a silent eviction has not happened. It should stop claiming it can.",
+        "8. ATTACH UTC DATES AND AN EXPLICIT RECLAIM ASSUMPTION TO EVERY FUTURE ESTIMATE -- ASSISTANT ALONE. '~4 windows' is both arithmetically wrong (it is 6) and unfalsifiable, because windows are not time: the lane has been 55-72% idle. Any estimate I give you from here gets a date, a stated survival assumption, and a stated probability, or it does not get given."
+      ],
+      "honest_headline": "Tracing was never the bottleneck — it beat its own forecast (17T and 18T complete, 241/300 traced against a 150-200 band) while the lane sat empty for 49.7 of the last 90.9 hours because the session driving it died four times and the documented every-2h recovery Routine has never existed; the remaining trace work is 7.5 lane-hours, and 268 already-measured scenarios have been sitting unpublished since Friday for want of one hour of local, $0 work."
+    },
+    "skeptic": {
+      "optimism_found": [
+        {
+          "claim": "'6 chained CI windows at the measured ~70-75 min each' (Scenario 1 assumption); remaining_compute_hours = 7.5",
+          "why_optimistic": "The 70-75 min figure is the landing-to-landing CADENCE observed while TWO independent batches (17T and 18T) alternated in the running+pending slots. It is not window duration. Measured fire->resolve for the 31 resolved circuit-trace entries since 2026-07-24 (ops/trigger_journal.jsonl): median 98.3 min, mean 131.0 min, min 78.1, max 197.2. Only 2 of 31 windows came in under 83 min. The estimate picked the most favorable of two available rate definitions and then applied it to a tail that cannot sustain the interleaving that produced it.",
+          "corrected": "Window wall-clock is 98 min (median) to 131 min (mean). With 7-9 windows required (see next item), lane time is 11.5-19.6 h, not 7.5 h. Use 12-16 lane-hours as the planning band. Source: ops/trigger_journal.jsonl, fired_utc/resolved_utc deltas for trigger=='circuit-trace' since 2026-07-24."
+        },
+        {
+          "claim": "'19T needs 42-61 (in flight), 62-81, 82-100 = 3 windows at ~20 pairs'",
+          "why_optimistic": "This is the SAME error the estimate correctly convicts the dashboard of, committed one level up. Across the 30 landed parts in the four active batches, yield distribution is [7,7,7,8,8,8,8,8,8,8,8,8,9,9,10,10,10,10,10,14,15,15,15,15,17,17,18,19,19,20]: min 7, max 20, mean 11.5, MEDIAN 10. Exactly ONE window in 30 ever delivered 20 pairs. 12 of 30 delivered 8 or fewer. 19T's own three landed parts delivered 15, 9, and 17 (part_01=1-15, part_16=16-24, part_25=25-41) - mean 13.7, never 20. A 20-pair fire is a REQUEST; CI cancels or fails mid-window and commits the partial.",
+          "corrected": "19T's remaining 59 pairs need 4.3 windows at 19T's own observed 13.7/window, or 5.9 at the 10-pair median. Plus 15T's three disjoint gap sweeps (28-30, 50/59/60, 98-100) at 3 net-new pairs each. Total 7-9 windows, not 6. Source: batch_summary.part_*.json index counts per dir."
+        },
+        {
+          "claim": "'THE ONE REAL COMPUTE MISS WAS THE FIRST ONE, AND IT WAS NOT REPEATED... Throughput itself was never the problem and never degraded.'",
+          "why_optimistic": "Directly contradicted by the estimate's own evidence file. The Actions-confirmed ignore-settle bases in ops/trigger_journal.jsonl record terminal state 'completed=cancelled' or 'completed=failure' repeatedly and continuously: 07-24T14:55 (floor run completed=failure), 07-24T21:00 (completed=cancelled), 07-26T14:48 (17T completed=cancelled), 07-26T16:19 (18T completed=failure, landed 28-45), 07-26T17:50 (17T cancelled AND 18T failure), 07-26T19:21 (17T completed=cancelled, landed 63-70). Cancelled/failed-with-partial-commit is the NORMAL terminal state of a backfill window, not a one-time 07-23 throttle event. That is the mechanism generating the 7-to-20 yield spread, and it is live in the most recent data (19T part_16 = 9 pairs, landed 2026-07-27T04:00Z).",
+          "corrected": "Per-window yield is a random variable with mean ~11.5 and a heavy low tail (40% of windows deliver <=8), driven by ongoing run cancellation/failure, not by a resolved historical throttle. Any ETA must integrate over that distribution, not multiply by 20."
+        },
+        {
+          "claim": "Scenario 1 'No interruption', finish 2026-07-28T03:30:00Z, ~20%",
+          "why_optimistic": "Built on 6 windows x 75 min = 7.5h + 59 min publish. At the corrected 7-9 windows x 98 min median, the compute alone is 11.5-14.7h from 18:53Z, landing 06:20-09:35Z on 07-28 BEFORE the publish chain. The 20% probability is also over-generous: it prices survival over 8.5h, but the corrected path needs 12.5-15.7h of continuous session survival, entirely inside the 19:00-06:00Z band that has produced a reclaim on four consecutive nights.",
+          "corrected": "Finish 2026-07-28T07:00Z-10:30Z if nothing breaks. Probability <=10%, not 20% - the survival window it must clear is ~1.6x longer than the one the 20% was computed for."
+        },
+        {
+          "claim": "Scenario 2 'One interruption', finish 2026-07-28T18:30:00Z, ~45% - 'the modal outcome and the one I would tell you to plan against'",
+          "why_optimistic": "Assumes 3 of 6 windows land before a ~23:00Z reclaim, then 3 windows + publish after the 13:15Z backstop. With 7-9 windows total, a reclaim at 23:00Z leaves 5-7 windows outstanding. Post-backstop that is 5-7 x 98 min = 8.2-11.4h from a ~14:25Z first landing = 22:35Z-01:50Z, THEN the publish chain. It does not close on 07-28.",
+          "corrected": "One-interruption finish is 2026-07-29T00:00Z-04:00Z, not 07-28T18:30Z. Roughly 6-10 hours later than stated, and it crosses into a second overnight band - which means scenario 2 has a material chance of silently becoming scenario 3."
+        },
+        {
+          "claim": "'~59 min of LOCAL, $0 compute with no CI dependency' for the publish chain; step 9 est_minutes 20",
+          "why_optimistic": "Zero retry budget anywhere in any of the three scenarios. Step 9 is described in the estimate's own state block as 'the slowest step... the step most likely to fail on the 1.6G disk (a disk-full mid-rebase is exactly what broke 2026-07-26)' - and is then budgeted at 20 minutes with no failure branch. It pushes 200MB+ of new render blobs across two repos with a `git pull --rebase` against a 9.3G .git. It has already failed once under lighter load.",
+          "corrected": "Budget 60-75 min for a clean run and 2-4 h for one that hits a disk-full or rebase conflict and needs manual recovery. Add an explicit retry term; the chain has a demonstrated failure rate of at least 1 in its recent history."
+        },
+        {
+          "claim": "'Total projected need ~1.3G against 1.6G free - it fits with near-zero margin.'",
+          "why_optimistic": "The projection counts only committed blob volume. It omits (a) git pack/temp scratch during `git push` and `git pull --rebase` on a 9.3G .git, (b) the site repo's own .git growth (currently 457M, `du -sh /home/user/patientwords/.git`) when ~200 capped HTML renders land, (c) any loose-object churn before gc. The estimate itself notes `git gc --aggressive` is unavailable for want of >5G scratch - which is an admission that git operations on this repo need scratch the projection does not reserve. The disk-full that broke the 07-26 rebase happened at higher free space than 1.6G.",
+          "corrected": "Treat the disk as INSUFFICIENT, not near-zero-margin. Verified: 1.6G avail, 96% used (`df -h /`), trace_out 13G, engine .git 9.3G, site 1.2G, site .git 457M. Measured render cost 271M/41 pairs = 6.6 MB/pair in trace_out/pairs_20260719T132706Z (82 html + 82 png + 3 json). The estimate's own derisk item 2 (sparse-checkout cone) should be reclassified from 'do it before the next windows land' to a hard precondition on both the tail AND the publish."
+        },
+        {
+          "claim": "'THE ENTIRE JOB THAT REMAINS IS 7.5 LANE-HOURS' / 'total_remaining_pairs: 68'",
+          "why_optimistic": "68 is correct only for the four batches the estimate chose to scope in. Two known-incomplete Tier B batches sit outside it: pairs_20260716T133552Z is traced 8/100 (verified by unioning results[i].index over trace_out/pairs_20260716T133552Z/batch_summary*.json), and pairs_20260721T132205Z (100 accepted, landed on main as b07db6c) has never been pulled to the working branch and has 0 traced. The estimate books 21T as an accounting correction ('true Tier B is 1200/1600') but never carries it into any scenario's schedule.",
+          "corrected": "If 'done' means the four scoped batches, 68 pairs. If it means Tier B complete, it is 68 + 92 (16T) + 100 (21T) = 260 pairs, i.e. ~26-26+ windows and multiple additional days plus ~1.7GB of renders the disk cannot hold. The owner has not been asked which definition applies - that ambiguity is itself an unpriced schedule risk."
+        },
+        {
+          "claim": "'~25%, with a residual ~10% for three or more interruptions'",
+          "why_optimistic": "The 10% tail was computed against a 6-window job. Against a 7-9-window job whose corrected modal completion crosses two additional overnight bands at a base rate of one reclaim per 22.7h, the 3+ tail is materially fatter.",
+          "corrected": "Tail (3+ interruptions, finish 2026-07-30 or later) is ~20-25%, not 10%."
+        },
+        {
+          "claim": "Implicit throughout: the ~13:15Z daily backstop will fire reliably, so a reclaim costs 'time until the next backstop' (14-18h).",
+          "why_optimistic": "Every recovery path in all three scenarios is load-bearing on a scheduled Routine whose existence the estimate ITSELF says it cannot verify ('list_triggers returns MCP error -32003: MCP tool call requires approval'). The estimate correctly demolishes docs/routine_standing_prompt.md for asserting a backfill-accel Routine that never fired, then rests all three of its own scenarios on a sibling Routine verified by exactly the same (absent) evidence. Confirmed here: 0 journal entries reference backfill-accel, evicted==True count is 0 across all 280 entries.",
+          "corrected": "Reclaim cost is 'time until the next backstop, IF the backstop fires'. Its firing is inferred from three past recoveries, not verified. UNVERIFIED: I did not query the Routine list or the Actions API this pass. If the daily Routine is as fictional as backfill-accel, recovery latency is unbounded and no scenario probability in the estimate is meaningful."
+        }
+      ],
+      "unmodelled_risks": [
+        "WINDOW YIELD IS A DISTRIBUTION, NOT A CONSTANT. 30 landed parts across the four active batches: min 7, max 20, mean 11.5, median 10; 12 of 30 delivered <=8. The estimate multiplies by 20 for 19T. No scenario carries a variance term, so no scenario has an error bar on window count.",
+        "RUN CANCELLATION/FAILURE IS THE STEADY STATE, NOT AN ANOMALY. Journal Actions-confirmed bases record completed=cancelled or completed=failure on 07-24T14:55, 07-24T21:00, 07-26T14:48, 07-26T16:19, 07-26T17:50 (both entries), 07-26T19:21. The estimate's claim that the compute miss 'was not repeated' is false, and it is the reason yields are 7-20.",
+        "19T's NEXT OFFSET IS SERIALLY DEPENDENT ON WHERE THE PREVIOUS WINDOW LANDED. Because a 20-pair fire lands 9-17 pairs, the follow-on offset cannot be pre-queued - the journal shows exactly this (fired 1-20 -> landed 1-15 -> fired 16-35 -> landed 16-24 -> fired 25-44 -> landed 25-41). Once the three 15T gap sweeps are exhausted there is no second workstream to fill the pending slot, so the lane degrades from ~66 min interleaved cadence to the full ~98 min serial window. No scenario models this regime change.",
+        "A RECLAIM DURING THE PUBLISH CHAIN ITSELF. The chain is 61 min of local work spanning two repos and nine steps, ending in commits and pushes to both. A reclaim mid-chain leaves a partial state (site data committed but engine ops/*.json not, or an interrupted rebase) that the next session must diagnose before it can proceed. All three scenarios treat publish as atomic.",
+        "PUBLISH-CHAIN FAILURE WITH NO RETRY BUDGET. Step 9 already failed once (disk-full mid-rebase, 2026-07-26) and is budgeted at 20 min with no failure branch in any scenario.",
+        "POST-EXPORT GATE FAILURE IS AN OWNER-BLOCKED PATH, NOT A DELAY. The estimate correctly notes claim_check must be re-run after export and that green-now is pre-export and proves nothing. What it does not price: the documented response to claim_check exit 1 is 'do NOT edit prose - put the exact FAIL line in decisions_pending for the owner'. That converts a technical failure into an indefinite wait on human availability. Adding 4 stamps and lifting 15T from 80 to 91 scenarios is exactly the change most likely to invalidate a hardcoded site sentence. Probability unquantified, consequence unbounded.",
+        "THE CONTRACT-GATE WARNING MAY NOT SHRINK AS PREDICTED. The estimate asserts the 689/5685 orphan-row warning 'should shrink once 16T/17T/18T/19T are actually published'. 16T is traced 8/100 and 19T will publish partial at ~61/100, so a large orphan population persists and new ones may appear. Unverified assumption presented as expected behavior.",
+        "SILENT EVICTION IS UNDETECTABLE AND MAY HAVE ALREADY HAPPENED. Verified: evicted==True count is 0 across all 280 journal entries (only ever written by explicit --force-evict), and 86 of 280 entries (30.7%) were never resolved. From 2026-07-26T20:53:10Z onward every ignore-settle basis is inference from side-effects. If the 18:35:27Z 15T sweep was evicted by the 18:35:16Z 19T fire, a window is already lost and nothing in the repo can show it.",
+        "THE DAILY BACKSTOP'S OWN RELIABILITY IS UNVERIFIED. All three recovery paths depend on it; its existence is supported by the same class of evidence (inference from past behavior, no tool confirmation) that the estimate correctly rejects for backfill-accel.",
+        "SCOPE AMBIGUITY: 16T at 8/100 AND 21T AT 0/100 ARE OUTSIDE THE 68-PAIR SCOPE. Verified: trace_out/pairs_20260716T133552Z has 8 traced indices; pairs_20260721T132205Z landed on main (b07db6c) but is absent from the working branch's data/simulated/ and from dashboard tierb.batches (15 entries, no 20260721). If Tier B completion includes them, remaining work is 260 pairs and ~1.7GB, not 68 pairs and ~450MB.",
+        "DISK SCRATCH FOR GIT OPERATIONS IS UNRESERVED. The ~1.3G projection covers committed blobs only, not pack/temp space for push and pull --rebase against a 9.3G engine .git plus a 457M site .git. The estimate concedes gc needs >5G scratch it does not have - the same class of requirement it omits from the projection.",
+        "NEURONPEDIA-SIDE DEGRADATION HAS NO FALLBACK. Only gemma-2-2b produces hosted graphs; a 400 aborts the batch immediately and run_batch has no per-pair error records, so a mid-batch failure silently truncates results - indistinguishable from a low-yield throttled window. No scenario carries a host-availability term.",
+        "INSTRUMENTATION CANNOT DETECT ITS OWN FAILURE, SO PROGRESS REPORTS DURING THE TAIL WILL STAY WRONG. Verified live: ops/dashboard.json tierb.traced_pairs = 98 while the true Tier B base-model traced total is ~1027 (1604 across all 32 base-model trace dirs); spend.today.date frozen at 2026-07-24; scripts/daily_brief.py:88-98 _recent_runs filters on fired_utc and reads workflow/status/note while dashboard runs_recent records carry run/id/state/landed, so no entry can ever match and the Delta line falls through to 'no changes'; daily_brief.py:121-123 coerces unknown traced/screened counts to a confident 0 via `or 0`. Whatever happens tonight, the surface reporting it is already broken.",
+        "NO SCENARIO PRICES THE 268 UNPUBLISHED SCENARIOS AS A STANDING EXPOSURE. Verified exactly: traced across the six recent stamps = 100 (14T) + 91 (15T) + 8 (16T) + 100 (17T) + 100 (18T) + 41 (19T) = 440; published = 92 + 80 + 0 + 0 + 0 + 0 = 172; difference 268. Site last data commit is f103117, 2026-07-24T13:20:37Z, 921 scenarios across 16 stamps. Every additional day of tail risk is also another day those 268 stay invisible - the estimate identifies this in prose but no scenario's probability reflects that the exposure compounds."
+      ],
+      "verdict_on_estimate": "DO NOT TRUST THE DATES. WIDEN BY ROUGHLY ONE DAY AND RE-BASE THE ARITHMETIC. This estimate is a genuine improvement in DIAGNOSIS and a repeat offender in ARITHMETIC. Its structural findings are real and I verified them independently: the idle accounting (three gaps summing 49.7h in a 90.9h window) is correct; dashboard tierb.traced_pairs is frozen at 98 against a true count of ~1027; the daily_brief._recent_runs key mismatch is real at scripts/daily_brief.py:88-98; docs/routine_standing_prompt.md still asserts an every-2h backfill-accel Routine with zero journal evidence in 280 entries; the disk understatement is real (handoff_20260726_disk.md lines 14-15 say ~13MB/window and 150 pairs = 114MB, measured is 6.6 MB/pair = ~1.0GB for 150); the 268 unpublished scenarios reconcile to the digit; pairs_20260721T132205Z really is missing from dashboard tierb.batches while sitting on main as b07db6c; evicted==True is 0 across all 280 entries with 86 unresolved. Credit where due: this is the first version of this story that names driver survival as the variable. But it then does the exact thing it convicts the dashboard of doing. It writes 'DIVIDING 68 BY 12.5 PAIRS/WINDOW UNDERSTATES IT BY TWO WINDOWS' and then, three lines later, builds Scenario 1 on 19T delivering three windows at ~20 pairs each - when only 1 of 30 observed windows ever delivered 20, the median is 10, and 19T's own three landed windows delivered 15, 9 and 17. It calls out that windows are not time, then prices windows at 70-75 min when the measured fire-to-resolve median since 07-24 is 98.3 min and the mean is 131.0. And it declares the compute miss 'not repeated' when the journal's own Actions-confirmed bases show completed=cancelled and completed=failure through 07-26T19:21. Same optimism, one abstraction layer higher, dressed in the language of a post-mortem. CORRECTED NUMBERS: remaining work is 7-9 windows, not 6; lane time is 12-16 hours, not 7.5; the publish chain needs a retry branch it does not have; and the disk should be treated as insufficient rather than 'near-zero margin', because the ~1.3G projection reserves nothing for git pack and rebase scratch against a 9.3G .git. CORRECTED CALENDAR (from 2026-07-27T18:56Z - note `date -u` returns MONDAY the 27th): best case 07-28 07:00-10:30Z at <=10%; modal one-interruption case 07-29 00:00-04:00Z at ~40%; two interruptions 07-29 late through 07-30 at ~25%; three or more, 07-30 to 07-31, at ~20-25%. PLAN AGAINST WEDNESDAY 07-29, NOT TUESDAY 07-28, and do not promise a time of day. THE SCENARIO STRUCTURE IS ALSO WRONG IN SHAPE, NOT JUST IN VALUES. All three scenarios are compute-completion scenarios with publish bolted on the end. Given that 268 measured scenarios have been sitting unpublished since Friday for want of ~1 hour of local $0 work, the scenario that matters is not 'when does tracing finish' - it is 'when does the public site stop being three days stale'. The estimate's own derisk item 1 answers that (publish today, ship 19T partial, disclosed), and its item 2 (free disk first) is a hard precondition rather than a suggestion. Those two are worth more than every probability in the document. THE ONE THING I WOULD ADD THAT THE ESTIMATE MISSES ENTIRELY: it never asks the owner what 'done' means. Scoped to four batches it is 68 pairs. Scoped to Tier B it is 260 - pairs_20260716T133552Z is traced 8/100 and pairs_20260721T132205Z is 0/100 and not even on the working branch - which is several more days and about 1.7GB the disk cannot hold. An estimate that has slipped four times should not also be silent about which finish line it is estimating. UNVERIFIED in this pass: I did not query the GitHub Actions API, so I cannot confirm or refute silent evictions, the current state of the two in-flight fires (18:35:16Z and 18:35:27Z, both unresolved), or that the ~13:15Z daily backstop will fire again.\""
+    }
+  },
+  "workflowProgress": [
+    {
+      "type": "workflow_phase",
+      "index": 1,
+      "title": "Investigate"
+    },
+    {
+      "type": "workflow_phase",
+      "index": 2,
+      "title": "Diagnose"
+    },
+    {
+      "type": "workflow_phase",
+      "index": 3,
+      "title": "Challenge"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 1,
+      "label": "forensics:timeline",
+      "phaseIndex": 1,
+      "phaseTitle": "Investigate",
+      "agentId": "aff8f07d29278baf1",
+      "model": "claude-opus-5",
+      "state": "done",
+      "startedAt": 1785177680324,
+      "queuedAt": 1785177680277,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "SOURCE-COMMAND CORRECTION (important). The command in the b…",
+      "promptPreview": "READ-ONLY. Do not edit files, do not fire triggers, do not push. Repo: /home/user/patientwords-engine (engine), /home/user/patientwords (site). Both PUBLIC with a sealed Tier B holdout: never quote any clinical/patient phrase text; refer to pairs only as <batch>#<index>. Report exact numbers with their source (file/command). If you cannot verify something, say UNVERIFIED rather than estimating.\n\nR…",
+      "lastProgressAt": 1785178146328,
+      "tokens": 100069,
+      "toolCalls": 14,
+      "durationMs": 466003,
+      "resultPreview": "{\"productive_windows\":[{\"landed_utc\":\"2026-07-24T02:38:18Z\",\"batch\":\"dialects_20260723T001434Z (dialect floor) part_10, idx 10-13\",\"pairs_delivered\":4},{\"landed_utc\":\"2026-07-24T03:54:04Z\",\"batch\":\"pairs_20260714T135150Z (2panel) part_41, idx 41-50\",\"pairs_delivered\":10},{\"landed_utc\":\"2026-07-24T05:09:51Z\",\"batch\":\"dialects_20260723T001434Z (dialect floor) part_14, idx 14-17\",\"pairs_delivered\":4}…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 2,
+      "label": "forensics:claims",
+      "phaseIndex": 1,
+      "phaseTitle": "Investigate",
+      "agentId": "a14dc0291bf1e12b9",
+      "model": "claude-opus-5",
+      "state": "done",
+      "startedAt": 1785177680346,
+      "queuedAt": 1785177680277,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "promptPreview": "READ-ONLY. Do not edit files, do not fire triggers, do not push. Repo: /home/user/patientwords-engine (engine), /home/user/patientwords (site). Both PUBLIC with a sealed Tier B holdout: never quote any clinical/patient phrase text; refer to pairs only as <batch>#<index>. Report exact numbers with their source (file/command). If you cannot verify something, say UNVERIFIED rather than estimating.\n\nA…",
+      "lastProgressAt": 1785178343809,
+      "tokens": 152564,
+      "toolCalls": 53,
+      "durationMs": 663462,
+      "resultPreview": "{\"false_or_unverified_claims\":[{\"claim\":\"docs/routine_standing_prompt.md (Section 4, lines 195-201): \\\"Accelerator (owner 2026-07-20): a separate `backfill-accel` Routine fires the same $0 planner lanes every ~2h so the lanes stay saturated between daily cycles.\\\" Stated as settled operating fact in the document every future Routine session reads.\",\"reality\":\"No such Routine has ever existed or fi…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 3,
+      "label": "forensics:state",
+      "phaseIndex": 1,
+      "phaseTitle": "Investigate",
+      "agentId": "a0f28deaf3fd6a050",
+      "model": "claude-opus-5",
+      "state": "done",
+      "startedAt": 1785178146354,
+      "queuedAt": 1785177680277,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "circuit-trace lane FULL (1 running + 1 pending) — the only …",
+      "promptPreview": "READ-ONLY. Do not edit files, do not fire triggers, do not push. Repo: /home/user/patientwords-engine (engine), /home/user/patientwords (site). Both PUBLIC with a sealed Tier B holdout: never quote any clinical/patient phrase text; refer to pairs only as <batch>#<index>. Report exact numbers with their source (file/command). If you cannot verify something, say UNVERIFIED rather than estimating.\n\nE…",
+      "lastProgressAt": 1785178351372,
+      "tokens": 65983,
+      "toolCalls": 23,
+      "durationMs": 205017,
+      "resultPreview": "{\"batches\":[{\"stem\":\"pairs_20260717T132235Z\",\"traced\":100,\"total\":100,\"missing_indices\":\"none — COMPLETE (8 parts: 01,09,29,37,44,63,71,86)\"},{\"stem\":\"pairs_20260718T133020Z\",\"traced\":100,\"total\":100,\"missing_indices\":\"none — COMPLETE (8 parts: 01,09,28,46,63,77,85,93)\"},{\"stem\":\"pairs_20260719T132706Z\",\"traced\":41,\"total\":100,\"missing_indices\":\"42-100 (59 pairs; contiguous tail, 3 parts: 01,16,25…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 4,
+      "label": "diagnose",
+      "phaseIndex": 2,
+      "phaseTitle": "Diagnose",
+      "agentId": "a36f8226775c249d5",
+      "model": "claude-opus-5",
+      "state": "done",
+      "startedAt": 1785178351397,
+      "queuedAt": 1785178351375,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "Tracing was never the bottleneck — it beat its own forecast…",
+      "promptPreview": "READ-ONLY. Do not edit files, do not fire triggers, do not push. Repo: /home/user/patientwords-engine (engine), /home/user/patientwords (site). Both PUBLIC with a sealed Tier B holdout: never quote any clinical/patient phrase text; refer to pairs only as <batch>#<index>. Report exact numbers with their source (file/command). If you cannot verify something, say UNVERIFIED rather than estimating.\n\nY…",
+      "lastProgressAt": 1785178606194,
+      "tokens": 62495,
+      "toolCalls": 6,
+      "durationMs": 254797,
+      "resultPreview": "{\"why_estimates_failed\":[\"THE BOTTLENECK WAS NEVER COMPUTE. From 2026-07-24T00:00Z to now (2026-07-27T18:53Z, `date -u`) is 90.9h elapsed. 49.7h of that is three idle gaps with an empty lane (15.12h, 21.60h, and 12.96h still open at this moment) = 54.7% of the window doing nothing. Throughput itself was never the problem and never degraded: 342 pair-traces in 41.2 productive hours = 8.3 pairs/prod…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 5,
+      "label": "skeptic",
+      "phaseIndex": 3,
+      "phaseTitle": "Challenge",
+      "agentId": "a725d1519442f3e92",
+      "model": "claude-opus-5",
+      "state": "done",
+      "startedAt": 1785178606217,
+      "queuedAt": 1785178606198,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "DO NOT TRUST THE DATES. WIDEN BY ROUGHLY ONE DAY AND RE-BAS…",
+      "promptPreview": "READ-ONLY. Do not edit files, do not fire triggers, do not push. Repo: /home/user/patientwords-engine (engine), /home/user/patientwords (site). Both PUBLIC with a sealed Tier B holdout: never quote any clinical/patient phrase text; refer to pairs only as <batch>#<index>. Report exact numbers with their source (file/command). If you cannot verify something, say UNVERIFIED rather than estimating.\n\nY…",
+      "lastProgressAt": 1785178931333,
+      "tokens": 72515,
+      "toolCalls": 18,
+      "durationMs": 325115,
+      "resultPreview": "{\"optimism_found\":[{\"claim\":\"'6 chained CI windows at the measured ~70-75 min each' (Scenario 1 assumption); remaining_compute_hours = 7.5\",\"why_optimistic\":\"The 70-75 min figure is the landing-to-landing CADENCE observed while TWO independent batches (17T and 18T) alternated in the running+pending slots. It is not window duration. Measured fire->resolve for the 31 resolved circuit-trace entries s…"
+    }
+  ],
+  "totalTokens": 453626,
+  "totalToolCalls": 114
+}

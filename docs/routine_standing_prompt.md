@@ -192,12 +192,23 @@ Priority order when slots are free:
    the background — so the fast models' behavior lands first for decisions. The
    summary line prints the gate state (`8B-medical: HELD/RELEASED`). Do not pass
    `--include-8b-medical` unless the owner asks to un-defer them.
-   **Accelerator (owner 2026-07-20):** a separate `backfill-accel` Routine fires
-   the same $0 planner lanes every ~2h so the lanes stay saturated between daily
-   cycles. It shares this queue discipline, so it never double-fires; if both this
-   cycle and the accelerator target the same lane, `fire_trigger` arbitrates. This
-   cycle still owns generation + the digest; the accelerator only fills idle $0
-   measurement slots.
+   **Accelerator — DOES NOT EXIST (corrected 2026-07-27).** This section
+   previously stated that a `backfill-accel` Routine fires the $0 planner lanes
+   every ~2h. **It has never fired.** Zero unattended ticks appear in 280+
+   `ops/trigger_journal.jsonl` entries; every circuit-trace fire on record is
+   authored by an in-session timer or by this daily cycle. Creation was attempted
+   on 2026-07-20 and again on 2026-07-26 and was never confirmed (the
+   `create_trigger` call returns an approval error; `list_triggers` is likewise
+   unapprovable from inside the container, so existence CANNOT be verified here).
+   The false claim stood for seven days and was inherited as ground truth by every
+   session that read this file, which is why pace estimates repeatedly assumed a
+   saturated lane that was in fact idle 54.7% of 2026-07-24..27.
+   **Operating consequence:** assume the lane is driven ONLY by this daily cycle
+   plus whatever in-session timers happen to be alive. A container reclaim kills
+   those timers, nothing retries, and the lane then idles until the next daily
+   cycle — observed cost 12.7-21.6h per reclaim, four reclaims in four days.
+   **Acceptance test before this text may be reverted:** an unattended tick
+   present in the journal. Nothing less counts.
 
 Stopping rules (from the pre-registration): if two consecutive batches show
 validator yield < 50%, stop firing generation and record a decision for the

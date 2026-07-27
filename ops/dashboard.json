@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "updated_utc": "2026-07-27T18:36:37Z",
+ "updated_utc": "2026-07-27T19:06:09Z",
  "updated_by": "routine",
  "queue": {
   "circuit-trace": {
@@ -187,7 +187,7 @@
   "generator": "claude-haiku-4-5",
   "start_utc": "2026-07-10T01:14:38Z",
   "accepted_pairs": 1100,
-  "traced_pairs": 98,
+  "traced_pairs": 2049,
   "screened_in_pairs": null,
   "batches": [
    {
@@ -327,6 +327,16 @@
    "id": "DISK-HEADROOM",
    "title": "Dev-container disk at 1.9G free; git gc window closing",
    "context": "Trace renders cost ~150MB/window; free space fell 2.6G->1.9G in 7h and hit 100% Sunday night, breaking a rebase mid-push (recovered, nothing lost). Remaining backfill ~500MB fits, but repo bloat is the real cause: .git 8.8G + trace_out 12G. `git gc` needs scratch space and is unsafe below ~1G free. Options: run gc now while there is headroom, or add a local sparse-checkout excluding trace_out render HTML/PNG (CI already sparse-checkouts; the dev clone does not). Recorded docs/handoff_20260726_disk.md. $0 either way."
+  },
+  {
+   "id": "UNBOOKED-BATCH",
+   "title": "pairs_20260721T132205Z (100 pairs, $0.1467) never booked, never traced",
+   "context": "Landed on main 07-21 as b07db6c but is absent from dashboard tierb.batches and from spend accounting, never pulled to the working branch, never traced. True Tier B accepted is 1200/1600 not 1100/1600; true generation spend ~$2.0673 not $1.9206. Also: generation has been idle since 2026-07-21 (a series of deliberate budget-protective skips) while the brief still prints a stale 07-12 verdict saying generation 'finishes ~07-24'. Whether to resume generation is your call, not a default."
+  },
+  {
+   "id": "PUBLISH-CADENCE",
+   "title": "Publish population: which historical stamps belong in the public set",
+   "context": "Today's republish added only this drive's batches (16T/17T/18T/19T) -> 20 stamps, 1145 scenarios. Ten further traced batches exist on disk but were never published: six 07-06/07-07 pilots, pairs_20260707T221438Z, and the pairs_20260711T051145Z_txopus/_txplacebo translation-arm variants. Adding them changes the study population, which is a preregistration-adjacent decision, so I did not make it. Your call whether any should be included."
   }
  ],
  "blockers": [
@@ -340,6 +350,7 @@
   }
  ],
  "notes": [
+  "2026-07-27 AUDIT CORRECTIONS: (a) tierb.traced_pairs was frozen at 98 since 2026-07-10 while the real disk count is 2049 - the headline number in every brief was wrong by ~10x for the whole backfill drive; now computed from trace_out. (b) REPUBLISHED mid-cycle: site went 921->1145 scenarios (674->898 measured, 20 stamps) - 268 measured scenarios had been sitting unpublished since 07-24 because the publish was being held for one end-of-run ship, so every container reclaim also delayed what the owner could see. Publishing is ~1h local $0 work with no CI dependency and should NOT be gated on tracing completion again. (c) docs/routine_standing_prompt.md corrected: the every-2h backfill-accel Routine it described has never existed.",
   "2026-07-27 cycle (ran 18:31, cron fired late): TRACE BACKFILL 2 of 3 big batches COMPLETE - pairs_20260717T132235Z 100/100 and pairs_20260718T133020Z 100/100. Remaining: 19T 41/100 + 15T 9 gaps = 68 pairs (~4 windows). 4th container reclaim idled the lane ~12.6h (05:55-18:31). Both slots re-fired. Gates green, $0.",
   "ACCELERATOR STATUS: treat as NOT LIVE. Owner approved an every-2h Routine 07-26 but creation was never confirmed (create returned an approval error; re-issued call pending; verification call denied) and zero ticks observed across 4 firing windows. Effective pace remains daily-cycle. See critic_20260727.md HIGH.",
   "REVISED WEEKEND TIMING (owner already briefed on this downside): the three newest 100-pair batches (~285 pairs left) will not fully trace by Sunday at the throttled pace + idle-gap risk. Plan HOLDS: Sunday full republish ships the stable 16-stamp set (921 scenarios, already live) + every batch that has completed; the 17T/18T/19T tail renders as the site's normal pending/em-dash rows and the nightly cycle auto-republishes it as it lands Mon-Tue. No owner action needed.",
