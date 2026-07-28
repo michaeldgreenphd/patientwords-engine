@@ -165,8 +165,10 @@ cure. (Source: `data/provenance.json:translation_cases`.)
 ## 7. What it is not
 
 - **Not sentence length**: |r| ≤ 0.07 between length difference and penalty.
-- **Not tokenization**: target first-piece length vs penalty r = 0.09
-  (n = 290). The tokenizer isn't creating the effect.
+- **Not tokenization**: target first-piece length vs penalty r = −0.002
+  (n = 1,272; recomputed 2026-07-28 over the full traced corpus via
+  `scripts/interp_analyses.py`; the earlier figure was r = 0.09 at n = 290).
+  The tokenizer isn't creating the effect.
 - **Not measurement noise**: hand-measured penalties from real patient
   language correlate with the pipeline's traced penalties at r = 0.687
   (n = 14 matched; 8 further pairs are censored bounds that point the same
