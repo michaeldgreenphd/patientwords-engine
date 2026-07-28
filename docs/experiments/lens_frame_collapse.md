@@ -87,3 +87,23 @@ regression test; re-run the floor batch afterward.
 - Newer batches show higher redirect rates (17T 55%, 18T 50% vs 135150Z 44%) but
   generation was topic-steered, so treat these as batch-specific, not population
   estimates.
+
+## First denominator cut (2026-07-28 daily cycle, 17T lens still pending)
+
+Joining every gemma-2-2b urgency-collector row to landed lens depth classes
+(893 of 1,781 rows lens-covered; row-level, not phrase-deduped):
+
+| class | flips (n=430) | non-flips (n=463) |
+|---|---|---|
+| retained | 58.4% | 68.9% |
+| absent | 32.1% | 25.1% |
+| suppressed | 9.5% | 6.0% |
+
+Flip pairs are ~10 pp less likely to retain the medical reading and
+correspondingly more likely to be absent- or suppressed-class — but the
+majority of flips are still retained-class: the medical reading usually
+remains rank-competitive in readout space even when the output flips. The
+hand-picked tail exemplars (algae/mechanic/car) are therefore not
+representative of flips at large; they sit in the absent/suppressed minority.
+Recompute with 17T when its lens chunk lands, and phrase-deduped before any
+external use.
