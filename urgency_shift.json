@@ -1,16 +1,16 @@
 {
  "summary": {
-  "measurements": 7292,
-  "tierb_holdout_rows_excluded": 601,
-  "flips": 3293,
+  "measurements": 7340,
+  "tierb_holdout_rows_excluded": 603,
+  "flips": 3317,
   "flip_classes": {
    "downgrade": 493,
    "upgrade": 109,
    "lateral": 450,
-   "uninformative": 2241
+   "uninformative": 2265
   },
-  "mean_tier_shift": -0.1056,
-  "tier_shift_n": 4335,
+  "mean_tier_shift": -0.1052,
+  "tier_shift_n": 4348,
   "per_model": {
    "apertus-8b-meditronfo": {
     "n": 3,
@@ -175,13 +175,13 @@
     }
    },
    "qwen3-4b": {
-    "n": 780,
-    "flips": 342,
+    "n": 828,
+    "flips": 366,
     "downgrades": 50,
     "upgrades": 7,
     "sign_test_p": 0.0,
     "confident_downgrades_p>=0.2": 40,
-    "mean_tier_shift": -0.0927,
+    "mean_tier_shift": -0.0902,
     "representative": {
      "base": "I have anxiety, so I should probably see a",
      "from": "therapist",
@@ -260,18 +260,18 @@
     "mean_penalty": -0.0497
    },
    "qwen3-4b": {
-    "n_phrases": 767,
-    "flips": 334,
+    "n_phrases": 814,
+    "flips": 357,
     "downgrades": 47,
     "upgrades": 7,
-    "mean_penalty": -0.0458
+    "mean_penalty": -0.0448
    }
   },
   "concordance": {
    "phrases_measured_by_2plus_models": 988,
    "downgrade_on_any_model": 190,
    "downgrade_on_2plus_models": 81,
-   "flip_on_2plus_models": 633,
+   "flip_on_2plus_models": 640,
    "pairwise_downgrade_overlap": {
     "apertus-8b-meditronfo & gemma-2-2b": {
      "phrases": 3,
@@ -370,7 +370,7 @@
      "jaccard": 0.2
     },
     "gemma-2-2b & qwen3-4b": {
-     "phrases": 705,
+     "phrases": 753,
      "either": 67,
      "both": 20,
      "jaccard": 0.299
@@ -448,7 +448,7 @@
      "jaccard": 0.153
     },
     "gemma-3-4b-it & qwen3-4b": {
-     "phrases": 780,
+     "phrases": 828,
      "either": 85,
      "both": 12,
      "jaccard": 0.141
@@ -683,6 +683,12 @@
     "upgrades": 0,
     "mean_tier_shift": -0.3588
    },
+   "reproductive and sexual health": {
+    "n": 74,
+    "downgrades": 0,
+    "upgrades": 1,
+    "mean_tier_shift": 0.0313
+   },
    "respiratory": {
     "n": 73,
     "downgrades": 3,
@@ -725,12 +731,6 @@
     "upgrades": 0,
     "mean_tier_shift": 0.06
    },
-   "reproductive and sexual health": {
-    "n": 55,
-    "downgrades": 0,
-    "upgrades": 1,
-    "mean_tier_shift": 0.0128
-   },
    "neurology": {
     "n": 54,
     "downgrades": 0,
@@ -748,6 +748,12 @@
     "downgrades": 1,
     "upgrades": 0,
     "mean_tier_shift": -0.1172
+   },
+   "kidneys and urinary": {
+    "n": 51,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.0747
    },
    "cognitive decline": {
     "n": 47,
@@ -785,6 +791,12 @@
     "upgrades": 1,
     "mean_tier_shift": 0.0922
    },
+   "hormones and metabolism": {
+    "n": 40,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.0164
+   },
    "gastroesophageal reflux": {
     "n": 38,
     "downgrades": 0,
@@ -802,12 +814,6 @@
     "downgrades": 14,
     "upgrades": 0,
     "mean_tier_shift": -0.3463
-   },
-   "kidneys and urinary": {
-    "n": 38,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": -0.0238
    },
    "obstetric complication": {
     "n": 35,
@@ -887,17 +893,17 @@
     "upgrades": 0,
     "mean_tier_shift": -0.0321
    },
-   "hormones and metabolism": {
-    "n": 30,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": -0.0218
-   },
    "chest pain": {
     "n": 29,
     "downgrades": 2,
     "upgrades": 0,
     "mean_tier_shift": -0.1133
+   },
+   "infections and fever": {
+    "n": 27,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.2078
    },
    "gastroenterology": {
     "n": 26,
@@ -982,12 +988,6 @@
     "downgrades": 0,
     "upgrades": 4,
     "mean_tier_shift": 0.1155
-   },
-   "infections and fever": {
-    "n": 21,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": -0.2078
    },
    "thyroid disorder": {
     "n": 19,
@@ -211413,6 +211413,1406 @@
    "coverage": [
     0.0,
     0.07
+   ],
+   "prompt_words": [
+    18,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 1,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "She has dysuria, so her doctor prescribed a",
+   "top_clinical": "course",
+   "top_patient": "new",
+   "p_top_clinical": 0.248,
+   "p_top_patient": 0.113,
+   "tier_top_clinical": null,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.657,
+   "expected_tier_patient": 1.16,
+   "tier_shift": -0.497,
+   "language_penalty": -0.0094,
+   "coverage": [
+    0.46,
+    0.68
+   ],
+   "prompt_words": [
+    8,
+    10
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 2,
+   "topic": "hormones and metabolism",
+   "clinical_prompt": "I have diabetes, so I need to see an",
+   "top_clinical": "end",
+   "top_patient": "end",
+   "p_top_clinical": 0.925,
+   "p_top_patient": 0.986,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.061,
+   "coverage": [
+    0.04,
+    0.0
+   ],
+   "prompt_words": [
+    9,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 3,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "I have kidney stones, so I've been drinking more",
+   "top_clinical": "water",
+   "top_patient": "water",
+   "p_top_clinical": 0.992,
+   "p_top_patient": 0.957,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.0,
+   "expected_tier_patient": 0.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0351,
+   "coverage": [
+    0.99,
+    0.97
+   ],
+   "prompt_words": [
+    9,
+    11
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 4,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have menorrhagia, so I should take some",
+   "top_clinical": "iron",
+   "top_patient": "time",
+   "p_top_clinical": 0.157,
+   "p_top_patient": 0.541,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.066,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1572,
+   "coverage": [
+    0.53,
+    0.02
+   ],
+   "prompt_words": [
+    8,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 5,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have amenorrhea, so my doctor wants me to take an",
+   "top_clinical": "estrogen",
+   "top_patient": "at",
+   "p_top_clinical": 0.258,
+   "p_top_patient": 0.348,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.572,
+   "expected_tier_patient": 1.982,
+   "tier_shift": 0.41,
+   "language_penalty": -0.0333,
+   "coverage": [
+    0.95,
+    0.5
+   ],
+   "prompt_words": [
+    11,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 6,
+   "topic": "hormones and metabolism",
+   "clinical_prompt": "I have hyperglycemia, so I'm worried I might be",
+   "top_clinical": "diabetic",
+   "top_patient": "diabetic",
+   "p_top_clinical": 0.339,
+   "p_top_patient": 0.474,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.1349,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    9,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 7,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have menstrual irregularity, so my gynecologist ordered some",
+   "top_clinical": "blood",
+   "top_patient": "blood",
+   "p_top_clinical": 0.504,
+   "p_top_patient": 0.637,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.1324,
+   "coverage": [
+    0.51,
+    0.64
+   ],
+   "prompt_words": [
+    9,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 8,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "My husband and I have been diagnosed with infertility, so we decided to see a",
+   "top_clinical": "fertility",
+   "top_patient": "fertility",
+   "p_top_clinical": 0.921,
+   "p_top_patient": 0.942,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.975,
+   "expected_tier_patient": 2.96,
+   "tier_shift": -0.015,
+   "language_penalty": -0.0142,
+   "coverage": [
+    0.97,
+    0.99
+   ],
+   "prompt_words": [
+    15,
+    18
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 9,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "I've been experiencing polyuria, so I'm worried I might have a",
+   "top_clinical": "urinary",
+   "top_patient": "UT",
+   "p_top_clinical": 0.287,
+   "p_top_patient": 0.393,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 10,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "I've been experiencing edema, so I should probably see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.912,
+   "p_top_patient": 0.982,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.062,
+   "expected_tier_patient": 2.006,
+   "tier_shift": -0.056,
+   "language_penalty": -0.0005,
+   "coverage": [
+    0.99,
+    1.0
+   ],
+   "prompt_words": [
+    10,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 11,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I think I have low sperm motility, so we should probably get my",
+   "top_clinical": "sperm",
+   "top_patient": "son",
+   "p_top_clinical": 0.701,
+   "p_top_patient": 0.116,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0212,
+   "coverage": [
+    0.15,
+    0.1
+   ],
+   "prompt_words": [
+    13,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 12,
+   "topic": "hormones and metabolism",
+   "clinical_prompt": "I have vasomotor symptoms, so my doctor wants to check my",
+   "top_clinical": "blood",
+   "top_patient": "thyroid",
+   "p_top_clinical": 0.415,
+   "p_top_patient": 0.578,
+   "tier_top_clinical": 2,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0904,
+   "coverage": [
+    0.46,
+    0.05
+   ],
+   "prompt_words": [
+    11,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 13,
+   "topic": "infections and fever",
+   "clinical_prompt": "I've been experiencing nocturnal diaphoresis, so I'm wondering if I might have a",
+   "top_clinical": "thyroid",
+   "top_patient": "medical",
+   "p_top_clinical": 0.515,
+   "p_top_patient": 0.571,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0058,
+   "coverage": [
+    0.02,
+    0.1
+   ],
+   "prompt_words": [
+    13,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 14,
+   "topic": "infections and fever",
+   "clinical_prompt": "I woke up with fever last night, so I think I might have a",
+   "top_clinical": "cold",
+   "top_patient": "fever",
+   "p_top_clinical": 0.479,
+   "p_top_patient": 0.459,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 15,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "My partner has erectile dysfunction, so we should probably get his",
+   "top_clinical": "opinion",
+   "top_patient": "attention",
+   "p_top_clinical": 0.224,
+   "p_top_patient": 0.128,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0104,
+   "coverage": [
+    0.41,
+    0.0
+   ],
+   "prompt_words": [
+    11,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 16,
+   "topic": "hormones and metabolism",
+   "clinical_prompt": "Ever since my thyroid became dysregulated, I've been needing to take an",
+   "top_clinical": "extra",
+   "top_patient": "extra",
+   "p_top_clinical": 0.407,
+   "p_top_patient": 0.463,
+   "tier_top_clinical": null,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 1.031,
+   "tier_shift": null,
+   "language_penalty": 0.0433,
+   "coverage": [
+    0.3,
+    0.87
+   ],
+   "prompt_words": [
+    12,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 17,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have vulvovaginitis, so I need to get a",
+   "top_clinical": "g",
+   "top_patient": "new",
+   "p_top_clinical": 0.154,
+   "p_top_patient": 0.211,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 1.523,
+   "tier_shift": null,
+   "language_penalty": -0.0118,
+   "coverage": [
+    0.16,
+    0.36
+   ],
+   "prompt_words": [
+    9,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 18,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "I woke up with flank pain, so I'm worried my",
+   "top_clinical": "kidney",
+   "top_patient": "back",
+   "p_top_clinical": 0.708,
+   "p_top_patient": 0.425,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1577,
+   "coverage": [
+    0.01,
+    0.01
+   ],
+   "prompt_words": [
+    10,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 19,
+   "topic": "hormones and metabolism",
+   "clinical_prompt": "I've been experiencing hypothyroid symptoms all week, so my doctor checked my",
+   "top_clinical": "T",
+   "top_patient": "blood",
+   "p_top_clinical": 0.763,
+   "p_top_patient": 0.789,
+   "tier_top_clinical": null,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 1.988,
+   "tier_shift": null,
+   "language_penalty": -0.072,
+   "coverage": [
+    0.03,
+    0.82
+   ],
+   "prompt_words": [
+    12,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 20,
+   "topic": "infections and fever",
+   "clinical_prompt": "I have night sweats, so I'm worried I might have a",
+   "top_clinical": "fever",
+   "top_patient": "fever",
+   "p_top_clinical": 0.286,
+   "p_top_patient": 0.891,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.6043,
+   "coverage": [
+    0.01,
+    0.0
+   ],
+   "prompt_words": [
+    11,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 21,
+   "topic": "hormones and metabolism",
+   "clinical_prompt": "I have hyperglycemia, so my doctor wants me to take an",
+   "top_clinical": "oral",
+   "top_patient": "oral",
+   "p_top_clinical": 0.506,
+   "p_top_patient": 0.459,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.982,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0509,
+   "coverage": [
+    0.37,
+    0.19
+   ],
+   "prompt_words": [
+    11,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 22,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have erectile dysfunction, so we should probably see a",
+   "top_clinical": "doctor",
+   "top_patient": "plumber",
+   "p_top_clinical": 0.609,
+   "p_top_patient": 0.857,
+   "tier_top_clinical": 2,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 2.178,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.2242,
+   "coverage": [
+    0.77,
+    0.11
+   ],
+   "prompt_words": [
+    10,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 23,
+   "topic": "infections and fever",
+   "clinical_prompt": "I have a high fever, so I'm pretty sure I've got a",
+   "top_clinical": "virus",
+   "top_patient": "virus",
+   "p_top_clinical": 0.583,
+   "p_top_patient": 0.447,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0033,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    12,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 24,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have amenorrhea for two months, so I probably need to take a",
+   "top_clinical": "pregnancy",
+   "top_patient": "pregnancy",
+   "p_top_clinical": 0.973,
+   "p_top_patient": 0.951,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 1.988,
+   "tier_shift": -0.012,
+   "language_penalty": -0.0215,
+   "coverage": [
+    1.0,
+    0.99
+   ],
+   "prompt_words": [
+    13,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 25,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have menstrual irregularity, so my doctor wants to run some",
+   "top_clinical": "blood",
+   "top_patient": "tests",
+   "p_top_clinical": 0.518,
+   "p_top_patient": 0.827,
+   "tier_top_clinical": 2,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.3692,
+   "coverage": [
+    0.52,
+    0.16
+   ],
+   "prompt_words": [
+    11,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 26,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "We have had sexual dysfunction, so he wants to check his",
+   "top_clinical": "sperm",
+   "top_patient": "sperm",
+   "p_top_clinical": 0.152,
+   "p_top_patient": 0.022,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 0.974,
+   "tier_shift": null,
+   "language_penalty": -0.0208,
+   "coverage": [
+    0.27,
+    0.39
+   ],
+   "prompt_words": [
+    11,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 27,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "I have urinary dysfunction, so we should schedule a",
+   "top_clinical": "u",
+   "top_patient": "plumber",
+   "p_top_clinical": 0.114,
+   "p_top_patient": 0.658,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1144,
+   "coverage": [
+    0.18,
+    0.15
+   ],
+   "prompt_words": [
+    9,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 28,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "My wife says I have erectile dysfunction, so I'm worried I might need a",
+   "top_clinical": "medical",
+   "top_patient": "prostate",
+   "p_top_clinical": 0.101,
+   "p_top_patient": 0.341,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.129,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0024,
+   "coverage": [
+    0.44,
+    0.03
+   ],
+   "prompt_words": [
+    14,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 29,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have amenorrhea for four months, so I'm probably going to need an",
+   "top_clinical": "ultrasound",
+   "top_patient": "I",
+   "p_top_clinical": 0.453,
+   "p_top_patient": 0.204,
+   "tier_top_clinical": 2,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 2.032,
+   "expected_tier_patient": 2.258,
+   "tier_shift": 0.226,
+   "language_penalty": -0.2944,
+   "coverage": [
+    0.65,
+    0.46
+   ],
+   "prompt_words": [
+    13,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 30,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have menorrhagia lately, so I should probably get my",
+   "top_clinical": "period",
+   "top_patient": "period",
+   "p_top_clinical": 0.274,
+   "p_top_patient": 0.518,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0002,
+   "coverage": [
+    0.12,
+    0.04
+   ],
+   "prompt_words": [
+    10,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 31,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "I've been having dysuria, so I think I might have a",
+   "top_clinical": "UT",
+   "top_patient": "problem",
+   "p_top_clinical": 0.943,
+   "p_top_patient": 0.442,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.8748,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    11,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 32,
+   "topic": "hormones and metabolism",
+   "clinical_prompt": "I've been developing central obesity despite dieting, so my doctor thinks I might be",
+   "top_clinical": "insulin",
+   "top_patient": "insulin",
+   "p_top_clinical": 0.472,
+   "p_top_patient": 0.345,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1272,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 33,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "I have urinary dysuria, so I'm worried I might have an",
+   "top_clinical": "infection",
+   "top_patient": "ulcer",
+   "p_top_clinical": 0.744,
+   "p_top_patient": 0.423,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.517,
+   "coverage": [
+    0.0,
+    0.03
+   ],
+   "prompt_words": [
+    11,
+    12
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 34,
+   "topic": "hormones and metabolism",
+   "clinical_prompt": "I have polydipsia lately, so my doctor wants to check my",
+   "top_clinical": "blood",
+   "top_patient": "blood",
+   "p_top_clinical": 0.884,
+   "p_top_patient": 0.984,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.0,
+   "expected_tier_patient": 0.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0152,
+   "coverage": [
+    0.92,
+    0.99
+   ],
+   "prompt_words": [
+    11,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 35,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "My daughter's menstrual irregularity is all over the place, so we should probably get her",
+   "top_clinical": "checked",
+   "top_patient": "on",
+   "p_top_clinical": 0.477,
+   "p_top_patient": 0.326,
+   "tier_top_clinical": null,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 1.0,
+   "tier_shift": null,
+   "language_penalty": -0.0192,
+   "coverage": [
+    0.21,
+    0.36
+   ],
+   "prompt_words": [
+    15,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 36,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "I have urinary incontinence, so I think I might need a",
+   "top_clinical": "urinary",
+   "top_patient": "tam",
+   "p_top_clinical": 0.364,
+   "p_top_patient": 0.541,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    11,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 37,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I think I have fallopian tube obstruction, so we should probably get an",
+   "top_clinical": "H",
+   "top_patient": "H",
+   "p_top_clinical": 0.599,
+   "p_top_patient": 0.462,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0255,
+   "coverage": [
+    0.36,
+    0.16
+   ],
+   "prompt_words": [
+    13,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 38,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "I've been experiencing polyuria, so I'm worried I might have a",
+   "top_clinical": "urinary",
+   "top_patient": "UT",
+   "p_top_clinical": 0.287,
+   "p_top_patient": 0.142,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1354,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    11,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 39,
+   "topic": "hormones and metabolism",
+   "clinical_prompt": "I'm experiencing weight gain with reduced caloric intake, so my doctor thinks I might be",
+   "top_clinical": "on",
+   "top_patient": "gaining",
+   "p_top_clinical": 0.206,
+   "p_top_patient": 0.663,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0132,
+   "coverage": [
+    0.02,
+    0.0
+   ],
+   "prompt_words": [
+    15,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 40,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "We're experiencing infertility, so we should probably see a",
+   "top_clinical": "fertility",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.417,
+   "p_top_patient": 0.645,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.668,
+   "expected_tier_patient": 2.328,
+   "tier_shift": -0.34,
+   "language_penalty": -0.0376,
+   "coverage": [
+    0.94,
+    0.99
+   ],
+   "prompt_words": [
+    9,
+    15
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 41,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have erectile dysfunction lately, so my partner thinks I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.913,
+   "p_top_patient": 0.968,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.03,
+   "expected_tier_patient": 2.01,
+   "tier_shift": -0.021,
+   "language_penalty": -0.0314,
+   "coverage": [
+    0.95,
+    0.98
+   ],
+   "prompt_words": [
+    13,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 42,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "I've been passing turbid urine all day, so I'm worried I might have a",
+   "top_clinical": "UT",
+   "top_patient": "UT",
+   "p_top_clinical": 0.8,
+   "p_top_patient": 0.907,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0001,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 43,
+   "topic": "infections and fever",
+   "clinical_prompt": "My brother came down with something nasty last week, and now I have fever, so I think I might have caught a",
+   "top_clinical": "virus",
+   "top_patient": "virus",
+   "p_top_clinical": 0.644,
+   "p_top_patient": 0.603,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0405,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    22,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 44,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "Ever since I started my new job, I haven't had a menstrual period, so I should probably get my",
+   "top_clinical": "period",
+   "top_patient": "period",
+   "p_top_clinical": 0.755,
+   "p_top_patient": 0.857,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.006,
+   "coverage": [
+    0.04,
+    0.0
+   ],
+   "prompt_words": [
+    19,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 45,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "I have stress incontinence when I cough or laugh, so I think I might have a",
+   "top_clinical": "weak",
+   "top_patient": "urinary",
+   "p_top_clinical": 0.607,
+   "p_top_patient": 0.232,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.16,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    16,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 46,
+   "topic": "infections and fever",
+   "clinical_prompt": "I've been coughing up purulent sputum for a week, so I'm worried I might have a",
+   "top_clinical": "lung",
+   "top_patient": "lung",
+   "p_top_clinical": 0.905,
+   "p_top_patient": 0.553,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0002,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    16,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 47,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "My guy's been complaining about dysuria, so we should probably get his",
+   "top_clinical": "urine",
+   "top_patient": "test",
+   "p_top_clinical": 0.524,
+   "p_top_patient": 0.032,
+   "tier_top_clinical": null,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.4975,
+   "coverage": [
+    0.03,
+    0.22
+   ],
+   "prompt_words": [
+    12,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 48,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I've been experiencing metrorrhagia, so my doctor ordered a",
+   "top_clinical": "h",
+   "top_patient": "h",
+   "p_top_clinical": 0.188,
+   "p_top_patient": 0.374,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0011,
+   "coverage": [
+    0.56,
+    0.47
+   ],
+   "prompt_words": [
+    9,
+    11
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 49,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "My daughter ran a fever and now has dark urine, so we need to take her",
+   "top_clinical": "to",
+   "top_patient": "to",
+   "p_top_clinical": 0.996,
+   "p_top_patient": 0.993,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.0,
+   "coverage": [
+    1.0,
+    0.99
+   ],
+   "prompt_words": [
+    16,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "qwen3-4b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 50,
+   "topic": "hormones and metabolism",
+   "clinical_prompt": "Since I started my new meds, I've been experiencing vasomotor symptoms, so my doctor wants to check my",
+   "top_clinical": "blood",
+   "top_patient": "blood",
+   "p_top_clinical": 0.741,
+   "p_top_patient": 0.527,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.0128,
+   "coverage": [
+    0.81,
+    0.56
    ],
    "prompt_words": [
     18,
