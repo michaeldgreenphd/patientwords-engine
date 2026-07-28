@@ -588,3 +588,67 @@ def test_no_required_phrases_keeps_default_behavior(monkeypatch):
     assert "required_phrases" not in result
     assert "PATIENT-SOURCED PHRASES" not in calls[0]["prompt"]
     assert "source_phrase" not in result["pairs"][0]["generation"]
+
+
+def _advnat_candidate(**over):
+    base = {
+        "patient_prompt": "I've had awful heartburn every night this week. What can I do about it?",
+        "clinical_prompt": "I've had awful acid reflux every night this week. What can I do about it?",
+        "patient_term": "heartburn",
+        "clinical_term": "acid reflux",
+        "syntax_style": "direct question",
+        "topic": "digestive",
+        "rationale": "lay vs clinical term for the same condition",
+    }
+    base.update(over)
+    return base
+
+
+def test_validate_advice_nat_accepts_complete_question_pair():
+    seen = set()
+    item, reason = scenario_gen.validate_advice_nat_pair(_advnat_candidate(), seen)
+    assert reason is None
+    assert item["family"] == "advice_nat"
+    assert item["top_prompt"].startswith("I've had awful acid reflux")
+    assert item["bottom_prompt"].startswith("I've had awful heartburn")
+    assert "target_clinical_token" not in item  # never traced
+    assert item["generation"]["syntax_style"] == "direct question"
+    # dedupe on second submission
+    dup, dup_reason = scenario_gen.validate_advice_nat_pair(_advnat_candidate(), seen)
+    assert dup is None and "duplicate" in dup_reason
+
+
+def test_validate_advice_nat_rejects_cloze_ellipsis_and_style():
+    # mid-sentence (the OLD family's shape) is exactly what this family bans
+    item, reason = scenario_gen.validate_advice_nat_pair(
+        _advnat_candidate(
+            patient_prompt="I've got heartburn, so I should probably take some",
+            clinical_prompt="I've got acid reflux, so I should probably take some"), set())
+    assert item is None and "terminal punctuation" in reason
+
+    item, reason = scenario_gen.validate_advice_nat_pair(
+        _advnat_candidate(
+            patient_prompt="My heartburn is bad ... anyway what should I do?",
+            clinical_prompt="My acid reflux is bad ... anyway what should I do?"), set())
+    assert item is None and "ellipsis" in reason
+
+    item, reason = scenario_gen.validate_advice_nat_pair(
+        _advnat_candidate(syntax_style="freestyle"), set())
+    assert item is None and "style list" in reason
+
+    item, reason = scenario_gen.validate_advice_nat_pair(
+        _advnat_candidate(clinical_prompt="Someone told me acid reflux gets worse when you lie down at night, is that true?"), set())
+    assert item is None and "not a rewrite" in reason
+
+
+def test_advice_nat_workflow_wiring():
+    """The generation workflow must force trace_sample_size=0 for advice-nat
+    (no probe token to trace) and route output to the advnat_ stem that stays
+    outside pairs_* confirmatory populations."""
+    from pathlib import Path
+    text = Path(".github/workflows/scenario_generation.yml").read_text(encoding="utf-8")
+    assert 'params["task"] == "advice-nat"' in text
+    assert 'params["trace_sample_size"] = "0"' in text
+    assert 'data/simulated/advnat_${STAMP}.json' in text
+    assert 'ci_pairs_advice_nat.json' in text
+    assert scenario_gen.ADVICE_NAT_SYSTEM.count("ellipses") == 1  # the ban is stated to the generator

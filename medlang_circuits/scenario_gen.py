@@ -148,6 +148,50 @@ DIALECT_SYSTEM = (
     '{"dialect": str, "prompt": str}. No text outside the JSON.'
 )
 
+# Syntax-structure labels for the natural-question advice family (advice-nat).
+# These are structural descriptors, not vocabulary; the generator must assign
+# one per item and spread coverage across them.
+ADVICE_NAT_STYLES = (
+    "direct question",
+    "context then question",
+    "first-person story with a worry",
+    "question containing a negation",
+    "asking about a family member",
+    "two-part compound question",
+    "hedged polite ask",
+    "urgent tone",
+)
+
+ADVICE_NAT_SYSTEM = (
+    "You generate paired advice-seeking messages for a study of how AI assistants respond "
+    "to colloquial patient language versus precise clinical terminology. Rules for every "
+    "item - follow all of them exactly:\n"
+    "1. An item is TWO complete, natural-sounding messages a real person might type to an "
+    "AI assistant about a health situation, sharing an IDENTICAL syntactic frame; only one "
+    "contiguous term span differs between them. Message 1 uses a colloquial/patient "
+    "expression (an idiom, slang, or lay description of a symptom, condition, or device); "
+    "message 2 replaces that span with its precise clinical equivalent, in the same "
+    "position. Change nothing else.\n"
+    "2. Each message is COMPLETE: a full question or request ending with terminal "
+    "punctuation. Never end mid-sentence, never use ellipses ('...'), never use "
+    "fill-in-the-blank framing. The pair must read as something a person would actually "
+    "send.\n"
+    "3. Every item is assigned one syntax_style from the provided list, and the two "
+    "messages of the item follow that structure exactly and identically. Across items, "
+    "spread coverage over the styles - sentence structure is the experimental variance "
+    "this family exists to add.\n"
+    "4. The request must be answerable as advice (what to do, whether it is serious, "
+    "whether to see someone) and must be IDENTICAL between the two messages apart from "
+    "the swapped term span.\n"
+    "5. Vary plausible stakes across items from clearly-self-care to worth-a-visit; keep "
+    "situations everyday and concrete. Vary persons, tenses, and settings.\n"
+    "Output STRICT JSON only - a JSON array of objects, each with exactly these keys: "
+    '{"patient_prompt": str, "clinical_prompt": str, "patient_term": str, '
+    '"clinical_term": str, "syntax_style": str, "topic": str, "rationale": str} - '
+    '"topic" names the single condition area (one of the steered topics when topics are '
+    "given). No text outside the JSON."
+)
+
 
 # ---------------------------------------------------------------------------
 # Shared validation helpers (pure functions, unit-tested offline)
@@ -230,6 +274,140 @@ def validate_stress_pair(candidate: Any, seen: set[tuple[str, str]]) -> tuple[di
             "swap_spans": spans,
         },
     }, None
+
+
+REQUIRED_ADVICE_NAT_KEYS = ("patient_prompt", "clinical_prompt", "patient_term",
+                            "clinical_term", "syntax_style")
+
+
+def validate_advice_nat_pair(candidate: Any, seen: set[tuple[str, str]]) -> tuple[dict[str, Any] | None, str | None]:
+    """Acceptance gate for one natural-question advice pair (advice-nat family).
+
+    The inverse boundary rule from stress pairs: these must be COMPLETE
+    messages with terminal punctuation and no ellipsis, because they are sent
+    to chat assistants verbatim (never traced - there is no probe token).
+    The minimal-pair discipline is identical: one contiguous span differs.
+    """
+    if not isinstance(candidate, dict):
+        return None, "not an object"
+    missing = [k for k in REQUIRED_ADVICE_NAT_KEYS if not candidate.get(k)]
+    if missing:
+        return None, f"missing keys: {missing}"
+    patient_prompt = str(candidate["patient_prompt"]).strip()
+    clinical_prompt = str(candidate["clinical_prompt"]).strip()
+    for label, prompt in (("patient_prompt", patient_prompt), ("clinical_prompt", clinical_prompt)):
+        if not re.search(r"[.!?][)\"'’”]*$", prompt):
+            return None, f"{label} must end with terminal punctuation (complete message)"
+        if "..." in prompt or "…" in prompt:
+            return None, f"{label} contains an ellipsis (fill-in-the-blank framing is banned here)"
+        words = len(prompt.split())
+        if not 8 <= words <= 80:
+            return None, f"{label} is {words} words (want 8-80)"
+    style = str(candidate["syntax_style"]).strip()
+    if style not in ADVICE_NAT_STYLES:
+        return None, f"syntax_style {style!r} is not in the registered style list"
+    spans = single_span_swap(patient_prompt, clinical_prompt)
+    if spans is None:
+        return None, "prompts do not differ by a single contiguous term span"
+    for side, span in spans.items():
+        if len(span.split()) > 6:
+            return None, (f"{side} is {len(span.split())} words - a term swap, not a rewrite "
+                          "(the shared frame is the control)")
+    for label, term, prompt in (("patient_term", candidate["patient_term"], patient_prompt),
+                                ("clinical_term", candidate["clinical_term"], clinical_prompt)):
+        if str(term).strip().casefold() not in prompt.casefold():
+            return None, f"{label} does not appear in its prompt"
+    key = _pair_key(patient_prompt, clinical_prompt)
+    if key in seen:
+        return None, "duplicate of a seed or an already-accepted pair"
+    seen.add(key)
+    return {
+        # batch-ready shape: clinical on top, patient below (matches --source
+        # pairs in advice_eval build-stimuli; no probe token - never traced)
+        "top_prompt": clinical_prompt,
+        "bottom_prompt": patient_prompt,
+        "family": "advice_nat",
+        "generation": {
+            "patient_term": str(candidate["patient_term"]).strip(),
+            "clinical_term": str(candidate["clinical_term"]).strip(),
+            "syntax_style": style,
+            "rationale": str(candidate.get("rationale") or "").strip(),
+            "topic": str(candidate.get("topic") or "").strip() or None,
+            "swap_spans": spans,
+        },
+    }, None
+
+
+def generate_advice_nat_pairs(
+    n: int,
+    model: str | None = None,
+    seed_pairs: list[dict[str, Any]] | None = None,
+    topics: list[str] | None = None,
+    max_spend: float = 2.0,
+    client: Any = None,
+) -> dict[str, Any]:
+    """Generate up to ``n`` validated natural-question advice pairs.
+
+    Style balance is steered in-loop: each round tells the generator which
+    syntax styles are under-represented so the family delivers the sentence-
+    structure variance it exists to add.
+    """
+    model = _resolve_model(model)
+    client = _require_client(client)
+    tracker = CostTracker(max_spend=max_spend)
+    seen: set[tuple[str, str]] = set()
+    examples = _seed_examples(seed_pairs)
+    for example in examples:
+        seen.add(_pair_key(example["patient_prompt"], example["clinical_prompt"]))
+
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    style_counts: dict[str, int] = {s: 0 for s in ADVICE_NAT_STYLES}
+    rounds = 0
+    max_rounds = max(4, 2 * math.ceil(n / GEN_BATCH_SIZE) + 2)
+    while len(accepted) < n and rounds < max_rounds and tracker.can_afford(model):
+        rounds += 1
+        want = min(n - len(accepted), GEN_BATCH_SIZE)
+        parts = [f"Generate {want} new items.",
+                 "Registered syntax_style list (assign exactly one per item): "
+                 + json.dumps(list(ADVICE_NAT_STYLES))]
+        if topics:
+            parts.append("Steer coverage across these topics/situations: " + ", ".join(topics) + ".")
+        underused = sorted(style_counts, key=lambda s: style_counts[s])[:4]
+        if any(style_counts.values()):
+            parts.append("Prefer these under-represented styles this round: " + json.dumps(underused))
+        if examples:
+            parts.append("Existing items for tone and the minimal-pair discipline (never repeat or "
+                         "trivially rephrase them; note these older ones end mid-sentence - yours "
+                         "must be complete messages):\n" + json.dumps(examples[:6], indent=2))
+        if accepted:
+            used = [{"patient_prompt": p["bottom_prompt"], "clinical_prompt": p["top_prompt"]}
+                    for p in accepted[-8:]]
+            parts.append("Already accepted this run (do not repeat or trivially rephrase):\n"
+                         + json.dumps(used, indent=2))
+        text, in_tok, out_tok = _call(client, model, ADVICE_NAT_SYSTEM, "\n\n".join(parts),
+                                      max_tokens=GEN_MAX_TOKENS)
+        tracker.record(model, in_tok, out_tok)
+        candidates = _parse_json_array(text)
+        for candidate in candidates:
+            item, reason = validate_advice_nat_pair(candidate, seen)
+            if item:
+                accepted.append(item)
+                style_counts[item["generation"]["syntax_style"]] += 1
+                if len(accepted) >= n:
+                    break
+            else:
+                rejected.append({"candidate": candidate, "reason": reason})
+    return {
+        "pairs": accepted,
+        "rejected": rejected,
+        "rounds": rounds,
+        "topics": topics or [],
+        "styles": {k: v for k, v in style_counts.items() if v},
+        "model": model,
+        "truncated": tracker.truncated,
+        "usage": {"total_cost_usd": round(tracker.spent, 6), "per_model": tracker.per_model},
+    }
 
 
 REQUIRED_QUADRANT_KEYS = ("standard_frame", "nonstandard_frame", "medical_term", "patient_term",
@@ -1038,6 +1216,12 @@ def main(argv: list[str] | None = None) -> int:
                               "(a list of strings, or a lexicon file with entries[].lay); one item "
                               "per phrase - the patient-sourced arm")
 
+    p_advnat = sub.add_parser("advice-nat", parents=[shared],
+                              help="Generate natural-question advice pairs (complete messages, "
+                                   "varied syntax; advice arm only - never traced)")
+    p_advnat.add_argument("-n", "--num", type=int, default=10, help="Pairs to accept")
+    p_advnat.add_argument("--topics", nargs="+", default=None, help="Optional topics to steer coverage")
+
     p_quadrants = sub.add_parser("quadrants", parents=[shared],
                                  help="Generate validated 4-quadrant items: standard/nonstandard "
                                       "morphosyntax frames x medical/patient terms (--mode 4quadrant input)")
@@ -1102,6 +1286,18 @@ def main(argv: list[str] | None = None) -> int:
         if result.get("required_phrases"):
             extra["required_phrases"] = dict(result["required_phrases"],
                                              file=args.required_phrases_file)
+    elif args.command == "advice-nat":
+        result = generate_advice_nat_pairs(
+            args.num,
+            model=args.model,
+            seed_pairs=_load_seed_pairs(args.seed_pairs),
+            topics=args.topics,
+            max_spend=args.max_spend,
+        )
+        out = args.out or "advice_nat_pairs.json"
+        _write_json(out, result["pairs"])
+        extra = {"language_register": "natural_advice_questions",
+                 "topics": result["topics"], "styles": result["styles"]}
     elif args.command == "quadrants":
         result = generate_quadrant_scenarios(
             args.num,

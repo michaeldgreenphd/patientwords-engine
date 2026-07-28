@@ -158,6 +158,10 @@ jobs:
                   value = os.environ.get("IN_" + key.upper(), "")
                   if value:
                       params[key] = value
+          if params["task"] == "advice-nat":
+              # natural-question advice pairs carry no probe token, so the
+              # trace stage can never run on them regardless of fire params
+              params["trace_sample_size"] = "0"
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               for key, value in params.items():
                   out.write(f"{key}={value.replace(chr(10), ' ')}\n")
@@ -193,6 +197,21 @@ jobs:
             OUT="data/simulated/txcorpus_${STAMP}.json"
             MODE="2panel"
             ARGS=()
+          elif [ "$TASK" = "advice-nat" ]; then
+            # natural-question advice family: complete messages, never traced;
+            # advnat_ stem never matches pairs_* so it stays out of the
+            # confirmatory populations and Tier B accounting (like txcorpus_)
+            OUT="data/simulated/advnat_${STAMP}.json"
+            MODE="2panel"
+            ARGS=("advice-nat" -n "$NUM" --max-spend "$MAX_SPEND" --out "$OUT")
+            if [ "$SEED_PAIRS" = "medlang_circuits/data/ci_pairs_2panel.json" ]; then
+              SEED_PAIRS="medlang_circuits/data/ci_pairs_advice_nat.json"
+            fi
+            ARGS+=(--seed-pairs "$SEED_PAIRS")
+            if [ -n "$TOPICS" ]; then
+              IFS=',' read -ra TOPIC_ARR <<< "$TOPICS"
+              ARGS+=(--topics "${TOPIC_ARR[@]}")
+            fi
           elif [ "$TASK" = "pairs" ] || [ "$TASK" = "quadrants" ]; then
             if [ "$TASK" = "quadrants" ]; then
               OUT="data/simulated/quadrants_${STAMP}.json"
