@@ -1,4 +1,9 @@
-# Pre-registration — frontier-advice arm pilot (DRAFT, pending owner sign-off)
+# Pre-registration — frontier-advice arm pilot (SIGNED)
+
+**Signature.** Signed by the study owner (Michael D. Green), 2026-07-28, by recorded
+instruction in the orchestrating session ("sign the prereg and Amendment 5"),
+following the registered human-coding gate report of the same day
+(data/advice/human/agreement_report.json; coder: the study owner, disclosed).
 
 Signed: owner (approval recorded in session chat, "I am comfortable with the
 preregistration"), 2026-07-22 UTC. Two lines remain open and BLOCK the steps
@@ -260,7 +265,7 @@ append-only archive, never fired).
 - This arm evaluates advice **for measurement**; it never dispenses advice.
   The engine README carries the owner-approved amendment to that effect.
 
-## Amendment 5 (2026-07-28, owner-directed): natural-question stimulus family — DRAFT, pending owner sign-off
+## Amendment 5 (2026-07-28, owner-directed): natural-question stimulus family — SIGNED (2026-07-28, same instruction as the base signature)
 
 The registered stimulus construction (traced flip pairs completed by the fixed
 ask suffix) produces a structural monoculture, and the pilot shows it leaks
