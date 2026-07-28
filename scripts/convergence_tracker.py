@@ -131,6 +131,9 @@ def main(argv=None):
         "scope": ("pairs_* batches only, ordered by generation stamp; phrase-deduped; "
                   "Tier B exploration split only (Amendment 1 holdout excluded); "
                   f"bootstrap 95 pct CI seed {args.seed} x {args.boot}"),
+        # Audit 2026-07-28 L1: models whose final point has fewer phrases than
+        # this render as the page's pending state, not as a band.
+        "render_min_n": 30,
         "models": {},
     }
     present = sorted({r["model"] for r in rows})
@@ -150,7 +153,10 @@ def main(argv=None):
     # below zero" sentence — true iff every non-primary model's final CI
     # upper bound is negative (primary = first model in display order).
     # None when there is at most one model (the fold is not rendered).
-    mids = list(payload["models"])
+    # Computed over RENDERED models only: bands gated out by render_min_n
+    # cannot carry a sentence about the fold.
+    mids = [m for m in payload["models"]
+            if (payload["models"][m]["points"][-1].get("n_phrases") or 0) >= payload["render_min_n"]]
     payload["claims"] = {
         "all_secondary_end_below_zero":
             all(payload["models"][m]["ends_below_zero"] for m in mids[1:])
