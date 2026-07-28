@@ -107,3 +107,10 @@ hand-picked tail exemplars (algae/mechanic/car) are therefore not
 representative of flips at large; they sit in the absent/suppressed minority.
 Recompute with 17T when its lens chunk lands, and phrase-deduped before any
 external use.
+
+**17T folded in (same day, ~14:00 UTC — hardened run landed 100/100, zero
+errors):** 993 rows covered; flips (n=485) 55.7% retained / 34.0% absent /
+10.3% suppressed vs non-flips (n=508) 69.7% / 23.8% / 6.5%. The picture holds:
+flips are enriched ~10 pp for absent and ~4 pp for suppressed readings, yet a
+majority of flips remain retained-class. All flip-enriched batches now carry
+lens rows; remaining uncovered rows are 16T, 221438Z, and pre-0710 stems.
