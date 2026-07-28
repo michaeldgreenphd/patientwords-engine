@@ -176,7 +176,7 @@ def build_summary(model_id, hf_id, results, start_index=1, revision=None):
         "generation_params": {},
         "start_index": start_index,
         "pairs_requested": len(results),
-        "completed": True,   # logits parts write once, post-loop: never truncated
+        "completed": True,   # overwritten by main()'s flush: False until the loop finishes
         "screen_targets": None,
         # revision = the resolved HF commit hash, for the W5 pin table
         "inference": {"method": "logits", "hf_id": hf_id, "dtype": "bfloat16",
@@ -226,19 +226,30 @@ def main():
 
     start_index = args.offset + 1  # global 1-based join key, matching the trace path
     results = []
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    summary_path = out / f"batch_summary.part_{start_index:02d}.json"
+
+    def flush(completed):
+        # Flushed after every pair so the workflow's always() commit step lands
+        # the measured prefix even when the job ceiling kills a slow (8B/CPU)
+        # run mid-batch - the third script to learn the 2026-07-28 lesson
+        # (jlens_readout d36f944, jlens_steer 2989d4c).
+        summary = build_summary(model_id, hf_id, results, start_index,
+                                revision=getattr(model.config, "_commit_hash", None))
+        summary["completed"] = completed
+        if not completed:
+            summary["_partial"] = "in-progress flush (crash/timeout protection)"
+        summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+
     for i, pair in enumerate(pairs, start=start_index):
         results.append(build_result(i, pair, tokenizer, measure_fn, args.topk))
+        flush(completed=False)
         r = results[-1]
         print(f"  [{i}/{args.offset + len(pairs)}] clin={r['probabilities']['clinical']} "
               f"pat={r['probabilities']['patient']} pen={r['language_penalty']}", flush=True)
 
-    out = Path(args.out)
-    out.mkdir(parents=True, exist_ok=True)
-    summary_path = out / f"batch_summary.part_{start_index:02d}.json"
-    summary_path.write_text(
-        json.dumps(build_summary(model_id, hf_id, results, start_index,
-                                revision=getattr(model.config, "_commit_hash", None)), indent=2) + "\n",
-        encoding="utf-8")
+    flush(completed=True)
     print(f"Wrote {len(results)} results -> {summary_path}")
 
 

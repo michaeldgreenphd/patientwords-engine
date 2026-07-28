@@ -99,3 +99,18 @@ def test_offset_chunking_wiring_matches_trace_convention():
     assert '"offset": "0"' in text          # push-path defaults carry the key
     assert '--offset "$OFFSET"' in text     # CLI pass-through
     assert "part_%02d' $((OFFSET + 1))" in text  # part naming from offset
+
+
+def test_logits_eval_flushes_incrementally():
+    """Crash-safety contract (2026-07-28): the summary part must be flushed
+    after every pair so the job ceiling cannot discard a slow 8B/CPU run's
+    measured prefix - same lesson as jlens_readout d36f944 / jlens_steer
+    2989d4c. The loop body flushes completed=False; the post-loop flush
+    (completed=True) is the only place the part is marked complete."""
+    from pathlib import Path
+    src = Path(__file__).resolve().parents[1] / "scripts" / "logits_eval.py"
+    text = src.read_text(encoding="utf-8")
+    assert "flush(completed=False)" in text
+    assert "flush(completed=True)" in text
+    assert text.index("flush(completed=False)") < text.index("flush(completed=True)")
+    assert "in-progress flush (crash/timeout protection)" in text
