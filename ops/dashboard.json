@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "updated_utc": "2026-07-27T19:06:09Z",
+ "updated_utc": "2026-07-28T10:39:34Z",
  "updated_by": "routine",
  "queue": {
   "circuit-trace": {
@@ -350,6 +350,7 @@
   }
  ],
  "notes": [
+  "2026-07-28 OWNER DECISIONS (in-session): (1) 8B-MEDICAL HOLD RELEASED for the logits lane - owner: 'I'd like to expand to medical models since those are relevant to this question.' Logits chain order now: gemma-3-4b-it + qwen3-4b + qwen3-1.7b (displayed models first), then medgemma-4b-it, meditron3-8b, apertus-8b-meditronfo, then llama-3.2-3b / gemma-2-2b-it / olmo-2-1b. (2) jlens chunk size raised from 25 to 50-100 per run - owner-sanctioned after measured pace ~6min/25 pairs vs the workflow's 60-min timeout; all-or-nothing commit risks <=25min of work per chunk.",
   "2026-07-27 AUDIT CORRECTIONS: (a) tierb.traced_pairs was frozen at 98 since 2026-07-10 while the real disk count is 2049 - the headline number in every brief was wrong by ~10x for the whole backfill drive; now computed from trace_out. (b) REPUBLISHED mid-cycle: site went 921->1145 scenarios (674->898 measured, 20 stamps) - 268 measured scenarios had been sitting unpublished since 07-24 because the publish was being held for one end-of-run ship, so every container reclaim also delayed what the owner could see. Publishing is ~1h local $0 work with no CI dependency and should NOT be gated on tracing completion again. (c) docs/routine_standing_prompt.md corrected: the every-2h backfill-accel Routine it described has never existed.",
   "2026-07-27 cycle (ran 18:31, cron fired late): TRACE BACKFILL 2 of 3 big batches COMPLETE - pairs_20260717T132235Z 100/100 and pairs_20260718T133020Z 100/100. Remaining: 19T 41/100 + 15T 9 gaps = 68 pairs (~4 windows). 4th container reclaim idled the lane ~12.6h (05:55-18:31). Both slots re-fired. Gates green, $0.",
   "ACCELERATOR STATUS: treat as NOT LIVE. Owner approved an every-2h Routine 07-26 but creation was never confirmed (create returned an approval error; re-issued call pending; verification call denied) and zero ticks observed across 4 firing windows. Effective pace remains daily-cycle. See critic_20260727.md HIGH.",
