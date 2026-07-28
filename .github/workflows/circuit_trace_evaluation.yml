@@ -189,7 +189,17 @@ jobs:
     # 45 was tight: hosted-API latency variance killed 5-pair chunks mid-pair
     # four times on 2026-07-13 (conclusion 'cancelled', truncated final pair).
     # Incremental commits make a longer ceiling cheap.
-    timeout-minutes: 75
+    # 2026-07-28 (owner-approved): 75 -> 300. The 75-minute ceiling was the ONLY
+    # thing ending runs — there is no wall-clock budget inside the tracer — so
+    # every run stopped at ~10 pairs and the backfill advanced one short window
+    # at a time. Each hand-off between runs is where the lane goes idle (49.7 of
+    # 90.9 hours were idle over 2026-07-24..27, always BETWEEN runs, never
+    # during one: the run is server-side and survives container reclaims that
+    # kill the driving session). Fewer, longer runs therefore mean fewer
+    # opportunities to stall. Safe because outputs commit incrementally: a run
+    # that dies at any point keeps every pair it finished. GitHub's job ceiling
+    # is 360 minutes; 300 leaves headroom for checkout/install/commit/upload.
+    timeout-minutes: 300
     strategy:
       fail-fast: false
       max-parallel: 3
