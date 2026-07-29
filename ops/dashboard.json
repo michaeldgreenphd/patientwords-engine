@@ -1,27 +1,19 @@
 {
  "schema_version": 1,
- "updated_utc": "2026-07-29T13:15:35Z",
- "updated_by": "session",
+ "updated_utc": "2026-07-29T13:21:45Z",
+ "updated_by": "routine",
  "queue": {
   "circuit-trace": {
-   "running": null,
+   "running": "drift sentinel 20260729 (3 pairs, $0)",
    "pending": null
   },
   "jlens-readout": {
-   "running": {
-    "fired_utc": "2026-07-28T13:53:47Z",
-    "commit": "",
-    "note": "STEERING-100 chunk 2/4 (items 26-50). Pending behind chunk 1. basis for ignore-settle: resolved 17T run confirmed terminal - its COMPLETE output (summary part_01 100/100 + probe) committed a981fe2; nothing else occupies the group beyond chunk 1. $0"
-   },
+   "running": "lens sentinel 20260729 (gemma-2-2b + -it, $0)",
    "pending": null
   },
   "logits-eval": {
-   "running": {
-    "fired_utc": "2026-07-28T13:14:54Z",
-    "commit": "",
-    "note": "CALIBRATION PROBE (owner task 5, audit L1/C3): meditron3-8b 25 pairs on 17T - measure per-forward pace on the 7GB runner BEFORE committing to 75. Pending behind gemma-3-4b-it 51-100. basis for ignore-settle: qwen3-4b part_01 committed 7834070 = terminal. $0"
-   },
-   "pending": null
+   "running": "meditron3-8b 11-30 r4 (SILENT 4h+ - probable hung load, 240-min timeout kills ~13:35)",
+   "pending": "meditron3-8b 51-75"
   },
   "activation-patching": {
    "running": null,
@@ -32,11 +24,31 @@
    "pending": null
   },
   "advice-eval": {
-   "running": null,
+   "running": "judge-only re-fire (correct rubric path, <=$1.05, lands ~14:40)",
    "pending": null
   }
  },
  "runs_recent": [
+  {
+   "utc": "2026-07-29T13:11Z",
+   "what": "advice 25-stop elicit COMPLETE: 25/25 stimuli x 8 models x 3 arms x K3 (1,800 cells), $0.793; judge step died on omitted rubric param (re-fired 13:5x with data/advice_rubric.draft.json)"
+  },
+  {
+   "utc": "2026-07-29T09:31Z",
+   "what": "advice RECOVERY landed: attempt-1 artifact (1,626 records) restored + committed after both overnight fires omitted commit_outputs; cumulative archive $7.99; attempt 2's ~$5.94 sunk-duplicate (artifact 8715800510)"
+  },
+  {
+   "utc": "2026-07-29T~09:20Z",
+   "what": "meditron3-8b 31-50 landed (part_31, 20 pairs); 11-30 r3 died in load lottery (3rd)"
+  },
+  {
+   "utc": "2026-07-28T22:0xZ",
+   "what": "apertus-8b-meditronfo COMPLETE at n=75 (parts 01+26)"
+  },
+  {
+   "utc": "2026-07-28",
+   "what": "steering-100: 100/100 measured (61 salvaged); behavioral dose-response analysis committed (docs/experiments/steering_100_analysis.md)"
+  },
   {
    "run": "advice-eval OpenAI completion re-fire",
    "id": 29999823389,
@@ -62,34 +74,6 @@
   {
    "run": "jlens-readout lens sentinel 20260723",
    "state": "fired this cycle ($0)"
-  },
-  {
-   "run": "logits-eval medgemma backfill pairs_20260707T023656Z",
-   "state": "fired this cycle ($0)"
-  },
-  {
-   "fired_utc": "2026-07-28T10:39:15Z",
-   "trigger": "jlens-readout",
-   "label": "14T lens 1-100",
-   "outcome": "landed 100/100 (parts 01/26/51/76)"
-  },
-  {
-   "fired_utc": "2026-07-28T11:30:48Z",
-   "trigger": "jlens-readout",
-   "label": "17T lens re-fire",
-   "outcome": "FAILED at pair 61 (raws only, 013e698) - root-caused, script hardened d36f944"
-  },
-  {
-   "fired_utc": "2026-07-28T11:57:17Z",
-   "trigger": "jlens-readout",
-   "label": "19T lens 1-100",
-   "outcome": "landed 100/100, 0 errors (60 retained/32 absent/8 suppressed)"
-  },
-  {
-   "fired_utc": "2026-07-28T10:19:58Z",
-   "trigger": "logits-eval",
-   "label": "qwen3-4b 17T 1-50",
-   "outcome": "landed part_01 (7834070)"
   }
  ],
  "spend": {
@@ -382,80 +366,50 @@
  ],
  "findings_delta": [
   {
-   "date": "2026-07-23",
-   "what": "Registered advice stem completed to K=3 for all six models (openai 71->225 records; judgments 1213->1367). Provisional per-model downgrade counts unchanged (grok 5/25, deepseek 5/25, others 2/25)."
+   "utc": "2026-07-29T13:21:45Z",
+   "what": "model_stats now covers 10 models (apertus n=75 joins rendered set at 49 urgency rows >= render_min_n 30; meditron3-8b pending at 22 rows). claim_check: 2 prose FAILs (site says 8 models, data gives 10) - owner text decision."
   },
   {
-   "date": "2026-07-16",
-   "finding": "Sentinel day 4 identical to day 3: the 07-15 instrument movement was a step change, not ongoing drift; methods note already says so. Census tripled to 476 pairs (44 capture / 31 hijack / 108 unreadable / 293 held) with the arm-stem guard added before regen. Translation lens recovery at corpus scale: 10 of 29 never-formed phrases now form, 4 lost. Display rankings for the owner deck: dialect standout is seizure meds->phone flips under 3 framings; quadrants standout is the palpitations frame at +13.0pp grammar shift, matching the current insomnia figure."
-  },
-  {
-   "date": "2026-07-14",
-   "finding": "Steering pilot complete: hijack-class pairs all recover at strength 0.5+ but capture-class pairs recover identically - no class separation in additive steering at any dose; only the swap arm hints at one. Translation AT SCALE diverges from the curated set: gemma-3-4b-it corpus-random n=154 recovers just +0.5pp (49% helped, 27 tops restored vs 24 broken) while gemma-2-2b downgrade-source traces n=17 recover +8.9pp (8/0 tops). Lens recovery live on the translation page: 6 of 16 never-formed phrases form under translation."
-  },
-  {
-   "date": "2026-07-22",
-   "finding": "Payload 690->765 scenarios (536 measured) with the July 14 batch published; jlens insights at 571 pairs (capture 57 / held 351 / hijack 29 / unreadable 134). Advice archive at 567 chained records across 5 API models - descriptive only until the clinician rubric clears the judge; early unrated pattern: register changes which safety behaviors fire (clarify-first, unknown-pill caution) on the pilot pairs."
+   "utc": "2026-07-29T13:21:45Z",
+   "what": "TRUE study spend corrected: ledger delta-fold fix surfaced $8.06 of July advice spend booked at $0.96; lifetime now $32.79 booked + ~$5.94 sunk-duplicate (unbookable, disclosed). Today $7.99."
   }
  ],
  "decisions_pending": [
   {
-   "id": "SKEPTIC",
-   "title": "Skeptic audit - voice/framing items (owner's lane, no rush)",
-   "context": "docs/skeptic_read_20260709.md: single-case caveat, word-diff example mismatch, model-eval softening are yours to phrase when back. (The pooled-count dedupe half of this item is DONE - deduped stats published site-wide 2026-07-09.)"
+   "id": "CLAIM-8-TO-10-MODELS",
+   "what": "claim_check FAIL x2: technical/index.html and methods.html say '8 models'; refreshed model_stats gives 10 (apertus + meditron entered). Mechanical 8->10 edit needs owner nod (or say 'fix the model count' and the orchestrator does it)."
   },
   {
-   "id": "LEDGER-DELTA-FOLD",
-   "title": "ledger_update.py: fold deltas of grown cumulative sidecars (critic 07-23 HIGH)",
-   "context": "scan_new_sidecars keys entries_seen by filename, so a sidecar that grows after first fold never re-folds (advice arms understated 07-23 by ~$3.9 on fold-date basis; totals self-correct at full value once, on first-seen date). Fix: track {name: last_folded_cost}, book the delta, regression test. Queued next engineering slot; no spend risk today (all queued work $0)."
+   "id": "ADVICE-NAT-REMAINDER",
+   "what": "Natural-question family stopped at 25/75 (deviation D1 logged). Stimuli 26-75 remain registered+inert; resuming later costs ~$17 (OpenRouter ~$12). No action needed unless you want the full 75."
   },
   {
-   "id": "RECLAIM-DEFEATS-ACCEL",
-   "title": "Container reclaims are defeating option-c session-live driving (~20h idle/day)",
-   "context": "The env's container has been reclaimed ~daily during the vacation window; each reclaim kills the babysitter timers and the trace lane idles ~20h until the next 13:00 backstop cycle re-chains it. Net effect: the option-(c) accelerator the owner chose 2026-07-24 is delivering roughly option-(a) daily-cycle pace. No data at risk (all $0, nothing lost, daily cycle always catches up), but the weekend completion target slipped to mid-next-week. If the owner wants the faster pace back, option (b) - create the every-2h Routine from a surface where create-trigger approval works - would survive reclaims where in-session timers do not. No action taken; recorded for the owner's return. 8B-medical hold unchanged."
+   "id": "TRACE-LANE-PAID-QUEUE",
+   "what": "Audit-approved paid queue parked under today's corrected override: translation-100 (~$0.13), quadrants 4->50 (~$0.28 gen), dialect K=3 re-traces. Say 'run the trace queue' to authorize; each is small but today's override intent was advice-recovery only."
   },
   {
-   "id": "DISK-HEADROOM",
-   "title": "Dev-container disk at 1.9G free; git gc window closing",
-   "context": "Trace renders cost ~150MB/window; free space fell 2.6G->1.9G in 7h and hit 100% Sunday night, breaking a rebase mid-push (recovered, nothing lost). Remaining backfill ~500MB fits, but repo bloat is the real cause: .git 8.8G + trace_out 12G. `git gc` needs scratch space and is unsafe below ~1G free. Options: run gc now while there is headroom, or add a local sparse-checkout excluding trace_out render HTML/PNG (CI already sparse-checkouts; the dev clone does not). Recorded docs/handoff_20260726_disk.md. $0 either way."
-  },
-  {
-   "id": "UNBOOKED-BATCH",
-   "title": "pairs_20260721T132205Z (100 pairs, $0.1467) never booked, never traced",
-   "context": "Landed on main 07-21 as b07db6c but is absent from dashboard tierb.batches and from spend accounting, never pulled to the working branch, never traced. True Tier B accepted is 1200/1600 not 1100/1600; true generation spend ~$2.0673 not $1.9206. Also: generation has been idle since 2026-07-21 (a series of deliberate budget-protective skips) while the brief still prints a stale 07-12 verdict saying generation 'finishes ~07-24'. Whether to resume generation is your call, not a default."
-  },
-  {
-   "id": "PUBLISH-CADENCE",
-   "title": "Publish population: which historical stamps belong in the public set",
-   "context": "Today's republish added only this drive's batches (16T/17T/18T/19T) -> 20 stamps, 1145 scenarios. Ten further traced batches exist on disk but were never published: six 07-06/07-07 pilots, pairs_20260707T221438Z, and the pairs_20260711T051145Z_txopus/_txplacebo translation-arm variants. Adding them changes the study population, which is a preregistration-adjacent decision, so I did not make it. Your call whether any should be included."
+   "id": "CONTRACT-MANIFEST-RENDER-MIN-N",
+   "what": "validate_frontend_contract warns render_min_n is not in the audited contract (we added it 2026-07-28, by design). Manifest needs the field added - mechanical, will do on nod."
   },
   {
    "id": "AUDIT-DECIDED-EXECUTION",
-   "what": "Owner decided all 12 audit items 2026-07-28 (11 approve, tier-vocab review deferred; Rmd carries the transcription). Remaining OWNER acts: prereg signature (gates advice n=100), coding the 25 items, choosing one pooled-33% caveat sentence from the drafted candidates. Session executes the approved queue: steering-100 spec -> translation-100 -> quadrants-50 -> dialect K=3 -> lens census; meditron/apertus probes -> n=75; patching subset build.",
-   "added_utc": "2026-07-28T13:22:39Z"
+   "what": "Owner decided all 12 audit items 2026-07-28 (11 approve, tier-vocab review deferred; Rmd carries the transcription). Remaining OWNER acts: prereg signature (gates advice n=100), coding the 25 items, choosing one pooled-33% caveat sentence from the drafted candidates. Session executes the approved queue: steering-100 spec -> translation-100 -> quadrants-50 -> dialect K=3 -> lens census; meditron/apertus probes -> n=75; patching subset build."
   }
  ],
  "blockers": [
   {
-   "id": "CRITIC-INTERIM-PERMANENT",
-   "what": "Owner chose Option A (2026-07-19): the interim critic (daily cycle runs the pass Mon/Wed/Fri + on signals, docs/critic_standing_prompt.md) is the PERMANENT mechanism. The standalone scheduled Routine was abandoned because the create-trigger approval channel repeatedly failed on the owner's surface (3x requires-approval + 1x stream-closed). No further action; not a blocker, kept for the record until it ages out."
+   "id": "MEDITRON-R4-HUNG-LOAD",
+   "what": "meditron 11-30 r4 silent 4h+ (fired 09:31) - differs from the fast load-death pattern; 240-min timeout should kill ~13:35 and release the queued 51-75. If part_11 still absent after 51-75 lands, r5 re-fire needed (4th attempt). Watch next harvest."
   },
   {
-   "id": "REPUBLISH-PENDING-BACKFILL",
-   "what": "68 pairs left (19T 41/100 + 15T 9 gaps), ~4 windows. 17T and 18T COMPLETE. Full republish (export all stamps + paired_stats + convergence + 5 jlens exporters + gates + deploy) fires when those land; then the queued lens experiment docs/experiments/lens_frame_collapse.md. Stable 16-stamp public set (921/674) stays live meanwhile. $0."
+   "id": "CRITIC-INTERIM-PERMANENT",
+   "what": "Owner chose Option A (2026-07-19): the interim critic (daily cycle runs the pass Mon/Wed/Fri + on signals, docs/critic_standing_prompt.md) is the PERMANENT mechanism. The standalone scheduled Routine was abandoned because the create-trigger approval channel repeatedly failed on the owner's surface (3x requires-approval + 1x stream-closed). No further action; not a blocker, kept for the record until it ages out."
   }
  ],
  "notes": [
-  "2026-07-28 OWNER DECISIONS (in-session): (1) 8B-MEDICAL HOLD RELEASED for the logits lane - owner: 'I'd like to expand to medical models since those are relevant to this question.' Logits chain order now: gemma-3-4b-it + qwen3-4b + qwen3-1.7b (displayed models first), then medgemma-4b-it, meditron3-8b, apertus-8b-meditronfo, then llama-3.2-3b / gemma-2-2b-it / olmo-2-1b. (2) jlens chunk size raised from 25 to 50-100 per run - owner-sanctioned after measured pace ~6min/25 pairs vs the workflow's 60-min timeout; all-or-nothing commit risks <=25min of work per chunk.",
-  "2026-07-27 AUDIT CORRECTIONS: (a) tierb.traced_pairs was frozen at 98 since 2026-07-10 while the real disk count is 2049 - the headline number in every brief was wrong by ~10x for the whole backfill drive; now computed from trace_out. (b) REPUBLISHED mid-cycle: site went 921->1145 scenarios (674->898 measured, 20 stamps) - 268 measured scenarios had been sitting unpublished since 07-24 because the publish was being held for one end-of-run ship, so every container reclaim also delayed what the owner could see. Publishing is ~1h local $0 work with no CI dependency and should NOT be gated on tracing completion again. (c) docs/routine_standing_prompt.md corrected: the every-2h backfill-accel Routine it described has never existed.",
-  "2026-07-27 cycle (ran 18:31, cron fired late): TRACE BACKFILL 2 of 3 big batches COMPLETE - pairs_20260717T132235Z 100/100 and pairs_20260718T133020Z 100/100. Remaining: 19T 41/100 + 15T 9 gaps = 68 pairs (~4 windows). 4th container reclaim idled the lane ~12.6h (05:55-18:31). Both slots re-fired. Gates green, $0.",
-  "ACCELERATOR STATUS: treat as NOT LIVE. Owner approved an every-2h Routine 07-26 but creation was never confirmed (create returned an approval error; re-issued call pending; verification call denied) and zero ticks observed across 4 firing windows. Effective pace remains daily-cycle. See critic_20260727.md HIGH.",
-  "REVISED WEEKEND TIMING (owner already briefed on this downside): the three newest 100-pair batches (~285 pairs left) will not fully trace by Sunday at the throttled pace + idle-gap risk. Plan HOLDS: Sunday full republish ships the stable 16-stamp set (921 scenarios, already live) + every batch that has completed; the 17T/18T/19T tail renders as the site's normal pending/em-dash rows and the nightly cycle auto-republishes it as it lands Mon-Tue. No owner action needed.",
-  "2026-07-24 OWNER DECISION (in-session): backfill acceleration = option (c), session-live driving; no every-2h Routine will be created. Owner on vacation - orchestrator session chains lanes via check-in timers with unconditional re-arm; the daily 13:00 Routine firing into this session is the self-healing backstop (a container reclaim pauses chaining at most until the next 13:00 fire, when timers re-arm). 8B-medical models stay HELD until explicit owner release. Vacation posture: anything ambiguous goes to decisions_pending, never acted on.",
-  "2026-07-23 cycle: CRITIC HIGH (docs/critic/critic_20260723.md) - ledger_update never re-folds grown cumulative advice sidecars; spend.today understates landed advice spend (booked $1.23 for 07-23 vs ~$5.1+ per-record). Today's fires governed by the orchestrator's independent worst-case tally (<=$9.08 vs $9.50 owner override); delta-folding fix + regression test queued. Amendment 4 arms in flight: hedge running, sonnet pending, mini (0.45) chains when a slot frees. Generation skipped (advice chain owns the paid budget; floor batch on branch).",
-  "07-22 daily cycle (routine, in-session; owner ACTIVE - advice arm day). GENERATION DELIBERATELY SKIPPED today: advice chain has budget precedence per explicit owner direction (today $0.96 landed; remaining ceilings 2c 0.35 + hedge 0.30 + haiku/gemini 0.30 fill the $2 guard); generation resumes next UTC day. Anthropic-path transient retries added after 2b's 522 crash. Ledger accumulator double-fold detected and repaired same cycle (restore + single clean fold); lesson: in-session Routine turns must not git-revert the dashboard after ledger_update.",
-  "2026-07-28 daily cycle (audit follow-through day): human-coding gate LIVE (llm/code.html deployed, blinded n=25 sample seed 7, coder=owner); Rmd decision copy + phone decision artifact delivered; floor v2 (50x5, +-6.6pp) + render_min_n=30 gates deployed; tokenization null recomputed r=-0.002 n=1272; jlens hardened after two 17T pair-61 crash losses; 19T lens 100/100 (60r/32a/8s); FIRST frame-collapse denominator cut: flips 58.4r/32.1a/9.5s vs non-flips 68.9/25.1/6.0 (430 vs 463 rows, 17T pending); Tufte pass landed on llm page (1797/1797 byte-identity). Generation skipped again (measurement-over-generation audit phase).",
-  "2026-07-28 ADVICE-NAT decisions (owner paste-back): instruction/styles/seeds/Amendment-5-text all APPROVED; generator=opus; arms=3 (with translation, ~$17); pacing=ONE-SHOT exception for elicitation (owner-authorized; mechanism via ops/budget_overrides.json when the time comes - never --override-budget); topics=half matched to cloze 25 + half fresh; K3=no. Generation FIRED (75 pairs, max_spend $1.50, today $1.50/2 committed). Elicitation remains gated: human-coding gate report + owner signature on prereg + Amendment 5."
+  "2026-07-29 incident, fully closed: both overnight advice fires omitted commit_outputs (default false, now flipped to true) -> attempt 1 recovered via restore_artifact_run_id ($7.99 landed), attempt 2 ~$5.94 sunk-duplicate. JSONDecodeError crash fixed with retry + tests. Owner directed 25-stop; elicit complete; judge re-fire in flight.",
+  "Site deploy HOLDING until judge lands (~14:40): branch carries the merged-family llm page + today's data refresh; one branch:main push ships everything together (~15:00), before the owner's noon-ET session.",
+  "Ledger delta-fold fix live (critic HIGH closed): cumulative sidecars now fold growth by run day; historical July underbooking ($8.06) booked to July days."
  ],
  "decisions_log": [
   {
