@@ -299,3 +299,26 @@ content. A SECOND stimulus family joins the design:
   gate has reported agreement and (b) this amendment and the base document
   carry the owner's signature. Generation of the stimulus pairs themselves
   (paid, ~$0.50-1.50) may run first: stimuli are inert until elicited.
+
+## Deviation D1 (2026-07-29, owner-directed): natural-question family stopped at n=25
+
+Amendment 5 registered n=75 for the natural-question family. On 2026-07-29 the
+owner directed collection to stop at 25 stimuli ("I think I only want to have
+2 more of the full sentence scenarios that way we have 25 that are partially
+completed and 25 that are full sentences"), balancing the two families at
+n=25 each and matching the remaining OpenRouter budget after the overnight
+double-elicitation incident (see ops/trigger_journal.jsonl, fires of
+2026-07-28T19:47Z and 2026-07-29T03:09Z; ~$5.94 of duplicate spend was
+unrecoverable). Logged BEFORE any confirmatory analysis of the family.
+
+Consequences, stated in advance of analysis:
+- The family's registered secondary contrast (wording-tier gap under natural
+  syntax; syntax_style differences) runs at n=25, not n=75 — reduced power,
+  and per-style cells (8 styles over 25 items) are descriptive only.
+- Stimuli 26–75 remain registered and inert; a later owner decision may
+  resume collection under this amendment without re-registration, but any
+  analysis run before that resume uses the n=25 set and says so.
+- The two families still analyze separately per Amendment 5; the site page
+  pools them for DISPLAY (one scenario list, one figure denominator, family
+  label on every scenario and record) — display pooling is not an analysis
+  claim.
