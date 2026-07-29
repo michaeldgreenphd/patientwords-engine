@@ -12,7 +12,12 @@ dashboard write, so a failed append aborts the run without committing
 entries_seen - bullets are never lost.
 
 Strictly idempotent: a sidecar filename already in spend.entries_seen is never
-counted twice, and a run that finds nothing new rewrites nothing at all. Every
+counted twice, and a run that finds nothing new rewrites nothing at all.
+CUMULATIVE sidecars (the advice archive rewrites responses_*.report.json in
+place as its append-only archive grows) fold their cost GROWTH as a delta:
+spend.entries_folded tracks how much of each filename's cost_usd has been
+booked, bootstrapped from the file's own ledger bullets, and any positive
+difference lands as a "delta" bullet in the same totals. Every
 writing run refreshes spend.today and stamps updated_utc (updated_by is set to
 "session" only when absent). The dashboard is read-modify-write - fields this
 script does not understand are preserved untouched. Ceiling breaches are
@@ -28,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -156,6 +162,22 @@ def ledger_bullet(filename, cost, report):
             f" · {report.get('run_timestamp') or '—'}")
 
 
+def folded_from_ledger(ledger_path: Path, filename: str):
+    """Total already booked for a filename, summed from its own ledger bullets
+    (each fold — first or delta — leaves one '- <name> · $X ·' line). None when
+    the ledger has no bullet for it."""
+    if not ledger_path.exists():
+        return None
+    total, found = 0.0, False
+    for line in ledger_path.read_text(encoding="utf-8").splitlines():
+        if line.startswith(f"- {filename} · $"):
+            m = re.match(r"- .+? · \$([0-9.]+) ·", line)
+            if m:
+                total += float(m.group(1))
+                found = True
+    return round(total, 6) if found else None
+
+
 def check_ceilings(spend):
     """Append stable, deduplicated alert sentences; True when the list changed.
 
@@ -225,8 +247,47 @@ def main(argv=None):
             spend["lifetime_generation_usd"] = round(float(spend.get("lifetime_generation_usd") or 0.0) + cost, 4)
             by_day[day] = round(float(by_day.get(day) or 0.0) + cost, 4)
             entries_seen.append(path.name)
+            spend.setdefault("entries_folded", {})[path.name] = cost
             attribute_tierb(dashboard, spend, report, path.name, cost)
             bullets.append(ledger_bullet(path.name, cost, report))
+
+    # Growth pass (critic HIGH closed 2026-07-29): a cumulative sidecar already
+    # in entries_seen is rewritten in place as its archive grows, so the
+    # filename gate above never re-folds it — the 25-stop advice run added
+    # $0.79 to a seen sidecar and the daily guard would have missed it. Fold
+    # the positive delta, bootstrapping each file's previously-booked total
+    # from its own ledger bullets (the durable record of every fold). Tier B
+    # batch sidecars are append-once and never grow; deltas skip tierb
+    # attribution by construction.
+    entries_folded = spend.setdefault("entries_folded", {})
+    seen_set = set(entries_seen)
+    for scan_dir in (Path(args.simulated_dir), Path(args.advice_dir)):
+        if not Path(scan_dir).is_dir():
+            continue
+        for path in sorted(Path(scan_dir).glob("*.report.json")):
+            if path.name not in seen_set:
+                continue
+            try:
+                report = json.loads(path.read_text(encoding="utf-8"))
+            except ValueError:
+                continue
+            current = float(report.get("cost_usd") or 0.0)
+            if path.name not in entries_folded:
+                prior = folded_from_ledger(ledger_path, path.name)
+                entries_folded[path.name] = prior if prior is not None else current
+            delta = round(current - float(entries_folded[path.name]), 6)
+            if delta > 0.0005:
+                # book to the sidecar's own run day: a bootstrap can surface
+                # WEEKS-old underbooking, and charging that to today would
+                # poison the daily guard (first live run found $8.06 of July
+                # spend the filename gate had hidden)
+                run_ts = parse_ts(report.get("run_utc") or report.get("run_timestamp"))
+                day = run_ts.astimezone(timezone.utc).date().isoformat() if run_ts else date
+                spend["lifetime_generation_usd"] = round(
+                    float(spend.get("lifetime_generation_usd") or 0.0) + delta, 4)
+                by_day[day] = round(float(by_day.get(day) or 0.0) + delta, 4)
+                entries_folded[path.name] = current
+                bullets.append(f"- {path.name} · ${delta:.4f} · delta (cumulative ${current:.4f}, day {day})")
 
     if bullets:
         spend["today"] = {"date": date, "spent_usd": float(by_day.get(date) or 0.0)}

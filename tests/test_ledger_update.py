@@ -423,3 +423,40 @@ def test_advice_sidecars_fold_into_spend_totals(tree):
     # idempotent on re-run
     assert run(tree) == 0
     assert load_dash(tree)["spend"]["by_day"][TODAY] == pytest.approx(0.58)
+
+
+def test_cumulative_sidecar_growth_folds_as_delta(tree, capsys):
+    # critic HIGH closed 2026-07-29: the advice archive rewrites its
+    # responses_*.report.json in place as the append-only archive grows; the
+    # entries_seen filename gate must not hide that growth from the guard.
+    write_sidecar(tree["adv"], "responses_stimuli_x.report.json", cost_usd=7.20)
+    run(tree)
+    write_sidecar(tree["adv"], "responses_stimuli_x.report.json", cost_usd=7.99)
+    run(tree)
+    dash = load_dash(tree)
+    assert dash["spend"]["by_day"][TODAY] == pytest.approx(7.99)
+    assert dash["spend"]["lifetime_generation_usd"] == pytest.approx(7.99)
+    assert dash["spend"]["entries_folded"]["responses_stimuli_x.report.json"] == pytest.approx(7.99)
+    text = tree["ledger"].read_text(encoding="utf-8")
+    assert "· $0.7900 · delta (cumulative $7.9900" in text
+    # idempotent: a third run folds nothing more
+    before = sha(tree["dash"])
+    run(tree)
+    assert sha(tree["dash"]) == before
+
+
+def test_delta_bootstrap_from_ledger_bullets(tree):
+    # a sidecar folded BEFORE entries_folded existed has only its ledger
+    # bullet as the record of what was booked; the delta pass reconstructs
+    # the folded total from those bullets instead of double-counting
+    write_sidecar(tree["adv"], "responses_stimuli_y.report.json", cost_usd=5.00)
+    seed_dash(tree, {"spend": {"entries_seen": ["responses_stimuli_y.report.json"],
+                               "by_day": {TODAY: 3.0}, "lifetime_generation_usd": 3.0}})
+    tree["ledger"].write_text(
+        "# Ledger\n\n## Spend log (auto)\n\n"
+        "- responses_stimuli_y.report.json · $3.0000 · alias · accepted — · —\n",
+        encoding="utf-8")
+    run(tree)
+    dash = load_dash(tree)
+    assert dash["spend"]["by_day"][TODAY] == pytest.approx(5.0)
+    assert dash["spend"]["entries_folded"]["responses_stimuli_y.report.json"] == pytest.approx(5.0)

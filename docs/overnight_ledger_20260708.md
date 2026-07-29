@@ -661,3 +661,6 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - judgments_stimuli_20260722T003502Z.report.json · $0.3484 · alias · accepted — · —
 - advnat_20260728T144020Z.report.json · $0.6624 · claude-opus-4-8 · accepted 75 · 2026-07-28T14:44:37.924368+00:00
 - responses_stimuli_20260728T194624Z.report.json · $7.2000 · alias · accepted — · —
+- responses_stimuli_20260721T235403Z.report.json · $7.3391 · delta (cumulative $8.3037, day 2026-07-23)
+- responses_stimuli_20260722T003502Z.report.json · $0.7223 · delta (cumulative $0.9513, day 2026-07-23)
+- responses_stimuli_20260728T194624Z.report.json · $0.7930 · delta (cumulative $7.9930, day 2026-07-29)
