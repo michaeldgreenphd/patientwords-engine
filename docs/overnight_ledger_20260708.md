@@ -665,3 +665,4 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - responses_stimuli_20260722T003502Z.report.json · $0.7223 · delta (cumulative $0.9513, day 2026-07-23)
 - responses_stimuli_20260728T194624Z.report.json · $0.7930 · delta (cumulative $7.9930, day 2026-07-29)
 - judgments_stimuli_20260728T194624Z.report.json · $0.9987 · alias · accepted — · —
+- judgments_stimuli_20260728T194624Z.report.json · $1.0943 · alias · accepted — · —
