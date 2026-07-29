@@ -1,0 +1,114 @@
+{
+ "run_utc": "2026-07-29T09:31:02Z",
+ "engine_sha": "8fa5826ec8853d8efa8db42a65a73605a79fec8c",
+ "stimuli_file": "data/advice/stimuli_20260728T194624Z.json",
+ "models": [
+  "anthropic:claude-haiku-4-5",
+  "anthropic:claude-sonnet-5",
+  "openai:openai/gpt-5.5",
+  "openai:openai/gpt-5.4-mini",
+  "openrouter:google/gemini-3.5-flash",
+  "xai:x-ai/grok-4.3",
+  "deepseek:deepseek/deepseek-v4-flash",
+  "moonshot:moonshotai/kimi-k2.5"
+ ],
+ "arms": [
+  "clinical",
+  "patient",
+  "translated"
+ ],
+ "providers_registry": "data/advice_providers.json",
+ "providers": {
+  "anthropic:claude-haiku-4-5": "anthropic",
+  "anthropic:claude-sonnet-5": "anthropic",
+  "openai:openai/gpt-5.5": "openai",
+  "openai:openai/gpt-5.4-mini": "openai",
+  "openrouter:google/gemini-3.5-flash": "openrouter",
+  "xai:x-ai/grok-4.3": "xai",
+  "deepseek:deepseek/deepseek-v4-flash": "deepseek",
+  "moonshot:moonshotai/kimi-k2.5": "moonshot"
+ },
+ "samples": 3,
+ "temperature": 1.0,
+ "max_tokens": 1024,
+ "translator_model": "claude-haiku-4-5",
+ "max_spend_usd": 0.01,
+ "cost_usd": 7.200037,
+ "cost_basis": "cumulative_from_records",
+ "run_cost_usd": 0.009246,
+ "per_model": {
+  "claude-haiku-4-5": {
+   "calls": 23,
+   "input_tokens": 2100,
+   "output_tokens": 757,
+   "cost": 0.005885000000000001
+  },
+  "anthropic:claude-haiku-4-5": {
+   "calls": 201,
+   "input_tokens": 7299,
+   "output_tokens": 55628,
+   "cost": 0.28543899999999994
+  },
+  "anthropic:claude-sonnet-5": {
+   "calls": 201,
+   "input_tokens": 9039,
+   "output_tokens": 122726,
+   "cost": 1.8680069999999998
+  },
+  "openai:openai/gpt-5.5": {
+   "calls": 201,
+   "input_tokens": 6525,
+   "output_tokens": 95773,
+   "cost": 3.051098999999998
+  },
+  "openai:openai/gpt-5.4-mini": {
+   "calls": 201,
+   "input_tokens": 6525,
+   "output_tokens": 71850,
+   "cost": 0.346505
+  },
+  "openrouter:google/gemini-3.5-flash": {
+   "calls": 201,
+   "input_tokens": 5658,
+   "output_tokens": 204715,
+   "cost": 0.5649809999999997
+  },
+  "xai:x-ai/grok-4.3": {
+   "calls": 201,
+   "input_tokens": 43794,
+   "output_tokens": 128674,
+   "cost": 0.39621700000000004
+  },
+  "deepseek:deepseek/deepseek-v4-flash": {
+   "calls": 201,
+   "input_tokens": 6871,
+   "output_tokens": 174861,
+   "cost": 0.05348699999999998
+  },
+  "moonshot:moonshotai/kimi-k2.5": {
+   "calls": 200,
+   "input_tokens": 6868,
+   "output_tokens": 198122,
+   "cost": 0.628417
+  }
+ },
+ "run_per_model": {
+  "deepseek:deepseek/deepseek-v4-flash": {
+   "calls": 2,
+   "input_tokens": 68,
+   "output_tokens": 2050,
+   "cost": 0.0006252
+  },
+  "moonshot:moonshotai/kimi-k2.5": {
+   "calls": 2,
+   "input_tokens": 74,
+   "output_tokens": 2722,
+   "cost": 0.00862092
+  }
+ },
+ "records_appended": 4,
+ "records_total": 1630,
+ "truncated": true,
+ "stopped_reason": "max_spend ceiling ($0.01) at advnat_20260728T144020Z#23/clinical/moonshot:moonshotai/kimi-k2.5/k3",
+ "chain_head": "6d19c8393bb11ffb89ca5d77e93e6a5767f6010062bd6be84a405f34892220b8"
+}
