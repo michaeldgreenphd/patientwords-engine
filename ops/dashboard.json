@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-07-29T23:08:26Z",
+  "updated_utc": "2026-07-29T23:08:50Z",
   "updated_by": "session",
   "queue": {
     "circuit-trace": {
@@ -9,7 +9,11 @@
         "commit": "",
         "note": "Small-multiples gap-fill A (items 4-10): the 21:47 re-render run 30493723232 is GitHub-terminal (failure) - both jobs died on sustained Neuronpedia 429s after landing items 1-3 and 11-13 WITH their multi renders (code verified good). Single chunk to halve request pressure; B (items 14-20) chains pending. $0. Settle-ignore basis: run 30493723232 completed, all jobs terminal, nothing queued."
       },
-      "pending": null
+      "pending": {
+        "fired_utc": "2026-07-29T23:08:50Z",
+        "commit": "",
+        "note": "Small-multiples gap-fill B (items 14-20), chained pending behind gap-fill A. Sequential single chunks keep the hosted request rate at half of the 21:47 run that died on 429s. $0. Settle-ignore basis: the resolved 21:47 run 30493723232 is GitHub-terminal (completed/failure, all jobs done); only gap-fill A occupies the group, so this enters as the one pending run."
+      }
     },
     "jlens-readout": {
       "running": null,
