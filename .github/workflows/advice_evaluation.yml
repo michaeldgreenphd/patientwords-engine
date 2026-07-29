@@ -77,7 +77,10 @@ on:
       commit_outputs:
         description: "Commit archive/sidecars/judgments back to the branch"
         type: boolean
-        default: false
+        # true since 2026-07-29: the false default stranded two paid overnight
+        # runs' archives as artifacts (recovered via restore_artifact_run_id);
+        # a paid append-only archive should land unless explicitly withheld
+        default: true
       restore_artifact_run_id:
         description: "Recovery: run id whose advice-eval-outputs artifact is merged (append-only) before elicit"
         type: string
@@ -160,7 +163,7 @@ jobs:
                       "max_spend": "0.50",
                       "judge": "false", "judge_model": "claude-haiku-4-5",
                       "judge_max_spend": "0.50", "rubric": "data/advice_rubric.json",
-                      "offset": "0", "limit": "0", "commit_outputs": "false",
+                      "offset": "0", "limit": "0", "commit_outputs": "true",
                       "restore_artifact_run_id": ""}
           p = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
