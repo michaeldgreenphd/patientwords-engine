@@ -377,6 +377,70 @@ def test_run_batch_quadrant_offline(tmp_path, monkeypatch):
     assert (out / "index_01_variety_patient.png").stat().st_size > 1000
 
 
+def test_run_batch_dialect_offline_writes_multiples(tmp_path, monkeypatch):
+    """dialect mode writes the small-multiples companion beside each sweep
+    render: baseline + up to 3 framings picked flips-first then |delta|,
+    recorded in outputs.multi_* and result.multiples."""
+    def fake_generate(prompt, slug=None, backend="hosted", **params):
+        g = make_graph()
+        p = {"mild": 0.70, "flip": 0.30, "tiny": 0.78, "small": 0.79}.get(prompt.split()[1], 0.80)
+        for node in g["nodes"]:
+            if node["node_id"] == "L_999_3":
+                node["clerp"] = f"jumps (p={p:.2f})"
+        if "flip" in prompt:
+            # this framing's top prediction moves off the target entirely
+            g["nodes"].append({"node_id": "L_walk", "feature": 998, "layer": "26", "ctx_idx": 3,
+                               "feature_type": "logit", "jsNodeId": "L_walk-3",
+                               "clerp": "walks (p=0.60)"})
+            g["links"].append({"source": "7_00007_2", "target": "L_walk", "weight": 1.0})
+        g["metadata"]["prompt"] = prompt
+        g["metadata"]["prompt_tokens"] = ["the"] + [f" {w}" for w in prompt.split()[1:]]
+        return g
+
+    monkeypatch.setattr(batch_eval, "generate_graph", fake_generate)
+    pairs = tmp_path / "pairs.json"
+    pairs.write_text(
+        json.dumps([{
+            "baseline_prompt": "the base brown fox",
+            "term": "fox",
+            "target_clinical_token": " jumps",
+            "variants": [
+                {"dialect": "mild-dialect", "prompt": "the mild brown fox"},
+                {"dialect": "flip-dialect", "prompt": "the flip brown fox"},
+                {"dialect": "tiny-dialect", "prompt": "the tiny brown fox"},
+                {"dialect": "small-dialect", "prompt": "the small brown fox"},
+            ],
+        }]),
+        encoding="utf-8",
+    )
+
+    results = batch_eval.run_batch(
+        str(pairs), out_dir=str(tmp_path / "out"), mode="dialect", dpi=50, fetcher=build_fetcher()
+    )
+    r = results[0]
+    assert r["mode"] == "dialect"
+    assert r["baseline_probability"] == pytest.approx(0.80)
+
+    # selection: the answer-changing framing leads, then the largest |delta|;
+    # the 4th (smallest-delta) framing is cut from the 3-variant row
+    assert r["multiples"]["variants"] == ["flip-dialect", "mild-dialect", "tiny-dialect"]
+
+    out = tmp_path / "out"
+    assert r["outputs"]["multi_html"] == str(out / "multi_01.html")
+    assert (out / "multi_01.png").stat().st_size > 1000
+    html = (out / "multi_01.html").read_text(encoding="utf-8")
+    # 4 mini-panels: baseline + 3 selected framings, side by side
+    assert html.count('<g transform="translate(') == 4
+    assert "small-dialect" not in html
+    # per-panel delta badges, the flip framing's first
+    assert "Δ vs. baseline: -50% probability (0.80 → 0.30)" in html
+    assert "Δ vs. baseline: -10% probability (0.80 → 0.70)" in html
+    # structural scaffolding (the error node) is stripped from the multiples
+    # view but kept in the full sweep render next door
+    assert "err_5_2" not in html
+    assert "err_5_2" in (out / "index_01.html").read_text(encoding="utf-8")
+
+
 def test_run_batch_translation_offline(tmp_path, monkeypatch):
     config = tmp_path / "keyword_config.json"
     config.write_text(

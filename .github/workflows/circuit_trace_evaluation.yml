@@ -328,7 +328,7 @@ jobs:
             mv "$OUT_DIR/batch_summary.json" "$OUT_DIR/batch_summary.part_$(printf '%02d' "$START").json"
           fi
           shopt -s nullglob
-          FILES=("$OUT_DIR"/index_*.html "$OUT_DIR"/index_*.png "$OUT_DIR"/batch_summary.part_*.json)
+          FILES=("$OUT_DIR"/index_*.html "$OUT_DIR"/index_*.png "$OUT_DIR"/multi_*.html "$OUT_DIR"/multi_*.png "$OUT_DIR"/batch_summary.part_*.json)
           if [ ${#FILES[@]} -eq 0 ]; then
             echo "No trace outputs to commit"
             exit 0

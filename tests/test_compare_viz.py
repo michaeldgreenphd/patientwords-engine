@@ -5,13 +5,19 @@ from conftest import TEST_KEYWORD_CONFIG, build_fetcher, make_graph
 
 from medlang_circuits.compare_viz import (
     CATEGORY_COLORS,
+    DIMMED_NODE_OPACITY,
     ELIDED_GAP_ROWS,
+    MULT_GUTTER_X,
     PANEL_WIDTH,
     _logit_label,
     _prepare,
     _text_px_width,
+    build_multiples_panels,
+    render_multiples_html,
+    render_multiples_png,
     render_stacked_html,
     render_stacked_png,
+    strip_structural_features,
 )
 from medlang_circuits.feature_tagger import annotate_graph
 
@@ -132,6 +138,80 @@ def test_render_stacked_png(tmp_path):
     top, bottom = _tagged_pair()
     out = tmp_path / "cmp.png"
     render_stacked_png(top, bottom, str(out), dpi=60)
+    assert out.stat().st_size > 1000
+
+
+def _tagged_trio():
+    """Baseline + two framing variants for the small-multiples row."""
+    base, v1, v2 = make_graph(), make_graph(), make_graph()
+    v1["metadata"]["prompt"] = "the swift brown fox"
+    v1["metadata"]["prompt_tokens"] = ["the", " swift", " brown", " fox"]
+    v2["metadata"]["prompt"] = "the rapid brown fox"
+    v2["metadata"]["prompt_tokens"] = ["the", " rapid", " brown", " fox"]
+    for g in (base, v1, v2):
+        annotate_graph(g, fetcher=build_fetcher(), keyword_config=TEST_KEYWORD_CONFIG)
+    return base, v1, v2
+
+
+def test_strip_structural_features_keeps_readout_anchors():
+    g = make_graph()
+    # give the error node an edge so the pruning path is exercised
+    g["links"].append({"source": "err_5_2", "target": "L_999_3", "weight": 0.5})
+    annotate_graph(g, fetcher=build_fetcher(), keyword_config=TEST_KEYWORD_CONFIG)
+    slim = strip_structural_features(g)
+    ids = {n["node_id"] for n in slim["nodes"]}
+    # the structural error node is stripped, with its edge...
+    assert "err_5_2" not in ids
+    assert all(link["source"] in ids and link["target"] in ids for link in slim["links"])
+    assert len(slim["links"]) == 4
+    # ...but the embedding anchor and the logit readout survive, and the
+    # unmatched transcoder feature stays: it defaults to off_target, not
+    # structural, so no real signal is ever dropped by the strip
+    assert "E_100_0" in ids and "L_999_3" in ids and "9_00001_3" in ids
+    # the source graph is untouched (shallow copy semantics)
+    assert any(n["node_id"] == "err_5_2" for n in g["nodes"])
+    assert len(g["links"]) == 5
+
+
+def test_render_multiples_html_small_multiples_row(tmp_path):
+    base, v1, v2 = _tagged_trio()
+    panels = build_multiples_panels(
+        [base, v1, v2],
+        labels=["Baseline (standard phrasing): “the quick brown fox”",
+                "framing one: “the swift brown fox”",
+                "framing two: “the rapid brown fox”"],
+        headlines=["prob(“jumps”) = 0.81", None, None],
+    )
+    badges = [None, {"text": "Δ vs. baseline: -12% probability (0.81 → 0.69)", "color": "#b4483d"}, None]
+    out = tmp_path / "multi.html"
+    render_multiples_html(panels, str(out), badges=badges)
+    html = out.read_text(encoding="utf-8")
+
+    # three mini-panels land side by side: the viewBox spans the full row
+    width = int(re.search(r'viewBox="0 0 (\d+) \d+"', html).group(1))
+    assert width >= 3 * PANEL_WIDTH + 2 * MULT_GUTTER_X
+    assert 'data-p="2"' in html
+    # structural scaffolding nodes are hidden outright (the error node's
+    # tooltip payload names it in the full renders)
+    assert "err_5_2" not in html
+    # the unmatched (off_target-by-default) feature is real signal and stays
+    assert "something entirely unmatched" in html
+    # surviving structural marks (the embedding anchors) are fully dimmed
+    assert f'fill-opacity="{DIMMED_NODE_OPACITY}"' in html
+    # the clinical/off-target contrast is preserved
+    assert CATEGORY_COLORS["clinical"] in html and CATEGORY_COLORS["off_target"] in html
+    assert ">Clinical</text>" in html and ">Off-target</text>" in html
+    # no inline Structural exemplar label survives the strip
+    assert ">Structural</text>" not in html
+    # the per-panel delta badge renders in the strip above its panel
+    assert "Δ vs. baseline: -12% probability (0.81 → 0.69)" in html
+
+
+def test_render_multiples_png(tmp_path):
+    base, v1, v2 = _tagged_trio()
+    panels = build_multiples_panels([base, v1, v2])
+    out = tmp_path / "multi.png"
+    render_multiples_png(panels, str(out), dpi=50)
     assert out.stat().st_size > 1000
 
 

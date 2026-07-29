@@ -22,7 +22,7 @@ Shared rendering core (every layout inherits these):
   prominently at the panel's top right
 - delta badges render centered in the gutters between panels
 
-Two isolated layout engines sit on top:
+Three isolated layout engines sit on top:
 
     render_panels_html/png    - vertical stack (2panel mode, and the
                                 translation chain, whose gap carries the LLM
@@ -30,6 +30,13 @@ Two isolated layout engines sit on top:
     render_quadrant_html/png  - 2x2 syntax-vs-terminology matrix (4quadrant
                                 mode) with vocabulary deltas in the column
                                 gutters and syntax deltas in the row gutter
+    render_multiples_html/png - 1xN side-by-side small multiples (dialect
+                                mode: baseline + selected framings; structural
+                                feature nodes are stripped and the surviving
+                                structural marks fully dimmed, so the
+                                clinical/off-target contrast is the only ink
+                                left standing; per-panel delta badges sit in a
+                                strip above the row)
 
 Outputs are standalone responsive HTML (minified inline CSS/JS, interactive
 hover tooltips with feature id, category, probability/attribution mass, and
@@ -87,6 +94,9 @@ STRUCTURAL_FILL_OPACITY = 0.55  # scaffolding recedes; clinical/off-target carry
 QUAD_GUTTER_X = 64
 QUAD_GUTTER_Y = 100  # row gutter hosts syntax deltas and the lower vocabulary delta
 QUAD_VOCAB_STRIP = 36  # header strip above the top row for the upper vocabulary delta
+
+MULT_GUTTER_X = 56  # horizontal gap between small-multiple mini-panels
+MULT_BADGE_STRIP = 44  # header strip above the row for per-panel delta badges
 
 # Vertical rim-to-rim spacing between stacked logit nodes (the predictive
 # spread). Labels sit beside each node, so the gap only needs to clear the
@@ -729,6 +739,59 @@ def _badge_lines(badge: Any) -> list[tuple[str, str]]:
     return [(str(badge), INK)]
 
 
+def strip_structural_features(graph: dict[str, Any]) -> dict[str, Any]:
+    """Shallow copy of ``graph`` without structural scaffolding nodes (small multiples).
+
+    Structural-tagged nodes are the error/bias marks and other non-feature
+    scaffolding (unmatched transcoder features default to off_target, so real
+    signal is never dropped here). Embeddings and logits survive the strip:
+    embeddings anchor the token columns (the caller fully dims them) and
+    logits are the prediction readout the panels exist to compare. Removing
+    the scaffolding outright - rather than fading it - keeps each mini-panel
+    legible at small-multiple scale, and the dynamic layer axis compresses the
+    vacated layers automatically. Edges touching a removed node are pruned
+    with it."""
+    keep = [n for n in graph.get("nodes", [])
+            if _category(n) != "structural" or n.get("feature_type") in ("logit", "embedding")]
+    kept_ids = {n["node_id"] for n in keep}
+    slim = dict(graph)
+    slim["nodes"] = keep
+    slim["links"] = [link for link in graph.get("links", [])
+                     if link.get("source") in kept_ids and link.get("target") in kept_ids]
+    return slim
+
+
+def build_multiples_panels(
+    graphs: list[dict[str, Any]],
+    labels: list[str | None] | None = None,
+    focus_tokens: list[str | None] | None = None,
+    headlines: list[str | None] | None = None,
+) -> list[dict[str, Any]]:
+    """Panel specs for the small-multiples row: panel 0 is the baseline.
+
+    Every graph is stripped of structural feature nodes; the surviving
+    structural marks (embeddings) are fully dimmed via each panel's ``dimmed``
+    set, so the clinical/off-target contrast carries the row on its own.
+    Accents/value labels/refs follow the dialect convention: clinical-green
+    baseline with value labels, ink variants diffed against panel 0."""
+    slim = [strip_structural_features(g) for g in graphs]
+    dimmed = [
+        {n["node_id"] for n in g["nodes"]
+         if _category(n) == "structural" and n.get("feature_type") != "logit"}
+        for g in slim
+    ]
+    return build_panels(
+        slim,
+        labels=labels,
+        focus_tokens=focus_tokens,
+        accents=[CATEGORY_COLORS["clinical"]] + [CATEGORY_COLORS["off_target"]] * (len(slim) - 1),
+        value_label_flags=[True] + [False] * (len(slim) - 1),
+        headlines=headlines,
+        refs=[1] + [0] * (len(slim) - 1),
+        dimmed=dimmed,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Engine 1: vertical stack (2panel mode + translation chain)
 # ---------------------------------------------------------------------------
@@ -851,6 +914,48 @@ def render_quadrant_html(
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(document)
     logger.info("Wrote 4-quadrant comparison page to %s", out_path)
+    return out_path
+
+
+# ---------------------------------------------------------------------------
+# Engine 3: 1xN small-multiples row (dialect mode)
+# ---------------------------------------------------------------------------
+
+
+def render_multiples_html(
+    panels: list[dict[str, Any]],
+    out_path: str,
+    badges: list[Any] | None = None,
+    max_edges: int = DEFAULT_MAX_EDGES,
+) -> str:
+    """Write a side-by-side small-multiples page (one mini-panel per spec).
+
+    ``badges`` is index-aligned with ``panels`` (the baseline slot is normally
+    None); each badge renders centered in the strip above its panel."""
+    badges = badges or []
+    preps = [_prepare(p["graph"], max_edges) for p in panels]
+    row_height = max(p["panel_height"] for p in preps)
+    svg_parts: list[str] = []
+    data: list[list[dict]] = []
+    max_right = 0.0
+    for panel_index, (panel, prep) in enumerate(zip(panels, preps)):
+        x = panel_index * (PANEL_WIDTH + MULT_GUTTER_X)
+        parts, tooltip_data, right = _panel_svg(panel, prep, x, float(MULT_BADGE_STRIP), panel_index)
+        svg_parts.extend(parts)
+        data.append(tooltip_data)
+        max_right = max(max_right, right)
+        if panel_index < len(badges) and badges[panel_index]:
+            text, color = _badge_lines(badges[panel_index])[0]
+            svg_parts.append(
+                f'<text x="{x + PANEL_WIDTH / 2:.0f}" y="{MULT_BADGE_STRIP - 14}" class="bd" '
+                f'fill="{color}">{html.escape(text)}</text>'
+            )
+    width = len(panels) * PANEL_WIDTH + (len(panels) - 1) * MULT_GUTTER_X
+    doc_width = max(width, int(math.ceil(max_right)) + LABEL_VIEWBOX_PAD)
+    document = _document(svg_parts, data, doc_width, MULT_BADGE_STRIP + row_height, wide=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(document)
+    logger.info("Wrote small-multiples page to %s", out_path)
     return out_path
 
 
@@ -1078,6 +1183,40 @@ def render_quadrant_png(
     fig.savefig(out_path, dpi=dpi, facecolor="white")
     plt.close(fig)
     logger.info("Wrote 4-quadrant PNG to %s", out_path)
+    return out_path
+
+
+def render_multiples_png(
+    panels: list[dict[str, Any]],
+    out_path: str,
+    badges: list[Any] | None = None,
+    max_edges: int = DEFAULT_MAX_EDGES,
+    dpi: int = 160,
+) -> str:
+    """Write the 1xN small-multiples PNG; badges as in render_multiples_html."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    badges = badges or []
+    preps = [_prepare(p["graph"], max_edges) for p in panels]
+    row_height = max(p["panel_height"] for p in preps)
+    fig, axes = plt.subplots(
+        1, len(panels), figsize=(6.5 * len(panels), max(row_height / 90.0, 5.0)),
+        facecolor="white", squeeze=False,
+    )
+    _png_legend(fig)
+    for panel_index, (ax, prep, panel) in enumerate(zip(axes[0], preps, panels)):
+        _paint_panel_ax(ax, prep, panel)
+        if panel_index < len(badges) and badges[panel_index]:
+            text, color = _badge_lines(badges[panel_index])[0]
+            ax.text(0.5, 1.03, text, transform=ax.transAxes, ha="center",
+                    fontsize=13, fontweight="bold", color=color)
+    fig.tight_layout(w_pad=2.4, rect=(0, 0, 1, 0.955))
+    fig.savefig(out_path, dpi=dpi, facecolor="white")
+    plt.close(fig)
+    logger.info("Wrote small-multiples PNG to %s", out_path)
     return out_path
 
 

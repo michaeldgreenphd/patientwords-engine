@@ -5,7 +5,9 @@ Reads every batch_summary.part_*.json under trace_out/<batch>/ and emits one
 compact JSON: per baseline term, the baseline probability plus each framing's
 probability, delta, and top prediction (with a flip flag when the top pick
 moved off the baseline's target). Also lists each item's render file so the
-frontend can link per-term standalone pages.
+frontend can link per-term standalone pages, plus its small-multiples
+companion (multi_render/multi_variants, None on summaries older than the
+engine's multiples export — pages fall back to the full render).
 
 Usage:
   python scripts/export_dialect_matrix.py trace_out/dialects_<STAMP> \
@@ -172,6 +174,10 @@ def main() -> int:
                     "flip": bool(top_token) and bare(top_token) != target_bare,
                 })
             render = os.path.basename((r.get("outputs") or {}).get("html") or "")
+            # small-multiples companion render (engine >= 2026-07-29); absent
+            # on older summaries — pages must treat a missing/None value as
+            # "no small-multiples view" and fall back to the full sweep render
+            multi_render = os.path.basename((r.get("outputs") or {}).get("multi_html") or "") or None
             items.append({
                 "index": r.get("index"),
                 "term": r.get("term"),
@@ -179,6 +185,8 @@ def main() -> int:
                 "target_token": target_bare,
                 "baseline_p": baseline_p,
                 "render": render,
+                "multi_render": multi_render,
+                "multi_variants": (r.get("multiples") or {}).get("variants"),
                 "variants": variants,
             })
 

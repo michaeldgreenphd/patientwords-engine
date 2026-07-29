@@ -43,7 +43,9 @@ medlang_circuits.targets). Mode-specific fields:
     (standard phrasing); one panel per variant carries its dialect label and
     a delta badge of target-token probability vs. the baseline panel. With
     no target_clinical_token the comparison falls back to the baseline's top
-    logit via the usual predictive-spread path.
+    logit via the usual predictive-spread path. Each item also writes a
+    small-multiples companion (multi_NN.html / multi_NN.png): baseline + the
+    most consequential framings side by side, structural features stripped.
 
 Every pair writes numbered outputs (index_01.html / index_01.png, ...), the
 per-panel tagged graph JSONs, and a batch_summary.json.
@@ -65,7 +67,10 @@ from typing import Any
 from medlang_circuits.compare_viz import (
     CATEGORY_COLORS,
     NEGATIVE_EDGE_COLOR,
+    build_multiples_panels,
     build_panels,
+    render_multiples_html,
+    render_multiples_png,
     render_panels_html,
     render_panels_png,
     render_quadrant_html,
@@ -895,6 +900,39 @@ def evaluate_translation(
 # Mode 4: dialect (syntax/register variants around a fixed term)
 # ---------------------------------------------------------------------------
 
+MULTIPLES_MAX_VARIANTS = 3  # baseline + up to 3 framings = a 3-4 panel row
+
+
+def _select_multiples_variants(
+    variants: list[dict[str, Any]],
+    probs: list[float | None],
+    spreads: list[list[tuple[str, float]]],
+    target_token: str | None,
+    p_baseline: float | None,
+    max_variants: int = MULTIPLES_MAX_VARIANTS,
+) -> list[int]:
+    """Indices of the framings the small-multiples row shows, most salient first.
+
+    Salience mirrors the frontend's featured-specimen weighting: top-pick flips
+    that land on a different answer stem weigh 2, any flip 1, ties broken by
+    |delta vs. baseline| - so the row leads with the framing that changed the
+    model's answer, not merely its confidence."""
+    target_bare = bare_token(target_token or "")
+
+    def weight(j: int) -> tuple[int, float]:
+        spread = spreads[j]
+        top_bare = bare_token(spread[0][0]) if spread else ""
+        flip = bool(top_bare) and top_bare != target_bare
+        cross = flip and top_bare[:3] != target_bare[:3]
+        delta = (
+            abs(probs[j] - p_baseline)
+            if probs[j] is not None and p_baseline is not None else 0.0
+        )
+        return (2 if cross else 1 if flip else 0, delta)
+
+    order = sorted(range(len(variants)), key=lambda j: weight(j), reverse=True)
+    return order[:max_variants]
+
 
 def evaluate_dialect(
     pair: dict[str, Any],
@@ -954,6 +992,25 @@ def evaluate_dialect(
     render_panels_html(panels, str(html_path), badges=badges)
     render_panels_png(panels, str(png_path), badges=badges, dpi=dpi)
 
+    # Small-multiples companion: baseline + the most consequential framings
+    # side by side, structural scaffolding stripped so the clinical/off-target
+    # contrast carries the row (multi_NN.* lands beside index_NN.*).
+    spreads = [logit_spread(g) for g in variant_graphs]
+    selected = _select_multiples_variants(variants, probs, spreads, target_token, p_baseline)
+    multiples_panels = build_multiples_panels(
+        [baseline_graph] + [variant_graphs[j] for j in selected],
+        labels=[f"Baseline (standard phrasing): “{baseline_prompt}”"]
+        + [f"{variants[j]['dialect']}: “{variants[j]['prompt']}”" for j in selected],
+        headlines=[_headline(target_token, p) for p in [p_baseline] + [probs[j] for j in selected]],
+    )
+    multiples_badges = [None] + [
+        _delta_badge("Δ vs. baseline", p_baseline, probs[j]) for j in selected
+    ]
+    multi_html_path = out_dir / f"multi_{index:02d}.html"
+    multi_png_path = out_dir / f"multi_{index:02d}.png"
+    render_multiples_html(multiples_panels, str(multi_html_path), badges=multiples_badges)
+    render_multiples_png(multiples_panels, str(multi_png_path), badges=multiples_badges, dpi=dpi)
+
     return {
         "index": index,
         "mode": "dialect",
@@ -974,11 +1031,13 @@ def evaluate_dialect(
         "forced_targets": list(force_tokens),
         "predictive_spread": {
             "baseline": logit_spread(baseline_graph),
-            "variants": [logit_spread(g) for g in variant_graphs],
+            "variants": spreads,
         },
         "error_share": {"baseline": error_node_share(baseline_graph)},
         "top_path": {"baseline": path_text(top_attribution_path(baseline_graph))},
-        "outputs": {"html": str(html_path), "png": str(png_path)},
+        "multiples": {"variants": [variants[j]["dialect"] for j in selected]},
+        "outputs": {"html": str(html_path), "png": str(png_path),
+                    "multi_html": str(multi_html_path), "multi_png": str(multi_png_path)},
     }
 
 
