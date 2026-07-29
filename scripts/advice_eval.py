@@ -359,8 +359,10 @@ def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
     Transient statuses (429/500/502/503/504 - free consumer tiers throw these
     routinely; run 1 died on a single Gemini 503, 2026-07-22) retry with
     exponential backoff, honoring Retry-After when the provider sends one.
-    Anything else, or exhaustion, raises: the elicit loop archives what landed
-    and a re-fire resumes past it."""
+    A success status whose body is not JSON (gateway edges serve HTML error
+    pages with a 200; overnight attempt 2 crashed on one 4h19m in, 2026-07-29)
+    retries under the same policy. Anything else, or exhaustion, raises: the
+    elicit loop archives what landed and a re-fire resumes past it."""
     try:
         import requests
     except ImportError as exc:  # pragma: no cover
@@ -392,7 +394,18 @@ def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
             time.sleep(wait)
             continue
         resp.raise_for_status()
-        raw = resp.json()
+        try:
+            raw = resp.json()
+        except ValueError:
+            # a 200 whose body is an HTML error page, not JSON (gateway edge)
+            if attempt < COMPAT_RETRIES:
+                wait = COMPAT_BACKOFF_SECONDS[min(attempt, len(COMPAT_BACKOFF_SECONDS) - 1)]
+                print(f"non-JSON {resp.status_code} body from {base_url} ({model}); "
+                      f"retry {attempt + 1}/{COMPAT_RETRIES} in {wait:.0f}s")
+                time.sleep(wait)
+                continue
+            raise RuntimeError(f"non-JSON response body from {base_url} ({model}) "
+                               f"after {COMPAT_RETRIES} retries (status {resp.status_code})")
         text = ((raw.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
         usage = raw.get("usage") or {}
         headers = {str(k).lower(): str(v) for k, v in dict(resp.headers or {}).items()}

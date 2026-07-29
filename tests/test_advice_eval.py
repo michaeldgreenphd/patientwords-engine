@@ -511,6 +511,69 @@ def test_send_compat_exhausts_retries_and_raises(monkeypatch):
         ae._send_compat(cfg, "m", None, "hello", 64, 1.0)
 
 
+def test_send_compat_retries_non_json_success_body(monkeypatch):
+    # overnight attempt 2 (2026-07-29) crashed 4h19m in: a gateway served an
+    # HTML error page with a 200, so resp.json() raised uncaught and killed the
+    # run. Non-JSON success bodies must retry like a transient status.
+    class FakeResp:
+        def __init__(self, body=None):
+            self.status_code = 200
+            self.headers = {}
+            self._body = body
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            if self._body is None:
+                raise ValueError("Expecting value: line 203 column 1 (char 1111)")
+            return self._body
+
+    ok = {"choices": [{"message": {"content": "fine"}}],
+          "usage": {"prompt_tokens": 5, "completion_tokens": 7}}
+    seq = [FakeResp(), FakeResp(ok)]
+    calls = []
+
+    class FakeRequests:
+        @staticmethod
+        def post(url, **kw):
+            calls.append(url)
+            return seq[len(calls) - 1]
+
+    naps = []
+    monkeypatch.setattr(ae.time, "sleep", lambda s: naps.append(s))
+    monkeypatch.setitem(__import__("sys").modules, "requests", FakeRequests)
+    monkeypatch.setenv("FAKE_KEY", "k")
+    cfg = {"api": "openai-compat", "base_url": "https://x.example/v1", "key_env": "FAKE_KEY"}
+    text, in_tok, out_tok, raw, headers = ae._send_compat(cfg, "m", None, "hello", 64, 1.0)
+    assert (text, in_tok, out_tok) == ("fine", 5, 7)
+    assert len(calls) == 2 and len(naps) == 1
+
+
+def test_send_compat_non_json_exhaustion_raises_runtime_error(monkeypatch):
+    class FakeResp:
+        status_code = 200
+        headers = {}
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            raise ValueError("Expecting value")
+
+    class FakeRequests:
+        @staticmethod
+        def post(url, **kw):
+            return FakeResp()
+
+    monkeypatch.setattr(ae.time, "sleep", lambda s: None)
+    monkeypatch.setitem(__import__("sys").modules, "requests", FakeRequests)
+    monkeypatch.setenv("FAKE_KEY", "k")
+    cfg = {"api": "openai-compat", "base_url": "https://x.example/v1", "key_env": "FAKE_KEY"}
+    with pytest.raises(RuntimeError, match="non-JSON response body"):
+        ae._send_compat(cfg, "m", None, "hello", 64, 1.0)
+
+
 def test_build_stimuli_only_hedges_filter(tmp_path, monkeypatch):
     # hedges: not flipped, penalty negative and past the magnitude floor
     payload = {"scenarios": [
