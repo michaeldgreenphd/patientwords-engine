@@ -322,3 +322,7 @@ Consequences, stated in advance of analysis:
   pools them for DISPLAY (one scenario list, one figure denominator, family
   label on every scenario and record) — display pooling is not an analysis
   claim.
+
+**D1 owner confirmation (2026-07-29):** the owner confirmed the n=25 stop by
+decision reply ("advice-nat-remainder: stay-25"). Stimuli 26-75 remain
+registered and inert.

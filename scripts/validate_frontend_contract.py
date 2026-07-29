@@ -239,7 +239,11 @@ def check_simulated(rep: Report, site: Path, payload: dict) -> dict:
 def check_urgency(rep: Report, data: dict, joins: dict):
     a = "urgency_shift.json"
     known_keys(rep, a, data, {"rows", "summary", "tiers", "tier_examples",
-                              "vocabulary_status"})
+                              "vocabulary_status", "render_min_n"})
+    # render gate (2026-07-28): pages pend any per-model cell below this n
+    rmn = data.get("render_min_n")
+    if rmn is not None and (not isinstance(rmn, int) or rmn < 1):
+        rep.err(a, "$.render_min_n", "must be a positive integer when present")
     vocab = need(rep, a, data, "vocabulary_status", str, "$")
     if vocab is not None and not vocab.strip():
         rep.err(a, "$.vocabulary_status", "empty (the draft label is load-bearing)")
