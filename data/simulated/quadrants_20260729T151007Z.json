@@ -1,0 +1,1320 @@
+[
+  {
+    "frames": {
+      "standard": "She has been experiencing{term}, and her doctor recommended she take",
+      "nonstandard": "She been having{term}, and her doctor done recommended she take"
+    },
+    "terms": {
+      "medical": " acute gastroesophageal reflux",
+      "patient": " bad heartburn"
+    },
+    "target_clinical_token": " a proton pump inhibitor",
+    "generation": {
+      "medical_term": "acute gastroesophageal reflux",
+      "patient_term": "bad heartburn",
+      "expected_clinical_continuations": [
+        "a proton pump inhibitor",
+        "an H2 blocker",
+        "antacids",
+        "medication"
+      ],
+      "rationale": "The nonstandard present perfect ('been having') and past participle ('done recommended') shift temporal framing; the probe after 'take' expects either clinical medication names or household remedies depending on whether the model interprets the doctor's authority clinically or colloquially.",
+      "quadrants": {
+        "A": "She has been experiencing acute gastroesophageal reflux, and her doctor recommended she take",
+        "B": "She been having acute gastroesophageal reflux, and her doctor done recommended she take",
+        "C": "She has been experiencing bad heartburn, and her doctor recommended she take",
+        "D": "She been having bad heartburn, and her doctor done recommended she take"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "When I wake up with{term}, the first thing I do is reach for",
+      "nonstandard": "When I wake up with{term}}, the first thing I be doing is reaching for"
+    },
+    "terms": {
+      "medical": " dyspnea on exertion",
+      "patient": " shortness of breath"
+    },
+    "target_clinical_token": " my inhaler",
+    "generation": {
+      "medical_term": "dyspnea on exertion",
+      "patient_term": "shortness of breath",
+      "expected_clinical_continuations": [
+        "my inhaler",
+        "my rescue medication",
+        "my nebulizer",
+        "water"
+      ],
+      "rationale": "The nonstandard habitual 'be doing' (aspectual marking of iterative action) versus standard present tense completion shifts whether the model treats this as a chronic medical routine versus a single occurrence; the probe after 'reach for' should diverge toward clinical devices in medical contexts.",
+      "quadrants": {
+        "A": "When I wake up with dyspnea on exertion, the first thing I do is reach for",
+        "B": "When I wake up with dyspnea on exertion}, the first thing I be doing is reaching for",
+        "C": "When I wake up with shortness of breath, the first thing I do is reach for",
+        "D": "When I wake up with shortness of breath}, the first thing I be doing is reaching for"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "The patient presented with{term}, which required immediate",
+      "nonstandard": "The patient come in with{term}, which it required immediate"
+    },
+    "terms": {
+      "medical": " acute myocardial infarction",
+      "patient": " a heart attack"
+    },
+    "target_clinical_token": " intervention",
+    "generation": {
+      "medical_term": "acute myocardial infarction",
+      "patient_term": "a heart attack",
+      "expected_clinical_continuations": [
+        "intervention",
+        "surgery",
+        "hospitalization",
+        "cardiac catheterization",
+        "attention"
+      ],
+      "rationale": "Nonstandard verb form ('come' instead of 'presented') and dummy subject ('which it required') mark a register shift away from clinical documentation toward lay narrative; the probe after 'immediate' should elicit clinical urgency terms in the medical condition more reliably.",
+      "quadrants": {
+        "A": "The patient presented with acute myocardial infarction, which required immediate",
+        "B": "The patient come in with acute myocardial infarction, which it required immediate",
+        "C": "The patient presented with a heart attack, which required immediate",
+        "D": "The patient come in with a heart attack, which it required immediate"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "He's been diagnosed with{term}}, so he needs to schedule an appointment with a",
+      "nonstandard": "He been diagnosed with{{term}}, so he gotta schedule him an appointment with a"
+    },
+    "terms": {
+      "medical": " type 2 diabetes mellitus",
+      "patient": " sugar diabetes"
+    },
+    "target_clinical_token": " endocrinologist",
+    "generation": {
+      "medical_term": "type 2 diabetes mellitus",
+      "patient_term": "sugar diabetes",
+      "expected_clinical_continuations": [
+        "endocrinologist",
+        "diabetes educator",
+        "primary care physician",
+        "doctor"
+      ],
+      "rationale": "The nonstandard present perfect without auxiliary ('been diagnosed'), aspectual 'gotta' instead of 'needs to', and object pronoun 'him' (reflexive marking) indicate a speaker less aligned with medical register; the probe should favor specialist names in the clinical term condition.",
+      "quadrants": {
+        "A": "He's been diagnosed with type 2 diabetes mellitus}, so he needs to schedule an appointment with a",
+        "B": "He been diagnosed with{ type 2 diabetes mellitus}, so he gotta schedule him an appointment with a",
+        "C": "He's been diagnosed with sugar diabetes}, so he needs to schedule an appointment with a",
+        "D": "He been diagnosed with{ sugar diabetes}, so he gotta schedule him an appointment with a"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "After she developed{term}}, her mobility declined, so she was prescribed",
+      "nonstandard": "After she done developed{{term}}, her mobility was declining, so she was got prescribed"
+    },
+    "terms": {
+      "medical": " severe osteoarthritis of the hip",
+      "patient": " really bad joint pain"
+    },
+    "target_clinical_token": " NSAIDs",
+    "generation": {
+      "medical_term": "severe osteoarthritis of the hip",
+      "patient_term": "really bad joint pain",
+      "expected_clinical_continuations": [
+        "NSAIDs",
+        "physical therapy",
+        "joint replacement surgery",
+        "pain management",
+        "an assistive device"
+      ],
+      "rationale": "The nonstandard completed-action 'done developed' and progressive passive 'was declining' (instead of 'declined') plus 'was got prescribed' (double passive marking) shift the register away from clinical writing; the probe should elicit medical interventions more reliably in the clinical term path.",
+      "quadrants": {
+        "A": "After she developed severe osteoarthritis of the hip}, her mobility declined, so she was prescribed",
+        "B": "After she done developed{ severe osteoarthritis of the hip}, her mobility was declining, so she was got prescribed",
+        "C": "After she developed really bad joint pain}, her mobility declined, so she was prescribed",
+        "D": "After she done developed{ really bad joint pain}, her mobility was declining, so she was got prescribed"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "The symptoms of{term}} have worsened, and I think it is time to visit the",
+      "nonstandard": "The symptoms of{{term}}, they done got worse, and I think it is time I go to the"
+    },
+    "terms": {
+      "medical": " hypertension",
+      "patient": " high blood pressure"
+    },
+    "target_clinical_token": " cardiologist",
+    "generation": {
+      "medical_term": "hypertension",
+      "patient_term": "high blood pressure",
+      "expected_clinical_continuations": [
+        "cardiologist",
+        "hospital",
+        "emergency room",
+        "doctor",
+        "clinic"
+      ],
+      "rationale": "The nonstandard right-dislocation ('the symptoms... they'), perfective 'done got worse', and subjunctive 'time I go' (instead of 'time to visit') create a lay narrative register; the probe should differentiate between specialist medical appointments and urgent care settings based on the clinical specificity of the term.",
+      "quadrants": {
+        "A": "The symptoms of hypertension} have worsened, and I think it is time to visit the",
+        "B": "The symptoms of{ hypertension}, they done got worse, and I think it is time I go to the",
+        "C": "The symptoms of high blood pressure} have worsened, and I think it is time to visit the",
+        "D": "The symptoms of{ high blood pressure}, they done got worse, and I think it is time I go to the"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "My doctor says I have{term}, and I'm going to need to take",
+      "nonstandard": "My doctor say I got{term}, and I'ma need to take"
+    },
+    "terms": {
+      "medical": " hyperlipidemia",
+      "patient": " high cholesterol"
+    },
+    "target_clinical_token": " statins",
+    "generation": {
+      "medical_term": "hyperlipidemia",
+      "patient_term": "high cholesterol",
+      "expected_clinical_continuations": [
+        "statins",
+        "medication",
+        "pills"
+      ],
+      "rationale": "Standard frame with present perfect and future auxiliary 'going to' sets up expectation of clinical intervention. Nonstandard frame drops auxiliary and uses habitual present 'say' plus 'got' (present perfect alternative), which may shift the LM toward more colloquial next tokens; however, the clinical context should still bias toward medication names. The probe reveals whether the model differentiates medication-seeking behavior based on grammatical register.",
+      "quadrants": {
+        "A": "My doctor says I have hyperlipidemia, and I'm going to need to take",
+        "B": "My doctor say I got hyperlipidemia, and I'ma need to take",
+        "C": "My doctor says I have high cholesterol, and I'm going to need to take",
+        "D": "My doctor say I got high cholesterol, and I'ma need to take"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "When I experience{term}, the worst part is that I cannot",
+      "nonstandard": "When I be experiencing{term}, the worst part be that I can't"
+    },
+    "terms": {
+      "medical": " epistaxis",
+      "patient": " nosebleeds"
+    },
+    "target_clinical_token": " breathe",
+    "generation": {
+      "medical_term": "epistaxis",
+      "patient_term": "nosebleeds",
+      "expected_clinical_continuations": [
+        "breathe",
+        "stop it",
+        "control it",
+        "leave the house"
+      ],
+      "rationale": "Standard frame uses simple present 'experience' and standard negation. Nonstandard frame uses habitual 'be experiencing' and contracted negative 'can't', which is characteristic of African American Vernacular English. The semantic probe after 'cannot/can't' should reveal whether the model associates the medical term with functional limitation language versus the patient term with experiential or behavioral responses.",
+      "quadrants": {
+        "A": "When I experience epistaxis, the worst part is that I cannot",
+        "B": "When I be experiencing epistaxis, the worst part be that I can't",
+        "C": "When I experience nosebleeds, the worst part is that I cannot",
+        "D": "When I be experiencing nosebleeds, the worst part be that I can't"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "She has been dealing with{term}, so she has had to avoid",
+      "nonstandard": "She been dealing with{term}, so she had to be avoiding"
+    },
+    "terms": {
+      "medical": " anaphylaxis",
+      "patient": " severe allergic reactions"
+    },
+    "target_clinical_token": " allergens",
+    "generation": {
+      "medical_term": "anaphylaxis",
+      "patient_term": "severe allergic reactions",
+      "expected_clinical_continuations": [
+        "allergens",
+        "triggers",
+        "peanuts",
+        "shellfish"
+      ],
+      "rationale": "Standard frame uses present perfect continuous 'has been dealing with' and present perfect 'has had to avoid'. Nonstandard frame uses zero-copula present perfect ('been dealing') and modal + infinitive + progressive ('had to be avoiding'), which is characteristic of some nonstandard varieties. The probe tests whether the model prioritizes clinical triggers (allergens, specific foods) over generic avoidance behaviors based on both lexical and grammatical cues.",
+      "quadrants": {
+        "A": "She has been dealing with anaphylaxis, so she has had to avoid",
+        "B": "She been dealing with anaphylaxis, so she had to be avoiding",
+        "C": "She has been dealing with severe allergic reactions, so she has had to avoid",
+        "D": "She been dealing with severe allergic reactions, so she had to be avoiding"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "His recent diagnosis of{term} means he is supposed to",
+      "nonstandard": "His recent diagnosis of{term} mean he supposed to"
+    },
+    "terms": {
+      "medical": " myocardial infarction",
+      "patient": " a heart attack"
+    },
+    "target_clinical_token": " see a cardiologist",
+    "generation": {
+      "medical_term": "myocardial infarction",
+      "patient_term": "a heart attack",
+      "expected_clinical_continuations": [
+        "see a cardiologist",
+        "take aspirin",
+        "undergo cardiac rehabilitation",
+        "reduce stress"
+      ],
+      "rationale": "Standard frame uses subject\u2013verb agreement ('means he is supposed to') and standard copula. Nonstandard frame drops third-person singular -s on 'mean' and deletes copula 'is', characteristic of African American Vernacular English or other nonstandard varieties. The probe tests whether the grammatical shift alters the model's alignment with acute clinical intervention versus general lifestyle modification language.",
+      "quadrants": {
+        "A": "His recent diagnosis of myocardial infarction means he is supposed to",
+        "B": "His recent diagnosis of myocardial infarction mean he supposed to",
+        "C": "His recent diagnosis of a heart attack means he is supposed to",
+        "D": "His recent diagnosis of a heart attack mean he supposed to"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "Every time I get{term}, I find myself reaching for",
+      "nonstandard": "Every time I get{term}, I be reaching for"
+    },
+    "terms": {
+      "medical": " acute hypoglycemia",
+      "patient": " low blood sugar"
+    },
+    "target_clinical_token": " glucose tablets",
+    "generation": {
+      "medical_term": "acute hypoglycemia",
+      "patient_term": "low blood sugar",
+      "expected_clinical_continuations": [
+        "glucose tablets",
+        "juice",
+        "candy",
+        "my meter"
+      ],
+      "rationale": "Standard frame uses simple present with habitual 'find myself reaching'. Nonstandard frame uses habitual/iterative 'be reaching', emphasizing repeated action. The probe immediately after 'reaching for' tests whether medical and patient terms prompt different object associations (glucose tablets vs. juice/candy), and whether grammatical register modulates this distinction\u2014clinical language may bias toward medical supplies, while patient language with nonstandard grammar may bias toward accessible foods.",
+      "quadrants": {
+        "A": "Every time I get acute hypoglycemia, I find myself reaching for",
+        "B": "Every time I get acute hypoglycemia, I be reaching for",
+        "C": "Every time I get low blood sugar, I find myself reaching for",
+        "D": "Every time I get low blood sugar, I be reaching for"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "After the{term} developed, my family doctor recommended I see",
+      "nonstandard": "Once the{term} came up, my family doctor be recommending I see"
+    },
+    "terms": {
+      "medical": " generalized anxiety disorder",
+      "patient": " panic attacks"
+    },
+    "target_clinical_token": " a psychiatrist",
+    "generation": {
+      "medical_term": "generalized anxiety disorder",
+      "patient_term": "panic attacks",
+      "expected_clinical_continuations": [
+        "a psychiatrist",
+        "a therapist",
+        "a specialist",
+        "someone"
+      ],
+      "rationale": "Standard frame uses passive 'developed' and simple past 'recommended'. Nonstandard frame uses colloquial 'came up' and habitual/present 'be recommending', shifting the temporal and aspectual framing. The probe tests whether the model associates the clinical term with specialist referrals (psychiatrist) versus the patient term with more general help-seeking, and whether nonstandard aspect marking influences the perceived urgency or type of professional recommended.",
+      "quadrants": {
+        "A": "After the generalized anxiety disorder developed, my family doctor recommended I see",
+        "B": "Once the generalized anxiety disorder came up, my family doctor be recommending I see",
+        "C": "After the panic attacks developed, my family doctor recommended I see",
+        "D": "Once the panic attacks came up, my family doctor be recommending I see"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "My child has{term}, and the pediatrician said we should start",
+      "nonstandard": "My child got{term}, and the pediatrician say we should start"
+    },
+    "terms": {
+      "medical": " otitis media",
+      "patient": " an ear infection"
+    },
+    "target_clinical_token": " antibiotics",
+    "generation": {
+      "medical_term": "otitis media",
+      "patient_term": "an ear infection",
+      "expected_clinical_continuations": [
+        "antibiotics",
+        "treatment",
+        "amoxicillin"
+      ],
+      "rationale": "Subject-verb agreement shift (said \u2192 say) in nonstandard frame may prime different continuations; medical term (otitis media) strongly biases toward pharmaceutical intervention, while patient term (ear infection) permits both medical and lay remedies. Pediatric context makes clinical response more diagnostic.",
+      "quadrants": {
+        "A": "My child has otitis media, and the pediatrician said we should start",
+        "B": "My child got otitis media, and the pediatrician say we should start",
+        "C": "My child has an ear infection, and the pediatrician said we should start",
+        "D": "My child got an ear infection, and the pediatrician say we should start"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "She's been experiencing{term}, so she decided to visit the",
+      "nonstandard": "She be experiencing{term}, so she decided to visit the"
+    },
+    "terms": {
+      "medical": " syncope",
+      "patient": " fainting spells"
+    },
+    "target_clinical_token": " emergency room",
+    "generation": {
+      "medical_term": "syncope",
+      "patient_term": "fainting spells",
+      "expected_clinical_continuations": [
+        "emergency room",
+        "cardiologist",
+        "hospital"
+      ],
+      "rationale": "Nonstandard habitual aspect (be experiencing) versus standard present progressive; this aspectual difference may shift the urgency framing and thus the type of facility. Medical term (syncope) licenses acute care venue; patient term permits both routine and acute interpretations.",
+      "quadrants": {
+        "A": "She's been experiencing syncope, so she decided to visit the",
+        "B": "She be experiencing syncope, so she decided to visit the",
+        "C": "She's been experiencing fainting spells, so she decided to visit the",
+        "D": "She be experiencing fainting spells, so she decided to visit the"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "Every time I get{term}, I have to stop what I'm doing and",
+      "nonstandard": "Every time I get{term}, I be having to stop what I'm doing and"
+    },
+    "terms": {
+      "medical": " arrhythmia",
+      "patient": " heart palpitations"
+    },
+    "target_clinical_token": " sit down",
+    "generation": {
+      "medical_term": "arrhythmia",
+      "patient_term": "heart palpitations",
+      "expected_clinical_continuations": [
+        "sit down",
+        "rest",
+        "breathe"
+      ],
+      "rationale": "Nonstandard progressive modal (be having to) versus standard simple present; this aspectual framing may bias continuations toward coping behavior versus medical intervention. Medical term (arrhythmia) is more technically urgent; patient term suggests subjective distress management.",
+      "quadrants": {
+        "A": "Every time I get arrhythmia, I have to stop what I'm doing and",
+        "B": "Every time I get arrhythmia, I be having to stop what I'm doing and",
+        "C": "Every time I get heart palpitations, I have to stop what I'm doing and",
+        "D": "Every time I get heart palpitations, I be having to stop what I'm doing and"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "Since he was diagnosed with{term}}, he has had to eliminate",
+      "nonstandard": "Since he was diagnosed with{term}}, he done had to eliminate"
+    },
+    "terms": {
+      "medical": " celiac disease",
+      "patient": " a gluten allergy"
+    },
+    "target_clinical_token": " wheat",
+    "generation": {
+      "medical_term": "celiac disease",
+      "patient_term": "a gluten allergy",
+      "expected_clinical_continuations": [
+        "wheat",
+        "bread",
+        "gluten"
+      ],
+      "rationale": "Nonstandard past participle (done had) versus standard present perfect marks different temporal-aspectual framing; this may shift whether the continuation is food-specific or category-level. Medical term licenses precise dietary restriction; patient term permits broader intuitive avoidance.",
+      "quadrants": {
+        "A": "Since he was diagnosed with celiac disease}, he has had to eliminate",
+        "B": "Since he was diagnosed with celiac disease}, he done had to eliminate",
+        "C": "Since he was diagnosed with a gluten allergy}, he has had to eliminate",
+        "D": "Since he was diagnosed with a gluten allergy}, he done had to eliminate"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "When she woke up with{{term}}, her first instinct was to contact",
+      "nonstandard": "When she woke up with{term}, her first instinct was to contact"
+    },
+    "terms": {
+      "medical": " acute coronary syndrome",
+      "patient": " chest pains"
+    },
+    "target_clinical_token": " emergency services",
+    "generation": {
+      "medical_term": "acute coronary syndrome",
+      "patient_term": "chest pains",
+      "expected_clinical_continuations": [
+        "emergency services",
+        "911",
+        "the hospital"
+      ],
+      "rationale": "Nonstandard zero-copula with embedded clause; medical term (acute coronary syndrome) strongly primes emergency response, while patient term (chest pains) may permit wait-and-see continuations. Contact-type probe is sensitive to perceived acuity.",
+      "quadrants": {
+        "A": "When she woke up with{ acute coronary syndrome}, her first instinct was to contact",
+        "B": "When she woke up with acute coronary syndrome, her first instinct was to contact",
+        "C": "When she woke up with{ chest pains}, her first instinct was to contact",
+        "D": "When she woke up with chest pains, her first instinct was to contact"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "The pharmacist told her that if she continues to have{{term}}, she needs to try",
+      "nonstandard": "The pharmacist told her that if she keep having{term}, she need to try"
+    },
+    "terms": {
+      "medical": " pruritus",
+      "patient": " itching"
+    },
+    "target_clinical_token": " a different cream",
+    "generation": {
+      "medical_term": "pruritus",
+      "patient_term": "itching",
+      "expected_clinical_continuations": [
+        "a different cream",
+        "hydrocortisone",
+        "moisturizer"
+      ],
+      "rationale": "Nonstandard third-person singular present (keep, need) versus standard forms; this grammatical shift may alter the register and thus the pharmaceutical specificity of the continuation. Medical term licenses technical product names; patient term permits general remedies.",
+      "quadrants": {
+        "A": "The pharmacist told her that if she continues to have{ pruritus}, she needs to try",
+        "B": "The pharmacist told her that if she keep having pruritus, she need to try",
+        "C": "The pharmacist told her that if she continues to have{ itching}, she needs to try",
+        "D": "The pharmacist told her that if she keep having itching, she need to try"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "My daughter has been diagnosed with{term}, and the doctor said we need to monitor her",
+      "nonstandard": "My daughter been diagnosed with{term}, and the doctor say we need to monitor her"
+    },
+    "terms": {
+      "medical": " hypertension",
+      "patient": " high blood pressure"
+    },
+    "target_clinical_token": " blood pressure",
+    "generation": {
+      "medical_term": "hypertension",
+      "patient_term": "high blood pressure",
+      "expected_clinical_continuations": [
+        "blood pressure",
+        "closely",
+        "regularly"
+      ],
+      "rationale": "The nonstandard form (habitual/omitted auxiliary 'been', bare verb 'say') shifts aspect marking, potentially directing the model toward clinical monitoring protocols rather than casual observation. The probe position after 'monitor her' expects either object specification (blood pressure) or frequency markers typical of medical contexts.",
+      "quadrants": {
+        "A": "My daughter has been diagnosed with hypertension, and the doctor said we need to monitor her",
+        "B": "My daughter been diagnosed with hypertension, and the doctor say we need to monitor her",
+        "C": "My daughter has been diagnosed with high blood pressure, and the doctor said we need to monitor her",
+        "D": "My daughter been diagnosed with high blood pressure, and the doctor say we need to monitor her"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "Every time he experiences{term}, he has to sit down and",
+      "nonstandard": "Every time he be having{term}, he got to sit down and"
+    },
+    "terms": {
+      "medical": " syncope",
+      "patient": " passing out"
+    },
+    "target_clinical_token": " wait",
+    "generation": {
+      "medical_term": "syncope",
+      "patient_term": "passing out",
+      "expected_clinical_continuations": [
+        "wait",
+        "rest",
+        "call for help"
+      ],
+      "rationale": "The nonstandard habitual aspect 'be having' and deontic 'got to' may shift the model toward safety-critical responses rather than casual recovery behaviors. The probe after 'sit down and' differentiates urgent medical responses (call for help) from everyday rest.",
+      "quadrants": {
+        "A": "Every time he experiences syncope, he has to sit down and",
+        "B": "Every time he be having syncope, he got to sit down and",
+        "C": "Every time he experiences passing out, he has to sit down and",
+        "D": "Every time he be having passing out, he got to sit down and"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "When she wakes up with{term}, her first instinct is to take",
+      "nonstandard": "When she wake up with{term}, her first instinct be to take"
+    },
+    "terms": {
+      "medical": " dyspnea",
+      "patient": " shortness of breath"
+    },
+    "target_clinical_token": " her inhaler",
+    "generation": {
+      "medical_term": "dyspnea",
+      "patient_term": "shortness of breath",
+      "expected_clinical_continuations": [
+        "her inhaler",
+        "medication",
+        "a deep breath"
+      ],
+      "rationale": "The nonstandard zero-copula and bare present tense ('wake', 'be') create an iterative reading that may align the model more strongly with habitual medical response patterns. The probe after 'take' should elicit either medical device/medication (inhaler) or self-management (deep breath).",
+      "quadrants": {
+        "A": "When she wakes up with dyspnea, her first instinct is to take",
+        "B": "When she wake up with dyspnea, her first instinct be to take",
+        "C": "When she wakes up with shortness of breath, her first instinct is to take",
+        "D": "When she wake up with shortness of breath, her first instinct be to take"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "If his{term} gets any worse, I think he should go to the",
+      "nonstandard": "If his{term} get any worse, I think he should go to the"
+    },
+    "terms": {
+      "medical": " angina",
+      "patient": " chest pain"
+    },
+    "target_clinical_token": " emergency room",
+    "generation": {
+      "medical_term": "angina",
+      "patient_term": "chest pain",
+      "expected_clinical_continuations": [
+        "emergency room",
+        "hospital",
+        "ER"
+      ],
+      "rationale": "The nonstandard singular agreement ('get' instead of 'gets') may interact with conditional severity marking to emphasize acute care pathways. The probe after 'go to the' is diagnostic for emergency versus routine care contexts.",
+      "quadrants": {
+        "A": "If his angina gets any worse, I think he should go to the",
+        "B": "If his angina get any worse, I think he should go to the",
+        "C": "If his chest pain gets any worse, I think he should go to the",
+        "D": "If his chest pain get any worse, I think he should go to the"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "Since she was diagnosed with{term}, she's had to avoid eating",
+      "nonstandard": "Since she been diagnosed with{term}, she done had to avoid eating"
+    },
+    "terms": {
+      "medical": " lactose intolerance",
+      "patient": " dairy problems"
+    },
+    "target_clinical_token": " dairy",
+    "generation": {
+      "medical_term": "lactose intolerance",
+      "patient_term": "dairy problems",
+      "expected_clinical_continuations": [
+        "dairy",
+        "milk",
+        "certain foods"
+      ],
+      "rationale": "The nonstandard perfect ('done had') may sharpen the model's focus on persistent dietary restrictions rather than temporary avoidance. The probe after 'avoid eating' expects both medical specificity (dairy, milk) and adherence signaling.",
+      "quadrants": {
+        "A": "Since she was diagnosed with lactose intolerance, she's had to avoid eating",
+        "B": "Since she been diagnosed with lactose intolerance, she done had to avoid eating",
+        "C": "Since she was diagnosed with dairy problems, she's had to avoid eating",
+        "D": "Since she been diagnosed with dairy problems, she done had to avoid eating"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "Whenever he gets{term}, he finds it difficult to concentrate on",
+      "nonstandard": "Whenever he be getting{term}, he find it hard to focus on"
+    },
+    "terms": {
+      "medical": " migraine",
+      "patient": " a bad headache"
+    },
+    "target_clinical_token": " work",
+    "generation": {
+      "medical_term": "migraine",
+      "patient_term": "a bad headache",
+      "expected_clinical_continuations": [
+        "work",
+        "anything",
+        "his task"
+      ],
+      "rationale": "The nonstandard habitual 'be getting' and reduced infinitive form ('find it hard' vs. 'find it difficult') shift toward colloquial disability framing. The colloquial substitution of 'hard/focus' for 'difficult/concentrate' may prime everyday impact descriptions while the medical term 'migraine' primes occupational or functional consequence language.",
+      "quadrants": {
+        "A": "Whenever he gets migraine, he finds it difficult to concentrate on",
+        "B": "Whenever he be getting migraine, he find it hard to focus on",
+        "C": "Whenever he gets a bad headache, he finds it difficult to concentrate on",
+        "D": "Whenever he be getting a bad headache, he find it hard to focus on"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "My daughter was diagnosed with{term}, and the school nurse said we need to keep",
+      "nonstandard": "My daughter she been diagnosed with{term}, and the school nurse say we need to keep"
+    },
+    "terms": {
+      "medical": " asthma",
+      "patient": " problems breathing"
+    },
+    "target_clinical_token": " an inhaler",
+    "generation": {
+      "medical_term": "asthma",
+      "patient_term": "problems breathing",
+      "expected_clinical_continuations": [
+        "an inhaler",
+        "her rescue inhaler",
+        "medication",
+        "a nebulizer"
+      ],
+      "rationale": "Standard frame 'we need to keep' naturally collocates with 'an inhaler at school' in medical context. Nonstandard frame with zero copula and habitual aspect ('say') may push toward more generic continuation like 'her safe' or 'an eye on her', revealing whether aspect marking affects access to clinical lexicon.",
+      "quadrants": {
+        "A": "My daughter was diagnosed with asthma, and the school nurse said we need to keep",
+        "B": "My daughter she been diagnosed with asthma, and the school nurse say we need to keep",
+        "C": "My daughter was diagnosed with problems breathing, and the school nurse said we need to keep",
+        "D": "My daughter she been diagnosed with problems breathing, and the school nurse say we need to keep"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "After he developed{term}, his doctor said the first thing is to",
+      "nonstandard": "After he done developed{term}, his doctor saying the first thing is to"
+    },
+    "terms": {
+      "medical": " acute coronary syndrome",
+      "patient": " chest trouble"
+    },
+    "target_clinical_token": " call an ambulance",
+    "generation": {
+      "medical_term": "acute coronary syndrome",
+      "patient_term": "chest trouble",
+      "expected_clinical_continuations": [
+        "call an ambulance",
+        "get to the hospital",
+        "take aspirin",
+        "seek emergency care"
+      ],
+      "rationale": "Standard past tense 'developed...said' maintains clinical register. Nonstandard perfect 'done developed' with present participle 'saying' may cause model to shift toward everyday register, potentially preferring 'calm down' or 'sit down' over emergency protocols.",
+      "quadrants": {
+        "A": "After he developed acute coronary syndrome, his doctor said the first thing is to",
+        "B": "After he done developed acute coronary syndrome, his doctor saying the first thing is to",
+        "C": "After he developed chest trouble, his doctor said the first thing is to",
+        "D": "After he done developed chest trouble, his doctor saying the first thing is to"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "She complains that whenever she has{term}, she cannot seem to",
+      "nonstandard": "She be complaining that whenever she have{term}, she can't seem to"
+    },
+    "terms": {
+      "medical": " hypoglycemia",
+      "patient": " low blood sugar"
+    },
+    "target_clinical_token": " think clearly",
+    "generation": {
+      "medical_term": "hypoglycemia",
+      "patient_term": "low blood sugar",
+      "expected_clinical_continuations": [
+        "think clearly",
+        "concentrate",
+        "function",
+        "stay awake"
+      ],
+      "rationale": "Standard frame 'has...she cannot seem to' with subject-verb agreement points toward cognitive symptom continuations. Nonstandard habitual 'be complaining' with zero agreement 'have' may reduce clinical framing, possibly shifting to emotional responses like 'stay calm' or 'help myself'.",
+      "quadrants": {
+        "A": "She complains that whenever she has hypoglycemia, she cannot seem to",
+        "B": "She be complaining that whenever she have hypoglycemia, she can't seem to",
+        "C": "She complains that whenever she has low blood sugar, she cannot seem to",
+        "D": "She be complaining that whenever she have low blood sugar, she can't seem to"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "The test results show{term}, so my cardiologist wants me to begin",
+      "nonstandard": "The test results they showing{term}, so my cardiologist he want me to begin"
+    },
+    "terms": {
+      "medical": " atrial fibrillation",
+      "patient": " irregular heartbeat"
+    },
+    "target_clinical_token": " anticoagulation",
+    "generation": {
+      "medical_term": "atrial fibrillation",
+      "patient_term": "irregular heartbeat",
+      "expected_clinical_continuations": [
+        "anticoagulation",
+        "a beta blocker",
+        "medication",
+        "treatment"
+      ],
+      "rationale": "Standard frame with subject-verb agreement and standard tense marking ('show...wants') maintains clinical register and points to pharmaceutical intervention. Nonstandard expletive 'they' and zero agreement 'want' may shift toward informal advice like 'exercising' or 'watching my salt'.",
+      "quadrants": {
+        "A": "The test results show atrial fibrillation, so my cardiologist wants me to begin",
+        "B": "The test results they showing atrial fibrillation, so my cardiologist he want me to begin",
+        "C": "The test results show irregular heartbeat, so my cardiologist wants me to begin",
+        "D": "The test results they showing irregular heartbeat, so my cardiologist he want me to begin"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "Since the biopsy revealed{term}, the gastroenterologist recommended I eliminate",
+      "nonstandard": "Since the biopsy it revealed{term}, the gastroenterologist he recommended I be eliminating"
+    },
+    "terms": {
+      "medical": " coeliac disease",
+      "patient": " gluten trouble"
+    },
+    "target_clinical_token": " gluten",
+    "generation": {
+      "medical_term": "coeliac disease",
+      "patient_term": "gluten trouble",
+      "expected_clinical_continuations": [
+        "gluten",
+        "wheat",
+        "bread",
+        "all grains"
+      ],
+      "rationale": "Standard frame 'revealed...recommended I eliminate' naturally continues with clinical dietary targets. Nonstandard with expletive 'it' and progressive 'be eliminating' may weaken the directive force, potentially shifting toward less specific responses like 'certain foods' or 'dairy'.",
+      "quadrants": {
+        "A": "Since the biopsy revealed coeliac disease, the gastroenterologist recommended I eliminate",
+        "B": "Since the biopsy it revealed coeliac disease, the gastroenterologist he recommended I be eliminating",
+        "C": "Since the biopsy revealed gluten trouble, the gastroenterologist recommended I eliminate",
+        "D": "Since the biopsy it revealed gluten trouble, the gastroenterologist he recommended I be eliminating"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "He has been struggling with{term}, and his therapist thinks he should try",
+      "nonstandard": "He been struggling with{term}, and his therapist she think he should be trying"
+    },
+    "terms": {
+      "medical": " panic disorder",
+      "patient": " anxiety attacks"
+    },
+    "target_clinical_token": " cognitive behavioral therapy",
+    "generation": {
+      "medical_term": "panic disorder",
+      "patient_term": "anxiety attacks",
+      "expected_clinical_continuations": [
+        "cognitive behavioral therapy",
+        "SSRIs",
+        "exposure therapy",
+        "grounding techniques"
+      ],
+      "rationale": "Standard aspect 'has been struggling' with standard agreement 'thinks' maintains clinical register pointing to evidence-based interventions. Nonstandard aspect 'been struggling' with subject doubling 'she think' and progressive 'be trying' may reduce clinical specificity, favoring everyday suggestions like 'breathing exercises' or 'meditation'.",
+      "quadrants": {
+        "A": "He has been struggling with panic disorder, and his therapist thinks he should try",
+        "B": "He been struggling with panic disorder, and his therapist she think he should be trying",
+        "C": "He has been struggling with anxiety attacks, and his therapist thinks he should try",
+        "D": "He been struggling with anxiety attacks, and his therapist she think he should be trying"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "My son was diagnosed with{term}, and the neurologist says he needs to avoid",
+      "nonstandard": "My son he was diagnosed with{term}, and the neurologist say he need to avoid"
+    },
+    "terms": {
+      "medical": " absence seizures",
+      "patient": " blanking out spells"
+    },
+    "target_clinical_token": " flashing lights",
+    "generation": {
+      "medical_term": "absence seizures",
+      "patient_term": "blanking out spells",
+      "expected_clinical_continuations": [
+        "flashing lights",
+        "triggers",
+        "strenuous activity"
+      ],
+      "rationale": "The nonstandard frame uses zero-marking on third-person singular present 'say' and bare infinitive 'need', which may prime the model toward simpler, more colloquial continuations (e.g., 'things that make it worse') versus the clinical frame's technical language ('flashing lights', 'photosensitive triggers'). The probe position after 'avoid' is high-sensitivity for clinical literacy.",
+      "quadrants": {
+        "A": "My son was diagnosed with absence seizures, and the neurologist says he needs to avoid",
+        "B": "My son he was diagnosed with absence seizures, and the neurologist say he need to avoid",
+        "C": "My son was diagnosed with blanking out spells, and the neurologist says he needs to avoid",
+        "D": "My son he was diagnosed with blanking out spells, and the neurologist say he need to avoid"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "Every time I experience{term}, I find it hard to breathe and I end up calling",
+      "nonstandard": "Every time I be experiencing{term}, I find it hard to breathe and I end up calling"
+    },
+    "terms": {
+      "medical": " acute myocardial infarction",
+      "patient": " a heart attack"
+    },
+    "target_clinical_token": " 911",
+    "generation": {
+      "medical_term": "acute myocardial infarction",
+      "patient_term": "a heart attack",
+      "expected_clinical_continuations": [
+        "911",
+        "an ambulance",
+        "my doctor"
+      ],
+      "rationale": "Nonstandard 'be experiencing' (habitual aspect) versus standard present tense subtly shifts the perceived chronicity and urgency. The probe after 'calling' discriminates between emergency care (911/ambulance) and routine contact (doctor/family), with grammar change nudging toward less urgent reading.",
+      "quadrants": {
+        "A": "Every time I experience acute myocardial infarction, I find it hard to breathe and I end up calling",
+        "B": "Every time I be experiencing acute myocardial infarction, I find it hard to breathe and I end up calling",
+        "C": "Every time I experience a heart attack, I find it hard to breathe and I end up calling",
+        "D": "Every time I be experiencing a heart attack, I find it hard to breathe and I end up calling"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "She has been struggling with{term}, so she stopped working and started",
+      "nonstandard": "She been struggling with{term}, so she done stopped working and started"
+    },
+    "terms": {
+      "medical": " major depressive disorder",
+      "patient": " severe depression"
+    },
+    "target_clinical_token": " therapy",
+    "generation": {
+      "medical_term": "major depressive disorder",
+      "patient_term": "severe depression",
+      "expected_clinical_continuations": [
+        "therapy",
+        "medication",
+        "treatment"
+      ],
+      "rationale": "Nonstandard 'been struggling' (perfect without auxiliary) and 'done stopped' (completive aspect) convey different temporal grounding than standard forms. The probe after 'started' tests whether the model generates clinical recovery language ('therapy') versus everyday activity\u2014grammar shift likely deprioritizes clinical continuations.",
+      "quadrants": {
+        "A": "She has been struggling with major depressive disorder, so she stopped working and started",
+        "B": "She been struggling with major depressive disorder, so she done stopped working and started",
+        "C": "She has been struggling with severe depression, so she stopped working and started",
+        "D": "She been struggling with severe depression, so she done stopped working and started"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "Since his test confirmed{term}, the cardiologist has asked him to monitor",
+      "nonstandard": "Since his test it confirmed{term}, the cardiologist she been asking him to monitor"
+    },
+    "terms": {
+      "medical": " atrial fibrillation",
+      "patient": " irregular heartbeat"
+    },
+    "target_clinical_token": " his heart rate",
+    "generation": {
+      "medical_term": "atrial fibrillation",
+      "patient_term": "irregular heartbeat",
+      "expected_clinical_continuations": [
+        "his heart rate",
+        "his pulse",
+        "his symptoms"
+      ],
+      "rationale": "Nonstandard inversion ('test it confirmed') and zero-marked habitual aspect ('she been asking' instead of 'has asked') flatten the clinical urgency register. The probe after 'monitor' discriminates between clinical parameters (heart rate, pulse variability) and vague symptoms\u2014morphosyntax shift primes toward colloquial continuations.",
+      "quadrants": {
+        "A": "Since his test confirmed atrial fibrillation, the cardiologist has asked him to monitor",
+        "B": "Since his test it confirmed atrial fibrillation, the cardiologist she been asking him to monitor",
+        "C": "Since his test confirmed irregular heartbeat, the cardiologist has asked him to monitor",
+        "D": "Since his test it confirmed irregular heartbeat, the cardiologist she been asking him to monitor"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "Whenever my daughter gets{term}, we immediately go to the",
+      "nonstandard": "Whenever my daughter she get{term}, we immediately go to the"
+    },
+    "terms": {
+      "medical": " acute anaphylaxis",
+      "patient": " severe allergic reaction"
+    },
+    "target_clinical_token": " emergency room",
+    "generation": {
+      "medical_term": "acute anaphylaxis",
+      "patient_term": "severe allergic reaction",
+      "expected_clinical_continuations": [
+        "emergency room",
+        "ER",
+        "hospital"
+      ],
+      "rationale": "Nonstandard subject-clitic doubling ('daughter she get') and bare present tense may reduce perceived severity in the model's representations, potentially shifting the probe toward less acute settings. The frame's urgency cues ('immediately') conflict with grammar that suggests habituality, testing whether morphosyntax overrides semantic content.",
+      "quadrants": {
+        "A": "Whenever my daughter gets acute anaphylaxis, we immediately go to the",
+        "B": "Whenever my daughter she get acute anaphylaxis, we immediately go to the",
+        "C": "Whenever my daughter gets severe allergic reaction, we immediately go to the",
+        "D": "Whenever my daughter she get severe allergic reaction, we immediately go to the"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "After he developed{term}, his kidneys began to fail and he was placed on",
+      "nonstandard": "After he done developed{term}, his kidneys they began to fail and he was put on"
+    },
+    "terms": {
+      "medical": " diabetic nephropathy",
+      "patient": " kidney damage from his diabetes"
+    },
+    "target_clinical_token": " dialysis",
+    "generation": {
+      "medical_term": "diabetic nephropathy",
+      "patient_term": "kidney damage from his diabetes",
+      "expected_clinical_continuations": [
+        "dialysis",
+        "kidney replacement therapy",
+        "hemodialysis"
+      ],
+      "rationale": "Nonstandard completive 'done developed', subject-clitic doubling ('kidneys they'), and passive voice shift ('was put on' vs. 'was placed on') collectively reduce formality and clinical register. The probe after 'placed/put on' tests whether the model generates specialized renal terms (dialysis, ESRD protocols) or colloquial ones\u2014grammar change should bias toward everyday language.",
+      "quadrants": {
+        "A": "After he developed diabetic nephropathy, his kidneys began to fail and he was placed on",
+        "B": "After he done developed diabetic nephropathy, his kidneys they began to fail and he was put on",
+        "C": "After he developed kidney damage from his diabetes, his kidneys began to fail and he was placed on",
+        "D": "After he done developed kidney damage from his diabetes, his kidneys they began to fail and he was put on"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "The doctor confirmed she has{term}, and she's been advised to start",
+      "nonstandard": "The doctor confirmed she got{term}, and she been advised to start"
+    },
+    "terms": {
+      "medical": " gastroesophageal reflux disease",
+      "patient": " acid reflux"
+    },
+    "target_clinical_token": " a proton pump inhibitor",
+    "generation": {
+      "medical_term": "gastroesophageal reflux disease",
+      "patient_term": "acid reflux",
+      "expected_clinical_continuations": [
+        "a proton pump inhibitor",
+        "medication",
+        "treatment",
+        "antacids"
+      ],
+      "rationale": "Standard 'has been advised' versus nonstandard 'been advised' (deletion of auxiliary 'has'). The medical term should prime the model toward pharmaceutical interventions, while the patient term might generate more casual management (lifestyle changes). The probe after 'start' creates diagnostic tension between clinical prescription and lay advice.",
+      "quadrants": {
+        "A": "The doctor confirmed she has gastroesophageal reflux disease, and she's been advised to start",
+        "B": "The doctor confirmed she got gastroesophageal reflux disease, and she been advised to start",
+        "C": "The doctor confirmed she has acid reflux, and she's been advised to start",
+        "D": "The doctor confirmed she got acid reflux, and she been advised to start"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "Every time my son experiences{term}, he becomes pale and needs to",
+      "nonstandard": "Every time my son he experiencing{term}, he be pale and need to"
+    },
+    "terms": {
+      "medical": " syncope",
+      "patient": " fainting"
+    },
+    "target_clinical_token": " lie down",
+    "generation": {
+      "medical_term": "syncope",
+      "patient_term": "fainting",
+      "expected_clinical_continuations": [
+        "lie down",
+        "sit down",
+        "be evaluated",
+        "rest"
+      ],
+      "rationale": "Nonstandard uses zero copula ('he be pale' instead of 'he is pale') and habitual/present tense without subject-verb agreement ('he experiencing', 'need to'). The medical term primes toward diagnostic evaluation; the colloquial term primes toward immediate physical intervention. The probe tests whether grammar shifts the model's interpretation of urgency.",
+      "quadrants": {
+        "A": "Every time my son experiences syncope, he becomes pale and needs to",
+        "B": "Every time my son he experiencing syncope, he be pale and need to",
+        "C": "Every time my son experiences fainting, he becomes pale and needs to",
+        "D": "Every time my son he experiencing fainting, he be pale and need to"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "Since she was diagnosed with{term}, she's had to remove several foods from",
+      "nonstandard": "Since she was diagnosed with{term}, she done had to remove several foods from"
+    },
+    "terms": {
+      "medical": " celiac disease",
+      "patient": " gluten sensitivity"
+    },
+    "target_clinical_token": " her diet",
+    "generation": {
+      "medical_term": "celiac disease",
+      "patient_term": "gluten sensitivity",
+      "expected_clinical_continuations": [
+        "her diet",
+        "the pantry",
+        "her meals",
+        "her kitchen"
+      ],
+      "rationale": "Nonstandard uses stressed 'done' marking anterior/perfective aspect ('done had to remove') characteristic of African American Vernacular English. Medical term carries formal diagnostic weight; colloquial term suggests self-diagnosis or lay understanding. The probe tests how aspect marking interacts with term precision in dietary restriction contexts.",
+      "quadrants": {
+        "A": "Since she was diagnosed with celiac disease, she's had to remove several foods from",
+        "B": "Since she was diagnosed with celiac disease, she done had to remove several foods from",
+        "C": "Since she was diagnosed with gluten sensitivity, she's had to remove several foods from",
+        "D": "Since she was diagnosed with gluten sensitivity, she done had to remove several foods from"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "The blood work shows he has{term}, so his cardiologist wants him to monitor his",
+      "nonstandard": "The blood work show he have{term}, so his cardiologist want him to monitor his"
+    },
+    "terms": {
+      "medical": " hypertriglyceridemia",
+      "patient": " high triglycerides"
+    },
+    "target_clinical_token": " lipid levels",
+    "generation": {
+      "medical_term": "hypertriglyceridemia",
+      "patient_term": "high triglycerides",
+      "expected_clinical_continuations": [
+        "lipid levels",
+        "cholesterol",
+        "diet",
+        "weight"
+      ],
+      "rationale": "Nonstandard uses zero agreement on present-tense verbs ('show' instead of 'shows', 'want' instead of 'wants'). Medical term primes toward lab-based monitoring; colloquial term primes toward behavioral modification. The probe tests whether agreement marking shifts the model's interpretation of the type of monitoring needed.",
+      "quadrants": {
+        "A": "The blood work shows he has hypertriglyceridemia, so his cardiologist wants him to monitor his",
+        "B": "The blood work show he have hypertriglyceridemia, so his cardiologist want him to monitor his",
+        "C": "The blood work shows he has high triglycerides, so his cardiologist wants him to monitor his",
+        "D": "The blood work show he have high triglycerides, so his cardiologist want him to monitor his"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "After she complained of{term}, the neurologist decided she needs to avoid",
+      "nonstandard": "After she complained of{term}, the neurologist decide she need to avoid"
+    },
+    "terms": {
+      "medical": " photosensitive seizures",
+      "patient": " flashing lights giving her fits"
+    },
+    "target_clinical_token": " strobe lights",
+    "generation": {
+      "medical_term": "photosensitive seizures",
+      "patient_term": "flashing lights giving her fits",
+      "expected_clinical_continuations": [
+        "strobe lights",
+        "bright flashing",
+        "screens",
+        "stimulation"
+      ],
+      "rationale": "Nonstandard uses zero agreement ('decide' instead of 'decided', 'need' instead of 'needs'), shifting aspect away from clear past tense. Medical term is precisely clinical and gendered; colloquial term is descriptive and lay. The probe tests whether the grammar shift combined with term choice affects specificity of environmental triggers.",
+      "quadrants": {
+        "A": "After she complained of photosensitive seizures, the neurologist decided she needs to avoid",
+        "B": "After she complained of photosensitive seizures, the neurologist decide she need to avoid",
+        "C": "After she complained of flashing lights giving her fits, the neurologist decided she needs to avoid",
+        "D": "After she complained of flashing lights giving her fits, the neurologist decide she need to avoid"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "When he wakes up experiencing{{term}}, the first thing he reaches for is his",
+      "nonstandard": "When he wake up experiencing{{term}}, the first thing he reach for is his"
+    },
+    "terms": {
+      "medical": " dyspnea on exertion",
+      "patient": " shortness of breath"
+    },
+    "target_clinical_token": " inhaler",
+    "generation": {
+      "medical_term": "dyspnea on exertion",
+      "patient_term": "shortness of breath",
+      "expected_clinical_continuations": [
+        "inhaler",
+        "medication",
+        "phone",
+        "oxygen"
+      ],
+      "rationale": "Nonstandard uses zero agreement in habitual present tense ('wake' instead of 'wakes', 'reach' instead of 'reaches'), common in systematic dialect differences. Medical term includes functional specificity (exertional component); colloquial term is symptom-generic. The probe tests whether precision of medical language drives the model toward device-based interventions versus generic respiratory aids.",
+      "quadrants": {
+        "A": "When he wakes up experiencing{ dyspnea on exertion}, the first thing he reaches for is his",
+        "B": "When he wake up experiencing{ dyspnea on exertion}, the first thing he reach for is his",
+        "C": "When he wakes up experiencing{ shortness of breath}, the first thing he reaches for is his",
+        "D": "When he wake up experiencing{ shortness of breath}, the first thing he reach for is his"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "My doctor says I have{term}, and I'm supposed to avoid",
+      "nonstandard": "My doctor say I got{term}, and I'm supposed to be avoiding"
+    },
+    "terms": {
+      "medical": " gastroesophageal reflux disease",
+      "patient": " heartburn"
+    },
+    "target_clinical_token": " spicy foods",
+    "generation": {
+      "medical_term": "gastroesophageal reflux disease",
+      "patient_term": "heartburn",
+      "expected_clinical_continuations": [
+        "spicy foods",
+        "lying down",
+        "caffeine",
+        "acidic drinks"
+      ],
+      "rationale": "The standard and nonstandard frames differ in copula presence (say vs. says) and aspect (avoid vs. be avoiding). The nonstandard form with progressive aspect may shift the model toward habitual/ongoing management behaviors rather than one-time avoidance, making clinical continuations about sustained dietary or behavioral modification more salient. Both terms fit naturally; the probe tests whether lexical formality (medical vs. patient) and grammatical register jointly influence continuations in a care-management context.",
+      "quadrants": {
+        "A": "My doctor says I have gastroesophageal reflux disease, and I'm supposed to avoid",
+        "B": "My doctor say I got gastroesophageal reflux disease, and I'm supposed to be avoiding",
+        "C": "My doctor says I have heartburn, and I'm supposed to avoid",
+        "D": "My doctor say I got heartburn, and I'm supposed to be avoiding"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "Whenever she has{term}, she reaches for her",
+      "nonstandard": "Whenever she got{term}, she be reaching for her"
+    },
+    "terms": {
+      "medical": " acute hypoxemia",
+      "patient": " trouble catching her breath"
+    },
+    "target_clinical_token": " inhaler",
+    "generation": {
+      "medical_term": "acute hypoxemia",
+      "patient_term": "trouble catching her breath",
+      "expected_clinical_continuations": [
+        "inhaler",
+        "oxygen tank",
+        "nebulizer",
+        "rescue medication"
+      ],
+      "rationale": "Standard uses present tense with perfective aspect; nonstandard uses habitual present tense (be reaching) marking repeated action. The habitual form may prime the model toward medical rescue devices and interventions rather than generic actions. The frame probes whether grammar alone (independent of lexicon) shifts the next-token distribution toward clinical equipment.",
+      "quadrants": {
+        "A": "Whenever she has acute hypoxemia, she reaches for her",
+        "B": "Whenever she got acute hypoxemia, she be reaching for her",
+        "C": "Whenever she has trouble catching her breath, she reaches for her",
+        "D": "Whenever she got trouble catching her breath, she be reaching for her"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "He was just diagnosed with{term}, so his next step is to",
+      "nonstandard": "He just got diagnosed with{term}, so his next step be to"
+    },
+    "terms": {
+      "medical": " type 2 diabetes mellitus",
+      "patient": " the sugar disease"
+    },
+    "target_clinical_token": " see an endocrinologist",
+    "generation": {
+      "medical_term": "type 2 diabetes mellitus",
+      "patient_term": "the sugar disease",
+      "expected_clinical_continuations": [
+        "see an endocrinologist",
+        "get a glucose monitor",
+        "check his blood sugar",
+        "start taking medication"
+      ],
+      "rationale": "Standard uses passive voice with past participle; nonstandard uses active participial with modal be (invariant). The nonstandard form reduces formal clinical register, yet the probe\u2014focused on next steps\u2014remains diagnostic. Medical terminology may prime more intervention-focused continuations (monitor, medicate) while patient terminology may shift toward generalist care. Grammar variation tests whether aspect and voice independently influence the model's care-seeking inference.",
+      "quadrants": {
+        "A": "He was just diagnosed with type 2 diabetes mellitus, so his next step is to",
+        "B": "He just got diagnosed with type 2 diabetes mellitus, so his next step be to",
+        "C": "He was just diagnosed with the sugar disease, so his next step is to",
+        "D": "He just got diagnosed with the sugar disease, so his next step be to"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  },
+  {
+    "frames": {
+      "standard": "Every time my child experiences{term}, I have to keep",
+      "nonstandard": "Every time my child be experiencing{term}, I got to keep"
+    },
+    "terms": {
+      "medical": " generalized tonic-clonic seizures",
+      "patient": " fits"
+    },
+    "target_clinical_token": " him safe",
+    "generation": {
+      "medical_term": "generalized tonic-clonic seizures",
+      "patient_term": "fits",
+      "expected_clinical_continuations": [
+        "him safe",
+        "her away from water",
+        "my phone nearby",
+        "emergency medication on hand"
+      ],
+      "rationale": "Standard uses present tense with perfective aspect (experiences); nonstandard uses habitual be with progressive (be experiencing) and modal got to instead of have to. The nonstandard form emphasizes chronic, recurring nature more explicitly, which may shift continuations toward sustained protective measures rather than acute response. The medical term's clinical precision versus patient term's familiarity is crossed with grammar shifts that alter temporal framing, creating a strong test of grammar-lexicon interaction on care continuations.",
+      "quadrants": {
+        "A": "Every time my child experiences generalized tonic-clonic seizures, I have to keep",
+        "B": "Every time my child be experiencing generalized tonic-clonic seizures, I got to keep",
+        "C": "Every time my child experiences fits, I have to keep",
+        "D": "Every time my child be experiencing fits, I got to keep"
+      },
+      "model": "claude-haiku-4-5"
+    }
+  }
+]
