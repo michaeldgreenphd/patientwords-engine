@@ -58,30 +58,63 @@ def _refuse(reason: str) -> "SystemExit":
     return SystemExit(3)
 
 
-def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
+def _family_of(stimuli_doc: dict) -> str:
+    """Structural family label from the stimuli file's own source paths (an
+    advnat_* batch is the natural-question family; everything else is the
+    original sentence-completion frame)."""
+    paths = (stimuli_doc.get("source") or {}).get("paths") or []
+    return "natural_questions" if any("advnat_" in str(p) for p in paths) else "sentence_completions"
+
+
+def build_payload(stimuli_paths, ae, max_scenarios: int = 0,
                   archive_url: str | None = None) -> dict:
-    stimuli_doc = json.loads(stimuli_path.read_text(encoding="utf-8"))
-    stem = stimuli_path.stem
-    adv_dir = stimuli_path.parent
-    responses_path = adv_dir / f"responses_{stem}.jsonl"
-    judgments_path = adv_dir / f"judgments_{stem}.jsonl"
-    sidecar_path = adv_dir / f"responses_{stem}.report.json"
-
-    rows = ae._read_jsonl(responses_path)
-    ok, msg = ae.verify_chain(rows)
-    if not ok:
-        raise _refuse(f"{responses_path}: {msg}")
-    advice = [r for r in rows if r.get("record_type") == "advice"]
-    if not advice:
-        raise _refuse(f"{responses_path}: no advice records")
-
+    """One payload from one or more stimuli files. With several files the
+    scenario list concatenates and every figure statistic pools EXACTLY —
+    cells/tiers are built over the union before any aggregation, so merged
+    model_summary numbers equal a single-archive computation over all records
+    (owner direction 2026-07-29: both families share one page and one
+    denominator). Each archive's hash chain is verified independently."""
+    if isinstance(stimuli_paths, (str, Path)):
+        stimuli_paths = [stimuli_paths]
+    families: list[dict] = []
+    rows_all: list[dict] = []
+    advice_all: list[dict] = []
     tiers: dict[str, dict] = {}
     rubric_version = None
-    if judgments_path.is_file():
-        for j in ae._read_jsonl(judgments_path):
-            if j.get("tier") is not None:
-                tiers[j["response_sha256"]] = j  # later passes overwrite earlier ones
-                rubric_version = j.get("rubric_version") or rubric_version
+    for stimuli_path in [Path(p) for p in stimuli_paths]:
+        stimuli_doc = json.loads(stimuli_path.read_text(encoding="utf-8"))
+        stem = stimuli_path.stem
+        adv_dir = stimuli_path.parent
+        responses_path = adv_dir / f"responses_{stem}.jsonl"
+        judgments_path = adv_dir / f"judgments_{stem}.jsonl"
+        sidecar_path = adv_dir / f"responses_{stem}.report.json"
+
+        rows = ae._read_jsonl(responses_path)
+        ok, msg = ae.verify_chain(rows)
+        if not ok:
+            raise _refuse(f"{responses_path}: {msg}")
+        advice = [r for r in rows if r.get("record_type") == "advice"]
+        if not advice:
+            raise _refuse(f"{responses_path}: no advice records")
+        if judgments_path.is_file():
+            for j in ae._read_jsonl(judgments_path):
+                if j.get("tier") is not None:
+                    tiers[j["response_sha256"]] = j  # later passes overwrite earlier ones
+                    rubric_version = j.get("rubric_version") or rubric_version
+        families.append({
+            "family": _family_of(stimuli_doc), "doc": stimuli_doc,
+            "stimuli_path": stimuli_path, "responses_path": responses_path,
+            "judgments_path": judgments_path, "sidecar_path": sidecar_path,
+            "rows": rows, "advice": advice,
+        })
+        rows_all.extend(rows)
+        advice_all.extend(advice)
+    rows = rows_all
+    advice = advice_all
+    stimuli_doc = families[0]["doc"]          # single-file callers keep exact old shapes
+    responses_path = families[0]["responses_path"]
+    judgments_path = families[0]["judgments_path"]
+    sidecar_path = families[0]["sidecar_path"]
 
     # ALL samples per (stimulus, arm, model), sorted by attempt number — the page
     # carries an attempt switcher, so every draw is published, not a chosen one.
@@ -135,54 +168,62 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
             model_order.append(spec)
 
     scenarios = []
-    for item in stimuli_doc.get("items", []):
-        sid = item["id"]
-        def arm_block(arm: str, message: str | None):
-            responses = []
-            for spec in model_order:
-                recs = cells.get((sid, arm, spec))
-                if recs:
-                    responses.append(model_block(spec, recs))
-            if not responses and message is None:
-                return None
-            return {"message": message, "responses": responses}
+    fam_published: dict[str, int] = {}
+    for fam in families:
+        fam_doc = fam["doc"]
+        for item in fam_doc.get("items", []):
+            sid = item["id"]
 
-        clinical = arm_block("clinical", item.get("clinical_message"))
-        patient = arm_block("patient", item.get("patient_message"))
-        translated_recs = [recs for key, recs in cells.items() if key[0] == sid and key[1] == "translated"]
-        translated = None
-        if translated_recs:
-            t_msg = (translated_recs[0][0].get("request") or {}).get("message")
-            translated = arm_block("translated", t_msg)
-        if not any(b and b["responses"] for b in (clinical, patient, translated)):
-            continue  # stimulus never elicited (offset/limit chunking) — skip, don't blank
-        # per-model judged tier counts for this scenario, both arms — main() reduces
-        # these to modal tiers + downgrade flags once the rubric's tier order is known
-        tc: dict[str, dict] = {}
-        for spec in model_order:
-            per_arm = {}
-            for arm in ("clinical", "patient"):
-                counts: dict[str, int] = {}
-                for r in cells.get((sid, arm, spec), []):
-                    judged = tiers.get(r.get("response_sha256"))
-                    if judged and judged.get("tier"):
-                        counts[judged["tier"]] = counts.get(judged["tier"], 0) + 1
-                if counts:
-                    per_arm[arm] = counts
-            if len(per_arm) == 2:
-                tc[spec] = per_arm
-        scenarios.append({
-            "id": sid,
-            "topic": (item.get("meta") or {}).get("topic"),
-            # the suffix that turned this pair's sentence into an explicit advice
-            # request; carried per scenario so mixed future builds stay accurate
-            "ask_suffix": stimuli_doc.get("ask_suffix"),
-            "wording_gap": None,  # joined in main from the next-token payload when available
-            "tier_counts_by_model": tc or None,
-            "clinical": clinical,
-            "patient": patient,
-            "translated": translated,
-        })
+            def arm_block(arm: str, message: str | None):
+                responses = []
+                for spec in model_order:
+                    recs = cells.get((sid, arm, spec))
+                    if recs:
+                        responses.append(model_block(spec, recs))
+                if not responses and message is None:
+                    return None
+                return {"message": message, "responses": responses}
+
+            clinical = arm_block("clinical", item.get("clinical_message"))
+            patient = arm_block("patient", item.get("patient_message"))
+            translated_recs = [recs for key, recs in cells.items() if key[0] == sid and key[1] == "translated"]
+            translated = None
+            if translated_recs:
+                t_msg = (translated_recs[0][0].get("request") or {}).get("message")
+                translated = arm_block("translated", t_msg)
+            if not any(b and b["responses"] for b in (clinical, patient, translated)):
+                continue  # stimulus never elicited (offset/limit chunking) — skip, don't blank
+            # per-model judged tier counts for this scenario, both arms — main() reduces
+            # these to modal tiers + downgrade flags once the rubric's tier order is known
+            tc: dict[str, dict] = {}
+            for spec in model_order:
+                per_arm = {}
+                for arm in ("clinical", "patient"):
+                    counts: dict[str, int] = {}
+                    for r in cells.get((sid, arm, spec), []):
+                        judged = tiers.get(r.get("response_sha256"))
+                        if judged and judged.get("tier"):
+                            counts[judged["tier"]] = counts.get(judged["tier"], 0) + 1
+                    if counts:
+                        per_arm[arm] = counts
+                if len(per_arm) == 2:
+                    tc[spec] = per_arm
+            scenarios.append({
+                "id": sid,
+                "topic": (item.get("meta") or {}).get("topic"),
+                # the suffix that turned this pair's sentence into an explicit advice
+                # request; carried per scenario so mixed future builds stay accurate
+                "ask_suffix": fam_doc.get("ask_suffix"),
+                "family": fam["family"],
+                "wording_gap": None,  # joined in main from the next-token payload when available
+                "tier_counts_by_model": tc or None,
+                "clinical": clinical,
+                "patient": patient,
+                "translated": translated,
+            })
+            fam_published[fam["family"]] = fam_published.get(fam["family"], 0) + 1
+            if max_scenarios and len(scenarios) >= max_scenarios:
+                break
         if max_scenarios and len(scenarios) >= max_scenarios:
             break
 
@@ -276,7 +317,26 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
                       "similarity": _similarity(spec)}
                      for spec in model_order]
 
-    sidecar = json.loads(sidecar_path.read_text(encoding="utf-8")) if sidecar_path.is_file() else {}
+    def _rel(p: Path) -> str:
+        return str(p).replace(str(REPO_ROOT) + "/", "")
+
+    sidecars = [json.loads(f["sidecar_path"].read_text(encoding="utf-8"))
+                if f["sidecar_path"].is_file() else {} for f in families]
+    sidecar = sidecars[0]
+    merged = len(families) > 1
+    costs = [s.get("cost_usd") for s in sidecars if isinstance(s.get("cost_usd"), (int, float))]
+    family_blocks = [{
+        "family": f["family"],
+        "stimuli_file": _rel(f["stimuli_path"]),
+        "responses_file": _rel(f["responses_path"]),
+        "judgments_file": _rel(f["judgments_path"]) if f["judgments_path"].is_file() else None,
+        "selection": f["doc"].get("source"),
+        "ask_suffix": f["doc"].get("ask_suffix"),
+        "chain_head": s.get("chain_head") or (f["rows"][-1]["record_sha256"] if f["rows"] else None),
+        "cost_usd": s.get("cost_usd"),
+        "n_items_registered": f["doc"].get("n_items") or len(f["doc"].get("items", [])),
+        "n_scenarios_published": fam_published.get(f["family"], 0),
+    } for f, s in zip(families, sidecars)]
     sent = sorted(r["sent_utc"] for r in advice if r.get("sent_utc"))
     # provenance stays per access path: raw specs, never display aliases
     raw_order: list[str] = []
@@ -308,7 +368,7 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
                 b["first_sent_utc"] = su
             if b["last_sent_utc"] is None or su > b["last_sent_utc"]:
                 b["last_sent_utc"] = su
-    cost = sidecar.get("cost_usd")
+    cost = round(sum(costs), 6) if costs else None
     n_scenario_ids = len({r["stimulus_id"] for r in advice})
 
     return {
@@ -316,16 +376,18 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
         "engine_sha": ae.engine_sha(),
         # the page's generation note reads these: how the pairs were selected
         # (e.g. only_flips) and the fixed suffix that turned each traced
-        # sentence into a full question
-        "selection": stimuli_doc.get("source"),
-        "ask_suffix": stimuli_doc.get("ask_suffix"),
+        # sentence into a full question. A merged build keeps the per-family
+        # versions in "families"; the page resolves per scenario via s.family.
+        "selection": {"kind": "merged"} if merged else stimuli_doc.get("source"),
+        "ask_suffix": None if merged else stimuli_doc.get("ask_suffix"),
         "source": {
-            "stimuli_file": str(stimuli_path).replace(str(REPO_ROOT) + "/", ""),
-            "responses_file": str(responses_path).replace(str(REPO_ROOT) + "/", ""),
-            "judgments_file": str(judgments_path).replace(str(REPO_ROOT) + "/", "")
-                              if judgments_path.is_file() else None,
+            "stimuli_file": " + ".join(fb["stimuli_file"] for fb in family_blocks),
+            "responses_file": " + ".join(fb["responses_file"] for fb in family_blocks),
+            "judgments_file": " + ".join(fb["judgments_file"] for fb in family_blocks
+                                         if fb["judgments_file"]) or None,
             "archive_url": archive_url,
         },
+        "families": family_blocks,
         "run": {
             "first_sent_utc": sent[0] if sent else None,
             "last_sent_utc": sent[-1] if sent else None,
@@ -342,7 +404,10 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
                         "builds": sorted(builds_by_spec.get(spec, {}).values(),
                                          key=lambda b: (b["first_sent_utc"] or ""))} for spec in raw_order],
         },
-        "chain_head": sidecar.get("chain_head") or (rows[-1]["record_sha256"] if rows else None),
+        # a single chain head is meaningless across archives; per-family heads
+        # live in "families" and the page hides the row when this is null
+        "chain_head": None if merged else (sidecar.get("chain_head")
+                                           or (rows[-1]["record_sha256"] if rows else None)),
         "rubric_version": rubric_version,
         "tier_order": None,  # filled from the rubric when judgments exist (see main)
         "model_summary": model_summary,
@@ -352,7 +417,9 @@ def build_payload(stimuli_path: Path, ae, max_scenarios: int = 0,
 
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--stimuli", required=True)
+    parser.add_argument("--stimuli", required=True, action="append",
+                        help="stimuli file; repeat to merge families onto one page "
+                             "(scenario lists concatenate, figure stats pool exactly)")
     parser.add_argument("--max-scenarios", type=int, default=0)
     parser.add_argument("--archive-url", default=None,
                         help="GitHub Release URL for the full archive, if one exists")
@@ -363,7 +430,7 @@ def main(argv=None) -> None:
     args = parser.parse_args(argv)
 
     ae = _load_advice_eval()
-    payload = build_payload(Path(args.stimuli), ae, args.max_scenarios, args.archive_url)
+    payload = build_payload([Path(p) for p in args.stimuli], ae, args.max_scenarios, args.archive_url)
     if payload["rubric_version"] and Path(args.rubric).is_file():
         rubric = json.loads(Path(args.rubric).read_text(encoding="utf-8"))
         payload["tier_order"] = [t["id"] for t in rubric.get("tiers", [])] or None

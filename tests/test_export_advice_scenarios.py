@@ -264,3 +264,61 @@ def test_export_without_judgments(archive):
     # figure block still present: words computable, tier fields stay null until judged
     c = payload["model_summary"][0]["clinical"]
     assert c["mean_words"] > 0 and c["tier_counts"] is None and c["tier_mean_rank"] is None
+
+
+def test_export_merges_two_families_with_exact_pooling(archive, tmp_path, monkeypatch):
+    # Owner direction 2026-07-29: both stimulus families share one page and one
+    # denominator. A merged build must concatenate scenarios with family labels
+    # and pool model_summary EXACTLY as one computation over all records.
+    manual_b = tmp_path / "manual_b.json"
+    manual_b.write_text(json.dumps([
+        {"id": "n1", "clinical": "clinical question three, so I track it with a",
+         "patient": "everyday question three, so I track it with a"},
+    ]), encoding="utf-8")
+    out_dir_b = tmp_path / "advice_b"
+    ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual_b), "--out-dir", str(out_dir_b)])
+    stim_b = next(out_dir_b.glob("stimuli_*.json"))
+    # tag family B as the natural-question family via its source paths
+    doc_b = json.loads(stim_b.read_text(encoding="utf-8"))
+    doc_b["source"] = {"kind": "pairs", "paths": ["data/simulated/advnat_20260728T000000Z.json"]}
+    stim_b.write_text(json.dumps(doc_b), encoding="utf-8")
+
+    registry = archive["tmp"] / "providers.json"
+
+    def stub_compat(cfg, model, system, user_text, max_tokens, temperature):
+        return f"advice for [{user_text[:18]}]", 10, 20, {"model": model + "-served", "usage": {}}
+
+    monkeypatch.setattr(ae, "_client", lambda: object())
+    monkeypatch.setattr(ae, "_send", _stub_send)
+    monkeypatch.setattr(ae, "_send_compat", stub_compat)
+    ae.main(["elicit", "--stimuli", str(stim_b), "--models", "prov-x:model-1,prov-y:model-2",
+             "--providers", str(registry),
+             "--arms", "clinical,patient,translated", "--samples", "2",
+             "--translator-model", "model-t", "--max-spend", "5.0", "--out-dir", str(out_dir_b)])
+
+    out = archive["tmp"] / "merged.json"
+    ex.main(["--stimuli", str(archive["stim"]), "--stimuli", str(stim_b),
+             "--out", str(out), "--rubric", str(archive["rubric"])])
+    payload = json.loads(out.read_text(encoding="utf-8"))
+
+    assert [s["id"] for s in payload["scenarios"]] == ["s1", "s2", "n1"]
+    assert [s["family"] for s in payload["scenarios"]] == \
+        ["sentence_completions", "sentence_completions", "natural_questions"]
+    fams = payload["families"]
+    assert [f["family"] for f in fams] == ["sentence_completions", "natural_questions"]
+    assert [f["n_scenarios_published"] for f in fams] == [2, 1]
+    assert fams[0]["judgments_file"] and fams[1]["judgments_file"] is None
+    assert fams[0]["chain_head"] and fams[1]["chain_head"] and fams[0]["chain_head"] != fams[1]["chain_head"]
+    # merged top level: no single chain head, merged selection marker, joined sources
+    assert payload["chain_head"] is None
+    assert payload["selection"] == {"kind": "merged"}
+    assert " + " in payload["source"]["stimuli_file"]
+    # EXACT pooling: clinical n = 2 stimuli x 2 attempts (A) + 1 x 2 (B) = 6 per model,
+    # judged tiers only from family A's judgments
+    c = payload["model_summary"][0]["clinical"]
+    assert c["n"] == 6 and c["tier_counts"] == {"routine": 4} and c["n_judged"] == 4
+    # run block sums both archives
+    n_a = len(ae._read_jsonl(archive["out_dir"] / f"responses_{archive['stim'].stem}.jsonl"))
+    n_b = len(ae._read_jsonl(out_dir_b / f"responses_{stim_b.stem}.jsonl"))
+    assert payload["run"]["n_calls"] == n_a + n_b
+    assert payload["run"]["cost_usd"] > 0
