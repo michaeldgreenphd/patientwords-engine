@@ -117,3 +117,12 @@ Exit 2 (empty sealed set): config error (wrong branch), never a pass.
 - Never "correct" intentional misspellings in phrase data; never rewrite `data/simulated/`.
 - Never write secrets into either repo (both public) and never let holdout phrase text
   reach any output or committed file.
+
+**Addendum (2026-07-29, owner directive):** step 3's exporter list gains two
+more, run after `export_pair_swaps.py`:
+```
+python scripts/export_tag_mass.py --site ../patientwords
+python scripts/export_jspace.py --site ../patientwords
+```
+Both $0/offline; `export_jspace.py` refuses (exit 3, site untouched) when a
+source raw is missing — treat as success-with-no-change.

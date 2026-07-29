@@ -375,3 +375,10 @@ the nightly critic wake (05:00 UTC) is the remaining second pulse.
 2026-07-16. The 13:00 UTC firing is 6:00 AM PDT — the owner's requested
 delivery time — and reads as 9:00 AM EDT once they are back east. Same
 instant; the cron stays `0 13 * * *`. Do not "correct" it.
+
+**tag_mass + jspace wired (2026-07-29, owner directive).** After any data
+republish, also run `python scripts/export_tag_mass.py --site ../patientwords`
+(mean attribution mass, clin/off/struct by phrasing) and `python
+scripts/export_jspace.py --site ../patientwords` (the empirical three-panel
+J-space worked example; refuses without touching the site file when any raw is
+missing). Both $0, offline, byte-stable given unchanged inputs.
