@@ -34,6 +34,11 @@ def trigger_path(repo, name="circuit-trace"):
 def fire(repo, trigger="circuit-trace", params=None, extra=(), note="test fire"):
     if params is None:
         params = {"graph_model": "gemma-2-2b", "mode": "2panel"}
+    # commit_outputs must be stated explicitly wherever the workflow supports it
+    # (validate_params guard); the helper builds a valid fire, and the guard has
+    # its own dedicated test
+    if isinstance(params, dict) and "commit_outputs" in ft.KNOWN_KEYS.get(trigger, set()):
+        params = {"commit_outputs": "true", **params}
     argv = ["fire", "--repo", str(repo), "--trigger", trigger,
             "--params", json.dumps(params), "--note", note, "--no-git", *extra]
     return ft.main(argv)
@@ -251,9 +256,22 @@ def test_budget_dated_ceiling_override():
 
 
 def test_validate_params_pure_function():
-    assert ft.validate_params("circuit-trace", {"graph_model": "g", "_note": "n"}) is None
+    assert ft.validate_params(
+        "circuit-trace", {"graph_model": "g", "commit_outputs": "true", "_note": "n"}) is None
     with pytest.raises(ValueError):
         ft.validate_params("circuit-trace", "not a dict")
+
+
+def test_validate_params_requires_explicit_commit_outputs():
+    # the push path defaults commit_outputs to false, which measures and then
+    # discards every output (the seven lost meditron fires); the key must be
+    # stated explicitly wherever the workflow supports it
+    with pytest.raises(ValueError, match="commit_outputs"):
+        ft.validate_params("logits-eval", {"models": "m", "limit": 1})
+    assert ft.validate_params(
+        "logits-eval", {"models": "m", "limit": 1, "commit_outputs": "false"}) is None
+    # triggers without the key in their workflow are unaffected
+    assert ft.validate_params("archive-renders", {"tag": "t"}) is None
     for trigger, params in [("circuit-trace", {"graph_modle": "g"}),
                             ("scenario-generation", {"tsak": "pairs"}),
                             ("logits-eval", {"limt": 0}),

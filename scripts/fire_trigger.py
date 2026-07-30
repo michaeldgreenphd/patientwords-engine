@@ -288,6 +288,16 @@ def validate_params(trigger, params):
             f"unknown {trigger} key(s) {unknown}: CI silently ignores unknown keys, so a typo "
             f"means a run with defaults; allowed keys: {sorted(KNOWN_KEYS[trigger])}"
         )
+    # commit_outputs must be stated explicitly wherever the workflow supports it:
+    # the push path defaults it to false, so omitting the key runs the whole
+    # measurement and then silently discards the results at the commit gate
+    # (seven meditron fires were lost this way before 2026-07-31).
+    if "commit_outputs" in KNOWN_KEYS[trigger] and "commit_outputs" not in keys:
+        raise ValueError(
+            f"{trigger} params must state commit_outputs explicitly (\"true\" or \"false\"): "
+            "the workflow's push-path default is false, which measures and then discards "
+            "every output when the runner is reclaimed"
+        )
 
 
 def parse_max_spend(value):
