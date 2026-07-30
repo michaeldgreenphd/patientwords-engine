@@ -1517,7 +1517,10 @@ def repro_pack(args) -> Path:
                 j_lines.append(ln)
     received = [r.get("received_utc") or r.get("sent_utc") or "" for r in vendor_rows]
     sents = sorted(r.get("sent_utc") or "" for r in vendor_rows)
-    builds = sorted({(r.get("model_returned"), r.get("build_fingerprint")) for r in vendor_rows})
+    # None-safe: some providers return no build fingerprint (observed on the
+    # deepseek and moonshot arms), and None does not order against str
+    builds = sorted({(r.get("model_returned"), r.get("build_fingerprint")) for r in vendor_rows},
+                    key=lambda b: (b[0] or "", b[1] or ""))
     manifest = dict(state)
     manifest.update({
         "vendor": args.vendor, "vendor_records": len(vendor_rows),

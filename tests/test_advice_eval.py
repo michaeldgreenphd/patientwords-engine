@@ -1016,3 +1016,46 @@ def test_elicit_records_carry_build_info(tmp_path, monkeypatch):
     assert adv["request_id"] == "req_e2e"
     assert adv["build_fingerprint"] == "fp_e2e"
     assert adv["api_version"] is None
+
+
+def test_repro_pack_builds_tolerate_missing_build_fields(tmp_path, monkeypatch):
+    """Regression 2026-07-30: rows without model_returned/build_fingerprint
+    (observed on the deepseek and moonshot arms) crashed the pack manifest's
+    builds sort with a None-vs-str TypeError."""
+    import json as _json
+    import importlib.util
+    from pathlib import Path
+    spec = importlib.util.spec_from_file_location(
+        "advice_eval", Path(__file__).resolve().parents[1] / "scripts" / "advice_eval.py")
+    ae = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ae)
+
+    adv = tmp_path / "advice"
+    adv.mkdir()
+    stim = adv / "stimuli_t.json"
+    stim.write_text(_json.dumps([{"id": "s1"}]), encoding="utf-8")
+    rows = [
+        {"record_type": "advice", "model_requested": "acme:acme/widget-1", "model": "acme:acme/widget-1",
+         "record_sha256": "a" * 8, "sent_utc": "2026-07-30T00:00:00Z",
+         "model_returned": None, "build_fingerprint": None},
+        {"record_type": "advice", "model_requested": "acme:acme/widget-1", "model": "acme:acme/widget-1",
+         "record_sha256": "b" * 8, "sent_utc": "2026-07-30T00:01:00Z",
+         "model_returned": "widget-1-0130", "build_fingerprint": "fp1"},
+    ]
+    (adv / "responses_stimuli_t.jsonl").write_text(
+        "\n".join(_json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+
+    class Args:
+        stimuli = str(stim)
+        vendor = "acme"
+        rubric = str(tmp_path / "missing_rubric.json")
+        providers = str(tmp_path / "missing_providers.json")
+        seed = 7
+        out = str(tmp_path / "dist")
+        log = str(tmp_path / "log.jsonl")
+        note = "t"
+    out = ae.repro_pack(Args())
+    manifest = _json.loads((Path(out) / "MANIFEST.json").read_text(encoding="utf-8"))
+    # completing at all is the regression proof: the None-vs-str sort crashed
+    # before any manifest was written
+    assert manifest["vendor_records"] == 2
