@@ -1,16 +1,16 @@
 {
  "summary": {
-  "measurements": 7526,
+  "measurements": 7529,
   "tierb_holdout_rows_excluded": 622,
-  "flips": 3413,
+  "flips": 3415,
   "flip_classes": {
-   "downgrade": 495,
+   "downgrade": 497,
    "upgrade": 110,
    "lateral": 452,
    "uninformative": 2356
   },
-  "mean_tier_shift": -0.1047,
-  "tier_shift_n": 4397,
+  "mean_tier_shift": -0.1048,
+  "tier_shift_n": 4399,
   "per_model": {
    "apertus-8b-meditronfo": {
     "n": 73,
@@ -31,13 +31,13 @@
     }
    },
    "gemma-2-2b": {
-    "n": 1656,
-    "flips": 785,
-    "downgrades": 202,
+    "n": 1659,
+    "flips": 787,
+    "downgrades": 204,
     "upgrades": 23,
     "sign_test_p": 0.0,
-    "confident_downgrades_p>=0.2": 135,
-    "mean_tier_shift": -0.1508,
+    "confident_downgrades_p>=0.2": 137,
+    "mean_tier_shift": -0.1512,
     "representative": {
      "base": "I have anxiety, so I should probably see a",
      "from": "therapist",
@@ -546,16 +546,16 @@
    }
   },
   "mitigation": {
-   "n": 83,
-   "mean_urgency_recovery": 0.1442,
-   "restored_top_tier": 48
+   "n": 111,
+   "mean_urgency_recovery": 0.1341,
+   "restored_top_tier": 69
   },
   "per_condition": {
    "(unlabeled)": {
-    "n": 379,
-    "downgrades": 128,
+    "n": 382,
+    "downgrades": 130,
     "upgrades": 2,
-    "mean_tier_shift": -0.2743
+    "mean_tier_shift": -0.2749
    },
    "sleep problems": {
     "n": 349,
@@ -4459,6 +4459,87 @@
   {
    "model": "gemma-2-2b",
    "batch": "drift_sentinel_20260723",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.414,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.789,
+   "tier_shift": -0.288,
+   "language_penalty": -0.064,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260729",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.068,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.044,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260729",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.629,
+   "p_top_patient": 0.471,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.4,
+   "tier_shift": -0.449,
+   "language_penalty": 0.347,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260729",
    "index": 3,
    "topic": null,
    "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
@@ -221386,6 +221467,10 @@
     11,
     11
    ],
+   "top_translated": "shirt",
+   "tier_top_translated": 0,
+   "expected_tier_translated": 0.0,
+   "urgency_recovery": 0.0,
    "tierb_split": "explore"
   },
   {
@@ -221414,6 +221499,10 @@
     8,
     10
    ],
+   "top_translated": "antibiotics",
+   "tier_top_translated": null,
+   "expected_tier_translated": 1.0,
+   "urgency_recovery": 0.0,
    "tierb_split": "explore"
   },
   {
@@ -221442,6 +221531,10 @@
     9,
     13
    ],
+   "top_translated": "uro",
+   "tier_top_translated": null,
+   "expected_tier_translated": 2.294,
+   "urgency_recovery": 0.203,
    "tierb_split": "explore"
   },
   {
@@ -221470,6 +221563,10 @@
     9,
     10
    ],
+   "top_translated": "little",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -221498,6 +221595,10 @@
     10,
     10
    ],
+   "top_translated": "options",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -221526,6 +221627,10 @@
     8,
     12
    ],
+   "top_translated": "medicine",
+   "tier_top_translated": 1,
+   "expected_tier_translated": 1.075,
+   "urgency_recovery": 0.266,
    "tierb_split": "holdout"
   },
   {
@@ -221554,6 +221659,10 @@
     10,
     13
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.148,
+   "urgency_recovery": 0.015,
    "tierb_split": "explore"
   },
   {
@@ -221582,6 +221691,10 @@
     10,
     12
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 1.922,
+   "urgency_recovery": -0.009,
    "tierb_split": "explore"
   },
   {
@@ -221610,6 +221723,10 @@
     10,
     11
    ],
+   "top_translated": "life",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -221638,6 +221755,10 @@
     12,
     12
    ],
+   "top_translated": "antibiotic",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 1.88,
+   "urgency_recovery": 0.083,
    "tierb_split": "holdout"
   },
   {
@@ -221666,6 +221787,10 @@
     12,
     13
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.082,
+   "urgency_recovery": 0.047,
    "tierb_split": "explore"
   },
   {
@@ -221694,6 +221819,10 @@
     9,
     13
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.0,
+   "urgency_recovery": -0.021,
    "tierb_split": "explore"
   },
   {
@@ -221722,6 +221851,10 @@
     11,
     11
    ],
+   "top_translated": "dermatologist",
+   "tier_top_translated": 3,
+   "expected_tier_translated": 2.797,
+   "urgency_recovery": 0.639,
    "tierb_split": "explore"
   },
   {
@@ -221750,6 +221883,10 @@
     10,
     14
    ],
+   "top_translated": "appointment",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.05,
+   "urgency_recovery": 0.101,
    "tierb_split": "explore"
   },
   {
@@ -221778,6 +221915,10 @@
     11,
     15
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.168,
+   "urgency_recovery": 0.128,
    "tierb_split": "explore"
   },
   {
@@ -221806,6 +221947,10 @@
     13,
     14
    ],
+   "top_translated": "meds",
+   "tier_top_translated": 1,
+   "expected_tier_translated": 1.357,
+   "urgency_recovery": 0.277,
    "tierb_split": "explore"
   },
   {
@@ -221834,6 +221979,10 @@
     9,
     13
    ],
+   "top_translated": "moisturizer",
+   "tier_top_translated": 1,
+   "expected_tier_translated": 1.0,
+   "urgency_recovery": 0.0,
    "tierb_split": "explore"
   },
   {
@@ -222058,6 +222207,10 @@
     10,
     13
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.075,
+   "urgency_recovery": -0.045,
    "tierb_split": "explore"
   },
   {
@@ -222086,6 +222239,10 @@
     7,
     14
    ],
+   "top_translated": "a",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -222114,6 +222271,10 @@
     9,
     12
    ],
+   "top_translated": "sore",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -222142,6 +222303,10 @@
     9,
     14
    ],
+   "top_translated": "hands",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -222170,6 +222335,10 @@
     10,
     13
    ],
+   "top_translated": "anti",
+   "tier_top_translated": 1,
+   "expected_tier_translated": 1.288,
+   "urgency_recovery": -0.285,
    "tierb_split": "explore"
   },
   {
@@ -222198,6 +222367,10 @@
     16,
     15
    ],
+   "top_translated": "blood",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.0,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -222226,6 +222399,10 @@
     9,
     13
    ],
+   "top_translated": "own",
+   "tier_top_translated": null,
+   "expected_tier_translated": 1.585,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -222254,6 +222431,10 @@
     11,
     14
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 1.838,
+   "urgency_recovery": -0.035,
    "tierb_split": "explore"
   },
   {
@@ -222282,6 +222463,10 @@
     19,
     18
    ],
+   "top_translated": "noct",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -222310,6 +222495,10 @@
     11,
     15
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.0,
+   "urgency_recovery": -0.041,
    "tierb_split": "explore"
   },
   {
@@ -222338,6 +222527,10 @@
     10,
     15
    ],
+   "top_translated": "a",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "holdout"
   },
   {
@@ -222366,6 +222559,10 @@
     12,
     15
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.068,
+   "urgency_recovery": 0.068,
    "tierb_split": "explore"
   },
   {
@@ -222394,6 +222591,10 @@
     9,
     14
    ],
+   "top_translated": "thyroid",
+   "tier_top_translated": null,
+   "expected_tier_translated": 2.0,
+   "urgency_recovery": 0.0,
    "tierb_split": "explore"
   },
   {
@@ -222422,6 +222623,10 @@
     11,
     13
    ],
+   "top_translated": "infection",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "holdout"
   },
   {
@@ -222450,6 +222655,10 @@
     9,
     13
    ],
+   "top_translated": "meds",
+   "tier_top_translated": 1,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -222478,6 +222687,10 @@
     9,
     13
    ],
+   "top_translated": "menopause",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -222506,6 +222719,10 @@
     11,
     15
    ],
+   "top_translated": "cold",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "holdout"
   },
   {
@@ -222534,6 +222751,10 @@
     14,
     16
    ],
+   "top_translated": "diet",
+   "tier_top_translated": 0,
+   "expected_tier_translated": 0.085,
+   "urgency_recovery": 0.009,
    "tierb_split": "explore"
   },
   {
@@ -222562,6 +222783,10 @@
     10,
     14
    ],
+   "top_translated": "anti",
+   "tier_top_translated": 1,
+   "expected_tier_translated": 1.267,
+   "urgency_recovery": -0.216,
    "tierb_split": "holdout"
   },
   {
@@ -222590,6 +222815,10 @@
     8,
     13
    ],
+   "top_translated": "thyroid",
+   "tier_top_translated": null,
+   "expected_tier_translated": 1.177,
+   "urgency_recovery": 0.177,
    "tierb_split": "explore"
   },
   {
@@ -222618,6 +222847,10 @@
     12,
     14
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.0,
+   "urgency_recovery": 0.0,
    "tierb_split": "explore"
   },
   {
@@ -222646,6 +222879,10 @@
     10,
     11
    ],
+   "top_translated": "antibiotic",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 1.877,
+   "urgency_recovery": 0.627,
    "tierb_split": "explore"
   },
   {
@@ -222674,6 +222911,10 @@
     12,
     14
    ],
+   "top_translated": "blood",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 1.392,
+   "urgency_recovery": 0.289,
    "tierb_split": "explore"
   },
   {
@@ -222702,6 +222943,10 @@
     12,
     14
    ],
+   "top_translated": "cold",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -222758,6 +223003,10 @@
     12,
     16
    ],
+   "top_translated": "an",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -222786,6 +223035,10 @@
     13,
     11
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.103,
+   "urgency_recovery": 0.047,
    "tierb_split": "explore"
   },
   {
@@ -222814,6 +223067,10 @@
     9,
     14
    ],
+   "top_translated": "meds",
+   "tier_top_translated": 1,
+   "expected_tier_translated": 0.633,
+   "urgency_recovery": 0.231,
    "tierb_split": "explore"
   },
   {
@@ -222842,6 +223099,10 @@
     8,
     13
    ],
+   "top_translated": "alarm",
+   "tier_top_translated": 0,
+   "expected_tier_translated": 0.282,
+   "urgency_recovery": 0.187,
    "tierb_split": "explore"
   },
   {
@@ -222870,6 +223131,10 @@
     9,
     12
    ],
+   "top_translated": "infection",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -222898,6 +223163,10 @@
     11,
     16
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.0,
+   "urgency_recovery": 0.0,
    "tierb_split": "explore"
   },
   {
@@ -223010,6 +223279,10 @@
     14,
     14
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.0,
+   "urgency_recovery": 0.309,
    "tierb_split": "explore"
   },
   {
@@ -223038,6 +223311,10 @@
     13,
     13
    ],
+   "top_translated": "I",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -223570,6 +223847,10 @@
     13,
     16
    ],
+   "top_translated": "infection",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
