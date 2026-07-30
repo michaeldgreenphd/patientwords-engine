@@ -99,6 +99,18 @@ cd patientwords-engine
 poetry install            # or: pip install -e ".[llm]"
 ```
 
+The CPU measurement scripts (`scripts/logits_eval.py`,
+`scripts/activation_patch.py`) additionally need the ML stack, which is
+deliberately not a package dependency. Install it the way CI does, pinned
+against `constraints.txt` (pin provenance is recorded in that file's header):
+
+```bash
+pip install -c constraints.txt torch --index-url https://download.pytorch.org/whl/cpu
+pip install -c constraints.txt transformers accelerate
+```
+
+Everything else in `scripts/` runs on the base install.
+
 **Keyword config (optional override):** classification works out of the box —
 a packaged default vocabulary (`medlang_circuits/data/keyword_config_default.json`)
 is loaded automatically, so CI trace runs tag features with no local config.
@@ -120,6 +132,8 @@ default bucket.
 | `MEDLANG_ANTHROPIC_MODEL` | override the default Anthropic model |
 | `MEDLANG_GRAPH_MODEL` | override the default traced model (`gemma-2-2b`) |
 | `MEDLANG_KEYWORD_CONFIG` | custom keyword-config path |
+| `NEURONPEDIA_BASE_URL` | point the hosted clients (graph generation, Jacobian-lens readouts) at a different Neuronpedia deployment; defaults to `https://www.neuronpedia.org` |
+| `PW_FE`, `PW_ENG` | `scripts/find_grammar_2x2.py` only: paths to the site and engine checkouts (the defaults assume the dev container's sibling-checkout layout) |
 
 ## Usage
 
@@ -136,7 +150,7 @@ medlang-compare \
 # Tag an existing graph JSON in place (no generation)
 medlang-compare tag path/to/graph.json
 
-# Batch evaluation over paired prompts (three modes)
+# Batch evaluation over paired prompts (four modes)
 medlang-batch-eval pairs.json --mode 2panel --out batch_out
 medlang-batch-eval matrix.json --mode 4quadrant --out batch_out
 medlang-batch-eval patient.json --mode translation --out batch_out
@@ -445,13 +459,14 @@ The public gallery is a **demonstration**, not a data dump.
 `scripts/export_frontend_simulated.py` writes every scenario's measurements to
 the site but copies the interactive circuit render only for the most
 consequential ones — flips first, then the largest language penalty — capped by
-`--max-renders` (default **25**). A large run's full render set is a few hundred
+`--max-renders` (default **200**; HTML-only by default since 2026-07-21 —
+`--with-pngs` restores the rasters). A large run's full render set is a few hundred
 MB of HTML and PNG, so it is bundled and attached to a **GitHub Release** on
 this engine repo instead of bloating the site or git. The export prints a
 ready-to-fire archive trigger whenever a publish exceeds 100 scenarios.
 
 ```bash
-# demo: numbers for all, renders for the top 25 (site stays light)
+# demo: numbers for all, interactive renders for the top 200 (site stays light)
 python scripts/export_frontend_simulated.py --frontend ../patientwords \
     --stamps 20260707T023656Z,20260707T023704Z --no-pngs
 
@@ -495,7 +510,8 @@ index, and the optional `prune` that drops archived PNGs from the branch.
    becomes " therapist" (p=0.10) - the clinical referral returns when the
    colloquial features are removed. Steering runs on Neuronpedia's GPUs and
    does not bill; endpoint/method/strength are env-overridable
-   (NEURONPEDIA_STEER_ENDPOINT/_METHOD/_STRENGTH) and every response is
+   (NEURONPEDIA_STEER_ENDPOINT / _METHOD / _STRENGTH / _BOOST_STRENGTH /
+   _RANK_OFFSET) and every response is
    stored verbatim in the batch summary.
 
 ## What a run costs (measured, July 2026)
@@ -525,8 +541,8 @@ Three separate meters, and only one of them bills real money by default:
    Neuronpedia account settings at roughly $0.001-0.003 per explanation, and
    only when explicitly requested via `generate_explanations`.
 
-3. **GitHub Actions minutes** - free until the private-repo allowance runs
-   out (2,000 minutes/month on the free plan). Tracing paces at roughly 1.5-2
+3. **GitHub Actions minutes** - free on public repos with standard runners;
+   the practical ceiling is runner wall-clock. Tracing paces at roughly 1.5-2
    minutes per graph, so a 150-candidate screened run (~270 graphs: every
    clinical side plus measured patient sides and probe extensions) uses
    roughly 450-550 runner-minutes, about a quarter of the monthly allowance,
