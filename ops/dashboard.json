@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-07-30T21:49:01Z",
+  "updated_utc": "2026-07-30T23:29:37Z",
   "updated_by": "session",
   "queue": {
     "circuit-trace": {
@@ -13,9 +13,9 @@
     },
     "logits-eval": {
       "running": {
-        "fired_utc": "2026-07-30T21:06:44Z",
+        "fired_utc": "2026-07-30T23:29:37Z",
         "commit": "",
-        "note": "meditron 11-30 r7 (owner keep-retrying, standing): seventh attempt; r6 run 30545935725 GitHub-confirmed completed success but landed zero output (sixth load-death, clean exit). Per-pair flush lands any prefix. $0. Ignore-settle basis: r6 terminal per GitHub."
+        "note": "meditron 11-30 r8 - ROOT CAUSE FIX: every prior attempt omitted commit_outputs, which the push path defaults to false, so the commit step skipped and the measured results were discarded with the runner (r6 and r7 both measured all 20 pairs successfully per their logs - the model loads and runs fine). This fire adds commit_outputs:true. $0, ~40 min. Ignore-settle basis: r7 run 30582068854 GitHub-confirmed completed success."
       },
       "pending": null
     },
