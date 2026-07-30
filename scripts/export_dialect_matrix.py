@@ -151,12 +151,17 @@ def main() -> int:
 
     items = []
     graph_model = source_set = None
+    seen_indices = set()  # overlapping gap-fill chunks: first part wins per index
+    # (the same convention as the urgency collector's (model, stem, index) dedupe)
     for part in parts:
         with open(part, encoding="utf-8") as f:
             summary = json.load(f)
         graph_model = summary.get("graph_model") or graph_model
         source_set = summary.get("source_set") or source_set
         for r in summary.get("results", []):
+            if r.get("index") in seen_indices:
+                continue
+            seen_indices.add(r.get("index"))
             baseline_p = r.get("baseline_probability")
             target_bare = bare(r.get("target_token"))
             spread_variants = (r.get("predictive_spread") or {}).get("variants") or []
