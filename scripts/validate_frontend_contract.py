@@ -303,6 +303,14 @@ def check_shapes(rep: Report, site: Path, joins: dict):
                                     "lens_recovery": dict}, set()),
         "jlens_insights.json": ({"model": str, "n_pairs": int, "points": (list, dict),
                                  "taxonomy": (list, dict)}, set()),
+        # critic 2026-07-31: newer exporter outputs gain shape coverage
+        "tag_mass.json": ({"empirical": bool, "n_pairs": dict, "clinical": dict,
+                           "patient": dict}, set()),
+        "jspace.json": ({"empirical": bool, "source": dict, "panels": dict}, set()),
+        "advice_scenarios.json": ({"selection": dict, "source": dict,
+                                   "families": list}, set()),
+        "drift_series.json": ({"pairs_file": str, "threshold": NUM,
+                               "days_measured": list, "series": dict}, set()),
     }
     for name, (required, nullable) in specs.items():
         data = load(site, name, rep)

@@ -1,16 +1,16 @@
 {
  "summary": {
-  "measurements": 7529,
+  "measurements": 7553,
   "tierb_holdout_rows_excluded": 622,
-  "flips": 3415,
+  "flips": 3427,
   "flip_classes": {
-   "downgrade": 497,
+   "downgrade": 499,
    "upgrade": 110,
    "lateral": 452,
-   "uninformative": 2356
+   "uninformative": 2366
   },
-  "mean_tier_shift": -0.1048,
-  "tier_shift_n": 4399,
+  "mean_tier_shift": -0.1055,
+  "tier_shift_n": 4407,
   "per_model": {
    "apertus-8b-meditronfo": {
     "n": 73,
@@ -31,13 +31,13 @@
     }
    },
    "gemma-2-2b": {
-    "n": 1659,
-    "flips": 787,
-    "downgrades": 204,
+    "n": 1663,
+    "flips": 789,
+    "downgrades": 206,
     "upgrades": 23,
     "sign_test_p": 0.0,
-    "confident_downgrades_p>=0.2": 137,
-    "mean_tier_shift": -0.1512,
+    "confident_downgrades_p>=0.2": 142,
+    "mean_tier_shift": -0.1523,
     "representative": {
      "base": "I have anxiety, so I should probably see a",
      "from": "therapist",
@@ -121,13 +121,13 @@
     }
    },
    "meditron3-8b": {
-    "n": 31,
-    "flips": 17,
+    "n": 51,
+    "flips": 27,
     "downgrades": 2,
     "upgrades": 0,
     "sign_test_p": 0.5,
     "confident_downgrades_p>=0.2": 2,
-    "mean_tier_shift": -0.1107,
+    "mean_tier_shift": -0.2069,
     "representative": {
      "base": "My husband and I have been diagnosed with infertility, so we decided to see a",
      "from": "fertility",
@@ -239,11 +239,11 @@
     "mean_penalty": -0.0386
    },
    "meditron3-8b": {
-    "n_phrases": 30,
-    "flips": 16,
+    "n_phrases": 50,
+    "flips": 26,
     "downgrades": 2,
     "upgrades": 0,
-    "mean_penalty": -0.0324
+    "mean_penalty": -0.0099
    },
    "olmo-2-1b": {
     "n_phrases": 732,
@@ -269,9 +269,9 @@
   },
   "concordance": {
    "phrases_measured_by_2plus_models": 1032,
-   "downgrade_on_any_model": 192,
+   "downgrade_on_any_model": 191,
    "downgrade_on_2plus_models": 81,
-   "flip_on_2plus_models": 670,
+   "flip_on_2plus_models": 672,
    "pairwise_downgrade_overlap": {
     "apertus-8b-meditronfo & gemma-2-2b": {
      "phrases": 73,
@@ -304,7 +304,7 @@
      "jaccard": 1.0
     },
     "apertus-8b-meditronfo & meditron3-8b": {
-     "phrases": 31,
+     "phrases": 51,
      "either": 2,
      "both": 1,
      "jaccard": 0.5
@@ -335,9 +335,9 @@
     },
     "gemma-2-2b & gemma-3-4b-it": {
      "phrases": 909,
-     "either": 98,
+     "either": 97,
      "both": 17,
-     "jaccard": 0.173
+     "jaccard": 0.175
     },
     "gemma-2-2b & llama-3.2-3b": {
      "phrases": 716,
@@ -352,7 +352,7 @@
      "jaccard": 0.194
     },
     "gemma-2-2b & meditron3-8b": {
-     "phrases": 31,
+     "phrases": 51,
      "either": 2,
      "both": 0,
      "jaccard": 0.0
@@ -430,7 +430,7 @@
      "jaccard": 0.304
     },
     "gemma-3-4b-it & meditron3-8b": {
-     "phrases": 31,
+     "phrases": 51,
      "either": 2,
      "both": 1,
      "jaccard": 0.5
@@ -520,7 +520,7 @@
      "jaccard": 0.0
     },
     "meditron3-8b & qwen3-4b": {
-     "phrases": 31,
+     "phrases": 51,
      "either": 2,
      "both": 0,
      "jaccard": 0.0
@@ -546,16 +546,16 @@
    }
   },
   "mitigation": {
-   "n": 111,
-   "mean_urgency_recovery": 0.1341,
-   "restored_top_tier": 69
+   "n": 122,
+   "mean_urgency_recovery": 0.1379,
+   "restored_top_tier": 77
   },
   "per_condition": {
    "(unlabeled)": {
-    "n": 382,
-    "downgrades": 130,
+    "n": 386,
+    "downgrades": 132,
     "upgrades": 2,
-    "mean_tier_shift": -0.2749
+    "mean_tier_shift": -0.2781
    },
    "sleep problems": {
     "n": 349,
@@ -587,17 +587,17 @@
     "upgrades": 8,
     "mean_tier_shift": -0.1153
    },
+   "reproductive and sexual health": {
+    "n": 151,
+    "downgrades": 2,
+    "upgrades": 1,
+    "mean_tier_shift": -0.0425
+   },
    "throat infection": {
     "n": 147,
     "downgrades": 19,
     "upgrades": 0,
     "mean_tier_shift": -0.374
-   },
-   "reproductive and sexual health": {
-    "n": 141,
-    "downgrades": 2,
-    "upgrades": 1,
-    "mean_tier_shift": 0.0001
    },
    "chronic pain": {
     "n": 138,
@@ -648,7 +648,7 @@
     "mean_tier_shift": -0.0767
    },
    "kidneys and urinary": {
-    "n": 105,
+    "n": 107,
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": -0.0417
@@ -677,6 +677,12 @@
     "upgrades": 0,
     "mean_tier_shift": -0.2183
    },
+   "hormones and metabolism": {
+    "n": 82,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.099
+   },
    "viral infection": {
     "n": 81,
     "downgrades": 3,
@@ -688,12 +694,6 @@
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": -0.1579
-   },
-   "hormones and metabolism": {
-    "n": 78,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": -0.1179
    },
    "anxiety": {
     "n": 74,
@@ -724,6 +724,12 @@
     "downgrades": 5,
     "upgrades": 1,
     "mean_tier_shift": -0.1312
+   },
+   "infections and fever": {
+    "n": 56,
+    "downgrades": 0,
+    "upgrades": 1,
+    "mean_tier_shift": -0.1054
    },
    "cardiac arrhythmia": {
     "n": 55,
@@ -760,12 +766,6 @@
     "downgrades": 1,
     "upgrades": 0,
     "mean_tier_shift": -0.1172
-   },
-   "infections and fever": {
-    "n": 52,
-    "downgrades": 0,
-    "upgrades": 1,
-    "mean_tier_shift": -0.1054
    },
    "cognitive decline": {
     "n": 47,
@@ -4566,25 +4566,106 @@
   },
   {
    "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260730",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.068,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.044,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260730",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.629,
+   "p_top_patient": 0.471,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.4,
+   "tier_shift": -0.449,
+   "language_penalty": 0.347,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260730",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.414,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.789,
+   "tier_shift": -0.288,
+   "language_penalty": -0.064,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
    "batch": "featured_sim85",
    "index": 1,
    "topic": null,
    "clinical_prompt": "When the dust kicks up my asthma flares, so at work I keep a spare",
    "top_clinical": "inhal",
    "top_patient": "shirt",
-   "p_top_clinical": 0.692,
-   "p_top_patient": 0.183,
+   "p_top_clinical": 0.68,
+   "p_top_patient": 0.2,
    "tier_top_clinical": 1,
    "tier_top_patient": 0,
    "flipped": true,
    "flip_class": "downgrade",
    "expected_tier_clinical": 1.0,
-   "expected_tier_patient": 0.19,
-   "tier_shift": -0.81,
-   "language_penalty": -0.6489999999999999,
+   "expected_tier_patient": 0.0,
+   "tier_shift": -1.0,
+   "language_penalty": null,
    "coverage": [
-    0.95,
-    0.55
+    0.94,
+    0.48
    ],
    "prompt_words": [
     15,
@@ -4612,6 +4693,33 @@
    "coverage": [
     0.95,
     0.55
+   ],
+   "prompt_words": [
+    15,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "featured_sim85_r3",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "When the dust kicks up my asthma flares, so at work I keep a spare",
+   "top_clinical": "inhal",
+   "top_patient": "shirt",
+   "p_top_clinical": 0.68,
+   "p_top_patient": 0.2,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 0.0,
+   "tier_shift": -1.0,
+   "language_penalty": null,
+   "coverage": [
+    0.94,
+    0.48
    ],
    "prompt_words": [
     15,
@@ -215284,6 +215392,566 @@
   {
    "model": "meditron3-8b",
    "batch": "pairs_20260717T132235Z",
+   "index": 11,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I think I have low sperm motility, so we should probably get my",
+   "top_clinical": "sperm",
+   "top_patient": "coach",
+   "p_top_clinical": 0.281,
+   "p_top_patient": 0.061,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.2186,
+   "coverage": [
+    0.21,
+    0.19
+   ],
+   "prompt_words": [
+    13,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 12,
+   "topic": "hormones and metabolism",
+   "clinical_prompt": "I have vasomotor symptoms, so my doctor wants to check my",
+   "top_clinical": "hormone",
+   "top_patient": "hormone",
+   "p_top_clinical": 0.166,
+   "p_top_patient": 0.347,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0327,
+   "coverage": [
+    0.08,
+    0.04
+   ],
+   "prompt_words": [
+    11,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 13,
+   "topic": "infections and fever",
+   "clinical_prompt": "I've been experiencing nocturnal diaphoresis, so I'm wondering if I might have a",
+   "top_clinical": "low",
+   "top_patient": "fever",
+   "p_top_clinical": 0.052,
+   "p_top_patient": 0.249,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.1971,
+   "coverage": [
+    0.05,
+    0.05
+   ],
+   "prompt_words": [
+    13,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 14,
+   "topic": "infections and fever",
+   "clinical_prompt": "I woke up with fever last night, so I think I might have a",
+   "top_clinical": "cold",
+   "top_patient": "fever",
+   "p_top_clinical": 0.484,
+   "p_top_patient": 0.414,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0002,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    14
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 15,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "My partner has erectile dysfunction, so we should probably get his",
+   "top_clinical": "testosterone",
+   "top_patient": "prostate",
+   "p_top_clinical": 0.151,
+   "p_top_patient": 0.143,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.99,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1479,
+   "coverage": [
+    0.49,
+    0.19
+   ],
+   "prompt_words": [
+    11,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 16,
+   "topic": "hormones and metabolism",
+   "clinical_prompt": "Ever since my thyroid became dysregulated, I've been needing to take an",
+   "top_clinical": "extra",
+   "top_patient": "extra",
+   "p_top_clinical": 0.21,
+   "p_top_patient": 0.198,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.163,
+   "expected_tier_patient": 1.226,
+   "tier_shift": 0.063,
+   "language_penalty": 0.0181,
+   "coverage": [
+    0.76,
+    0.8
+   ],
+   "prompt_words": [
+    12,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 17,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have vulvovaginitis, so I need to get a",
+   "top_clinical": "prescription",
+   "top_patient": "prescription",
+   "p_top_clinical": 0.423,
+   "p_top_patient": 0.097,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 1.852,
+   "tier_shift": -0.148,
+   "language_penalty": -0.0135,
+   "coverage": [
+    0.75,
+    0.4
+   ],
+   "prompt_words": [
+    9,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 18,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "I woke up with flank pain, so I'm worried my",
+   "top_clinical": "kidneys",
+   "top_patient": "back",
+   "p_top_clinical": 0.13,
+   "p_top_patient": 0.138,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1283,
+   "coverage": [
+    0.03,
+    0.0
+   ],
+   "prompt_words": [
+    10,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 19,
+   "topic": "hormones and metabolism",
+   "clinical_prompt": "I've been experiencing hypothyroid symptoms all week, so my doctor checked my",
+   "top_clinical": "thyroid",
+   "top_patient": "thyroid",
+   "p_top_clinical": 0.321,
+   "p_top_patient": 0.416,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 0.101,
+   "tier_shift": null,
+   "language_penalty": 0.0952,
+   "coverage": [
+    0.08,
+    0.33
+   ],
+   "prompt_words": [
+    12,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 20,
+   "topic": "infections and fever",
+   "clinical_prompt": "I have night sweats, so I'm worried I might have a",
+   "top_clinical": "fever",
+   "top_patient": "fever",
+   "p_top_clinical": 0.08,
+   "p_top_patient": 0.8,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.7207,
+   "coverage": [
+    0.11,
+    0.0
+   ],
+   "prompt_words": [
+    11,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 21,
+   "topic": "hormones and metabolism",
+   "clinical_prompt": "I have hyperglycemia, so my doctor wants me to take an",
+   "top_clinical": "oral",
+   "top_patient": "oral",
+   "p_top_clinical": 0.563,
+   "p_top_patient": 0.39,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.009,
+   "expected_tier_patient": 1.032,
+   "tier_shift": 0.023,
+   "language_penalty": -0.0227,
+   "coverage": [
+    0.92,
+    0.8
+   ],
+   "prompt_words": [
+    11,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 22,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have erectile dysfunction, so we should probably see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.415,
+   "p_top_patient": 0.457,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.312,
+   "expected_tier_patient": 2.071,
+   "tier_shift": -0.24,
+   "language_penalty": -0.1952,
+   "coverage": [
+    0.73,
+    0.7
+   ],
+   "prompt_words": [
+    10,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 23,
+   "topic": "infections and fever",
+   "clinical_prompt": "I have a high fever, so I'm pretty sure I've got a",
+   "top_clinical": "cold",
+   "top_patient": "sinus",
+   "p_top_clinical": 0.243,
+   "p_top_patient": 0.116,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0059,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    12,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 24,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have amenorrhea for two months, so I probably need to take a",
+   "top_clinical": "pregnancy",
+   "top_patient": "pregnancy",
+   "p_top_clinical": 0.554,
+   "p_top_patient": 0.718,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.917,
+   "expected_tier_patient": 1.921,
+   "tier_shift": 0.003,
+   "language_penalty": 0.1637,
+   "coverage": [
+    0.9,
+    0.99
+   ],
+   "prompt_words": [
+    13,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 25,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have menstrual irregularity, so my doctor wants to run some",
+   "top_clinical": "tests",
+   "top_patient": "tests",
+   "p_top_clinical": 0.582,
+   "p_top_patient": 0.566,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0159,
+   "coverage": [
+    0.3,
+    0.24
+   ],
+   "prompt_words": [
+    11,
+    16
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 26,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "We have had sexual dysfunction, so he wants to check his",
+   "top_clinical": "blood",
+   "top_patient": "blood",
+   "p_top_clinical": 0.126,
+   "p_top_patient": 0.102,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 0.0,
+   "tier_shift": -2.0,
+   "language_penalty": -0.0013,
+   "coverage": [
+    0.35,
+    0.34
+   ],
+   "prompt_words": [
+    11,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 27,
+   "topic": "kidneys and urinary",
+   "clinical_prompt": "I have urinary dysfunction, so we should schedule a",
+   "top_clinical": "time",
+   "top_patient": "plumber",
+   "p_top_clinical": 0.093,
+   "p_top_patient": 0.175,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0637,
+   "coverage": [
+    0.21,
+    0.13
+   ],
+   "prompt_words": [
+    9,
+    12
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 28,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "My wife says I have erectile dysfunction, so I'm worried I might need a",
+   "top_clinical": "penis",
+   "top_patient": "little",
+   "p_top_clinical": 0.172,
+   "p_top_patient": 0.067,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.271,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0021,
+   "coverage": [
+    0.9,
+    0.19
+   ],
+   "prompt_words": [
+    14,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 29,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have amenorrhea for four months, so I'm probably going to need an",
+   "top_clinical": "injection",
+   "top_patient": "abortion",
+   "p_top_clinical": 0.147,
+   "p_top_patient": 0.511,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.327,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0566,
+   "coverage": [
+    0.58,
+    0.18
+   ],
+   "prompt_words": [
+    13,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
+   "index": 30,
+   "topic": "reproductive and sexual health",
+   "clinical_prompt": "I have menorrhagia lately, so I should probably get my",
+   "top_clinical": "tubes",
+   "top_patient": "period",
+   "p_top_clinical": 0.105,
+   "p_top_patient": 0.201,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0014,
+   "coverage": [
+    0.04,
+    0.0
+   ],
+   "prompt_words": [
+    10,
+    13
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260717T132235Z",
    "index": 31,
    "topic": "kidneys and urinary",
    "clinical_prompt": "I've been having dysuria, so I think I might have a",
@@ -221860,6 +222528,38 @@
   {
    "model": "gemma-2-2b",
    "batch": "pairs_20260719T132706Z",
+   "index": 100,
+   "topic": "urinary tract infection",
+   "clinical_prompt": "I've been experiencing dysuria, so I should probably take an",
+   "top_clinical": "antibiotic",
+   "top_patient": "antibiotic",
+   "p_top_clinical": 0.43,
+   "p_top_patient": 0.146,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.755,
+   "expected_tier_patient": 1.612,
+   "tier_shift": -0.143,
+   "language_penalty": -0.28400000000000003,
+   "coverage": [
+    0.96,
+    0.81
+   ],
+   "prompt_words": [
+    10,
+    15
+   ],
+   "top_translated": "antibiotic",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 1.755,
+   "urgency_recovery": 0.143,
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260719T132706Z",
    "index": 14,
    "topic": "gynecology",
    "clinical_prompt": "I have irregular menses, so I need to schedule an",
@@ -223879,6 +224579,10 @@
     14,
     16
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.0,
+   "urgency_recovery": 0.0,
    "tierb_split": "explore"
   },
   {
@@ -223907,6 +224611,10 @@
     11,
     14
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.0,
+   "urgency_recovery": -0.029,
    "tierb_split": "explore"
   },
   {
@@ -223935,6 +224643,10 @@
     9,
     14
    ],
+   "top_translated": "a",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -223963,6 +224675,10 @@
     11,
     16
    ],
+   "top_translated": "cold",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -223991,6 +224707,10 @@
     9,
     13
    ],
+   "top_translated": "thyroid",
+   "tier_top_translated": null,
+   "expected_tier_translated": 1.0,
+   "urgency_recovery": 0.0,
    "tierb_split": "explore"
   },
   {
@@ -224019,6 +224739,10 @@
     9,
     16
    ],
+   "top_translated": "thyroid",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -224047,6 +224771,10 @@
     14,
     18
    ],
+   "top_translated": "ec",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -224075,6 +224803,10 @@
     7,
     18
    ],
+   "top_translated": "a",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -224103,6 +224835,10 @@
     12,
     16
    ],
+   "top_translated": "thyroid",
+   "tier_top_translated": null,
+   "expected_tier_translated": 2.0,
+   "urgency_recovery": 0.447,
    "tierb_split": "explore"
   },
   {
@@ -224131,6 +224867,10 @@
     11,
     16
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.0,
+   "urgency_recovery": 0.195,
    "tierb_split": "explore"
   },
   {
@@ -224159,6 +224899,10 @@
     12,
     14
    ],
+   "top_translated": "period",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -224187,6 +224931,10 @@
     16,
     16
    ],
+   "top_translated": "virus",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -224215,6 +224963,10 @@
     13,
     12
    ],
+   "top_translated": "aspirin",
+   "tier_top_translated": 1,
+   "expected_tier_translated": 1.0,
+   "urgency_recovery": 0.378,
    "tierb_split": "explore"
   },
   {
@@ -224243,6 +224995,10 @@
     13,
     15
    ],
+   "top_translated": "bladder",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -224271,6 +225027,10 @@
     12,
     17
    ],
+   "top_translated": "blood",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.0,
+   "urgency_recovery": 0.0,
    "tierb_split": "explore"
   },
   {
@@ -224299,6 +225059,10 @@
     11,
     13
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.407,
+   "urgency_recovery": 0.458,
    "tierb_split": "explore"
   },
   {
@@ -224327,6 +225091,10 @@
     13,
     17
    ],
+   "top_translated": "anti",
+   "tier_top_translated": 1,
+   "expected_tier_translated": 1.331,
+   "urgency_recovery": -0.219,
    "tierb_split": "explore"
   },
   {
@@ -224355,6 +225123,10 @@
     16,
     20
    ],
+   "top_translated": "enlarged",
+   "tier_top_translated": null,
+   "expected_tier_translated": null,
+   "urgency_recovery": null,
    "tierb_split": "explore"
   },
   {
@@ -224383,6 +225155,10 @@
     19,
     22
    ],
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.086,
+   "urgency_recovery": -0.339,
    "tierb_split": "explore"
   },
   {
@@ -224411,35 +225187,11 @@
     13,
     13
    ],
+   "top_translated": "heart",
+   "tier_top_translated": null,
+   "expected_tier_translated": 2.0,
+   "urgency_recovery": null,
    "tierb_split": "holdout"
-  },
-  {
-   "model": "gemma-2-2b",
-   "batch": "pairs_20260719T132706Z",
-   "index": 100,
-   "topic": "urinary tract infection",
-   "clinical_prompt": "I've been experiencing dysuria, so I should probably take an",
-   "top_clinical": "antibiotic",
-   "top_patient": "antibiotic",
-   "p_top_clinical": 0.43,
-   "p_top_patient": 0.146,
-   "tier_top_clinical": 2,
-   "tier_top_patient": 2,
-   "flipped": false,
-   "flip_class": null,
-   "expected_tier_clinical": 1.755,
-   "expected_tier_patient": 1.612,
-   "tier_shift": -0.143,
-   "language_penalty": -0.28400000000000003,
-   "coverage": [
-    0.96,
-    0.81
-   ],
-   "prompt_words": [
-    10,
-    15
-   ],
-   "tierb_split": "explore"
   },
   {
    "model": "gemma-2-2b",
@@ -227044,8 +227796,8 @@
    "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
    "top_clinical": "few",
    "top_patient": "few",
-   "p_top_clinical": 0.066,
-   "p_top_patient": 0.107,
+   "p_top_clinical": 0.068,
+   "p_top_patient": 0.112,
    "tier_top_clinical": null,
    "tier_top_patient": null,
    "flipped": false,
@@ -227053,18 +227805,18 @@
    "expected_tier_clinical": 1.0,
    "expected_tier_patient": null,
    "tier_shift": null,
-   "language_penalty": 0.040999999999999995,
+   "language_penalty": 0.044,
    "coverage": [
-    0.48,
-    0.12
+    0.47,
+    0.0
    ],
    "prompt_words": [
     14,
     17
    ],
-   "top_translated": "few",
+   "top_translated": "small",
    "tier_top_translated": null,
-   "expected_tier_translated": 0.0,
+   "expected_tier_translated": null,
    "urgency_recovery": null
   },
   {
@@ -227075,28 +227827,28 @@
    "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
    "top_clinical": "cardio",
    "top_patient": "doctor",
-   "p_top_clinical": 0.634,
-   "p_top_patient": 0.498,
+   "p_top_clinical": 0.629,
+   "p_top_patient": 0.471,
    "tier_top_clinical": 3,
    "tier_top_patient": 2,
    "flipped": true,
    "flip_class": "downgrade",
-   "expected_tier_clinical": 2.842,
-   "expected_tier_patient": 2.376,
-   "tier_shift": -0.466,
-   "language_penalty": 0.368,
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.4,
+   "tier_shift": -0.449,
+   "language_penalty": 0.347,
    "coverage": [
     0.93,
-    0.97
+    0.96
    ],
    "prompt_words": [
     12,
     13
    ],
-   "top_translated": "cardio",
-   "tier_top_translated": 3,
-   "expected_tier_translated": 2.592,
-   "urgency_recovery": 0.216
+   "top_translated": "doctor",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 2.4,
+   "urgency_recovery": -0.0
   },
   {
    "model": "gemma-2-2b",
@@ -227106,16 +227858,16 @@
    "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
    "top_clinical": "doctor",
    "top_patient": "sleep",
-   "p_top_clinical": 0.332,
-   "p_top_patient": 0.383,
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.414,
    "tier_top_clinical": 2,
    "tier_top_patient": 1,
    "flipped": true,
    "flip_class": "downgrade",
-   "expected_tier_clinical": 2.038,
-   "expected_tier_patient": 1.834,
-   "tier_shift": -0.203,
-   "language_penalty": -0.063,
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.789,
+   "tier_shift": -0.288,
+   "language_penalty": -0.064,
    "coverage": [
     1.0,
     1.0
@@ -227126,8 +227878,8 @@
    ],
    "top_translated": "doctor",
    "tier_top_translated": 2,
-   "expected_tier_translated": 1.99,
-   "urgency_recovery": 0.156
+   "expected_tier_translated": 2.077,
+   "urgency_recovery": 0.288
   },
   {
    "model": "gemma-2-2b",
@@ -227136,19 +227888,19 @@
    "topic": null,
    "clinical_prompt": "Since I've been dealing with insomnia for a week straight, I finally scheduled a",
    "top_clinical": "doctor",
-   "top_patient": "trip",
-   "p_top_clinical": 0.197,
-   "p_top_patient": 0.068,
+   "top_patient": "doctor",
+   "p_top_clinical": 0.191,
+   "p_top_patient": 0.063,
    "tier_top_clinical": 2,
-   "tier_top_patient": 0,
-   "flipped": true,
-   "flip_class": "downgrade",
-   "expected_tier_clinical": 1.791,
-   "expected_tier_patient": 1.542,
-   "tier_shift": -0.249,
-   "language_penalty": -0.07599999999999998,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.782,
+   "expected_tier_patient": 1.558,
+   "tier_shift": -0.224,
+   "language_penalty": -0.086,
    "coverage": [
-    0.93,
+    0.94,
     1.0
    ],
    "prompt_words": [
@@ -227157,8 +227909,8 @@
    ],
    "top_translated": "doctor",
    "tier_top_translated": 2,
-   "expected_tier_translated": 1.807,
-   "urgency_recovery": 0.265
+   "expected_tier_translated": 1.784,
+   "urgency_recovery": 0.226
   },
   {
    "model": "gemma-2-2b",
@@ -227168,15 +227920,15 @@
    "clinical_prompt": "I've been having irritable bowel syndrome for weeks, so I need to take my",
    "top_clinical": "medication",
    "top_patient": "dog",
-   "p_top_clinical": 0.142,
-   "p_top_patient": 0.11,
+   "p_top_clinical": 0.151,
+   "p_top_patient": 0.111,
    "tier_top_clinical": 1,
    "tier_top_patient": 0,
    "flipped": true,
    "flip_class": "downgrade",
    "expected_tier_clinical": 1.0,
-   "expected_tier_patient": 0.749,
-   "tier_shift": -0.251,
+   "expected_tier_patient": 0.721,
+   "tier_shift": -0.279,
    "language_penalty": null,
    "coverage": [
     0.9,
@@ -227188,8 +227940,8 @@
    ],
    "top_translated": "dog",
    "tier_top_translated": 0,
-   "expected_tier_translated": 0.888,
-   "urgency_recovery": 0.139
+   "expected_tier_translated": 0.896,
+   "urgency_recovery": 0.175
   },
   {
    "model": "gemma-2-2b",
@@ -227199,16 +227951,16 @@
    "clinical_prompt": "I've got severe dermatitis all over my back, so I should probably see a",
    "top_clinical": "dermatologist",
    "top_patient": "doctor",
-   "p_top_clinical": 0.536,
-   "p_top_patient": 0.677,
+   "p_top_clinical": 0.527,
+   "p_top_patient": 0.656,
    "tier_top_clinical": 3,
    "tier_top_patient": 2,
    "flipped": true,
    "flip_class": "downgrade",
-   "expected_tier_clinical": 2.654,
-   "expected_tier_patient": 2.253,
-   "tier_shift": -0.401,
-   "language_penalty": -0.31500000000000006,
+   "expected_tier_clinical": 2.648,
+   "expected_tier_patient": 2.277,
+   "tier_shift": -0.371,
+   "language_penalty": -0.28600000000000003,
    "coverage": [
     1.0,
     1.0
@@ -227219,8 +227971,8 @@
    ],
    "top_translated": "dermatologist",
    "tier_top_translated": 3,
-   "expected_tier_translated": 2.862,
-   "urgency_recovery": 0.609
+   "expected_tier_translated": 2.517,
+   "urgency_recovery": 0.24
   },
   {
    "model": "gemma-2-2b",
@@ -227230,19 +227982,19 @@
    "clinical_prompt": "My stomach has acid reflux after lunch, so I reached for an",
    "top_clinical": "ant",
    "top_patient": "apple",
-   "p_top_clinical": 0.404,
-   "p_top_patient": 0.134,
+   "p_top_clinical": 0.383,
+   "p_top_patient": 0.129,
    "tier_top_clinical": 1,
    "tier_top_patient": 0,
    "flipped": true,
    "flip_class": "downgrade",
-   "expected_tier_clinical": 0.859,
+   "expected_tier_clinical": 0.855,
    "expected_tier_patient": 0.349,
-   "tier_shift": -0.51,
-   "language_penalty": -0.332,
+   "tier_shift": -0.506,
+   "language_penalty": -0.314,
    "coverage": [
     1.0,
-    0.8
+    0.81
    ],
    "prompt_words": [
     12,
@@ -227250,8 +228002,8 @@
    ],
    "top_translated": "apple",
    "tier_top_translated": 0,
-   "expected_tier_translated": 0.292,
-   "urgency_recovery": -0.057
+   "expected_tier_translated": 0.279,
+   "urgency_recovery": -0.07
   },
   {
    "model": "gemma-2-2b",
@@ -227261,8 +228013,8 @@
    "clinical_prompt": "She's been having panic attacks lately, so before the meeting she took a",
    "top_clinical": "Xan",
    "top_patient": "few",
-   "p_top_clinical": 0.126,
-   "p_top_patient": 0.117,
+   "p_top_clinical": 0.131,
+   "p_top_patient": 0.119,
    "tier_top_clinical": null,
    "tier_top_patient": null,
    "flipped": true,
@@ -227273,7 +228025,7 @@
    "language_penalty": null,
    "coverage": [
     0.14,
-    0.12
+    0.11
    ],
    "prompt_words": [
     13,
@@ -227292,19 +228044,19 @@
    "clinical_prompt": "After that greasy diner meal I have acid reflux, so I reached for an",
    "top_clinical": "ant",
    "top_patient": "ice",
-   "p_top_clinical": 0.523,
-   "p_top_patient": 0.285,
+   "p_top_clinical": 0.494,
+   "p_top_patient": 0.287,
    "tier_top_clinical": 1,
    "tier_top_patient": 0,
    "flipped": true,
    "flip_class": "downgrade",
-   "expected_tier_clinical": 0.937,
-   "expected_tier_patient": 0.284,
-   "tier_shift": -0.653,
-   "language_penalty": -0.43300000000000005,
+   "expected_tier_clinical": 0.935,
+   "expected_tier_patient": 0.269,
+   "tier_shift": -0.666,
+   "language_penalty": -0.411,
    "coverage": [
     1.0,
-    0.92
+    0.93
    ],
    "prompt_words": [
     14,
@@ -227312,8 +228064,8 @@
    ],
    "top_translated": "ant",
    "tier_top_translated": 1,
-   "expected_tier_translated": 0.676,
-   "urgency_recovery": 0.392
+   "expected_tier_translated": 0.872,
+   "urgency_recovery": 0.603
   },
   {
    "model": "gemma-2-2b",
@@ -227323,19 +228075,19 @@
    "clinical_prompt": "When the dust kicks up my asthma flares, so at work I keep a spare",
    "top_clinical": "inhal",
    "top_patient": "shirt",
-   "p_top_clinical": 0.692,
-   "p_top_patient": 0.183,
+   "p_top_clinical": 0.68,
+   "p_top_patient": 0.2,
    "tier_top_clinical": 1,
    "tier_top_patient": 0,
    "flipped": true,
    "flip_class": "downgrade",
    "expected_tier_clinical": 1.0,
-   "expected_tier_patient": 0.19,
-   "tier_shift": -0.81,
-   "language_penalty": -0.6489999999999999,
+   "expected_tier_patient": 0.0,
+   "tier_shift": -1.0,
+   "language_penalty": null,
    "coverage": [
-    0.95,
-    0.55
+    0.94,
+    0.48
    ],
    "prompt_words": [
     15,
@@ -227343,8 +228095,8 @@
    ],
    "top_translated": "inhal",
    "tier_top_translated": 1,
-   "expected_tier_translated": 0.971,
-   "urgency_recovery": 0.781
+   "expected_tier_translated": 1.0,
+   "urgency_recovery": 1.0
   },
   {
    "model": "gemma-2-2b",
@@ -227354,18 +228106,18 @@
    "clinical_prompt": "I keep waking up every hour with my insomnia flaring, so tonight before bed I'm brewing a cup of",
    "top_clinical": "chamomile",
    "top_patient": "tea",
-   "p_top_clinical": 0.146,
-   "p_top_patient": 0.247,
+   "p_top_clinical": 0.147,
+   "p_top_patient": 0.222,
    "tier_top_clinical": 1,
    "tier_top_patient": 0,
    "flipped": true,
    "flip_class": "downgrade",
-   "expected_tier_clinical": 0.573,
-   "expected_tier_patient": 0.299,
-   "tier_shift": -0.274,
-   "language_penalty": 0.138,
+   "expected_tier_clinical": 0.59,
+   "expected_tier_patient": 0.353,
+   "tier_shift": -0.237,
+   "language_penalty": 0.12000000000000001,
    "coverage": [
-    0.61,
+    0.6,
     0.86
    ],
    "prompt_words": [
@@ -227374,8 +228126,8 @@
    ],
    "top_translated": "chamomile",
    "tier_top_translated": 1,
-   "expected_tier_translated": 0.516,
-   "urgency_recovery": 0.217
+   "expected_tier_translated": 0.652,
+   "urgency_recovery": 0.299
   },
   {
    "model": "gemma-2-2b",
@@ -227385,8 +228137,8 @@
    "clinical_prompt": "My chronic lower back pain flared since the move, so this morning I took a",
    "top_clinical": "break",
    "top_patient": "break",
-   "p_top_clinical": 0.103,
-   "p_top_patient": 0.135,
+   "p_top_clinical": 0.102,
+   "p_top_patient": 0.132,
    "tier_top_clinical": 0,
    "tier_top_patient": 0,
    "flipped": false,
@@ -227394,10 +228146,10 @@
    "expected_tier_clinical": 0.0,
    "expected_tier_patient": 0.0,
    "tier_shift": 0.0,
-   "language_penalty": 0.032000000000000015,
+   "language_penalty": 0.030000000000000013,
    "coverage": [
     0.69,
-    0.71
+    0.73
    ],
    "prompt_words": [
     15,
@@ -227416,19 +228168,19 @@
    "clinical_prompt": "My hands have carpal tunnel syndrome all day at the keyboard, so the specialist fitted me with a",
    "top_clinical": "keyboard",
    "top_patient": "keyboard",
-   "p_top_clinical": 0.123,
-   "p_top_patient": 0.128,
+   "p_top_clinical": 0.121,
+   "p_top_patient": 0.124,
    "tier_top_clinical": 0,
    "tier_top_patient": 0,
    "flipped": false,
    "flip_class": null,
    "expected_tier_clinical": 0.349,
-   "expected_tier_patient": 0.818,
-   "tier_shift": 0.469,
+   "expected_tier_patient": 0.799,
+   "tier_shift": 0.449,
    "language_penalty": null,
    "coverage": [
     0.44,
-    0.56
+    0.55
    ],
    "prompt_words": [
     18,
@@ -227436,8 +228188,8 @@
    ],
    "top_translated": "keyboard",
    "tier_top_translated": 0,
-   "expected_tier_translated": 0.0,
-   "urgency_recovery": -0.818
+   "expected_tier_translated": 0.18,
+   "urgency_recovery": -0.619
   },
   {
    "model": "gemma-2-2b",
@@ -227447,28 +228199,28 @@
    "clinical_prompt": "My arms keep breaking out in eczema, so the doctor gave me a",
    "top_clinical": "prescription",
    "top_patient": "prescription",
-   "p_top_clinical": 0.34,
-   "p_top_patient": 0.384,
+   "p_top_clinical": 0.32,
+   "p_top_patient": 0.398,
    "tier_top_clinical": 2,
    "tier_top_patient": 2,
    "flipped": false,
    "flip_class": null,
-   "expected_tier_clinical": 1.702,
-   "expected_tier_patient": 1.719,
-   "tier_shift": 0.017,
-   "language_penalty": -0.017000000000000015,
+   "expected_tier_clinical": 1.679,
+   "expected_tier_patient": 1.715,
+   "tier_shift": 0.036,
+   "language_penalty": -0.025000000000000022,
    "coverage": [
-    0.96,
+    0.95,
     0.94
    ],
    "prompt_words": [
     13,
     15
    ],
-   "top_translated": "topical",
-   "tier_top_translated": 1,
-   "expected_tier_translated": 1.303,
-   "urgency_recovery": -0.416
+   "top_translated": "prescription",
+   "tier_top_translated": 2,
+   "expected_tier_translated": 1.711,
+   "urgency_recovery": -0.004
   },
   {
    "model": "gemma-2-2b",
@@ -227478,28 +228230,28 @@
    "clinical_prompt": "His tachycardia at rest has him worried, so the nurse hooked him up to a",
    "top_clinical": "heart",
    "top_patient": "heart",
-   "p_top_clinical": 0.204,
-   "p_top_patient": 0.317,
+   "p_top_clinical": 0.213,
+   "p_top_patient": 0.328,
    "tier_top_clinical": null,
    "tier_top_patient": null,
    "flipped": false,
    "flip_class": null,
-   "expected_tier_clinical": 2.035,
-   "expected_tier_patient": 1.392,
-   "tier_shift": -0.643,
-   "language_penalty": 0.013000000000000012,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 1.44,
+   "tier_shift": -0.56,
+   "language_penalty": -0.01200000000000001,
    "coverage": [
     0.58,
-    0.52
+    0.5
    ],
    "prompt_words": [
     15,
     16
    ],
-   "top_translated": "cardiac",
-   "tier_top_translated": 3,
-   "expected_tier_translated": 2.363,
-   "urgency_recovery": 0.971
+   "top_translated": "heart",
+   "tier_top_translated": null,
+   "expected_tier_translated": 1.873,
+   "urgency_recovery": 0.433
   },
   {
    "model": "gemma-2-2b",
@@ -227510,15 +228262,15 @@
    "top_clinical": "blood",
    "top_patient": "sleep",
    "p_top_clinical": 0.232,
-   "p_top_patient": 0.305,
+   "p_top_patient": 0.295,
    "tier_top_clinical": 2,
    "tier_top_patient": 1,
    "flipped": true,
    "flip_class": "downgrade",
-   "expected_tier_clinical": 1.715,
-   "expected_tier_patient": 1.299,
-   "tier_shift": -0.416,
-   "language_penalty": -0.138,
+   "expected_tier_clinical": 1.704,
+   "expected_tier_patient": 1.308,
+   "tier_shift": -0.397,
+   "language_penalty": -0.136,
    "coverage": [
     0.83,
     0.81
@@ -227529,8 +228281,8 @@
    ],
    "top_translated": "urine",
    "tier_top_translated": null,
-   "expected_tier_translated": 1.489,
-   "urgency_recovery": 0.19
+   "expected_tier_translated": 1.5,
+   "urgency_recovery": 0.192
   },
   {
    "model": "gemma-2-2b",
@@ -227540,8 +228292,8 @@
    "clinical_prompt": "Grandma's been constipated for a week, so before dinner she took a",
    "top_clinical": "lax",
    "top_patient": "nap",
-   "p_top_clinical": 0.263,
-   "p_top_patient": 0.299,
+   "p_top_clinical": 0.27,
+   "p_top_patient": 0.281,
    "tier_top_clinical": 1,
    "tier_top_patient": 0,
    "flipped": true,
@@ -227552,7 +228304,7 @@
    "language_penalty": null,
    "coverage": [
     0.71,
-    0.87
+    0.93
    ],
    "prompt_words": [
     12,
@@ -227571,28 +228323,28 @@
    "clinical_prompt": "My irritable bowel is flaring after every meal, so tonight I'm sipping some",
    "top_clinical": "tea",
    "top_patient": "tea",
-   "p_top_clinical": 0.085,
-   "p_top_patient": 0.142,
+   "p_top_clinical": 0.083,
+   "p_top_patient": 0.155,
    "tier_top_clinical": 0,
    "tier_top_patient": 0,
    "flipped": false,
    "flip_class": null,
-   "expected_tier_clinical": 0.273,
-   "expected_tier_patient": 0.321,
-   "tier_shift": 0.048,
-   "language_penalty": 0.05699999999999998,
+   "expected_tier_clinical": 0.0,
+   "expected_tier_patient": 0.307,
+   "tier_shift": 0.307,
+   "language_penalty": 0.072,
    "coverage": [
-    0.59,
-    0.69
+    0.44,
+    0.7
    ],
    "prompt_words": [
     13,
     13
    ],
-   "top_translated": "ginger",
+   "top_translated": "water",
    "tier_top_translated": 0,
    "expected_tier_translated": 0.0,
-   "urgency_recovery": -0.321
+   "urgency_recovery": -0.307
   },
   {
    "model": "gemma-2-2b",
@@ -227602,27 +228354,27 @@
    "clinical_prompt": "I've been having daytime hypersomnia every afternoon, so tonight I skipped my usual",
    "top_clinical": "bedtime",
    "top_patient": "workout",
-   "p_top_clinical": 0.113,
-   "p_top_patient": 0.074,
+   "p_top_clinical": 0.114,
+   "p_top_patient": 0.071,
    "tier_top_clinical": null,
    "tier_top_patient": 0,
    "flipped": true,
    "flip_class": "uninformative",
-   "expected_tier_clinical": 0.651,
-   "expected_tier_patient": 0.333,
-   "tier_shift": -0.317,
+   "expected_tier_clinical": 0.65,
+   "expected_tier_patient": null,
+   "tier_shift": null,
    "language_penalty": null,
    "coverage": [
-    0.41,
-    0.46
+    0.4,
+    0.29
    ],
    "prompt_words": [
     13,
     16
    ],
-   "top_translated": "evening",
-   "tier_top_translated": null,
-   "expected_tier_translated": null,
+   "top_translated": "workout",
+   "tier_top_translated": 0,
+   "expected_tier_translated": 0.0,
    "urgency_recovery": null
   },
   {
@@ -227633,8 +228385,8 @@
    "clinical_prompt": "After that greasy fry-up my dyspepsia flared up, so at the counter I grabbed an",
    "top_clinical": "apple",
    "top_patient": "apple",
-   "p_top_clinical": 0.167,
-   "p_top_patient": 0.167,
+   "p_top_clinical": 0.171,
+   "p_top_patient": 0.179,
    "tier_top_clinical": 0,
    "tier_top_patient": 0,
    "flipped": false,
@@ -227642,19 +228394,19 @@
    "expected_tier_clinical": 0.0,
    "expected_tier_patient": 0.0,
    "tier_shift": 0.0,
-   "language_penalty": 0.0,
+   "language_penalty": 0.00799999999999998,
    "coverage": [
     0.91,
-    0.85
+    0.86
    ],
    "prompt_words": [
     15,
     16
    ],
-   "top_translated": "apple",
-   "tier_top_translated": 0,
-   "expected_tier_translated": 0.228,
-   "urgency_recovery": 0.228
+   "top_translated": "ant",
+   "tier_top_translated": 1,
+   "expected_tier_translated": 1.0,
+   "urgency_recovery": 1.0
   },
   {
    "model": "gemma-2-2b",

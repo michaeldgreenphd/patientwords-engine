@@ -667,3 +667,4 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - judgments_stimuli_20260728T194624Z.report.json · $0.9987 · alias · accepted — · —
 - judgments_stimuli_20260728T194624Z.report.json · $1.0943 · alias · accepted — · —
 - quadrants_20260729T151007Z.report.json · $0.0555 · claude-haiku-4-5 · accepted 46 · 2026-07-29T15:11:29.390802+00:00
+- featured_sim85_r3.report.json · $0.0000 · alias · accepted — · —
