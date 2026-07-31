@@ -61,6 +61,7 @@ import platform
 import subprocess
 import sys
 from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -84,6 +85,8 @@ from medlang_circuits.graph_client import (
     resolve_graph_model,
     slugify,
 )
+from medlang_circuits.evaluate_models import _price
+from medlang_circuits.llm_client import reset_translate_usage, translate_usage_snapshot
 from medlang_circuits.neuronpedia_features import FeatureFetcher, NullFetcher
 from medlang_circuits.schema_utils import is_feature_node, node_layer_and_index
 from medlang_circuits.steering import (
@@ -1046,6 +1049,44 @@ def evaluate_dialect(
 # ---------------------------------------------------------------------------
 
 
+def write_mitigation_sidecar(out: Path, start_index: int = 1) -> Path | None:
+    """Write the run's translation-cost sidecar; returns its path (None if no paid calls).
+
+    Named ``mitigation.report.json`` so ledger_update's ``*.report.json`` scan
+    finds it and so the trace workflow's commit list can glob it. Costs come
+    from the API's own usage counts, never an estimate: ``imputed`` stays false
+    here, and the reconstruction script sets it true for historical runs whose
+    usage was never captured.
+    """
+    usage = translate_usage_snapshot()
+    if not usage.get("calls"):
+        return None
+    per_model = {}
+    total = 0.0
+    for model, u in usage["models"].items():
+        in_price, out_price = _price(model)
+        cost = u["input_tokens"] * in_price / 1e6 + u["output_tokens"] * out_price / 1e6
+        per_model[model] = {**u, "cost_usd": round(cost, 6)}
+        total += cost
+    path = out / "mitigation.report.json"
+    payload = {
+        "_": ("Mitigation (patient->clinical translation) cost for this trace chunk. "
+              "The only paid call in a circuit-trace run."),
+        "kind": "mitigation",
+        "run_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "start_index": start_index,
+        "imputed": False,
+        "calls": usage["calls"],
+        "input_tokens": usage["input_tokens"],
+        "output_tokens": usage["output_tokens"],
+        "per_model": per_model,
+        "cost_usd": round(total, 6),
+    }
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+    return path
+
+
 def run_batch(
     pairs_path: str,
     out_dir: str = "medlang_batch_out",
@@ -1107,6 +1148,12 @@ def run_batch(
     out.mkdir(parents=True, exist_ok=True)
     results: list[dict[str, Any]] = []
     summary_path = out / "batch_summary.json"
+    # The mitigation translation is the only paid call in a trace run. Its cost
+    # was invisible until 2026-07-31 (no sidecar was ever written, so every
+    # --show-mitigation run booked $0). Reset the accumulator here and
+    # checkpoint the sidecar next to the summary: a run killed mid-batch still
+    # spent real money, so the cost record must survive truncation too.
+    reset_translate_usage()
     summary = {
         "mode": mode,
         "backend": backend,
@@ -1149,12 +1196,14 @@ def run_batch(
         results.append(result)
         with open(summary_path, "w", encoding="utf-8") as f:  # checkpoint per pair
             json.dump(summary, f, indent=2)
+        write_mitigation_sidecar(out, start_index=start_index)
         logger.info("Checkpointed pair %d (%d done) to %s", i, len(results), summary_path)
     # F-H06 (audit 1, 2026-07-17): a truncated checkpoint must be tellable from
     # a complete smaller chunk; the final rewrite is what flips the flag.
     summary["completed"] = True
     with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
+    write_mitigation_sidecar(out, start_index=start_index)
     logger.info("Batch complete: %d pairs (mode=%s), summary at %s", len(results), mode, summary_path)
     return results
 

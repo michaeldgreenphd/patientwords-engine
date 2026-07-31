@@ -49,6 +49,8 @@ def parse_args(argv=None):
     parser.add_argument("--advice-dir", default="data/advice",
                         help="advice-arm archive; its responses_*/judgments_* "
                              ".report.json sidecars fold into the same totals")
+    parser.add_argument("--trace-dir", default="trace_out",
+                        help="trace output root scanned for mitigation cost sidecars")
     parser.add_argument("--dashboard", default="ops/dashboard.json")
     parser.add_argument("--ledger", default=None,
                         help="ledger markdown file (default: lexicographically newest docs/*ledger*.md, "
@@ -94,10 +96,25 @@ def resolve_ledger(arg):
     return matches[-1] if matches else DEFAULT_LEDGER
 
 
-def scan_new_sidecars(sim_dir: Path, seen: set):
-    """(path, parsed sidecar) for every unseen *.report.json, sorted by filename."""
-    for path in sorted(sim_dir.glob("*.report.json"), key=lambda p: p.name):
-        if path.name in seen:
+def sidecar_key(path: Path) -> str:
+    """Ledger identity for a sidecar.
+
+    Flat dirs (data/simulated, data/advice) key on the bare filename — the
+    historical convention, and entries_seen is full of those. Mitigation
+    sidecars are nested one directory per batch and their basenames repeat
+    (mitigation.part_01.report.json exists under every stem), so they take
+    their batch directory as a prefix. Depth-independent: the key is the same
+    whether the scan ran on a relative or absolute path.
+    """
+    if path.name.startswith("mitigation") and path.parent.name:
+        return f"{path.parent.name}/{path.name}"
+    return path.name
+
+
+def scan_new_sidecars(sim_dir: Path, seen: set, pattern: str = "*.report.json"):
+    """(path, parsed sidecar) for every unseen matching sidecar, sorted by key."""
+    for path in sorted(sim_dir.glob(pattern), key=lambda p: str(p)):
+        if sidecar_key(path) in seen or path.name in seen:
             continue
         try:
             report = json.loads(path.read_text(encoding="utf-8"))
@@ -236,20 +253,29 @@ def main(argv=None):
     # this the $2/day guard never sees landed advice spend once the fire
     # resolves (advice handoff rev 2 accounting gap, closed 2026-07-21).
     # attribute_tierb's task/model gate keeps them out of Tier B rows.
-    for scan_dir in (Path(args.simulated_dir), Path(args.advice_dir)):
-        for path, report in scan_new_sidecars(scan_dir, set(entries_seen)):
+    # Trace-run mitigation sidecars (trace_out/<stem>/mitigation.part_NN.report.json)
+    # join the same fold. The translation panel is the only paid call in a
+    # circuit-trace run and its cost was booked as $0 for the study's whole
+    # history: no sidecar was written before 2026-07-31, and the workflow's
+    # commit list would not have carried one anyway (owner decision D2).
+    scan_specs = [(Path(args.simulated_dir), "*.report.json"),
+                  (Path(args.advice_dir), "*.report.json"),
+                  (Path(args.trace_dir), "*/mitigation*.report.json")]
+    for scan_dir, pattern in scan_specs:
+        for path, report in scan_new_sidecars(scan_dir, set(entries_seen), pattern):
             cost = float(report.get("cost_usd") or 0.0)
-            run_ts = parse_ts(report.get("run_timestamp"))
+            run_ts = parse_ts(report.get("run_timestamp") or report.get("run_utc"))
             # Bucket by the actual UTC day: offset timestamps book to the day
             # they land in UTC, and an unparseable stamp falls back to --date
             # instead of minting a garbage key.
             day = run_ts.astimezone(timezone.utc).date().isoformat() if run_ts else date
             spend["lifetime_generation_usd"] = round(float(spend.get("lifetime_generation_usd") or 0.0) + cost, 4)
             by_day[day] = round(float(by_day.get(day) or 0.0) + cost, 4)
-            entries_seen.append(path.name)
-            spend.setdefault("entries_folded", {})[path.name] = cost
+            key = sidecar_key(path)
+            entries_seen.append(key)
+            spend.setdefault("entries_folded", {})[key] = cost
             attribute_tierb(dashboard, spend, report, path.name, cost)
-            bullets.append(ledger_bullet(path.name, cost, report))
+            bullets.append(ledger_bullet(key, cost, report))
 
     # Growth pass (critic HIGH closed 2026-07-29): a cumulative sidecar already
     # in entries_seen is rewritten in place as its archive grows, so the
@@ -261,21 +287,24 @@ def main(argv=None):
     # attribution by construction.
     entries_folded = spend.setdefault("entries_folded", {})
     seen_set = set(entries_seen)
-    for scan_dir in (Path(args.simulated_dir), Path(args.advice_dir)):
+    for scan_dir, pattern in scan_specs:
         if not Path(scan_dir).is_dir():
             continue
-        for path in sorted(Path(scan_dir).glob("*.report.json")):
-            if path.name not in seen_set:
+        for path in sorted(Path(scan_dir).glob(pattern)):
+            key = sidecar_key(path)
+            if key not in seen_set and path.name not in seen_set:
                 continue
+            # a pre-nesting entry may still be keyed on the bare filename
+            key = key if key in entries_folded or key in seen_set else path.name
             try:
                 report = json.loads(path.read_text(encoding="utf-8"))
             except ValueError:
                 continue
             current = float(report.get("cost_usd") or 0.0)
-            if path.name not in entries_folded:
-                prior = folded_from_ledger(ledger_path, path.name)
-                entries_folded[path.name] = prior if prior is not None else current
-            delta = round(current - float(entries_folded[path.name]), 6)
+            if key not in entries_folded:
+                prior = folded_from_ledger(ledger_path, key)
+                entries_folded[key] = prior if prior is not None else current
+            delta = round(current - float(entries_folded[key]), 6)
             if delta > 0.0005:
                 # book to the sidecar's own run day: a bootstrap can surface
                 # WEEKS-old underbooking, and charging that to today would
@@ -286,8 +315,8 @@ def main(argv=None):
                 spend["lifetime_generation_usd"] = round(
                     float(spend.get("lifetime_generation_usd") or 0.0) + delta, 4)
                 by_day[day] = round(float(by_day.get(day) or 0.0) + delta, 4)
-                entries_folded[path.name] = current
-                bullets.append(f"- {path.name} · ${delta:.4f} · delta (cumulative ${current:.4f}, day {day})")
+                entries_folded[key] = current
+                bullets.append(f"- {key} · ${delta:.4f} · delta (cumulative ${current:.4f}, day {day})")
 
     if bullets:
         spend["today"] = {"date": date, "spent_usd": float(by_day.get(date) or 0.0)}

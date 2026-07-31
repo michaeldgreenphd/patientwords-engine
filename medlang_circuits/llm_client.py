@@ -85,14 +85,50 @@ def classify_feature_with_llm(description: str, top_tokens: list[str] | None = N
     return text if text in CATEGORIES else None
 
 
+# Translation-call usage accumulator. The mitigation translation is the only
+# paid call inside a trace run, and until 2026-07-31 its cost was invisible:
+# no sidecar was ever written, so ledger_update booked $0 for every
+# --show-mitigation run. Callers snapshot this after a batch to emit a real
+# cost sidecar. Module-level (not a return-value change) so the existing
+# callers of translate_with_llm keep their signature.
+_TRANSLATE_USAGE: dict[str, object] = {
+    "calls": 0, "input_tokens": 0, "output_tokens": 0, "models": {}}
+
+
+def translate_usage_snapshot() -> dict:
+    """Copy of the accumulated translation usage since the last reset."""
+    snap = dict(_TRANSLATE_USAGE)
+    snap["models"] = dict(_TRANSLATE_USAGE["models"])
+    return snap
+
+
+def reset_translate_usage() -> None:
+    """Zero the accumulator (call before a batch)."""
+    _TRANSLATE_USAGE.update(calls=0, input_tokens=0, output_tokens=0, models={})
+
+
+def _record_translate_usage(model: str, usage) -> None:
+    """Fold one response's usage in; tolerates SDKs that omit the field."""
+    inp = int(getattr(usage, "input_tokens", 0) or 0)
+    out = int(getattr(usage, "output_tokens", 0) or 0)
+    _TRANSLATE_USAGE["calls"] = int(_TRANSLATE_USAGE["calls"]) + 1
+    _TRANSLATE_USAGE["input_tokens"] = int(_TRANSLATE_USAGE["input_tokens"]) + inp
+    _TRANSLATE_USAGE["output_tokens"] = int(_TRANSLATE_USAGE["output_tokens"]) + out
+    per = _TRANSLATE_USAGE["models"].setdefault(model, {"calls": 0, "input_tokens": 0, "output_tokens": 0})
+    per["calls"] += 1
+    per["input_tokens"] += inp
+    per["output_tokens"] += out
+
+
 def translate_with_llm(patient_text: str, model: str | None = None) -> str | None:
     """Translate colloquial patient language to clinical terminology, or None if unavailable."""
     client = _get_client()
     if client is None:
         return None
+    resolved = model or DEFAULT_MODEL
     try:
         response = client.messages.create(
-            model=model or DEFAULT_MODEL,
+            model=resolved,
             max_tokens=256,
             system=_translate_system(),
             messages=[{"role": "user", "content": patient_text}],
@@ -100,5 +136,6 @@ def translate_with_llm(patient_text: str, model: str | None = None) -> str | Non
     except Exception as e:
         logger.warning("LLM translation failed: %s", e)
         return None
+    _record_translate_usage(resolved, getattr(response, "usage", None))
     text = next((b.text for b in response.content if b.type == "text"), "").strip()
     return text or None

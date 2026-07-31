@@ -37,13 +37,17 @@ def tree(tmp_path):
     docs.mkdir()
     ledger = docs / "overnight_ledger_20260708.md"
     ledger.write_text("# Overnight session ledger\n\nProse the script must not touch.\n", encoding="utf-8")
-    return {"sim": sim, "adv": adv, "dash": tmp_path / "ops" / "dashboard.json", "ledger": ledger}
+    trace = tmp_path / "trace_out"
+    trace.mkdir()
+    return {"sim": sim, "adv": adv, "trace": trace,
+            "dash": tmp_path / "ops" / "dashboard.json", "ledger": ledger}
 
 
 def run(tree, *extra):
     # --advice-dir always pinned to the fixture so a real sidecar landing in
     # the repo's data/advice/ can never leak into these hermetic tests
     argv = ["--simulated-dir", str(tree["sim"]), "--advice-dir", str(tree["adv"]),
+            "--trace-dir", str(tree["trace"]),
             "--dashboard", str(tree["dash"]),
             "--ledger", str(tree["ledger"]), "--date", TODAY, *extra]
     return ledger_update.main(argv)
@@ -460,3 +464,47 @@ def test_delta_bootstrap_from_ledger_bullets(tree):
     dash = load_dash(tree)
     assert dash["spend"]["by_day"][TODAY] == pytest.approx(5.0)
     assert dash["spend"]["entries_folded"]["responses_stimuli_y.report.json"] == pytest.approx(5.0)
+
+
+def test_mitigation_sidecars_fold_from_trace_out(tree):
+    """The translation panel is the only paid call in a trace run, and its cost
+    booked as $0 for the study's whole history: nothing wrote the sidecar, and
+    nothing scanned trace_out for one (owner decision D2, 2026-07-31)."""
+    out = tree["trace"] / "pairs_x"
+    out.mkdir(parents=True)
+    (out / "mitigation.part_01.report.json").write_text(json.dumps({
+        "kind": "mitigation", "cost_usd": 0.0421, "imputed": False,
+        "run_utc": "2026-07-08T21:00:00Z", "calls": 20}), encoding="utf-8")
+    assert run(tree) == 0
+    spend = load_dash(tree)["spend"]
+    # keyed by batch dir: the bare basename repeats under every stem
+    assert "pairs_x/mitigation.part_01.report.json" in spend["entries_seen"]
+    assert spend["by_day"]["2026-07-08"] == 0.0421
+    # idempotent: a second scan books nothing more
+    assert run(tree) == 0
+    assert load_dash(tree)["spend"]["by_day"]["2026-07-08"] == 0.0421
+
+
+def test_same_basename_under_two_stems_both_book(tree):
+    """Every batch dir holds a mitigation.part_01.report.json; a basename-keyed
+    ledger would silently drop all but the first."""
+    for stem, cost in (("pairs_a", 0.02), ("pairs_b", 0.03)):
+        d = tree["trace"] / stem
+        d.mkdir(parents=True)
+        (d / "mitigation.part_01.report.json").write_text(json.dumps({
+            "kind": "mitigation", "cost_usd": cost,
+            "run_utc": "2026-07-08T21:00:00Z"}), encoding="utf-8")
+    assert run(tree) == 0
+    assert load_dash(tree)["spend"]["by_day"]["2026-07-08"] == 0.05
+
+
+def test_mitigation_sidecar_key_is_depth_independent():
+    """Same key from a relative or absolute scan, so a re-run never double-books."""
+    rel = Path("trace_out/pairs_x/mitigation.part_11.report.json")
+    absolute = Path("/a/b/trace_out/pairs_x/mitigation.part_11.report.json")
+    assert (ledger_update.sidecar_key(rel)
+            == ledger_update.sidecar_key(absolute)
+            == "pairs_x/mitigation.part_11.report.json")
+    # flat sidecars keep the historical bare-filename identity
+    assert ledger_update.sidecar_key(
+        Path("/tmp/x/data/simulated/pairs_a.report.json")) == "pairs_a.report.json"

@@ -327,8 +327,15 @@ jobs:
           if [ -f "$OUT_DIR/batch_summary.json" ]; then
             mv "$OUT_DIR/batch_summary.json" "$OUT_DIR/batch_summary.part_$(printf '%02d' "$START").json"
           fi
+          # The mitigation translation is the only paid call in a trace run.
+          # Its sidecar was never committed (and before 2026-07-31 never even
+          # written), so ledger_update booked $0 for every --show-mitigation
+          # run. Same part_NN treatment as the summary so chunks never clobber.
+          if [ -f "$OUT_DIR/mitigation.report.json" ]; then
+            mv "$OUT_DIR/mitigation.report.json" "$OUT_DIR/mitigation.part_$(printf '%02d' "$START").report.json"
+          fi
           shopt -s nullglob
-          FILES=("$OUT_DIR"/index_*.html "$OUT_DIR"/index_*.png "$OUT_DIR"/multi_*.html "$OUT_DIR"/multi_*.png "$OUT_DIR"/batch_summary.part_*.json)
+          FILES=("$OUT_DIR"/index_*.html "$OUT_DIR"/index_*.png "$OUT_DIR"/multi_*.html "$OUT_DIR"/multi_*.png "$OUT_DIR"/batch_summary.part_*.json "$OUT_DIR"/mitigation.part_*.report.json)
           if [ ${#FILES[@]} -eq 0 ]; then
             echo "No trace outputs to commit"
             exit 0
