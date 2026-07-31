@@ -1,0 +1,1158 @@
+{
+  "mode": "4quadrant",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 7,
+  "pairs_requested": 17,
+  "completed": false,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "91d152f63b10",
+    "runner_image": "20260720.247.2"
+  },
+  "results": [
+    {
+      "index": 7,
+      "mode": "4quadrant",
+      "prompts": {
+        "A": "My doctor says I have hyperlipidemia, and I'm going to need to take",
+        "B": "My doctor say I got hyperlipidemia, and I'ma need to take",
+        "C": "My doctor says I have high cholesterol, and I'm going to need to take",
+        "D": "My doctor say I got high cholesterol, and I'ma need to take"
+      },
+      "target_token": "Output \" stat\"",
+      "probabilities": {
+        "A": 0.12,
+        "B": 0.104,
+        "C": 0.146,
+        "D": 0.105
+      },
+      "register_shift_deltas": {
+        "standard_morphosyntax": 0.025999999999999995,
+        "nonstandard_morphosyntax": 0.0010000000000000009
+      },
+      "variety_shift_deltas": {
+        "medical_lexicon": -0.016,
+        "patient_language": -0.040999999999999995
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "A": [
+          [
+            "Output \" a\"",
+            0.287
+          ],
+          [
+            "Output \" medication\"",
+            0.12
+          ],
+          [
+            "Output \" stat\"",
+            0.12
+          ],
+          [
+            "Output \" Lip\"",
+            0.073
+          ],
+          [
+            "Output \" medicine\"",
+            0.057
+          ]
+        ],
+        "B": [
+          [
+            "Output \" a\"",
+            0.193
+          ],
+          [
+            "Output \" stat\"",
+            0.104
+          ],
+          [
+            "Output \" medicine\"",
+            0.091
+          ],
+          [
+            "Output \" some\"",
+            0.091
+          ],
+          [
+            "Output \" medication\"",
+            0.081
+          ]
+        ],
+        "C": [
+          [
+            "Output \" a\"",
+            0.309
+          ],
+          [
+            "Output \" medication\"",
+            0.165
+          ],
+          [
+            "Output \" stat\"",
+            0.146
+          ],
+          [
+            "Output \" medicine\"",
+            0.088
+          ],
+          [
+            "Output \" some\"",
+            0.047
+          ]
+        ],
+        "D": [
+          [
+            "Output \" a\"",
+            0.197
+          ],
+          [
+            "Output \" medicine\"",
+            0.136
+          ],
+          [
+            "Output \" stat\"",
+            0.105
+          ],
+          [
+            "Output \" medication\"",
+            0.093
+          ],
+          [
+            "Output \" some\"",
+            0.093
+          ]
+        ]
+      },
+      "outputs": {
+        "html": "trace_out/quadrants_20260729T151007Z/index_07.html",
+        "png": "trace_out/quadrants_20260729T151007Z/index_07.png",
+        "edge_views": {
+          "register_standard": {
+            "from": "A",
+            "to": "C",
+            "delta": 0.025999999999999995,
+            "shared_features": 963,
+            "unique_to_a": 420,
+            "unique_to_b": 323,
+            "html": "trace_out/quadrants_20260729T151007Z/index_07_register_standard.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_07_register_standard.png"
+          },
+          "register_nonstandard": {
+            "from": "B",
+            "to": "D",
+            "delta": 0.0010000000000000009,
+            "shared_features": 1003,
+            "unique_to_a": 371,
+            "unique_to_b": 310,
+            "html": "trace_out/quadrants_20260729T151007Z/index_07_register_nonstandard.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_07_register_nonstandard.png"
+          },
+          "variety_medical": {
+            "from": "A",
+            "to": "B",
+            "delta": -0.016,
+            "shared_features": 1132,
+            "unique_to_a": 251,
+            "unique_to_b": 242,
+            "html": "trace_out/quadrants_20260729T151007Z/index_07_variety_medical.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_07_variety_medical.png"
+          },
+          "variety_patient": {
+            "from": "C",
+            "to": "D",
+            "delta": -0.040999999999999995,
+            "shared_features": 1050,
+            "unique_to_a": 236,
+            "unique_to_b": 263,
+            "html": "trace_out/quadrants_20260729T151007Z/index_07_variety_patient.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_07_variety_patient.png"
+          }
+        }
+      }
+    },
+    {
+      "index": 8,
+      "mode": "4quadrant",
+      "prompts": {
+        "A": "When I experience epistaxis, the worst part is that I cannot",
+        "B": "When I be experiencing epistaxis, the worst part be that I can't",
+        "C": "When I experience nosebleeds, the worst part is that I cannot",
+        "D": "When I be experiencing nosebleeds, the worst part be that I can't"
+      },
+      "target_token": "Output \" breathe\"",
+      "probabilities": {
+        "A": 0.034,
+        "B": 0.043,
+        "C": 0.159,
+        "D": 0.087
+      },
+      "register_shift_deltas": {
+        "standard_morphosyntax": 0.125,
+        "nonstandard_morphosyntax": 0.044
+      },
+      "variety_shift_deltas": {
+        "medical_lexicon": 0.008999999999999994,
+        "patient_language": -0.07200000000000001
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "A": [
+          [
+            "Output \" stop\"",
+            0.151
+          ],
+          [
+            "Output \" see\"",
+            0.104
+          ],
+          [
+            "Output \" do\"",
+            0.071
+          ],
+          [
+            "Output \" control\"",
+            0.063
+          ],
+          [
+            "Output \" breathe\"",
+            0.034
+          ]
+        ],
+        "B": [
+          [
+            "Output \" stop\"",
+            0.133
+          ],
+          [
+            "Output \" see\"",
+            0.091
+          ],
+          [
+            "Output \" get\"",
+            0.055
+          ],
+          [
+            "Output \" do\"",
+            0.049
+          ],
+          [
+            "Output \" breathe\"",
+            0.043
+          ]
+        ],
+        "C": [
+          [
+            "Output \" stop\"",
+            0.204
+          ],
+          [
+            "Output \" breathe\"",
+            0.159
+          ],
+          [
+            "Output \" see\"",
+            0.059
+          ],
+          [
+            "Output \" do\"",
+            0.052
+          ],
+          [
+            "Output \" get\"",
+            0.046
+          ]
+        ],
+        "D": [
+          [
+            "Output \" stop\"",
+            0.163
+          ],
+          [
+            "Output \" breathe\"",
+            0.087
+          ],
+          [
+            "Output \" do\"",
+            0.077
+          ],
+          [
+            "Output \" see\"",
+            0.06
+          ],
+          [
+            "Output \" get\"",
+            0.06
+          ]
+        ]
+      },
+      "outputs": {
+        "html": "trace_out/quadrants_20260729T151007Z/index_08.html",
+        "png": "trace_out/quadrants_20260729T151007Z/index_08.png",
+        "edge_views": {
+          "register_standard": {
+            "from": "A",
+            "to": "C",
+            "delta": 0.125,
+            "shared_features": 840,
+            "unique_to_a": 671,
+            "unique_to_b": 602,
+            "html": "trace_out/quadrants_20260729T151007Z/index_08_register_standard.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_08_register_standard.png"
+          },
+          "register_nonstandard": {
+            "from": "B",
+            "to": "D",
+            "delta": 0.044,
+            "shared_features": 905,
+            "unique_to_a": 614,
+            "unique_to_b": 573,
+            "html": "trace_out/quadrants_20260729T151007Z/index_08_register_nonstandard.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_08_register_nonstandard.png"
+          },
+          "variety_medical": {
+            "from": "A",
+            "to": "B",
+            "delta": 0.008999999999999994,
+            "shared_features": 1156,
+            "unique_to_a": 355,
+            "unique_to_b": 363,
+            "html": "trace_out/quadrants_20260729T151007Z/index_08_variety_medical.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_08_variety_medical.png"
+          },
+          "variety_patient": {
+            "from": "C",
+            "to": "D",
+            "delta": -0.07200000000000001,
+            "shared_features": 1112,
+            "unique_to_a": 330,
+            "unique_to_b": 366,
+            "html": "trace_out/quadrants_20260729T151007Z/index_08_variety_patient.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_08_variety_patient.png"
+          }
+        }
+      }
+    },
+    {
+      "index": 9,
+      "mode": "4quadrant",
+      "prompts": {
+        "A": "She has been dealing with anaphylaxis, so she has had to avoid",
+        "B": "She been dealing with anaphylaxis, so she had to be avoiding",
+        "C": "She has been dealing with severe allergic reactions, so she has had to avoid",
+        "D": "She been dealing with severe allergic reactions, so she had to be avoiding"
+      },
+      "target_token": "Output \" all\"",
+      "probabilities": {
+        "A": 0.062,
+        "B": 0.096,
+        "C": 0.061,
+        "D": 0.1
+      },
+      "register_shift_deltas": {
+        "standard_morphosyntax": -0.0010000000000000009,
+        "nonstandard_morphosyntax": 0.0040000000000000036
+      },
+      "variety_shift_deltas": {
+        "medical_lexicon": 0.034,
+        "patient_language": 0.03900000000000001
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "A": [
+          [
+            "Output \" certain\"",
+            0.102
+          ],
+          [
+            "Output \" dairy\"",
+            0.07
+          ],
+          [
+            "Output \" all\"",
+            0.062
+          ],
+          [
+            "Output \" peanuts\"",
+            0.062
+          ],
+          [
+            "Output \" a\"",
+            0.054
+          ]
+        ],
+        "B": [
+          [
+            "Output \" all\"",
+            0.096
+          ],
+          [
+            "Output \" peanuts\"",
+            0.084
+          ],
+          [
+            "Output \" certain\"",
+            0.066
+          ],
+          [
+            "Output \" dairy\"",
+            0.051
+          ],
+          [
+            "Output \" anything\"",
+            0.045
+          ]
+        ],
+        "C": [
+          [
+            "Output \" eating\"",
+            0.114
+          ],
+          [
+            "Output \" the\"",
+            0.069
+          ],
+          [
+            "Output \" all\"",
+            0.061
+          ],
+          [
+            "Output \" certain\"",
+            0.061
+          ],
+          [
+            "Output \" a\"",
+            0.047
+          ]
+        ],
+        "D": [
+          [
+            "Output \" all\"",
+            0.1
+          ],
+          [
+            "Output \" certain\"",
+            0.078
+          ],
+          [
+            "Output \" a\"",
+            0.068
+          ],
+          [
+            "Output \" the\"",
+            0.06
+          ],
+          [
+            "Output \" anything\"",
+            0.047
+          ]
+        ]
+      },
+      "outputs": {
+        "html": "trace_out/quadrants_20260729T151007Z/index_09.html",
+        "png": "trace_out/quadrants_20260729T151007Z/index_09.png",
+        "edge_views": {
+          "register_standard": {
+            "from": "A",
+            "to": "C",
+            "delta": -0.0010000000000000009,
+            "shared_features": 995,
+            "unique_to_a": 353,
+            "unique_to_b": 301,
+            "html": "trace_out/quadrants_20260729T151007Z/index_09_register_standard.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_09_register_standard.png"
+          },
+          "register_nonstandard": {
+            "from": "B",
+            "to": "D",
+            "delta": 0.0040000000000000036,
+            "shared_features": 1017,
+            "unique_to_a": 330,
+            "unique_to_b": 245,
+            "html": "trace_out/quadrants_20260729T151007Z/index_09_register_nonstandard.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_09_register_nonstandard.png"
+          },
+          "variety_medical": {
+            "from": "A",
+            "to": "B",
+            "delta": 0.034,
+            "shared_features": 1045,
+            "unique_to_a": 303,
+            "unique_to_b": 302,
+            "html": "trace_out/quadrants_20260729T151007Z/index_09_variety_medical.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_09_variety_medical.png"
+          },
+          "variety_patient": {
+            "from": "C",
+            "to": "D",
+            "delta": 0.03900000000000001,
+            "shared_features": 957,
+            "unique_to_a": 339,
+            "unique_to_b": 305,
+            "html": "trace_out/quadrants_20260729T151007Z/index_09_variety_patient.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_09_variety_patient.png"
+          }
+        }
+      }
+    },
+    {
+      "index": 10,
+      "mode": "4quadrant",
+      "prompts": {
+        "A": "His recent diagnosis of myocardial infarction means he is supposed to",
+        "B": "His recent diagnosis of myocardial infarction mean he supposed to",
+        "C": "His recent diagnosis of a heart attack means he is supposed to",
+        "D": "His recent diagnosis of a heart attack mean he supposed to"
+      },
+      "target_token": "Output \" be\"",
+      "probabilities": {
+        "A": 0.326,
+        "B": 0.326,
+        "C": 0.348,
+        "D": 0.486
+      },
+      "register_shift_deltas": {
+        "standard_morphosyntax": 0.021999999999999964,
+        "nonstandard_morphosyntax": 0.15999999999999998
+      },
+      "variety_shift_deltas": {
+        "medical_lexicon": 0.0,
+        "patient_language": 0.138
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "A": [
+          [
+            "Output \" be\"",
+            0.326
+          ],
+          [
+            "Output \" rest\"",
+            0.136
+          ],
+          [
+            "Output \" take\"",
+            0.106
+          ],
+          [
+            "Output \" stay\"",
+            0.057
+          ],
+          [
+            "Output \" have\"",
+            0.05
+          ]
+        ],
+        "B": [
+          [
+            "Output \" be\"",
+            0.326
+          ],
+          [
+            "Output \" rest\"",
+            0.12
+          ],
+          [
+            "Output \" take\"",
+            0.093
+          ],
+          [
+            "Output \" stay\"",
+            0.093
+          ],
+          [
+            "Output \" have\"",
+            0.083
+          ]
+        ],
+        "C": [
+          [
+            "Output \" be\"",
+            0.348
+          ],
+          [
+            "Output \" rest\"",
+            0.146
+          ],
+          [
+            "Output \" take\"",
+            0.113
+          ],
+          [
+            "Output \" stay\"",
+            0.053
+          ],
+          [
+            "Output \" have\"",
+            0.037
+          ]
+        ],
+        "D": [
+          [
+            "Output \" be\"",
+            0.486
+          ],
+          [
+            "Output \" rest\"",
+            0.096
+          ],
+          [
+            "Output \" take\"",
+            0.075
+          ],
+          [
+            "Output \" stay\"",
+            0.066
+          ],
+          [
+            "Output \" have\"",
+            0.066
+          ]
+        ]
+      },
+      "outputs": {
+        "html": "trace_out/quadrants_20260729T151007Z/index_10.html",
+        "png": "trace_out/quadrants_20260729T151007Z/index_10.png",
+        "edge_views": {
+          "register_standard": {
+            "from": "A",
+            "to": "C",
+            "delta": 0.021999999999999964,
+            "shared_features": 1032,
+            "unique_to_a": 249,
+            "unique_to_b": 303,
+            "html": "trace_out/quadrants_20260729T151007Z/index_10_register_standard.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_10_register_standard.png"
+          },
+          "register_nonstandard": {
+            "from": "B",
+            "to": "D",
+            "delta": 0.15999999999999998,
+            "shared_features": 984,
+            "unique_to_a": 317,
+            "unique_to_b": 358,
+            "html": "trace_out/quadrants_20260729T151007Z/index_10_register_nonstandard.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_10_register_nonstandard.png"
+          },
+          "variety_medical": {
+            "from": "A",
+            "to": "B",
+            "delta": 0.0,
+            "shared_features": 961,
+            "unique_to_a": 320,
+            "unique_to_b": 340,
+            "html": "trace_out/quadrants_20260729T151007Z/index_10_variety_medical.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_10_variety_medical.png"
+          },
+          "variety_patient": {
+            "from": "C",
+            "to": "D",
+            "delta": 0.138,
+            "shared_features": 1018,
+            "unique_to_a": 317,
+            "unique_to_b": 324,
+            "html": "trace_out/quadrants_20260729T151007Z/index_10_variety_patient.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_10_variety_patient.png"
+          }
+        }
+      }
+    },
+    {
+      "index": 11,
+      "mode": "4quadrant",
+      "prompts": {
+        "A": "Every time I get acute hypoglycemia, I find myself reaching for",
+        "B": "Every time I get acute hypoglycemia, I be reaching for",
+        "C": "Every time I get low blood sugar, I find myself reaching for",
+        "D": "Every time I get low blood sugar, I be reaching for"
+      },
+      "target_token": "Output \" a\"",
+      "probabilities": {
+        "A": 0.271,
+        "B": 0.155,
+        "C": 0.311,
+        "D": 0.178
+      },
+      "register_shift_deltas": {
+        "standard_morphosyntax": 0.03999999999999998,
+        "nonstandard_morphosyntax": 0.022999999999999993
+      },
+      "variety_shift_deltas": {
+        "medical_lexicon": -0.11600000000000002,
+        "patient_language": -0.133
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "A": [
+          [
+            "Output \" a\"",
+            0.271
+          ],
+          [
+            "Output \" the\"",
+            0.146
+          ],
+          [
+            "Output \" my\"",
+            0.113
+          ],
+          [
+            "Output \" something\"",
+            0.061
+          ],
+          [
+            "Output \" some\"",
+            0.037
+          ]
+        ],
+        "B": [
+          [
+            "Output \" the\"",
+            0.199
+          ],
+          [
+            "Output \" my\"",
+            0.176
+          ],
+          [
+            "Output \" a\"",
+            0.155
+          ],
+          [
+            "Output \" something\"",
+            0.057
+          ],
+          [
+            "Output \" some\"",
+            0.057
+          ]
+        ],
+        "C": [
+          [
+            "Output \" a\"",
+            0.311
+          ],
+          [
+            "Output \" the\"",
+            0.114
+          ],
+          [
+            "Output \" something\"",
+            0.069
+          ],
+          [
+            "Output \" my\"",
+            0.061
+          ],
+          [
+            "Output \" sugar\"",
+            0.033
+          ]
+        ],
+        "D": [
+          [
+            "Output \" the\"",
+            0.201
+          ],
+          [
+            "Output \" a\"",
+            0.178
+          ],
+          [
+            "Output \" my\"",
+            0.108
+          ],
+          [
+            "Output \" something\"",
+            0.058
+          ],
+          [
+            "Output \" that\"",
+            0.058
+          ]
+        ]
+      },
+      "outputs": {
+        "html": "trace_out/quadrants_20260729T151007Z/index_11.html",
+        "png": "trace_out/quadrants_20260729T151007Z/index_11.png",
+        "edge_views": {
+          "register_standard": {
+            "from": "A",
+            "to": "C",
+            "delta": 0.03999999999999998,
+            "shared_features": 973,
+            "unique_to_a": 420,
+            "unique_to_b": 323,
+            "html": "trace_out/quadrants_20260729T151007Z/index_11_register_standard.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_11_register_standard.png"
+          },
+          "register_nonstandard": {
+            "from": "B",
+            "to": "D",
+            "delta": 0.022999999999999993,
+            "shared_features": 909,
+            "unique_to_a": 456,
+            "unique_to_b": 362,
+            "html": "trace_out/quadrants_20260729T151007Z/index_11_register_nonstandard.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_11_register_nonstandard.png"
+          },
+          "variety_medical": {
+            "from": "A",
+            "to": "B",
+            "delta": -0.11600000000000002,
+            "shared_features": 1134,
+            "unique_to_a": 259,
+            "unique_to_b": 231,
+            "html": "trace_out/quadrants_20260729T151007Z/index_11_variety_medical.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_11_variety_medical.png"
+          },
+          "variety_patient": {
+            "from": "C",
+            "to": "D",
+            "delta": -0.133,
+            "shared_features": 1048,
+            "unique_to_a": 248,
+            "unique_to_b": 223,
+            "html": "trace_out/quadrants_20260729T151007Z/index_11_variety_patient.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_11_variety_patient.png"
+          }
+        }
+      }
+    },
+    {
+      "index": 12,
+      "mode": "4quadrant",
+      "prompts": {
+        "A": "After the generalized anxiety disorder developed, my family doctor recommended I see",
+        "B": "Once the generalized anxiety disorder came up, my family doctor be recommending I see",
+        "C": "After the panic attacks developed, my family doctor recommended I see",
+        "D": "Once the panic attacks came up, my family doctor be recommending I see"
+      },
+      "target_token": "Output \" a\"",
+      "probabilities": {
+        "A": 0.871,
+        "B": 0.801,
+        "C": 0.852,
+        "D": 0.801
+      },
+      "register_shift_deltas": {
+        "standard_morphosyntax": -0.019000000000000017,
+        "nonstandard_morphosyntax": 0.0
+      },
+      "variety_shift_deltas": {
+        "medical_lexicon": -0.06999999999999995,
+        "patient_language": -0.050999999999999934
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "A": [
+          [
+            "Output \" a\"",
+            0.871
+          ],
+          [
+            "Output \" Dr\"",
+            0.023
+          ],
+          [
+            "Output \" an\"",
+            0.023
+          ],
+          [
+            "Output \" the\"",
+            0.016
+          ],
+          [
+            "Output \" someone\"",
+            0.014
+          ]
+        ],
+        "B": [
+          [
+            "Output \" a\"",
+            0.801
+          ],
+          [
+            "Output \" someone\"",
+            0.035
+          ],
+          [
+            "Output \" the\"",
+            0.031
+          ],
+          [
+            "Output \" an\"",
+            0.027
+          ],
+          [
+            "Output \" my\"",
+            0.017
+          ]
+        ],
+        "C": [
+          [
+            "Output \" a\"",
+            0.852
+          ],
+          [
+            "Output \" an\"",
+            0.054
+          ],
+          [
+            "Output \" someone\"",
+            0.023
+          ],
+          [
+            "Output \" Dr\"",
+            0.014
+          ],
+          [
+            "Output \" the\"",
+            0.014
+          ]
+        ],
+        "D": [
+          [
+            "Output \" a\"",
+            0.801
+          ],
+          [
+            "Output \" someone\"",
+            0.051
+          ],
+          [
+            "Output \" an\"",
+            0.024
+          ],
+          [
+            "Output \" the\"",
+            0.024
+          ],
+          [
+            "Output \" somebody\"",
+            0.015
+          ]
+        ]
+      },
+      "outputs": {
+        "html": "trace_out/quadrants_20260729T151007Z/index_12.html",
+        "png": "trace_out/quadrants_20260729T151007Z/index_12.png",
+        "edge_views": {
+          "register_standard": {
+            "from": "A",
+            "to": "C",
+            "delta": -0.019000000000000017,
+            "shared_features": 826,
+            "unique_to_a": 329,
+            "unique_to_b": 348,
+            "html": "trace_out/quadrants_20260729T151007Z/index_12_register_standard.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_12_register_standard.png"
+          },
+          "register_nonstandard": {
+            "from": "B",
+            "to": "D",
+            "delta": 0.0,
+            "shared_features": 888,
+            "unique_to_a": 339,
+            "unique_to_b": 342,
+            "html": "trace_out/quadrants_20260729T151007Z/index_12_register_nonstandard.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_12_register_nonstandard.png"
+          },
+          "variety_medical": {
+            "from": "A",
+            "to": "B",
+            "delta": -0.06999999999999995,
+            "shared_features": 837,
+            "unique_to_a": 318,
+            "unique_to_b": 390,
+            "html": "trace_out/quadrants_20260729T151007Z/index_12_variety_medical.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_12_variety_medical.png"
+          },
+          "variety_patient": {
+            "from": "C",
+            "to": "D",
+            "delta": -0.050999999999999934,
+            "shared_features": 851,
+            "unique_to_a": 323,
+            "unique_to_b": 379,
+            "html": "trace_out/quadrants_20260729T151007Z/index_12_variety_patient.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_12_variety_patient.png"
+          }
+        }
+      }
+    },
+    {
+      "index": 13,
+      "mode": "4quadrant",
+      "prompts": {
+        "A": "My child has otitis media, and the pediatrician said we should start",
+        "B": "My child got otitis media, and the pediatrician say we should start",
+        "C": "My child has an ear infection, and the pediatrician said we should start",
+        "D": "My child got an ear infection, and the pediatrician say we should start"
+      },
+      "target_token": "Output \" using\"",
+      "probabilities": {
+        "A": 0.113,
+        "B": 0.059,
+        "C": null,
+        "D": null
+      },
+      "register_shift_deltas": {
+        "standard_morphosyntax": null,
+        "nonstandard_morphosyntax": null
+      },
+      "variety_shift_deltas": {
+        "medical_lexicon": -0.054000000000000006,
+        "patient_language": null
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "A": [
+          [
+            "Output \" using\"",
+            0.113
+          ],
+          [
+            "Output \" giving\"",
+            0.1
+          ],
+          [
+            "Output \" him\"",
+            0.088
+          ],
+          [
+            "Output \" the\"",
+            0.078
+          ],
+          [
+            "Output \" with\"",
+            0.069
+          ]
+        ],
+        "B": [
+          [
+            "Output \" with\"",
+            0.11
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.11
+          ],
+          [
+            "Output \" the\"",
+            0.086
+          ],
+          [
+            "Output \" him\"",
+            0.086
+          ],
+          [
+            "Output \" using\"",
+            0.059
+          ]
+        ],
+        "C": [
+          [
+            "Output \" him\"",
+            0.219
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.15
+          ],
+          [
+            "Output \" her\"",
+            0.08
+          ],
+          [
+            "Output \" with\"",
+            0.071
+          ],
+          [
+            "Output \" the\"",
+            0.049
+          ]
+        ],
+        "D": [
+          [
+            "Output \" him\"",
+            0.189
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.147
+          ],
+          [
+            "Output \" her\"",
+            0.079
+          ],
+          [
+            "Output \" with\"",
+            0.07
+          ],
+          [
+            "Output \" the\"",
+            0.062
+          ]
+        ]
+      },
+      "outputs": {
+        "html": "trace_out/quadrants_20260729T151007Z/index_13.html",
+        "png": "trace_out/quadrants_20260729T151007Z/index_13.png",
+        "edge_views": {
+          "register_standard": {
+            "from": "A",
+            "to": "C",
+            "delta": null,
+            "shared_features": 917,
+            "unique_to_a": 432,
+            "unique_to_b": 428,
+            "html": "trace_out/quadrants_20260729T151007Z/index_13_register_standard.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_13_register_standard.png"
+          },
+          "register_nonstandard": {
+            "from": "B",
+            "to": "D",
+            "delta": null,
+            "shared_features": 963,
+            "unique_to_a": 372,
+            "unique_to_b": 407,
+            "html": "trace_out/quadrants_20260729T151007Z/index_13_register_nonstandard.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_13_register_nonstandard.png"
+          },
+          "variety_medical": {
+            "from": "A",
+            "to": "B",
+            "delta": -0.054000000000000006,
+            "shared_features": 1102,
+            "unique_to_a": 247,
+            "unique_to_b": 233,
+            "html": "trace_out/quadrants_20260729T151007Z/index_13_variety_medical.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_13_variety_medical.png"
+          },
+          "variety_patient": {
+            "from": "C",
+            "to": "D",
+            "delta": null,
+            "shared_features": 1158,
+            "unique_to_a": 187,
+            "unique_to_b": 212,
+            "html": "trace_out/quadrants_20260729T151007Z/index_13_variety_patient.html",
+            "png": "trace_out/quadrants_20260729T151007Z/index_13_variety_patient.png"
+          }
+        }
+      }
+    }
+  ]
+}
