@@ -1,8 +1,20 @@
 # Backfill accelerator — standing prompt (every ~2 h, fresh session, $0 only)
 
+> **THIS ROUTINE DOES NOT EXIST AND NEVER RAN.** Corrected 2026-07-27: the
+> `backfill-accel` Routine was never successfully created — `create_trigger`
+> requires an in-client approval that the orchestrator session cannot satisfy,
+> so no accelerator pass has ever fired (0 entries in 280+ `ops/trigger_journal.jsonl`
+> records). Do not plan capacity around it, and do not read a full lane as
+> evidence it ran. The measurement lanes are driven **only** by the daily 13:00
+> UTC cycle plus whatever in-session timers happen to be alive; that is the
+> documented cause of the multi-day idles on 07-24..27, 07-30, and 08-01..02.
+> This file is kept as the exact text to use *if* the owner ever approves the
+> Routine in-client. Everything below is a proposal, not a description.
+
 Exact prompt text for the `backfill-accel` scheduled Routine (owner-approved
-2026-07-22 in session chat). Committed so anyone can audit precisely what the
-accelerator does. Changes require recreating the Routine with the new text.
+2026-07-22 in session chat, never instantiated). Committed so anyone can audit
+precisely what the accelerator would do. Changes require recreating the Routine
+with the new text.
 
 ---
 

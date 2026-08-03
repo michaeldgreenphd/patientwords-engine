@@ -48,6 +48,17 @@ Top-level fields, and which step of the Routine's cycle writes them:
 | `decisions_pending` | `{id, title, context}` items awaiting the owner | the Routine's own edits |
 | `blockers` | plain strings describing what is stuck | the Routine's own edits |
 | `notes` | standing operational notes (footer) | the Routine's own edits |
+| `decisions_log` | resolved owner decisions, newest first — the audit trail behind `decisions_pending` | the Routine's own edits |
+| `queued_next` | the fire queue: what goes into each lane as it frees, in order | the Routine's own edits |
+| `endpoint_protocol` | the standing rule that Tier B holdout unsealing runs **only** on an explicit owner instruction, never on a schedule | owner decision, transcribed once; do not edit without one |
+| `critic` | `{last_pass, report}` pointer to the newest `docs/critic/critic_*.md` | the Routine's own edits, Mon/Wed/Fri |
+
+Two `tierb` counters have **no automated writer** and drift silently:
+`traced_pairs` and `screened_in_pairs`. Recount before quoting either
+(`traced_pairs` = distinct `(batch stem, results[].index)` across
+`trace_out/<Tier B stem>*/batch_summary*.json`; the method is recorded in
+`tierb.traced_pairs_method`). The value carried here read 2049 until the
+2026-08-03 recount put it at 1080.
 
 ## Spend accounting
 

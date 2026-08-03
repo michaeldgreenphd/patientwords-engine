@@ -1,5 +1,11 @@
 # HANDOFF — ops-infrastructure build, 2026-07-09
 
+> **SUPERSEDED — do not use this as a current-state handoff.** Read
+> `docs/HANDOFF_20260804.md` instead. Everything below describes 2026-07-09/10
+> state: Tier B counts, model roster, verdicts, and open items are all four
+> weeks stale, and the "living document, keep current" line at the top was never
+> honored. Kept for archaeology of how the ops system was built.
+
 Living document for model/session handoff (owner may transition this
 session from Fable to Claude Opus 4.8 at the 3:00 PM or Friday checkpoint).
 A successor session should be able to take over from this file plus the
