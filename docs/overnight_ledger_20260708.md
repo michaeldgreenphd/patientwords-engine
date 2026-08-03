@@ -728,3 +728,4 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - pairs_20260719T132706Z/mitigation.part_91.report.json · $0.0019 · alias · accepted — · —
 - urgency_downgrades_20260707T1/mitigation.part_01.report.json · $0.0086 · alias · accepted — · —
 - urgency_downgrades_20260707T1/mitigation.part_11.report.json · $0.0105 · alias · accepted — · —
+- pairs_20260731T211704Z.report.json · $0.1794 · claude-haiku-4-5 · accepted 100 · 2026-07-31T21:20:32.486688+00:00
