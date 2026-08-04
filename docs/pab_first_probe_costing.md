@@ -351,3 +351,67 @@ six days of ceiling, is a separate decision that should not be taken until Stage
 has shown the manipulation takes — and it still needs the pre-registration posture
 fixed in advance, since adopting an external rubric after seeing it agrees better
 than ours would be instrument shopping.
+
+---
+
+## Rev 4 (2026-08-04): what the live run actually cost
+
+Rev 3 was an estimate from a token model. Stage 0 measured the real thing, so
+the numbers below are observed, not projected.
+
+**Measured, one 3-turn conversation** (`data/pab/toolcall_smoke_20260804T042921Z.report.json`,
+gpt-5.4-mini assistant, grok-4.3 patient, gpt-5.4-mini sandbox): **$0.035342**.
+Rev 3's generation-only estimate was $1.929/52 = $0.0371 per conversation — 5%
+high, which is the right direction for a ceiling model.
+
+Per-leg tokens, which is what makes the per-model arithmetic possible:
+
+| leg | calls | input | output |
+|---|---|---|---|
+| assistant | 5 | 20,079 | 635 |
+| patient | 3 | 6,779 | 1,082 |
+| sandbox | 1 | 468 | 862 |
+
+The assistant's input:output ratio is **32:1** — the system prompt, patient
+profile and tool schemas are re-sent on every call. That, not output length, is
+what sets the cost of a model, and it is why the per-model spread tracks input
+price far more than output price.
+
+**Prices are now live, not ceiling-side.** The catalogue lookup ran in CI
+against OpenRouter's own `/models` endpoint and is committed dated
+(`data/pab/openrouter_catalogue_*.json`). All three previously transcribed
+prices were confirmed as genuine upper bounds. Two of the paper's slugs were
+found only on a second, narrower search — the first run's 12-result cap had
+hidden them: `openai/gpt-5.4` (2.5/15) and `qwen/qwen3-235b-a22b-2507`
+(0.1495/0.598).
+
+**Cost per conversation by assistant, at the measured token mix** (assistant leg
++ $0.0163 fixed for patient and sandbox):
+
+| model | $/conv | | model | $/conv |
+|---|---|---|---|---|
+| gpt-5.5 | 0.1417 | | claude-haiku-4.5 | 0.0396 |
+| claude-opus-4.8 | 0.1326 | | gemini-3-flash | 0.0282 |
+| gpt-5.4 | 0.0760 | | qwen3-235b | 0.0197 |
+| gemini-3.1-pro | 0.0641 | | qwen3-next-80b | 0.0188 |
+| claude-sonnet-5 | 0.0628 | | gpt-oss-120b | 0.0172 |
+
+The top two models are **8× the bottom two**. Ordering the config most-expensive
+first is a direct consequence: the guard aborts hard, generation is sequential,
+so whatever a ceiling trip loses is the tail — and the tail should be the models
+that are cheap to buy again.
+
+**Wall clock, which rev 3 did not cost at all.** Generation ran at ~43 s per
+conversation on the frontier models (18 conversations in 13 minutes). Sixty
+conversations is therefore ~45 minutes, not the few minutes the spend figure
+might suggest. A run is bounded by GitHub's 360-minute job limit long before it
+is bounded by $4, which is why generation now stops itself with `timeout
+--signal=INT` rather than being cancelled with its transcripts unsaved.
+
+**The ceiling is now enforced.** Rev 3 wrote `max_spend` into the trigger and
+the ledger, and nothing stopped the run. `patientwords_pab.budget_guard` meters
+every call through upstream's single model factory and aborts at the limit; an
+unpriced leg refuses to start, because a ceiling that cannot see a leg is not a
+ceiling. Upstream registers its whole direct-API channel unpriced, so the
+Anthropic jury needed priced `pw:`-prefixed variants before its own $2 could be
+enforced at all.
