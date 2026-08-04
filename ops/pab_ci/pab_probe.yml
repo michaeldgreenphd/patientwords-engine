@@ -71,6 +71,10 @@ on:
         description: "Space-separated slugs that must exist and be priced before any spend"
         type: string
         default: ""
+      artifact_run_id:
+        description: "GitHub run id whose pab-run-<id> artifact holds the transcripts to score (evaluate stage; the run directory is ephemeral, so a later job must fetch it back)"
+        type: string
+        default: ""
 
   push:
     paths:
@@ -99,6 +103,7 @@ jobs:
       commit_sidecar: ${{ steps.params.outputs.commit_sidecar }}
       catalog_search: ${{ steps.params.outputs.catalog_search }}
       catalog_require: ${{ steps.params.outputs.catalog_require }}
+      artifact_run_id: ${{ steps.params.outputs.artifact_run_id }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -123,6 +128,7 @@ jobs:
           IN_COMMIT_SIDECAR: ${{ inputs.commit_sidecar }}
           IN_CATALOG_SEARCH: ${{ inputs.catalog_search }}
           IN_CATALOG_REQUIRE: ${{ inputs.catalog_require }}
+          IN_ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
         run: |
           python - <<'EOF'
           import json, os
@@ -139,7 +145,8 @@ jobs:
                       "max_spend": "0.10",
                       "commit_sidecar": "true",
                       "catalog_search": "",
-                      "catalog_require": ""}
+                      "catalog_require": "",
+                      "artifact_run_id": ""}
           p = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/pab-probe.json", encoding="utf-8") as f:
@@ -246,6 +253,19 @@ jobs:
             --cases "${{ needs.params.outputs.cases_file }}" \
             --config "${{ needs.params.outputs.config_file }}" \
             ${{ needs.params.outputs.run_dir != '' && format('--run-dir "{0}"', needs.params.outputs.run_dir) || '' }}
+
+      - name: Fetch the transcripts to score (the run directory is ephemeral)
+        if: needs.params.outputs.stage == 'evaluate' && needs.params.outputs.artifact_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          # Generation and scoring are separate runs on separate billing
+          # accounts, and .pab-fork/output/ does not survive between them. The
+          # transcripts come back from the generating run's artifact; without
+          # this the evaluate stage finds an empty directory and scores nothing.
+          name: pab-run-${{ needs.params.outputs.artifact_run_id }}
+          path: .pab-fork/output/
+          run-id: ${{ needs.params.outputs.artifact_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Score an existing run (jury bills Anthropic)
         if: needs.params.outputs.stage == 'evaluate'
