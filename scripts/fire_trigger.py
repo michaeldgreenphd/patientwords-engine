@@ -58,9 +58,12 @@ TRIGGERS = (
     "model-evaluation",
     "archive-renders",
     "advice-eval",
+    "pab-probe",
 )
 # advice-eval: elicit AND judge spend Anthropic/provider tokens (2026-07-21)
-PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval"})
+# pab-probe: patient/assistant/sandbox legs bill the prepaid OpenRouter key and
+# the evaluate stage bills Anthropic (2026-08-04, exploratory arm).
+PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval", "pab-probe"})
 # A circuit-trace fire with show_mitigation=true makes Anthropic translation
 # calls (the only paid path outside PAID_TRIGGERS). Its cost has no max_spend
 # param, so the guard imputes a conservative flat commitment per fire.
@@ -134,6 +137,13 @@ KNOWN_KEYS = {
         "stimuli_file", "models", "arms", "samples", "temperature", "max_tokens",
         "translator_model", "max_spend", "judge", "judge_model", "judge_max_spend",
         "rubric", "offset", "limit", "commit_outputs", "restore_artifact_run_id",
+    }),
+    # pab_probe.yml `defaults` dict (verified 2026-08-04 against the params
+    # heredoc by tests/test_pab_ci_staged.py): stage, fork_ref, cases_file,
+    # config_file, assistant, turns, run_dir, max_spend, commit_sidecar.
+    "pab-probe": frozenset({
+        "stage", "fork_ref", "cases_file", "config_file", "assistant", "turns",
+        "run_dir", "max_spend", "commit_sidecar",
     }),
 }
 

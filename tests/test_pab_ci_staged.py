@@ -63,15 +63,18 @@ def step_named(workflow, prefix, job="probe"):
 
 
 class TestStagingBoundary:
-    def test_workflow_is_not_live(self):
-        """It must not be under .github/. Landing it is a deliberate act."""
+    def test_staged_copy_is_kept(self):
+        """The staged copy stays as the reviewed source of the landed file."""
         assert WORKFLOW_PATH.is_file()
-        assert not (_ROOT / ".github" / "workflows" / "pab_probe.yml").exists()
 
-    def test_no_trigger_file_exists_yet(self):
-        """A hand-committed trigger file fires the paid workflow on push. The
-        first sanctioned fire creates it, via scripts/fire_trigger.py."""
-        assert not (_ROOT / ".github" / "trigger" / f"{TRIGGER_KEY}.json").exists()
+    def test_landed_copy_matches_the_staged_one(self):
+        """Landed 2026-08-04 by owner authorization. The two must not drift:
+        the staged file is what these tests read, so a divergent landed copy
+        would be untested."""
+        landed = _ROOT / ".github" / "workflows" / "pab_probe.yml"
+        if not landed.exists():
+            pytest.skip("workflow not landed")
+        assert landed.read_text(encoding="utf-8") == WORKFLOW_PATH.read_text(encoding="utf-8")
 
 
 class TestWorkflowShape:
@@ -191,3 +194,35 @@ class TestRunbookIsPresent:
         readme = (STAGED_DIR / "README.md").read_text(encoding="utf-8")
         for phrase in ("fire_trigger.py", "OPENROUTER_API_KEY", "max_spend"):
             assert phrase in readme
+
+
+class TestFireGuardRegistration:
+    """KNOWN_KEYS must mirror the workflow's defaults dict exactly.
+
+    The guard hard-errors on an unknown key precisely because CI silently
+    ignores one; if the two sets drift, the guard either blocks a valid fire or
+    waves through a typo that runs with defaults nobody chose.
+    """
+
+    @staticmethod
+    def _fire_trigger():
+        import importlib.util
+        path = _ROOT / "scripts" / "fire_trigger.py"
+        spec = importlib.util.spec_from_file_location("fire_trigger", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_trigger_is_registered(self):
+        ft = self._fire_trigger()
+        assert TRIGGER_KEY in ft.TRIGGERS
+
+    def test_trigger_is_marked_paid(self):
+        """It spends OpenRouter and, on the evaluate stage, Anthropic. An
+        unpaid marking would skip the daily-ceiling check entirely."""
+        ft = self._fire_trigger()
+        assert TRIGGER_KEY in ft.PAID_TRIGGERS
+
+    def test_known_keys_match_the_workflow_defaults(self, defaults):
+        ft = self._fire_trigger()
+        assert ft.KNOWN_KEYS[TRIGGER_KEY] == frozenset(defaults)
