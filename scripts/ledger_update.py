@@ -140,6 +140,37 @@ def batch_file_name(sidecar_name):
     return sidecar_name
 
 
+def billing_channel(report, is_pab_dir=False):
+    """Billing channel for a cost sidecar (owner decision 2026-08-04
+    CHANNEL-SPLIT, docs/decisions_20260804_pab.md addendum).
+
+    Explicit ``billing_channel`` field wins (future writers should set it);
+    ``openrouter:``-prefixed model ids are OpenRouter-billed; a PAB-dir sidecar
+    with no model recorded (the reconciled generate runs) is OpenRouter too.
+    Everything else is Anthropic — the channel the $2/day operational guard
+    exists to bound.
+    """
+    explicit = report.get("billing_channel")
+    if explicit in ("anthropic", "openrouter"):
+        return explicit
+    model = str(report.get("model") or "")
+    if model.startswith("openrouter:"):
+        return "openrouter"
+    if is_pab_dir and not model:
+        return "openrouter"
+    return "anthropic"
+
+
+def today_record(date, by_day, by_day_by_channel):
+    """The spend.today block: pooled figure plus one ``<channel>_usd`` key per
+    channel the ledger has booked. Old dashboards without channel data keep the
+    old two-key shape exactly."""
+    rec = {"date": date, "spent_usd": float(by_day.get(date) or 0.0)}
+    for channel, days in (by_day_by_channel or {}).items():
+        rec[f"{channel}_usd"] = float(days.get(date) or 0.0)
+    return rec
+
+
 def attribute_tierb(dashboard, spend, report, filename, cost):
     """Count a sidecar toward the Tier B campaign when it belongs to it.
 
@@ -270,7 +301,10 @@ def main(argv=None):
                   (Path(args.advice_dir), "*.report.json"),
                   (Path(args.pab_dir), "*.report.json"),
                   (Path(args.trace_dir), "*/mitigation*.report.json")]
+    pab_dir = Path(args.pab_dir)
+    by_day_ch = spend.setdefault("by_day_by_channel", {})
     for scan_dir, pattern in scan_specs:
+        is_pab = scan_dir == pab_dir
         for path, report in scan_new_sidecars(scan_dir, set(entries_seen), pattern):
             cost = float(report.get("cost_usd") or 0.0)
             run_ts = parse_ts(report.get("run_timestamp") or report.get("run_utc"))
@@ -280,6 +314,8 @@ def main(argv=None):
             day = run_ts.astimezone(timezone.utc).date().isoformat() if run_ts else date
             spend["lifetime_generation_usd"] = round(float(spend.get("lifetime_generation_usd") or 0.0) + cost, 4)
             by_day[day] = round(float(by_day.get(day) or 0.0) + cost, 4)
+            chan = by_day_ch.setdefault(billing_channel(report, is_pab), {})
+            chan[day] = round(float(chan.get(day) or 0.0) + cost, 4)
             key = sidecar_key(path)
             entries_seen.append(key)
             spend.setdefault("entries_folded", {})[key] = cost
@@ -324,11 +360,13 @@ def main(argv=None):
                 spend["lifetime_generation_usd"] = round(
                     float(spend.get("lifetime_generation_usd") or 0.0) + delta, 4)
                 by_day[day] = round(float(by_day.get(day) or 0.0) + delta, 4)
+                chan = by_day_ch.setdefault(billing_channel(report, scan_dir == pab_dir), {})
+                chan[day] = round(float(chan.get(day) or 0.0) + delta, 4)
                 entries_folded[key] = current
                 bullets.append(f"- {key} · ${delta:.4f} · delta (cumulative ${current:.4f}, day {day})")
 
     if bullets:
-        spend["today"] = {"date": date, "spent_usd": float(by_day.get(date) or 0.0)}
+        spend["today"] = today_record(date, by_day, by_day_ch)
         spend["last_scan_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     alerts_changed = check_ceilings(spend)
 
@@ -345,7 +383,7 @@ def main(argv=None):
         if bullets:
             append_ledger(ledger_path, bullets)
         if dashboard_dirty:
-            spend["today"] = {"date": date, "spent_usd": float(by_day.get(date) or 0.0)}
+            spend["today"] = today_record(date, by_day, by_day_ch)
             dashboard["updated_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             dashboard.setdefault("updated_by", "session")  # preserve e.g. "routine" when present
             write_dashboard(dashboard_path, dashboard)

@@ -656,3 +656,20 @@ def test_judged_fire_journal_entry_records_summed_commitment(repo):
         "task": "pairs", "num": "5", "max_spend": "1.2", "_nonce": "j6"}) == 4
     assert fire(repo, "scenario-generation", {
         "task": "pairs", "num": "5", "max_spend": "0.9", "_nonce": "j7"}) == 0
+
+
+def test_budget_ceiling_counts_anthropic_channel_only():
+    """CHANNEL-SPLIT (owner 2026-08-04): the daily guard reads
+    today.anthropic_usd when the ledger recorded the split, so
+    separately-authorized OpenRouter spend cannot block Anthropic fires;
+    dashboards without the split fall back to the pooled figure."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    split = {"spend": {"daily_ceiling_usd": 2.0,
+                       "today": {"date": today, "spent_usd": 4.25,
+                                 "anthropic_usd": 0.25, "openrouter_usd": 4.0}}}
+    verdict, _ = ft.budget_check({"max_spend": "0.50"}, split, today)
+    assert verdict == "ok"
+    pooled = {"spend": {"daily_ceiling_usd": 2.0,
+                        "today": {"date": today, "spent_usd": 4.25}}}
+    verdict, msg = ft.budget_check({"max_spend": "0.50"}, pooled, today)
+    assert verdict == "ceiling" and "4.25" in msg

@@ -82,7 +82,12 @@ def test_fresh_scan_counts_paid_sidecar_and_zero_cost_alias(tree, capsys):
     assert spend["by_day"]["2026-07-08"] == pytest.approx(0.0985)
     # alias has no run_timestamp: its $0 lands on the injected --date
     assert spend["by_day"][TODAY] == 0.0
-    assert spend["today"] == {"date": TODAY, "spent_usd": 0.0}
+    # today carries the pooled figure plus one <channel>_usd per booked channel
+    # (CHANNEL-SPLIT, 2026-08-04); both sidecars here are Anthropic-billed
+    assert spend["today"]["date"] == TODAY
+    assert spend["today"]["spent_usd"] == 0.0
+    assert spend["today"]["anthropic_usd"] == 0.0
+    assert spend["by_day_by_channel"]["anthropic"]["2026-07-08"] == pytest.approx(0.0985)
     assert "last_scan_utc" in spend
 
     text = tree["ledger"].read_text(encoding="utf-8")
@@ -220,7 +225,8 @@ def test_missing_dashboard_bootstraps_skeleton(tree, capsys):
     assert dash["schema_version"] == 1
     assert dash["spend"]["entries_seen"] == ["pairs_a.report.json"]
     assert dash["spend"]["lifetime_generation_usd"] == pytest.approx(0.0985)
-    assert dash["spend"]["today"] == {"date": TODAY, "spent_usd": pytest.approx(0.0985)}
+    assert dash["spend"]["today"]["date"] == TODAY
+    assert dash["spend"]["today"]["spent_usd"] == pytest.approx(0.0985)
     # written with a trailing newline, per the data contract
     assert tree["dash"].read_text(encoding="utf-8").endswith("}\n")
     assert "1 new sidecars" in capsys.readouterr().out
@@ -333,7 +339,8 @@ def test_by_day_buckets_by_utc_date_not_string_prefix(tree):
     assert "2026-99-99" not in spend["by_day"]  # garbage never becomes a key
     assert spend["by_day"][TODAY] == pytest.approx(0.08)
     # Finding 13: spend.today still mirrors by_day for --date on a writing run
-    assert spend["today"] == {"date": TODAY, "spent_usd": pytest.approx(0.08)}
+    assert spend["today"]["date"] == TODAY
+    assert spend["today"]["spent_usd"] == pytest.approx(0.08)
 
 
 # --- Finding 12: updated_utc stamped on writes; updated_by preserved ---
@@ -379,7 +386,8 @@ def test_stale_spend_today_replaced_on_next_writing_run(tree):
 
     spend = load_dash(tree)["spend"]
     assert spend["by_day"]["2026-07-08"] == pytest.approx(1.6)
-    assert spend["today"] == {"date": TODAY, "spent_usd": 0.0}  # nothing landed on --date itself
+    assert spend["today"]["date"] == TODAY
+    assert spend["today"]["spent_usd"] == 0.0  # nothing landed on --date itself
 
 
 # --- Finding 16: the sample dashboard's arithmetic is internally consistent ---
@@ -423,7 +431,9 @@ def test_advice_sidecars_fold_into_spend_totals(tree):
     dash = load_dash(tree)
     spend = dash["spend"]
     assert spend["by_day"][TODAY] == pytest.approx(0.58)
-    assert spend["today"] == {"date": TODAY, "spent_usd": pytest.approx(0.58)}
+    assert spend["today"]["date"] == TODAY
+    assert spend["today"]["spent_usd"] == pytest.approx(0.58)
+    assert spend["today"]["anthropic_usd"] == pytest.approx(0.58)
     seen = set(spend["entries_seen"])
     assert {"responses_20260722T010101Z.report.json",
             "judgments_20260722T020202Z.report.json",
@@ -549,3 +559,28 @@ def test_mitigation_sidecar_key_is_depth_independent():
     # flat sidecars keep the historical bare-filename identity
     assert ledger_update.sidecar_key(
         Path("/tmp/x/data/simulated/pairs_a.report.json")) == "pairs_a.report.json"
+
+
+def test_channel_split_books_openrouter_separately(tree):
+    """CHANNEL-SPLIT (owner 2026-08-04): OpenRouter-billed sidecars book to
+    their own channel so the $2/day Anthropic guard never counts them."""
+    write_sidecar(tree["sim"], "pairs_x.report.json",
+                  run_timestamp=f"{TODAY}T01:00:00+00:00", task="pairs",
+                  model="claude-haiku-4-5", accepted=10, cost_usd=0.25)
+    write_sidecar(tree["pab"], "pab_generate_1.reconciled.report.json",
+                  run_timestamp=f"{TODAY}T02:00:00+00:00", cost_usd=2.2)
+    write_sidecar(tree["pab"], "toolcall_x.report.json",
+                  run_timestamp=f"{TODAY}T03:00:00+00:00",
+                  model="openrouter:openai/gpt-5.4-mini", cost_usd=0.04)
+    write_sidecar(tree["pab"], "explicit_field.report.json",
+                  run_timestamp=f"{TODAY}T04:00:00+00:00",
+                  billing_channel="anthropic", cost_usd=0.1)
+    seed_dash(tree, {"schema_version": 1, "spend": {}})
+
+    assert run(tree) == 0
+    spend = load_dash(tree)["spend"]
+    assert spend["by_day_by_channel"]["anthropic"][TODAY] == pytest.approx(0.35)
+    assert spend["by_day_by_channel"]["openrouter"][TODAY] == pytest.approx(2.24)
+    assert spend["today"]["spent_usd"] == pytest.approx(2.59)
+    assert spend["today"]["anthropic_usd"] == pytest.approx(0.35)
+    assert spend["today"]["openrouter_usd"] == pytest.approx(2.24)

@@ -414,8 +414,14 @@ def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DE
     today_rec = spend.get("today")
     landed = 0.0
     if isinstance(today_rec, dict) and today_rec.get("date") == today:
+        # Channel-scoped guard (owner decision 2026-08-04 CHANNEL-SPLIT):
+        # every paid trigger spends Anthropic credits, so the ceiling counts
+        # the Anthropic channel where the ledger records it. Dashboards
+        # without the split fall back to the pooled figure — fail closed:
+        # separately-authorized OpenRouter spend then still blocks the day.
+        raw = today_rec.get("anthropic_usd", today_rec.get("spent_usd", 0.0))
         try:
-            landed = float(today_rec.get("spent_usd", 0.0))
+            landed = float(raw)
         except (TypeError, ValueError):
             landed = 0.0
     if now is None:

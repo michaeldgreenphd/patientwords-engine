@@ -67,3 +67,29 @@ Cost basis: measured sidecars (≈$0.07/conversation all-in; $0.15–0.24 per
   `docs/pab_handoff/`; execution on the PAB branch is coordinated with the
   session that owns it, not pushed from here (branch map rule,
   `HANDOFF_20260804.md`).
+
+## Addendum — contingency authorizations (owner, 2026-08-04 evening)
+
+Owner granted all four proposed contingency authorizations verbatim ("Why not
+1-4? I have Fable access now so you can monitor, assess, and patch these in
+the background"):
+
+1. **INTERIM-CYCLE** — if fresh-session Routine firings keep failing, the
+   2026-08-04 takeover session runs the daily cycle inline (exactly one per
+   day, `docs/routine_standing_prompt.md` verbatim, all ceilings enforced)
+   until the Routine is proven. While invoked, that session holds the
+   dashboard/journal writer role through the same three sanctioned paths.
+2. **CHANNEL-SPLIT** — spend accounting books Anthropic and OpenRouter as
+   separate channels; the $2/day operational guard counts the Anthropic
+   channel only (OpenRouter runs keep their own per-run enforced ceilings).
+   Implemented same evening: `ledger_update.py` (`by_day_by_channel`,
+   `today.<channel>_usd`), `fire_trigger.py` (guard reads `anthropic_usd`,
+   pooled fallback fails closed), regression tests in both suites,
+   `ops/README.md` contract note.
+3. **COMPLETION-FIRES** — a ceiling-stopped PAB sweep's finishing fire for
+   unreached cells is pre-approved within the same already-approved total.
+4. **D1-RETRY** — one re-fire of the comorbid seed batch within the same
+   $0.50 cap if the scheduled fire fails mechanically.
+
+Unchanged and explicitly outside every grant: holdout unsealing, site text,
+draft-label rules, and the ceilings themselves.

@@ -41,7 +41,7 @@ Top-level fields, and which step of the Routine's cycle writes them:
 | `updated_by` | `"routine"` or `"session"`; `ledger_update.py` sets `"session"` only when the field is absent and otherwise preserves the existing value | every Routine write |
 | `queue` | per-concurrency-group running/pending slots (`circuit-trace`, `logits-eval`, `activation-patching`, `jlens-readout`, `scenario-generation`, `model-evaluation`, `archive-renders`), each `{fired_utc, commit, note}` or `null` (the Routine's mirror may write a free-text summary string instead - both shapes are valid to readers) | `scripts/fire_trigger.py` (fire/resolve), mirrored by the Routine |
 | `runs_recent` | compact log of recent workflow runs `{workflow, fired_utc, status, note}` | the Routine's own edits |
-| `spend` | generation-run and daily ceilings vs. spend, lifetime total, per-day map, sidecar filenames already counted (`entries_seen`), `last_scan_utc`, ceiling `alerts` | `scripts/ledger_update.py` (idempotent sidecar scan) |
+| `spend` | generation-run and daily ceilings vs. spend, lifetime total, per-day map, per-channel map (`by_day_by_channel`, CHANNEL-SPLIT 2026-08-04: `today` also carries `anthropic_usd`/`openrouter_usd`; the $2/day guard counts the Anthropic channel only, falling back to the pooled figure on dashboards without the split), sidecar filenames already counted (`entries_seen`), `last_scan_utc`, ceiling `alerts` (alerts stay pooled) | `scripts/ledger_update.py` (idempotent sidecar scan) |
 | `tierb` | overnight campaign progress: `target_pairs`, `generator`, `start_utc`, `accepted_pairs`, `traced_pairs`, `screened_in_pairs`, `batches[]` | `scripts/ledger_update.py` (costs) + the Routine's own edits (counts, statuses) |
 | `verdicts` | current one-line scientific verdicts | the Routine's own edits |
 | `findings_delta` | dated list of what changed, newest first on the page | the Routine's own edits |
@@ -98,3 +98,6 @@ and keeps `updated_utc` meaningful: staleness on the dashboard means the
 Routine failed, not that someone else forgot to touch a field. If an
 interactive session finds something worth recording, it hands the item to the
 Routine (or leaves it in a handoff doc) rather than editing the file itself.
+Owner-authorized interim (2026-08-04, INTERIM-CYCLE): when a fresh-session
+Routine firing fails, the takeover session may run that day's single cycle
+inline and holds the writer role for it, through the same three paths.
