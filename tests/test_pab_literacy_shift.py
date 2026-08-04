@@ -299,11 +299,13 @@ class TestPartialRuns:
         # no experiment_config.json, exactly as a cancelled experiment leaves it
 
         report = paired_shift(collect(run, MARKERS, CONTRACT))
-        assert set(report) == {"model-a", "exp2"}, (
+        # The label is qualified by the run directory: two pooled runs both
+        # contain an 'exp2', and a bare name would merge them into one row.
+        assert set(report) == {"model-a", "run/exp2"}, (
             "an experiment with no config was dropped instead of falling back "
-            "to its directory name"
+            "to its run-qualified directory name"
         )
-        assert report["exp2"]["n_pairs"] == 1
+        assert report["run/exp2"]["n_pairs"] == 1
 
     def test_a_partial_experiment_does_not_lose_the_complete_ones(self, tmp_path):
         run = write_run(tmp_path, {
@@ -373,3 +375,56 @@ class TestPairKey:
         run = write_run(tmp_path, {"exp1": ("model-a", [conversation("lonely--arm0", LOW)])})
         block = paired_shift(collect(run, MARKERS, CONTRACT))["model-a"]
         assert block["unpaired_case_ids"] == ["lonely--arm0"]
+
+
+class TestModelIdentityWithoutAnExperimentConfig:
+    """A ceiling-stopped experiment has conversations but no config of its own.
+
+    Reporting it as `2_0` is not just ugly: two pooled runs both contain a `2_0`,
+    so a bare directory name merges two different models into one row and
+    averages them together without saying so.
+    """
+
+    def _run_with_partial_experiment(self, tmp_path, run_name="run"):
+        run = tmp_path / run_name
+        (run / "2_0").mkdir(parents=True)
+        (run / "run_config.json").write_text(json.dumps({
+            "assistant_agent": [
+                {"model": {"model": "model-zero"}},
+                {"model": {"model": "model-one"}},
+                {"model": {"model": "model-two"}},
+            ]}))
+        (run / "2_0" / "conversations.json").write_text(json.dumps([
+            conversation("c1--arm0", LOW), conversation("c1--arm1", HIGH)]))
+        return run
+
+    def test_model_recovered_from_the_run_config(self, tmp_path):
+        run = self._run_with_partial_experiment(tmp_path)
+        rows = collect(run, MARKERS, CONTRACT)
+        assert {r["model"] for r in rows} == {"model-two"}, (
+            "a ceiling-stopped experiment must still be identified; "
+            "run_config.json is written at run start and survives"
+        )
+
+    def test_last_resort_label_is_qualified_by_the_run(self, tmp_path):
+        run = tmp_path / "runA"
+        (run / "2_0").mkdir(parents=True)
+        (run / "2_0" / "conversations.json").write_text(json.dumps([
+            conversation("c1--arm0", LOW)]))
+        # no experiment_config.json and no run_config.json
+        rows = collect(run, MARKERS, CONTRACT)
+        assert rows[0]["model"] == "runA/2_0"
+
+    def test_two_pooled_runs_do_not_merge_their_experiments(self, tmp_path):
+        """The failure this guards: both runs have a 2_0, and merging them
+        would report one row that is silently two models."""
+        a = tmp_path / "runA"
+        (a / "2_0").mkdir(parents=True)
+        (a / "2_0" / "conversations.json").write_text(json.dumps([
+            conversation("c1--arm0", LOW), conversation("c1--arm1", HIGH)]))
+        b = tmp_path / "runB"
+        (b / "2_0").mkdir(parents=True)
+        (b / "2_0" / "conversations.json").write_text(json.dumps([
+            conversation("c1--arm0", LOW), conversation("c1--arm1", HIGH)]))
+        rows = collect(a, MARKERS, CONTRACT) + collect(b, MARKERS, CONTRACT)
+        assert {r["model"] for r in rows} == {"runA/2_0", "runB/2_0"}

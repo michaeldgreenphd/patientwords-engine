@@ -116,17 +116,51 @@ def assistant_model(exp_dir: Path) -> str:
     would throw away the conversations that *did* complete.
     """
     path = exp_dir / "experiment_config.json"
-    if not path.is_file():
-        return exp_dir.name
+    if path.is_file():
+        try:
+            config = load_json(path)
+        except AnalysisError:
+            config = None
+        if config:
+            agent = config.get("assistant_agent") or config.get("assistant") or {}
+            model = agent.get("model")
+            if isinstance(model, dict):
+                model = model.get("model") or model.get("model_id")
+            if model:
+                return model
+    return _model_from_run_config(exp_dir)
+
+
+def _model_from_run_config(exp_dir: Path) -> str:
+    """Recover the model from the run-level config when the experiment's own is
+    missing.
+
+    Experiment directories are named ``<assistant index>_<user index>``, and
+    ``run_config.json`` is written when the run starts rather than when an
+    experiment finishes -- so it survives exactly the cases that lose
+    ``experiment_config.json``: a ceiling-stopped or cancelled experiment.
+
+    The last resort is ``<run dir>/<experiment>``, not the bare experiment name.
+    Two pooled runs both contain ``0_0``, ``1_0``, ... so a bare name would merge
+    two different models into one row and silently average them together.
+    """
+    fallback = f"{exp_dir.parent.name}/{exp_dir.name}"
     try:
-        config = load_json(path)
+        run_config = load_json(exp_dir.parent / "run_config.json")
     except AnalysisError:
-        return exp_dir.name
-    agent = config.get("assistant_agent") or config.get("assistant") or {}
-    model = agent.get("model")
+        return fallback
+    assistants = (run_config.get("config") or run_config).get("assistant_agent")
+    if not isinstance(assistants, list):
+        return fallback
+    try:
+        index = int(exp_dir.name.split("_")[0])
+        spec = assistants[index]
+    except (ValueError, IndexError):
+        return fallback
+    model = spec.get("model") if isinstance(spec, dict) else None
     if isinstance(model, dict):
         model = model.get("model") or model.get("model_id")
-    return model or exp_dir.name
+    return model or fallback
 
 
 # ----------------------------------------------------------------- measures
