@@ -24,7 +24,9 @@ prior sessions — the repos are your memory.
    progress, pending decisions).
 4. `ops/trigger_journal.jsonl` — fire history for the queue guard.
 5. The newest `docs/*ledger*.md` — running human log.
-6. `HANDOFF.md` — architecture notes and any open issues.
+6. `docs/HANDOFF_20260804.md` — architecture notes, the correction register for
+   documented-but-false claims, and open issues. (Root `HANDOFF.md` is
+   superseded and four weeks stale; do not orient from it.)
 
 Trust these files over anything you think you remember. `git pull --rebase`
 this branch and `git fetch origin main` first (generation archives land on
