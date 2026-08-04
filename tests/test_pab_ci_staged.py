@@ -291,3 +291,12 @@ class TestGracefulStop:
     def test_partial_transcripts_are_still_uploaded(self, workflow):
         upload = step_named(workflow, "Upload transcripts")
         assert upload["if"].startswith("always()")
+
+
+class TestSidecarSurvivesAFailedStep:
+    def test_commit_step_runs_even_when_the_run_failed(self, workflow):
+        """A tripped ceiling exits 2. Without always() the commit is skipped
+        exactly when the sidecar matters most: the guard has written it, the
+        runner is about to be torn down, and the spend never reaches the
+        ledger. Observed on run 30880027373 -- $1.7556 spent, nothing recorded."""
+        assert step_named(workflow, "Commit the cost sidecar")["if"].startswith("always()")

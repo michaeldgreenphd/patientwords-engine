@@ -371,7 +371,11 @@ jobs:
           if-no-files-found: warn
 
       - name: Commit the cost sidecar only
-        if: needs.params.outputs.commit_sidecar == 'true'
+        # always(): a run that trips the ceiling exits non-zero, and without
+        # this the commit is skipped exactly when the sidecar matters most --
+        # the guard writes it, the runner is torn down, and the spend never
+        # reaches the ledger. That happened on run 30880027373.
+        if: always() && needs.params.outputs.commit_sidecar == 'true'
         run: |
           # Numbers only. Transcripts stay in the artifact: they are derived from
           # CC-BY-NC-4.0 cases and this repository is MIT.
