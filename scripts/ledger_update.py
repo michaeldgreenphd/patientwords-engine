@@ -140,24 +140,48 @@ def batch_file_name(sidecar_name):
     return sidecar_name
 
 
+def _walk_model_names(value):
+    """Every model-name string inside a str / list / dict, at any depth.
+
+    Derivation ported from the PAB branch's lane logic (2026-08-04
+    reconciliation): stringifying a nested structure instead of walking it
+    makes the sidecar look unrecognisable and silently routes it to the
+    default channel — observed there booking $1.76 of OpenRouter spend to
+    the Anthropic account.
+    """
+    if isinstance(value, str):
+        return {value} if value else set()
+    if isinstance(value, dict):
+        out = set()
+        for k, v in value.items():
+            # keys carry model names too (usage.per_model maps model -> stats)
+            out |= _walk_model_names(k)
+            out |= _walk_model_names(v)
+        return out
+    if isinstance(value, (list, tuple)):
+        out = set()
+        for v in value:
+            out |= _walk_model_names(v)
+        return out
+    return set()
+
+
 def billing_channel(report, is_pab_dir=False):
     """Billing channel for a cost sidecar (owner decision 2026-08-04
-    CHANNEL-SPLIT, docs/decisions_20260804_pab.md addendum).
+    CHANNEL-SPLIT; derivation reconciled with the PAB branch's lanes).
 
-    Explicit ``billing_channel`` field wins (future writers should set it);
-    ``openrouter:``-prefixed model ids are OpenRouter-billed; a PAB-dir sidecar
-    with no model recorded (the reconciled generate runs) is OpenRouter too.
-    Everything else is Anthropic — the channel the $2/day operational guard
-    exists to bound.
+    Explicit ``billing_channel`` field wins; otherwise the channel is DERIVED
+    from the model names anywhere in the sidecar — any ``openrouter:`` prefix
+    means the OpenRouter account. Everything else is Anthropic, the channel
+    the $2/day operational guard exists to bound. (``is_pab_dir`` is accepted
+    for call-site stability; derivation no longer depends on it.)
     """
     explicit = report.get("billing_channel")
     if explicit in ("anthropic", "openrouter"):
         return explicit
-    model = str(report.get("model") or "")
-    if model.startswith("openrouter:"):
-        return "openrouter"
-    if is_pab_dir and not model:
-        return "openrouter"
+    for name in _walk_model_names(report):
+        if name.startswith("openrouter:"):
+            return "openrouter"
     return "anthropic"
 
 

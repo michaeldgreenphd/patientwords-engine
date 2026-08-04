@@ -567,11 +567,19 @@ def test_channel_split_books_openrouter_separately(tree):
     write_sidecar(tree["sim"], "pairs_x.report.json",
                   run_timestamp=f"{TODAY}T01:00:00+00:00", task="pairs",
                   model="claude-haiku-4-5", accepted=10, cost_usd=0.25)
+    # channel is DERIVED from model names at any depth (PAB-branch parity):
+    # nested openrouter: names route to the OpenRouter account …
     write_sidecar(tree["pab"], "pab_generate_1.reconciled.report.json",
-                  run_timestamp=f"{TODAY}T02:00:00+00:00", cost_usd=2.2)
+                  run_timestamp=f"{TODAY}T02:00:00+00:00", cost_usd=2.2,
+                  per_model={"openrouter:vendor/model-a": {"cost_usd": 2.2}})
     write_sidecar(tree["pab"], "toolcall_x.report.json",
                   run_timestamp=f"{TODAY}T03:00:00+00:00",
                   model="openrouter:openai/gpt-5.4-mini", cost_usd=0.04)
+    # … a jury sidecar naming only claude judges stays Anthropic even in
+    # data/pab/, and an explicit field always wins
+    write_sidecar(tree["pab"], "pab_evaluate_1.report.json",
+                  run_timestamp=f"{TODAY}T05:00:00+00:00", cost_usd=0.0,
+                  evaluators=["pw:claude-opus-4.8-api"])
     write_sidecar(tree["pab"], "explicit_field.report.json",
                   run_timestamp=f"{TODAY}T04:00:00+00:00",
                   billing_channel="anthropic", cost_usd=0.1)
