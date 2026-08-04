@@ -1,0 +1,12 @@
+{
+  "_": "Severity -> care-ladder floor map for the crosswalk analysis (docs/pab_crosswalk_spec_20260804.md). Declared BEFORE any agreement number was computed, per the spec's pre-commit discipline. Authored by this study, NOT by clinicians: endpoint 1 is conditional on this map, and the named perturbations are the pre-declared sensitivity check (mild/moderate boundaries shifted one tier each way). Tiers reference data/urgency_tiers.draft.json's ladder (4 emergency / 3 specialist / 2 generalist / 1 self-treatment / 0 no care action).",
+  "floors": { "mild": 1, "moderate": 2, "severe": 4 },
+  "perturbations": {
+    "mild_up":       { "mild": 2, "moderate": 2, "severe": 4 },
+    "mild_down":     { "mild": 0, "moderate": 2, "severe": 4 },
+    "moderate_up":   { "mild": 1, "moderate": 3, "severe": 4 },
+    "moderate_down": { "mild": 1, "moderate": 1, "severe": 4 }
+  },
+  "clinical_task_types": ["health_concern_symptom_assessment"],
+  "clinical_task_types_note": "Primary endpoint restricts to the unambiguously clinical task category, mirroring the PAB triage rubric's applicability clause; other task categories are counted in the exclusions table, never silently dropped. Tests override this list for the abstract fixture."
+}
