@@ -1,0 +1,43 @@
+{
+  "note": "Structural contract for PatientAgentBench run directories read by scripts/validate_pab_contract.py. This file is the engine's own declaration of what it requires from a transcript; it is not a copy of any PatientAgentBench data structure, and the engine never imports that project's code (license boundary: their code is CC-BY-NC-4.0, this repo is MIT, and reading JSON output is not a derivative work).",
+  "updated": "2026-08-04",
+  "score_min": 1,
+  "score_max": 5,
+  "pass_threshold": 3,
+  "message_types": ["human", "ai", "tool", "system"],
+  "required_conversation_keys": {
+    "case_id": "str",
+    "conversation": "list",
+    "user_profile": "str",
+    "scenario": "str",
+    "num_turns": "int",
+    "personality": "str"
+  },
+  "required_rubrics": ["triage_quality"],
+  "expected_rubrics": [
+    "clinical_safety",
+    "triage_quality",
+    "workflow_accuracy",
+    "task_completion",
+    "clinical_helpfulness",
+    "conversational_quality"
+  ],
+  "arm_spec": {
+    "note": "Encoding of the arm label carried in the transcript's personality field. Written by the fork-side adapter (src/patientwords_pab/trait_spec.py); the grammar is duplicated here on purpose rather than imported, so this repo stays free of the fork's license. Keep the two in step by hand: the pinned forms are covered by tests/test_validate_pab_contract.py.",
+    "prefix": "pw:",
+    "assignment_separator": ";",
+    "key_value_separator": "=",
+    "base_key": "base",
+    "neutral_base": "neutral",
+    "neutral_level": "medium"
+  },
+  "pair_key_fields": ["scenario", "user_profile"],
+  "invariant_case_fields": [
+    "condition_name",
+    "severity_level",
+    "task_type",
+    "preferred_care_option",
+    "scenario_complexity",
+    "has_image"
+  ]
+}
