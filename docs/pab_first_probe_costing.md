@@ -1,168 +1,264 @@
-# PatientAgentBench first live probe — costed plan (2026-08-04)
+# PatientAgentBench first live probe — costed plan (rev 2, OpenRouter, 2026-08-04)
 
-**Nothing here is approved, registered, or fired.** This is the cost and shape a
-first live probe would take, put in front of the decision rather than after it.
+**Nothing here is approved, registered, or fired.** Rev 1 (2026-08-04) priced this
+probe for AWS Bedrock, whose registry carries the only Qwen entry the plan wanted.
+There are no Bedrock credentials; there *is* an approved prepaid OpenRouter key.
+This revision re-targets the pilot to OpenRouter and re-costs it.
+
 Every figure comes from `scripts/pab_probe_cost.py`, which runs offline at $0 and
-is pinned by `tests/test_pab_probe_cost.py`; re-cost any variant with
-`python scripts/pab_probe_cost.py --cases N --turns T --jury-model M`.
+is pinned by `tests/test_pab_probe_cost.py`. Re-cost any variant:
 
-Prerequisites, none of them satisfied yet: a pre-registration amendment or an
-explicitly labelled exploratory arm (adopting an external rubric *after* seeing
-that it agrees better than ours would be instrument shopping), a decision on where
-derived artifacts may land given CC-BY-NC-4.0, and AWS Bedrock credentials, which
-this study does not currently hold.
+```bash
+python scripts/pab_probe_cost.py                       # this plan
+python scripts/pab_probe_cost.py --preset bedrock      # rev 1, for the diff
+python scripts/pab_probe_cost.py --balance <prepaid>   # check the key's balance
+```
 
-## What the probe is for
+## What changed from rev 1
 
-Not to estimate the effect precisely. To answer, in order:
+Three things, and only one of them is the channel.
 
-1. **Does the manipulation take?** Setting `health_literacy` alone may produce a
-   persona the simulator partly ignores. Costs under a dollar to find out, and
-   nothing else is worth paying for until it is answered.
-2. **Does the benchmark's most discriminating dimension move with it?** If triage
-   quality does not shift when literacy alone shifts, the paper's persona result is
-   attributable to clarity and cooperation — which is what its own text implies but
-   cannot show — and the register hypothesis does not survive contact with a
-   multi-turn tool-using agent.
-3. **How large is the effect, for powering a real study?**
+**1. The channel.** Patient, assistant and sandbox now run through OpenRouter
+(`provider="openai-protocol-api"`, `auth="api_key"`, `OPENROUTER_API_KEY`), using
+model specs the fork injects into the benchmark's registry without editing it.
+Registry keys are the engine's own `openrouter:vendor/model` names, so the
+benchmark config, the transcript, and the ledger all say the same string.
 
-## The design
+**2. The jury stays where it was.** It runs on the direct Anthropic API
+(`ANTHROPIC_API_KEY`, an existing secret) rather than through OpenRouter — a mixed
+setup, which `docs/advice_arm_handoff.md` already treats as reasonable. Two
+reasons. The rubric is the *validated instrument*, and Opus 4.8 is the benchmark's
+shipped default; routing it through an aggregator adds an intermediary to the one
+leg whose fidelity the whole exercise depends on. And no verified OpenRouter price
+exists in this repo for any Anthropic slug — registering one would mean guessing
+either the slug or the price. So the jury is priced from
+`medlang_circuits/evaluate_models.py :: PRICING` at the same $5/$25 as Bedrock,
+and the jury cost does not move at all.
 
-Four arms, one factor. Sweeping `health_literacy` from the `confused` preset base:
+**3. A leg was missing from rev 1.** Every conversation makes a **sandbox
+generation call** — one LLM call that invents the offices and doctors the tools
+operate on. It is easy to miss because `ConversationRunner` creates that client
+internally and discards its response, and it is per *conversation*, not per run.
+It is now costed. On this shape it is ~2% of the total, but it is real, and it is
+the leg the tool-calling smoke test had to be restructured to meter.
+
+## Prices, and where each came from
+
+Never guessed. `resolve_price()` resolves every model against a named in-repo
+source and returns `None` for anything unverified; an unpriced plan renders **N/A**
+and exits non-zero rather than reporting a number.
+
+| model | role | $/1M in | $/1M out | source |
+|---|---|---|---|---|
+| `openrouter:openai/gpt-5.4-mini` | assistant, sandbox | 0.80 | 4.75 | `data/advice_providers.json :: openai.pricing` |
+| `openrouter:x-ai/grok-4.3` | patient | 1.32 | 2.63 | `data/advice_providers.json :: xai.default_pricing` |
+| `claude-opus-4-8` | jury | 5.00 | 25.00 | `medlang_circuits/evaluate_models.py :: PRICING` |
+
+`data/advice_providers.json` is this repo's **reviewed** provider registry, verified
+against vendor docs on 2026-07-21 and carrying at least one correction from a live
+400 (`openai/gpt-5.5-mini` does not exist on OpenRouter; `openai/gpt-5.4-mini`
+does) — so the slugs are evidence-backed rather than recalled. Its own header
+states the convention: prices are worst-case, cache-miss rates used for
+spend-ceiling math, and the true bill is the provider's. OpenRouter entries carry
+list price plus roughly a 5% aggregator margin.
+
+**Every number below is therefore an upper bound, not a quote.** Two caveats to
+close before the first fire, neither of which this session could close: OpenRouter
+is unreachable from this sandbox (the egress proxy denies the host), so slugs and
+prices could not be re-verified live; and the prepaid balance is not known here —
+check the totals against it with `--balance`.
+
+One model the plan wanted and did not get: **Qwen**. Rev 1's patient simulator was
+`qwen3-235b-bedrock`. There is no verified OpenRouter price for any Qwen slug in
+this repo, so rather than invent one the patient moved to `x-ai/grok-4.3` — still
+non-Claude, so the provenance argument for a non-Claude patient survives.
+
+## The design (unchanged from rev 1)
+
+Four arms, one factor, sweeping `health_literacy` from the `confused` preset base:
 
 | arm | `personality` label | role |
 |---|---|---|
-| 1 | `confused` | external anchor: upstream's own preset, rendered by upstream's own function |
-| 2 | `pw:base=confused` | internal control: same seven traits, rendered by the adapter |
+| 1 | `confused` | external anchor: upstream's preset via upstream's own function |
+| 2 | `pw:base=confused` | internal control: same seven traits, adapter-rendered |
 | 3 | `pw:base=confused;health_literacy=medium` | sweep |
 | 4 | `pw:base=confused;health_literacy=high` | sweep |
 
-Why this base rather than the neutral all-`medium` one: `confused` is the only
-preset carrying `health_literacy: low`, and it carries `clarity: low` and `urgency:
-low` with it — exactly the bundle that makes the paper's own headline
-(`confused` 3.15 > `skeptical` 2.52 on triage quality) unattributable to any single
-trait. Sweeping literacy from that base holds the other six at levels upstream
-validated. The neutral base is cleaner in principle but is itself off-manifold: no
-preset combines `cooperation: medium` with `anxiety: medium`, so a neutral-base
-sweep compares three unvalidated personas against an unvalidated baseline. See
-`docs/pab_integration_layers.md` for the numbers.
+`confused` is the only preset carrying `health_literacy: low`, and it carries
+`clarity: low` and `urgency: low` with it — the bundle that makes the paper's own
+headline (`confused` 3.15 > `skeptical` 2.52 on triage) unattributable to any
+single trait. Arms 2–4 are the identified contrast;
+`scripts/validate_pab_contract.py` checks that exactly one trait varies before any
+analysis runs. Arm 1 against arm 2 is free information about whether the persona
+*label* moves scores in their harness.
 
-Arms 2–4 are the single-factor contrast, and
-`scripts/validate_pab_contract.py` checks that exactly one trait varies across
-them before any analysis runs. **Arm 1 against arm 2 is free information**: the two
-render identical trait text and differ only in the block's `type` attribute
-(`"confused"` vs `"custom"`). A gap there is a label effect in their harness — a
-result worth reporting upstream, and a caveat this study would otherwise carry
-unknowingly.
-
-**Per-arm n = 13.** Sized to the effect the paper reports, not to a round number: a
-paired test detects their observed 0.79-point persona spread on triage quality with
-80% power at α = 0.05 when the paired SD is 1.0 (n = (2.80 × 1.0 / 0.79)² ≈ 13).
-Arms share cases, so the analysis is paired by construction. This n is honest about
-what it buys — a large effect and an effect-size estimate, not a precise one; a
-0.5-point effect would need n ≈ 32.
+**Per-arm n = 13**, sized to the effect the paper reports: a paired test detects
+their 0.79-point persona spread at 80% power with a paired SD of 1.0
+(n = (2.80 × 1.0 / 0.79)² ≈ 13). Arms share cases, so the analysis is paired by
+construction. **Turns: 3.**
 
 **Models.**
 
 | role | model | why |
 |---|---|---|
-| patient simulator | `qwen3-235b-bedrock` | Non-Claude, so the patient language is not Claude-written and Claude-graded — the provenance limitation the design note flags for Tier 2. Large enough for reliable persona adherence, which matters: a small model ignoring the persona is indistinguishable from an incoherent persona, and that is the exact question stage 1 asks. $0.22/$0.88 per 1M. |
-| assistant (system under test) | `claude-haiku-4.5-bedrock` | Mid-tier deployed-assistant class, in the range where the paper reports triage pass rates spreading (32%–88%) rather than flooring or ceiling. Ties back to this study's own model matrix. $1/$5. |
-| jury | `claude-opus-4.8-bedrock` | Their shipped default, and the validated instrument. **Do not substitute.** A cheaper jury would cut total cost by two-thirds and would also discard the clinician-agreement figure that is a headline reason to use this benchmark at all. |
-
-**Turns: 3** (the framework's `BenchConfig` default; the shipped config uses 10).
-Cost grows faster than linearly in turns because every call re-sends the context so
-far — 3 → 6 turns is +43% per conversation, 3 → 10 is +107%. Three turns is enough
-for the triage rubric's "asked a clarifying question before recommending"
-distinction, which is the graded behaviour. If stage 1 shows conversations
-truncating mid-triage, re-cost at 6.
+| patient | `openrouter:x-ai/grok-4.3` | Non-Claude, so patient language is not Claude-written and Claude-graded. Frontier-class, which matters more than its price: a small model that ignores personas is indistinguishable from an incoherent persona, and telling those apart *is* Stage 1. |
+| assistant | `openrouter:openai/gpt-5.4-mini` | Mid-tier, in the band where the paper reports triage pass rates spreading (32%–88%) rather than flooring or ceiling. Mature tool-calling, which is the risk the smoke test exists to retire. |
+| sandbox | `openrouter:openai/gpt-5.4-mini` | Emits JSON only; shares the assistant's model for simplicity. Invalid JSON is retried up to 3×, so a reliable generator is worth more than the ~2% it costs. |
+| jury | `claude-opus-4-8` (direct Anthropic API) | The validated instrument, benchmark default. **Do not substitute** — see above. |
 
 ## The money
 
-Per-conversation cost splits roughly 1% patient / 14% assistant / **85% jury**. The
-six rubric prompts total ~12k tokens before a transcript is added, and every jury
-model re-reads all six on every conversation. That ratio is what makes the probe
-worth staging.
+Per-conversation cost splits roughly 2% sandbox / 5% patient / 11% assistant /
+**81% jury**. The six rubric prompts total ~12k tokens before a transcript is
+added, and every jury model re-reads all six on every conversation. That ratio is
+why the probe is staged.
+
+### Stage 0 — tool-calling smoke test
+
+One conversation, 2 turns, no jury. **Estimated $0.025**, ceiling `--max-spend
+0.10`.
+
+PatientAgentBench is agentic and the paper omits models "solely because they
+lacked reliable native tool-calling for agentic workflows". A model that narrates
+tool use instead of emitting calls produces transcripts that look fine and score
+meaningless, so this runs before anything else:
+
+```bash
+python -m patientwords_pab.toolcall_smoke --dry-run     # $0
+python -m patientwords_pab.toolcall_smoke \
+    --assistant openrouter:openai/gpt-5.4-mini \
+    --report ../patientwords-engine/data/pab/toolcall_smoke.report.json
+```
+
+It asserts the transcript holds ≥1 tool call, that every call names a registered
+tool, carries dict arguments, and is answered by a matching result. Without the key
+it skips and exits 0. **Gate:** if it fails, escalate the assistant to
+`openrouter:openai/gpt-5.5` (which takes Stage 2 from $10.41 to $16.99) and re-run;
+if that also fails, the OpenRouter path is not viable for the assistant role and
+the plan needs a different channel. Only the assistant carries this risk — the
+patient agent has no tools.
+
+**Actual spend so far: $0.00.** `OPENROUTER_API_KEY` is not present in the
+development environment, so the live check has not run. The estimate above is
+what it will cost when it does.
 
 ### Stage 1 — manipulation check, generation only
 
 4 arms × 8 cases × 3 turns = **32 conversations**, no evaluation.
 
-| | |
-|---|---|
-| patient | $0.061 |
-| assistant | $0.879 |
-| jury | $0.000 |
-| **total** | **$0.940** |
+| leg | OpenRouter | rev 1 (Bedrock) |
+|---|---|---|
+| sandbox | $0.119 | $0.128 |
+| patient | $0.342 | $0.061 |
+| assistant | $0.726 | $0.879 |
+| jury | $0.000 | $0.000 |
+| **total** | **$1.187** | $1.068 |
 
-**Fits inside one day at the $2/day ceiling, with $1.06 to spare.** Run with
-`patient-agent-bench generate` (through `python -m patientwords_pab.run`), then
-read the patient turns. The register check is $0 and uses instruments this repo
-already owns: the clinical-term lexicon and the readability report, over the
-first-person patient utterances, low arm against high arm.
+**Fits inside one day at the $2/day ceiling, with $0.81 to spare.** Run
+`generate` through `python -m patientwords_pab.run`, then read the patient turns.
+The register check is $0 and uses instruments this repo already owns: the
+clinical-term lexicon and the readability report, over the first-person patient
+utterances, low arm against high arm.
 
-**Gate.** If the arms' patient language does not separate on register, stop. The
-persona instruction is not driving the simulator, and no amount of jury spend will
-make the sweep mean anything. Sunk cost at that point: **$0.94**.
+**Gate.** If the arms' patient language does not separate on register, stop — the
+persona instruction is not driving the simulator and no jury spend will make the
+sweep mean anything. Sunk cost at that point: **$1.21** including the smoke test.
+
+Cheaper patients exist if Stage 1 needs repeating: Kimi K2.5 $1.03,
+Gemini 3.5 Flash $0.96, DeepSeek V4 Flash $0.88. All are worse choices for the
+*first* run, for the reason in the model table.
 
 ### Stage 2 — outcome pilot
 
-Extend to 4 arms × 13 cases = **52 conversations** and score them.
+4 arms × 13 cases = **52 conversations**, scored.
 
-| | |
-|---|---|
-| generation (52 conversations) | $1.528 |
-| jury (opus-4.8, six rubrics) | $8.476 |
-| **total** | **$10.004** |
-| incremental after stage 1 | $9.06 |
+| leg | OpenRouter | rev 1 (Bedrock) |
+|---|---|---|
+| sandbox | $0.193 | $0.207 |
+| patient | $0.556 | $0.100 |
+| assistant | $1.180 | $1.429 |
+| jury | $8.476 | $8.476 |
+| **total** | **$10.405** | $10.211 |
+| per conversation | $0.2001 | $0.1964 |
+| days at the $2 ceiling | 6 | 6 |
 
-**$10.00 total, which is 6 days at the $2/day ceiling.** The ceiling is a daily
-operational limit, not a total budget: a probe larger than it is scheduled, not
-refused. `patient-agent-bench evaluate --run-dir` scores an existing run and the
-runner caches conversations by signature, so stage 1's 32 conversations are reused
-and the work splits across days without re-generating anything.
+**The channel switch is close to cost-neutral: +$0.19, or +1.9%.** That is the
+headline of this revision and it is not a coincidence — the jury is 81% of the
+bill and did not move. The patient leg is 5.6× dearer (grok-4.3 against
+qwen3-235b) and the assistant leg is 17% cheaper (gpt-5.4-mini against
+haiku-4.5), and the two nearly cancel.
 
-A note on the ceiling's mechanics: `scripts/fire_trigger.py` enforces $2/day over
-this repo's CI triggers. A Bedrock probe does not pass through that guard, so the
-limit has to be honoured by construction and recorded by hand in the session ledger
-alongside the CI spend. That is a discipline gap the probe would introduce, and it
-should be closed before the first fire rather than after.
+The $2/day limit is a daily operational ceiling, not a total budget: a probe
+larger than it is scheduled, not refused. `patient-agent-bench evaluate --run-dir`
+scores an existing run and the runner caches conversations by signature, so
+Stage 1's 32 conversations are reused and the work splits across days without
+re-generating anything. Inside a single day the ceiling buys n=2/arm with the Opus
+jury (n=3 on Sonnet 5, n=7 on Haiku 4.5) — which is why Stage 2 is scheduled
+rather than shrunk.
+
+**Programme total: $10.43** ($0.025 + $1.187 + the $9.22 increment to reach 52
+scored conversations), across 6 days at the ceiling, with a stop-gate after
+Stage 0 costing $0.03 and another after Stage 1 costing $1.21.
 
 ### What the pilot buys an option on
 
 | next step | conversations | cost | days at ceiling |
 |---|---|---|---|
-| second anchor: same sweep from `base=skeptical` (high-literacy preset) | 52 | $10.00 | 6 |
-| second trait: `communication` sweep, same shape | 52 | $10.00 | 6 |
-| powered single-trait study, n=32, two assistants | 256 | $46.24 | 24 |
+| second anchor: same sweep from `base=skeptical` | 52 | $10.41 | 6 |
+| second trait: `communication` sweep, same shape | 52 | $10.41 | 6 |
+| assistant escalated to `openrouter:openai/gpt-5.5` | 52 | $16.99 | 9 |
+| powered single-trait study, n=32, two assistants | 256 | ~$51 | 26 |
 
-The `base=skeptical` replication is the one that matters most: the same trait swept
-from the opposite anchor. Same sign from both bases means the effect generalises
-across personas; different signs mean it is persona-dependent, which is a finding
-in itself and one the preset system could never have produced.
+The `base=skeptical` replication matters most: the same trait from the opposite
+anchor. Same sign from both bases means the effect generalises across personas;
+different signs mean it is persona-dependent — itself a finding the preset system
+could never have produced.
+
+## Where the spend is recorded
+
+The probe is billed by OpenRouter and Anthropic, not fired through a CI trigger,
+so `scripts/fire_trigger.py`'s guard never sees it. Two mechanisms close that gap:
+
+* The smoke test writes a `.report.json` sidecar in this repo's established shape
+  (`run_timestamp`, `model`, `max_spend_usd`, `cost_usd`,
+  `usage.per_model{calls, input_tokens, output_tokens, cost}`).
+* `scripts/ledger_update.py` now scans `data/pab/*.report.json` alongside
+  `data/simulated/` and `data/advice/`, so that cost folds into `spend.by_day` and
+  the $2/day guard. `ledger_update.py` remains the only writer of spend numbers;
+  `ops/dashboard.json` is never hand-edited. Its Tier B attribution gates on
+  `task == "pairs"`, so probe sidecars count as background spend and never touch
+  Tier B counters — pinned by a regression test.
+
+The sidecar's cost is a **list-price reconstruction** from reported token usage,
+not the provider's invoice, and says so in a `cost_basis` field. The prepaid
+balance is the hard external ceiling above all of this.
 
 ## Cost assumptions, stated so they can be attacked
 
 - Token counts are characters ÷ 3.6, measured from the shipped artifacts on
-  2026-08-04 (prompt templates, the 20-scenario sample's stories and profile XML,
-  the 15 sandbox tool schemas, the six rubric prompts). `tiktoken` was unavailable —
-  it fetches its encoding file over a network this sandbox blocks — so the divisor
-  is a conservative estimate for prose mixed with XML and JSON, which tokenise
-  denser than prose alone.
-- 1.6 assistant model calls per turn (a tool call and an answer), 500 tokens of
-  dialogue growth per turn, 200-token assistant replies, 100-token patient replies,
-  150-token rubric verdicts. Deliberately generous; a probe that fits at these
-  numbers fits at the real ones.
-- Prices are AWS Bedrock on-demand list, matching the benchmark's own registry.
-  They move; `PRICES` in `scripts/pab_probe_cost.py` is where to check.
-- Retries and failed conversations are not modelled. Budget ~10% headroom.
+  2026-08-04 (prompt templates, the sample's stories and profile XML, the 15
+  sandbox tool schemas, the sandbox generation prompt, the six rubric prompts).
+  `tiktoken` fetches its encoding over a network this sandbox blocks.
+- 1.6 assistant calls per turn, 500 tokens of dialogue growth per turn, 200-token
+  assistant replies, 100-token patient replies, 150-token rubric verdicts, one
+  sandbox call per conversation at 483 in / 700 out. Deliberately generous.
+- Prices are ceiling-side (list + ~5% aggregator margin for OpenRouter).
+- Retries and failed conversations are not modelled — the sandbox generator alone
+  retries up to 3× on invalid JSON. Budget ~10% headroom.
 
-## Decisions needed before a single call
+## Go / no-go on Stage 1
 
-1. Amendment or explicitly labelled exploratory arm — fixed in advance, not after
-   seeing the result.
-2. Where derived artifacts may land, given CC-BY-NC-4.0 on both their code and
-   their data. Nothing derived should reach either public repo until that is settled.
-3. Whether $10 across six days is the right use of the ceiling against the Tier B
-   work already queued.
-4. Bedrock credentials, and how their spend is journalled next to the CI ledger.
+**Go, conditional on Stage 0.** At $1.19 Stage 1 fits inside a single day's
+ceiling with $0.81 to spare, needs no amendment because it produces no scored
+outcome — it only asks whether the persona instruction changes the patient's
+language, which is a property of text this repo can measure for $0 — and its
+whole downside is bounded at $1.21 including the smoke test. The re-costing found
+no reason to hesitate: OpenRouter is 1.9% dearer than the Bedrock plan overall and
+11% dearer at Stage 1, on prices that are upper bounds. What gates it is not
+money but tool-calling: run the $0.03 smoke test first, because if
+`openrouter:openai/gpt-5.4-mini` cannot drive the sandbox tools then all 32 Stage 1
+conversations are degenerate and the $1.19 buys nothing. Stage 2, at $10.41 over
+six days of ceiling, is a separate decision that should not be taken until Stage 1
+has shown the manipulation takes — and it still needs the pre-registration posture
+fixed in advance, since adopting an external rubric after seeing it agrees better
+than ours would be instrument shopping.

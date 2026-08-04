@@ -1,4 +1,4 @@
-# PatientAgentBench integration — as built (2026-08-04)
+# PatientAgentBench integration — as built (rev 2, 2026-08-04)
 
 Companion to `docs/patientagentbench_integration_design.md`, which decides *whether*
 to integrate. This one records *what exists*, so the next reader does not have to
@@ -49,6 +49,19 @@ right way; only the public API is preset-locked.
   check. Builds no LLM client and makes no network call.
 - **`run.py`** — CLI wrapper that registers the agent, then defers to upstream's
   `main()` unchanged.
+- **`openrouter_specs.py`** — model specs for the OpenRouter channel, injected
+  into `MODEL_STORE` at import. Upstream already supports
+  `provider="openai-protocol-api"` with `auth="api_key"`, `base_url_env` and
+  `api_key_env` for a non-default OpenAI-compatible endpoint, so this adds
+  entries rather than code. Registry keys are the engine's own
+  `openrouter:vendor/model` names. Prices carry a `price_source` into
+  `ModelSpec.notes`; a slug with no verified price is registered `None` and
+  upstream's rule applies — *None → unpriced, cost renders as N/A, never
+  guessed*.
+- **`toolcall_smoke.py`** — one live conversation asserting the assistant
+  actually emits well-formed tool calls, run before any arm spend. Skips and
+  exits 0 without `OPENROUTER_API_KEY`; writes a cost sidecar in this repo's
+  ledger shape.
 
 The `personality` field carries the arm label from the benchmark JSON to the agent
 as an opaque string, so no upstream plumbing had to change to move a trait spec
@@ -89,6 +102,7 @@ that matters:
 | `tests/test_validate_pab_contract.py` | 43 tests, each seeding one contract break |
 | `scripts/pab_probe_cost.py` | $0 offline cost model for a probe |
 | `tests/test_pab_probe_cost.py` | pins the figures the costing document quotes |
+| `scripts/ledger_update.py` (`--pab-dir`) | folds `data/pab/*.report.json` probe spend into the same totals the $2/day guard reads |
 
 ```bash
 python scripts/validate_pab_contract.py --run <run-dir> [--strict] [--json]
@@ -123,8 +137,8 @@ in `tests/test_validate_pab_contract.py` are what catches drift.
 
 ## Verification
 
-- Fork: `python -m pytest` → **1074 passed** (982 before, 92 added).
-- Engine: `python -m pytest` → **643 passed** (583 before, 60 added); `ruff check .`
+- Fork: `python -m pytest` → **1157 passed** (982 upstream baseline, 175 added).
+- Engine: `python -m pytest` → **662 passed** (583 before the integration, 79 added); `ruff check .`
   clean; `python scripts/seal_check.py --site ../patientwords` CLEAN.
 - **Upstream merge, simulated offline.** A synthetic upstream release editing
   `personalities.py` (including reordering `PERSONALITY_TYPE_NAMES`, which changes
@@ -201,3 +215,14 @@ No harness change either way.
    treated as ground truth.
 4. **Rubric subsetting is not available** without a fork-side hook. All six rubrics
    run on every conversation, which is most of the cost.
+5. **OpenRouter could not be reached from this sandbox** (the egress proxy denies
+   the host), so slugs and prices come from this repo's reviewed provider
+   registry rather than a live fetch, and must be re-verified before the first
+   fire. No Qwen slug has a verified OpenRouter price here, which is why the
+   patient simulator moved off Qwen rather than getting an invented number.
+6. **A cost leg was missing from rev 1** and is now counted: every conversation
+   makes one **sandbox generation call**. `ConversationRunner` creates that
+   client internally and discards its response, which is both why it was missed
+   and why `toolcall_smoke.py` drives the factories itself instead of calling
+   the runner — a check whose output is "what did this cost" cannot leave a
+   third of the calls unmetered.

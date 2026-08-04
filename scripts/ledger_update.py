@@ -51,6 +51,9 @@ def parse_args(argv=None):
                              ".report.json sidecars fold into the same totals")
     parser.add_argument("--trace-dir", default="trace_out",
                         help="trace output root scanned for mitigation cost sidecars")
+    parser.add_argument("--pab-dir", default="data/pab",
+                        help="PatientAgentBench probe sidecars (exploratory arm); "
+                             "their cost_usd folds into the same spend totals")
     parser.add_argument("--dashboard", default="ops/dashboard.json")
     parser.add_argument("--ledger", default=None,
                         help="ledger markdown file (default: lexicographically newest docs/*ledger*.md, "
@@ -258,8 +261,14 @@ def main(argv=None):
     # circuit-trace run and its cost was booked as $0 for the study's whole
     # history: no sidecar was written before 2026-07-31, and the workflow's
     # commit list would not have carried one anyway (owner decision D2).
+    # PatientAgentBench probe sidecars (data/pab/*.report.json) join the same
+    # fold. That spend is billed by OpenRouter/Anthropic rather than fired
+    # through a CI trigger, so without this glob the $2/day guard would never
+    # see it at all -- the same accounting gap the advice arm hit in July.
+    # attribute_tierb's task gate ("pairs") keeps them out of Tier B rows.
     scan_specs = [(Path(args.simulated_dir), "*.report.json"),
                   (Path(args.advice_dir), "*.report.json"),
+                  (Path(args.pab_dir), "*.report.json"),
                   (Path(args.trace_dir), "*/mitigation*.report.json")]
     for scan_dir, pattern in scan_specs:
         for path, report in scan_new_sidecars(scan_dir, set(entries_seen), pattern):

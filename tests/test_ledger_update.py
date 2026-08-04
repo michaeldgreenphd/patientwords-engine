@@ -33,20 +33,24 @@ def tree(tmp_path):
     sim.mkdir(parents=True)
     adv = tmp_path / "data" / "advice"
     adv.mkdir()
+    pab = tmp_path / "data" / "pab"
+    pab.mkdir()
     docs = tmp_path / "docs"
     docs.mkdir()
     ledger = docs / "overnight_ledger_20260708.md"
     ledger.write_text("# Overnight session ledger\n\nProse the script must not touch.\n", encoding="utf-8")
     trace = tmp_path / "trace_out"
     trace.mkdir()
-    return {"sim": sim, "adv": adv, "trace": trace,
+    return {"sim": sim, "adv": adv, "pab": pab, "trace": trace,
             "dash": tmp_path / "ops" / "dashboard.json", "ledger": ledger}
 
 
 def run(tree, *extra):
-    # --advice-dir always pinned to the fixture so a real sidecar landing in
-    # the repo's data/advice/ can never leak into these hermetic tests
+    # --advice-dir and --pab-dir always pinned to the fixture so a real sidecar
+    # landing in the repo's data/advice/ or data/pab/ can never leak into these
+    # hermetic tests
     argv = ["--simulated-dir", str(tree["sim"]), "--advice-dir", str(tree["adv"]),
+            "--pab-dir", str(tree["pab"]),
             "--trace-dir", str(tree["trace"]),
             "--dashboard", str(tree["dash"]),
             "--ledger", str(tree["ledger"]), "--date", TODAY, *extra]
@@ -427,6 +431,43 @@ def test_advice_sidecars_fold_into_spend_totals(tree):
     # idempotent on re-run
     assert run(tree) == 0
     assert load_dash(tree)["spend"]["by_day"][TODAY] == pytest.approx(0.58)
+
+
+def test_pab_sidecars_fold_into_spend_totals(tree):
+    # PatientAgentBench probe spend is billed by the provider, not fired
+    # through a CI trigger, so without this glob the $2/day guard never sees it
+    # -- the same gap the advice arm hit in July.
+    write_sidecar(tree["pab"], "toolcall_smoke_20260804T101010Z.report.json",
+                  cost_usd=0.0123, model="openrouter:openai/gpt-5.4-mini",
+                  task="pab-toolcall-smoke", max_spend_usd=0.10,
+                  run_timestamp=f"{TODAY}T10:10:10Z")
+    assert run(tree) == 0
+    spend = load_dash(tree)["spend"]
+    assert spend["by_day"][TODAY] == pytest.approx(0.0123)
+    assert "toolcall_smoke_20260804T101010Z.report.json" in set(spend["entries_seen"])
+    # idempotent on re-run
+    assert run(tree) == 0
+    assert load_dash(tree)["spend"]["by_day"][TODAY] == pytest.approx(0.0123)
+
+
+def test_pab_sidecar_never_attributed_to_tier_b(tree):
+    # attribute_tierb gates on task == "pairs"; a probe sidecar is background
+    # spend and must not move the Tier B campaign counters.
+    seed_dash(tree, {"tierb": {"start_utc": "2026-01-01T00:00:00Z",
+                               "generator": "claude-opus-4-8",
+                               "accepted_pairs": 7, "batches": []},
+                     "spend": {}})
+    write_sidecar(tree["pab"], "probe_20260804T111111Z.report.json",
+                  cost_usd=0.5, model="claude-opus-4-8",
+                  task="pab-toolcall-smoke",
+                  run_timestamp=f"{TODAY}T11:11:11Z")
+    assert run(tree) == 0
+    dash = load_dash(tree)
+    assert dash["tierb"]["accepted_pairs"] == 7
+    assert dash["tierb"]["batches"] == []
+    assert dash["spend"].get("generation_spent_usd") in (None, 0, 0.0)
+    # still counted as background spend against the daily guard
+    assert dash["spend"]["by_day"][TODAY] == pytest.approx(0.5)
 
 
 def test_cumulative_sidecar_growth_folds_as_delta(tree, capsys):
