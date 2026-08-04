@@ -140,10 +140,12 @@ KNOWN_KEYS = {
     }),
     # pab_probe.yml `defaults` dict (verified 2026-08-04 against the params
     # heredoc by tests/test_pab_ci_staged.py): stage, fork_ref, cases_file,
-    # config_file, assistant, turns, run_dir, max_spend, commit_sidecar.
+    # config_file, assistant, turns, run_dir, max_spend, commit_sidecar,
+    # catalog_search, catalog_require.
     "pab-probe": frozenset({
         "stage", "fork_ref", "cases_file", "config_file", "assistant", "turns",
-        "run_dir", "max_spend", "commit_sidecar",
+        "run_dir", "max_spend", "commit_sidecar", "catalog_search",
+        "catalog_require",
     }),
 }
 

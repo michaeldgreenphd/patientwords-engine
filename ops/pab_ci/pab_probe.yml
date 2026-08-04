@@ -28,7 +28,7 @@ on:
   workflow_dispatch:
     inputs:
       stage:
-        description: "smoke (tool-calling check) | generate (conversations only) | evaluate (score an existing run)"
+        description: "catalog ($0 slug/price lookup) | smoke (tool-calling check) | generate (conversations only) | evaluate (score an existing run)"
         type: string
         default: "smoke"
       fork_ref:
@@ -63,6 +63,14 @@ on:
         description: "Commit the cost sidecar to data/pab/ so the ledger sees the spend"
         type: boolean
         default: true
+      catalog_search:
+        description: "Space-separated substrings to look up in OpenRouter's catalogue (catalog stage)"
+        type: string
+        default: ""
+      catalog_require:
+        description: "Space-separated slugs that must exist and be priced before any spend"
+        type: string
+        default: ""
 
   push:
     paths:
@@ -89,6 +97,8 @@ jobs:
       run_dir: ${{ steps.params.outputs.run_dir }}
       max_spend: ${{ steps.params.outputs.max_spend }}
       commit_sidecar: ${{ steps.params.outputs.commit_sidecar }}
+      catalog_search: ${{ steps.params.outputs.catalog_search }}
+      catalog_require: ${{ steps.params.outputs.catalog_require }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -111,6 +121,8 @@ jobs:
           IN_RUN_DIR: ${{ inputs.run_dir }}
           IN_MAX_SPEND: ${{ inputs.max_spend }}
           IN_COMMIT_SIDECAR: ${{ inputs.commit_sidecar }}
+          IN_CATALOG_SEARCH: ${{ inputs.catalog_search }}
+          IN_CATALOG_REQUIRE: ${{ inputs.catalog_require }}
         run: |
           python - <<'EOF'
           import json, os
@@ -125,7 +137,9 @@ jobs:
                       "turns": "2",
                       "run_dir": "",
                       "max_spend": "0.10",
-                      "commit_sidecar": "true"}
+                      "commit_sidecar": "true",
+                      "catalog_search": "",
+                      "catalog_require": ""}
           p = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/pab-probe.json", encoding="utf-8") as f:
@@ -137,7 +151,7 @@ jobs:
                   value = os.environ.get("IN_" + key.upper(), "")
                   if value != "":
                       p[key] = value
-          if p["stage"] not in ("smoke", "generate", "evaluate"):
+          if p["stage"] not in ("catalog", "smoke", "generate", "evaluate"):
               raise SystemExit(f"unknown stage {p['stage']!r}")
           if float(p["max_spend"]) <= 0:
               raise SystemExit("max_spend must be > 0")
@@ -152,6 +166,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            scripts
+            data
+            medlang_circuits
 
       - name: Check out the fork (CC-BY-NC-4.0, kept out of this repo's tree)
         uses: actions/checkout@v4
@@ -170,6 +190,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
           python -c "import patientwords_pab as p; print('adapter ok:', p.FreeTraitUserAgent.NAME)"
+
+      - name: OpenRouter catalogue ($0, no model call)
+        if: needs.params.outputs.catalog_search != '' || needs.params.outputs.catalog_require != ''
+        working-directory: .pab-fork
+        run: |
+          args=""
+          for term in ${{ needs.params.outputs.catalog_search }}; do
+            args="$args --search $term"
+          done
+          for slug in ${{ needs.params.outputs.catalog_require }}; do
+            args="$args --require $slug"
+          done
+          python -m patientwords_pab.openrouter_catalog $args --compare-specs
 
       - name: Tool-calling smoke test
         if: needs.params.outputs.stage == 'smoke'
