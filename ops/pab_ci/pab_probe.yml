@@ -322,9 +322,9 @@ jobs:
             python scripts/validate_pab_contract.py --run "$run" --json \
               > "data/pab/pab_contract_${stamp}.json" || true
             python scripts/pab_literacy_shift.py --run "$run" \
-              --csv "data/pab/pab_rows_${stamp}.csv" || true
+              --csv "data/pab/pab_rows_${stamp}.csv"
             python scripts/pab_literacy_shift.py --run "$run" --json \
-              > "data/pab/pab_literacy_shift_${stamp}.json" || true
+              > "data/pab/pab_literacy_shift_${stamp}.json"
           done
 
       - name: Validate the transcripts against the Layer-2 contract

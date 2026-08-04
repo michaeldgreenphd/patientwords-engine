@@ -277,3 +277,50 @@ class TestCLI:
 
     def test_missing_run_directory_exits_two(self, tmp_path, capsys):
         assert main(["--run", str(tmp_path / "absent")]) == 2
+
+
+class TestPartialRuns:
+    """A cancelled run is the normal case, not an edge case.
+
+    The runner checkpoints each conversation into conversations.json as it
+    finishes but writes experiment_config.json only when the whole experiment
+    completes. A cancelled run therefore leaves a final experiment with real
+    conversations and no config -- and the first version of this script aborted
+    on it, discarding three complete experiments to a partial fourth.
+    """
+
+    def test_experiment_without_a_config_is_still_analysed(self, tmp_path):
+        run = write_run(tmp_path, {"exp1": ("model-a", [
+            conversation("c1", LOW), conversation("c1", HIGH)])})
+        partial = run / "exp2"
+        partial.mkdir()
+        (partial / "conversations.json").write_text(json.dumps([
+            conversation("c1", LOW), conversation("c1", HIGH)]))
+        # no experiment_config.json, exactly as a cancelled experiment leaves it
+
+        report = paired_shift(collect(run, MARKERS, CONTRACT))
+        assert set(report) == {"model-a", "exp2"}, (
+            "an experiment with no config was dropped instead of falling back "
+            "to its directory name"
+        )
+        assert report["exp2"]["n_pairs"] == 1
+
+    def test_a_partial_experiment_does_not_lose_the_complete_ones(self, tmp_path):
+        run = write_run(tmp_path, {
+            "exp1": ("model-a", [conversation("c1", LOW), conversation("c1", HIGH)]),
+            "exp2": ("model-b", [conversation("c1", LOW), conversation("c1", HIGH)]),
+        })
+        broken = run / "exp3"
+        broken.mkdir()
+        (broken / "conversations.json").write_text("{ not json")
+
+        report = paired_shift(collect(run, MARKERS, CONTRACT))
+        assert {"model-a", "model-b"} <= set(report)
+
+    def test_unfilled_slots_in_a_cancelled_experiment_are_skipped(self, tmp_path):
+        """The runner pre-allocates every slot as null and fills them in; a
+        cancelled experiment leaves the tail null."""
+        run = write_run(tmp_path, {"exp1": ("model-a", [
+            conversation("c1", LOW), conversation("c1", HIGH), None, None])})
+        block = paired_shift(collect(run, MARKERS, CONTRACT))["model-a"]
+        assert block["n_pairs"] == 1

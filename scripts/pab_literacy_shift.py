@@ -89,8 +89,21 @@ def arm_level(label: str, spec: dict) -> str | None:
 
 
 def assistant_model(exp_dir: Path) -> str:
-    """The assistant model an experiment ran, from its own config."""
-    config = load_json(exp_dir / "experiment_config.json")
+    """The assistant model an experiment ran, from its own config.
+
+    Falls back to the directory name when the config is absent or unreadable.
+    A run cancelled mid-experiment leaves ``conversations.json`` (the runner
+    checkpoints into it per conversation) without the ``experiment_config.json``
+    that is written when the experiment finishes -- so insisting on the config
+    would throw away the conversations that *did* complete.
+    """
+    path = exp_dir / "experiment_config.json"
+    if not path.is_file():
+        return exp_dir.name
+    try:
+        config = load_json(path)
+    except AnalysisError:
+        return exp_dir.name
     agent = config.get("assistant_agent") or config.get("assistant") or {}
     model = agent.get("model")
     if isinstance(model, dict):
@@ -195,7 +208,14 @@ def collect(run_dir: Path, markers: dict, contract: dict) -> list[dict]:
     rows = []
     for exp in experiment_dirs:
         model = assistant_model(exp)
-        for conversation in load_json(exp / "conversations.json") or []:
+        try:
+            conversations = load_json(exp / "conversations.json") or []
+        except AnalysisError as err:
+            # One unreadable experiment must not cost the readable ones. A
+            # cancelled run's last experiment is exactly this case.
+            print(f"warning: skipping {exp.name}: {err}", file=sys.stderr)
+            continue
+        for conversation in conversations:
             if not isinstance(conversation, dict) or not conversation.get("conversation"):
                 continue  # an unfilled slot, not a conversation
             level = arm_level(conversation.get("personality", ""), spec)
