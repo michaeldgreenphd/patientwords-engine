@@ -28,7 +28,7 @@ on:
   workflow_dispatch:
     inputs:
       stage:
-        description: "catalog ($0 slug/price lookup) | smoke (tool-calling check) | generate (conversations only) | evaluate (score an existing run)"
+        description: "catalog ($0 slug/price lookup) | smoke (tool-calling check) | generate (conversations only) | evaluate (score an existing run) | analyze ($0, re-read a finished run's transcripts)"
         type: string
         default: "smoke"
       fork_ref:
@@ -165,7 +165,7 @@ jobs:
                   value = os.environ.get("IN_" + key.upper(), "")
                   if value != "":
                       p[key] = value
-          if p["stage"] not in ("catalog", "smoke", "generate", "evaluate"):
+          if p["stage"] not in ("catalog", "smoke", "generate", "evaluate", "analyze"):
               raise SystemExit(f"unknown stage {p['stage']!r}")
           if float(p["max_spend"]) <= 0:
               raise SystemExit("max_spend must be > 0")
@@ -280,7 +280,7 @@ jobs:
                  esac; }
 
       - name: Fetch the transcripts to score (the run directory is ephemeral)
-        if: needs.params.outputs.stage == 'evaluate' && needs.params.outputs.artifact_run_id != ''
+        if: (needs.params.outputs.stage == 'evaluate' || needs.params.outputs.stage == 'analyze') && needs.params.outputs.artifact_run_id != ''
         uses: actions/download-artifact@v4
         with:
           # Generation and scoring are separate runs on separate billing
@@ -309,8 +309,26 @@ jobs:
             --config "${{ needs.params.outputs.config_file }}" \
             --run-dir "${{ needs.params.outputs.run_dir }}"
 
+      - name: Analyse the literacy shift ($0, transcripts only)
+        if: needs.params.outputs.stage == 'analyze'
+        run: |
+          # $0: reads the transcripts as data, makes no model call. Only the
+          # analysis output is committed -- measures and counts, no case text --
+          # so nothing CC-BY-NC-4.0 lands in this MIT repository.
+          mkdir -p data/pab
+          stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+          for run in .pab-fork/output/*/; do
+            echo "== $run"
+            python scripts/validate_pab_contract.py --run "$run" --json \
+              > "data/pab/pab_contract_${stamp}.json" || true
+            python scripts/pab_literacy_shift.py --run "$run" \
+              --csv "data/pab/pab_rows_${stamp}.csv" || true
+            python scripts/pab_literacy_shift.py --run "$run" --json \
+              > "data/pab/pab_literacy_shift_${stamp}.json" || true
+          done
+
       - name: Validate the transcripts against the Layer-2 contract
-        if: needs.params.outputs.stage != 'smoke'
+        if: needs.params.outputs.stage == 'generate' || needs.params.outputs.stage == 'evaluate'
         run: |
           for run in .pab-fork/output/*/; do
             echo "== $run"
@@ -318,7 +336,7 @@ jobs:
           done
 
       - name: Upload transcripts as an artifact (not committed)
-        if: always() && needs.params.outputs.stage != 'smoke'
+        if: always() && (needs.params.outputs.stage == 'generate' || needs.params.outputs.stage == 'evaluate')
         uses: actions/upload-artifact@v4
         with:
           name: pab-run-${{ github.run_id }}
