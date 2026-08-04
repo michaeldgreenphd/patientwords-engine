@@ -733,3 +733,8 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - toolcall_smoke_20260804T042921Z.report.json · $0.0353 · openrouter:openai/gpt-5.4-mini · accepted — · 2026-08-04T04:29:53.712968Z
 - pab_generate_30879016218.reconciled.report.json · $2.2300 · alias · accepted — · 2026-08-04T05:08:05Z
 - pab_generate_30880027373.reconciled.report.json · $1.7556 · alias · accepted — · 2026-08-04T05:25:42Z
+- dialects_20260804T120912Z.report.json · $0.0462 · claude-haiku-4-5 · accepted 155 · 2026-08-04T12:10:08.360662+00:00
+- dialects_20260804T121703Z.report.json · $0.0457 · claude-haiku-4-5 · accepted 157 · 2026-08-04T12:17:58.318687+00:00
+- modeleval_20260804T121303Z.report.json · $0.0679 · claude-opus-4-8 claude-sonnet-5 claude-haiku-4-5 · accepted — · 2026-08-04T12:09:11.381554+00:00
+- modeleval_20260804T122241Z.report.json · $0.0680 · claude-opus-4-8 claude-sonnet-5 claude-haiku-4-5 · accepted — · 2026-08-04T12:18:46.263149+00:00
+- pairs_20260803T132340Z.report.json · $0.1503 · claude-haiku-4-5 · accepted 100 · 2026-08-03T13:26:47.328019+00:00
