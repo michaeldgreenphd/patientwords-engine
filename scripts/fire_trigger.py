@@ -147,6 +147,7 @@ KNOWN_KEYS = {
         "stage", "fork_ref", "cases_file", "config_file", "assistant", "turns",
         "run_dir", "max_spend", "commit_sidecar", "catalog_search",
         "catalog_require", "artifact_run_id", "generate_timeout_minutes",
+        "artifact_run_id_2",
     }),
 }
 

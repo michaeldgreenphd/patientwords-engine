@@ -79,6 +79,10 @@ on:
         description: "GitHub run id whose pab-run-<id> artifact holds the transcripts to score (evaluate stage; the run directory is ephemeral, so a later job must fetch it back)"
         type: string
         default: ""
+      artifact_run_id_2:
+        description: "A second run id to pool into the same analysis (analyze stage). Each generate run uploads only its own models, so a sweep split across two runs needs both to be read together."
+        type: string
+        default: ""
 
   push:
     paths:
@@ -109,6 +113,7 @@ jobs:
       catalog_require: ${{ steps.params.outputs.catalog_require }}
       artifact_run_id: ${{ steps.params.outputs.artifact_run_id }}
       generate_timeout_minutes: ${{ steps.params.outputs.generate_timeout_minutes }}
+      artifact_run_id_2: ${{ steps.params.outputs.artifact_run_id_2 }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -135,6 +140,7 @@ jobs:
           IN_CATALOG_REQUIRE: ${{ inputs.catalog_require }}
           IN_ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
           IN_GENERATE_TIMEOUT_MINUTES: ${{ inputs.generate_timeout_minutes }}
+          IN_ARTIFACT_RUN_ID_2: ${{ inputs.artifact_run_id_2 }}
         run: |
           python - <<'EOF'
           import json, os
@@ -153,7 +159,8 @@ jobs:
                       "catalog_search": "",
                       "catalog_require": "",
                       "artifact_run_id": "",
-                      "generate_timeout_minutes": "300"}
+                      "generate_timeout_minutes": "300",
+                      "artifact_run_id_2": ""}
           p = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/pab-probe.json", encoding="utf-8") as f:
@@ -292,6 +299,18 @@ jobs:
           run-id: ${{ needs.params.outputs.artifact_run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Fetch a second run to pool into the analysis
+        if: needs.params.outputs.stage == 'analyze' && needs.params.outputs.artifact_run_id_2 != ''
+        uses: actions/download-artifact@v4
+        with:
+          # Its own directory: each generate run names its experiments 0_0, 1_0,
+          # ... independently, so unpacking both into one tree would have the
+          # second run's experiments overwrite the first's.
+          name: pab-run-${{ needs.params.outputs.artifact_run_id_2 }}
+          path: .pab-fork/output-2/
+          run-id: ${{ needs.params.outputs.artifact_run_id_2 }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Score an existing run (jury bills Anthropic)
         if: needs.params.outputs.stage == 'evaluate'
         working-directory: .pab-fork
@@ -317,15 +336,22 @@ jobs:
           # so nothing CC-BY-NC-4.0 lands in this MIT repository.
           mkdir -p data/pab
           stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-          for run in .pab-fork/output/*/; do
+          args=""
+          for run in .pab-fork/output/*/ .pab-fork/output-2/*/; do
+            [ -d "$run" ] || continue
             echo "== $run"
+            args="$args --run $run"
             python scripts/validate_pab_contract.py --run "$run" --json \
-              > "data/pab/pab_contract_${stamp}.json" || true
-            python scripts/pab_literacy_shift.py --run "$run" \
-              --csv "data/pab/pab_rows_${stamp}.csv"
-            python scripts/pab_literacy_shift.py --run "$run" --json \
-              > "data/pab/pab_literacy_shift_${stamp}.json"
+              > "data/pab/pab_contract_${stamp}_$(basename "$run").json" || true
           done
+          # One analysis over every run directory: --run is repeatable, and the
+          # models are keyed by their registry name, so a sweep split across two
+          # runs pools into a single table.
+          python scripts/pab_literacy_shift.py $args \
+            --csv "data/pab/pab_rows_${stamp}.csv"
+          python scripts/pab_literacy_shift.py $args --json \
+            > "data/pab/pab_literacy_shift_${stamp}.json"
+          python scripts/pab_literacy_shift.py $args | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Validate the transcripts against the Layer-2 contract
         if: needs.params.outputs.stage == 'generate' || needs.params.outputs.stage == 'evaluate'
