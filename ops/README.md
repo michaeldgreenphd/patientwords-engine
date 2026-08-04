@@ -85,12 +85,14 @@ in-flight hold once the run's real cost lands via the sidecar scan.
 
 ## Single-writer rule
 
-`ops/dashboard.json` is written **only by the orchestrator session** (the daily
-Routine fires into it since the 2026-07-10 rebind), through
-exactly three paths: `scripts/fire_trigger.py` (queue slots and the trigger
-journal), `scripts/ledger_update.py` (spend accounting from cost sidecars), and
-the Routine's own direct edits (verdicts, findings, decisions, blockers,
-notes, Tier B counts). Every other session and every consumer treats the file
+`ops/dashboard.json` is written **only by the daily Routine's session** (a
+fresh session per firing since the 2026-08-04 cutover,
+`trig_01H9YrMSHEDkyXWT4bxttihq` — see `docs/ops_routine_spec_20260804.md`;
+2026-07-10..08-03 it was the orchestrator session the old Routine fired
+into), through exactly three paths: `scripts/fire_trigger.py` (queue slots
+and the trigger journal), `scripts/ledger_update.py` (spend accounting from
+cost sidecars), and the Routine's own direct edits (verdicts, findings,
+decisions, blockers, notes, Tier B counts). Every other session and every consumer treats the file
 as read-only. This keeps a frequently-committed file free of merge conflicts
 and keeps `updated_utc` meaningful: staleness on the dashboard means the
 Routine failed, not that someone else forgot to touch a field. If an

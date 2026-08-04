@@ -1,10 +1,12 @@
 # Daily Routine — standing prompt (Tier B vacation week)
 
-This file is the exact prompt text for the daily scheduled Routine
-(fresh session per firing, daily digest push). It is committed so the
-owner and any session can audit precisely what the Routine does.
-Changes to this file after the Routine is created require recreating
-the Routine with the new text.
+This file is the authority for the daily scheduled Routine
+(fresh session per firing since 2026-08-04, daily digest push). The
+Routine's baked-in prompt is deliberately short — see
+`docs/ops_routine_spec_20260804.md` — and points here, so each firing
+re-reads this file from the branch. Changes committed here take effect
+at the next firing; no recreation needed. It is committed so the owner
+and any session can audit precisely what the Routine does.
 
 ---
 
@@ -208,7 +210,10 @@ Priority order when slots are free:
    **Operating consequence:** assume the lane is driven ONLY by this daily cycle
    plus whatever in-session timers happen to be alive. A container reclaim kills
    those timers, nothing retries, and the lane then idles until the next daily
-   cycle — observed cost 12.7-21.6h per reclaim, four reclaims in four days.
+   cycle — observed cost 12.7-21.6h per reclaim (worst 64.2h, 2026-08-01..02).
+   **Since 2026-08-04 the daily cycle itself is reclaim-proof** (fresh session
+   per firing, `trig_01H9YrMSHEDkyXWT4bxttihq`), so the worst case is bounded
+   by the daily cadence; the accelerator still does not exist.
    **Acceptance test before this text may be reverted:** an unattended tick
    present in the journal. Nothing less counts.
 
@@ -343,11 +348,12 @@ supersedes the "do not recreate" line above for the critic — the owner asked f
 - End your session with a final message whose FIRST LINE is exactly the
   output of `python scripts/daily_brief.py --digest` — that line becomes
   the owner's one daily push notification. Append one fixed footer
-  sentence: "Reply STOP in the main session to freeze all automation."
-  (The main session holds the trigger ids and will delete every Routine
-  and scheduled wake on that word.) Keep the rest of the message to
-  a short paragraph. Exactly one cycle per firing: do not schedule further
-  work, do not loop.
+  sentence: "Reply STOP in any session to freeze all automation."
+  (The Routine's id is recorded in `docs/ops_routine_spec_20260804.md`;
+  any session in this account can delete it via `delete_trigger`, and the
+  owner can pause it in the claude.ai Routines UI.) Keep the rest of the
+  message to a short paragraph. Exactly one cycle per firing: do not
+  schedule further work, do not loop.
 
 ## Boundaries (absolute)
 
@@ -364,14 +370,22 @@ supersedes the "do not recreate" line above for the critic — the owner asked f
 
 ---
 
-**Mode change (2026-07-10, owner request):** the daily Routine no longer
-spawns a fresh session — its push notification deep-linked the owner to an
-empty session without the repos. It now fires INTO the main orchestrator
-session (`trig_01Qczu2cNAsk1gYodan6auHb`, cron 13:00 UTC), which runs the
-cycle above and delivers the digest as (a) a PushNotification carrying the
-`daily_brief.py --digest` line and (b) a chat message in that session. The
-watchdog in §6b loses its independent-session redundancy as a consequence;
-the nightly critic wake (05:00 UTC) is the remaining second pulse.
+**Mode change (2026-07-10, owner request — SUPERSEDED 2026-08-04):** the
+daily Routine was rebound to fire INTO the main orchestrator session
+(`trig_01Qczu2cNAsk1gYodan6auHb`) because its push notification had
+deep-linked the owner to an empty session without the repos. That binding
+made a container reclaim stop all measurement silently (three multi-day
+idles, worst 64.2h).
+
+**Mode change (2026-08-04, owner decision):** the daily cycle is a
+fresh-session-per-firing Routine again — `trig_01H9YrMSHEDkyXWT4bxttihq`,
+cron 13:00 UTC, per `docs/ops_routine_spec_20260804.md`. The 07-10 empty-
+session problem is addressed in the Routine's prompt: the fired session
+bootstraps both sibling checkouts on the working branch before acting. The
+old digest Routine was deleted at cutover. The fired session delivers the
+digest line as its completion push notification and runs this file's cycle
+verbatim; this file is re-read from the branch at each firing, so committed
+changes here take effect the next day without recreating the Routine.
 
 **Timezone note (2026-07-10):** owner is on Pacific time through Thursday
 2026-07-16. The 13:00 UTC firing is 6:00 AM PDT — the owner's requested

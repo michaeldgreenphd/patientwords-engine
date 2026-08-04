@@ -1,12 +1,22 @@
 # Ops Routine — creation spec (fresh session per firing)
 
-> **STATUS: NOT CREATED.** This is a proposal, not a description of something
-> running. As of 2026-08-04 the daily cycle still fires into whatever
-> orchestrator session is live. Nothing in this file takes effect until the
-> owner creates the Routine on their own surface. Do not read a full lane as
-> evidence it exists. (This header is here because
-> `docs/backfill_accel_prompt.md` lacked one for five weeks and every reader,
-> including several sessions, concluded a nonexistent Routine was running.)
+> **STATUS: CREATED 2026-08-04, owner-approved.** Routine id
+> `trig_01H9YrMSHEDkyXWT4bxttihq`, name `patientwords daily ops cycle`, cron
+> `0 13 * * *` UTC, fresh session per firing, completion push notification on.
+> First firing 2026-08-04 ~13:03 UTC. The prior Routine
+> (`trig_01Qczu2cNAsk1gYodan6auHb`, "patientwords daily ops digest", bound to
+> the old orchestrator session) was **deleted** minutes before its 13:00
+> firing — cross-session `update_trigger` (disable-in-place) is not enabled
+> for this org, so retirement meant deletion; its run history lives on in the
+> journal, dashboard, and briefs. Contrary to the "Why it cannot be created
+> from a session" section below (kept for the record), `create_trigger` and
+> `list_triggers` worked without an approval wall from the 2026-08-04
+> takeover session — the block was surface-specific, not universal.
+> **Known limitation:** Routines created via the in-session tool store no MCP
+> connectors, so the fired sessions run without `mcp__github__*` tools. The
+> cycle is git-native and does not require them; if GitHub-API access ever
+> becomes necessary, recreate the Routine from the claude.ai Routines UI with
+> the GitHub connector attached.
 
 ## Why
 
