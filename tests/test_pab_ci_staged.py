@@ -255,3 +255,39 @@ class TestFireGuardRegistration:
     def test_known_keys_match_the_workflow_defaults(self, defaults):
         ft = self._fire_trigger()
         assert ft.KNOWN_KEYS[TRIGGER_KEY] == frozenset(defaults)
+
+
+class TestGracefulStop:
+    """A run that is cancelled at GitHub's 6h JOB limit loses everything: the
+    remaining steps never run, so the transcripts are not uploaded and the cost
+    sidecar is not written. Money spent, nothing to show, nothing in the ledger.
+    Ending the STEP early instead keeps the job alive to save both."""
+
+    def test_generation_stops_itself_before_the_job_limit(self, workflow):
+        run = step_named(workflow, "Generate")["run"]
+        assert "timeout --signal=INT" in run, (
+            "generation has no self-imposed deadline; a slow run is cancelled "
+            "by GitHub and its transcripts are lost"
+        )
+        assert "generate_timeout_minutes" in run
+
+    def test_the_default_deadline_leaves_room_to_save_the_run(self, raw):
+        """The upload and commit steps still have to run after generation
+        stops, inside GitHub's 360-minute job limit."""
+        default = re.search(
+            r'generate_timeout_minutes:.*?default: "(\d+)"', raw, re.S).group(1)
+        assert int(default) <= 330, (
+            f"a {default}-minute deadline leaves under 30 minutes to upload "
+            "and commit before the job is cancelled"
+        )
+
+    def test_an_early_stop_does_not_fail_the_job(self, workflow):
+        """124 is timeout's deadline, 130 is SIGINT. Both mean 'partial run,
+        keep the steps that save it' -- if they failed the job, the upload and
+        the sidecar would be lost exactly when they matter most."""
+        run = step_named(workflow, "Generate")["run"]
+        assert "124|130" in run
+
+    def test_partial_transcripts_are_still_uploaded(self, workflow):
+        upload = step_named(workflow, "Upload transcripts")
+        assert upload["if"].startswith("always()")

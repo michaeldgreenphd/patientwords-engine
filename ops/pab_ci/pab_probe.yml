@@ -71,6 +71,10 @@ on:
         description: "Space-separated slugs that must exist and be priced before any spend"
         type: string
         default: ""
+      generate_timeout_minutes:
+        description: "Stop generation after this many minutes so the transcripts still get uploaded (GitHub cancels the whole job at 360)"
+        type: string
+        default: "300"
       artifact_run_id:
         description: "GitHub run id whose pab-run-<id> artifact holds the transcripts to score (evaluate stage; the run directory is ephemeral, so a later job must fetch it back)"
         type: string
@@ -104,6 +108,7 @@ jobs:
       catalog_search: ${{ steps.params.outputs.catalog_search }}
       catalog_require: ${{ steps.params.outputs.catalog_require }}
       artifact_run_id: ${{ steps.params.outputs.artifact_run_id }}
+      generate_timeout_minutes: ${{ steps.params.outputs.generate_timeout_minutes }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -129,6 +134,7 @@ jobs:
           IN_CATALOG_SEARCH: ${{ inputs.catalog_search }}
           IN_CATALOG_REQUIRE: ${{ inputs.catalog_require }}
           IN_ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
+          IN_GENERATE_TIMEOUT_MINUTES: ${{ inputs.generate_timeout_minutes }}
         run: |
           python - <<'EOF'
           import json, os
@@ -146,7 +152,8 @@ jobs:
                       "commit_sidecar": "true",
                       "catalog_search": "",
                       "catalog_require": "",
-                      "artifact_run_id": ""}
+                      "artifact_run_id": "",
+                      "generate_timeout_minutes": "300"}
           p = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/pab-probe.json", encoding="utf-8") as f:
@@ -249,10 +256,28 @@ jobs:
           # makes the config's most-expensive-first ordering a safety property:
           # a ceiling trip then loses a known tail of cheap models, not a
           # scattered subset of every model at once.
-          python -m patientwords_pab.run generate \
+          #
+          # `timeout --signal=INT` is load-bearing, not belt-and-braces. A run
+          # that hits GitHub's 6h JOB limit is cancelled outright: the remaining
+          # steps do not run, so the transcripts are never uploaded and the cost
+          # sidecar is never written -- money spent, nothing to show, nothing in
+          # the ledger. Ending the STEP early instead leaves the job alive, and
+          # SIGINT reaches Python as KeyboardInterrupt, which the run wrapper's
+          # `finally` turns into a written report. Conversations already
+          # finished are on disk, `if: always()` uploads them, and
+          # `generate --run-dir` resumes from there.
+          timeout --signal=INT --kill-after=2m \
+            "${{ needs.params.outputs.generate_timeout_minutes }}m" \
+            python -m patientwords_pab.run generate \
             --cases "${{ needs.params.outputs.cases_file }}" \
             --config "${{ needs.params.outputs.config_file }}" \
-            ${{ needs.params.outputs.run_dir != '' && format('--run-dir "{0}"', needs.params.outputs.run_dir) || '' }}
+            ${{ needs.params.outputs.run_dir != '' && format('--run-dir "{0}"', needs.params.outputs.run_dir) || '' }} \
+            || { code=$?; case $code in
+                   124|130) echo "::warning::generation stopped early (exit $code); "\
+                                 "partial transcripts are uploaded and resumable "\
+                                 "with --run-dir" ;;
+                   *) exit $code ;;
+                 esac; }
 
       - name: Fetch the transcripts to score (the run directory is ephemeral)
         if: needs.params.outputs.stage == 'evaluate' && needs.params.outputs.artifact_run_id != ''
