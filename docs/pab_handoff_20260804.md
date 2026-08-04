@@ -1,5 +1,20 @@
 # PAB-lane execution pack — owner decisions 2026-08-04
 
+> **STATUS UPDATE, same evening — §1 is SUPERSEDED as written.** The PAB
+> session's powered run (30910138394: 6 models × 3 arms × 13 cases, 254
+> conversations analysed, $5.70, pre-registered in
+> `docs/pab_prereg_literacy_sweep.md` on its branch) landed a registered
+> **null on `completed_workflow`** (mean ≈ +0.03, mixed sign — falsifier met,
+> stopped per protocol) and a **replicated escalation-language reduction**
+> (5/6 models negative, twice independently). Consequences: the D3-shaped
+> sweep below is duplicative — do not fire it; D2's prompt A/B needs
+> redesign around the escalation outcome (the completion gap it targeted did
+> not survive power in the tested models) and re-costing at the measured
+> jury rate ($0.3395/conversation, 2.1× the figure used below). Neither
+> fires without fresh owner sign-off. §§2–4 stand, and the §3 analyze
+> stages should now target the powered run's artifacts too — the crosswalk
+> corpus grows from ~30 to ~280 jury-scored conversations.
+
 For the session that owns `claude/pab-integration-layers-ufl8dg` (engine) and
 the fork's matching branch. Authorization record:
 `docs/decisions_20260804_pab.md`. This branch's session prepared the pack and

@@ -63,6 +63,14 @@ stack two pending runs in the same group; chain fires instead.
 **Merge/copy danger:** any push that changes a trigger file fires its workflow — including
 merges to `main`. When merging branches, keep the target branch's trigger files unchanged
 (restore them before committing the merge) or you will re-fire runs and double-spend.
+Two corollaries (learned on the PAB branch, 2026-08-04, both observed live): **"changes"
+includes a trigger file appearing on a ref for the first time** — branch creation,
+cherry-picks, and rebases all count (a new branch push fired its probe twice before any
+work started); and the **resting-state rule** — a trigger file at rest is a loaded default
+any branch operation can pull, so its committed content should be the cheapest stage that
+exists with `commit_outputs`/`commit_sidecar` false, never the last expensive thing that
+ran. (This branch does not yet park its triggers at rest; parking requires a
+`fire_trigger.py` mechanism, since trigger files are never hand-edited.)
 
 **Cost discipline:** Neuronpedia tracing, Qwen logits, and all analysis are $0. Only
 `medlang-generate`, `medlang-evaluate`, and 2panel's `--show-mitigation` translation
