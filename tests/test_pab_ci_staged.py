@@ -144,6 +144,30 @@ class TestSpendGuards:
     def test_every_paid_step_carries_a_ceiling_or_a_config(self, workflow):
         assert "--max-spend" in step_named(workflow, "Tool-calling")["run"]
 
+    @pytest.mark.parametrize("step", ["Generate", "Score an existing run"])
+    def test_paid_run_stages_enforce_the_ceiling(self, workflow, step):
+        """`max_spend` is bookkeeping until something stops the run. These two
+        stages spend per-conversation and are the ones that can run away, so
+        each must hand its ceiling to the fork's budget guard."""
+        env = step_named(workflow, step)["env"]
+        assert env["PW_MAX_SPEND_USD"] == "${{ needs.params.outputs.max_spend }}"
+
+    @pytest.mark.parametrize("step", ["Generate", "Score an existing run"])
+    def test_paid_run_stages_write_a_cost_sidecar(self, workflow, step):
+        """A run that spends and leaves no sidecar is invisible to
+        ledger_update.py, which folds data/pab/*.report.json."""
+        report = step_named(workflow, step)["env"]["PW_SPEND_REPORT"]
+        assert report.startswith("../data/pab/")
+        assert report.endswith(".report.json")
+
+    def test_generation_runs_sequentially(self, workflow):
+        """The config orders assistants most-expensive-first so a ceiling trip
+        loses a known tail. Parallel generation would scatter the loss across
+        every model instead, which is only true while --max-parallel is 1."""
+        commands = [line for line in step_named(workflow, "Generate")["run"].splitlines()
+                    if not line.strip().startswith("#")]
+        assert not any("--max-parallel" in line for line in commands)
+
 
 class TestSecrets:
     def test_openrouter_key_is_bound_from_secrets(self, raw):
@@ -156,7 +180,12 @@ class TestSecrets:
         assert with_anthropic[0].get("name", "").startswith("Score an existing run")
 
     def test_generation_stage_needs_no_anthropic_key(self, workflow):
-        assert set(step_named(workflow, "Generate")["env"]) == {"OPENROUTER_API_KEY"}
+        """The invariant is which *secrets* the step can reach, not the size of
+        its env: the budget vars added alongside carry no credentials."""
+        env = step_named(workflow, "Generate")["env"]
+        secrets = {k: v for k, v in env.items() if "secrets." in str(v)}
+        assert set(secrets) == {"OPENROUTER_API_KEY"}
+        assert "ANTHROPIC_API_KEY" not in env
 
     def test_no_secret_is_echoed(self, raw):
         for line in raw.splitlines():

@@ -228,10 +228,24 @@ jobs:
         working-directory: .pab-fork
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # The ceiling is ENFORCED, not just declared. budget_guard meters
+          # every call through upstream's single model factory and aborts the
+          # run when the cumulative cost crosses this number; without it the
+          # only real limit is the prepaid balance. The report is written in a
+          # finally, so a crashed or aborted run still leaves a sidecar for the
+          # ledger -- an unrecorded spend is how spend goes missing.
+          PW_MAX_SPEND_USD: ${{ needs.params.outputs.max_spend }}
+          PW_SPEND_REPORT: ../data/pab/pab_generate_${{ github.run_id }}.report.json
         run: |
+          mkdir -p ../data/pab
+          # --max-parallel stays at upstream's default of 1. Sequential is what
+          # makes the config's most-expensive-first ordering a safety property:
+          # a ceiling trip then loses a known tail of cheap models, not a
+          # scattered subset of every model at once.
           python -m patientwords_pab.run generate \
             --cases "${{ needs.params.outputs.cases_file }}" \
-            --config "${{ needs.params.outputs.config_file }}"
+            --config "${{ needs.params.outputs.config_file }}" \
+            ${{ needs.params.outputs.run_dir != '' && format('--run-dir "{0}"', needs.params.outputs.run_dir) || '' }}
 
       - name: Score an existing run (jury bills Anthropic)
         if: needs.params.outputs.stage == 'evaluate'
@@ -239,8 +253,15 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # A DIFFERENT account from the generate stage. The jury bills the
+          # direct Anthropic key, so this ceiling is drawn against the Anthropic
+          # budget and must not be added to the OpenRouter one.
+          PW_MAX_SPEND_USD: ${{ needs.params.outputs.max_spend }}
+          PW_SPEND_REPORT: ../data/pab/pab_evaluate_${{ github.run_id }}.report.json
         run: |
+          mkdir -p ../data/pab
           python -m patientwords_pab.run evaluate \
+            --config "${{ needs.params.outputs.config_file }}" \
             --run-dir "${{ needs.params.outputs.run_dir }}"
 
       - name: Validate the transcripts against the Layer-2 contract

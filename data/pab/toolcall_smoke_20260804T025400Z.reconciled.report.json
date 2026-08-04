@@ -1,0 +1,35 @@
+{
+  "task": "pab-toolcall-smoke",
+  "run_timestamp": "2026-08-04T02:54:00Z",
+  "reconciliation": true,
+  "model": "openrouter:openai/gpt-5.4-mini",
+  "models": {
+    "sandbox": "openrouter:openai/gpt-5.4-mini"
+  },
+  "github_run_id": 30873129794,
+  "max_spend_usd": 0.1,
+  "cost_usd": 0.0044689,
+  "cost_basis": "reconstructed, not measured in-process: the run died on AttributeError: 'ToolRegistry' object has no attribute 'get_all' after the sandbox generation call had billed and before any sidecar was written, so its own usage record was lost with the process. The figure here is the measured cost of the identical call -- same model, same cases file, same case_index 0 -- in the successful retry, run 30877768952, recorded in data/pab/toolcall_smoke_20260804T042921Z.report.json :: usage.per_role.sandbox. Only the sandbox leg billed: the crash preceded the first assistant and patient calls.",
+  "usage": {
+    "per_role": {
+      "sandbox": {
+        "calls": 1,
+        "input_tokens": 468,
+        "output_tokens": 862,
+        "cost": 0.0044689
+      }
+    },
+    "per_model": {
+      "openrouter:openai/gpt-5.4-mini": {
+        "calls": 1,
+        "input_tokens": 468,
+        "output_tokens": 862,
+        "cost": 0.0044689
+      }
+    }
+  },
+  "tool_trace": null,
+  "unpriced_legs": [],
+  "passed": false,
+  "error": "AttributeError: 'ToolRegistry' object has no attribute 'get_all'"
+}
