@@ -202,7 +202,13 @@ jobs:
           for slug in ${{ needs.params.outputs.catalog_require }}; do
             args="$args --require $slug"
           done
+          mkdir -p ../data/pab
+          # Printed for the log AND committed: a dated record of the real prices
+          # is the only way this repo can hold verified OpenRouter numbers, since
+          # the development sandbox cannot reach the host.
           python -m patientwords_pab.openrouter_catalog $args --compare-specs
+          python -m patientwords_pab.openrouter_catalog $args --compare-specs --json \
+            > "../data/pab/openrouter_catalogue_$(date -u +%Y%m%dT%H%M%SZ).json"
 
       - name: Tool-calling smoke test
         if: needs.params.outputs.stage == 'smoke'
@@ -260,12 +266,12 @@ jobs:
           # Numbers only. Transcripts stay in the artifact: they are derived from
           # CC-BY-NC-4.0 cases and this repository is MIT.
           if [ -z "$(git status --porcelain data/pab)" ]; then
-            echo "no sidecar written"; exit 0
+            echo "nothing written to data/pab"; exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/pab
-          git commit -m "PAB probe (${{ needs.params.outputs.stage }}): cost sidecar"
+          git commit -m "PAB probe (${{ needs.params.outputs.stage }}): data/pab record"
           git pull --rebase origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
 
