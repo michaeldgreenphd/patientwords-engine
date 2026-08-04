@@ -1,0 +1,69 @@
+# Owner decisions — PAB integration program (2026-08-04)
+
+Recorded verbatim from the owner's deck reply (deck artifact published this
+session; format per `ops/decks/` convention). This doc is the authorization
+record for the fires and builds below; the daily Routine session owns folding
+these into `ops/dashboard.json:decisions_log`.
+
+```
+DECISIONS 2026-08-04 COMORBID-SEED: approve
+DECISIONS 2026-08-04 PROMPT-FIX: approve-4-models
+DECISIONS 2026-08-04 MULTITURN-N: approve-exploratory
+DECISIONS 2026-08-04 SIM-FIDELITY: approve-build
+DECISIONS 2026-08-04 TIER-VOCAB-SENS: engine-side-only
+DECISIONS 2026-08-04 HARVEST-TRACE: harvest-existing
+```
+
+Owner modification, same message: **cut D3 (MULTITURN-N) spend in half.**
+Implementation of the cut: keep all 10 cases × 2 literacy arms (pairing power),
+drop 8 models → the same 4 models as D2 (PROMPT-FIX) — 2 frontier + 2 mid,
+≈80 conversations ≈ $8. Sharing the model set makes D2/D3/D4 directly
+comparable and lets the D4 fidelity A/B piggyback on either sweep.
+
+Also approved earlier the same day, already in the build queue:
+
+- **A · Tier crosswalk** — agreement pilot: draft urgency lexicon vs PAB's
+  clinician-validated triage rubric on the same transcripts. $0.
+  Spec pre-committed in `docs/pab_crosswalk_spec_20260804.md` BEFORE any
+  agreement number is computed.
+- **B · Dual-judge toggle** — both judge columns carried in the data; site
+  displays either with its own provenance label. Pilot on already-scored
+  transcripts $0; any advice-arm re-scoring is priced per slice and
+  re-authorized before firing.
+
+## Authorized spend under these decisions
+
+| Item | Channel | Ceiling basis |
+|---|---|---|
+| D1 COMORBID-SEED | Anthropic (haiku), scenario-generation lane, this branch | ≈$0.25, `max_spend` 0.50 |
+| D2 PROMPT-FIX | OpenRouter, pab-probe lane (PAB branch) | ≈$8, enforced budget_guard |
+| D3 MULTITURN-N | OpenRouter, pab-probe lane (PAB branch) | ≈$8 (halved per owner), enforced budget_guard |
+
+Everything else in the program is $0. All standing ceilings unchanged
+($2/day operational Anthropic, $8 Tier B generation); OpenRouter items carry
+their own per-run enforced ceilings, per the 2026-08-04 probe precedent.
+Cost basis: measured sidecars (≈$0.07/conversation all-in; $0.15–0.24 per
+100-pair haiku batch).
+
+## Registration and boundary terms (owner-set)
+
+- D2/D3 are **post-registration exploratory**, labeled as such everywhere.
+- D5 tier-vocabulary sensitivity is **engine-side only** — no PAB-derived
+  vocabulary ships to the site. The site's draft urgency label stays until
+  domain review lands, unconditionally.
+- D6 harvested utterances (CC-BY-NC-derived text) stay engine-side; seal check
+  before anything derived becomes public in any form.
+- Holdout remains sealed; nothing here touches it.
+
+## Execution split
+
+- **This branch / this session:** decisions record, crosswalk spec + analysis
+  (A), D1 fire (after the daily cycle's lane use is known — the cycle fired
+  ~13:03 UTC and has priority on the generation lane), D5, D6 harvest +
+  $0 trace fires (Tier B outranks in every lane).
+- **PAB branch (`claude/pab-integration-layers-ufl8dg`) — the parallel
+  session's lane:** B fork-side wiring, D2, D3, D4. This session prepares
+  configs, prompt variants, and specs as files on this branch under
+  `docs/pab_handoff/`; execution on the PAB branch is coordinated with the
+  session that owns it, not pushed from here (branch map rule,
+  `HANDOFF_20260804.md`).
