@@ -324,3 +324,52 @@ class TestPartialRuns:
             conversation("c1", LOW), conversation("c1", HIGH), None, None])})
         block = paired_shift(collect(run, MARKERS, CONTRACT))["model-a"]
         assert block["n_pairs"] == 1
+
+
+class TestPairKey:
+    """The bug that produced a table of zeroes from 37 good conversations.
+
+    The sweep builder gives each arm its own scenario_id (`<case>--arm0`,
+    `--arm1`) and the runner copies that into case_id, so arms of one case never
+    share it. Pairing on case_id therefore finds nothing -- from a run where
+    every pair is present and the contract validator says so.
+    """
+
+    def test_arms_pair_even_though_their_case_ids_differ(self, tmp_path):
+        low = conversation("case-x--arm0", LOW)
+        high = conversation("case-x--arm1", HIGH)
+        # What actually identifies the case: identical scenario text.
+        low["scenario"] = high["scenario"] = "the same patient story"
+        run = write_run(tmp_path, {"exp1": ("model-a", [low, high])})
+
+        block = paired_shift(collect(run, MARKERS, CONTRACT))["model-a"]
+        assert block["n_pairs"] == 1, (
+            "arms of one case failed to pair; the key must be the contract's "
+            "pair_key_fields, not case_id"
+        )
+
+    def test_different_cases_do_not_pair(self, tmp_path):
+        """The other direction: two different cases must not be fused into one
+        pair just because they share an arm."""
+        a = conversation("case-a--arm0", LOW)
+        b = conversation("case-b--arm1", HIGH)
+        a["scenario"] = "story A"
+        b["scenario"] = "story B"
+        run = write_run(tmp_path, {"exp1": ("model-a", [a, b])})
+
+        block = paired_shift(collect(run, MARKERS, CONTRACT))["model-a"]
+        assert block["n_pairs"] == 0
+        assert block["n_unpaired_cases"] == 2
+
+    def test_pair_key_follows_the_contract(self):
+        from scripts.pab_literacy_shift import pair_key
+        assert CONTRACT["pair_key_fields"] == ["scenario"]
+        conv = {"scenario": "s", "case_id": "c--arm0", "user_profile": "<x/>"}
+        assert pair_key(conv, CONTRACT) == "s"
+        # user_profile is deliberately excluded: initialize_sandbox() mutates it.
+        assert pair_key({**conv, "user_profile": "<y/>"}, CONTRACT) == "s"
+
+    def test_unpaired_ids_are_reported_as_case_ids_not_scenario_text(self, tmp_path):
+        run = write_run(tmp_path, {"exp1": ("model-a", [conversation("lonely--arm0", LOW)])})
+        block = paired_shift(collect(run, MARKERS, CONTRACT))["model-a"]
+        assert block["unpaired_case_ids"] == ["lonely--arm0"]

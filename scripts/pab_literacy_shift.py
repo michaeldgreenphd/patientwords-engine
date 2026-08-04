@@ -88,6 +88,24 @@ def arm_level(label: str, spec: dict) -> str | None:
     return None
 
 
+def pair_key(conversation: dict, contract: dict) -> str:
+    """What identifies "the same clinical case" across arms.
+
+    NOT ``case_id``. The sweep builder gives each arm its own ``scenario_id``
+    (``<case>--arm0``, ``<case>--arm1``) so the transcripts stay distinguishable,
+    and the runner copies that into ``case_id`` -- so arms of one case never
+    share it and pairing on it yields zero pairs from a perfectly good run.
+
+    The key is declared in the transcript contract (``pair_key_fields``), which
+    already settled this: the scenario text is identical across arms of a case
+    and differs between cases, while ``user_profile`` is deliberately excluded
+    because ``initialize_sandbox()`` attaches a generated PCP to it before the
+    transcript records it.
+    """
+    fields = contract.get("pair_key_fields") or ["scenario"]
+    return "\x00".join(str(conversation.get(f, "")) for f in fields)
+
+
 def assistant_model(exp_dir: Path) -> str:
     """The assistant model an experiment ran, from its own config.
 
@@ -222,6 +240,7 @@ def collect(run_dir: Path, markers: dict, contract: dict) -> list[dict]:
             rows.append({
                 "experiment": exp.name,
                 "model": model,
+                "pair_key": pair_key(conversation, contract),
                 "case_id": conversation.get("case_id"),
                 "arm": conversation.get("personality"),
                 "literacy": level,
@@ -242,12 +261,14 @@ def paired_shift(rows: list[dict]) -> dict:
         if row["literacy"] not in (LOW, HIGH):
             continue
         slot = by_model.setdefault(row["model"], {})
-        slot.setdefault(row["case_id"], {})[row["literacy"]] = row
+        slot.setdefault(row["pair_key"], {})[row["literacy"]] = row
 
     report = {}
     for model, cases in sorted(by_model.items()):
         paired = {c: a for c, a in cases.items() if LOW in a and HIGH in a}
-        unpaired = sorted(set(cases) - set(paired))
+        # Report the human-readable case id, not the scenario text used as the key.
+        unpaired = sorted(next(iter(a.values()))["case_id"]
+                          for c, a in cases.items() if c not in paired)
         deltas: dict[str, list[float]] = {m: [] for m in MEASURES}
         arm_means: dict[str, dict[str, float]] = {LOW: {}, HIGH: {}}
         for arms in paired.values():
