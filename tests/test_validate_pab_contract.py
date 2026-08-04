@@ -397,16 +397,44 @@ class TestStrictMode:
 
 class TestPairKey:
     def test_pair_key_ignores_the_arm_label(self):
-        fields = ["scenario", "user_profile"]
-        a = {"scenario": "S", "user_profile": "P", "personality": "pw:x=low"}
-        b = {"scenario": "S", "user_profile": "P", "personality": "pw:x=high"}
+        fields = ["scenario"]
+        a = {"scenario": "S", "personality": "pw:x=low"}
+        b = {"scenario": "S", "personality": "pw:x=high"}
         assert vpc.pair_key(a, fields) == vpc.pair_key(b, fields)
 
     def test_pair_key_separates_different_cases(self):
-        fields = ["scenario", "user_profile"]
-        a = {"scenario": "S1", "user_profile": "P"}
-        b = {"scenario": "S2", "user_profile": "P"}
-        assert vpc.pair_key(a, fields) != vpc.pair_key(b, fields)
+        fields = ["scenario"]
+        assert vpc.pair_key({"scenario": "S1"}, fields) != vpc.pair_key(
+            {"scenario": "S2"}, fields
+        )
+
+    def test_contract_keys_on_the_scenario_alone(self):
+        """Regression, found by an offline pipeline rehearsal on 2026-08-04.
+
+        initialize_sandbox() attaches a generated PCP to the patient profile
+        before the transcript records it, so user_profile differs between arms
+        of the same case -- and differs between runs. Keying the pairing on it
+        made every case look absent from every arm, which the validator would
+        have reported as a broken design on a perfectly good run.
+        """
+        contract = json.loads(CONTRACT.read_text(encoding="utf-8"))
+        assert contract["pair_key_fields"] == ["scenario"]
+        assert "user_profile" not in contract["pair_key_fields"]
+
+    def test_arms_still_pair_when_the_profile_was_mutated(self, run):
+        """The real-run shape: same scenario, profile mutated per conversation."""
+        data = read(run, "conversations.json")
+        for i, entry in enumerate(data):
+            entry["user_profile"] = f"<profile><pcp>doc_{i}</pcp></profile>"
+        write(run, "conversations.json", data)
+        evals = read(run, "evaluations.json")
+        for i, entry in enumerate(evals):
+            entry["user_profile"] = data[i]["user_profile"]
+        write(run, "evaluations.json", evals)
+        rep, summary = check(run)
+        assert rep.errors == []
+        assert summary["experiments"][EXP]["n_pairs"] == 2
+        assert summary["experiments"][EXP]["complete_pairs"] == 2
 
     def test_pair_key_does_not_leak_case_text(self):
         key = vpc.pair_key({"scenario": "sensitive text", "user_profile": ""},

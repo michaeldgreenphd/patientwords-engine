@@ -131,6 +131,51 @@ class TestPricing:
         assert ppc.openrouter_prices(tmp_path / "absent.json") == {}
 
 
+class TestBillingChannels:
+    """A probe straddles two accounts with two ceilings. Summing them answers
+    the wrong question when the binding constraint is a prepaid balance."""
+
+    def test_channels_are_identified(self):
+        assert ppc.billing_channel("openrouter:x-ai/grok-4.3") == "openrouter"
+        assert ppc.billing_channel("claude-opus-4-8") == "anthropic"
+        assert ppc.billing_channel("claude-opus-4.8-bedrock") == "bedrock"
+        assert ppc.billing_channel("something-else") == "unknown"
+
+    def test_plan_splits_across_two_accounts(self):
+        channels = plan()["usd"]["by_channel"]
+        assert set(channels) == {"openrouter", "anthropic"}
+        assert channels["openrouter"] == pytest.approx(1.929, abs=0.001)
+        assert channels["anthropic"] == pytest.approx(8.476, abs=0.001)
+
+    def test_channel_split_sums_to_the_total(self):
+        result = plan()
+        assert sum(result["usd"]["by_channel"].values()) == pytest.approx(
+            result["usd"]["total"], abs=0.001
+        )
+
+    def test_the_jury_is_the_anthropic_side(self):
+        """The expensive leg does not come out of the OpenRouter balance."""
+        result = plan()
+        assert result["usd"]["by_channel"]["anthropic"] == pytest.approx(
+            result["usd"]["jury"], abs=0.001
+        )
+
+    def test_generation_only_is_entirely_openrouter(self):
+        channels = plan(jury_models=[])["usd"]["by_channel"]
+        assert set(channels) == {"openrouter"}
+
+    def test_openrouter_balance_checked_against_its_own_legs(self, capsys):
+        """A $9 prepaid balance covers the whole plan even though the plan
+        totals more than $9, because most of it is billed elsewhere."""
+        ppc.main(["--openrouter-balance", "9"])
+        out = capsys.readouterr().out
+        assert "OpenRouter balance $9.00: within" in out
+
+    def test_openrouter_balance_can_be_exceeded_on_its_own(self, capsys):
+        ppc.main(["--openrouter-balance", "0.50"])
+        assert "OpenRouter balance $0.50: OVER" in capsys.readouterr().out
+
+
 class TestCostStructure:
     def test_the_jury_dominates(self):
         """The reason the plan is staged: scoring costs several times what
@@ -225,13 +270,13 @@ class TestCli:
         assert "N/A" in out
         assert "never guessed" in out
 
-    def test_prepaid_balance_is_checked_when_given(self, capsys):
+    def test_budget_is_checked_when_given(self, capsys):
         ppc.main(["--cases", "8", "--no-jury", "--balance", "25"])
-        assert "prepaid balance $25.00: within" in capsys.readouterr().out
+        assert "budget $25.00: within" in capsys.readouterr().out
 
-    def test_prepaid_balance_flags_an_overrun(self, capsys):
+    def test_budget_flags_an_overrun(self, capsys):
         ppc.main(["--balance", "5"])
-        assert "prepaid balance $5.00: OVER" in capsys.readouterr().out
+        assert "budget $5.00: OVER" in capsys.readouterr().out
 
     def test_json_mode(self, capsys):
         ppc.main(["--cases", "8", "--no-jury", "--json"])

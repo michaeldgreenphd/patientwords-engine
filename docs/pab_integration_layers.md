@@ -62,6 +62,11 @@ right way; only the public API is preset-locked.
   actually emits well-formed tool calls, run before any arm spend. Skips and
   exits 0 without `OPENROUTER_API_KEY`; writes a cost sidecar in this repo's
   ledger shape.
+- **`build_sweep.py`** — builds the benchmark file for a sweep: one copy of each
+  case per arm, differing only in `personality`, refusing to write a file whose
+  groups are not uniform and reading every emitted file back through upstream's
+  own loader. The built stimulus sets and run config live in the fork's
+  `pw_pilot/`.
 
 The `personality` field carries the arm label from the benchmark JSON to the agent
 as an opaque string, so no upstream plumbing had to change to move a trait spec
@@ -137,8 +142,11 @@ in `tests/test_validate_pab_contract.py` are what catches drift.
 
 ## Verification
 
-- Fork: `python -m pytest` → **1157 passed** (982 upstream baseline, 175 added).
-- Engine: `python -m pytest` → **662 passed** (583 before the integration, 79 added); `ruff check .`
+- Fork: `python -m pytest` → **1198 passed** (982 upstream baseline, 216 added),
+  including an offline full-pipeline rehearsal that drives the real runner with
+  mocked models and checks the resulting run directory against this repo's
+  Layer-2 invariants.
+- Engine: `python -m pytest` → **671 passed** (583 before the integration, 88 added); `ruff check .`
   clean; `python scripts/seal_check.py --site ../patientwords` CLEAN.
 - **Upstream merge, simulated offline.** A synthetic upstream release editing
   `personalities.py` (including reordering `PERSONALITY_TYPE_NAMES`, which changes
@@ -220,7 +228,13 @@ No harness change either way.
    registry rather than a live fetch, and must be re-verified before the first
    fire. No Qwen slug has a verified OpenRouter price here, which is why the
    patient simulator moved off Qwen rather than getting an invented number.
-6. **A cost leg was missing from rev 1** and is now counted: every conversation
+6. **The arm join key is the scenario, not the profile.** `initialize_sandbox()`
+   attaches a generated PCP to the patient profile before the transcript records
+   it, so `user_profile` differs between arms of the same case and between runs.
+   Found by the pipeline rehearsal on 2026-08-04; `pair_key_fields` is now
+   `["scenario"]` and both repos carry regression tests. Stimulus-level
+   confounds are still caught via `invariant_case_fields`.
+7. **A cost leg was missing from rev 1** and is now counted: every conversation
    makes one **sandbox generation call**. `ConversationRunner` creates that
    client internally and discards its response, which is both why it was missed
    and why `toolcall_smoke.py` drives the factories itself instead of calling

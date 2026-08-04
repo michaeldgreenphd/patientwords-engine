@@ -1,4 +1,4 @@
-# PatientAgentBench first live probe — costed plan (rev 2, OpenRouter, 2026-08-04)
+# PatientAgentBench first live probe — costed plan (rev 3, OpenRouter, 2026-08-04)
 
 **Nothing here is approved, registered, or fired.** Rev 1 (2026-08-04) priced this
 probe for AWS Bedrock, whose registry carries the only Qwen entry the plan wanted.
@@ -12,6 +12,30 @@ is pinned by `tests/test_pab_probe_cost.py`. Re-cost any variant:
 python scripts/pab_probe_cost.py                       # this plan
 python scripts/pab_probe_cost.py --preset bedrock      # rev 1, for the diff
 python scripts/pab_probe_cost.py --balance <prepaid>   # check the key's balance
+```
+
+## Answering the budget question first
+
+The prepaid OpenRouter balance is **$9**. It is not the binding constraint, and
+the reason matters: **the jury bills Anthropic, not OpenRouter.** Splitting the
+plan by who invoices:
+
+| stage | OpenRouter | Anthropic | total |
+|---|---|---|---|
+| Stage 0 — tool-calling smoke test | $0.025 | — | $0.025 |
+| Stage 1 — manipulation check (32 conversations) | $1.187 | — | $1.187 |
+| Stage 2 — outcome pilot (52 conversations, scored) | $1.929 | $8.476 | $10.405 |
+| **whole programme** (Stage 1's conversations are reused) | **$1.95** | **$8.48** | **$10.43** |
+
+So $9 covers the entire programme's OpenRouter side about **4.6× over**, and
+Stages 0 and 1 together draw **$1.21**, leaving **$7.79**. What actually
+constrains the pilot is Anthropic jury spend and the $2/day operational ceiling.
+
+Check any shape against the balance directly:
+
+```bash
+python scripts/pab_probe_cost.py --openrouter-balance 9
+python scripts/pab_probe_cost.py --arms 2 --cases 13 --openrouter-balance 9
 ```
 
 ## What changed from rev 1
@@ -62,11 +86,10 @@ states the convention: prices are worst-case, cache-miss rates used for
 spend-ceiling math, and the true bill is the provider's. OpenRouter entries carry
 list price plus roughly a 5% aggregator margin.
 
-**Every number below is therefore an upper bound, not a quote.** Two caveats to
-close before the first fire, neither of which this session could close: OpenRouter
-is unreachable from this sandbox (the egress proxy denies the host), so slugs and
-prices could not be re-verified live; and the prepaid balance is not known here —
-check the totals against it with `--balance`.
+**Every number below is therefore an upper bound, not a quote.** One caveat this
+session could not close: OpenRouter is unreachable from this sandbox (the egress
+proxy denies the host), so slugs and prices could not be re-verified live. Do that
+before the first fire.
 
 One model the plan wanted and did not get: **Qwen**. Rev 1's patient simulator was
 `qwen3-235b-bedrock`. There is no verified OpenRouter price for any Qwen slug in
@@ -80,7 +103,7 @@ Four arms, one factor, sweeping `health_literacy` from the `confused` preset bas
 | arm | `personality` label | role |
 |---|---|---|
 | 1 | `confused` | external anchor: upstream's preset via upstream's own function |
-| 2 | `pw:base=confused` | internal control: same seven traits, adapter-rendered |
+| 2 | `pw:base=confused;health_literacy=low` | internal control: same seven traits, adapter-rendered |
 | 3 | `pw:base=confused;health_literacy=medium` | sweep |
 | 4 | `pw:base=confused;health_literacy=high` | sweep |
 
@@ -90,7 +113,14 @@ headline (`confused` 3.15 > `skeptical` 2.52 on triage) unattributable to any
 single trait. Arms 2–4 are the identified contrast;
 `scripts/validate_pab_contract.py` checks that exactly one trait varies before any
 analysis runs. Arm 1 against arm 2 is free information about whether the persona
-*label* moves scores in their harness.
+*label* moves scores in their harness: the two render identical trait text and
+differ only in the block's `type` attribute.
+
+The stimulus sets are built and committed at
+`PatientAgentBench-patientwords/pw_pilot/`, with the runbook in its README. They
+were produced by `build_sweep`, which refuses to write a file whose arms differ in
+anything but `personality`, and each was read back through upstream's own loader
+before being accepted.
 
 **Per-arm n = 13**, sized to the effect the paper reports: a paired test detects
 their 0.79-point persona spread at 80% power with a paired SD of 1.0
@@ -200,6 +230,45 @@ rather than shrunk.
 scored conversations), across 6 days at the ceiling, with a stop-gate after
 Stage 0 costing $0.03 and another after Stage 1 costing $1.21.
 
+### Smaller versions of Stage 2
+
+Stage 2's shape is `arms × cases`, and cost is linear in both. Every option below
+keeps the validated instrument (Opus 4.8, all six rubrics) and n at or near the
+powered 13:
+
+| option | arms | n | conversations | OpenRouter | Anthropic | total | days |
+|---|---|---|---|---|---|---|---|
+| A — as planned | 4 | 13 | 52 | $1.93 | $8.48 | $10.40 | 6 |
+| B — drop the preset anchor | 3 | 13 | 39 | $1.45 | $6.36 | $7.80 | 4 |
+| **C — low vs high only** | **2** | **13** | **26** | **$0.96** | **$4.24** | **$5.20** | **3** |
+| D — low vs high, n=8 | 2 | 8 | 16 | $0.59 | $2.61 | $3.20 | 2 |
+| E — four arms, n=6 | 4 | 6 | 24 | $0.89 | $3.91 | $4.80 | 3 |
+
+**Option C is the recommended smaller Stage 2.** It halves the arms, not the
+instrument: the identified contrast (literacy low vs high, everything else held
+at `confused`'s levels) survives intact at full power. What it gives up is the
+`confused` preset anchor — so no external comparison to published preset numbers,
+and no measurement of the persona-label effect — and the medium midpoint, so no
+monotonicity check. The stimulus set is already built:
+`pw_pilot/sweep_health_literacy_2arm_n13.json`.
+
+Option D is cheaper still but underpowered: n=8 detects roughly a 1.0-point
+effect, so it estimates an effect size rather than testing for one. Prefer C.
+
+**A better lever than shrinking: buy the two purchases separately.** Generation
+and scoring are independent, and scoring is repeatable on stored transcripts
+(`evaluate --run-dir`). Generating all 52 conversations costs **$1.93, entirely
+OpenRouter** — comfortably inside the $9 — and produces the artifact that is
+expensive to make and free to keep. The jury can then be bought in whatever size
+the evidence justifies: score 26 first, look, score the rest only if it is worth
+it. Nothing about the transcripts changes in the meantime.
+
+A screening jury is possible but is a different instrument: Haiku 4.5 scores all
+52 for $1.70 instead of $8.48. That buys a look at whether the effect is visible
+at all, not a result — the clinician-agreement figure that justifies using this
+benchmark belongs to the panel the paper validated, not to Haiku. If used, score
+the same transcripts again with Opus before reporting anything.
+
 ### What the pilot buys an option on
 
 | next step | conversations | cost | days at ceiling |
@@ -245,6 +314,26 @@ balance is the hard external ceiling above all of this.
 - Prices are ceiling-side (list + ~5% aggregator margin for OpenRouter).
 - Retries and failed conversations are not modelled — the sandbox generator alone
   retries up to 3× on invalid JSON. Budget ~10% headroom.
+
+## What is already known good
+
+An offline full-pipeline rehearsal (`tests/test_pw_sweep_rehearsal.py` in the fork)
+runs this exact config and stimulus set through the real `ExperimentRunner`,
+`ConversationRunner` and `OutputManager` with every model mocked, then checks the
+resulting run directory against the invariants this repo's Layer-2 validator
+enforces. Registry resolution, agent selection, arm labels reaching the transcript,
+tool calls surviving, evaluations joining slot-for-slot, arms staying balanced —
+all tested. The only untested thing before a live pilot is whether the models
+themselves behave, which is exactly what Stage 0 buys.
+
+That rehearsal found one bug worth recording. `initialize_sandbox()` attaches a
+generated PCP to the patient profile *before* the transcript records it, so
+`user_profile` differs between arms of the same case and differs between runs —
+two distinct renderings per case across repeated rehearsals, while the scenario
+stayed byte-stable. This repo's pair key included `user_profile`, so every case
+would have looked absent from every arm and a perfectly good run would have been
+reported as a broken design. `data/pab_transcript_contract.json` now keys on the
+scenario alone, with regression tests on both sides.
 
 ## Go / no-go on Stage 1
 

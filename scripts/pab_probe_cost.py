@@ -161,6 +161,23 @@ def openrouter_prices(path: Path = PROVIDERS_PATH) -> dict:
     return prices
 
 
+def billing_channel(model: str) -> str:
+    """Who invoices for this model.
+
+    A probe can straddle two accounts -- an OpenRouter prepaid balance and a
+    direct Anthropic key -- and those are separate budgets with separate
+    ceilings. Summing them into one total answers the wrong question when the
+    binding constraint is the prepaid balance.
+    """
+    if model.startswith(OPENROUTER_PREFIX):
+        return "openrouter"
+    if model.endswith("-bedrock"):
+        return "bedrock"
+    if model in _anthropic_prices():
+        return "anthropic"
+    return "unknown"
+
+
 def resolve_price(model: str) -> tuple:
     """``((input, output), source)`` for a model, or ``(None, reason)``.
 
@@ -285,6 +302,22 @@ def estimate(arms: int, cases: int, turns: int, patient_model: str,
     priced_subtotal = round(sum(c for c in legs.values() if c is not None), 4)
     total = None if unpriced else priced_subtotal
 
+    # Which account pays for which leg. The assistant list can span channels, so
+    # each assistant model is attributed individually.
+    role_models = {"sandbox": [sandbox_model], "patient": [patient_model],
+                   "assistant": list(assistant_models), "jury": list(jury_models)}
+    by_channel: dict = {}
+    for role, cost in legs.items():
+        if cost is None:
+            continue
+        models = role_models[role] or []
+        if not models:
+            continue
+        share = cost / len(models)
+        for model in models:
+            channel = billing_channel(model)
+            by_channel[channel] = round(by_channel.get(channel, 0.0) + share, 4)
+
     return {
         "arms": arms,
         "cases": cases,
@@ -300,6 +333,7 @@ def estimate(arms: int, cases: int, turns: int, patient_model: str,
                for role, cost in legs.items()},
             "priced_subtotal": priced_subtotal,
             "total": total,
+            "by_channel": by_channel,
         },
         "unpriced_roles": unpriced,
         "price_sources": {
@@ -346,7 +380,10 @@ def main(argv=None) -> int:
     parser.add_argument("--no-jury", action="store_true",
                         help="generation only (manipulation check, no scoring)")
     parser.add_argument("--balance", type=float,
-                        help="prepaid balance to check the total against")
+                        help="budget to check the whole-run total against")
+    parser.add_argument("--openrouter-balance", type=float,
+                        help="OpenRouter prepaid balance, checked against the "
+                             "OpenRouter-billed legs only")
     parser.add_argument("--json", action="store_true", dest="as_json")
     args = parser.parse_args(argv)
 
@@ -362,8 +399,13 @@ def main(argv=None) -> int:
     )
     if args.balance is not None:
         total = result["usd"]["total"]
-        result["prepaid_balance_usd"] = args.balance
-        result["fits_prepaid_balance"] = total is not None and total <= args.balance
+        result["budget_usd"] = args.balance
+        result["fits_budget"] = total is not None and total <= args.balance
+    if args.openrouter_balance is not None:
+        spent = result["usd"]["by_channel"].get("openrouter", 0.0)
+        result["openrouter_balance_usd"] = args.openrouter_balance
+        result["openrouter_spend_usd"] = spent
+        result["fits_openrouter_balance"] = spent <= args.openrouter_balance
 
     if args.as_json:
         print(json.dumps(result, indent=2))
@@ -390,10 +432,19 @@ def main(argv=None) -> int:
     verdict = ("within, headroom $%.3f" % result["headroom_usd"]
                if result["fits_daily_ceiling"]
                else "over: %d days at the ceiling" % result["days_at_ceiling"])
+    channels = result["usd"]["by_channel"]
+    if len(channels) > 1:
+        split = "  ".join(f"{name} ${value:.3f}"
+                          for name, value in sorted(channels.items()))
+        print(f"billed by      : {split}")
     print(f"daily ceiling ${result['ceiling_usd']:.2f}: {verdict}")
-    if "prepaid_balance_usd" in result:
-        fits = "within" if result["fits_prepaid_balance"] else "OVER"
-        print(f"prepaid balance ${result['prepaid_balance_usd']:.2f}: {fits}")
+    if "budget_usd" in result:
+        fits = "within" if result["fits_budget"] else "OVER"
+        print(f"budget ${result['budget_usd']:.2f}: {fits}")
+    if "openrouter_balance_usd" in result:
+        fits = "within" if result["fits_openrouter_balance"] else "OVER"
+        print(f"OpenRouter balance ${result['openrouter_balance_usd']:.2f}: {fits} "
+              f"(${result['openrouter_spend_usd']:.3f} of it)")
     return 0 if result["fits_daily_ceiling"] else 1
 
 

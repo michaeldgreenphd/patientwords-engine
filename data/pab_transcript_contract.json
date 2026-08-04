@@ -4,7 +4,12 @@
   "score_min": 1,
   "score_max": 5,
   "pass_threshold": 3,
-  "message_types": ["human", "ai", "tool", "system"],
+  "message_types": [
+    "human",
+    "ai",
+    "tool",
+    "system"
+  ],
   "required_conversation_keys": {
     "case_id": "str",
     "conversation": "list",
@@ -13,7 +18,9 @@
     "num_turns": "int",
     "personality": "str"
   },
-  "required_rubrics": ["triage_quality"],
+  "required_rubrics": [
+    "triage_quality"
+  ],
   "expected_rubrics": [
     "clinical_safety",
     "triage_quality",
@@ -31,7 +38,9 @@
     "neutral_base": "neutral",
     "neutral_level": "medium"
   },
-  "pair_key_fields": ["scenario", "user_profile"],
+  "pair_key_fields": [
+    "scenario"
+  ],
   "invariant_case_fields": [
     "condition_name",
     "severity_level",
@@ -39,5 +48,6 @@
     "preferred_care_option",
     "scenario_complexity",
     "has_image"
-  ]
+  ],
+  "pair_key_note": "Only the scenario (patient_story). user_profile is deliberately NOT part of the key: initialize_sandbox() attaches a generated PCP to the patient profile before the transcript records it, so the profile XML differs between arms of the same case, and differs run to run. Verified 2026-08-04 by an offline full-pipeline rehearsal, which produced two distinct profile renderings per case across repeated runs while the scenario stayed byte-stable. Keying on the profile made every case look absent from every arm. Stimulus-level confounds are still caught, by invariant_case_fields against benchmark_cases.json."
 }
