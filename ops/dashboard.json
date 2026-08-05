@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-08-05T13:55:24Z",
+  "updated_utc": "2026-08-05T14:09:49Z",
   "updated_by": "session",
   "queue": {
     "scenario-generation": {
@@ -54,16 +54,20 @@
   },
   "runs_recent": [
     {
+      "utc": "2026-08-05",
+      "what": "INTERIM-CYCLE 2 (Routine firing 3/3 silent): batch 17 fully measured (8 models x 100 + trace chunks 1-20 + lens chunk 1), batch 18 landed (100 accepted, $0.177 -> 1,400/1,600), SITE PUBLISHED: batches 16-17 join every payload (1,240 scenarios, 200 renders, all gates green, seal CLEAN 145). Batch 19 + batch-17 trace cont. + batch-18 logits x2 + sentinels fired."
+    },
+    {
+      "utc": "2026-08-04",
+      "what": "Routine cutover (fresh-session) failed 2x silent; owner-authorized INTERIM-CYCLE ran the day inline. PAB powered run landed (their branch): completed_workflow NULL at n=13, escalation reduction replicated 5/6. D1 comorbid seed: 2 attempts, 0 accepted, $0.91, halted for redesign (single-span conflict)."
+    },
+    {
       "utc": "2026-07-31T21:12",
       "what": "Tier B batch 16 generated: 100 accepted, $0.1794 (haiku). Generation now $2.10/$8, accepted 1,200/1,600."
     },
     {
       "utc": "2026-08-01..02",
       "what": "NO CYCLE RAN - zero fires journaled, all 8 lanes idle ~48h (see critic HIGH)."
-    },
-    {
-      "utc": "2026-07-31",
-      "what": "Owner decisions D1/D2/D3 executed; mitigation cost accounting closed end-to-end, $0.1220 imputed backfill booked to landed days."
     }
   ],
   "spend": {
@@ -426,7 +430,7 @@
     "generator": "claude-haiku-4-5",
     "start_utc": "2026-07-10T01:14:38Z",
     "accepted_pairs": 1400,
-    "traced_pairs": 1080,
+    "traced_pairs": 1120,
     "screened_in_pairs": null,
     "batches": [
       {
@@ -539,8 +543,8 @@
       }
     ],
     "traced_pairs_any_backend": 1100,
-    "traced_pairs_method": "distinct (batch-stem, results[].index) pairs across trace_out/<stem>*/batch_summary*.json, hosted-graph backends only. Scope = the 16 campaign batches listed in tierb.batches -> 1080 (1100 if the CPU-logits backend is also counted). Widening scope to the three off-cadence Tier B-era archives (pairs_20260713T031252Z 2 pairs, pairs_20260713T135755Z 5, pairs_20260716T133552Z 8) adds exactly 15 -> 1095 distinct hosted, 1215 accepted; the 2026-08-03 census reports those wider figures and both are correct under their stated scope. NO AUTOMATED WRITER - this field is a hand edit and drifts silently; recount before quoting it. The 2049 carried here until 2026-08-03 matched nothing on disk.",
-    "traced_pairs_recount_utc": "2026-08-03T18:00:00Z"
+    "traced_pairs_method": "distinct (batch-stem, results[].index) pairs across trace_out/<stem>*/batch_summary*.json, hosted-graph backends only. Scope = the campaign batches listed in tierb.batches -> 1080 (1100 if the CPU-logits backend is also counted). Widening scope to the three off-cadence Tier B-era archives (pairs_20260713T031252Z 2 pairs, pairs_20260713T135755Z 5, pairs_20260716T133552Z 8) adds exactly 15 -> 1095 distinct hosted, 1215 accepted; the 2026-08-03 census reports those wider figures and both are correct under their stated scope. NO AUTOMATED WRITER - this field is a hand edit and drifts silently; recount before quoting it. The 2049 carried here until 2026-08-03 matched nothing on disk.",
+    "traced_pairs_recount_utc": "2026-08-05T14:09:49Z"
   },
   "verdicts": [
     "Cross-model asymmetry holds at scale (source: patientwords/data/model_stats.json, 07-31 publish; 128 Tier B holdout rows sealed and excluded from every number here). Ten models measured. Every mean language penalty is negative; 8 of 10 have a 95% CI excluding zero.",
@@ -551,6 +555,10 @@
     "B1 activation-patching pipeline VALIDATED: smoke #4 success (run 4, 55 min) after the OOM + tokens fixes. Recovery-grid runs on the downgrade set can proceed."
   ],
   "findings_delta": [
+    {
+      "utc": "2026-08-05T14:09:49Z",
+      "what": "Publish 2026-08-05: batches 16-17 enter the public payloads. gemma-2-2b n 1331->1518 rows; downgrade sign test on the pre-registered endpoint now 57v9, p_BH=4.7e-09. tag-mass gap holds at scale (29.8% vs 23.6%, n 2,034/1,683). Lens census 959 pairs: capture 88 / held 592 / hijack 54 / unreadable 225."
+    },
     {
       "utc": "2026-08-03T18:00:00Z",
       "what": "Repo census (12-agent sweep) checked 74 documented claims against the code and data: 56 were false or partly wrong. Two were load-bearing and are fixed here - tierb.traced_pairs was 2049 (real distinct count 1080), and verdicts still described the 2026-07-13 four-model interim while ten models are now measured. Full correction list: docs/HANDOFF_20260804.md."
@@ -586,7 +594,7 @@
       "recorded_utc": "2026-07-29T21:50:00Z",
       "trigger": "circuit-trace",
       "fired_utc": "2026-07-29T14:59:31Z",
-      "what": "RESOLVED except indices 80+100: T1 (2026-07-30 02:26) landed all five gap chunks intact (run 30508451943 success). T2 covering 80+100 fired 13:09, pending behind today's sentinel. Close this blocker when T2 lands."
+      "what": "CLOSED 2026-08-05: T2 landed 2026-07-30; all 100 indices present (verified in census + this publish)."
     },
     {
       "id": "quadrant-46-index-23",
@@ -594,14 +602,13 @@
     }
   ],
   "notes": [
+    "2026-08-05: fresh-session Routine SILENT 3/3 (13:03+14:58 on 2026-08-04, 13:07 today) even with the hardened bootstrap prompt - sessions are created but never act. RECOMMEND owner recreates the Routine in the claude.ai Routines UI with both repos attached. INTERIM-CYCLE (owner grant) is keeping the study on cadence meanwhile.",
+    "2026-08-05: root cause of the partial checkouts found - the environment materializes the engine repo as a hidden sparse checkout (core.sparseCheckout=true, trace_out html/png/gz excluded, skip-worktree bits). Publish required sparse-adding the campaign render + lens-raw trees (~3GB). docs/fresh_session_bootstrap.md updated next cycle.",
     "2026-08-03 cycle: batch 16 landed and is now measuring (trace+logits x2 legs+lens all fired); batch 17 generating. No site republish - no new measurements had landed since 07-31. Monday sweep: trigger/workflow parity CLEAN; 21 site data files missing from the frontend CLAUDE.md contract section (docs/audits/doc_accuracy_20260803.md). Seal set grew 108->126 with batch 16's holdout slice, still CLEAN.",
     "2026-07-31 owner decisions D1/D2/D3 executed. D1: Tier B generation RESUMED (batch 16 fired, haiku, $0.50 cap; 1,100/1,600 accepted before it). D2: mitigation cost accounting closed - the recorded diagnosis was WRONG (no sidecar was ever written; translate_with_llm discarded response.usage). Now metered end-to-end: capture -> sidecar -> workflow commit -> ledger scan of trace_out. Backfill is IMPUTED from per-call text (usage was never recorded and is unrecoverable): 284 calls, $0.1220, booked to their landed days. NOTE the budget guard's per-run imputed hold (~$0.15) is ~10x the real per-run cost - conservative, not wrong, but worth knowing. D3: acknowledged.",
     "2026-07-31 cycle: r8 + quadrant-G1 journal entries aged out (8h) before harvest - both GitHub-terminal with outputs landed; late harvest, no loss. ROOT CAUSE closed: all seven meditron 'load-deaths' were the push-path commit_outputs=false default discarding measured results; fire_trigger.py now hard-errors when the key is omitted (guard + regression test pushed).",
     "Inkling-Small (Thinking Machines, released 07-30): owner asked for next-token measurement; 276B-total MoE infeasible on CPU lane; OpenRouter slug 404 (probe ~$0, archive intact). Re-probe when listed; api-logits build offered, owner holding for now.",
-    "2026-07-30 cycle: C and T1 journal entries aged out (8h) before harvest - both verified GitHub-terminal success with full landings at 13:05; late harvest, no loss. Drift sentinel verdict remains the known 07-14->07-15 movement (max |dp| 0.027, top words unchanged) - not new.",
-    "2026-07-29 incident, fully closed: both overnight advice fires omitted commit_outputs (default false, now flipped to true) -> attempt 1 recovered via restore_artifact_run_id ($7.99 landed), attempt 2 ~$5.94 sunk-duplicate. JSONDecodeError crash fixed with retry + tests. Owner directed 25-stop; elicit complete; judge re-fire in flight.",
-    "Site deploy HOLDING until judge lands (~14:40): branch carries the merged-family llm page + today's data refresh; one branch:main push ships everything together (~15:00), before the owner's noon-ET session.",
-    "Ledger delta-fold fix live (critic HIGH closed): cumulative sidecars now fold growth by run day; historical July underbooking ($8.06) booked to July days."
+    "2026-07-30 cycle: C and T1 journal entries aged out (8h) before harvest - both verified GitHub-terminal success with full landings at 13:05; late harvest, no loss. Drift sentinel verdict remains the known 07-14->07-15 movement (max |dp| 0.027, top words unchanged) - not new."
   ],
   "decisions_log": [
     {
