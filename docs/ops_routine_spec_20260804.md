@@ -12,6 +12,15 @@
 > from a session" section below (kept for the record), `create_trigger` and
 > `list_triggers` worked without an approval wall from the 2026-08-04
 > takeover session — the block was surface-specific, not universal.
+> **ROOT CAUSE CONFIRMED 2026-08-05 (owner screenshots):** the three "silent"
+> firings were not dead sessions — they ran, cloned both repos fresh, oriented,
+> and passed every gate, but had NO GitHub push credentials (no repo sources
+> attached, no `add_repo` tool), so nothing could fire, commit, or publish, and
+> their local work vanished with their containers. Tool-created Routines cannot
+> attach repo sources; only the claude.ai Routines UI can. Recreate there with
+> both repos attached — that is the entire fix. (The tool-created Routine
+> `trig_01H9YrMSHEDkyXWT4bxttihq` was deleted on 2026-08-05 once this was
+> confirmed.)
 > **Known limitation:** Routines created via the in-session tool store no MCP
 > connectors, so the fired sessions run without `mcp__github__*` tools. The
 > cycle is git-native and does not require them; if GitHub-API access ever
