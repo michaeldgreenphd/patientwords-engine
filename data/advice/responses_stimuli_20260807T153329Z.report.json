@@ -1,10 +1,11 @@
 {
- "run_utc": "2026-08-07T17:16:47Z",
- "engine_sha": "3ec2d7c735b6badc9472178d820673388f4a3ba3",
+ "run_utc": "2026-08-07T21:05:23Z",
+ "engine_sha": "2468d1d572549b0e54c019746e5fd4555a046147",
  "stimuli_file": "data/advice/stimuli_20260807T153329Z.json",
  "models": [
-  "anthropic:claude-haiku-4-5",
-  "anthropic:claude-sonnet-5"
+  "openai:openai/gpt-5.5",
+  "openai:openai/gpt-5.4-mini",
+  "openrouter:google/gemini-3.5-flash"
  ],
  "arms": [
   "clinical",
@@ -12,17 +13,18 @@
  ],
  "providers_registry": "data/advice_providers.json",
  "providers": {
-  "anthropic:claude-haiku-4-5": "anthropic",
-  "anthropic:claude-sonnet-5": "anthropic"
+  "openai:openai/gpt-5.5": "openai",
+  "openai:openai/gpt-5.4-mini": "openai",
+  "openrouter:google/gemini-3.5-flash": "openrouter"
  },
  "samples": 3,
  "temperature": 1.0,
  "max_tokens": 1024,
  "translator_model": null,
- "max_spend_usd": 2.5,
- "cost_usd": 2.487473,
+ "max_spend_usd": 6.0,
+ "cost_usd": 8.178844,
  "cost_basis": "cumulative_from_records",
- "run_cost_usd": 2.487473,
+ "run_cost_usd": 5.691389,
  "per_model": {
   "anthropic:claude-haiku-4-5": {
    "calls": 234,
@@ -35,25 +37,49 @@
    "input_tokens": 10638,
    "output_tokens": 142070,
    "cost": 2.1629639999999983
+  },
+  "openai:openai/gpt-5.5": {
+   "calls": 294,
+   "input_tokens": 11307,
+   "output_tokens": 136693,
+   "cost": 4.365177999999998
+  },
+  "openai:openai/gpt-5.4-mini": {
+   "calls": 294,
+   "input_tokens": 11307,
+   "output_tokens": 104148,
+   "cost": 0.5037429999999998
+  },
+  "openrouter:google/gemini-3.5-flash": {
+   "calls": 294,
+   "input_tokens": 9826,
+   "output_tokens": 297822,
+   "cost": 0.8224499999999992
   }
  },
  "run_per_model": {
-  "anthropic:claude-haiku-4-5": {
-   "calls": 234,
-   "input_tokens": 8709,
-   "output_tokens": 63160,
-   "cost": 0.324509
+  "openai:openai/gpt-5.5": {
+   "calls": 294,
+   "input_tokens": 11307,
+   "output_tokens": 136693,
+   "cost": 4.3651912500000005
   },
-  "anthropic:claude-sonnet-5": {
-   "calls": 231,
-   "input_tokens": 10638,
-   "output_tokens": 142070,
-   "cost": 2.1629639999999983
+  "openai:openai/gpt-5.4-mini": {
+   "calls": 294,
+   "input_tokens": 11307,
+   "output_tokens": 104148,
+   "cost": 0.5037486
+  },
+  "openrouter:google/gemini-3.5-flash": {
+   "calls": 294,
+   "input_tokens": 9826,
+   "output_tokens": 297822,
+   "cost": 0.8224496000000003
   }
  },
- "records_appended": 465,
- "records_total": 465,
- "truncated": true,
- "stopped_reason": "max_spend ceiling ($2.5) at advnat_20260807T150843Z#39/patient/anthropic:claude-sonnet-5/k1",
- "chain_head": "19303e6ec2fbdf414d49906bf2a961a1dd8f859c8bc0c3b8ff0e8b6d791758ff"
+ "records_appended": 882,
+ "records_total": 1347,
+ "truncated": false,
+ "stopped_reason": null,
+ "chain_head": "c5a36229b559cc94f66f05c798513709d936cc69ec5c77d331f41cf332e1c8a5"
 }
