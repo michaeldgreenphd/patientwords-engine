@@ -100,6 +100,15 @@ def harvest(run_dirs, contract) -> dict:
               "runner output and never ships to the site; scenario text "
               "appears only as a hash. Probe-frame conversion is a separate, "
               "reviewed step - see the script docstring."),
+        "_license": {
+            "derived_from": "PatientAgentBench (Amazon Science), CC-BY-NC-4.0",
+            "nature": ("LLM patient-simulator utterances conditioned on benchmark "
+                       "cases; derived work, not verbatim case text"),
+            "terms": "CC-BY-NC-4.0 applies to this file's utterance content",
+            "use": "non-commercial research (mechanistic-interpretability study)",
+            "committed_under": ("owner authorization, docs/decisions_20260804_pab.md "
+                                "HARVEST-TRACE + Addendum 2 (2026-08-07)"),
+        },
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "pair_key_fields": list(fields),
         "runs": [str(r) for r in run_dirs],
