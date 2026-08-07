@@ -92,12 +92,21 @@ def assistant_text(entry: dict) -> str:
 def build_rows(run_dirs, tiers, floors, clinical_tasks):
     rows, excl = [], {"no_case_join": 0, "non_clinical_task": 0,
                       "no_lexicon_signal": 0, "no_triage_score": 0}
+    # Diagnostics are categorical labels and counts only (license-clean): which
+    # task_type strings the cases actually carry, and where joins fail, so an
+    # all-exclusions result is attributable without opening the artifact by
+    # hand (n=0 on run 31140382136 was undiagnosable from the counts alone).
+    diag = {"task_types_seen": {}, "join_misses_by_experiment": {}}
     for rd in run_dirs:
         for exp, entry, case in iter_conversations(Path(rd)):
             if case is None:
                 excl["no_case_join"] += 1
+                diag["join_misses_by_experiment"][exp] = (
+                    diag["join_misses_by_experiment"].get(exp, 0) + 1)
                 continue
-            if clinical_tasks and case.get("task_type") not in clinical_tasks:
+            tt = case.get("task_type")
+            diag["task_types_seen"][str(tt)] = diag["task_types_seen"].get(str(tt), 0) + 1
+            if clinical_tasks and tt not in clinical_tasks:
                 excl["non_clinical_task"] += 1
                 continue
             triage = (entry.get("evaluation") or {}).get("rubric_scores", {}).get("triage_quality")
@@ -123,6 +132,7 @@ def build_rows(run_dirs, tiers, floors, clinical_tasks):
                 "gap_max": float(max(0, floor - sig["max_tier"])),
                 "signal": sig,
             })
+    excl["_diagnostics"] = diag
     return rows, excl
 
 

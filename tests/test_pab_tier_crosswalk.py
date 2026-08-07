@@ -87,3 +87,18 @@ def test_gap_clipping():
     for r in rows:
         assert r["gap_mean"] >= 0.0
         assert r["gap_max"] >= 0.0
+
+
+def test_exclusion_diagnostics_record_task_types_and_join_misses(tmp_path):
+    """Run 31140382136 regression: an all-exclusions result must be
+    attributable from the output alone — observed task_type labels and
+    per-experiment join-miss counts, categorical only."""
+    rows, excl = mod.build_rows(
+        [str(FIXTURE)], {"clarifying": 3, "care": 2, "option": 1},
+        {"mild": 1, "moderate": 2, "severe": 4}, ["some_other_task_type"])
+    assert rows == []
+    diag = excl["_diagnostics"]
+    assert excl["non_clinical_task"] > 0
+    assert sum(diag["task_types_seen"].values()) >= excl["non_clinical_task"]
+    for label in diag["task_types_seen"]:
+        assert isinstance(label, str)

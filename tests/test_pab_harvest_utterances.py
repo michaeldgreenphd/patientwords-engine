@@ -57,3 +57,20 @@ def test_medium_arm_kept_but_not_required_for_completeness(tmp_path):
     for g in rep["groups"]:
         if {"low", "high"} <= set(g["arms"]):
             assert g in rep["groups"]
+
+
+def test_null_conversation_entries_are_counted_not_fatal(tmp_path):
+    """Run 31140382136 regression: real conversations.json files carry null
+    placeholders for aborted conversations; the harvest must count and skip
+    them, never crash."""
+    run = tmp_path / "run"
+    exp = run / "0_0"
+    exp.mkdir(parents=True)
+    real = json.loads((FIXTURE / "0_0" / "conversations.json").read_text())
+    exp.joinpath("conversations.json").write_text(json.dumps([None] + real + [None]))
+    out = tmp_path / "h.json"
+    rc = mod.main(["--run", str(run), "--contract", str(CONTRACT), "--out", str(out)])
+    assert rc == 0
+    rep = json.loads(out.read_text())
+    assert rep["skipped"]["not_a_dict"] == 2
+    assert rep["n_groups"] > 0

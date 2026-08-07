@@ -69,7 +69,7 @@ def patient_utterances(entry: dict) -> list[str]:
 def harvest(run_dirs, contract) -> dict:
     fields = contract.get("pair_key_fields") or ["scenario"]
     groups: dict[str, dict] = {}
-    skipped = {"no_arm": 0, "no_utterances": 0}
+    skipped = {"no_arm": 0, "no_utterances": 0, "not_a_dict": 0}
     for rd in run_dirs:
         rd = Path(rd)
         for exp in sorted(p for p in rd.iterdir() if p.is_dir()):
@@ -77,6 +77,11 @@ def harvest(run_dirs, contract) -> dict:
             if not conv_path.exists():
                 continue
             for entry in json.loads(conv_path.read_text(encoding="utf-8")):
+                if not isinstance(entry, dict):
+                    # Real runs carry null placeholders for conversations the
+                    # runner aborted (observed live, run 31140382136).
+                    skipped["not_a_dict"] += 1
+                    continue
                 arm = literacy_arm(entry.get("personality", ""))
                 if arm is None:
                     skipped["no_arm"] += 1
