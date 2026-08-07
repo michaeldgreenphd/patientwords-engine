@@ -1,0 +1,1178 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 38,
+  "pairs_requested": 15,
+  "completed": true,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "f216ca36e95a",
+    "runner_image": "20260720.247.2"
+  },
+  "results": [
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been dealing with some swelling in my legs that's gotten a bit worse lately, and it's leaving me more tired with less energy for daily stuff, so I might need to see a",
+        "patient": "My legs are swollen up pretty bad and it's making walking around tough, so I might need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.809,
+        "patient": 0.734
+      },
+      "language_penalty": -0.07500000000000007,
+      "clinical_mass": {
+        "clinical": 0.4501,
+        "patient": 0.417
+      },
+      "error_share": {
+        "clinical": 0.0897,
+        "patient": 0.0948
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.809)",
+        "patient": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.734)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.809
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.809
+          ],
+          [
+            "Output \" doc\"",
+            0.052
+          ],
+          [
+            "Output \" specialist\"",
+            0.036
+          ],
+          [
+            "Output \" dr\"",
+            0.012
+          ],
+          [
+            "Output \" Dr\"",
+            0.012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.734
+          ],
+          [
+            "Output \" doc\"",
+            0.047
+          ],
+          [
+            "Output \" dr\"",
+            0.037
+          ],
+          [
+            "Output \" Dr\"",
+            0.032
+          ],
+          [
+            "Output \" po\"",
+            0.017
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 718,
+        "unique_to_a": 622,
+        "unique_to_b": 549
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_38.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_38.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_38_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_38_diff.png"
+      }
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been dealing with some swelling in my legs that's gotten a bit worse lately, and it's leaving me more tired with less energy for daily stuff, so I might need to take a",
+        "patient": "My legs are swollen up pretty bad and it's making walking around tough, so I might need to take a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1671
+      },
+      "error_share": {
+        "clinical": 0.0924
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": "medication",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" break\"",
+            0.35
+          ],
+          [
+            "Output \" few\"",
+            0.129
+          ],
+          [
+            "Output \" day\"",
+            0.101
+          ],
+          [
+            "Output \" bit\"",
+            0.054
+          ],
+          [
+            "Output \" week\"",
+            0.042
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been dealing with some swelling in my legs that's gotten a bit worse lately, and it's leaving me more tired with less energy for daily stuff, so I need to talk to a",
+        "patient": "My legs are swollen up pretty bad and it's making walking around tough, so I need to talk to a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.785,
+        "patient": 0.672
+      },
+      "language_penalty": -0.11299999999999999,
+      "clinical_mass": {
+        "clinical": 0.4016,
+        "patient": 0.3522
+      },
+      "error_share": {
+        "clinical": 0.0906,
+        "patient": 0.0947
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.785)",
+        "patient": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.672)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.785
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.785
+          ],
+          [
+            "Output \" doc\"",
+            0.039
+          ],
+          [
+            "Output \" specialist\"",
+            0.034
+          ],
+          [
+            "Output \" Dr\"",
+            0.016
+          ],
+          [
+            "Output \" physician\"",
+            0.014
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.672
+          ],
+          [
+            "Output \" Dr\"",
+            0.033
+          ],
+          [
+            "Output \" doc\"",
+            0.033
+          ],
+          [
+            "Output \" specialist\"",
+            0.026
+          ],
+          [
+            "Output \" dr\"",
+            0.026
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 720,
+        "unique_to_a": 607,
+        "unique_to_b": 542
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_40.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_40.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_40_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_40_diff.png"
+      }
+    },
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm a little concerned about Ro's belly pain that's been acting up more than his usual IBS stuff lately, so I need to go to the",
+        "patient": "Ro's stomach pain is way worse than his usual IBS stuff and it's mostly on the lower right side now, plus he's got a low fever and felt nauseous, so I need to go to the"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3807
+      },
+      "error_share": {
+        "clinical": 0.1089
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": "hospital",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" vet\"",
+            0.816
+          ],
+          [
+            "Output \" ER\"",
+            0.041
+          ],
+          [
+            "Output \" doctor\"",
+            0.022
+          ],
+          [
+            "Output \" vets\"",
+            0.022
+          ],
+          [
+            "Output \" emergency\"",
+            0.019
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm a little concerned about Ro's belly pain that's been acting up more than his usual IBS stuff lately, so I might need to see a",
+        "patient": "Ro's stomach pain is way worse than his usual IBS stuff and it's mostly on the lower right side now, plus he's got a low fever and felt nauseous, so I might need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.089,
+        "patient": 0.766
+      },
+      "language_penalty": 0.677,
+      "clinical_mass": {
+        "clinical": 0.414,
+        "patient": 0.4535
+      },
+      "error_share": {
+        "clinical": 0.0998,
+        "patient": 0.0991
+      },
+      "top_path": {
+        "clinical": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.089)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.766)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.089
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" vet\"",
+            0.582
+          ],
+          [
+            "Output \" doctor\"",
+            0.089
+          ],
+          [
+            "Output \" GI\"",
+            0.061
+          ],
+          [
+            "Output \" specialist\"",
+            0.054
+          ],
+          [
+            "Output \" new\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.766
+          ],
+          [
+            "Output \" doc\"",
+            0.056
+          ],
+          [
+            "Output \" vet\"",
+            0.038
+          ],
+          [
+            "Output \" Dr\"",
+            0.021
+          ],
+          [
+            "Output \" GI\"",
+            0.016
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 712,
+        "unique_to_a": 685,
+        "unique_to_b": 607
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_42.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_42.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_42_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_42_diff.png"
+      }
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm a little concerned about Ro's belly pain that's been acting up more than his usual IBS stuff lately, so I might need to take a",
+        "patient": "Ro's stomach pain is way worse than his usual IBS stuff and it's mostly on the lower right side now, plus he's got a low fever and felt nauseous, so I might need to take a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1948
+      },
+      "error_share": {
+        "clinical": 0.1024
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": "medication",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" trip\"",
+            0.252
+          ],
+          [
+            "Output \" look\"",
+            0.135
+          ],
+          [
+            "Output \" day\"",
+            0.056
+          ],
+          [
+            "Output \" closer\"",
+            0.044
+          ],
+          [
+            "Output \" break\"",
+            0.044
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 44,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm a little concerned about Ro's belly pain that's been acting up more than his usual IBS stuff lately, so I need to talk to a",
+        "patient": "Ro's stomach pain is way worse than his usual IBS stuff and it's mostly on the lower right side now, plus he's got a low fever and felt nauseous, so I need to talk to a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.147,
+        "patient": 0.68
+      },
+      "language_penalty": 0.533,
+      "clinical_mass": {
+        "clinical": 0.3633,
+        "patient": 0.3956
+      },
+      "error_share": {
+        "clinical": 0.0988,
+        "patient": 0.1002
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.147)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.680)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.147
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" vet\"",
+            0.586
+          ],
+          [
+            "Output \" doctor\"",
+            0.147
+          ],
+          [
+            "Output \" specialist\"",
+            0.037
+          ],
+          [
+            "Output \" new\"",
+            0.026
+          ],
+          [
+            "Output \" GI\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.68
+          ],
+          [
+            "Output \" vet\"",
+            0.104
+          ],
+          [
+            "Output \" doc\"",
+            0.038
+          ],
+          [
+            "Output \" nurse\"",
+            0.021
+          ],
+          [
+            "Output \" Dr\"",
+            0.018
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 714,
+        "unique_to_a": 665,
+        "unique_to_b": 611
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_44.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_44.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_44_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_44_diff.png"
+      }
+    },
+    {
+      "index": 45,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've got this dull lower back ache that's been hanging around for a few weeks, probably just from my desk job, so I need to go to the",
+        "patient": "I've got this dull back pain that's been nagging me for a few weeks now, mostly from sitting too long at my desk job, so I need to go to the"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.266
+      },
+      "error_share": {
+        "clinical": 0.106
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": "hospital",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" gym\"",
+            0.42
+          ],
+          [
+            "Output \" chi\"",
+            0.198
+          ],
+          [
+            "Output \" physio\"",
+            0.175
+          ],
+          [
+            "Output \" doctor\"",
+            0.073
+          ],
+          [
+            "Output \" pool\"",
+            0.018
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 46,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've got this dull lower back ache that's been hanging around for a few weeks, probably just from my desk job, so I might need to see a",
+        "patient": "I've got this dull back pain that's been nagging me for a few weeks now, mostly from sitting too long at my desk job, so I might need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.103,
+        "patient": 0.268
+      },
+      "language_penalty": 0.16500000000000004,
+      "clinical_mass": {
+        "clinical": 0.3707,
+        "patient": 0.417
+      },
+      "error_share": {
+        "clinical": 0.0997,
+        "patient": 0.094
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.103)",
+        "patient": "embedding \u2192 [L24\u00b7C] words related to medical treatment or legal cases |  \u2192 Output \" physical\" (p=0.025)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.103
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" chi\"",
+            0.406
+          ],
+          [
+            "Output \" physio\"",
+            0.359
+          ],
+          [
+            "Output \" doctor\"",
+            0.103
+          ],
+          [
+            "Output \" doc\"",
+            0.02
+          ],
+          [
+            "Output \" Chi\"",
+            0.014
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" chi\"",
+            0.5
+          ],
+          [
+            "Output \" doctor\"",
+            0.268
+          ],
+          [
+            "Output \" physio\"",
+            0.06
+          ],
+          [
+            "Output \" physical\"",
+            0.025
+          ],
+          [
+            "Output \" doc\"",
+            0.025
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1047,
+        "unique_to_a": 422,
+        "unique_to_b": 328
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_46.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_46.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_46_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_46_diff.png"
+      }
+    },
+    {
+      "index": 47,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've got this dull lower back ache that's been hanging around for a few weeks, probably just from my desk job, so I might need to take a",
+        "patient": "I've got this dull back pain that's been nagging me for a few weeks now, mostly from sitting too long at my desk job, so I might need to take a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1751
+      },
+      "error_share": {
+        "clinical": 0.1
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": "medication",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" break\"",
+            0.186
+          ],
+          [
+            "Output \" few\"",
+            0.186
+          ],
+          [
+            "Output \" day\"",
+            0.145
+          ],
+          [
+            "Output \" couple\"",
+            0.068
+          ],
+          [
+            "Output \" look\"",
+            0.068
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 48,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've got this dull lower back ache that's been hanging around for a few weeks, probably just from my desk job, so I need to talk to a",
+        "patient": "I've got this dull back pain that's been nagging me for a few weeks now, mostly from sitting too long at my desk job, so I need to talk to a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.229,
+        "patient": 0.355
+      },
+      "language_penalty": 0.12599999999999997,
+      "clinical_mass": {
+        "clinical": 0.3325,
+        "patient": 0.3638
+      },
+      "error_share": {
+        "clinical": 0.0979,
+        "patient": 0.095
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.229)",
+        "patient": "embedding \u2192 [L24\u00b7C] words related to medical treatment or legal cases |  \u2192 Output \" physical\" (p=0.038)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.229
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" physio\"",
+            0.258
+          ],
+          [
+            "Output \" doctor\"",
+            0.229
+          ],
+          [
+            "Output \" chi\"",
+            0.229
+          ],
+          [
+            "Output \" specialist\"",
+            0.031
+          ],
+          [
+            "Output \" doc\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.355
+          ],
+          [
+            "Output \" chi\"",
+            0.277
+          ],
+          [
+            "Output \" specialist\"",
+            0.042
+          ],
+          [
+            "Output \" physio\"",
+            0.042
+          ],
+          [
+            "Output \" physical\"",
+            0.038
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1077,
+        "unique_to_a": 399,
+        "unique_to_b": 320
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_48.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_48.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_48_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_48_diff.png"
+      }
+    },
+    {
+      "index": 49,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm dealing with some abdominal discomfort that's been coming up more lately, especially after meals, and it's making me wonder about safe pain options given my liver situation, so I need to go to the",
+        "patient": "I've been dealing with this dull ache in my stomach for a few weeks now, and it's starting to mess with my focus at work, so I need to go to the"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3672
+      },
+      "error_share": {
+        "clinical": 0.1026
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": "hospital",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.342
+          ],
+          [
+            "Output \" doc\"",
+            0.143
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.076
+          ],
+          [
+            "Output \" ER\"",
+            0.06
+          ],
+          [
+            "Output \" docs\"",
+            0.041
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 50,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm dealing with some abdominal discomfort that's been coming up more lately, especially after meals, and it's making me wonder about safe pain options given my liver situation, so I might need to see a",
+        "patient": "I've been dealing with this dull ache in my stomach for a few weeks now, and it's starting to mess with my focus at work, so I might need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.229,
+        "patient": 0.836
+      },
+      "language_penalty": 0.607,
+      "clinical_mass": {
+        "clinical": 0.4858,
+        "patient": 0.4182
+      },
+      "error_share": {
+        "clinical": 0.0968,
+        "patient": 0.0969
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" liver\" (p=0.058)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.836)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.229
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.229
+          ],
+          [
+            "Output \" doc\"",
+            0.108
+          ],
+          [
+            "Output \" GI\"",
+            0.074
+          ],
+          [
+            "Output \" specialist\"",
+            0.058
+          ],
+          [
+            "Output \" liver\"",
+            0.058
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.836
+          ],
+          [
+            "Output \" doc\"",
+            0.061
+          ],
+          [
+            "Output \" specialist\"",
+            0.014
+          ],
+          [
+            "Output \" Dr\"",
+            0.012
+          ],
+          [
+            "Output \" GP\"",
+            0.011
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 576,
+        "unique_to_a": 920,
+        "unique_to_b": 732
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_50.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_50.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_50_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_50_diff.png"
+      }
+    },
+    {
+      "index": 51,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm dealing with some abdominal discomfort that's been coming up more lately, especially after meals, and it's making me wonder about safe pain options given my liver situation, so I might need to take a",
+        "patient": "I've been dealing with this dull ache in my stomach for a few weeks now, and it's starting to mess with my focus at work, so I might need to take a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.284
+      },
+      "error_share": {
+        "clinical": 0.0987
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": "medication",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" look\"",
+            0.153
+          ],
+          [
+            "Output \" break\"",
+            0.12
+          ],
+          [
+            "Output \" pain\"",
+            0.056
+          ],
+          [
+            "Output \" few\"",
+            0.056
+          ],
+          [
+            "Output \" step\"",
+            0.05
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 52,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm dealing with some abdominal discomfort that's been coming up more lately, especially after meals, and it's making me wonder about safe pain options given my liver situation, so I need to talk to a",
+        "patient": "I've been dealing with this dull ache in my stomach for a few weeks now, and it's starting to mess with my focus at work, so I need to talk to a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.373,
+        "patient": 0.809
+      },
+      "language_penalty": 0.43600000000000005,
+      "clinical_mass": {
+        "clinical": 0.4413,
+        "patient": 0.351
+      },
+      "error_share": {
+        "clinical": 0.0978,
+        "patient": 0.0989
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.373)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.809)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.373
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.373
+          ],
+          [
+            "Output \" doc\"",
+            0.094
+          ],
+          [
+            "Output \" specialist\"",
+            0.039
+          ],
+          [
+            "Output \" pharmacist\"",
+            0.035
+          ],
+          [
+            "Output \" medical\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.809
+          ],
+          [
+            "Output \" professional\"",
+            0.028
+          ],
+          [
+            "Output \" doc\"",
+            0.028
+          ],
+          [
+            "Output \" specialist\"",
+            0.024
+          ],
+          [
+            "Output \" Dr\"",
+            0.015
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 567,
+        "unique_to_a": 874,
+        "unique_to_b": 726
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_52.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_52.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_52_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_52_diff.png"
+      }
+    }
+  ]
+}
