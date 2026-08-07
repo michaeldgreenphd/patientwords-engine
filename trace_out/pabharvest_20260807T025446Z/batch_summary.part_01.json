@@ -1,0 +1,1458 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 1,
+  "pairs_requested": 52,
+  "completed": false,
+  "screen_targets": 0.02,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "111879d934c8",
+    "runner_image": "20260804.265.1"
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been dealing with this kidney stone thing again, and it's making it tough to stay focused during my long workdays at the computer, so I need to go to the",
+        "patient": "My stone pain is back and it's making it hard to focus at my desk job all day, so I need to go to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.097,
+        "patient": 0.059
+      },
+      "language_penalty": -0.038000000000000006,
+      "clinical_mass": {
+        "clinical": 0.2344,
+        "patient": 0.2898
+      },
+      "error_share": {
+        "clinical": 0.0987,
+        "patient": 0.0985
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7O] mentions of restrooms and bathrooms | bathroom \u2192 [L25\u00b7O] words relating to plumbing | bathrooms and toilets \u2192 Output \" bathroom\" (p=0.231)",
+        "patient": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.231)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "hospital",
+        "observed_clinical": [
+          "Output \" hospital\"",
+          0.097
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.262
+          ],
+          [
+            "Output \" bathroom\"",
+            0.231
+          ],
+          [
+            "Output \" hospital\"",
+            0.097
+          ],
+          [
+            "Output \" gym\"",
+            0.075
+          ],
+          [
+            "Output \" ER\"",
+            0.059
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.231
+          ],
+          [
+            "Output \" ER\"",
+            0.124
+          ],
+          [
+            "Output \" gym\"",
+            0.085
+          ],
+          [
+            "Output \" chi\"",
+            0.075
+          ],
+          [
+            "Output \" hospital\"",
+            0.059
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 578,
+        "unique_to_a": 968,
+        "unique_to_b": 726
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_01.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_01.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_01_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_01_diff.png"
+      }
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been dealing with this kidney stone thing again, and it's making it tough to stay focused during my long workdays at the computer, so I might need to see a",
+        "patient": "My stone pain is back and it's making it hard to focus at my desk job all day, so I might need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.566,
+        "patient": 0.447
+      },
+      "language_penalty": -0.11899999999999994,
+      "clinical_mass": {
+        "clinical": 0.3352,
+        "patient": 0.4151
+      },
+      "error_share": {
+        "clinical": 0.1014,
+        "patient": 0.0949
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.566)",
+        "patient": "embedding \u2192 Output \" pain\" (p=0.047)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.566
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.566
+          ],
+          [
+            "Output \" uro\"",
+            0.099
+          ],
+          [
+            "Output \" doc\"",
+            0.041
+          ],
+          [
+            "Output \" specialist\"",
+            0.041
+          ],
+          [
+            "Output \" Dr\"",
+            0.022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.447
+          ],
+          [
+            "Output \" specialist\"",
+            0.069
+          ],
+          [
+            "Output \" chi\"",
+            0.061
+          ],
+          [
+            "Output \" pain\"",
+            0.047
+          ],
+          [
+            "Output \" doc\"",
+            0.047
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 593,
+        "unique_to_a": 869,
+        "unique_to_b": 691
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_02.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_02.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_02_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_02_diff.png"
+      }
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been dealing with this kidney stone thing again, and it's making it tough to stay focused during my long workdays at the computer, so I might need to take a",
+        "patient": "My stone pain is back and it's making it hard to focus at my desk job all day, so I might need to take a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1163
+      },
+      "error_share": {
+        "clinical": 0.0985
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": "medication",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" break\"",
+            0.285
+          ],
+          [
+            "Output \" few\"",
+            0.173
+          ],
+          [
+            "Output \" day\"",
+            0.119
+          ],
+          [
+            "Output \" little\"",
+            0.063
+          ],
+          [
+            "Output \" couple\"",
+            0.056
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been dealing with this kidney stone thing again, and it's making it tough to stay focused during my long workdays at the computer, so I need to talk to a",
+        "patient": "My stone pain is back and it's making it hard to focus at my desk job all day, so I need to talk to a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.176,
+        "patient": 0.357
+      },
+      "language_penalty": 0.181,
+      "clinical_mass": {
+        "clinical": 0.1777,
+        "patient": 0.3449
+      },
+      "error_share": {
+        "clinical": 0.1016,
+        "patient": 0.0974
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" few\" (p=0.083)",
+        "patient": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.357)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.176
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.176
+          ],
+          [
+            "Output \" friend\"",
+            0.083
+          ],
+          [
+            "Output \" few\"",
+            0.083
+          ],
+          [
+            "Output \" therapist\"",
+            0.073
+          ],
+          [
+            "Output \" professional\"",
+            0.073
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.357
+          ],
+          [
+            "Output \" therapist\"",
+            0.091
+          ],
+          [
+            "Output \" specialist\"",
+            0.062
+          ],
+          [
+            "Output \" professional\"",
+            0.049
+          ],
+          [
+            "Output \" real\"",
+            0.029
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 633,
+        "unique_to_a": 972,
+        "unique_to_b": 671
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_04.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_04.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_04_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_04_diff.png"
+      }
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My right knee has gotten really swollen and warm out of nowhere the past couple days, making it tough to put weight on, so I need to go to the",
+        "patient": "My right knee has suddenly gotten really swollen and warm over the last couple days, making it tough to put weight on, so I need to go to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.089,
+        "patient": 0.083
+      },
+      "language_penalty": -0.0059999999999999915,
+      "clinical_mass": {
+        "clinical": 0.4141,
+        "patient": 0.4164
+      },
+      "error_share": {
+        "clinical": 0.1014,
+        "patient": 0.0974
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.451)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.477)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "hospital",
+        "observed_clinical": [
+          "Output \" hospital\"",
+          0.089
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.451
+          ],
+          [
+            "Output \" ER\"",
+            0.146
+          ],
+          [
+            "Output \" hospital\"",
+            0.089
+          ],
+          [
+            "Output \" doctors\"",
+            0.054
+          ],
+          [
+            "Output \" doc\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.477
+          ],
+          [
+            "Output \" ER\"",
+            0.137
+          ],
+          [
+            "Output \" hospital\"",
+            0.083
+          ],
+          [
+            "Output \" doctors\"",
+            0.05
+          ],
+          [
+            "Output \" doc\"",
+            0.05
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1211,
+        "unique_to_a": 129,
+        "unique_to_b": 105
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_05.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_05.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_05_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_05_diff.png"
+      }
+    },
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My right knee has gotten really swollen and warm out of nowhere the past couple days, making it tough to put weight on, so I might need to see a",
+        "patient": "My right knee has suddenly gotten really swollen and warm over the last couple days, making it tough to put weight on, so I might need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.77,
+        "patient": 0.742
+      },
+      "language_penalty": -0.028000000000000025,
+      "clinical_mass": {
+        "clinical": 0.4566,
+        "patient": 0.4625
+      },
+      "error_share": {
+        "clinical": 0.0949,
+        "patient": 0.0929
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.770)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.742)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.77
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.77
+          ],
+          [
+            "Output \" doc\"",
+            0.063
+          ],
+          [
+            "Output \" specialist\"",
+            0.034
+          ],
+          [
+            "Output \" Dr\"",
+            0.018
+          ],
+          [
+            "Output \" dr\"",
+            0.016
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.742
+          ],
+          [
+            "Output \" doc\"",
+            0.069
+          ],
+          [
+            "Output \" specialist\"",
+            0.042
+          ],
+          [
+            "Output \" Dr\"",
+            0.017
+          ],
+          [
+            "Output \" dr\"",
+            0.015
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1173,
+        "unique_to_a": 124,
+        "unique_to_b": 110
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_06.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_06.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_06_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_06_diff.png"
+      }
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My right knee has gotten really swollen and warm out of nowhere the past couple days, making it tough to put weight on, so I might need to take a",
+        "patient": "My right knee has suddenly gotten really swollen and warm over the last couple days, making it tough to put weight on, so I might need to take a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1796
+      },
+      "error_share": {
+        "clinical": 0.1023
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": "medication",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" break\"",
+            0.222
+          ],
+          [
+            "Output \" day\"",
+            0.195
+          ],
+          [
+            "Output \" few\"",
+            0.152
+          ],
+          [
+            "Output \" couple\"",
+            0.152
+          ],
+          [
+            "Output \" week\"",
+            0.082
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My right knee has gotten really swollen and warm out of nowhere the past couple days, making it tough to put weight on, so I need to talk to a",
+        "patient": "My right knee has suddenly gotten really swollen and warm over the last couple days, making it tough to put weight on, so I need to talk to a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.688,
+        "patient": 0.664
+      },
+      "language_penalty": -0.02399999999999991,
+      "clinical_mass": {
+        "clinical": 0.4088,
+        "patient": 0.4239
+      },
+      "error_share": {
+        "clinical": 0.096,
+        "patient": 0.0943
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.688)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.664)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.688
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.688
+          ],
+          [
+            "Output \" specialist\"",
+            0.044
+          ],
+          [
+            "Output \" doc\"",
+            0.044
+          ],
+          [
+            "Output \" Dr\"",
+            0.027
+          ],
+          [
+            "Output \" dr\"",
+            0.024
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.664
+          ],
+          [
+            "Output \" specialist\"",
+            0.054
+          ],
+          [
+            "Output \" doc\"",
+            0.048
+          ],
+          [
+            "Output \" physician\"",
+            0.023
+          ],
+          [
+            "Output \" dr\"",
+            0.02
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1170,
+        "unique_to_a": 108,
+        "unique_to_b": 104
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_08.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_08.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_08_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_08_diff.png"
+      }
+    },
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've noticed a bit more chest tightness and this dry cough that's been waking me up a couple nights lately, which is messing with my sleep a little, so I need to go to the",
+        "patient": "I'm having more chest tightness lately and this dry cough that's messing with my sleep a few nights, so I need to go to the"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4028
+      },
+      "error_share": {
+        "clinical": 0.1055
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": "hospital",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.523
+          ],
+          [
+            "Output \" doc\"",
+            0.091
+          ],
+          [
+            "Output \" ER\"",
+            0.071
+          ],
+          [
+            "Output \" Dr\"",
+            0.038
+          ],
+          [
+            "Output \" doctors\"",
+            0.033
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've noticed a bit more chest tightness and this dry cough that's been waking me up a couple nights lately, which is messing with my sleep a little, so I might need to see a",
+        "patient": "I'm having more chest tightness lately and this dry cough that's messing with my sleep a few nights, so I might need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.641,
+        "patient": 0.535
+      },
+      "language_penalty": -0.10599999999999998,
+      "clinical_mass": {
+        "clinical": 0.4421,
+        "patient": 0.4552
+      },
+      "error_share": {
+        "clinical": 0.0966,
+        "patient": 0.0976
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.641)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.535)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.641
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.641
+          ],
+          [
+            "Output \" doc\"",
+            0.086
+          ],
+          [
+            "Output \" Dr\"",
+            0.046
+          ],
+          [
+            "Output \" dr\"",
+            0.032
+          ],
+          [
+            "Output \" specialist\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.535
+          ],
+          [
+            "Output \" doc\"",
+            0.073
+          ],
+          [
+            "Output \" new\"",
+            0.056
+          ],
+          [
+            "Output \" specialist\"",
+            0.05
+          ],
+          [
+            "Output \" Dr\"",
+            0.05
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1032,
+        "unique_to_a": 331,
+        "unique_to_b": 330
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_10.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_10.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_10_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_10_diff.png"
+      }
+    },
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've noticed a bit more chest tightness and this dry cough that's been waking me up a couple nights lately, which is messing with my sleep a little, so I might need to take a",
+        "patient": "I'm having more chest tightness lately and this dry cough that's messing with my sleep a few nights, so I might need to take a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2768
+      },
+      "error_share": {
+        "clinical": 0.1044
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": "medication",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" day\"",
+            0.114
+          ],
+          [
+            "Output \" break\"",
+            0.114
+          ],
+          [
+            "Output \" look\"",
+            0.114
+          ],
+          [
+            "Output \" couple\"",
+            0.069
+          ],
+          [
+            "Output \" few\"",
+            0.069
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've noticed a bit more chest tightness and this dry cough that's been waking me up a couple nights lately, which is messing with my sleep a little, so I need to talk to a",
+        "patient": "I'm having more chest tightness lately and this dry cough that's messing with my sleep a few nights, so I need to talk to a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.645,
+        "patient": 0.59
+      },
+      "language_penalty": -0.05500000000000005,
+      "clinical_mass": {
+        "clinical": 0.4042,
+        "patient": 0.4205
+      },
+      "error_share": {
+        "clinical": 0.0995,
+        "patient": 0.0996
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.645)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.590)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.645
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.645
+          ],
+          [
+            "Output \" doc\"",
+            0.068
+          ],
+          [
+            "Output \" Dr\"",
+            0.047
+          ],
+          [
+            "Output \" dr\"",
+            0.032
+          ],
+          [
+            "Output \" specialist\"",
+            0.022
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.59
+          ],
+          [
+            "Output \" Dr\"",
+            0.055
+          ],
+          [
+            "Output \" doc\"",
+            0.055
+          ],
+          [
+            "Output \" specialist\"",
+            0.038
+          ],
+          [
+            "Output \" dr\"",
+            0.038
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 989,
+        "unique_to_a": 339,
+        "unique_to_b": 327
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_12.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_12.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_12_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_12_diff.png"
+      }
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been feeling pretty wiped out lately with some ankle swelling that's making walks around the block tougher than usual, so I need to go to the",
+        "patient": "I've been noticing some swelling in my ankles and feeling more tired than usual, which is starting to worry me, so I need to go to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.033,
+        "patient": 0.045
+      },
+      "language_penalty": 0.011999999999999997,
+      "clinical_mass": {
+        "clinical": 0.2748,
+        "patient": 0.4146
+      },
+      "error_share": {
+        "clinical": 0.1047,
+        "patient": 0.1017
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.402)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.621)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "hospital",
+        "observed_clinical": [
+          "Output \" hospital\"",
+          0.033
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.402
+          ],
+          [
+            "Output \" gym\"",
+            0.131
+          ],
+          [
+            "Output \" chi\"",
+            0.07
+          ],
+          [
+            "Output \" doc\"",
+            0.062
+          ],
+          [
+            "Output \" hospital\"",
+            0.033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.621
+          ],
+          [
+            "Output \" doctors\"",
+            0.139
+          ],
+          [
+            "Output \" GP\"",
+            0.058
+          ],
+          [
+            "Output \" hospital\"",
+            0.045
+          ],
+          [
+            "Output \" doc\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 696,
+        "unique_to_a": 723,
+        "unique_to_b": 568
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_13.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_13.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_13_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_13_diff.png"
+      }
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been feeling pretty wiped out lately with some ankle swelling that's making walks around the block tougher than usual, so I might need to see a",
+        "patient": "I've been noticing some swelling in my ankles and feeling more tired than usual, which is starting to worry me, so I might need to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.477,
+        "patient": 0.746
+      },
+      "language_penalty": 0.269,
+      "clinical_mass": {
+        "clinical": 0.3984,
+        "patient": 0.4568
+      },
+      "error_share": {
+        "clinical": 0.1003,
+        "patient": 0.0959
+      },
+      "top_path": {
+        "clinical": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.477)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.746)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.477
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.477
+          ],
+          [
+            "Output \" po\"",
+            0.121
+          ],
+          [
+            "Output \" doc\"",
+            0.094
+          ],
+          [
+            "Output \" specialist\"",
+            0.057
+          ],
+          [
+            "Output \" foot\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.746
+          ],
+          [
+            "Output \" GP\"",
+            0.13
+          ],
+          [
+            "Output \" doc\"",
+            0.029
+          ],
+          [
+            "Output \" Dr\"",
+            0.011
+          ],
+          [
+            "Output \" dr\"",
+            0.009
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 771,
+        "unique_to_a": 640,
+        "unique_to_b": 516
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_14.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_14.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_14_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_14_diff.png"
+      }
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been feeling pretty wiped out lately with some ankle swelling that's making walks around the block tougher than usual, so I might need to take a",
+        "patient": "I've been noticing some swelling in my ankles and feeling more tired than usual, which is starting to worry me, so I might need to take a"
+      },
+      "target_token": null,
+      "probabilities": {
+        "clinical": null,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1026
+      },
+      "error_share": {
+        "clinical": 0.1022
+      },
+      "screening": {
+        "status": "screened_out",
+        "min_prob": 0.02,
+        "intended_target": "medication",
+        "observed_clinical": null,
+        "probe_extension": null,
+        "reason": "intended target not in the traced clinical spread"
+      },
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" break\"",
+            0.281
+          ],
+          [
+            "Output \" few\"",
+            0.133
+          ],
+          [
+            "Output \" day\"",
+            0.092
+          ],
+          [
+            "Output \" little\"",
+            0.081
+          ],
+          [
+            "Output \" couple\"",
+            0.063
+          ]
+        ]
+      },
+      "outputs": {}
+    },
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been feeling pretty wiped out lately with some ankle swelling that's making walks around the block tougher than usual, so I need to talk to a",
+        "patient": "I've been noticing some swelling in my ankles and feeling more tired than usual, which is starting to worry me, so I need to talk to a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.512,
+        "patient": 0.762
+      },
+      "language_penalty": 0.25,
+      "clinical_mass": {
+        "clinical": 0.3483,
+        "patient": 0.3914
+      },
+      "error_share": {
+        "clinical": 0.1017,
+        "patient": 0.0959
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.512)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.762)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "doctor",
+        "observed_clinical": [
+          "Output \" doctor\"",
+          0.512
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.512
+          ],
+          [
+            "Output \" specialist\"",
+            0.069
+          ],
+          [
+            "Output \" doc\"",
+            0.061
+          ],
+          [
+            "Output \" po\"",
+            0.048
+          ],
+          [
+            "Output \" foot\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.762
+          ],
+          [
+            "Output \" GP\"",
+            0.091
+          ],
+          [
+            "Output \" Dr\"",
+            0.016
+          ],
+          [
+            "Output \" specialist\"",
+            0.012
+          ],
+          [
+            "Output \" doc\"",
+            0.012
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 754,
+        "unique_to_a": 609,
+        "unique_to_b": 496
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_16.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_16.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_16_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_16_diff.png"
+      }
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been noticing more fatigue during my usual activities at work, though it's not severe or anything, so I need to go to the",
+        "patient": "I'm feeling more tired lately when I'm moving around at work, and it's slowing me down some, so I need to go to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.025,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3232,
+        "patient": 0.2608
+      },
+      "error_share": {
+        "clinical": 0.0983,
+        "patient": 0.0978
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.645)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.594)"
+      },
+      "screening": {
+        "status": "passed",
+        "min_prob": 0.02,
+        "intended_target": "hospital",
+        "observed_clinical": [
+          "Output \" hospital\"",
+          0.025
+        ],
+        "probe_extension": null
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.645
+          ],
+          [
+            "Output \" doc\"",
+            0.077
+          ],
+          [
+            "Output \" doctors\"",
+            0.047
+          ],
+          [
+            "Output \" gym\"",
+            0.028
+          ],
+          [
+            "Output \" hospital\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.594
+          ],
+          [
+            "Output \" doc\"",
+            0.071
+          ],
+          [
+            "Output \" gym\"",
+            0.055
+          ],
+          [
+            "Output \" dr\"",
+            0.033
+          ],
+          [
+            "Output \" doctors\"",
+            0.03
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 645,
+        "unique_to_a": 701,
+        "unique_to_b": 678
+      },
+      "outputs": {
+        "html": "trace_out/pabharvest_20260807T025446Z/index_17.html",
+        "png": "trace_out/pabharvest_20260807T025446Z/index_17.png",
+        "diff_html": "trace_out/pabharvest_20260807T025446Z/index_17_diff.html",
+        "diff_png": "trace_out/pabharvest_20260807T025446Z/index_17_diff.png"
+      }
+    }
+  ]
+}
