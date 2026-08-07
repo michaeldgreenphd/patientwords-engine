@@ -763,9 +763,9 @@ def test_sidecar_cost_is_cumulative_across_resumes(tmp_path, monkeypatch):
     assert second["cost_usd"] == pytest.approx(first["cost_usd"])
 
 
-def _recover(stim_path, restored_dir, out_dir):
+def _recover(stim_path, restored_dir, out_dir, *extra):
     ae.main(["recover-archive", "--restored-dir", str(restored_dir), "--stimuli", str(stim_path),
-             "--source-run-id", "424242", "--out-dir", str(out_dir)])
+             "--source-run-id", "424242", "--out-dir", str(out_dir), *extra])
 
 
 def test_recover_archive_lands_extension(tmp_path, monkeypatch):
@@ -840,6 +840,69 @@ def test_recover_archive_refuses_corrupt_interior_line(tmp_path, monkeypatch):
     (restored_dir / resp.name).write_bytes(b"".join(ln + b"\n" for ln in lines))
     with pytest.raises(SystemExit, match="corrupt interior"):
         _recover(stim_path, restored_dir, resp.parent)
+
+
+def _reseal_tail(rows, prev, mutate=None):
+    resealed = []
+    for r in rows:
+        body = {k: v for k, v in r.items() if k not in ("record_sha256", "prev_sha256")}
+        if mutate:
+            mutate(body)
+        sealed = ae._seal_record(body, prev)
+        prev = sealed["record_sha256"]
+        resealed.append(sealed)
+    return resealed
+
+
+def test_recover_archive_merge_fork_lands_divergent_tail(tmp_path, monkeypatch):
+    # two-writer race (2026-08-07): the killed run's artifact and the committed
+    # archive both extend the same prefix; --merge-fork lands the artifact's
+    # tail re-sealed onto the committed head
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, sidecar = _elicit(tmp_path, monkeypatch, stim_path)
+    rows = ae._read_jsonl(resp)
+    assert len(rows) > 3
+    other = _reseal_tail(
+        rows[3:], rows[2]["record_sha256"],
+        mutate=lambda b: b.update(model_requested=b.get("model_requested", "m") + "-alt"))
+    restored_dir = tmp_path / "restore"
+    restored_dir.mkdir()
+    (restored_dir / resp.name).write_text(
+        "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows[:3] + other),
+        encoding="utf-8")
+    with pytest.raises(SystemExit, match="merge-fork"):  # without opt-in: still refused
+        _recover(stim_path, restored_dir, resp.parent)
+    _recover(stim_path, restored_dir, resp.parent, "--merge-fork")
+    merged = ae._read_jsonl(resp)
+    ok, _ = ae.verify_chain(merged)
+    assert ok and len(merged) == len(rows) + len(other)
+    assert merged[:len(rows)] == rows  # committed history untouched
+    assert [r["stimulus_id"] for r in merged[len(rows):]] == [r["stimulus_id"] for r in other]
+    side = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert side["merge_fork"]["fork_record_index"] == 3
+    assert side["records_appended"] == len(other)
+    assert side["chain_head"] == merged[-1]["record_sha256"]
+    assert side["cost_usd"] == pytest.approx(
+        sum(float(r.get("cost_usd") or 0.0) for r in merged if "cost_usd" in r))
+
+
+def test_merge_fork_refuses_duplicate_elicit_keys(tmp_path, monkeypatch):
+    # a reordered tail carries the same paid keys the committed archive already
+    # landed; merging would double-count spent records — refuse
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path)
+    rows = ae._read_jsonl(resp)
+    assert len(rows) > 4
+    swapped = _reseal_tail([rows[4], rows[3]] + rows[5:], rows[2]["record_sha256"])
+    restored_dir = tmp_path / "restore"
+    restored_dir.mkdir()
+    (restored_dir / resp.name).write_text(
+        "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows[:3] + swapped),
+        encoding="utf-8")
+    before = resp.read_bytes()
+    with pytest.raises(SystemExit, match="duplicate already-landed"):
+        _recover(stim_path, restored_dir, resp.parent, "--merge-fork")
+    assert resp.read_bytes() == before  # refused merge must not touch the archive
 
 
 def test_payload_complete_with_target(tmp_path):

@@ -1337,6 +1337,72 @@ def analyze(args) -> Path:
 # ------------------------------------------------------------------ verify-chain
 
 
+def _merge_forked_archive(restored_rows: list[dict], committed_rows: list[dict],
+                          committed_path: Path, sidecar_path: Path,
+                          dropped_partial: bool, args) -> Path:
+    """Land the divergent tail of a forked archive (explicit --merge-fork only).
+
+    A killed run's artifact and the committed archive can BOTH extend the same
+    prefix: the killed run elicited its records but lost the commit rebase race,
+    and a later run landed its own append first (observed 2026-08-07, elicitation
+    C vs A-completion). That is not corruption — it is two intact append-only
+    histories sharing a fork point — so with explicit opt-in the restored tail is
+    re-sealed record by record onto the committed head. Guards: both chains must
+    verify, the divergence must sit on a record boundary, and no tail record may
+    duplicate an already-landed elicit key (the money was spent once; landing it
+    twice would double-count it) — any of those failing is reported and refused.
+    """
+    ok, msg = verify_chain(committed_rows)
+    if not ok:
+        raise SystemExit(f"{committed_path}: committed archive fails chain verification ({msg}); refusing")
+    fork = 0
+    while (fork < len(restored_rows) and fork < len(committed_rows)
+           and restored_rows[fork]["record_sha256"] == committed_rows[fork]["record_sha256"]):
+        fork += 1
+    tail = restored_rows[fork:]
+    if not tail:
+        print(f"nothing to merge: restored archive is a record-prefix of {committed_path}")
+        return committed_path
+    landed = _done_keys(committed_rows)
+    dup = sorted(k for k in _done_keys(tail) if k in landed)
+    if dup:
+        raise SystemExit(
+            f"{committed_path}: {len(dup)} restored tail record(s) duplicate already-landed "
+            f"elicit keys (first: {dup[0]}); refusing to merge — report, never repair"
+        )
+    prev = committed_rows[-1]["record_sha256"]
+    resealed = []
+    for r in tail:
+        body = {k: v for k, v in r.items() if k not in ("prev_sha256", "record_sha256")}
+        sealed = _seal_record(body, prev)
+        prev = sealed["record_sha256"]
+        resealed.append(sealed)
+    with open(committed_path, "a", encoding="utf-8") as f:
+        for sealed in resealed:
+            f.write(json.dumps(sealed, ensure_ascii=False) + "\n")
+    merged = _read_jsonl(committed_path)
+    ok, msg = verify_chain(merged)
+    if not ok:
+        raise SystemExit(f"{committed_path}: merged archive fails chain verification ({msg})")
+    cum_cost, cum_per_model = _cumulative_from_records(merged)
+    _write_json(sidecar_path, {
+        "run_utc": utc_now_iso(), "engine_sha": engine_sha(),
+        "stimuli_file": str(args.stimuli),
+        "recovered_from_run_id": args.source_run_id or None,
+        "cost_usd": cum_cost, "cost_basis": "cumulative_from_records",
+        "per_model": cum_per_model,
+        "merge_fork": {"fork_record_index": fork,
+                       "committed_records_at_merge": len(committed_rows),
+                       "restored_tail_records": len(tail)},
+        "records_appended": len(resealed), "records_total": len(merged),
+        "dropped_partial_final_line": dropped_partial,
+        "chain_head": merged[-1]["record_sha256"],
+    })
+    print(f"merged {len(resealed)} forked record(s) -> {committed_path} "
+          f"({len(merged)} total, fork at record {fork}, cumulative cost ${cum_cost:.4f})")
+    return committed_path
+
+
 def recover_archive(args) -> Path:
     """Land an archive snapshot from a CI artifact after a killed run (append-only).
 
@@ -1393,9 +1459,13 @@ def recover_archive(args) -> Path:
     if committed_rows:
         committed_bytes = committed_path.read_bytes()
         if not content.startswith(committed_bytes):
+            if args.merge_fork:
+                return _merge_forked_archive(rows, committed_rows, committed_path, sidecar_path,
+                                             dropped_partial, args)
             raise SystemExit(
                 f"{restored_path}: not a byte-prefix extension of the committed archive "
-                f"({committed_path}); refusing to recover — report, never repair"
+                f"({committed_path}); refusing to recover — report, never repair "
+                f"(a clean two-writer fork can be landed explicitly with --merge-fork)"
             )
     appended = len(rows) - len(committed_rows)
     if appended < 0:
@@ -1717,6 +1787,9 @@ def build_parser() -> argparse.ArgumentParser:
     rec.add_argument("--stimuli", required=True)
     rec.add_argument("--source-run-id", default="",
                      help="CI run id the artifact came from (provenance, recorded in the sidecar)")
+    rec.add_argument("--merge-fork", action="store_true",
+                     help="land a two-writer fork's divergent tail (re-sealed onto the committed "
+                          "head, duplicate elicit keys refused) instead of refusing the divergence")
     rec.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
 
     rp = sub.add_parser("repro-pack",

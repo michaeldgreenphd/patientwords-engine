@@ -85,6 +85,10 @@ on:
         description: "Recovery: run id whose advice-eval-outputs artifact is merged (append-only) before elicit"
         type: string
         default: ""
+      restore_merge_fork:
+        description: "Recovery: land a two-writer fork's divergent tail (re-sealed onto the committed head) instead of refusing"
+        type: boolean
+        default: false
   push:
     paths:
       - ".github/trigger/advice-eval.json"
@@ -117,6 +121,7 @@ jobs:
       limit: ${{ steps.params.outputs.limit }}
       commit_outputs: ${{ steps.params.outputs.commit_outputs }}
       restore_artifact_run_id: ${{ steps.params.outputs.restore_artifact_run_id }}
+      restore_merge_fork: ${{ steps.params.outputs.restore_merge_fork }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -149,6 +154,7 @@ jobs:
           IN_LIMIT: ${{ inputs.limit }}
           IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
           IN_RESTORE_ARTIFACT_RUN_ID: ${{ inputs.restore_artifact_run_id }}
+          IN_RESTORE_MERGE_FORK: ${{ inputs.restore_merge_fork }}
         run: |
           python - <<'EOF'
           import json, os
@@ -164,7 +170,8 @@ jobs:
                       "judge": "false", "judge_model": "claude-haiku-4-5",
                       "judge_max_spend": "0.50", "rubric": "data/advice_rubric.draft.json",
                       "offset": "0", "limit": "0", "commit_outputs": "true",
-                      "restore_artifact_run_id": ""}
+                      "restore_artifact_run_id": "",
+                      "restore_merge_fork": "false"}
           p = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/advice-eval.json", encoding="utf-8") as f:
@@ -229,9 +236,12 @@ jobs:
         env:
           STIMULI: ${{ needs.params.outputs.stimuli_file }}
           RESTORE_RUN: ${{ needs.params.outputs.restore_artifact_run_id }}
+          MERGE_FORK: ${{ needs.params.outputs.restore_merge_fork }}
         run: |
+          FLAG=""
+          if [ "$MERGE_FORK" = "true" ]; then FLAG="--merge-fork"; fi
           python scripts/advice_eval.py recover-archive --restored-dir /tmp/advice-restore \
-            --stimuli "$STIMULI" --source-run-id "$RESTORE_RUN"
+            --stimuli "$STIMULI" --source-run-id "$RESTORE_RUN" $FLAG
 
       - name: Elicit (paid, ceiling-enforced, append-only archive)
         env:

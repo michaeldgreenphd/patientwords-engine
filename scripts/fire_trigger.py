@@ -162,6 +162,7 @@ KNOWN_KEYS = {
         "stimuli_file", "models", "arms", "samples", "temperature", "max_tokens",
         "translator_model", "max_spend", "judge", "judge_model", "judge_max_spend",
         "rubric", "offset", "limit", "commit_outputs", "restore_artifact_run_id",
+        "restore_merge_fork",
     }),
     # pab_probe.yml `defaults` dict (verified 2026-08-04 against the params
     # heredoc by tests/test_pab_ci_staged.py): stage, fork_ref, cases_file,
