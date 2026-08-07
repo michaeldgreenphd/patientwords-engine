@@ -190,12 +190,10 @@ Priority order when slots are free:
    full and let it converge over days. Completing lens+`save_raw` on
    `pairs_20260711T051145Z` (25 pairs) is what finally lets transport/loglens be
    wired live (Section 5).
-   **8B-medical deferral (owner 2026-07-20):** the planner now HOLDS the two 8B
-   medical models (`meditron3-8b`, `apertus-8b-meditronfo`) until trace, lens, and
-   every other model's predictions are complete, then releases them to catch up in
-   the background — so the fast models' behavior lands first for decisions. The
-   summary line prints the gate state (`8B-medical: HELD/RELEASED`). Do not pass
-   `--include-8b-medical` unless the owner asks to un-defer them.
+   **8B-medical deferral LIFTED (owner 2026-08-07; original hold 2026-07-20):**
+   pass `--include-8b-medical` on every planner invocation — the two 8B medical
+   models (`meditron3-8b`, `apertus-8b-meditronfo`) now fill alongside the fast
+   models. Keep their legs chunked at <=50 pairs (8B class swap-path).
    **Accelerator — DOES NOT EXIST (corrected 2026-07-27).** This section
    previously stated that a `backfill-accel` Routine fires the $0 planner lanes
    every ~2h. **It has never fired.** Zero unattended ticks appear in 280+

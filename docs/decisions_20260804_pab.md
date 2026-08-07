@@ -93,3 +93,18 @@ the background"):
 
 Unchanged and explicitly outside every grant: holdout unsealing, site text,
 draft-label rules, and the ceilings themselves.
+
+## Addendum 2 — owner authorizations, 2026-08-07
+
+1. **UN-DEFER-8B** (owner: "undefer the 8B models"): the 2026-07-20 planner
+   hold on `meditron3-8b` and `apertus-8b-meditronfo` is LIFTED. Backfill
+   planner invocations now pass `--include-8b-medical`; standing prompt §4a
+   updated the same day. 8B fires stay chunked small (50-pair legs).
+2. **PAB-LANE-PUSH** (owner: "I explicitly authorize you to do this"): this
+   session may push to `claude/pab-integration-layers-ufl8dg` for exactly the
+   §3 analyze stages of `docs/pab_handoff_20260804.md` — copy the harvest/
+   crosswalk scripts + data files over, fire the $0 harvest and crosswalk
+   stages on the pab-probe lane, and copy the resulting statistics/harvest
+   outputs back to the study branch. Then frame-building + gemma traces +
+   j-lens on the study branch's $0 lanes per docs/pab_frame_spec_20260805.md.
+   No OpenRouter or Anthropic spend is authorized under this grant.
