@@ -75,6 +75,31 @@ def is_mitigation_fire(trigger, params):
 DEFAULT_EXPIRE_HOURS = 8.0
 DEFAULT_SETTLE_MINUTES = 15.0
 DEFAULT_DAILY_CEILING_USD = 2.0
+# The prepaid OpenRouter key's own daily ceiling (PAB-branch lanes model;
+# minimal port 2026-08-07 for advice-eval fires whose models are all
+# OpenRouter-routed - owner routing instruction, decisions Addendum 3).
+DEFAULT_OPENROUTER_DAILY_CEILING_USD = 10.0
+
+
+def fire_lane(trigger: str, params: dict) -> str:
+    """Which prepaid account a fire bills: "anthropic" (default) or "openrouter".
+
+    Only an advice-eval fire whose models spec names NO Anthropic model bills
+    the OpenRouter key alone (registry: bare ids are Anthropic; provider specs
+    starting anthropic: are Anthropic; everything else routes via OpenRouter
+    or an OpenRouter-compatible endpoint). Mixed or ambiguous specs stay on
+    the anthropic lane - fail closed."""
+    if trigger != "advice-eval":
+        return "anthropic"
+    models = str(params.get("models") or "").strip()
+    if not models:
+        return "anthropic"  # workflow default is an Anthropic model
+    specs = [s for s in models.replace(",", " ").split() if s]
+    for spec in specs:
+        provider = spec.split(":", 1)[0] if ":" in spec else ""
+        if provider == "anthropic" or ":" not in spec:
+            return "anthropic"
+    return "openrouter"
 JOURNAL_RELPATH = Path("ops") / "trigger_journal.jsonl"
 DASHBOARD_RELPATH = Path("ops") / "dashboard.json"
 OVERRIDES_RELPATH = Path("ops") / "budget_overrides.json"
@@ -359,7 +384,7 @@ def fire_commitment(params):
     return max_spend, None
 
 
-def inflight_max_spend(entries, today, now, expire_hours):
+def inflight_max_spend(entries, today, now, expire_hours, lane="anthropic"):
     """Sum of max_spend across ACTIVE journal entries of BOTH paid triggers
     fired on `today` (YYYY-MM-DD UTC): spend already committed to CI but not
     yet landed on the dashboard."""
@@ -368,6 +393,8 @@ def inflight_max_spend(entries, today, now, expire_hours):
         # paid triggers always record max_spend; mitigation circuit-trace
         # entries record their imputed commitment the same way
         if entry.get("trigger") not in PAID_TRIGGERS and entry.get("max_spend") is None:
+            continue
+        if entry.get("lane", "anthropic") != lane:
             continue
         if not entry_is_active(entry, now, expire_hours):
             continue
@@ -381,7 +408,7 @@ def inflight_max_spend(entries, today, now, expire_hours):
 
 
 def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DEFAULT_EXPIRE_HOURS,
-                 overrides=None):
+                 overrides=None, trigger=None):
     """(kind, reason) against the daily spend ceiling for a paid trigger.
 
     kind is "ok", "ceiling" (over the daily ceiling - the only refusal
@@ -399,44 +426,60 @@ def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DE
     spend = dashboard.get("spend") if isinstance(dashboard, dict) else None
     if not isinstance(spend, dict):
         spend = {}
-    try:
-        ceiling = float(spend.get("daily_ceiling_usd", DEFAULT_DAILY_CEILING_USD))
-    except (TypeError, ValueError):
-        ceiling = DEFAULT_DAILY_CEILING_USD
-    override_note = ""
-    ov = (overrides or {}).get(today)
-    if isinstance(ov, dict):
+    lane = fire_lane(trigger or "", params)
+    if lane == "openrouter":
+        # Lanes model (minimal port 2026-08-07, PAB-branch precedent): a fire
+        # that bills only the prepaid OpenRouter key counts against that key's
+        # own daily ceiling. Dated owner overrides apply to the Anthropic
+        # ceiling only ("for anthropic") and are ignored here.
         try:
-            ceiling = float(ov["ceiling_usd"])
-            override_note = f" [owner ceiling override for {today}: {ov.get('reason', 'no reason recorded')}]"
-        except (KeyError, TypeError, ValueError):
-            pass  # malformed override: fail closed to the standing ceiling
+            ceiling = float(spend.get("openrouter_daily_ceiling_usd",
+                                      DEFAULT_OPENROUTER_DAILY_CEILING_USD))
+        except (TypeError, ValueError):
+            ceiling = DEFAULT_OPENROUTER_DAILY_CEILING_USD
+        override_note = ""
+    else:
+        try:
+            ceiling = float(spend.get("daily_ceiling_usd", DEFAULT_DAILY_CEILING_USD))
+        except (TypeError, ValueError):
+            ceiling = DEFAULT_DAILY_CEILING_USD
+        override_note = ""
+        ov = (overrides or {}).get(today)
+        if isinstance(ov, dict):
+            try:
+                ceiling = float(ov["ceiling_usd"])
+                override_note = f" [owner ceiling override for {today}: {ov.get('reason', 'no reason recorded')}]"
+            except (KeyError, TypeError, ValueError):
+                pass  # malformed override: fail closed to the standing ceiling
     today_rec = spend.get("today")
     landed = 0.0
     if isinstance(today_rec, dict) and today_rec.get("date") == today:
         # Channel-scoped guard (owner decision 2026-08-04 CHANNEL-SPLIT):
-        # every paid trigger spends Anthropic credits, so the ceiling counts
-        # the Anthropic channel where the ledger records it. Dashboards
+        # each lane counts the channel where the ledger records it. Dashboards
         # without the split fall back to the pooled figure — fail closed:
-        # separately-authorized OpenRouter spend then still blocks the day.
-        raw = today_rec.get("anthropic_usd", today_rec.get("spent_usd", 0.0))
+        # the other lane's spend then still blocks the day.
+        if lane == "openrouter":
+            raw = today_rec.get("openrouter_usd", today_rec.get("spent_usd", 0.0))
+        else:
+            raw = today_rec.get("anthropic_usd", today_rec.get("spent_usd", 0.0))
         try:
             landed = float(raw)
         except (TypeError, ValueError):
             landed = 0.0
     if now is None:
         now = utc_now()
-    inflight = inflight_max_spend(entries, today, now, expire_hours)
+    inflight = inflight_max_spend(entries, today, now, expire_hours, lane=lane)
     committed = landed + inflight
     if max_spend + committed > ceiling:
         return "ceiling", (
             f"max_spend {max_spend:.2f} + today's committed {committed:.2f} "
             f"(landed {landed:.2f} + in-flight {inflight:.2f}) "
-            f"would exceed the daily ceiling {ceiling:.2f} USD{override_note}"
+            f"would exceed the daily ceiling {ceiling:.2f} USD [{lane} lane]{override_note}"
         )
     return "ok", (
         f"max_spend {max_spend:.2f} + today's committed {committed:.2f} "
-        f"(landed {landed:.2f} + in-flight {inflight:.2f}) within the daily ceiling {ceiling:.2f} USD{override_note}"
+        f"(landed {landed:.2f} + in-flight {inflight:.2f}) within the daily ceiling {ceiling:.2f} USD "
+        f"[{lane} lane]{override_note}"
     )
 
 
@@ -606,7 +649,7 @@ def cmd_fire(args):
         overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
         kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),
                                     entries=entries, now=now, expire_hours=expire_hours,
-                                    overrides=overrides)
+                                    overrides=overrides, trigger=args.trigger)
         if kind == "ok":
             print(reason)
         elif kind == "ceiling" and args.override_budget:
@@ -646,6 +689,7 @@ def cmd_fire(args):
     }
     if max_spend is not None:
         entry["max_spend"] = max_spend  # in-flight commitment budget_check will count
+        entry["lane"] = fire_lane(args.trigger, params)  # which prepaid key the commitment holds
     if args.dry_run:
         print(f"[dry-run] would write {trigger_path}: {content.strip()}")
         if to_evict is not None:

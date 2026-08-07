@@ -1,15 +1,7 @@
 {
- "_readme": "Owner-authorized dated raises of the daily operational spend ceiling. Keys are UTC dates; each raise applies to exactly that day and expires with it - the guard falls back to the standing ceiling on every other date. This file is the sanctioned alternative to --override-budget, which stays forbidden in ops practice: the authorization must travel with the repo, dated and reasoned, or the fire refuses.",
- "2026-07-23": {
-  "ceiling_usd": 9.5,
-  "reason": "owner raised the build-day ceiling twice (session chat): $5 for the advice-arm build night, then 'I added an extra $5 to open router for you to complete this run of the experiment' (2026-07-23 morning) - covers the OpenAI K=2-3 completion, the 4 missing K=1 cells, and the hedge remainder"
- },
- "2026-07-28": {
-  "ceiling_usd": 18.0,
-  "reason": "owner-authorized ONE-SHOT overnight elicitation of the natural-question family (advice-nat review paste-back: pacing=oneshot, arms=3, ~$17 est) following the signed prereg + Amendment 5 and the reported human-coding gate. Covers today's $0.66 generation + <=16 elicitation+judge."
- },
- "2026-07-29": {
-  "ceiling_usd": 16.5,
-  "reason": "CORRECTED 2026-07-29 09:xx UTC: the original carry-over premise was WRONG. Both overnight fires omitted commit_outputs (workflow default false), so their outputs never committed - but both DID run and spend: attempt 1 (run 30393449316) archived 1626 records before the 300-min kill; attempt 2 (run 30418786343) archived 1358 duplicate-coverage records before a JSONDecodeError crash. Actual spend books from the recovered attempt-1 sidecar (cumulative-from-records); attempt 2's spend is sunk-duplicate, disclosed from its artifact sidecar (id 8715800510). Ceiling kept at 16.50 to cover the recovery landing fire (max_spend 0.01); NO further paid elicitation today without fresh owner authorization - the one-shot authorization is consumed."
+ "_": "Owner-authorized dated ceiling raises; each applies to exactly ONE UTC day (fire_trigger.py load_budget_overrides). The authorization travels with this file in git.",
+ "2026-08-07": {
+  "ceiling_usd": 10.0,
+  "reason": "Owner in chat 2026-08-07 ~15:45 UTC, verbatim: 'I explicitly raise todays ceiling to $10 for anthropic.' Context: run the owner-approved 49-item six-model advice elicitation today instead of waiting for the day roll (decisions Addendum 3; $0.92 already landed today from the two generation batches)."
  }
 }

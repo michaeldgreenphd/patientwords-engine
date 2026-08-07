@@ -673,3 +673,54 @@ def test_budget_ceiling_counts_anthropic_channel_only():
                         "today": {"date": today, "spent_usd": 4.25}}}
     verdict, msg = ft.budget_check({"max_spend": "0.50"}, pooled, today)
     assert verdict == "ceiling" and "4.25" in msg
+
+
+def test_fire_lane_resolution():
+    """Lanes minimal port 2026-08-07: only an all-OpenRouter advice-eval fire
+    leaves the anthropic lane; everything ambiguous fails closed."""
+    orl = "openai:openai/x,openrouter:google/y"
+    assert ft.fire_lane("advice-eval", {"models": orl}) == "openrouter"
+    assert ft.fire_lane("advice-eval", {"models": "anthropic:claude-x," + orl}) == "anthropic"  # mixed
+    assert ft.fire_lane("advice-eval", {"models": "claude-x"}) == "anthropic"      # bare id = Anthropic
+    assert ft.fire_lane("advice-eval", {"models": ""}) == "anthropic"              # workflow default
+    assert ft.fire_lane("advice-eval", {}) == "anthropic"
+    assert ft.fire_lane("scenario-generation", {"models": orl}) == "anthropic"     # other triggers
+
+
+def test_budget_check_openrouter_lane_uses_its_own_ceiling():
+    orl = {"models": "openai:openai/x,openrouter:google/y", "max_spend": "8.0"}
+    # anthropic day is FULL, but the all-openrouter fire counts its own lane
+    dash = {"spend": {"daily_ceiling_usd": 2.0,
+                      "today": {"date": "2026-08-07", "anthropic_usd": 2.0,
+                                "openrouter_usd": 0.0, "spent_usd": 2.0}}}
+    kind, reason = ft.budget_check(orl, dash, "2026-08-07", trigger="advice-eval")
+    assert kind == "ok" and "openrouter lane" in reason
+    # the openrouter ceiling itself still refuses
+    orl_big = dict(orl, max_spend="11.0")
+    assert ft.budget_check(orl_big, dash, "2026-08-07", trigger="advice-eval")[0] == "ceiling"
+    # a mixed-model fire stays on the (full) anthropic lane
+    mixed = {"models": "anthropic:claude-x,openai:openai/x", "max_spend": "1.0"}
+    assert ft.budget_check(mixed, dash, "2026-08-07", trigger="advice-eval")[0] == "ceiling"
+    # missing channel split falls back pooled - fail closed on the openrouter lane too
+    dash_pooled = {"spend": {"today": {"date": "2026-08-07", "spent_usd": 9.5}}}
+    assert ft.budget_check(orl, dash_pooled, "2026-08-07", trigger="advice-eval")[0] == "ceiling"
+
+
+def test_inflight_lane_filter_and_override_scope():
+    now = ft.utc_now()
+    today = now.strftime("%Y-%m-%d")
+    entries = [{"trigger": "advice-eval", "fired_utc": ft.iso_utc(now), "resolved": False,
+                "evicted": False, "max_spend": 8.0, "lane": "openrouter"}]
+    # the openrouter in-flight hold does not block the anthropic lane
+    assert ft.inflight_max_spend(entries, today, now, 8.0, lane="anthropic") == 0.0
+    assert ft.inflight_max_spend(entries, today, now, 8.0, lane="openrouter") == 8.0
+    # a dated owner override raises the ANTHROPIC ceiling only
+    dash = {"spend": {"daily_ceiling_usd": 2.0,
+                      "today": {"date": today, "anthropic_usd": 0.0, "openrouter_usd": 9.5,
+                                "spent_usd": 9.5}}}
+    ov = {today: {"ceiling_usd": 10.0, "reason": "owner"}}
+    anth = {"models": "anthropic:claude-x", "max_spend": "5.0"}
+    kind, reason = ft.budget_check(anth, dash, today, overrides=ov, trigger="advice-eval")
+    assert kind == "ok" and "override" in reason
+    orl = {"models": "openai:openai/x", "max_spend": "1.0"}
+    assert ft.budget_check(orl, dash, today, overrides=ov, trigger="advice-eval")[0] == "ceiling"
