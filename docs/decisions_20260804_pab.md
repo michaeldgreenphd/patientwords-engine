@@ -108,3 +108,26 @@ draft-label rules, and the ceilings themselves.
    outputs back to the study branch. Then frame-building + gemma traces +
    j-lens on the study branch's $0 lanes per docs/pab_frame_spec_20260805.md.
    No OpenRouter or Anthropic spend is authorized under this grant.
+
+## Addendum 3 — owner authorization, 2026-08-07 (multi-cue advice family)
+
+Owner (in chat, after reviewing the advice-lane downgrade examples): "i have
+$18 in open router right now. If you are spending $3-8 through claude can you
+use $10 to do so and then send me the list generated and i can select which
+ones I want to run through claude, open ai, and gemini to get advice."
+
+1. **ADVICE-MULTICUE-BUILD**: up to **$10 Anthropic** total for the new
+   multi-cue register family (`advice-multicue` generator task, `advmc_`
+   stem): generation now (~$1.50 cap, opus), rubric judging later after the
+   owner's selection. Fires stay within the $2/day operational guard —
+   the $10 is a grant ceiling across days, not a guard override.
+2. **OWNER-SELECTS**: the generated list goes to the owner for selection
+   BEFORE any advice elicitation runs. No advice-eval fire on this family
+   without the owner's picked subset.
+3. **ADVICE-RUN-ROUTING** (owner's stated split): Claude advice legs bill
+   the Anthropic key ("claude console"); OpenAI + Gemini legs bill the
+   prepaid OpenRouter key (~$18 available). Judging bills Anthropic under
+   the same $10 grant.
+
+Still outside every grant: holdout unsealing, site text, draft-label rules,
+and the ceilings themselves (the daily guard stays $2 and is not overridden).

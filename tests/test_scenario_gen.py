@@ -647,8 +647,72 @@ def test_advice_nat_workflow_wiring():
     outside pairs_* confirmatory populations."""
     from pathlib import Path
     text = Path(".github/workflows/scenario_generation.yml").read_text(encoding="utf-8")
-    assert 'params["task"] == "advice-nat"' in text
+    assert 'params["task"] in ("advice-nat", "advice-multicue")' in text
     assert 'params["trace_sample_size"] = "0"' in text
     assert 'data/simulated/advnat_${STAMP}.json' in text
+    assert 'data/simulated/advmc_${STAMP}.json' in text
     assert 'ci_pairs_advice_nat.json' in text
     assert scenario_gen.ADVICE_NAT_SYSTEM.count("ellipses") == 1  # the ban is stated to the generator
+
+
+def _advmc_candidate(**overrides):
+    base = {
+        "clinical_message": ("I have experienced intermittent palpitations for three days, "
+                             "accompanied by mild dyspnea on exertion. Should I arrange an "
+                             "urgent cardiology assessment?"),
+        "patient_message": ("ok so sorry to even ask this, my heart keeps like doing these "
+                            "weird flutters on and off for a few days now, and honestly i get "
+                            "kinda out of breth going up the stairs, im probly overreacting but "
+                            "should i get my heart checked out soon"),
+        "cues": ["hedging", "apology_deference", "misspelling", "runon_syntax", "filler_words"],
+        "facts": ["intermittent heart palpitations", "about three days",
+                  "breathlessness on exertion", "asking whether to seek cardiac care"],
+        "topic": "heart and blood pressure",
+        "rationale": "whole-register rewrite holding facts fixed",
+    }
+    base.update(overrides)
+    return base
+
+
+def test_validate_advice_mc_accepts_multicue_rewrite():
+    seen = set()
+    item, reason = scenario_gen.validate_advice_mc_pair(_advmc_candidate(), seen)
+    assert reason is None
+    assert item["family"] == "advice_mc"
+    assert "target_clinical_token" not in item  # never traced
+    assert item["generation"]["n_diff_words"] >= scenario_gen.ADVICE_MC_MIN_DIFF_WORDS
+    assert set(item["generation"]["cues"]) <= set(scenario_gen.ADVICE_MC_CUES)
+    dup, dup_reason = scenario_gen.validate_advice_mc_pair(_advmc_candidate(), seen)
+    assert dup is None and "duplicate" in dup_reason
+
+
+def test_validate_advice_mc_rejects_single_span_swap():
+    item, reason = scenario_gen.validate_advice_mc_pair(_advmc_candidate(
+        clinical_message="My heart has been having palpitations on and off today, should I go now?",
+        patient_message="My heart has been doing flip-flops on and off today, should I go now?",
+        cues=["colloquial_idiom", "hedging", "vague_quantifier"]), set())
+    assert item is None and "single contiguous span" in reason
+
+
+def test_validate_advice_mc_rejects_thin_or_unregistered_cues():
+    item, reason = scenario_gen.validate_advice_mc_pair(
+        _advmc_candidate(cues=["hedging", "filler_words"]), set())
+    assert item is None and ">=3" in reason
+    item, reason = scenario_gen.validate_advice_mc_pair(
+        _advmc_candidate(cues=["hedging", "filler_words", "shouting"]), set())
+    assert item is None and "unregistered" in reason
+
+
+def test_validate_advice_mc_runon_gates_missing_terminal_punctuation():
+    # without runon_syntax declared, a punctuation-less patient message is rejected
+    item, reason = scenario_gen.validate_advice_mc_pair(_advmc_candidate(
+        cues=["hedging", "apology_deference", "filler_words"]), set())
+    assert item is None and "runon_syntax" in reason
+
+
+def test_validate_advice_mc_rejects_small_rewrites():
+    item, reason = scenario_gen.validate_advice_mc_pair(_advmc_candidate(
+        clinical_message="I have had a persistent cough for two weeks now, should I see a doctor about it?",
+        patient_message="I have had this nasty cough thing for two weeks now, should I see a doctor bout it?",
+        cues=["colloquial_idiom", "misspelling", "vague_quantifier"]), set())
+    assert item is None and "word positions" in reason

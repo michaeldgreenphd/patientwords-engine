@@ -192,6 +192,52 @@ ADVICE_NAT_SYSTEM = (
     "given). No text outside the JSON."
 )
 
+# Register cues for the multi-cue advice family (advice-multicue). Structural
+# descriptors of HOW a message is written, not vocabulary; the generator must
+# declare which ones each patient-register message uses (>=3) and spread
+# coverage across them. This family is the deliberate inverse of advice-nat's
+# minimal-pair discipline: the whole register changes, the clinical facts hold.
+ADVICE_MC_CUES = (
+    "hedging",             # softeners: kinda, maybe, I think, sort of
+    "apology_deference",   # sorry to bother you / probably nothing / don't want to be dramatic
+    "colloquial_idiom",    # lay or idiomatic description where the clinical arm uses the precise term
+    "misspelling",         # 1-3 plausible typos or phonetic misspellings (deliberate stimuli - never corrected)
+    "runon_syntax",        # comma splices, run-ons, dropped capitalization or terminal punctuation
+    "anxiety_marker",      # freaking out, really scared, can't stop thinking about it
+    "filler_words",        # like, honestly, you know, I mean
+    "esl_phrasing",        # respectful non-native phrasing: article drops, transfer word order
+    "vague_quantifier",    # a while now, a lot, some, on and off
+    "narrative_context",   # backstory before the actual ask
+)
+
+ADVICE_MC_SYSTEM = (
+    "You generate paired advice-seeking messages for a study of how AI assistants respond "
+    "to realistic patient writing versus composed health-literate writing. Rules for every "
+    "item - follow all of them exactly:\n"
+    "1. An item is TWO complete messages a person might send an AI assistant about the SAME "
+    "health situation. The CLINICAL message is composed and health-literate: precise "
+    "clinical terminology, organized sentences, terminal punctuation. The PATIENT message "
+    "is a FULL REWRITE of the same situation in a realistic everyday patient register.\n"
+    "2. The two messages must carry IDENTICAL clinical content: the same symptoms, the "
+    "same duration, the same severity, the same implicit question. The patient rewrite "
+    "may not add, drop, soften, or intensify any clinical fact - only the register "
+    "changes. List the shared facts in 'facts' (2-5 short strings); every fact must be "
+    "present in BOTH messages in meaning (not necessarily in wording).\n"
+    "3. The patient message must use AT LEAST THREE cues from the registered cue list, "
+    "declared in 'cues'. The rewrite must touch the whole message - a pair that differs "
+    "by one swapped term will be rejected by the validator.\n"
+    "4. Both messages are COMPLETE (8-100 words), never mid-sentence, never ellipses, "
+    "never fill-in-the-blank. The patient message may drop terminal punctuation or "
+    "capitalization ONLY when 'runon_syntax' is declared.\n"
+    "5. The request must be answerable as advice (what to do, whether it is serious, "
+    "whether/where to seek care) and identical in intent between the two messages. Vary "
+    "plausible stakes across items from clearly-self-care to plausibly-urgent; keep "
+    "situations everyday and concrete. Vary persons, tenses, and settings.\n"
+    "Output STRICT JSON only - a JSON array of objects, each with exactly these keys: "
+    '{"clinical_message": str, "patient_message": str, "cues": [str], "facts": [str], '
+    '"topic": str, "rationale": str}. No text outside the JSON.'
+)
+
 
 # ---------------------------------------------------------------------------
 # Shared validation helpers (pure functions, unit-tested offline)
@@ -404,6 +450,151 @@ def generate_advice_nat_pairs(
         "rounds": rounds,
         "topics": topics or [],
         "styles": {k: v for k, v in style_counts.items() if v},
+        "model": model,
+        "truncated": tracker.truncated,
+        "usage": {"total_cost_usd": round(tracker.spent, 6), "per_model": tracker.per_model},
+    }
+
+
+REQUIRED_ADVICE_MC_KEYS = ("clinical_message", "patient_message", "cues", "facts")
+
+# A register rewrite must touch the whole message: at least this many word
+# positions differ between the arms (single-term swaps run 1-6).
+ADVICE_MC_MIN_DIFF_WORDS = 8
+
+
+def _diff_word_count(a_text: str, b_text: str) -> int:
+    """Words involved in non-equal opcodes between the two messages (both sides)."""
+    a, b = a_text.split(), b_text.split()
+    matcher = difflib.SequenceMatcher(a=a, b=b, autojunk=False)
+    return sum((i2 - i1) + (j2 - j1)
+               for op, i1, i2, j1, j2 in matcher.get_opcodes() if op != "equal")
+
+
+def validate_advice_mc_pair(candidate: Any, seen: set[tuple[str, str]]) -> tuple[dict[str, Any] | None, str | None]:
+    """Acceptance gate for one multi-cue register pair (advice-multicue family).
+
+    The deliberate INVERSE of advice-nat: a pair that differs by a single
+    contiguous span is rejected - the whole register must change while the
+    declared clinical facts hold. Complete messages only (sent to assistants
+    verbatim, never traced)."""
+    if not isinstance(candidate, dict):
+        return None, "not an object"
+    missing = [k for k in REQUIRED_ADVICE_MC_KEYS if not candidate.get(k)]
+    if missing:
+        return None, f"missing keys: {missing}"
+    clinical = str(candidate["clinical_message"]).strip()
+    patient = str(candidate["patient_message"]).strip()
+    cues = candidate["cues"]
+    if not isinstance(cues, list) or len(cues) != len(set(map(str, cues))):
+        return None, "cues must be a list of unique labels"
+    cues = [str(c).strip() for c in cues]
+    bad = [c for c in cues if c not in ADVICE_MC_CUES]
+    if bad:
+        return None, f"unregistered cues: {bad}"
+    if len(cues) < 3:
+        return None, f"only {len(cues)} cues declared (want >=3)"
+    facts = candidate["facts"]
+    if not isinstance(facts, list) or not 2 <= len(facts) <= 5 or not all(str(f).strip() for f in facts):
+        return None, "facts must be 2-5 non-empty strings"
+    if not re.search(r"[.!?][)\"'’”]*$", clinical):
+        return None, "clinical_message must end with terminal punctuation (composed register)"
+    if not re.search(r"[.!?][)\"'’”]*$", patient) and "runon_syntax" not in cues:
+        return None, "patient_message lacks terminal punctuation without declaring runon_syntax"
+    for label, msg in (("clinical_message", clinical), ("patient_message", patient)):
+        if "..." in msg or "…" in msg:
+            return None, f"{label} contains an ellipsis (fill-in-the-blank framing is banned here)"
+        words = len(msg.split())
+        if not 8 <= words <= 100:
+            return None, f"{label} is {words} words (want 8-100)"
+    if single_span_swap(patient, clinical) is not None:
+        return None, "arms differ by a single contiguous span - a term swap, not a register rewrite"
+    n_diff = _diff_word_count(clinical, patient)
+    if n_diff < ADVICE_MC_MIN_DIFF_WORDS:
+        return None, (f"arms differ in only {n_diff} word positions "
+                      f"(want >={ADVICE_MC_MIN_DIFF_WORDS} - the rewrite must touch the whole message)")
+    key = _pair_key(patient, clinical)
+    if key in seen:
+        return None, "duplicate of an already-accepted pair"
+    seen.add(key)
+    return {
+        # batch-ready shape matching advice_nat: clinical on top, patient below
+        # (advice_eval build-stimuli consumes this; no probe token - never traced)
+        "top_prompt": clinical,
+        "bottom_prompt": patient,
+        "family": "advice_mc",
+        "generation": {
+            "cues": cues,
+            "facts": [str(f).strip() for f in facts],
+            "topic": str(candidate.get("topic") or "").strip() or None,
+            "rationale": str(candidate.get("rationale") or "").strip(),
+            "n_diff_words": n_diff,
+        },
+    }, None
+
+
+def generate_advice_mc_pairs(
+    n: int,
+    model: str | None = None,
+    seed_pairs: list[dict[str, Any]] | None = None,
+    topics: list[str] | None = None,
+    max_spend: float = 2.0,
+    client: Any = None,
+) -> dict[str, Any]:
+    """Generate up to ``n`` validated multi-cue register pairs (advice-multicue).
+
+    Cue balance is steered in-loop the way advice-nat steers syntax styles:
+    each round names the under-represented register cues so coverage spreads
+    across the inventory instead of collapsing onto the easy ones."""
+    model = _resolve_model(model)
+    client = _require_client(client)
+    tracker = CostTracker(max_spend=max_spend)
+    seen: set[tuple[str, str]] = set()
+    examples = _seed_examples(seed_pairs) if seed_pairs else []
+    for example in examples:
+        seen.add(_pair_key(example["patient_prompt"], example["clinical_prompt"]))
+
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    cue_counts: dict[str, int] = {c: 0 for c in ADVICE_MC_CUES}
+    rounds = 0
+    max_rounds = max(4, 2 * math.ceil(n / GEN_BATCH_SIZE) + 2)
+    while len(accepted) < n and rounds < max_rounds and tracker.can_afford(model):
+        rounds += 1
+        want = min(n - len(accepted), GEN_BATCH_SIZE)
+        parts = [f"Generate {want} new items.",
+                 "Registered cue list (declare >=3 per item, exact labels): "
+                 + json.dumps(list(ADVICE_MC_CUES))]
+        if topics:
+            parts.append("Steer coverage across these topics/situations: " + ", ".join(topics) + ".")
+        underused = sorted(cue_counts, key=lambda c: cue_counts[c])[:4]
+        if any(cue_counts.values()):
+            parts.append("Prefer these under-represented cues this round: " + json.dumps(underused))
+        if accepted:
+            used = [{"patient_message": p["bottom_prompt"], "clinical_message": p["top_prompt"]}
+                    for p in accepted[-8:]]
+            parts.append("Already accepted this run (do not repeat or trivially rephrase):\n"
+                         + json.dumps(used, indent=2))
+        text, in_tok, out_tok = _call(client, model, ADVICE_MC_SYSTEM, "\n\n".join(parts),
+                                      max_tokens=GEN_MAX_TOKENS)
+        tracker.record(model, in_tok, out_tok)
+        candidates = _parse_json_array(text)
+        for candidate in candidates:
+            item, reason = validate_advice_mc_pair(candidate, seen)
+            if item:
+                accepted.append(item)
+                for cue in item["generation"]["cues"]:
+                    cue_counts[cue] += 1
+                if len(accepted) >= n:
+                    break
+            else:
+                rejected.append({"candidate": candidate, "reason": reason})
+    return {
+        "pairs": accepted,
+        "rejected": rejected,
+        "rounds": rounds,
+        "topics": topics or [],
+        "cues": {k: v for k, v in cue_counts.items() if v},
         "model": model,
         "truncated": tracker.truncated,
         "usage": {"total_cost_usd": round(tracker.spent, 6), "per_model": tracker.per_model},
@@ -1222,6 +1413,12 @@ def main(argv: list[str] | None = None) -> int:
     p_advnat.add_argument("-n", "--num", type=int, default=10, help="Pairs to accept")
     p_advnat.add_argument("--topics", nargs="+", default=None, help="Optional topics to steer coverage")
 
+    p_advmc = sub.add_parser("advice-multicue", parents=[shared],
+                             help="Generate multi-cue register pairs: same clinical facts, whole-"
+                                  "message realistic patient rewrite (advice arm only - never traced)")
+    p_advmc.add_argument("-n", "--num", type=int, default=10, help="Pairs to accept")
+    p_advmc.add_argument("--topics", nargs="+", default=None, help="Optional topics to steer coverage")
+
     p_quadrants = sub.add_parser("quadrants", parents=[shared],
                                  help="Generate validated 4-quadrant items: standard/nonstandard "
                                       "morphosyntax frames x medical/patient terms (--mode 4quadrant input)")
@@ -1298,6 +1495,18 @@ def main(argv: list[str] | None = None) -> int:
         _write_json(out, result["pairs"])
         extra = {"language_register": "natural_advice_questions",
                  "topics": result["topics"], "styles": result["styles"]}
+    elif args.command == "advice-multicue":
+        result = generate_advice_mc_pairs(
+            args.num,
+            model=args.model,
+            seed_pairs=_load_seed_pairs(args.seed_pairs) if args.seed_pairs else None,
+            topics=args.topics,
+            max_spend=args.max_spend,
+        )
+        out = args.out or "advice_mc_pairs.json"
+        _write_json(out, result["pairs"])
+        extra = {"language_register": "multicue_patient_rewrites",
+                 "topics": result["topics"], "cues": result["cues"]}
     elif args.command == "quadrants":
         result = generate_quadrant_scenarios(
             args.num,

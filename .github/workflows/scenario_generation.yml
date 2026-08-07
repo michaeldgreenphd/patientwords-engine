@@ -158,9 +158,9 @@ jobs:
                   value = os.environ.get("IN_" + key.upper(), "")
                   if value:
                       params[key] = value
-          if params["task"] == "advice-nat":
-              # natural-question advice pairs carry no probe token, so the
-              # trace stage can never run on them regardless of fire params
+          if params["task"] in ("advice-nat", "advice-multicue"):
+              # advice-family pairs carry no probe token, so the trace stage
+              # can never run on them regardless of fire params
               params["trace_sample_size"] = "0"
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               for key, value in params.items():
@@ -208,6 +208,21 @@ jobs:
               SEED_PAIRS="medlang_circuits/data/ci_pairs_advice_nat.json"
             fi
             ARGS+=(--seed-pairs "$SEED_PAIRS")
+            if [ -n "$TOPICS" ]; then
+              IFS=',' read -ra TOPIC_ARR <<< "$TOPICS"
+              ARGS+=(--topics "${TOPIC_ARR[@]}")
+            fi
+          elif [ "$TASK" = "advice-multicue" ]; then
+            # multi-cue register family: whole-message realistic patient
+            # rewrites over held clinical facts (owner-authorized 2026-08-07);
+            # complete messages, never traced; the advmc_ stem never matches
+            # pairs_* so it stays out of the confirmatory populations and
+            # Tier B accounting (like advnat_/txcorpus_). No seed pairs: the
+            # family has no landed exemplars yet and the system prompt fully
+            # specifies the shape.
+            OUT="data/simulated/advmc_${STAMP}.json"
+            MODE="2panel"
+            ARGS=("advice-multicue" -n "$NUM" --max-spend "$MAX_SPEND" --out "$OUT")
             if [ -n "$TOPICS" ]; then
               IFS=',' read -ra TOPIC_ARR <<< "$TOPICS"
               ARGS+=(--topics "${TOPIC_ARR[@]}")
