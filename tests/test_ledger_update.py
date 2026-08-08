@@ -182,7 +182,9 @@ def test_ceiling_alerts_fire_dedup_and_exit_zero(tree, capsys):
     out = capsys.readouterr().out
     assert "WARNING" in out
     alerts = load_dash(tree)["spend"]["alerts"]
-    assert len(alerts) == 2  # run ceiling + daily ceiling
+    # run ceiling + pooled daily + anthropic-lane daily (per-lane reporting,
+    # owner decision 2026-08-08: the lane sentence names WHICH account is over)
+    assert len(alerts) == 3
     assert any("daily ceiling" in a for a in alerts)
 
     # a further breach on the same day does not duplicate the sentences
@@ -592,3 +594,42 @@ def test_channel_split_books_openrouter_separately(tree):
     assert spend["today"]["spent_usd"] == pytest.approx(2.59)
     assert spend["today"]["anthropic_usd"] == pytest.approx(0.35)
     assert spend["today"]["openrouter_usd"] == pytest.approx(2.24)
+
+
+def test_cumulative_first_sight_books_run_cost_to_day(tree, capsys):
+    """OPENROUTER-LANE-UNCEILINGED (owner 2026-08-08): a first-sight sidecar
+    with cost_basis='cumulative_from_records' books run_cost_usd to its day —
+    not the whole campaign total — while lifetime carries the full cumulative
+    and entries_folded keeps the cumulative baseline for the growth pass."""
+    write_sidecar(tree["adv"], "responses_stimuli_x.report.json",
+                  run_utc=f"{TODAY}T03:00:00Z", cost_usd=17.89,
+                  cost_basis="cumulative_from_records", run_cost_usd=6.09,
+                  model="openrouter:google/gemini-3.1-pro-preview")
+    seed_dash(tree, {"schema_version": 1, "spend": {}})
+
+    assert run(tree) == 0
+    spend = load_dash(tree)["spend"]
+    assert spend["by_day"][TODAY] == pytest.approx(6.09)
+    assert spend["today"]["openrouter_usd"] == pytest.approx(6.09)
+    assert spend["lifetime_generation_usd"] == pytest.approx(17.89)
+    folded = spend["entries_folded"]
+    key = next(k for k in folded if "responses_stimuli_x" in k)
+    assert folded[key] == pytest.approx(17.89)
+
+
+def test_check_ceilings_reports_per_lane(tree, capsys):
+    """Per-lane alerts: OpenRouter over its $10/day ceiling warns by name even
+    when the Anthropic lane is far under its own."""
+    write_sidecar(tree["adv"], "responses_stimuli_y.report.json",
+                  run_utc=f"{TODAY}T03:00:00Z", cost_usd=11.5,
+                  model="openrouter:google/gemini-3.5-flash")
+    seed_dash(tree, {"schema_version": 1,
+                     "spend": {"daily_ceiling_usd": 2.0, "daily_ceiling_note": ""}})
+
+    assert run(tree) == 0
+    spend = load_dash(tree)["spend"]
+    assert spend["openrouter_daily_ceiling_usd"] == pytest.approx(10.0)
+    alerts = " | ".join(spend.get("alerts", []))
+    assert "openrouter lane" in alerts and "$10 daily ceiling" in alerts
+    # anthropic lane spent nothing today: no anthropic-lane alert
+    assert "anthropic lane" not in alerts

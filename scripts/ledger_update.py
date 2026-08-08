@@ -269,6 +269,26 @@ def check_ceilings(spend):
     today_spent = today.get("spent_usd")
     if daily is not None and today_spent is not None and float(today_spent) > float(daily):
         sentences.append(f"Daily spend on {today.get('date', '?')} has exceeded the ${money(daily)} daily ceiling.")
+    # Per-lane reporting (owner decision 2026-08-08 OPENROUTER-LANE-UNCEILINGED):
+    # the pooled alert above cannot say WHICH prepaid account is over, and the
+    # OpenRouter lane previously had no reported ceiling at all. Each channel
+    # checks against its own ceiling: anthropic against daily_ceiling_usd,
+    # openrouter against openrouter_daily_ceiling_usd (default $10/day,
+    # matching fire_trigger's blocking guard).
+    lane_ceilings = {
+        "anthropic": daily,
+        "openrouter": spend.get("openrouter_daily_ceiling_usd", 10.0),
+    }
+    for channel in sorted(k[:-4] for k in today if k.endswith("_usd") and k != "spent_usd"):
+        lane_spent = today.get(f"{channel}_usd")
+        lane_ceiling = lane_ceilings.get(channel)
+        if lane_ceiling is None or lane_spent is None:
+            continue
+        if float(lane_spent) > float(lane_ceiling):
+            # no spent amount in the sentence: alerts dedup on exact text, and
+            # a growing figure would re-append on every further breach
+            sentences.append(f"{channel} lane spend on {today.get('date', '?')} "
+                             f"has exceeded its ${money(lane_ceiling)} daily ceiling.")
     changed = False
     for sentence in sentences:
         print(f"WARNING: {sentence}")
@@ -302,6 +322,10 @@ def main(argv=None):
 
     dashboard = load_dashboard(dashboard_path)
     spend = dashboard.setdefault("spend", {})
+    # Explicit OpenRouter lane ceiling (owner decision 2026-08-08, $10/day):
+    # fire_trigger already defaults to this value; writing it makes the
+    # ceiling owner-visible in the dashboard rather than a code constant.
+    spend.setdefault("openrouter_daily_ceiling_usd", 10.0)
     entries_seen = spend.setdefault("entries_seen", [])
     by_day = spend.setdefault("by_day", {})
 
@@ -331,20 +355,44 @@ def main(argv=None):
         is_pab = scan_dir == pab_dir
         for path, report in scan_new_sidecars(scan_dir, set(entries_seen), pattern):
             cost = float(report.get("cost_usd") or 0.0)
+            # Cumulative sidecars (owner decision 2026-08-08
+            # OPENROUTER-LANE-UNCEILINGED): a first-sight cost_usd with
+            # cost_basis='cumulative_from_records' is the whole archive's
+            # campaign total, not one day's spend — the 2026-08-08 fold booked
+            # a $17.89 six-model campaign to a single day this way. Book the
+            # run's own delta (run_cost_usd) to its day; the prior-runs
+            # balance keeps lifetime true but joins NO day bucket, because it
+            # has no single day and charging it anywhere would poison the
+            # daily guards. entries_folded still records the full cumulative
+            # so the growth pass's deltas stay exact.
+            day_cost = cost
+            prior_balance = 0.0
+            if report.get("cost_basis") == "cumulative_from_records":
+                try:
+                    run_cost = float(report.get("run_cost_usd"))
+                except (TypeError, ValueError):
+                    run_cost = None
+                if run_cost is not None and 0.0 <= run_cost <= cost:
+                    day_cost = run_cost
+                    prior_balance = round(cost - run_cost, 4)
             run_ts = parse_ts(report.get("run_timestamp") or report.get("run_utc"))
             # Bucket by the actual UTC day: offset timestamps book to the day
             # they land in UTC, and an unparseable stamp falls back to --date
             # instead of minting a garbage key.
             day = run_ts.astimezone(timezone.utc).date().isoformat() if run_ts else date
             spend["lifetime_generation_usd"] = round(float(spend.get("lifetime_generation_usd") or 0.0) + cost, 4)
-            by_day[day] = round(float(by_day.get(day) or 0.0) + cost, 4)
+            by_day[day] = round(float(by_day.get(day) or 0.0) + day_cost, 4)
             chan = by_day_ch.setdefault(billing_channel(report, is_pab), {})
-            chan[day] = round(float(chan.get(day) or 0.0) + cost, 4)
+            chan[day] = round(float(chan.get(day) or 0.0) + day_cost, 4)
             key = sidecar_key(path)
             entries_seen.append(key)
             spend.setdefault("entries_folded", {})[key] = cost
             attribute_tierb(dashboard, spend, report, path.name, cost)
             bullets.append(ledger_bullet(key, cost, report))
+            if prior_balance:
+                bullets.append(f"- {key} · booked ${day_cost:.4f} to {day} (run_cost_usd); "
+                               f"${prior_balance:.4f} prior-runs balance folded to lifetime only "
+                               f"(cost_basis=cumulative_from_records)")
 
     # Growth pass (critic HIGH closed 2026-07-29): a cumulative sidecar already
     # in entries_seen is rewritten in place as its archive grows, so the
