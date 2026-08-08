@@ -1,0 +1,1764 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 81,
+  "pairs_requested": 20,
+  "completed": true,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "a0b34b62bf8a",
+    "runner_image": "20260720.247.2"
+  },
+  "results": [
+    {
+      "index": 81,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have acute lumbar strain after the yard work, so I need to take my",
+        "patient": "My back is killing me after the yard work, so I need to take my"
+      },
+      "target_token": "Output \" time\"",
+      "probabilities": {
+        "clinical": 0.231,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2844,
+        "patient": 0.174
+      },
+      "error_share": {
+        "clinical": 0.0941,
+        "patient": 0.0905
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L25\u00b7C] words, phrases and punctuation marks associated with \u2192 Output \" pain\" (p=0.058)",
+        "patient": "[L19\u00b7S]  \u2192 [L20\u00b7O] instances where someone changes their mind or story  \u2192 Output \" mind\" (p=0.096)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" time\"",
+            0.231
+          ],
+          [
+            "Output \" dog\"",
+            0.075
+          ],
+          [
+            "Output \" pain\"",
+            0.058
+          ],
+          [
+            "Output \" back\"",
+            0.04
+          ],
+          [
+            "Output \" mind\"",
+            0.035
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.123
+          ],
+          [
+            "Output \" mind\"",
+            0.096
+          ],
+          [
+            "Output \" pain\"",
+            0.066
+          ],
+          [
+            "Output \" dog\"",
+            0.051
+          ],
+          [
+            "Output \" medicine\"",
+            0.045
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 685,
+        "unique_to_a": 621,
+        "unique_to_b": 557
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_81.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_81.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_81_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_81_diff.png"
+      }
+    },
+    {
+      "index": 82,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing palpitations lately, so my",
+        "patient": "I've been bugging out about my heart lately, so my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.482,
+        "patient": 0.118
+      },
+      "language_penalty": -0.364,
+      "clinical_mass": {
+        "clinical": 0.3458,
+        "patient": 0.157
+      },
+      "error_share": {
+        "clinical": 0.0891,
+        "patient": 0.0829
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.482)",
+        "patient": "embedding \u2192 Output \" heart\" (p=0.063)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.482
+          ],
+          [
+            "Output \" cardio\"",
+            0.095
+          ],
+          [
+            "Output \" GP\"",
+            0.095
+          ],
+          [
+            "Output \" doc\"",
+            0.083
+          ],
+          [
+            "Output \" husband\"",
+            0.024
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.118
+          ],
+          [
+            "Output \" heart\"",
+            0.063
+          ],
+          [
+            "Output \" friend\"",
+            0.049
+          ],
+          [
+            "Output \" husband\"",
+            0.049
+          ],
+          [
+            "Output \" mom\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 576,
+        "unique_to_a": 595,
+        "unique_to_b": 678
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_82.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_82.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_82_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_82_diff.png"
+      }
+    },
+    {
+      "index": 83,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After the party last night, I'm experiencing fatigue, so I should probably get some",
+        "patient": "After the party last night, I'm totally wiped out, so I should probably get some"
+      },
+      "target_token": "Output \" rest\"",
+      "probabilities": {
+        "clinical": 0.262,
+        "patient": 0.155
+      },
+      "language_penalty": -0.10700000000000001,
+      "clinical_mass": {
+        "clinical": 0.1244,
+        "patient": 0.0993
+      },
+      "error_share": {
+        "clinical": 0.0961,
+        "patient": 0.0998
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7O] sleep | text about sleep apnea \u2192 [L18\u00b7C] words associated with sleeping and nights | sleep \u2192 [L19\u00b7O] mentions of sleep | sleep \u2192 Output \" sleep\" (p=0.629)",
+        "patient": "embedding \u2192 [L17\u00b7O] sleep | text about sleep apnea \u2192 [L18\u00b7C] words associated with sleeping and nights | sleep \u2192 [L19\u00b7O] mentions of sleep | sleep \u2192 Output \" sleep\" (p=0.695)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.629
+          ],
+          [
+            "Output \" rest\"",
+            0.262
+          ],
+          [
+            "Output \" shut\"",
+            0.021
+          ],
+          [
+            "Output \" more\"",
+            0.013
+          ],
+          [
+            "Output \" sh\"",
+            0.013
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.695
+          ],
+          [
+            "Output \" rest\"",
+            0.155
+          ],
+          [
+            "Output \" shut\"",
+            0.035
+          ],
+          [
+            "Output \" sh\"",
+            0.021
+          ],
+          [
+            "Output \" work\"",
+            0.013
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 932,
+        "unique_to_a": 287,
+        "unique_to_b": 264
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_83.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_83.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_83_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_83_diff.png"
+      }
+    },
+    {
+      "index": 84,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I eat too much sugar, I develop reactive hyperglycemia, so I might have a",
+        "patient": "When I eat too much sugar, my stomach gets all wonky, so I might have a"
+      },
+      "target_token": "Output \" little\"",
+      "probabilities": {
+        "clinical": 0.072,
+        "patient": 0.119
+      },
+      "language_penalty": 0.047,
+      "clinical_mass": {
+        "clinical": 0.2242,
+        "patient": 0.1581
+      },
+      "error_share": {
+        "clinical": 0.0983,
+        "patient": 0.0948
+      },
+      "top_path": {
+        "clinical": "[L24\u00b7S]  \u2192 [L25\u00b7O] words used to describe, compare or qualify something \u2192 Output \" hard\" (p=0.072)",
+        "patient": "embedding \u2192 Output \" sugar\" (p=0.064)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" little\"",
+            0.072
+          ],
+          [
+            "Output \" hard\"",
+            0.072
+          ],
+          [
+            "Output \" blood\"",
+            0.063
+          ],
+          [
+            "Output \" low\"",
+            0.05
+          ],
+          [
+            "Output \" high\"",
+            0.044
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" little\"",
+            0.119
+          ],
+          [
+            "Output \" hard\"",
+            0.082
+          ],
+          [
+            "Output \" sugar\"",
+            0.064
+          ],
+          [
+            "Output \" bit\"",
+            0.064
+          ],
+          [
+            "Output \" problem\"",
+            0.05
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 857,
+        "unique_to_a": 472,
+        "unique_to_b": 525
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_84.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_84.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_84_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_84_diff.png"
+      }
+    },
+    {
+      "index": 85,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing dissociative episodes at meetings, so my boss thinks I need to see a",
+        "patient": "I've been spacing out at meetings, so my boss thinks I need to see a"
+      },
+      "target_token": "Output \" therapist\"",
+      "probabilities": {
+        "clinical": 0.291,
+        "patient": 0.119
+      },
+      "language_penalty": -0.172,
+      "clinical_mass": {
+        "clinical": 0.3751,
+        "patient": 0.261
+      },
+      "error_share": {
+        "clinical": 0.1032,
+        "patient": 0.1036
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.177)",
+        "patient": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.367)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" therapist\"",
+            0.291
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.258
+          ],
+          [
+            "Output \" doctor\"",
+            0.177
+          ],
+          [
+            "Output \" psychologist\"",
+            0.065
+          ],
+          [
+            "Output \" counselor\"",
+            0.045
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.367
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.152
+          ],
+          [
+            "Output \" therapist\"",
+            0.119
+          ],
+          [
+            "Output \" shrink\"",
+            0.082
+          ],
+          [
+            "Output \" psychologist\"",
+            0.072
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 837,
+        "unique_to_a": 525,
+        "unique_to_b": 545
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_85.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_85.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_85_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_85_diff.png"
+      }
+    },
+    {
+      "index": 86,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing cognitive impairment lately, so I should probably take my",
+        "patient": "I've been feeling really spacey and out of it lately, so I should probably take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.148,
+        "patient": 0.104
+      },
+      "language_penalty": -0.044,
+      "clinical_mass": {
+        "clinical": 0.2554,
+        "patient": 0.1743
+      },
+      "error_share": {
+        "clinical": 0.09,
+        "patient": 0.0895
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.070)",
+        "patient": "embedding \u2192 Output \" own\" (p=0.104)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.277
+          ],
+          [
+            "Output \" medication\"",
+            0.148
+          ],
+          [
+            "Output \" own\"",
+            0.07
+          ],
+          [
+            "Output \" medicine\"",
+            0.07
+          ],
+          [
+            "Output \" vitamins\"",
+            0.062
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.32
+          ],
+          [
+            "Output \" medication\"",
+            0.104
+          ],
+          [
+            "Output \" own\"",
+            0.104
+          ],
+          [
+            "Output \" medicine\"",
+            0.081
+          ],
+          [
+            "Output \" vitamins\"",
+            0.056
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 745,
+        "unique_to_a": 607,
+        "unique_to_b": 564
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_86.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_86.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_86_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_86_diff.png"
+      }
+    },
+    {
+      "index": 87,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have abnormal bowel sounds, so I probably need to see a",
+        "patient": "My stomach's been making weird gurgling sounds, so I probably need to see a"
+      },
+      "target_token": "Output \" gastroenter\"",
+      "probabilities": {
+        "clinical": 0.213,
+        "patient": 0.047
+      },
+      "language_penalty": -0.16599999999999998,
+      "clinical_mass": {
+        "clinical": 0.4796,
+        "patient": 0.3795
+      },
+      "error_share": {
+        "clinical": 0.0971,
+        "patient": 0.1035
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7C] words and phrases related to gut bacteria, digestion \u2192 [L25\u00b7C] content from scientific or medical papers. | gut hea \u2192 Output \" gastro\" (p=0.089)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.742)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" gastroenter\"",
+            0.213
+          ],
+          [
+            "Output \" GI\"",
+            0.166
+          ],
+          [
+            "Output \" doctor\"",
+            0.166
+          ],
+          [
+            "Output \" specialist\"",
+            0.089
+          ],
+          [
+            "Output \" gastro\"",
+            0.089
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.742
+          ],
+          [
+            "Output \" doc\"",
+            0.061
+          ],
+          [
+            "Output \" gastroenter\"",
+            0.047
+          ],
+          [
+            "Output \" gastro\"",
+            0.029
+          ],
+          [
+            "Output \" GI\"",
+            0.022
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 566,
+        "unique_to_a": 654,
+        "unique_to_b": 690
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_87.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_87.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_87_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_87_diff.png"
+      }
+    },
+    {
+      "index": 88,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I stand up too fast, I experience orthostatic vertigo, so I should take some",
+        "patient": "When I stand up too fast, the world starts spinning around me, so I should take some"
+      },
+      "target_token": "Output \" time\"",
+      "probabilities": {
+        "clinical": 0.223,
+        "patient": 0.291
+      },
+      "language_penalty": 0.06799999999999998,
+      "clinical_mass": {
+        "clinical": 0.2069,
+        "patient": 0.1529
+      },
+      "error_share": {
+        "clinical": 0.1027,
+        "patient": 0.0925
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7O] statements that the results of scientific studies sh \u2192 [L22\u00b7O] language that implies caution, warning, or reservati \u2192 Output \" care\" (p=0.105)",
+        "patient": "embedding \u2192 [L22\u00b7O] language that implies caution, warning, or reservati \u2192 Output \" care\" (p=0.039)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" time\"",
+            0.223
+          ],
+          [
+            "Output \" precautions\"",
+            0.197
+          ],
+          [
+            "Output \" care\"",
+            0.105
+          ],
+          [
+            "Output \" precaution\"",
+            0.044
+          ],
+          [
+            "Output \" steps\"",
+            0.044
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" time\"",
+            0.291
+          ],
+          [
+            "Output \" precautions\"",
+            0.083
+          ],
+          [
+            "Output \" care\"",
+            0.039
+          ],
+          [
+            "Output \" medicine\"",
+            0.039
+          ],
+          [
+            "Output \" steps\"",
+            0.035
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 900,
+        "unique_to_a": 433,
+        "unique_to_b": 424
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_88.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_88.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_88_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_88_diff.png"
+      }
+    },
+    {
+      "index": 89,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep waking up with xerostomia, so I might have a",
+        "patient": "I keep waking up with my mouth totally dry, so I might have a"
+      },
+      "target_token": "Output \" dry\"",
+      "probabilities": {
+        "clinical": 0.13,
+        "patient": 0.112
+      },
+      "language_penalty": -0.018000000000000002,
+      "clinical_mass": {
+        "clinical": 0.3595,
+        "patient": 0.2992
+      },
+      "error_share": {
+        "clinical": 0.1084,
+        "patient": 0.0934
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" small\" (p=0.054)",
+        "patient": "embedding \u2192 Output \" dry\" (p=0.112)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dry\"",
+            0.13
+          ],
+          [
+            "Output \" problem\"",
+            0.115
+          ],
+          [
+            "Output \" little\"",
+            0.054
+          ],
+          [
+            "Output \" small\"",
+            0.054
+          ],
+          [
+            "Output \" salivary\"",
+            0.042
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" little\"",
+            0.128
+          ],
+          [
+            "Output \" dry\"",
+            0.112
+          ],
+          [
+            "Output \" problem\"",
+            0.087
+          ],
+          [
+            "Output \" small\"",
+            0.068
+          ],
+          [
+            "Output \" bit\"",
+            0.06
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 796,
+        "unique_to_a": 630,
+        "unique_to_b": 524
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_89.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_89.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_89_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_89_diff.png"
+      }
+    },
+    {
+      "index": 90,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After I eat fatty foods, I develop acneiform eruptions, so I probably have a",
+        "patient": "After I eat fatty foods, my skin gets all broken out, so I probably have a"
+      },
+      "target_token": "Output \" genetic\"",
+      "probabilities": {
+        "clinical": 0.102,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3606,
+        "patient": 0.3042
+      },
+      "error_share": {
+        "clinical": 0.1103,
+        "patient": 0.1032
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" fatty\" (p=0.070)",
+        "patient": "embedding \u2192 Output \" fatty\" (p=0.087)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" genetic\"",
+            0.102
+          ],
+          [
+            "Output \" fatty\"",
+            0.07
+          ],
+          [
+            "Output \" sensitivity\"",
+            0.062
+          ],
+          [
+            "Output \" problem\"",
+            0.062
+          ],
+          [
+            "Output \" low\"",
+            0.033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" fatty\"",
+            0.087
+          ],
+          [
+            "Output \" sensitive\"",
+            0.087
+          ],
+          [
+            "Output \" sensitivity\"",
+            0.068
+          ],
+          [
+            "Output \" problem\"",
+            0.053
+          ],
+          [
+            "Output \" food\"",
+            0.053
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 966,
+        "unique_to_a": 345,
+        "unique_to_b": 360
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_90.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_90.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_90_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_90_diff.png"
+      }
+    },
+    {
+      "index": 91,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have cognitive impairment, so I need to take my",
+        "patient": "I've been feeling really foggy and out of it, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.138,
+        "patient": 0.063
+      },
+      "language_penalty": -0.07500000000000001,
+      "clinical_mass": {
+        "clinical": 0.2437,
+        "patient": 0.2136
+      },
+      "error_share": {
+        "clinical": 0.0893,
+        "patient": 0.0889
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.057)",
+        "patient": "[L20\u00b7S]  \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" medication\" (p=0.063)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" time\"",
+            0.227
+          ],
+          [
+            "Output \" meds\"",
+            0.156
+          ],
+          [
+            "Output \" medication\"",
+            0.138
+          ],
+          [
+            "Output \" medications\"",
+            0.074
+          ],
+          [
+            "Output \" own\"",
+            0.057
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.222
+          ],
+          [
+            "Output \" mind\"",
+            0.104
+          ],
+          [
+            "Output \" vitamins\"",
+            0.082
+          ],
+          [
+            "Output \" medication\"",
+            0.063
+          ],
+          [
+            "Output \" medicine\"",
+            0.056
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 607,
+        "unique_to_a": 631,
+        "unique_to_b": 780
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_91.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_91.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_91_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_91_diff.png"
+      }
+    },
+    {
+      "index": 92,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After I eat, my stomach has dysmotility, so I probably have a",
+        "patient": "After I eat, my stomach gets all wonky and weird, so I probably have a"
+      },
+      "target_token": "Output \" lot\"",
+      "probabilities": {
+        "clinical": 0.095,
+        "patient": 0.048
+      },
+      "language_penalty": -0.047,
+      "clinical_mass": {
+        "clinical": 0.4056,
+        "patient": 0.2843
+      },
+      "error_share": {
+        "clinical": 0.103,
+        "patient": 0.099
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7C] words and phrases related to gut bacteria, digestion \u2192 [L25\u00b7C] content from scientific or medical papers. | gut hea \u2192 Output \" stomach\" (p=0.040)",
+        "patient": "embedding \u2192 Output \" stomach\" (p=0.089)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" lot\"",
+            0.095
+          ],
+          [
+            "Output \" little\"",
+            0.084
+          ],
+          [
+            "Output \" problem\"",
+            0.074
+          ],
+          [
+            "Output \" small\"",
+            0.051
+          ],
+          [
+            "Output \" stomach\"",
+            0.04
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" stomach\"",
+            0.089
+          ],
+          [
+            "Output \" problem\"",
+            0.07
+          ],
+          [
+            "Output \" little\"",
+            0.07
+          ],
+          [
+            "Output \" food\"",
+            0.048
+          ],
+          [
+            "Output \" lot\"",
+            0.048
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 895,
+        "unique_to_a": 443,
+        "unique_to_b": 402
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_92.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_92.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_92_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_92_diff.png"
+      }
+    },
+    {
+      "index": 93,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When I look in the mirror, I'm noticing jaundice, so I might need to see a",
+        "patient": "When I look in the mirror, my skin looks kind of yellowish, so I might need to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.068,
+        "patient": 0.017
+      },
+      "language_penalty": -0.051000000000000004,
+      "clinical_mass": {
+        "clinical": 0.3591,
+        "patient": 0.2827
+      },
+      "error_share": {
+        "clinical": 0.0938,
+        "patient": 0.0893
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.566)",
+        "patient": "embedding \u2192 Output \" skin\" (p=0.015)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.566
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.112
+          ],
+          [
+            "Output \" specialist\"",
+            0.068
+          ],
+          [
+            "Output \" doc\"",
+            0.028
+          ],
+          [
+            "Output \" hep\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dermatologist\"",
+            0.652
+          ],
+          [
+            "Output \" doctor\"",
+            0.187
+          ],
+          [
+            "Output \" der\"",
+            0.061
+          ],
+          [
+            "Output \" specialist\"",
+            0.017
+          ],
+          [
+            "Output \" skin\"",
+            0.015
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 765,
+        "unique_to_a": 539,
+        "unique_to_b": 493
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_93.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_93.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_93_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_93_diff.png"
+      }
+    },
+    {
+      "index": 94,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been getting urticaria all over my skin, so I should probably pick up some",
+        "patient": "I've been getting really bad itchy spots all over my skin, so I should probably pick up some"
+      },
+      "target_token": "Output \" anti\"",
+      "probabilities": {
+        "clinical": 0.132,
+        "patient": 0.066
+      },
+      "language_penalty": -0.066,
+      "clinical_mass": {
+        "clinical": 0.3627,
+        "patient": 0.3303
+      },
+      "error_share": {
+        "clinical": 0.1041,
+        "patient": 0.0982
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" of\" (p=0.033)",
+        "patient": "embedding \u2192 Output \" new\" (p=0.075)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" anti\"",
+            0.132
+          ],
+          [
+            "Output \" Ben\"",
+            0.132
+          ],
+          [
+            "Output \" hydro\"",
+            0.055
+          ],
+          [
+            "Output \" ben\"",
+            0.049
+          ],
+          [
+            "Output \" of\"",
+            0.033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" lotion\"",
+            0.084
+          ],
+          [
+            "Output \" hydro\"",
+            0.084
+          ],
+          [
+            "Output \" new\"",
+            0.075
+          ],
+          [
+            "Output \" anti\"",
+            0.066
+          ],
+          [
+            "Output \" Ben\"",
+            0.045
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 878,
+        "unique_to_a": 618,
+        "unique_to_b": 621
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_94.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_94.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_94_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_94_diff.png"
+      }
+    },
+    {
+      "index": 95,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have gastroesophageal reflux, so I need to take my",
+        "patient": "My stomach's been really upset after lunch, so I need to take my"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.096,
+        "patient": 0.033
+      },
+      "language_penalty": -0.063,
+      "clinical_mass": {
+        "clinical": 0.4173,
+        "patient": 0.3105
+      },
+      "error_share": {
+        "clinical": 0.1003,
+        "patient": 0.0897
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L20\u00b7C] text describing gastric disease and related medical  \u2192 Output \" ant\" (p=0.096)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] words related to cell biology experiments | antibiot \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" medication\" (p=0.070)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" medication\"",
+            0.203
+          ],
+          [
+            "Output \" meds\"",
+            0.124
+          ],
+          [
+            "Output \" ant\"",
+            0.096
+          ],
+          [
+            "Output \" medications\"",
+            0.052
+          ],
+          [
+            "Output \" medicine\"",
+            0.052
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.132
+          ],
+          [
+            "Output \" medicine\"",
+            0.116
+          ],
+          [
+            "Output \" medication\"",
+            0.07
+          ],
+          [
+            "Output \" dog\"",
+            0.043
+          ],
+          [
+            "Output \" ant\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 527,
+        "unique_to_a": 694,
+        "unique_to_b": 789
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_95.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_95.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_95_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_95_diff.png"
+      }
+    },
+    {
+      "index": 96,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have osteoarthritis, so I should probably see an",
+        "patient": "I've been getting this weird crackling in my joints, so I should probably see an"
+      },
+      "target_token": "Output \" orth\"",
+      "probabilities": {
+        "clinical": 0.178,
+        "patient": 0.328
+      },
+      "language_penalty": 0.15000000000000002,
+      "clinical_mass": {
+        "clinical": 0.4022,
+        "patient": 0.3669
+      },
+      "error_share": {
+        "clinical": 0.0905,
+        "patient": 0.0956
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" arthritis\" (p=0.024)",
+        "patient": "embedding \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" orthopedic\" (p=0.199)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" orthopedic\"",
+            0.332
+          ],
+          [
+            "Output \" orth\"",
+            0.178
+          ],
+          [
+            "Output \" ortho\"",
+            0.157
+          ],
+          [
+            "Output \" oste\"",
+            0.108
+          ],
+          [
+            "Output \" arthritis\"",
+            0.024
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" orth\"",
+            0.328
+          ],
+          [
+            "Output \" orthopedic\"",
+            0.199
+          ],
+          [
+            "Output \" ortho\"",
+            0.106
+          ],
+          [
+            "Output \" oste\"",
+            0.073
+          ],
+          [
+            "Output \" MD\"",
+            0.044
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 663,
+        "unique_to_a": 450,
+        "unique_to_b": 670
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_96.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_96.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_96_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_96_diff.png"
+      }
+    },
+    {
+      "index": 97,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At the bar last night, I experienced facial flushing after one drink, so I might be",
+        "patient": "At the bar last night, I got all red and flushed after one drink, so I might be"
+      },
+      "target_token": "Output \" allergic\"",
+      "probabilities": {
+        "clinical": 0.048,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.17,
+        "patient": 0.1202
+      },
+      "error_share": {
+        "clinical": 0.0987,
+        "patient": 0.1
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L20\u00b7C] words that describe likelihood, sensitivity, or risk \u2192 [L25\u00b7C] sentences that reference medical devices and electro \u2192 Output \" sensitive\" (p=0.115)",
+        "patient": "embedding \u2192 Output \" a\" (p=0.268)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" a\"",
+            0.167
+          ],
+          [
+            "Output \" sensitive\"",
+            0.115
+          ],
+          [
+            "Output \" more\"",
+            0.102
+          ],
+          [
+            "Output \" allergic\"",
+            0.048
+          ],
+          [
+            "Output \" developing\"",
+            0.023
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" a\"",
+            0.268
+          ],
+          [
+            "Output \" in\"",
+            0.036
+          ],
+          [
+            "Output \" the\"",
+            0.036
+          ],
+          [
+            "Output \" having\"",
+            0.028
+          ],
+          [
+            "Output \" more\"",
+            0.028
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 965,
+        "unique_to_a": 475,
+        "unique_to_b": 376
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_97.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_97.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_97_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_97_diff.png"
+      }
+    },
+    {
+      "index": 98,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When my kids come back from playing outside, they have contact dermatitis, so we should apply some",
+        "patient": "When my kids come back from playing outside, they've got these annoying itchy spots, so we should apply some"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.167,
+        "patient": 0.05
+      },
+      "language_penalty": -0.117,
+      "clinical_mass": {
+        "clinical": 0.3356,
+        "patient": 0.3018
+      },
+      "error_share": {
+        "clinical": 0.0962,
+        "patient": 0.1019
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" ointment\" (p=0.089)",
+        "patient": "[L24\u00b7S]  \u2192 Output \" cal\" (p=0.073)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cream\"",
+            0.167
+          ],
+          [
+            "Output \" ointment\"",
+            0.089
+          ],
+          [
+            "Output \" lotion\"",
+            0.079
+          ],
+          [
+            "Output \" moisturizer\"",
+            0.048
+          ],
+          [
+            "Output \" kind\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" lotion\"",
+            0.136
+          ],
+          [
+            "Output \" cal\"",
+            0.073
+          ],
+          [
+            "Output \" anti\"",
+            0.057
+          ],
+          [
+            "Output \" ointment\"",
+            0.057
+          ],
+          [
+            "Output \" cream\"",
+            0.05
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 994,
+        "unique_to_a": 433,
+        "unique_to_b": 467
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_98.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_98.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_98_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_98_diff.png"
+      }
+    },
+    {
+      "index": 99,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After standing all day at work, I have venous insufficiency, so my",
+        "patient": "After standing all day at work, my legs feel really heavy and achy, so my"
+      },
+      "target_token": "Output \" feet\"",
+      "probabilities": {
+        "clinical": 0.523,
+        "patient": 0.14
+      },
+      "language_penalty": -0.383,
+      "clinical_mass": {
+        "clinical": 0.2958,
+        "patient": 0.194
+      },
+      "error_share": {
+        "clinical": 0.104,
+        "patient": 0.0883
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7C] medical procedures involving limbs and nerves | hand \u2192 [L24\u00b7S] articles of clothing and related words such as shoes \u2192 Output \" feet\" (p=0.523)",
+        "patient": "embedding \u2192 Output \" first\" (p=0.045)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" feet\"",
+            0.523
+          ],
+          [
+            "Output \" legs\"",
+            0.359
+          ],
+          [
+            "Output \" ankles\"",
+            0.02
+          ],
+          [
+            "Output \" calves\"",
+            0.014
+          ],
+          [
+            "Output \" lower\"",
+            0.011
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" feet\"",
+            0.14
+          ],
+          [
+            "Output \" husband\"",
+            0.123
+          ],
+          [
+            "Output \" wife\"",
+            0.051
+          ],
+          [
+            "Output \" mom\"",
+            0.045
+          ],
+          [
+            "Output \" first\"",
+            0.045
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 737,
+        "unique_to_a": 426,
+        "unique_to_b": 582
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_99.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_99.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_99_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_99_diff.png"
+      }
+    },
+    {
+      "index": 100,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been waking up with paresthesia in my hands, so I should get a",
+        "patient": "I've been waking up with this awful buzzing sensation in my hands, so I should get a"
+      },
+      "target_token": "Output \" sleep\"",
+      "probabilities": {
+        "clinical": 0.157,
+        "patient": 0.053
+      },
+      "language_penalty": -0.10400000000000001,
+      "clinical_mass": {
+        "clinical": 0.292,
+        "patient": 0.2301
+      },
+      "error_share": {
+        "clinical": 0.1049,
+        "patient": 0.1019
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" new\" (p=0.066)",
+        "patient": "embedding \u2192 Output \" new\" (p=0.077)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.157
+          ],
+          [
+            "Output \" neuro\"",
+            0.075
+          ],
+          [
+            "Output \" good\"",
+            0.066
+          ],
+          [
+            "Output \" new\"",
+            0.066
+          ],
+          [
+            "Output \" full\"",
+            0.04
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" good\"",
+            0.087
+          ],
+          [
+            "Output \" check\"",
+            0.087
+          ],
+          [
+            "Output \" new\"",
+            0.077
+          ],
+          [
+            "Output \" checkup\"",
+            0.06
+          ],
+          [
+            "Output \" sleep\"",
+            0.053
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1046,
+        "unique_to_a": 458,
+        "unique_to_b": 462
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260803T132340Z/index_100.html",
+        "png": "trace_out/pairs_20260803T132340Z/index_100.png",
+        "diff_html": "trace_out/pairs_20260803T132340Z/index_100_diff.html",
+        "diff_png": "trace_out/pairs_20260803T132340Z/index_100_diff.png"
+      }
+    }
+  ]
+}
