@@ -69,14 +69,24 @@ INTEGRITY_NOTE = ("The gemma-2-2b-it model id returns lens readouts identical to
 
 
 def load_summary(stem, model="gemma-2-2b"):
-    path = Path("trace_out") / f"{stem}__jlens_{model}" / "jlens_summary.part_01.json"
-    summary = json.loads(path.read_text(encoding="utf-8"))
+    # Chunked runs write one part per fired offset (part_NN = 1-based start
+    # index) and no part ever overlaps another; every part joins the block.
+    # Reading only part_01 silently truncated the first multi-part lens set
+    # (pairs_20260707T171223Z, 119 pairs in 5 parts) to its first 25 pairs.
+    root = Path("trace_out") / f"{stem}__jlens_{model}"
+    parts = sorted(root.glob("jlens_summary.part_*.json"),
+                   key=lambda p: int(p.stem.rsplit("_", 1)[1]))
+    if not parts:
+        raise FileNotFoundError(str(root / "jlens_summary.part_01.json"))
+    summary = json.loads(parts[0].read_text(encoding="utf-8"))
+    for extra in parts[1:]:
+        summary["results"].extend(json.loads(extra.read_text(encoding="utf-8"))["results"])
     # Amendment 1/3: sealed holdout pairs never enter blocks, counts, examples,
     # or the translation class join (this reader feeds all of them).
     if is_tierb_batch(stem, _TIERB_START):
         summary["results"] = [r for r in summary["results"]
                               if not _sealed(stem, r.get("index"))]
-    return summary, str(path)
+    return summary, str(root / parts[0].name if len(parts) == 1 else root)
 
 
 def contrast_labels(clinical, patient, width=34):

@@ -163,3 +163,31 @@ def test_exemplar_annotations_layer_picks_and_recovery_class():
     none = exporter.exemplar_annotations({}, [None, None], None, layers=2)
     assert none["first_legible"] is None and none["first_rank1"] is None
     assert none["best_patch_layer"] == 0 and none["patch_recovery_full"] is None
+
+
+def test_load_summary_merges_all_parts(tmp_path, monkeypatch):
+    """Chunked lens runs land one part per offset; every part joins the block.
+    Regression: reading only part_01 truncated the first multi-part set
+    (119 pairs in 5 parts) to its first 25 pairs."""
+    monkeypatch.chdir(tmp_path)
+    lens_dir = tmp_path / "trace_out" / "multi__jlens_gemma-2-2b"
+    lens_dir.mkdir(parents=True)
+    def result(i):
+        return {"index": i, "clinical": {"prompt": "a", "ranks": [1]},
+                "patient": {"prompt": "b", "ranks": [2]}}
+    (lens_dir / "jlens_summary.part_01.json").write_text(
+        json.dumps({"results": [result(1), result(2)]}))
+    (lens_dir / "jlens_summary.part_03.json").write_text(
+        json.dumps({"results": [result(3)]}))
+    (lens_dir / "jlens_summary.part_11.json").write_text(
+        json.dumps({"results": [result(11), result(12)]}))
+    summary, source = exporter.load_summary("multi")
+    assert [r["index"] for r in summary["results"]] == [1, 2, 3, 11, 12]
+    assert source.endswith("multi__jlens_gemma-2-2b")
+    # single-part stems keep the exact file path (provenance strings unchanged)
+    single_dir = tmp_path / "trace_out" / "single__jlens_gemma-2-2b"
+    single_dir.mkdir(parents=True)
+    (single_dir / "jlens_summary.part_01.json").write_text(
+        json.dumps({"results": [result(1)]}))
+    _, single_source = exporter.load_summary("single")
+    assert single_source.endswith("jlens_summary.part_01.json")
