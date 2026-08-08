@@ -67,7 +67,9 @@ def _family_of(stimuli_doc: dict) -> str:
 
 
 def build_payload(stimuli_paths, ae, max_scenarios: int = 0,
-                  archive_url: str | None = None) -> dict:
+                  archive_url: str | None = None,
+                  exclude_models: list[str] | None = None,
+                  exclude_note: str | None = None) -> dict:
     """One payload from one or more stimuli files. With several files the
     scenario list concatenates and every figure statistic pools EXACTLY —
     cells/tiers are built over the union before any aggregation, so merged
@@ -111,6 +113,25 @@ def build_payload(stimuli_paths, ae, max_scenarios: int = 0,
         advice_all.extend(advice)
     rows = rows_all
     advice = advice_all
+    # Display exclusion (never touches `rows`, so chain provenance is intact): a spec
+    # matching any pattern — under its raw name or its display alias — is dropped from
+    # every published cell and figure, and the payload records the withholding.
+    excluded_records: dict[str, int] = {}
+    if exclude_models:
+        def _hit(spec: str) -> bool:
+            return any(pat in spec for pat in exclude_models)
+        kept = []
+        for r in advice:
+            spec = r["model_requested"]
+            if _hit(spec) or _hit(DISPLAY_ALIASES.get(spec, spec)):
+                excluded_records[spec] = excluded_records.get(spec, 0) + 1
+            else:
+                kept.append(r)
+        advice = kept
+        for f in families:
+            f["advice"] = [r for r in f["advice"]
+                           if not (_hit(r["model_requested"])
+                                   or _hit(DISPLAY_ALIASES.get(r["model_requested"], r["model_requested"])))]
     stimuli_doc = families[0]["doc"]          # single-file callers keep exact old shapes
     responses_path = families[0]["responses_path"]
     judgments_path = families[0]["judgments_path"]
@@ -403,6 +424,10 @@ def build_payload(stimuli_paths, ae, max_scenarios: int = 0,
                         "n_responses": per_model_counts.get(spec, 0),
                         "builds": sorted(builds_by_spec.get(spec, {}).values(),
                                          key=lambda b: (b["first_sent_utc"] or ""))} for spec in raw_order],
+            "excluded_models": ([{"spec": spec, "n_records_withheld": n,
+                                  "note": exclude_note}
+                                 for spec, n in sorted(excluded_records.items())]
+                                or None) if exclude_models else None,
         },
         # a single chain head is meaningless across archives; per-family heads
         # live in "families" and the page hides the row when this is null
@@ -427,10 +452,18 @@ def main(argv=None) -> None:
                         help="rubric path, used only to publish tier_order when judgments exist")
     parser.add_argument("--out", default="data/advice_scenarios.json")
     parser.add_argument("--site", default=None, help="frontend checkout; copies the payload into <site>/data/")
+    parser.add_argument("--exclude-models", default=None,
+                        help="comma-separated substrings; any model spec (raw or display alias) containing "
+                             "one is withheld from the published payload and recorded in run.excluded_models")
+    parser.add_argument("--exclude-note", default=None,
+                        help="reason recorded alongside each withheld model")
     args = parser.parse_args(argv)
 
     ae = _load_advice_eval()
-    payload = build_payload([Path(p) for p in args.stimuli], ae, args.max_scenarios, args.archive_url)
+    payload = build_payload([Path(p) for p in args.stimuli], ae, args.max_scenarios, args.archive_url,
+                            exclude_models=[p.strip() for p in args.exclude_models.split(",") if p.strip()]
+                                           if args.exclude_models else None,
+                            exclude_note=args.exclude_note)
     if payload["rubric_version"] and Path(args.rubric).is_file():
         rubric = json.loads(Path(args.rubric).read_text(encoding="utf-8"))
         payload["tier_order"] = [t["id"] for t in rubric.get("tiers", [])] or None

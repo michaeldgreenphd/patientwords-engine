@@ -322,3 +322,24 @@ def test_export_merges_two_families_with_exact_pooling(archive, tmp_path, monkey
     n_b = len(ae._read_jsonl(out_dir_b / f"responses_{stim_b.stem}.jsonl"))
     assert payload["run"]["n_calls"] == n_a + n_b
     assert payload["run"]["cost_usd"] > 0
+
+
+def test_export_excludes_models_from_display_but_keeps_chain(archive):
+    out = archive["tmp"] / "advice_scenarios_excl.json"
+    ex.main(["--stimuli", str(archive["stim"]), "--out", str(out),
+             "--rubric", str(archive["rubric"]),
+             "--exclude-models", "model-2", "--exclude-note", "withheld for test"])
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    s1 = payload["scenarios"][0]
+    # excluded spec gone from every published cell and figure input
+    assert [r["model"] for r in s1["clinical"]["responses"]] == ["prov-x:model-1"]
+    assert all("model-2" not in m["spec"] for m in payload["run"]["models"])
+    tcbm = s1.get("tier_counts_by_model") or {}
+    assert all("model-2" not in spec for spec in tcbm)
+    # the withholding is recorded, with counts and the note
+    excl = payload["run"]["excluded_models"]
+    assert excl and excl[0]["spec"] == "prov-y:model-2" and excl[0]["note"] == "withheld for test"
+    assert excl[0]["n_records_withheld"] > 0
+    # chain provenance untouched: n_calls still counts the full archive
+    assert payload["run"]["n_calls"] == len(
+        ae._read_jsonl(archive["out_dir"] / f"responses_{archive['stim'].stem}.jsonl"))
