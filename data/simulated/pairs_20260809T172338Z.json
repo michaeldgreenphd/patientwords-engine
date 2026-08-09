@@ -1,0 +1,2005 @@
+[
+  {
+    "top_prompt": "I keep getting peripheral neuropathy shooting down my arm, so my doctor prescribed a",
+    "bottom_prompt": "I keep getting these zaps and pins-and-needles shooting down my arm, so my doctor prescribed a",
+    "target_clinical_token": " drug",
+    "generation": {
+      "patient_term": "zaps and pins-and-needles",
+      "clinical_term": "peripheral neuropathy",
+      "expected_clinical_continuations": [
+        "drug",
+        "pill",
+        "cream"
+      ],
+      "rationale": "'prescribed a' after the vague tingling description could resolve toward a mundane 'break' or 'rest', but the clinical 'peripheral neuropathy' funnels toward a common medication noun like 'drug' or 'pill'.",
+      "topic": null,
+      "swap_spans": {
+        "patient_span": "these zaps and pins-and-needles",
+        "clinical_span": "peripheral neuropathy"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My teenager has clinical depression and won't get out of bed for weeks, so the school sent home a",
+    "bottom_prompt": "My teenager has been really down and won't get out of bed for weeks, so the school sent home a",
+    "target_clinical_token": " referral",
+    "generation": {
+      "patient_term": "really down and won't get out of bed",
+      "clinical_term": "clinical depression",
+      "expected_clinical_continuations": [
+        "referral",
+        "note",
+        "counselor"
+      ],
+      "rationale": "'sent home a' after the lay 'really down' could resolve to a mundane 'note' or 'form', but the clinical 'depression' framing nudges toward a care-seeking 'referral' or 'counselor' recommendation.",
+      "topic": null,
+      "swap_spans": {
+        "patient_span": "been really down",
+        "clinical_span": "clinical depression"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I keep having acute respiratory distress at night, so the ER doctor started me on an",
+    "bottom_prompt": "I keep gasping for air and can't catch my breath at night, so the ER doctor started me on an",
+    "target_clinical_token": " oxygen",
+    "generation": {
+      "patient_term": "gasping for air and can't catch my breath",
+      "clinical_term": "acute respiratory distress",
+      "expected_clinical_continuations": [
+        "oxygen",
+        "inhaler"
+      ],
+      "rationale": "'started me on an' before a vowel-initial noun funnels hard toward 'oxygen'; the clinical term reframes the breathlessness as a red-flag needing respiratory support rather than the everyday winded reading.",
+      "topic": null,
+      "swap_spans": {
+        "patient_span": "gasping for air and can't catch my breath",
+        "clinical_span": "having acute respiratory distress"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My kid spiked a fever and now he's having a seizure, so I dialed",
+    "bottom_prompt": "My kid spiked a fever and now he's having a fit and jerking all over, so I dialed",
+    "target_clinical_token": " 911",
+    "generation": {
+      "patient_term": "a fit and jerking all over",
+      "clinical_term": "a seizure",
+      "expected_clinical_continuations": [
+        "911",
+        "999",
+        "the"
+      ],
+      "rationale": "The verb 'dialed' funnels toward a phone-number continuation; the clinical 'seizure' pushes the emergency-services number over any mundane 'the office' reading, and '911' is high-frequency.",
+      "topic": "emergency red-flag symptoms",
+      "swap_spans": {
+        "patient_span": "fit and jerking all over,",
+        "clinical_span": "seizure,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Lately I've had suicidal ideation, so my sister handed me the",
+    "bottom_prompt": "Lately I feel like everything's pointless and I don't want to be here anymore, so my sister handed me the",
+    "target_clinical_token": " phone",
+    "generation": {
+      "patient_term": "everything's pointless and I don't want to be here anymore",
+      "clinical_term": "suicidal ideation",
+      "expected_clinical_continuations": [
+        "phone",
+        "hotline",
+        "number"
+      ],
+      "rationale": "'handed me the' funnels toward a concrete object; the crisis clinical term pushes 'phone' (to call for help) over a mundane 'remote' or 'keys'.",
+      "topic": "mental health and emotional distress",
+      "swap_spans": {
+        "patient_span": "I feel like everything's pointless and I don't want to be here anymore,",
+        "clinical_span": "I've had suicidal ideation,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My husband has obstructive sleep apnea, so the doctor ordered a",
+    "bottom_prompt": "My husband stops breathing and gasps loudly all night in his sleep, so the doctor ordered a",
+    "target_clinical_token": " sleep",
+    "generation": {
+      "patient_term": "stops breathing and gasps loudly all night in his sleep",
+      "clinical_term": "obstructive sleep apnea",
+      "expected_clinical_continuations": [
+        "sleep",
+        "study",
+        "test",
+        "scan"
+      ],
+      "rationale": "'ordered a' after clinical apnea framing funnels toward a diagnostic 'sleep' study; the lay gasping description could stay everyday ('fan', 'pillow').",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "stops breathing and gasps loudly all night in his sleep,",
+        "clinical_span": "has obstructive sleep apnea,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I'm having active suicidal ideation, so my roommate walked me to the",
+    "bottom_prompt": "My mind keeps telling me I'd be better off gone, so my roommate walked me to the",
+    "target_clinical_token": " hospital",
+    "generation": {
+      "patient_term": "keeps telling me I'd be better off gone",
+      "clinical_term": "having active suicidal ideation",
+      "expected_clinical_continuations": [
+        "hospital",
+        "emergency",
+        "clinic"
+      ],
+      "rationale": "'walked me to the' after a crisis clinical term funnels toward 'hospital'; the lay phrasing might resolve to a mundane place like 'car' or 'door'.",
+      "topic": "mental health and emotional distress",
+      "swap_spans": {
+        "patient_span": "My mind keeps telling me I'd be better off gone,",
+        "clinical_span": "I'm having active suicidal ideation,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have obstructive sleep apnea, so the sleep clinic hooked me up to a",
+    "bottom_prompt": "I keep jolting awake choking and gasping right as I drift off, so the sleep clinic hooked me up to a",
+    "target_clinical_token": " machine",
+    "generation": {
+      "patient_term": "keep jolting awake choking and gasping right as I drift off",
+      "clinical_term": "obstructive sleep apnea",
+      "expected_clinical_continuations": [
+        "machine",
+        "monitor",
+        "ventilator"
+      ],
+      "rationale": "'hooked me up to a' after the clinical diagnosis funnels toward a device noun like 'machine' (CPAP); the lay description could stay everyday about waking up.",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "keep jolting awake choking and gasping right as I drift off,",
+        "clinical_span": "have obstructive sleep apnea,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "The pharmacist warned me of a serious anticoagulant drug interaction, so before dinner I skipped the",
+    "bottom_prompt": "The pharmacist warned me my blood thinner clashes badly with aspirin, so before dinner I skipped the",
+    "target_clinical_token": " pill",
+    "generation": {
+      "patient_term": "blood thinner clashes badly with aspirin",
+      "clinical_term": "serious anticoagulant drug interaction",
+      "expected_clinical_continuations": [
+        "pill",
+        "aspirin",
+        "dose",
+        "medication"
+      ],
+      "rationale": "'skipped the' after the clinical interaction warning funnels toward a medication noun like 'pill'; the lay phrasing could resolve to a mundane food item like 'wine'.",
+      "topic": "prescription medication contexts",
+      "swap_spans": {
+        "patient_span": "my blood thinner clashes badly with aspirin,",
+        "clinical_span": "of a serious anticoagulant drug interaction,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I've had crushing angina since I climbed the stairs, so my wife handed me a",
+    "bottom_prompt": "My chest's been feeling really tight and heavy since I climbed the stairs, so my wife handed me a",
+    "target_clinical_token": " pill",
+    "generation": {
+      "patient_term": "feeling really tight and heavy",
+      "clinical_term": "crushing angina",
+      "expected_clinical_continuations": [
+        "pill",
+        "tablet",
+        "phone"
+      ],
+      "rationale": "Everyday 'tight and heavy' after 'handed me a' could resolve to 'drink' or 'towel'; clinical 'angina' funnels the object toward a rescue 'pill' or 'tablet' being handed over.",
+      "topic": null,
+      "swap_spans": {
+        "patient_span": "My chest's been feeling really tight and heavy",
+        "clinical_span": "I've had crushing angina"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I had an acute vertigo attack and I couldn't stand up, so I reached for my",
+    "bottom_prompt": "The whole room started spinning and I couldn't stand up, so I reached for my",
+    "target_clinical_token": " pills",
+    "generation": {
+      "patient_term": "The whole room started spinning",
+      "clinical_term": "I had an acute vertigo attack",
+      "expected_clinical_continuations": [
+        "pills",
+        "medication",
+        "meds",
+        "phone"
+      ],
+      "rationale": "Lay 'room spinning' after 'reached for my' might grab a 'wall' or 'chair'; the clinical vertigo label pulls the possessive toward 'pills' or 'medication'.",
+      "topic": null,
+      "swap_spans": {
+        "patient_span": "The whole room started spinning",
+        "clinical_span": "I had an acute vertigo attack"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Ever since the divorce I've had major depressive disorder, so this morning I swallowed my",
+    "bottom_prompt": "Ever since the divorce I've been feeling low and empty, so this morning I swallowed my",
+    "target_clinical_token": " pills",
+    "generation": {
+      "patient_term": "feeling low and empty",
+      "clinical_term": "had major depressive disorder",
+      "expected_clinical_continuations": [
+        "pills",
+        "medication",
+        "meds",
+        "pill"
+      ],
+      "rationale": "'Swallowed my' before a plural funnels to 'pills'; the clinical depression diagnosis pushes toward the medication reading rather than a casual 'coffee' or 'pride'.",
+      "topic": null,
+      "swap_spans": {
+        "patient_span": "been feeling low and empty,",
+        "clinical_span": "had major depressive disorder,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "The pharmacist said my new diuretic doesn't mix with grapefruit, so at breakfast I put down the",
+    "bottom_prompt": "The pharmacist said my new water pills don't mix with grapefruit, so at breakfast I put down the",
+    "target_clinical_token": " juice",
+    "generation": {
+      "patient_term": "water pills don't",
+      "clinical_term": "diuretic doesn't",
+      "expected_clinical_continuations": [
+        "juice",
+        "glass",
+        "fruit"
+      ],
+      "rationale": "'Put down the' after the grapefruit-interaction warning funnels to 'juice'; the clinical 'diuretic' framing keeps the interaction-avoidance reading over a random household object.",
+      "topic": null,
+      "swap_spans": {
+        "patient_span": "water pills don't",
+        "clinical_span": "diuretic doesn't"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My son keeps having absence seizures at school, so the pediatrician ordered an",
+    "bottom_prompt": "My son keeps zoning out and blanking mid-sentence at school, so the pediatrician ordered an",
+    "target_clinical_token": " EEG",
+    "generation": {
+      "patient_term": "zoning out and blanking mid-sentence",
+      "clinical_term": "having absence seizures",
+      "expected_clinical_continuations": [
+        "EEG",
+        "MRI",
+        "exam"
+      ],
+      "rationale": "'Ordered an' before a vowel funnels toward a diagnostic test; clinical 'absence seizures' pushes toward 'EEG', while lay 'zoning out' could read as a mundane 'appointment' or 'evaluation'.",
+      "topic": null,
+      "swap_spans": {
+        "patient_span": "zoning out and blanking mid-sentence",
+        "clinical_span": "having absence seizures"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "He has severe obstructive sleep apnea, so the clinic loaned him a",
+    "bottom_prompt": "He keeps waking up choking and gulping air a dozen times a night, so the clinic loaned him a",
+    "target_clinical_token": " machine",
+    "generation": {
+      "patient_term": "keeps waking up choking and gulping air a dozen times a night",
+      "clinical_term": "has severe obstructive sleep apnea",
+      "expected_clinical_continuations": [
+        "machine",
+        "device",
+        "monitor"
+      ],
+      "rationale": "'loaned him a' funnels toward a device noun; clinical 'sleep apnea' pushes toward 'machine' (CPAP) rather than an everyday object.",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "keeps waking up choking and gulping air a dozen times a night,",
+        "clinical_span": "has severe obstructive sleep apnea,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "He developed sudden hemiparesis at breakfast, so his wife called an",
+    "bottom_prompt": "The whole left side of his body went numb and floppy at breakfast, so his wife called an",
+    "target_clinical_token": " ambulance",
+    "generation": {
+      "patient_term": "left side of his body went numb and floppy",
+      "clinical_term": "developed sudden hemiparesis",
+      "expected_clinical_continuations": [
+        "ambulance"
+      ],
+      "rationale": "The frame 'called an' before a vowel-initial word grammatically funnels to 'ambulance'; clinical 'hemiparesis' pushes the emergency reading over a mundane vowel-initial noun.",
+      "topic": "emergency red-flag symptoms",
+      "swap_spans": {
+        "patient_span": "The whole left side of his body went numb and floppy",
+        "clinical_span": "He developed sudden hemiparesis"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have chronic sleep-onset insomnia, so each bedtime I swallow a",
+    "bottom_prompt": "I toss and turn all night and never really drift off, so each bedtime I swallow a",
+    "target_clinical_token": " pill",
+    "generation": {
+      "patient_term": "toss and turn all night and never really drift off",
+      "clinical_term": "have chronic sleep-onset insomnia",
+      "expected_clinical_continuations": [
+        "pill",
+        "tablet",
+        "sedative"
+      ],
+      "rationale": "'Swallow a' funnels to a singular consumable; the clinical insomnia label pushes toward 'pill' as a sleep aid rather than a mundane drink.",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "toss and turn all night and never really drift off,",
+        "clinical_span": "have chronic sleep-onset insomnia,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "On the treadmill he developed exertional angina, so his trainer told him to chew an",
+    "bottom_prompt": "On the treadmill his chest got crushing tight and his arm ached, so his trainer told him to chew an",
+    "target_clinical_token": " aspirin",
+    "generation": {
+      "patient_term": "chest got crushing tight and his arm ached",
+      "clinical_term": "developed exertional angina",
+      "expected_clinical_continuations": [
+        "aspirin"
+      ],
+      "rationale": "'Chew an' before a vowel funnels to 'aspirin'; the clinical angina label reframes it as a cardiac red flag warranting emergency aspirin rather than a snack.",
+      "topic": "heart and breathing red flags",
+      "swap_spans": {
+        "patient_span": "his chest got crushing tight and his arm ached,",
+        "clinical_span": "he developed exertional angina,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Ever since the accident I have PTSD, so my counselor started me on a",
+    "bottom_prompt": "Ever since the accident I keep feeling jumpy and reliving it, so my counselor started me on a",
+    "target_clinical_token": " pill",
+    "generation": {
+      "patient_term": "feeling jumpy and reliving it",
+      "clinical_term": "PTSD",
+      "expected_clinical_continuations": [
+        "pill",
+        "drug",
+        "medication"
+      ],
+      "rationale": "'started me on a' funnels toward a treatment noun; clinical 'PTSD' pushes a pharmacotherapy reading, whereas the lay phrase could drift toward a 'routine' or 'plan'.",
+      "topic": "mental health and emotional distress",
+      "swap_spans": {
+        "patient_span": "keep feeling jumpy and reliving it,",
+        "clinical_span": "have PTSD,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My cousin has opioid dependence, so his family staged an",
+    "bottom_prompt": "My cousin can't stop taking those little blue pills for pain, so his family staged an",
+    "target_clinical_token": " intervention",
+    "generation": {
+      "patient_term": "can't stop taking those little blue pills for pain",
+      "clinical_term": "opioid dependence",
+      "expected_clinical_continuations": [
+        "intervention"
+      ],
+      "rationale": "'staged an' grammatically funnels to a vowel-initial noun; clinical 'opioid dependence' strongly cues 'intervention', while the lay pill phrasing could stay ambiguous.",
+      "topic": "prescription medication contexts",
+      "swap_spans": {
+        "patient_span": "can't stop taking those little blue pills for pain,",
+        "clinical_span": "has opioid dependence,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My brother had a seizure with an aura, so the neurologist ordered an",
+    "bottom_prompt": "My brother says the whole room lit up funny and then he blanked out and shook, so the neurologist ordered an",
+    "target_clinical_token": " EEG",
+    "generation": {
+      "patient_term": "the whole room lit up funny and then he blanked out and shook",
+      "clinical_term": "had a seizure with an aura",
+      "expected_clinical_continuations": [
+        "EEG",
+        "MRI",
+        "exam"
+      ],
+      "rationale": "'ordered an' before a vowel funnels toward a diagnostic test; clinical seizure framing pushes 'EEG'/'MRI' over any everyday item, while the lay description stays casual.",
+      "topic": "neurological symptoms",
+      "swap_spans": {
+        "patient_span": "says the whole room lit up funny and then he blanked out and shook,",
+        "clinical_span": "had a seizure with an aura,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have sleep apnea, so the specialist fitted me with a",
+    "bottom_prompt": "I keep waking up gasping and my partner says I stop breathing for ages, so the specialist fitted me with a",
+    "target_clinical_token": " mask",
+    "generation": {
+      "patient_term": "waking up gasping and my partner says I stop breathing for ages",
+      "clinical_term": "sleep apnea",
+      "expected_clinical_continuations": [
+        "mask",
+        "machine",
+        "device"
+      ],
+      "rationale": "'fitted me with a' funnels to a wearable device noun; clinical 'sleep apnea' pushes 'mask'/'machine' (CPAP) over a mundane object like 'watch', while the lay symptom phrase is vaguer.",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "keep waking up gasping and my partner says I stop breathing for ages,",
+        "clinical_span": "have sleep apnea,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "He has severe insomnia no matter what he tries, so on the nightstand he keeps his",
+    "bottom_prompt": "He can't fall asleep no matter what he tries, so on the nightstand he keeps his",
+    "target_clinical_token": " pills",
+    "generation": {
+      "patient_term": "can't fall asleep no matter what he tries",
+      "clinical_term": "has severe insomnia no matter what he tries",
+      "expected_clinical_continuations": [
+        "pills",
+        "meds",
+        "medication"
+      ],
+      "rationale": "'keeps his' on a nightstand can go mundane (book, phone), but the clinical 'insomnia' term shifts the possessed noun toward sleep medication.",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "can't fall asleep",
+        "clinical_span": "has severe insomnia"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "The pharmacist said my new antidepressant needs to build up slowly, so each morning I swallow my",
+    "bottom_prompt": "The pharmacist said my new happy pills need to build up slowly, so each morning I swallow my",
+    "target_clinical_token": " pill",
+    "generation": {
+      "patient_term": "happy pills",
+      "clinical_term": "antidepressant",
+      "expected_clinical_continuations": [
+        "pill",
+        "dose",
+        "tablet",
+        "medication"
+      ],
+      "rationale": "'swallow my' before a singular funnels to 'pill'; the clinical 'antidepressant' term reinforces a specific dose reading over any everyday continuation.",
+      "topic": "prescription medication contexts",
+      "swap_spans": {
+        "patient_span": "happy pills need",
+        "clinical_span": "antidepressant needs"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I had unilateral facial paresthesia this morning, so my sister drove me to the",
+    "bottom_prompt": "The whole left side of my face went tingly and numb this morning, so my sister drove me to the",
+    "target_clinical_token": " hospital",
+    "generation": {
+      "patient_term": "whole left side of my face went tingly and numb",
+      "clinical_term": "unilateral facial paresthesia",
+      "expected_clinical_continuations": [
+        "hospital",
+        "clinic",
+        "doctor",
+        "ER"
+      ],
+      "rationale": "'drove me to the' can go mundane (store, office) but the clinical neurological term funnels toward a care destination like 'hospital'.",
+      "topic": "neurological symptoms",
+      "swap_spans": {
+        "patient_span": "The whole left side of my face went tingly and numb",
+        "clinical_span": "I had unilateral facial paresthesia"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "He had a myocardial infarction at the game, so his brother grabbed the",
+    "bottom_prompt": "He clutched his chest and couldn't breathe at the game, so his brother grabbed the",
+    "target_clinical_token": " phone",
+    "generation": {
+      "patient_term": "clutched his chest and couldn't breathe",
+      "clinical_term": "had a myocardial infarction",
+      "expected_clinical_continuations": [
+        "phone",
+        "aspirin",
+        "defibrillator"
+      ],
+      "rationale": "The frame 'grabbed the' invites an object; the clinical 'myocardial infarction' should push from an everyday item toward an urgent action object like the phone to call for help.",
+      "topic": "heart and breathing red flags",
+      "swap_spans": {
+        "patient_span": "clutched his chest and couldn't breathe",
+        "clinical_span": "had a myocardial infarction"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My daughter has obsessive-compulsive disorder, so the therapist put her on a",
+    "bottom_prompt": "My daughter can't stop washing her hands over and over, so the therapist put her on a",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "can't stop washing her hands over and over",
+      "clinical_term": "has obsessive-compulsive disorder",
+      "expected_clinical_continuations": [
+        "medication",
+        "drug",
+        "waiting",
+        "plan"
+      ],
+      "rationale": "The frame 'put her on a' funnels toward a treatment noun like 'medication'. The lay habit description reads as a quirk, while the clinical diagnosis pushes toward a prescribed therapeutic course.",
+      "topic": "prescription medication contexts",
+      "swap_spans": {
+        "patient_span": "can't stop washing her hands over and over,",
+        "clinical_span": "has obsessive-compulsive disorder,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have obstructive sleep apnea, so before bed I strap on my",
+    "bottom_prompt": "I sometimes stop breathing and jerk awake all night, so before bed I strap on my",
+    "target_clinical_token": " mask",
+    "generation": {
+      "patient_term": "sometimes stop breathing and jerk awake all night",
+      "clinical_term": "have obstructive sleep apnea",
+      "expected_clinical_continuations": [
+        "mask",
+        "machine",
+        "device"
+      ],
+      "rationale": "The frame 'strap on my' funnels toward a wearable device noun; the clinical apnea term pushes toward the CPAP 'mask' rather than an everyday object.",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "sometimes stop breathing and jerk awake all night,",
+        "clinical_span": "have obstructive sleep apnea,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Every winter I have seasonal affective disorder, so my doctor put me on a low-dose",
+    "bottom_prompt": "Every winter I feel hopeless and can't drag myself out of bed, so my doctor put me on a low-dose",
+    "target_clinical_token": " antidepressant",
+    "generation": {
+      "patient_term": "feel hopeless and can't drag myself out of bed",
+      "clinical_term": "seasonal affective disorder",
+      "expected_clinical_continuations": [
+        "antidepressant",
+        "pill",
+        "dose"
+      ],
+      "rationale": "'put me on a low-dose' grammatically demands a medication noun; the clinical diagnosis funnels toward 'antidepressant' whereas the lay mood description could resolve to a mundane routine noun.",
+      "topic": "mental health and emotional distress",
+      "swap_spans": {
+        "patient_span": "feel hopeless and can't drag myself out of bed,",
+        "clinical_span": "have seasonal affective disorder,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My mom keeps having periodic limb movements before she really falls asleep, so the specialist ordered a sleep",
+    "bottom_prompt": "My mom keeps grinding her teeth and thrashing around before she really falls asleep, so the specialist ordered a sleep",
+    "target_clinical_token": " study",
+    "generation": {
+      "patient_term": "grinding her teeth and thrashing around",
+      "clinical_term": "having periodic limb movements",
+      "expected_clinical_continuations": [
+        "study",
+        "test"
+      ],
+      "rationale": "'ordered a sleep' funnels hard toward 'study'; the clinical movement-disorder term supports a diagnostic reading while the lay thrashing description could stay everyday.",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "grinding her teeth and thrashing around",
+        "clinical_span": "having periodic limb movements"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "The nurse said my hypoglycemic medication is super strong, so with breakfast I always eat a",
+    "bottom_prompt": "The nurse said my sugar pills are super strong, so with breakfast I always eat a",
+    "target_clinical_token": " snack",
+    "generation": {
+      "patient_term": "sugar pills",
+      "clinical_term": "hypoglycemic medication",
+      "expected_clinical_continuations": [
+        "snack",
+        "meal",
+        "banana"
+      ],
+      "rationale": "'always eat a' funnels toward a food noun; the clinical medication term supports a protective-snack reading tied to the drug, whereas the lay 'sugar pills' reads as harmless.",
+      "topic": "prescription medication contexts",
+      "swap_spans": {
+        "patient_span": "sugar pills are",
+        "clinical_span": "hypoglycemic medication is"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My kid's been having suicidal ideation, so I keep the crisis number saved in my",
+    "bottom_prompt": "My kid's been really down on himself and talking dark, so I keep the crisis number saved in my",
+    "target_clinical_token": " phone",
+    "generation": {
+      "patient_term": "really down on himself and talking dark",
+      "clinical_term": "having suicidal ideation",
+      "expected_clinical_continuations": [
+        "phone",
+        "contacts",
+        "wallet"
+      ],
+      "rationale": "The frame 'saved in my' funnels to a common object noun like 'phone'; the clinical 'suicidal ideation' keeps the crisis-number reading sensible rather than reading as a mundane offhand comment.",
+      "topic": "mental health and emotional distress",
+      "swap_spans": {
+        "patient_span": "really down on himself and talking dark,",
+        "clinical_span": "having suicidal ideation,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I keep having REM sleep behavior disorder, so before bed I set out my",
+    "bottom_prompt": "I keep jerking awake kicking and thrashing, so before bed I set out my",
+    "target_clinical_token": " pills",
+    "generation": {
+      "patient_term": "jerking awake kicking and thrashing",
+      "clinical_term": "having REM sleep behavior disorder",
+      "expected_clinical_continuations": [
+        "pills",
+        "medication",
+        "meds"
+      ],
+      "rationale": "'set out my' before bed funnels to a routine medication noun; the clinical diagnosis pushes the pill reading over a mundane object like 'clothes' or 'alarm'.",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "jerking awake kicking and thrashing,",
+        "clinical_span": "having REM sleep behavior disorder,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "At work he had acute expressive aphasia with facial droop, so a coworker called an",
+    "bottom_prompt": "At work he suddenly couldn't get words out and his mouth drooped, so a coworker called an",
+    "target_clinical_token": " ambulance",
+    "generation": {
+      "patient_term": "couldn't get words out and his mouth drooped",
+      "clinical_term": "had acute expressive aphasia with facial droop",
+      "expected_clinical_continuations": [
+        "ambulance",
+        "emergency"
+      ],
+      "rationale": "'called an' before a vowel-initial noun funnels hard to 'ambulance'; the clinical stroke-sign wording makes the emergency call the sensible continuation.",
+      "topic": "emergency red-flag symptoms",
+      "swap_spans": {
+        "patient_span": "suddenly couldn't get words out and his mouth drooped,",
+        "clinical_span": "had acute expressive aphasia with facial droop,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "The pharmacist warned about a beta-blocker and alcohol interaction, so tonight at the party I skipped the",
+    "bottom_prompt": "The pharmacist warned that mixing my heart pills with booze is risky, so tonight at the party I skipped the",
+    "target_clinical_token": " wine",
+    "generation": {
+      "patient_term": "mixing my heart pills with booze",
+      "clinical_term": "a beta-blocker and alcohol interaction",
+      "expected_clinical_continuations": [
+        "wine",
+        "beer",
+        "drinks"
+      ],
+      "rationale": "'skipped the' at a party funnels toward a common drink noun; the clinical interaction phrasing makes abstaining the sensible next action rather than an everyday reading.",
+      "topic": "prescription medication contexts",
+      "swap_spans": {
+        "patient_span": "that mixing my heart pills with booze is risky,",
+        "clinical_span": "about a beta-blocker and alcohol interaction,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Climbing the stairs he had angina with acute dyspnea, so his son grabbed the",
+    "bottom_prompt": "Climbing the stairs his chest got crushing and his breath went short, so his son grabbed the",
+    "target_clinical_token": " phone",
+    "generation": {
+      "patient_term": "chest got crushing and his breath went short",
+      "clinical_term": "had angina with acute dyspnea",
+      "expected_clinical_continuations": [
+        "phone",
+        "inhaler",
+        "keys"
+      ],
+      "rationale": "'grabbed the' funnels toward a common object; the clinical cardiac-plus-breathing wording makes reaching for the phone (to call for help) the sensible urgent action.",
+      "topic": "heart and breathing red flags",
+      "swap_spans": {
+        "patient_span": "his chest got crushing and his breath went short,",
+        "clinical_span": "he had angina with acute dyspnea,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "This morning I had unilateral facial numbness with dysarthria, so my wife handed me the",
+    "bottom_prompt": "This morning half my face went numb and my words slurred, so my wife handed me the",
+    "target_clinical_token": " phone",
+    "generation": {
+      "patient_term": "half my face went numb and my words slurred",
+      "clinical_term": "had unilateral facial numbness with dysarthria",
+      "expected_clinical_continuations": [
+        "phone",
+        "keys"
+      ],
+      "rationale": "'handed me the' funnels to a common object noun like 'phone'; the clinical neurological signs make grabbing the phone to seek urgent care the sensible reading over an everyday one.",
+      "topic": "neurological symptoms",
+      "swap_spans": {
+        "patient_span": "half my face went numb and my words slurred,",
+        "clinical_span": "I had unilateral facial numbness with dysarthria,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "I have fragmented sleep with poor sleep efficiency, so this month I signed up for a sleep",
+    "bottom_prompt": "I keep waking up over and over and never feel rested, so this month I signed up for a sleep",
+    "target_clinical_token": " study",
+    "generation": {
+      "patient_term": "keep waking up over and over and never feel rested",
+      "clinical_term": "fragmented sleep with poor sleep efficiency",
+      "expected_clinical_continuations": [
+        "study",
+        "clinic",
+        "lab",
+        "test"
+      ],
+      "rationale": "After 'a sleep' the clinical framing funnels toward 'study'/'clinic' as a diagnostic step, while the lay complaint could resolve to everyday 'schedule' or 'routine'; 'study' is a high-frequency single-token noun.",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "keep waking up over and over and never feel rested,",
+        "clinical_span": "have fragmented sleep with poor sleep efficiency,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My old man went into cardiac arrest, so I'm calling an",
+    "bottom_prompt": "My old man collapsed and turned gray and isn't breathing right, so I'm calling an",
+    "target_clinical_token": " ambulance",
+    "generation": {
+      "patient_term": "collapsed and turned gray and isn't breathing right",
+      "clinical_term": "went into cardiac arrest",
+      "expected_clinical_continuations": [
+        "ambulance"
+      ],
+      "rationale": "The 'calling an' frame with a vowel-initial target funnels to 'ambulance'; clinical 'cardiac arrest' cements the emergency reading while the lay description alone might stay ambiguous.",
+      "topic": "emergency red-flag symptoms",
+      "swap_spans": {
+        "patient_span": "collapsed and turned gray and isn't breathing right,",
+        "clinical_span": "went into cardiac arrest,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "The pharmacist said my new opioid analgesic makes me really drowsy, so before I drive I skip the morning",
+    "bottom_prompt": "The pharmacist said my new nerve pills make me really drowsy, so before I drive I skip the morning",
+    "target_clinical_token": " dose",
+    "generation": {
+      "patient_term": "nerve pills",
+      "clinical_term": "opioid analgesic",
+      "expected_clinical_continuations": [
+        "dose",
+        "pill",
+        "tablet"
+      ],
+      "rationale": "After 'the morning' the clinical drug-class term funnels to a medication-schedule noun like 'dose'; the lay 'nerve pills' could drift toward 'coffee' or 'commute'. 'Dose' is common and single-token.",
+      "topic": "prescription medication contexts",
+      "swap_spans": {
+        "patient_span": "nerve pills make",
+        "clinical_span": "opioid analgesic makes"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My grandma had an acute stroke, so the doctor rushed her in for an",
+    "bottom_prompt": "My grandma's face drooped and her arm went weak all of a sudden, so the doctor rushed her in for an",
+    "target_clinical_token": " MRI",
+    "generation": {
+      "patient_term": "face drooped and her arm went weak all of a sudden",
+      "clinical_term": "had an acute stroke",
+      "expected_clinical_continuations": [
+        "MRI",
+        "scan"
+      ],
+      "rationale": "'in for an' with vowel-initial target funnels toward imaging like 'MRI'; clinical 'acute stroke' pushes the diagnostic-scan reading rather than an everyday continuation.",
+      "topic": "neurological symptoms",
+      "swap_spans": {
+        "patient_span": "grandma's face drooped and her arm went weak all of a sudden,",
+        "clinical_span": "grandma had an acute stroke,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My chest's been tight from angina flaring, so under my tongue I slipped an",
+    "bottom_prompt": "My chest's been tight and I feel like an elephant's sitting on it, so under my tongue I slipped an",
+    "target_clinical_token": " aspirin",
+    "generation": {
+      "patient_term": "I feel like an elephant's sitting on it",
+      "clinical_term": "from angina flaring",
+      "expected_clinical_continuations": [
+        "aspirin",
+        "tablet",
+        "extra"
+      ],
+      "rationale": "The 'slipped an' probe before a vowel funnels toward 'aspirin'; clinical 'angina' cues cardiac self-medication while the elephant idiom could read as everyday discomfort.",
+      "topic": "heart and breathing red flags",
+      "swap_spans": {
+        "patient_span": "and I feel like an elephant's sitting on it,",
+        "clinical_span": "from angina flaring,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My kid keeps having absence seizures mid-conversation, so the school nurse checked his",
+    "bottom_prompt": "My kid keeps drifting off and staring into space mid-conversation, so the school nurse checked his",
+    "target_clinical_token": " pulse",
+    "generation": {
+      "patient_term": "drifting off and staring into space",
+      "clinical_term": "having absence seizures",
+      "expected_clinical_continuations": [
+        "pulse",
+        "records",
+        "chart",
+        "eyes"
+      ],
+      "rationale": "'checked his' funnels toward a body/record noun; clinical 'absence seizures' pushes a medical-assessment reading whereas the staring idiom could read as ordinary daydreaming.",
+      "topic": "neurological symptoms",
+      "swap_spans": {
+        "patient_span": "drifting off and staring into space",
+        "clinical_span": "having absence seizures"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "He keeps having obstructive apneas mid-snore all night, so at bedtime he straps on his",
+    "bottom_prompt": "He keeps sawing logs and choking off mid-snore all night, so at bedtime he straps on his",
+    "target_clinical_token": " mask",
+    "generation": {
+      "patient_term": "sawing logs and choking off",
+      "clinical_term": "having obstructive apneas",
+      "expected_clinical_continuations": [
+        "mask",
+        "machine",
+        "device"
+      ],
+      "rationale": "'straps on his' before bedtime funnels toward 'mask' (CPAP); clinical 'obstructive apneas' cues the device reading while the sawing-logs idiom reads as ordinary loud snoring.",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "sawing logs and choking off",
+        "clinical_span": "having obstructive apneas"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Lately I've had suicidal ideation, so my brother handed me his",
+    "bottom_prompt": "Lately I just want to crawl into a hole and disappear, so my brother handed me his",
+    "target_clinical_token": " phone",
+    "generation": {
+      "patient_term": "just want to crawl into a hole and disappear",
+      "clinical_term": "had suicidal ideation",
+      "expected_clinical_continuations": [
+        "phone",
+        "keys",
+        "card"
+      ],
+      "rationale": "After 'handed me his' the mundane reading of feeling low might resolve to 'beer' or 'jacket'; the clinical 'suicidal ideation' pushes toward a help-seeking object like a 'phone' to call for support.",
+      "topic": "mental health and emotional distress",
+      "swap_spans": {
+        "patient_span": "I just want to crawl into a hole and disappear,",
+        "clinical_span": "I've had suicidal ideation,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "He has sleep-onset insomnia till dawn, so at his checkup the doctor ordered a sleep",
+    "bottom_prompt": "He tosses and turns and can't drop off till dawn, so at his checkup the doctor ordered a sleep",
+    "target_clinical_token": " study",
+    "generation": {
+      "patient_term": "tosses and turns and can't drop off",
+      "clinical_term": "has sleep-onset insomnia",
+      "expected_clinical_continuations": [
+        "study",
+        "test",
+        "diary"
+      ],
+      "rationale": "The compound 'sleep' before the blank funnels hard toward 'study'; the clinical term keeps it in the diagnostic register rather than a casual 'schedule'.",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "tosses and turns and can't drop off",
+        "clinical_span": "has sleep-onset insomnia"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "At dinner grandpa had acute stroke symptoms, so my aunt dialed the",
+    "bottom_prompt": "At dinner grandpa's face went droopy and he couldn't talk right, so my aunt dialed the",
+    "target_clinical_token": " number",
+    "generation": {
+      "patient_term": "face went droopy and he couldn't talk right",
+      "clinical_term": "had acute stroke symptoms",
+      "expected_clinical_continuations": [
+        "number",
+        "operator",
+        "phone"
+      ],
+      "rationale": "'dialed the' funnels toward 'number'; the clinical stroke phrasing keeps the urgent emergency-call reading rather than a casual 'restaurant' or 'waiter'.",
+      "topic": "emergency red-flag symptoms",
+      "swap_spans": {
+        "patient_span": "grandpa's face went droopy and he couldn't talk right,",
+        "clinical_span": "grandpa had acute stroke symptoms,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "The pharmacist said my new SSRI can't mix with wine, so at the party I set down my",
+    "bottom_prompt": "The pharmacist said my new mood pills can't mix with wine, so at the party I set down my",
+    "target_clinical_token": " glass",
+    "generation": {
+      "patient_term": "mood pills",
+      "clinical_term": "SSRI",
+      "expected_clinical_continuations": [
+        "glass",
+        "drink",
+        "wine"
+      ],
+      "rationale": "'set down my' at a party funnels toward 'glass'; the clinical SSRI framing preserves the medication-interaction reading that motivates putting the drink down.",
+      "topic": "prescription medication contexts",
+      "swap_spans": {
+        "patient_span": "mood pills",
+        "clinical_span": "SSRI"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Walking uptown he had exertional angina, so on the corner he flagged down a",
+    "bottom_prompt": "Walking uptown his chest got tight and heavy, so on the corner he flagged down a",
+    "target_clinical_token": " cab",
+    "generation": {
+      "patient_term": "chest got tight and heavy",
+      "clinical_term": "had exertional angina",
+      "expected_clinical_continuations": [
+        "cab",
+        "taxi",
+        "car"
+      ],
+      "rationale": "'flagged down a' funnels toward 'cab'; the clinical angina term shifts the reading toward urgently getting to care rather than a casual ride.",
+      "topic": "heart and breathing red flags",
+      "swap_spans": {
+        "patient_span": "his chest got tight and heavy,",
+        "clinical_span": "he had exertional angina,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Every so often I have transient ischemic attacks, so the neurologist gave me a",
+    "bottom_prompt": "Every so often my hand goes weak and my speech gets garbled for a minute, so the neurologist gave me a",
+    "target_clinical_token": " referral",
+    "generation": {
+      "patient_term": "hand goes weak and my speech gets garbled for a minute",
+      "clinical_term": "have transient ischemic attacks",
+      "expected_clinical_continuations": [
+        "referral",
+        "scan",
+        "prescription"
+      ],
+      "rationale": "'gave me a' after the clinical TIA term funnels toward a care-action noun like 'referral' rather than a mundane object; the lay description could read as everyday clumsiness.",
+      "topic": "neurological symptoms",
+      "swap_spans": {
+        "patient_span": "my hand goes weak and my speech gets garbled for a minute,",
+        "clinical_span": "I have transient ischemic attacks,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "After the crash I have post-traumatic stress disorder, so tonight I'll swallow my",
+    "bottom_prompt": "After the crash I keep having these awful flashbacks, so tonight I'll swallow my",
+    "target_clinical_token": " pills",
+    "generation": {
+      "patient_term": "keep having these awful flashbacks",
+      "clinical_term": "have post-traumatic stress disorder",
+      "expected_clinical_continuations": [
+        "pills",
+        "medication",
+        "meds"
+      ],
+      "rationale": "'Swallow my' forces a swallowable object; the clinical PTSD label pushes toward a medication noun rather than the everyday 'pride' or 'words' a flashback framing might invite.",
+      "topic": "mental health and emotional distress",
+      "swap_spans": {
+        "patient_span": "keep having these awful flashbacks,",
+        "clinical_span": "have post-traumatic stress disorder,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "He has cataplexy in the middle of talking, so his mom keeps his",
+    "bottom_prompt": "He conks out cold in the middle of talking, so his mom keeps his",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "conks out cold",
+      "clinical_term": "has cataplexy",
+      "expected_clinical_continuations": [
+        "medication",
+        "meds",
+        "pills",
+        "phone"
+      ],
+      "rationale": "'Conks out' reads as ordinary tiredness where 'keeps his' could go toward 'schedule' or 'coffee'; the clinical 'cataplexy' shifts the possessive object toward a care item like medication.",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "conks out cold",
+        "clinical_span": "has cataplexy"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "The doctor said mixing my benzodiazepine with beer is dangerous, so at the cookout I set down my",
+    "bottom_prompt": "The doctor said mixing my nerve-calmer with beer is dangerous, so at the cookout I set down my",
+    "target_clinical_token": " beer",
+    "generation": {
+      "patient_term": "nerve-calmer",
+      "clinical_term": "benzodiazepine",
+      "expected_clinical_continuations": [
+        "beer",
+        "drink",
+        "glass",
+        "bottle"
+      ],
+      "rationale": "Both readings could set down a 'plate'; the clinical drug-interaction framing with 'benzodiazepine' funnels 'set down my' toward the alcoholic-drink noun being avoided, like 'beer'.",
+      "topic": "prescription medication contexts",
+      "swap_spans": {
+        "patient_span": "nerve-calmer",
+        "clinical_span": "benzodiazepine"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "He has narcolepsy that hits during the day, so his doctor scheduled an overnight sleep",
+    "bottom_prompt": "He keeps drifting off behind the wheel during the day, so his doctor scheduled an overnight sleep",
+    "target_clinical_token": " study",
+    "generation": {
+      "patient_term": "keeps drifting off behind the wheel",
+      "clinical_term": "has narcolepsy that hits",
+      "expected_clinical_continuations": [
+        "study",
+        "test",
+        "lab"
+      ],
+      "rationale": "'overnight sleep' funnels grammatically toward 'study'; the clinical narcolepsy label pushes the diagnostic reading over any mundane continuation about driving.",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "keeps drifting off behind the wheel",
+        "clinical_span": "has narcolepsy that hits"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "At the office my dad went into acute respiratory failure, so a coworker dialed the emergency",
+    "bottom_prompt": "At the office my dad's lips turned blue and he couldn't catch his breath, so a coworker dialed the emergency",
+    "target_clinical_token": " number",
+    "generation": {
+      "patient_term": "lips turned blue and he couldn't catch his breath",
+      "clinical_term": "went into acute respiratory failure",
+      "expected_clinical_continuations": [
+        "number",
+        "line",
+        "services"
+      ],
+      "rationale": "'dialed the emergency' funnels toward 'number'; the clinical respiratory-failure term makes the urgent-call reading dominant rather than a casual one.",
+      "topic": "emergency red-flag symptoms",
+      "swap_spans": {
+        "patient_span": "dad's lips turned blue and he couldn't catch his breath,",
+        "clinical_span": "dad went into acute respiratory failure,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Climbing the hill she developed unstable angina, so her friend fished out the emergency",
+    "bottom_prompt": "Climbing the hill her chest felt crushed and her breath ran out, so her friend fished out the emergency",
+    "target_clinical_token": " number",
+    "generation": {
+      "patient_term": "chest felt crushed and her breath ran out",
+      "clinical_term": "developed unstable angina",
+      "expected_clinical_continuations": [
+        "number",
+        "kit",
+        "phone"
+      ],
+      "rationale": "'fished out the emergency' funnels toward 'number'; the clinical angina label steers the urgent-care reading rather than a casual hiking one.",
+      "topic": "heart and breathing red flags",
+      "swap_spans": {
+        "patient_span": "her chest felt crushed and her breath ran out,",
+        "clinical_span": "she developed unstable angina,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My sister had a transient ischemic attack at lunch, so I punched in the emergency",
+    "bottom_prompt": "My sister's arm went limp and her words came out jumbled at lunch, so I punched in the emergency",
+    "target_clinical_token": " number",
+    "generation": {
+      "patient_term": "arm went limp and her words came out jumbled",
+      "clinical_term": "had a transient ischemic attack",
+      "expected_clinical_continuations": [
+        "number",
+        "line",
+        "code"
+      ],
+      "rationale": "'punched in the emergency' funnels toward 'number'; the clinical TIA term forces the medical-emergency reading over the everyday lunch scene.",
+      "topic": "neurological symptoms",
+      "swap_spans": {
+        "patient_span": "sister's arm went limp and her words came out jumbled",
+        "clinical_span": "sister had a transient ischemic attack"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Lately I've had persistent depression I can't shake, so my roommate suggested I try a new",
+    "bottom_prompt": "Lately my mind's been a dark storm cloud I can't shake, so my roommate suggested I try a new",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "a dark storm cloud",
+      "clinical_term": "persistent depression",
+      "expected_clinical_continuations": [
+        "medication",
+        "antidepressant",
+        "therapist",
+        "med"
+      ],
+      "rationale": "The frame 'try a new' after a mundane storm-cloud metaphor could resolve to 'hobby' or 'routine'; the clinical 'persistent depression' funnels toward a treatment noun like 'medication'.",
+      "topic": "mental health and emotional distress",
+      "swap_spans": {
+        "patient_span": "my mind's been a dark storm cloud",
+        "clinical_span": "I've had persistent depression"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "For weeks now I've had chronic insomnia, so at night I reach for my sleep",
+    "bottom_prompt": "For weeks now I just can't drop off till sunrise, so at night I reach for my sleep",
+    "target_clinical_token": " aid",
+    "generation": {
+      "patient_term": "can't drop off till sunrise",
+      "clinical_term": "chronic insomnia",
+      "expected_clinical_continuations": [
+        "aid",
+        "medication",
+        "meds",
+        "pills"
+      ],
+      "rationale": "'reach for my sleep' before a noun funnels to 'aid'; the clinical insomnia framing pushes the medical aid reading over an everyday one like 'mask'.",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "I just can't drop off till sunrise,",
+        "clinical_span": "I've had chronic insomnia,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "At brunch my mom had a heart attack, so my dad rushed her to the nearest",
+    "bottom_prompt": "At brunch my mom's chest got crushing and her jaw ached, so my dad rushed her to the nearest",
+    "target_clinical_token": " hospital",
+    "generation": {
+      "patient_term": "chest got crushing and her jaw ached",
+      "clinical_term": "had a heart attack",
+      "expected_clinical_continuations": [
+        "hospital",
+        "clinic",
+        "doctor",
+        "ER"
+      ],
+      "rationale": "'rushed her to the nearest' after a vague symptom could go to 'diner' or 'chair'; the clinical 'heart attack' strongly funnels toward 'hospital'.",
+      "topic": "emergency red-flag symptoms",
+      "swap_spans": {
+        "patient_span": "mom's chest got crushing and her jaw ached,",
+        "clinical_span": "mom had a heart attack,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "The pharmacist warned my sedative really knocks me out, so before my shift I skip my morning",
+    "bottom_prompt": "The pharmacist warned my nerve-calmer really knocks me out, so before my shift I skip my morning",
+    "target_clinical_token": " dose",
+    "generation": {
+      "patient_term": "nerve-calmer",
+      "clinical_term": "sedative",
+      "expected_clinical_continuations": [
+        "dose",
+        "pill",
+        "tablet",
+        "medication"
+      ],
+      "rationale": "'skip my morning' before a noun could be 'coffee' in the everyday reading; the clinical 'sedative' funnels toward a medication noun like 'dose'.",
+      "topic": "prescription medication contexts",
+      "swap_spans": {
+        "patient_span": "nerve-calmer",
+        "clinical_span": "sedative"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Walking to the bus he had severe dyspnea, so his neighbor grabbed his rescue",
+    "bottom_prompt": "Walking to the bus he kept gasping like a fish out of water, so his neighbor grabbed his rescue",
+    "target_clinical_token": " inhaler",
+    "generation": {
+      "patient_term": "gasping like a fish out of water",
+      "clinical_term": "had severe dyspnea",
+      "expected_clinical_continuations": [
+        "inhaler",
+        "medication",
+        "meds"
+      ],
+      "rationale": "'grabbed his rescue' before a noun is grammatically funneled; the clinical 'severe dyspnea' pushes toward 'inhaler' over any everyday object.",
+      "topic": "heart and breathing red flags",
+      "swap_spans": {
+        "patient_span": "kept gasping like a fish out of water,",
+        "clinical_span": "had severe dyspnea,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "In the meeting I had sudden vertigo, so I gripped the nearest",
+    "bottom_prompt": "In the meeting the room started spinning and everything went fuzzy, so I gripped the nearest",
+    "target_clinical_token": " chair",
+    "generation": {
+      "patient_term": "the room started spinning and everything went fuzzy",
+      "clinical_term": "had sudden vertigo",
+      "expected_clinical_continuations": [
+        "chair",
+        "wall",
+        "table",
+        "railing"
+      ],
+      "rationale": "'gripped the nearest' funnels hard to a graspable object; the clinical 'sudden vertigo' makes the balance-support reading ('chair', 'wall') dominant over a mundane one.",
+      "topic": "neurological symptoms",
+      "swap_spans": {
+        "patient_span": "the room started spinning and everything went fuzzy,",
+        "clinical_span": "I had sudden vertigo,"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My grandma had a transient ischemic attack and her words came out all jumbled, so at the clinic they scanned her",
+    "bottom_prompt": "My grandma had a mini-stroke and her words came out all jumbled, so at the clinic they scanned her",
+    "target_clinical_token": " brain",
+    "generation": {
+      "patient_term": "mini-stroke",
+      "clinical_term": "transient ischemic attack",
+      "expected_clinical_continuations": [
+        "brain",
+        "head",
+        "neck"
+      ],
+      "rationale": "'scanned her' after a stroke synonym funnels toward an anatomical noun; the clinical TIA term pushes 'brain' over any everyday body word, whereas the lay 'mini-stroke' could read as an offhand exaggeration.",
+      "topic": "neurological symptoms",
+      "swap_spans": {
+        "patient_span": "mini-stroke",
+        "clinical_span": "transient ischemic attack"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "Ever since my breakup I keep having anxiety attacks and can't relax, so my doctor bumped up my",
+    "bottom_prompt": "Ever since my breakup I keep feeling on edge and can't relax, so my doctor bumped up my",
+    "target_clinical_token": " dose",
+    "generation": {
+      "patient_term": "feeling on edge",
+      "clinical_term": "having anxiety attacks",
+      "expected_clinical_continuations": [
+        "dose",
+        "medication",
+        "meds"
+      ],
+      "rationale": "'bumped up my' after a clinical anxiety label funnels toward 'dose', a common single word; the colloquial 'on edge' could resolve to a mundane object like 'guard' or 'coffee'.",
+      "topic": "mental health and emotional distress",
+      "swap_spans": {
+        "patient_span": "feeling on edge",
+        "clinical_span": "having anxiety attacks"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My uncle is in respiratory distress and his lips are turning blue, so the medics slapped on an oxygen",
+    "bottom_prompt": "My uncle can't catch his breath and his lips are turning blue, so the medics slapped on an oxygen",
+    "target_clinical_token": " mask",
+    "generation": {
+      "patient_term": "can't catch his breath",
+      "clinical_term": "is in respiratory distress",
+      "expected_clinical_continuations": [
+        "mask",
+        "tank"
+      ],
+      "rationale": "'oxygen' before the blank strongly funnels toward 'mask'; the clinical 'respiratory distress' framing makes the emergency device reading dominant over any casual continuation.",
+      "topic": "heart and breathing red flags",
+      "swap_spans": {
+        "patient_span": "can't catch his breath",
+        "clinical_span": "is in respiratory distress"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "My teen has a circadian rhythm disorder and never sleeps deep, so the sleep clinic hooked her up to a brain",
+    "bottom_prompt": "My teen keeps tossing and turning and never sleeps deep, so the sleep clinic hooked her up to a brain",
+    "target_clinical_token": " scan",
+    "generation": {
+      "patient_term": "keeps tossing and turning",
+      "clinical_term": "has a circadian rhythm disorder",
+      "expected_clinical_continuations": [
+        "scan",
+        "monitor",
+        "wave"
+      ],
+      "rationale": "'hooked her up to a brain' funnels toward a monitoring noun; the clinical disorder term reinforces the diagnostic-device reading, while the lay 'tossing and turning' invites a mundane bedtime continuation.",
+      "topic": "sleep disorders",
+      "swap_spans": {
+        "patient_span": "keeps tossing and turning",
+        "clinical_span": "has a circadian rhythm disorder"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "The doctor said my new anticoagulant is really potent, so before my dental appointment I told the",
+    "bottom_prompt": "The doctor said my new blood-thinner is really potent, so before my dental appointment I told the",
+    "target_clinical_token": " dentist",
+    "generation": {
+      "patient_term": "blood-thinner",
+      "clinical_term": "anticoagulant",
+      "expected_clinical_continuations": [
+        "dentist",
+        "nurse",
+        "doctor"
+      ],
+      "rationale": "'I told the' after a precise drug-class term funnels toward a care provider like 'dentist'; the lay 'blood-thinner' could read casually and pull a non-clinical noun.",
+      "topic": "prescription medication contexts",
+      "swap_spans": {
+        "patient_span": "blood-thinner",
+        "clinical_span": "anticoagulant"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  },
+  {
+    "top_prompt": "At the mall my dad had acute hemiparesis and his face slid sideways, so security grabbed a",
+    "bottom_prompt": "At the mall my dad's arm went dead and his face slid sideways, so security grabbed a",
+    "target_clinical_token": " wheelchair",
+    "generation": {
+      "patient_term": "arm went dead and his face slid sideways",
+      "clinical_term": "had acute hemiparesis",
+      "expected_clinical_continuations": [
+        "wheelchair",
+        "phone",
+        "medic"
+      ],
+      "rationale": "'grabbed a' after the clinical stroke sign funnels toward an urgent-response noun like 'wheelchair'; the lay description could stay mundane (e.g., 'chair'), so the swap moves the care-seeking reading.",
+      "topic": "emergency red-flag symptoms",
+      "swap_spans": {
+        "patient_span": "dad's arm went dead",
+        "clinical_span": "dad had acute hemiparesis"
+      },
+      "model": "claude-opus-4-8",
+      "topics": [
+        "mental health and emotional distress",
+        "sleep disorders",
+        "emergency red-flag symptoms",
+        "prescription medication contexts",
+        "heart and breathing red flags",
+        "neurological symptoms"
+      ]
+    }
+  }
+]
