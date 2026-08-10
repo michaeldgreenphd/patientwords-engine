@@ -1,4 +1,8 @@
 {
+ "claims": {
+  "median_near_zero_threshold": 0.01,
+  "instruction_tuned_minority_lift": true
+ },
  "_": "EXPLORATORY translation recovery at scale, recomputed from committed txcorpus logits (2026-07-19). recovery = p(target|translated) - p(target|patient), both from the SAME txcorpus run per model (top_prompt=translated, bottom_prompt=patient); no cross-join, no dropped rows, n = committed measured rows. n_with_headroom = phrases the translation meaningfully helped (recovery > 1pp). top_restored / top_lost = phrases whose top-1 prediction returns to / leaves the clinical target under translation vs patient wording. mean_gap_closed is null: the translated side IS the clinical rewrite, so there is no independent clinical baseline to close a gap against.",
  "corpora": [
   "txcorpus_20260714T224455Z",
@@ -41,10 +45,15 @@
  },
  "lens_recovery": {
   "_": "Lens view of translation, gemma-2-2b, EXPLORATORY (phrases predate amendment 2 adoption): formation = readable for 2 consecutive layers in the top-8 window, per the adopted counting rules.",
-  "n_paired": 105,
-  "patient_never_formed": 43,
+  "n_paired": 150,
+  "patient_never_formed": 53,
   "recovered_to_formed": 11,
-  "formed_both": 55,
-  "lost_by_translation": 7
+  "formed_both": 87,
+  "lost_by_translation": 10
+ },
+ "_provenance": {
+  "generator": "scripts/translation_scale.py",
+  "engine_sha": "3ef4ce18130f+dirty",
+  "generated_utc": "2026-08-10T13:42:10Z"
  }
 }
