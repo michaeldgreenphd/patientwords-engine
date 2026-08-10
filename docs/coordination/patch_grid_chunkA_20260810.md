@@ -36,3 +36,35 @@ Consistent with the j-lens depth census (concept forms late; divergence
 decided at the last layers/position): the informal phrasing's deficit is not
 fixable by mid-network patching at the swapped words; it persists to where
 the answer is assembled.
+
+## Full 44-pair set — final record (2026-08-10, chunk B terminal)
+
+Chunk B v2 (run 31322931218) is terminal: overall conclusion "cancelled"
+because ONE matrix job hit the workflow's job timeout — patch (35), job
+93343298689-series id 93345053492, cancelled at 4h47m into its measure step
+(06:38–11:25Z) with no part written. The other three jobs succeeded:
+part_26 (03:18–07:07Z), part_31 (03:18–06:24Z), part_41 (07:07–09:59Z).
+
+**Coverage: 39 of 44 pairs measured; T2 pairs 36–40 LOST to the timeout.**
+Refire to complete = one chunk (offsets 35, limit 5) — the GitHub concurrency
+group is now empty and the lane journal is clear, but the identical job
+already timed out once; if refired, consider two smaller chunks (limit 3 + 2)
+to stay under the job ceiling. Held for the owner's word per the
+report-only rule for this lane.
+
+Consolidated numbers over the 39 measured pairs:
+
+- Classes: **26 real-gap** (21 of them owner-validated), 10 no-gap flip
+  pairs (recovery metric undefined), 3 inverted (patient side higher).
+- **26 of 26 real-gap pairs reach full recovery (max >= 1.0).** Mean |gap|
+  0.138 in target probability.
+- Locus: earliest >=90% recovery at **median layer 20 of 26** (range 6–25);
+  23/26 pairs recover only at layer >= 15, at the final syntactic-slot token.
+  Best recovery achievable in layers <= 12: median 0.25.
+- Early-locus exceptions (all chunk A): T2 #6 (L6), #23 (L7), #24 (L13).
+
+Claim supported: on the multi-tier downgrade set, the informal phrasing's
+deficit persists through the middle of the network and is causally
+overridable only where the answer is assembled (late layers, final position),
+with three localized exceptions. The 8h-expiry missed-harvest record for both
+lane entries stands as documented above.
