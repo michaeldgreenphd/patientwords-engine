@@ -311,6 +311,20 @@ def check_shapes(rep: Report, site: Path, joins: dict):
                                    "families": list}, set()),
         "drift_series.json": ({"pairs_file": str, "threshold": NUM,
                                "days_measured": list, "series": dict}, set()),
+        # critic 2026-08-10: the three j-lens payloads the Technical page's chain
+        # dereferences had no shape coverage, so a malformed export degraded
+        # silently to the figure's "pending" state with every gate still green.
+        # display_vocab.json is the dialect page's token blocklist and gates the
+        # redirect gallery's featured picks - same silent-degrade shape.
+        "jlens_transport.json": ({"generated_utc": str, "model": str,
+                                  "census_batch": str, "n_pairs": int, "census": dict,
+                                  "exemplars": list, "per_pair": list}, set()),
+        "jlens_loglens.json": ({"generated_utc": str, "model": str, "jacobian": dict,
+                                "logit": dict, "agreement": dict, "per_pair": list}, set()),
+        "jlens_swaps.json": ({"swaps": dict}, set()),
+        "display_vocab.json": ({"version": int, "match": str,
+                                "fragment_blocklist": list,
+                                "function_word_targets": dict}, set()),
     }
     for name, (required, nullable) in specs.items():
         data = load(site, name, rep)
