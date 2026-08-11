@@ -68,3 +68,25 @@ deficit persists through the middle of the network and is causally
 overridable only where the answer is assembled (late layers, final position),
 with three localized exceptions. The 8h-expiry missed-harvest record for both
 lane entries stands as documented above.
+
+## 44/44 complete (2026-08-11, owner-approved timeout refires)
+
+Refires landed: run 31524608702 (pairs 36-38, part_36) and run 31524611794
+(pairs 39-40, part_39), both GitHub-confirmed terminal success; both journal
+entries resolved. T2 coverage is COMPLETE at 44/44.
+
+Final consolidated numbers over all 44 pairs:
+
+- Classes: **29 real-gap** (24 owner-validated), 11 no-gap flip pairs
+  (recovery metric undefined), 4 inverted (#17 #29 #31 #37).
+- **29 of 29 real-gap pairs reach full recovery (max >= 1.0)** — a perfect
+  record across the grid. Recovered refire pairs: #36 (1.0 @ L25), #39
+  (1.0 @ L23), #40 (1.0 @ L23), all at the final slot token.
+- Locus unchanged: earliest >=90% recovery at median layer 20 of 26;
+  26/29 pairs recover only at layer >= 15 at the final syntactic-slot token;
+  early-locus exceptions remain #6 (L6), #23 (L7), #24 (L13).
+
+The B1 recovery-grid experiment is closed. Successor experiment approved by
+the owner 2026-08-11: the lost-late (lens-suppressed) class grid — pairs
+where the clinical concept survives to ~L24 then drops, selected
+holdout-filtered with real behavioral gaps; stimulus set committed separately.
