@@ -42,6 +42,62 @@ git checkout -B claude/gemma-clinical-colloquial-interp-mavx04 \
 git pull --rebase origin claude/gemma-clinical-colloquial-interp-mavx04
 ```
 
+## Variant B — clean checkouts, WRONG branch (observed 2026-08-11)
+
+A fresh container can also arrive with both repos present, `git status` clean,
+and **no staged deletions at all** — but sitting on a main-based branch
+(e.g. `claude/nice-tesla-vemyql`) with the ops branch never fetched locally.
+The Variant A repair above does not apply and its symptom check passes, so the
+trap is silent: `ops/dashboard.json` reads as a **month-stale main copy**
+(`updated_utc` 2026-07-09, `tierb.start_utc: null`, `accepted_pairs: 0`), and
+`seal_check.py` would exit 2 on an empty sealed set because the holdout window
+derives from that null stamp. Orient from a main checkout and every number is
+wrong.
+
+**Detect it before acting:**
+
+```bash
+git rev-parse --abbrev-ref HEAD                       # is this the ops branch?
+git ls-remote --heads origin | grep gemma-clinical    # the ops branch does exist
+python -c "import json;d=json.load(open('ops/dashboard.json'));print(d['updated_utc'],d['tierb']['start_utc'])"
+```
+
+A `start_utc` of `None` means you are on main, not the ops branch. Stop.
+
+**Repair — blobless fetch FIRST, then sparse patterns, then checkout.** A plain
+`git fetch` of the ops branch is not slow, it is unusable: measured again on
+2026-08-11 at 2 min and 9.5 min, both killed with the server still compressing
+(49% of 12,145 objects). The blobless fetch completed in **1.9 seconds**.
+
+```bash
+cd /home/user/patientwords-engine
+git fetch --filter=blob:none --no-tags origin claude/gemma-clinical-colloquial-interp-mavx04
+git sparse-checkout set --no-cone \
+  '/*' '!/trace_out/*' '!/render_archives/*' \
+  '/trace_out/*/*.json' '/trace_out/*/*.html' \
+  '/trace_out/pairs_20260711T051145Z__jlens_gemma-2-2b/*' \
+  '/trace_out/pairs_20260711T051145Z__loglens_gemma-2-2b/*' \
+  '/trace_out/pairs_20260711T051145Z_txopus*/*' \
+  '/trace_out/pairs_20260711T051145Z_txplacebo*/*' \
+  '/trace_out/txcorpus_priority*__jlens_gemma-2-2b/*'
+git checkout -B claude/gemma-clinical-colloquial-interp-mavx04 \
+  origin/claude/gemma-clinical-colloquial-interp-mavx04     # ~2m45s
+```
+
+The census-batch `jlens_raw/` patterns on the last five lines are **not
+optional**: `export_jspace.py` and the transport/loglens exporters read
+`jlens_raw/*.json.gz`, and without them `export_jspace.py` refuses (exit 3) as
+it did on 2026-08-09. With them, the full publish chain ran clean on
+2026-08-11, `export_jspace.py` included.
+
+The site sibling needs no such care — it is small, and on 2026-08-11 its ops
+branch was byte-identical to `main`.
+
+Note that `docs/routine_standing_prompt.md` on **main** is a stale 172-line
+snapshot; the ops branch carries the authoritative 398-line version with the
+sub-items (3a2, 3b, 3c, 3c2, 3d, 4a, 4b) the cycle depends on. Re-read it from
+the branch after checkout, not before.
+
 ## Site repo (when `../patientwords` is missing)
 
 Clone through the same git proxy the engine remote uses, blobless, without the
