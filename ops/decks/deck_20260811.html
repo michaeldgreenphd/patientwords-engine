@@ -1,0 +1,122 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-11</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .new{border-left:3px solid #b4483d}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-11</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · red rule = new today</p>
+
+<div class="card new" data-id="D1-STEERED-BATCH-PUBLICATION">
+  <h2>D1 · A fully measured batch is finished and waiting — but publishing it would change what the public corpus is a sample of</h2>
+  <p><code>pairs_20260809T172338Z</code>, the steered batch you approved on 08-09, finished its circuit trace overnight. It is now completely measured and sitting unpublished.</p>
+  <p class="num">69 accepted · $1.872 on claude-opus-4-8 · 21 rounds, truncated by budget · trace 1–69 contiguous · 6 holdout-colliding indices</p>
+  <p>It is <b>not</b> one of the 20 Tier B campaign batches — generation closed at batch 20 on 08-06 — and it was deliberately mined at the validated multi-tier-downgrade veins, seeded with 35 owner-validated pairs. That is a steered sample, not a random one.</p>
+  <p>This cycle held it out of the exporter's <code>--stamps</code>, so the payload stayed at 25 stamps / 1,647 scenarios. That is the conservative call, not a verdict: adding it is a sampling decision about the public corpus, and no cycle should make it unasked.</p>
+  <div class="chips"><button class="chip" data-v="publish-labelled">publish it, labelled as steered</button><button class="chip" data-v="publish-plain">publish it, no special label</button><button class="chip" data-v="keep-internal">keep it internal (patching/downgrade only)</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D2-MEDICAL-FRAMING">
+  <h2>D2 · The medical fine-tune sentence is still unchosen (from 08-08, moved 08-10)</h2>
+  <p>Unchanged today, and nothing published moved: the site still carries the 2026-08-08 statistics, so there is still no live over-claim. The stale statements remain internal (HANDOFF_20260804 line 94, dashboard verdicts 3–4).</p>
+  <p>This is the one open item where waiting has a cost: the backfill legs that move those numbers fired again today (apertus predictions chunk 5 of 5 is running now and completes that batch), so the gap between the internal number and the published sentence keeps widening.</p>
+  <div class="chips"><button class="chip" data-v="per-model-sentence">write a per-model sentence, then publish</button><button class="chip" data-v="publish-first">publish the numbers now, sentence after</button><button class="chip" data-v="send-me-draft">draft three options and send them</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D3-MODEL-STATS-POLICY">
+  <h2>D3 · The cycle still never recomputes the file whose numbers gate D2 (from 08-10)</h2>
+  <p><code>data/model_stats.json</code> is still outside the §5 chain. Today's cycle refreshed the payload, urgency, all five j-lens files, tag-mass, jspace, translation scale, coverage and the drift series — and again left the per-model statistics at their last manual run.</p>
+  <div class="chips"><button class="chip" data-v="add-to-chain">add it to the §5 chain</button><button class="chip" data-v="keep-manual">keep it manual, say so in §5</button><button class="chip" data-v="stamp-and-warn">stamp generated_utc + warn on lag first</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D4-TRANSPORT-LOGLENS-DOCS">
+  <h2>D4 · Three docs still disagree on whether two exporters run — third cycle, second "yes"</h2>
+  <p>Standing prompt §5 says <b>export_jlens_transport.py</b> and <b>export_jlens_loglens.py</b> are wired; the publish-site-data skill lists them in step 3 and then forbids them in its own <i>Never</i> list; the daily-ops-cycle skill says "not wired".</p>
+  <p>Today's cycle ran both again, following the standing prompt as the stated authority. Today it was harmless — transport regenerated <b>byte-identical except generated_utc</b> (census 44 pairs, patient-never 16, same two exemplars), loglens re-derived the same 23 paired / agree 17 / 18. But 08-09 skipped, 08-10 ran, 08-11 ran: the rule is still being decided per-session.</p>
+  <div class="chips"><button class="chip" data-v="run-them">run them every cycle (fix the skills)</button><button class="chip" data-v="skip-them">never in the cycle (fix §5)</button><button class="chip" data-v="on-new-census">run only when census data changes</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D5-BOOTSTRAP-VARIANT-B">
+  <h2>D5 · Fresh containers land on the wrong branch — three cycles running</h2>
+  <p>Today the container arrived with both repos present and <code>git status</code> <b>clean</b> — no staged deletions — but on main-based branches with the ops branch never fetched. The documented Variant A symptom check passes in that state, so nothing flags it, while <code>ops/dashboard.json</code> reads as the stale 2026-07-09 main seed (<code>tierb.start_utc</code> null) and <code>seal_check</code> would exit 2 on an empty sealed set.</p>
+  <p class="num">plain fetch: killed at 2 min, then 9.5 min (server still compressing, 49% of 12,145 objects) · blobless fetch: <b>1.9 seconds</b> · sparse checkout: 2m45s</p>
+  <p>Recovered, and the recipe is now committed as "Variant B" in <code>docs/fresh_session_bootstrap.md</code> so the next session does not re-derive it. Roughly 15 minutes of every cycle still goes to this. The underlying cause is environmental, not fixable session-side.</p>
+  <div class="chips"><button class="chip" data-v="fix-env">fix the environment's branch/bootstrap</button><button class="chip" data-v="accept-doc">accept it, the doc is enough</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D6-PAB-PROBE-KEY">
+  <h2>D6 · A trigger key that would journal a fire and run nothing (from 08-10)</h2>
+  <p><code>pab-probe</code> is still a known key in <code>fire_trigger.TRIGGERS</code> with no trigger file and no workflow. It validates, writes, journals, pushes — and runs nothing. Both remedies are hand-edits under <code>.github/</code>, which the cycle is forbidden to make.</p>
+  <div class="chips"><button class="chip" data-v="wire-workflow">wire the workflow</button><button class="chip" data-v="drop-key">drop the key</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D7-DOC-DRIFT">
+  <h2>D7 · Two documentation drifts from the 08-10 sweep (from 08-10)</h2>
+  <p><b>(a)</b> Standing prompt §2b points the sweep at <code>docs/preregistration_amendments.md</code>, which does not exist on the ops branch. <b>(b)</b> <code>extract_site_text.py</code>'s PAGES list misses <code>simulated-scenarios/scenario.html</code> and <code>llm/code.html</code> — about 44 KB of published prose invisible to text review.</p>
+  <div class="chips"><button class="chip" data-v="fix-both">fix both</button><button class="chip" data-v="fix-pages-only">fix the PAGES list only</button><button class="chip" data-v="fix-path-only">fix the §2b path only</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D8-OPS-CADENCE">
+  <h2>D8 · Ops pace still rests on a single point</h2>
+  <p>The "backfill accelerator" still does not exist; today's journal shows no unattended tick, so the acceptance test is still unmet. What kept the lanes full before this cycle was your interim babysitter session firing at 00:56, 03:30 and 11:25. If it dies, the lanes idle until the next daily cycle.</p>
+  <div class="chips"><button class="chip" data-v="approve-routine">approve a scheduled accelerator</button><button class="chip" data-v="accept-pace">accept the pace, restate "daily"</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D9-OPENROUTER-CEILING">
+  <h2>D9 · OpenRouter lane still unceilinged (from 08-08)</h2>
+  <p>Unchanged. No spend on it this cycle — today closed at $0/$2, and the whole cycle was $0.</p>
+  <div class="chips"><button class="chip" data-v="ceiling-both">set a ceiling + fix accounting</button><button class="chip" data-v="accounting-only">fix the accounting only</button><button class="chip" data-v="no-ceiling">no ceiling, I approve per-run</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D10-JLENS-DEPTH-PINS">
+  <h2>D10 · Depth-figure block pins (from 08-08)</h2>
+  <p>Unchanged. This cycle reused the committed pins exactly — 7 blocks, exemplar <code>pairs_20260711T051145Z#19</code> — and verified block labels and exemplar reproduced identically; only counts and <code>generated_utc</code> moved.</p>
+  <div class="chips"><button class="chip" data-v="add-both">add both as blocks</button><button class="chip" data-v="add-171223">add 171223Z only</button><button class="chip" data-v="keep-pins">keep the current pins</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D11-AUDIT-EXECUTION">
+  <h2>D11 · Owner acts still outstanding (from 07-31)</h2>
+  <p>Prereg signature; coding the 25 judge-agreement items; choosing one pooled-33% caveat sentence. No daily-ops work blocks on these.</p>
+  <div class="chips"><button class="chip" data-v="this-week">will do this week</button><button class="chip" data-v="send-candidates">re-send me the candidates</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D12-DIALECT-DATE-CLOSED">
+  <h2>D12 · Dialect dateline drift — already resolved, close it?</h2>
+  <p>Resolved 07-30 (the dateline is runtime-filled from the data, so it can never drift again). Still sitting in the pending list.</p>
+  <div class="chips"><button class="chip" data-v="close">close it</button><button class="chip" data-v="keep-open">keep it open</button></div>
+</div>
+
+<button id="copy">Copy decision summary</button>
+<div id="out"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(c){
+  c.querySelectorAll('.chip').forEach(function(ch){
+    ch.addEventListener('click',function(){
+      c.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on')});
+      ch.classList.add('on');
+    });
+  });
+});
+document.getElementById('copy').addEventListener('click',function(){
+  var lines=['DECISIONS 2026-08-11'];
+  document.querySelectorAll('.card').forEach(function(c){
+    var on=c.querySelector('.chip.on');
+    lines.push(c.dataset.id+' :: '+(on?on.dataset.v:'(no selection)'));
+  });
+  var t=lines.join('\n');
+  var o=document.getElementById('out');o.textContent=t;o.style.display='block';
+  if(navigator.clipboard)navigator.clipboard.writeText(t);
+});
+</script>
