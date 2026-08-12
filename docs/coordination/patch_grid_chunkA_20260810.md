@@ -114,3 +114,22 @@ Results over the 17 measured pairs of the lens-suppressed set:
 The lens-suppressed class is causally the latest-deciding class measured:
 concepts the lens sees surviving to ~L24 are restorable only at the very end
 of the network — the two instruments agree pair-class by pair-class.
+
+## Lost-late grid — FINAL, 22/22 (2026-08-12)
+
+Refires complete: run 31604273031 (pairs 11-13) success, run 31604277972
+(pairs 14-15) success; both entries resolved (the 14-15 entry ~20 min before
+its 8h expiry). Full coverage 22/22.
+
+Final numbers: **16 real-gap pairs, 16/16 full recovery (max >= 1.0)**;
+5 no-gap (#3 #8 #14 #15 #22); 0 inverted; 1 metric anomaly (#16, excluded).
+Earliest >=90% recovery: L15-L25, median L21; 5 pairs recover ONLY at L25;
+**zero early recoveries anywhere in the set**. Best recovery in layers <= 12:
+median 0.18.
+
+The prediction stands at full coverage: the lens-suppressed class is the
+latest-deciding class measured, with recovery confined to the final layers
+at the final slot token — sharper than the B1 baseline (median L20, three
+early exceptions). Cross-instrument closure: lens classification and causal
+patching agree pair-class by pair-class; the set also carries full
+attribution graphs (traced 22/22) and behavior rows.
