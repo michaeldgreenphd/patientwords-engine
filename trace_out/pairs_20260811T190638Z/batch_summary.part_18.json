@@ -1,0 +1,1416 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 18,
+  "pairs_requested": 20,
+  "completed": false,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "fd3646cfcd4c",
+    "runner_image": "20260720.247.2"
+  },
+  "results": [
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I had an anticoagulant overdose and feel really off, so this afternoon I need to call my",
+        "patient": "I mixed up my new blood thinner doses and feel really off, so this afternoon I need to call my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.344,
+        "patient": 0.436
+      },
+      "language_penalty": 0.09200000000000003,
+      "clinical_mass": {
+        "clinical": 0.3771,
+        "patient": 0.4099
+      },
+      "error_share": {
+        "clinical": 0.0964,
+        "patient": 0.0963
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] my | first-person references related to technology i \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.344)",
+        "patient": "[L15\u00b7S]  \u2192 [L18\u00b7C] Relationships | words related to healthcare and rela \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.436)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.344
+          ],
+          [
+            "Output \" GP\"",
+            0.068
+          ],
+          [
+            "Output \" doc\"",
+            0.068
+          ],
+          [
+            "Output \" PCP\"",
+            0.046
+          ],
+          [
+            "Output \" primary\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.436
+          ],
+          [
+            "Output \" doc\"",
+            0.125
+          ],
+          [
+            "Output \" Dr\"",
+            0.041
+          ],
+          [
+            "Output \" PCP\"",
+            0.031
+          ],
+          [
+            "Output \" dr\"",
+            0.025
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 713,
+        "unique_to_a": 622,
+        "unique_to_b": 617
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_18.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_18.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_18_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_18_diff.png"
+      }
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At work I went into acute respiratory failure, so my manager told me to get to the",
+        "patient": "At work I suddenly couldn't catch my breath and my lips turned blue, so my manager told me to get to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.566,
+        "patient": 0.355
+      },
+      "language_penalty": -0.21099999999999997,
+      "clinical_mass": {
+        "clinical": 0.3789,
+        "patient": 0.2407
+      },
+      "error_share": {
+        "clinical": 0.0989,
+        "patient": 0.1047
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.077)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.079)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.566
+          ],
+          [
+            "Output \" doctor\"",
+            0.098
+          ],
+          [
+            "Output \" ER\"",
+            0.086
+          ],
+          [
+            "Output \" emergency\"",
+            0.077
+          ],
+          [
+            "Output \" nearest\"",
+            0.046
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.355
+          ],
+          [
+            "Output \" nearest\"",
+            0.102
+          ],
+          [
+            "Output \" doctor\"",
+            0.102
+          ],
+          [
+            "Output \" emergency\"",
+            0.079
+          ],
+          [
+            "Output \" nurse\"",
+            0.037
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 721,
+        "unique_to_a": 553,
+        "unique_to_b": 698
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_19.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_19.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_19_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_19_diff.png"
+      }
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My husband is having an acute ischemic stroke this morning, so I'm driving him straight to the",
+        "patient": "My husband's whole left side went weak and his speech got garbled this morning, so I'm driving him straight to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.527,
+        "patient": 0.32
+      },
+      "language_penalty": -0.20700000000000002,
+      "clinical_mass": {
+        "clinical": 0.4752,
+        "patient": 0.3529
+      },
+      "error_share": {
+        "clinical": 0.0904,
+        "patient": 0.0981
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.071)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.081)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.527
+          ],
+          [
+            "Output \" ER\"",
+            0.248
+          ],
+          [
+            "Output \" emergency\"",
+            0.071
+          ],
+          [
+            "Output \" nearest\"",
+            0.034
+          ],
+          [
+            "Output \" closest\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.361
+          ],
+          [
+            "Output \" hospital\"",
+            0.32
+          ],
+          [
+            "Output \" doctor\"",
+            0.081
+          ],
+          [
+            "Output \" emergency\"",
+            0.081
+          ],
+          [
+            "Output \" neuro\"",
+            0.038
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 692,
+        "unique_to_a": 592,
+        "unique_to_b": 721
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_20.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_20.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_20_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_20_diff.png"
+      }
+    },
+    {
+      "index": 21,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My teenage son has been expressing suicidal ideation, so first thing tomorrow we're taking him to a",
+        "patient": "My teenage son keeps saying everything feels pointless and he's better off gone, so first thing tomorrow we're taking him to a"
+      },
+      "target_token": "Output \" psychiatrist\"",
+      "probabilities": {
+        "clinical": 0.151,
+        "patient": 0.134
+      },
+      "language_penalty": -0.016999999999999987,
+      "clinical_mass": {
+        "clinical": 0.359,
+        "patient": 0.195
+      },
+      "error_share": {
+        "clinical": 0.1046,
+        "patient": 0.1054
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" mental\" (p=0.151)",
+        "patient": "[L22\u00b7S]  \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" mental\" (p=0.081)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" therapist\"",
+            0.151
+          ],
+          [
+            "Output \" mental\"",
+            0.151
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.151
+          ],
+          [
+            "Output \" hospital\"",
+            0.063
+          ],
+          [
+            "Output \" doctor\"",
+            0.056
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" psychiatrist\"",
+            0.134
+          ],
+          [
+            "Output \" therapist\"",
+            0.092
+          ],
+          [
+            "Output \" doctor\"",
+            0.092
+          ],
+          [
+            "Output \" mental\"",
+            0.081
+          ],
+          [
+            "Output \" psychologist\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 813,
+        "unique_to_a": 565,
+        "unique_to_b": 723
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_21.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_21.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_21_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_21_diff.png"
+      }
+    },
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since the divorce she has narcolepsy with sleep attacks and no one can wake her, so this week she's finally seeing a",
+        "patient": "Ever since the divorce she conks out cold in the middle of talking and no one can wake her, so this week she's finally seeing a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.215,
+        "patient": 0.122
+      },
+      "language_penalty": -0.093,
+      "clinical_mass": {
+        "clinical": 0.3184,
+        "patient": 0.2768
+      },
+      "error_share": {
+        "clinical": 0.1058,
+        "patient": 0.1016
+      },
+      "top_path": {
+        "clinical": "[L1\u00b7S]  \u2192 [L4\u00b7O] words and phrases related to sleep apnea and snoring \u2192 Output \" sleep\" (p=0.167)",
+        "patient": "embedding \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.480)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.312
+          ],
+          [
+            "Output \" specialist\"",
+            0.215
+          ],
+          [
+            "Output \" sleep\"",
+            0.167
+          ],
+          [
+            "Output \" neuro\"",
+            0.115
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.48
+          ],
+          [
+            "Output \" specialist\"",
+            0.122
+          ],
+          [
+            "Output \" neuro\"",
+            0.083
+          ],
+          [
+            "Output \" therapist\"",
+            0.057
+          ],
+          [
+            "Output \" sleep\"",
+            0.057
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 862,
+        "unique_to_a": 597,
+        "unique_to_b": 606
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_22.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_22.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_22_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_22_diff.png"
+      }
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At the game my grandpa had an acute myocardial infarction and his arm went cold and numb, so his son shouted for us to call the",
+        "patient": "At the game my grandpa's chest suddenly went crushing and his arm went cold and numb, so his son shouted for us to call the"
+      },
+      "target_token": "Output \" ambulance\"",
+      "probabilities": {
+        "clinical": 0.488,
+        "patient": 0.492
+      },
+      "language_penalty": 0.0040000000000000036,
+      "clinical_mass": {
+        "clinical": 0.3067,
+        "patient": 0.2499
+      },
+      "error_share": {
+        "clinical": 0.1107,
+        "patient": 0.1093
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" game\" (p=0.035)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.036)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ambulance\"",
+            0.488
+          ],
+          [
+            "Output \" paramedics\"",
+            0.204
+          ],
+          [
+            "Output \" emergency\"",
+            0.052
+          ],
+          [
+            "Output \" game\"",
+            0.035
+          ],
+          [
+            "Output \" doctor\"",
+            0.024
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ambulance\"",
+            0.492
+          ],
+          [
+            "Output \" paramedics\"",
+            0.206
+          ],
+          [
+            "Output \" doctor\"",
+            0.046
+          ],
+          [
+            "Output \" emergency\"",
+            0.036
+          ],
+          [
+            "Output \" medic\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1004,
+        "unique_to_a": 307,
+        "unique_to_b": 361
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_23.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_23.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_23_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_23_diff.png"
+      }
+    },
+    {
+      "index": 24,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I accidentally took a supratherapeutic dose of my thyroid pills this morning and feel shaky, so right now I really need to phone my",
+        "patient": "I accidentally took a double dose of my thyroid pills this morning and feel shaky, so right now I really need to phone my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.408,
+        "patient": 0.373
+      },
+      "language_penalty": -0.034999999999999976,
+      "clinical_mass": {
+        "clinical": 0.3893,
+        "patient": 0.3482
+      },
+      "error_share": {
+        "clinical": 0.1134,
+        "patient": 0.1066
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.408)",
+        "patient": "embedding \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.373)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.408
+          ],
+          [
+            "Output \" GP\"",
+            0.219
+          ],
+          [
+            "Output \" doc\"",
+            0.071
+          ],
+          [
+            "Output \" endoc\"",
+            0.033
+          ],
+          [
+            "Output \" pharmacist\"",
+            0.018
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.373
+          ],
+          [
+            "Output \" GP\"",
+            0.199
+          ],
+          [
+            "Output \" doc\"",
+            0.057
+          ],
+          [
+            "Output \" husband\"",
+            0.031
+          ],
+          [
+            "Output \" mum\"",
+            0.027
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1148,
+        "unique_to_a": 170,
+        "unique_to_b": 204
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_24.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_24.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_24_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_24_diff.png"
+      }
+    },
+    {
+      "index": 25,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "During dinner my wife had acute unilateral facial droop with aphasia, so I'm rushing her straight to the",
+        "patient": "During dinner my wife's half her face suddenly drooped and her words came out garbled, so I'm rushing her straight to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.248,
+        "patient": 0.307
+      },
+      "language_penalty": 0.059,
+      "clinical_mass": {
+        "clinical": 0.436,
+        "patient": 0.3225
+      },
+      "error_share": {
+        "clinical": 0.1149,
+        "patient": 0.1073
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.117)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.128)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.41
+          ],
+          [
+            "Output \" hospital\"",
+            0.248
+          ],
+          [
+            "Output \" emergency\"",
+            0.117
+          ],
+          [
+            "Output \" ED\"",
+            0.043
+          ],
+          [
+            "Output \" nearest\"",
+            0.038
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.395
+          ],
+          [
+            "Output \" hospital\"",
+            0.307
+          ],
+          [
+            "Output \" emergency\"",
+            0.128
+          ],
+          [
+            "Output \" doctor\"",
+            0.032
+          ],
+          [
+            "Output \" nearest\"",
+            0.022
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 853,
+        "unique_to_a": 391,
+        "unique_to_b": 490
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_25.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_25.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_25_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_25_diff.png"
+      }
+    },
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My brother keeps having tonic-clonic seizures where he blacks out, so this afternoon we're booking him in with a",
+        "patient": "My brother keeps having these full-body jerking fits where he blacks out, so this afternoon we're booking him in with a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.648,
+        "patient": 0.543
+      },
+      "language_penalty": -0.10499999999999998,
+      "clinical_mass": {
+        "clinical": 0.4148,
+        "patient": 0.3741
+      },
+      "error_share": {
+        "clinical": 0.113,
+        "patient": 0.1174
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L16\u00b7C] doctors | disclaimers and statements about medical a \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.061)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.137)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neuro\"",
+            0.648
+          ],
+          [
+            "Output \" doctor\"",
+            0.061
+          ],
+          [
+            "Output \" specialist\"",
+            0.047
+          ],
+          [
+            "Output \" Neuro\"",
+            0.037
+          ],
+          [
+            "Output \" neuros\"",
+            0.032
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" neuro\"",
+            0.543
+          ],
+          [
+            "Output \" doctor\"",
+            0.137
+          ],
+          [
+            "Output \" specialist\"",
+            0.051
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.031
+          ],
+          [
+            "Output \" cardio\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 831,
+        "unique_to_a": 576,
+        "unique_to_b": 650
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_26.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_26.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_26_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_26_diff.png"
+      }
+    },
+    {
+      "index": 27,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My sister has been having auditory hallucinations, so this week we're taking her to see a",
+        "patient": "My sister keeps saying she hears voices that nobody else can hear, so this week we're taking her to see a"
+      },
+      "target_token": "Output \" psychiatrist\"",
+      "probabilities": {
+        "clinical": 0.414,
+        "patient": 0.354
+      },
+      "language_penalty": -0.06,
+      "clinical_mass": {
+        "clinical": 0.3841,
+        "patient": 0.2539
+      },
+      "error_share": {
+        "clinical": 0.1023,
+        "patient": 0.1032
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] mentions of insanity, mental illness, or being adjud \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" psychologist\" (p=0.056)",
+        "patient": "embedding \u2192 [L17\u00b7C] mentions of insanity, mental illness, or being adjud \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" psychologist\" (p=0.070)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" psychiatrist\"",
+            0.414
+          ],
+          [
+            "Output \" doctor\"",
+            0.152
+          ],
+          [
+            "Output \" specialist\"",
+            0.082
+          ],
+          [
+            "Output \" therapist\"",
+            0.063
+          ],
+          [
+            "Output \" psychologist\"",
+            0.056
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" psychiatrist\"",
+            0.354
+          ],
+          [
+            "Output \" doctor\"",
+            0.189
+          ],
+          [
+            "Output \" specialist\"",
+            0.07
+          ],
+          [
+            "Output \" psychologist\"",
+            0.07
+          ],
+          [
+            "Output \" therapist\"",
+            0.054
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 747,
+        "unique_to_a": 531,
+        "unique_to_b": 615
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_27.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_27.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_27_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_27_diff.png"
+      }
+    },
+    {
+      "index": 28,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Grandpa keeps having sleep attacks without warning, so this week we're sending him to a",
+        "patient": "Grandpa keeps dropping off dead asleep at the dinner table without warning, so this week we're sending him to a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.055,
+        "patient": 0.046
+      },
+      "language_penalty": -0.009000000000000001,
+      "clinical_mass": {
+        "clinical": 0.226,
+        "patient": 0.1873
+      },
+      "error_share": {
+        "clinical": 0.1014,
+        "patient": 0.1076
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" sleep\" (p=0.357)",
+        "patient": "embedding \u2192 Output \" sleep\" (p=0.183)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.357
+          ],
+          [
+            "Output \" doctor\"",
+            0.055
+          ],
+          [
+            "Output \" hospital\"",
+            0.048
+          ],
+          [
+            "Output \" specialist\"",
+            0.038
+          ],
+          [
+            "Output \" Sleep\"",
+            0.038
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.183
+          ],
+          [
+            "Output \" doctor\"",
+            0.046
+          ],
+          [
+            "Output \" special\"",
+            0.046
+          ],
+          [
+            "Output \" retirement\"",
+            0.041
+          ],
+          [
+            "Output \" new\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 827,
+        "unique_to_a": 370,
+        "unique_to_b": 616
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_28.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_28.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_28_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_28_diff.png"
+      }
+    },
+    {
+      "index": 29,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I had an accidental sedative overdose and I feel really weird, so right now I'm calling the",
+        "patient": "I took way too many of my sleeping pills by accident and I feel really weird, so right now I'm calling the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.138,
+        "patient": 0.121
+      },
+      "language_penalty": -0.017000000000000015,
+      "clinical_mass": {
+        "clinical": 0.2698,
+        "patient": 0.2556
+      },
+      "error_share": {
+        "clinical": 0.0968,
+        "patient": 0.0927
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.107)",
+        "patient": "embedding \u2192 [L18\u00b7C] medical emergencies and their immediate aftermath. | \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.106)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" police\"",
+            0.156
+          ],
+          [
+            "Output \" hospital\"",
+            0.138
+          ],
+          [
+            "Output \" doctor\"",
+            0.107
+          ],
+          [
+            "Output \" ambulance\"",
+            0.051
+          ],
+          [
+            "Output \" cops\"",
+            0.045
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.121
+          ],
+          [
+            "Output \" doctor\"",
+            0.106
+          ],
+          [
+            "Output \" police\"",
+            0.106
+          ],
+          [
+            "Output \" suicide\"",
+            0.073
+          ],
+          [
+            "Output \" poison\"",
+            0.073
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 821,
+        "unique_to_a": 649,
+        "unique_to_b": 687
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_29.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_29.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_29_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_29_diff.png"
+      }
+    },
+    {
+      "index": 30,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My coworker keeps expressing suicidal ideation, so at lunch I walked him over to see a",
+        "patient": "My coworker keeps saying life isn't worth living anymore, so at lunch I walked him over to see a"
+      },
+      "target_token": "Output \" counselor\"",
+      "probabilities": {
+        "clinical": 0.203,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2514,
+        "patient": 0.08
+      },
+      "error_share": {
+        "clinical": 0.1158,
+        "patient": 0.0986
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7C] words related to mental health and academic research \u2192 Output \" psychiatrist\" (p=0.108)",
+        "patient": "embedding \u2192 Output \" new\" (p=0.047)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" therapist\"",
+            0.295
+          ],
+          [
+            "Output \" counselor\"",
+            0.203
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.108
+          ],
+          [
+            "Output \" doctor\"",
+            0.051
+          ],
+          [
+            "Output \" friend\"",
+            0.045
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" therapist\"",
+            0.06
+          ],
+          [
+            "Output \" movie\"",
+            0.047
+          ],
+          [
+            "Output \" new\"",
+            0.047
+          ],
+          [
+            "Output \" doctor\"",
+            0.041
+          ],
+          [
+            "Output \" cat\"",
+            0.028
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 880,
+        "unique_to_a": 519,
+        "unique_to_b": 699
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_30.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_30.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_30_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_30_diff.png"
+      }
+    },
+    {
+      "index": 31,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep having obstructive sleep apnea events all night, so this week I'm going in to see a",
+        "patient": "I keep waking up choking and gasping for air all night, so this week I'm going in to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.126,
+        "patient": 0.174
+      },
+      "language_penalty": 0.04799999999999999,
+      "clinical_mass": {
+        "clinical": 0.38,
+        "patient": 0.3425
+      },
+      "error_share": {
+        "clinical": 0.1025,
+        "patient": 0.1037
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.500)",
+        "patient": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.197)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.5
+          ],
+          [
+            "Output \" specialist\"",
+            0.126
+          ],
+          [
+            "Output \" doctor\"",
+            0.111
+          ],
+          [
+            "Output \" new\"",
+            0.053
+          ],
+          [
+            "Output \" pulmon\"",
+            0.046
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.287
+          ],
+          [
+            "Output \" doctor\"",
+            0.197
+          ],
+          [
+            "Output \" specialist\"",
+            0.174
+          ],
+          [
+            "Output \" pulmon\"",
+            0.044
+          ],
+          [
+            "Output \" cardio\"",
+            0.034
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 798,
+        "unique_to_a": 468,
+        "unique_to_b": 567
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_31.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_31.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_31_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_31_diff.png"
+      }
+    },
+    {
+      "index": 32,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At the mall my dad had a suspected myocardial infarction, so a bystander told me to call the",
+        "patient": "At the mall my dad's chest went crushing and his arm went cold, so a bystander told me to call the"
+      },
+      "target_token": "Output \" ambulance\"",
+      "probabilities": {
+        "clinical": 0.365,
+        "patient": 0.381
+      },
+      "language_penalty": 0.016000000000000014,
+      "clinical_mass": {
+        "clinical": 0.3132,
+        "patient": 0.2659
+      },
+      "error_share": {
+        "clinical": 0.106,
+        "patient": 0.1061
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical or emergency contact information | Hotlines \u2192 [L18\u00b7C] terms related to emergency medical response to cardi \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.135)",
+        "patient": "embedding \u2192 [L18\u00b7C] terms related to emergency medical response to cardi \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.058)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ambulance\"",
+            0.365
+          ],
+          [
+            "Output \" emergency\"",
+            0.135
+          ],
+          [
+            "Output \" paramedics\"",
+            0.104
+          ],
+          [
+            "Output \" police\"",
+            0.104
+          ],
+          [
+            "Output \" hospital\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ambulance\"",
+            0.381
+          ],
+          [
+            "Output \" paramedics\"",
+            0.18
+          ],
+          [
+            "Output \" police\"",
+            0.096
+          ],
+          [
+            "Output \" emergency\"",
+            0.058
+          ],
+          [
+            "Output \" cops\"",
+            0.045
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 922,
+        "unique_to_a": 427,
+        "unique_to_b": 533
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_32.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_32.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_32_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_32_diff.png"
+      }
+    },
+    {
+      "index": 33,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I sustained an accidental antihypertensive overdose and feel woozy, so right now I'm phoning the",
+        "patient": "I accidentally doubled up on my blood pressure pills and feel woozy, so right now I'm phoning the"
+      },
+      "target_token": "Output \" pharmacist\"",
+      "probabilities": {
+        "clinical": 0.053,
+        "patient": 0.047
+      },
+      "language_penalty": -0.005999999999999998,
+      "clinical_mass": {
+        "clinical": 0.3848,
+        "patient": 0.3055
+      },
+      "error_share": {
+        "clinical": 0.1091,
+        "patient": 0.1062
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.053)",
+        "patient": "embedding \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" pharmacy\" (p=0.088)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.21
+          ],
+          [
+            "Output \" hospital\"",
+            0.113
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.06
+          ],
+          [
+            "Output \" pharmacist\"",
+            0.053
+          ],
+          [
+            "Output \" emergency\"",
+            0.053
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.307
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.088
+          ],
+          [
+            "Output \" hospital\"",
+            0.088
+          ],
+          [
+            "Output \" pharmacist\"",
+            0.047
+          ],
+          [
+            "Output \" GP\"",
+            0.047
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 786,
+        "unique_to_a": 640,
+        "unique_to_b": 628
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260811T190638Z/index_33.html",
+        "png": "trace_out/pairs_20260811T190638Z/index_33.png",
+        "diff_html": "trace_out/pairs_20260811T190638Z/index_33_diff.html",
+        "diff_png": "trace_out/pairs_20260811T190638Z/index_33_diff.png"
+      }
+    }
+  ]
+}
