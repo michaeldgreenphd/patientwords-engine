@@ -90,3 +90,27 @@ The B1 recovery-grid experiment is closed. Successor experiment approved by
 the owner 2026-08-11: the lost-late (lens-suppressed) class grid — pairs
 where the clinical concept survives to ~L24 then drops, selected
 holdout-filtered with real behavioral gaps; stimulus set committed separately.
+
+## Lost-late grid (2026-08-12, prediction test)
+
+Run 31546777739 terminal "cancelled": 4 of 5 jobs succeeded (parts 01/06/16/21
+= pairs 1-10, 16-22); the offsets-10 job (pairs 11-15) hit the job timeout —
+same failure mode as T2 patch(35). Journal entry expired 07:33 while the run
+sat runner-starved (missed-harvest record per harvest-resolve); refire fired
+2026-08-12 as two chunks (offsets 10 limit 3, offsets 13 limit 2), the
+owner-approved split remedy.
+
+Results over the 17 measured pairs of the lens-suppressed set:
+
+- Classes: **13 real-gap**, 3 no-gap (#3 #8 #22), 0 inverted, 1 metric
+  anomaly (#16: near-degenerate gap -0.019 inflates normalized recovery to
+  4.15 — excluded, not an early-recovery finding).
+- **13 of 13 real-gap pairs reach full recovery (max >= 1.0).**
+- **PREDICTION CONFIRMED — late-only recovery, sharper than B1:** earliest
+  >=90% at median layer 21 (B1: 20); 5/13 recover ONLY at the final layer 25;
+  zero early recoveries (B1 had three). Best recovery in layers <= 12:
+  median 0.18 (B1: 0.25).
+
+The lens-suppressed class is causally the latest-deciding class measured:
+concepts the lens sees surviving to ~L24 are restorable only at the very end
+of the network — the two instruments agree pair-class by pair-class.
