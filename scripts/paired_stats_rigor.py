@@ -70,7 +70,11 @@ _OBS_RE = re.compile(r"pairs_\d{8}T\d{6}Z")
 # They are excluded from the confirmatory population by explicit stamp and
 # reported as sensitivity-only. Recorded in docs/prereg_divergence_log.md.
 _SUPPLEMENTARY_STAMPS = frozenset({
-    "pairs_20260713T031252Z", "pairs_20260713T135755Z", "pairs_20260713T050937Z"})
+    "pairs_20260713T031252Z", "pairs_20260713T135755Z", "pairs_20260713T050937Z",
+    # Steered generation rounds (2026-08-09 / 2026-08-11): mined at validated
+    # downgrade veins with seed/counterexample steering - outcome-selected by
+    # construction, sensitivity-only per POPULATION-DEF option B.
+    "pairs_20260809T172338Z", "pairs_20260811T190638Z"})
 # The four models fixed by docs/preregistration_tierB.md; later additions are
 # exploratory (docs/prereg_divergence_log.md) and get their own BH family.
 _PREREG_MODELS = ("gemma-2-2b", "gemma-3-4b-it", "qwen3-1.7b", "qwen3-4b")

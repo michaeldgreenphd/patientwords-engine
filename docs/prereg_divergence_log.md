@@ -20,3 +20,16 @@ retro-edited into the frozen document.
 
 Owner reviews this log at endpoint time; anything confirmatory built on a
 diverged element moves to an amendment first.
+
+## 2026-08-12 — steered generation stamps added to the option-B exclusion
+
+`pairs_20260809T172338Z` and `pairs_20260811T190638Z` (steered generation
+rounds 1-2: seeded from owner-validated downgrade pairs with counterexample
+steering, round 2 slot-constrained) are outcome-selected by construction and
+join `_SUPPLEMENTARY_STAMPS` in `paired_stats_rigor.py` (and the mirror in
+`convergence_tracker.py`) as sensitivity-only, per POPULATION-DEF option B
+(owner decision 2026-07-17). Caught before any confirmatory number using the
+leaked population was published: the stale site `model_stats.json` (2026-08-08)
+predates both batches, and the leaked-population preview run of 2026-08-12 was
+scratch-only. Regression test added
+(`test_steered_generation_stamps_are_sensitivity_only`).

@@ -234,3 +234,13 @@ def test_simultaneous_interval_is_at_least_as_wide(rows):
     if pen.get("ci95_simultaneous"):
         assert pen["ci95_simultaneous"][0] <= pen["ci95"][0]
         assert pen["ci95_simultaneous"][1] >= pen["ci95"][1]
+
+
+def test_steered_generation_stamps_are_sensitivity_only():
+    # POPULATION-DEF option B: outcome-selected sets never enter the
+    # confirmatory population. The steered rounds are outcome-mined by
+    # construction; a new steered stamp missing from this list leaked into
+    # confirmatory numbers once (caught 2026-08-12).
+    for stamp in ("pairs_20260809T172338Z", "pairs_20260811T190638Z",
+                  "pairs_20260713T031252Z", "pairs_20260713T135755Z"):
+        assert stamp in psr._SUPPLEMENTARY_STAMPS

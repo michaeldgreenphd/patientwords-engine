@@ -119,7 +119,8 @@ def main(argv=None):
     # Phrase-keyed holdout seal + POPULATION-DEF option B (outcome-selected
     # supplementary sets excluded from the confirmatory population), matching
     # scripts/paired_stats_rigor.py.
-    _supp = {"pairs_20260713T031252Z", "pairs_20260713T135755Z", "pairs_20260713T050937Z"}
+    _supp = {"pairs_20260713T031252Z", "pairs_20260713T135755Z", "pairs_20260713T050937Z",
+             "pairs_20260809T172338Z", "pairs_20260811T190638Z"}
     _held = {r["clinical_prompt"] for r in bundle["rows"] if r.get("tierb_split") == "holdout"}
     rows = [r for r in bundle["rows"]
             if r.get("clinical_prompt") not in _held and r.get("batch") not in _supp]
