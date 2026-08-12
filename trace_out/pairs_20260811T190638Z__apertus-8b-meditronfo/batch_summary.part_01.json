@@ -1,0 +1,2953 @@
+{
+  "mode": "2panel",
+  "backend": "logits",
+  "graph_model": "apertus-8b-meditronfo",
+  "source_set": null,
+  "generation_params": {},
+  "start_index": 1,
+  "pairs_requested": 25,
+  "completed": true,
+  "screen_targets": null,
+  "inference": {
+    "method": "logits",
+    "hf_id": "EPFLiGHT/Apertus-8B-MeditronFO",
+    "dtype": "bfloat16",
+    "revision": "ef2b141da7ccc347c2a13b2518370ba6a8a2b745",
+    "environment": {
+      "python": "3.11.15",
+      "platform": "Linux-6.17.0-1020-azure-x86_64-with-glibc2.39",
+      "engine_sha": "66cac314b46e",
+      "runner_image": "20260720.247.2",
+      "torch": "2.13.0+cpu",
+      "transformers": "5.14.1",
+      "accelerate": "1.14.0"
+    }
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My dad's been having suicidal ideation, so we're rushing him straight to the",
+        "patient": "My dad's been talking about ending it all, so we're rushing him straight to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.1934,
+        "patient": 0.2023
+      },
+      "language_penalty": 0.0089,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.4095
+          ],
+          [
+            "Output \" hospital\"",
+            0.1934
+          ],
+          [
+            "Output \" emergency\"",
+            0.1506
+          ],
+          [
+            "Output \" doctor\"",
+            0.0712
+          ],
+          [
+            "Output \" psychiatric\"",
+            0.0204
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0204
+          ],
+          [
+            "Output \" nearest\"",
+            0.0204
+          ],
+          [
+            "Output \" mental\"",
+            0.018
+          ],
+          [
+            "Output \" crisis\"",
+            0.014
+          ],
+          [
+            "Output \" psych\"",
+            0.0109
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.2598
+          ],
+          [
+            "Output \" hospital\"",
+            0.2023
+          ],
+          [
+            "Output \" ER\"",
+            0.1391
+          ],
+          [
+            "Output \" emergency\"",
+            0.0844
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.031
+          ],
+          [
+            "Output \" psych\"",
+            0.0213
+          ],
+          [
+            "Output \" mental\"",
+            0.0188
+          ],
+          [
+            "Output \" nearest\"",
+            0.0188
+          ],
+          [
+            "Output \" doctors\"",
+            0.0147
+          ],
+          [
+            "Output \" docs\"",
+            0.0129
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER.\u2011",
+          "hospital": "hospital.\u2011",
+          "emergency": "emergency room.",
+          "doctor": "doctor.\u2011"
+        },
+        "patient": {
+          "doctor": "doctor.\u2011",
+          "hospital": "hospital.\u2011",
+          "ER": "ER.\u2011",
+          "emergency": "emergency room."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since the accident he keeps having syncopal episodes, so his wife wants him to see a",
+        "patient": "Ever since the accident he keeps getting knocked out for a few minutes at a time, so his wife wants him to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.1286,
+        "patient": 0.4345
+      },
+      "language_penalty": 0.3059,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neurolog\"",
+            0.5087
+          ],
+          [
+            "Output \" cardi\"",
+            0.1458
+          ],
+          [
+            "Output \" doctor\"",
+            0.1286
+          ],
+          [
+            "Output \" specialist\"",
+            0.0689
+          ],
+          [
+            "Output \" neuro\"",
+            0.0253
+          ],
+          [
+            "Output \" physician\"",
+            0.0174
+          ],
+          [
+            "Output \" Neu\"",
+            0.0068
+          ],
+          [
+            "Output \" neu\"",
+            0.0057
+          ],
+          [
+            "Output \" heart\"",
+            0.0057
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0053
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.4345
+          ],
+          [
+            "Output \" neurolog\"",
+            0.3384
+          ],
+          [
+            "Output \" specialist\"",
+            0.1245
+          ],
+          [
+            "Output \" neuro\"",
+            0.009
+          ],
+          [
+            "Output \" sleep\"",
+            0.008
+          ],
+          [
+            "Output \" neuros\"",
+            0.008
+          ],
+          [
+            "Output \" physician\"",
+            0.008
+          ],
+          [
+            "Output \" doc\"",
+            0.0055
+          ],
+          [
+            "Output \" Neu\"",
+            0.0048
+          ],
+          [
+            "Output \" neu\"",
+            0.0043
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "neurolog": "neurologist.",
+          "cardi": "cardiologist.",
+          "doctor": "doctor.\u2011",
+          "specialist": "specialist.\u2011"
+        },
+        "patient": {
+          "doctor": "doctor. He",
+          "neurolog": "neurologist.",
+          "specialist": "specialist. He",
+          "neuro": "neuro specialist."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've had crushing substernal chest pressure since lunch, so my coworker told me to call an",
+        "patient": "My chest's been feeling like an elephant is sitting on it since lunch, so my coworker told me to call an"
+      },
+      "target_token": "Output \" ambulance\"",
+      "probabilities": {
+        "clinical": 0.9891,
+        "patient": 0.9565
+      },
+      "language_penalty": -0.0326,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ambulance\"",
+            0.9891
+          ],
+          [
+            "Output \" emergency\"",
+            0.004
+          ],
+          [
+            "Output \" EMT\"",
+            0.0025
+          ],
+          [
+            "Output \" EMS\"",
+            0.0019
+          ],
+          [
+            "Output \" Am\"",
+            0.0005
+          ],
+          [
+            "Output \" ER\"",
+            0.0004
+          ],
+          [
+            "Output \" Uber\"",
+            0.0002
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0001
+          ],
+          [
+            "Output \" em\"",
+            0.0001
+          ],
+          [
+            "Output \" MD\"",
+            0.0001
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ambulance\"",
+            0.9565
+          ],
+          [
+            "Output \" Uber\"",
+            0.0073
+          ],
+          [
+            "Output \" EMT\"",
+            0.0064
+          ],
+          [
+            "Output \" emergency\"",
+            0.005
+          ],
+          [
+            "Output \" ER\"",
+            0.0021
+          ],
+          [
+            "Output \" MD\"",
+            0.0018
+          ],
+          [
+            "Output \" Am\"",
+            0.0014
+          ],
+          [
+            "Output \" em\"",
+            0.0011
+          ],
+          [
+            "Output \" EMS\"",
+            0.0009
+          ],
+          [
+            "Output \" am\"",
+            0.0009
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ambulance": "ambulance. I",
+          "emergency": "emergency number.",
+          "EMT": "EMT. I",
+          "EMS": "EMS. I"
+        },
+        "patient": {
+          "ambulance": "ambulance.\u2011",
+          "Uber": "Uber and go",
+          "EMT": "EMT. I",
+          "emergency": "emergency number."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My husband has apneic episodes throughout the night, so we finally went to see a",
+        "patient": "My husband stops breathing and gasps awake all night long, so we finally went to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.1208,
+        "patient": 0.2708
+      },
+      "language_penalty": 0.15,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.5413
+          ],
+          [
+            "Output \" specialist\"",
+            0.1551
+          ],
+          [
+            "Output \" doctor\"",
+            0.1208
+          ],
+          [
+            "Output \" pulmon\"",
+            0.0503
+          ],
+          [
+            "Output \" neurolog\"",
+            0.0185
+          ],
+          [
+            "Output \" dentist\"",
+            0.0127
+          ],
+          [
+            "Output \" physician\"",
+            0.0099
+          ],
+          [
+            "Output \" cardi\"",
+            0.0077
+          ],
+          [
+            "Output \" doc\"",
+            0.0077
+          ],
+          [
+            "Output \" Sleep\"",
+            0.0077
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.4466
+          ],
+          [
+            "Output \" doctor\"",
+            0.2708
+          ],
+          [
+            "Output \" specialist\"",
+            0.145
+          ],
+          [
+            "Output \" pulmon\"",
+            0.0252
+          ],
+          [
+            "Output \" doc\"",
+            0.0105
+          ],
+          [
+            "Output \" Dr\"",
+            0.0105
+          ],
+          [
+            "Output \" physician\"",
+            0.0105
+          ],
+          [
+            "Output \" neurolog\"",
+            0.0093
+          ],
+          [
+            "Output \" Sleep\"",
+            0.0064
+          ],
+          [
+            "Output \" cardi\"",
+            0.0064
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "sleep": "sleep specialist.",
+          "specialist": "specialist. He",
+          "doctor": "doctor. He",
+          "pulmon": "pulmonologist."
+        },
+        "patient": {
+          "sleep": "sleep specialist.",
+          "doctor": "doctor.\u2011",
+          "specialist": "specialist.\u2011",
+          "pulmon": "pulmonologist."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My kid's been having a major depressive episode, so this week we're taking her to see a",
+        "patient": "My kid's been really down and won't get out of bed, so this week we're taking her to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.0173,
+        "patient": 0.0653
+      },
+      "language_penalty": 0.048,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" therapist\"",
+            0.3483
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.3074
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0686
+          ],
+          [
+            "Output \" counsel\"",
+            0.0324
+          ],
+          [
+            "Output \" new\"",
+            0.0286
+          ],
+          [
+            "Output \" mental\"",
+            0.0223
+          ],
+          [
+            "Output \" child\"",
+            0.0223
+          ],
+          [
+            "Output \" specialist\"",
+            0.0173
+          ],
+          [
+            "Output \" doctor\"",
+            0.0173
+          ],
+          [
+            "Output \" professional\"",
+            0.0173
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" therapist\"",
+            0.3756
+          ],
+          [
+            "Output \" counsel\"",
+            0.095
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0838
+          ],
+          [
+            "Output \" doctor\"",
+            0.0653
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0449
+          ],
+          [
+            "Output \" pediatric\"",
+            0.0396
+          ],
+          [
+            "Output \" specialist\"",
+            0.0308
+          ],
+          [
+            "Output \" professional\"",
+            0.0272
+          ],
+          [
+            "Output \" shrink\"",
+            0.024
+          ],
+          [
+            "Output \" school\"",
+            0.0212
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "therapist": "therapist. I",
+          "psychiatrist": "psychiatrist. I",
+          "psychologist": "psychologist. I",
+          "counsel": "counselor."
+        },
+        "patient": {
+          "therapist": "therapist. I",
+          "counsel": "counselor.",
+          "psychiatrist": "psychiatrist. I",
+          "doctor": "doctor. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He keeps having sleep-maintenance insomnia for hours, so tomorrow he's going in to see a",
+        "patient": "He keeps snapping wide awake and can't fall back asleep for hours, so tomorrow he's going in to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.3035,
+        "patient": 0.3417
+      },
+      "language_penalty": 0.0382,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.3035
+          ],
+          [
+            "Output \" doctor\"",
+            0.3035
+          ],
+          [
+            "Output \" specialist\"",
+            0.0767
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0598
+          ],
+          [
+            "Output \" neurolog\"",
+            0.0282
+          ],
+          [
+            "Output \" doc\"",
+            0.022
+          ],
+          [
+            "Output \" physician\"",
+            0.022
+          ],
+          [
+            "Output \" new\"",
+            0.0133
+          ],
+          [
+            "Output \" therapist\"",
+            0.0104
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0098
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.3417
+          ],
+          [
+            "Output \" pediatric\"",
+            0.1614
+          ],
+          [
+            "Output \" sleep\"",
+            0.1424
+          ],
+          [
+            "Output \" specialist\"",
+            0.0979
+          ],
+          [
+            "Output \" doc\"",
+            0.0462
+          ],
+          [
+            "Output \" neurolog\"",
+            0.0318
+          ],
+          [
+            "Output \" dr\"",
+            0.015
+          ],
+          [
+            "Output \" Dr\"",
+            0.0117
+          ],
+          [
+            "Output \" physician\"",
+            0.0091
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.008
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "sleep": "sleep specialist.",
+          "doctor": "doctor.\u2011",
+          "specialist": "specialist.\u2011",
+          "psychiatrist": "psychiatrist. He"
+        },
+        "patient": {
+          "doctor": "doctor.\u2011",
+          "pediatric": "pediatrician.",
+          "sleep": "sleep specialist.",
+          "specialist": "specialist.\u2011"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Grandpa suddenly has acute hemifacial droop with slurred speech, so we're rushing him to the",
+        "patient": "Grandpa suddenly can't move the right side of his face and his words came out slurred, so we're rushing him to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.309,
+        "patient": 0.4736
+      },
+      "language_penalty": 0.1646,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.5773
+          ],
+          [
+            "Output \" hospital\"",
+            0.309
+          ],
+          [
+            "Output \" ED\"",
+            0.0418
+          ],
+          [
+            "Output \" emergency\"",
+            0.0418
+          ],
+          [
+            "Output \" nearest\"",
+            0.0064
+          ],
+          [
+            "Output \" E\"",
+            0.0018
+          ],
+          [
+            "Output \"\n\"",
+            0.0018
+          ],
+          [
+            "Output \" er\"",
+            0.0016
+          ],
+          [
+            "Output \" ICU\"",
+            0.0011
+          ],
+          [
+            "Output \" emerg\"",
+            0.001
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.4736
+          ],
+          [
+            "Output \" ER\"",
+            0.418
+          ],
+          [
+            "Output \" emergency\"",
+            0.0641
+          ],
+          [
+            "Output \" doctor\"",
+            0.0046
+          ],
+          [
+            "Output \" er\"",
+            0.0036
+          ],
+          [
+            "Output \" nearest\"",
+            0.0028
+          ],
+          [
+            "Output \" E\"",
+            0.0025
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0022
+          ],
+          [
+            "Output \" ED\"",
+            0.0022
+          ],
+          [
+            "Output \" stroke\"",
+            0.0017
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER. He",
+          "hospital": "hospital. He",
+          "ED": "ED. He",
+          "emergency": "emergency department."
+        },
+        "patient": {
+          "hospital": "hospital.\u2011",
+          "ER": "ER.\u2011",
+          "emergency": "emergency room.",
+          "doctor": "doctor.\u2011"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I took a diuretic overdose by mistake and feel awful, so I really need to call my",
+        "patient": "I doubled up on my water pills by mistake and feel awful, so I really need to call my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.7779,
+        "patient": 0.7745
+      },
+      "language_penalty": -0.0034,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.7779
+          ],
+          [
+            "Output \" physician\"",
+            0.0266
+          ],
+          [
+            "Output \" GP\"",
+            0.0235
+          ],
+          [
+            "Output \" poison\"",
+            0.0207
+          ],
+          [
+            "Output \" pharmac\"",
+            0.0161
+          ],
+          [
+            "Output \" emergency\"",
+            0.0111
+          ],
+          [
+            "Output \" vet\"",
+            0.0086
+          ],
+          [
+            "Output \" health\"",
+            0.0059
+          ],
+          [
+            "Output \" healthcare\"",
+            0.0059
+          ],
+          [
+            "Output \" family\"",
+            0.0046
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.7745
+          ],
+          [
+            "Output \" pharmac\"",
+            0.0182
+          ],
+          [
+            "Output \" doc\"",
+            0.0182
+          ],
+          [
+            "Output \" cardi\"",
+            0.0161
+          ],
+          [
+            "Output \" physician\"",
+            0.0142
+          ],
+          [
+            "Output \" GP\"",
+            0.0125
+          ],
+          [
+            "Output \" PC\"",
+            0.011
+          ],
+          [
+            "Output \" neph\"",
+            0.011
+          ],
+          [
+            "Output \" primary\"",
+            0.0076
+          ],
+          [
+            "Output \" health\"",
+            0.0067
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor.\u2011",
+          "physician": "physician.\u2011",
+          "GP": "GP. I",
+          "poison": "poison control center"
+        },
+        "patient": {
+          "doctor": "doctor.\u2011",
+          "pharmac": "pharmacist.",
+          "doc": "doc. I",
+          "cardi": "cardiologist."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My mom keeps getting unilateral paresthesia down one arm that won't quit, so we're taking her to a",
+        "patient": "My mom keeps getting these buzzing pins-and-needles down one arm that won't quit, so we're taking her to a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.0706,
+        "patient": 0.3002
+      },
+      "language_penalty": 0.2296,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neurolog\"",
+            0.759
+          ],
+          [
+            "Output \" doctor\"",
+            0.0706
+          ],
+          [
+            "Output \" specialist\"",
+            0.0294
+          ],
+          [
+            "Output \" neuro\"",
+            0.026
+          ],
+          [
+            "Output \" cardi\"",
+            0.0139
+          ],
+          [
+            "Output \" neu\"",
+            0.0123
+          ],
+          [
+            "Output \" vascular\"",
+            0.0123
+          ],
+          [
+            "Output \" neuros\"",
+            0.0045
+          ],
+          [
+            "Output \" physician\"",
+            0.004
+          ],
+          [
+            "Output \" doc\"",
+            0.004
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" neurolog\"",
+            0.4949
+          ],
+          [
+            "Output \" doctor\"",
+            0.3002
+          ],
+          [
+            "Output \" specialist\"",
+            0.046
+          ],
+          [
+            "Output \" cardi\"",
+            0.0169
+          ],
+          [
+            "Output \" neuro\"",
+            0.0116
+          ],
+          [
+            "Output \" neu\"",
+            0.0116
+          ],
+          [
+            "Output \" vascular\"",
+            0.0103
+          ],
+          [
+            "Output \" doc\"",
+            0.0055
+          ],
+          [
+            "Output \" nerve\"",
+            0.0055
+          ],
+          [
+            "Output \" physician\"",
+            0.0049
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "neurolog": "neurologist.",
+          "doctor": "doctor.\u2011",
+          "specialist": "specialist.\u2011",
+          "neuro": "neuro exam."
+        },
+        "patient": {
+          "neurolog": "neurologist.",
+          "doctor": "doctor.\u2011",
+          "specialist": "specialist.\u2011",
+          "cardi": "cardiologist."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My buddy at work has been having suicidal ideation, so I walked him straight over to the",
+        "patient": "My buddy at work has been talking about wanting to disappear forever, so I walked him straight over to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.1106,
+        "patient": 0.0093
+      },
+      "language_penalty": -0.1013,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.2066
+          ],
+          [
+            "Output \" hospital\"",
+            0.1106
+          ],
+          [
+            "Output \" emergency\"",
+            0.0976
+          ],
+          [
+            "Output \" local\"",
+            0.0461
+          ],
+          [
+            "Output \" nearest\"",
+            0.0359
+          ],
+          [
+            "Output \" mental\"",
+            0.0317
+          ],
+          [
+            "Output \" doctor\"",
+            0.028
+          ],
+          [
+            "Output \" crisis\"",
+            0.0247
+          ],
+          [
+            "Output \" counseling\"",
+            0.0218
+          ],
+          [
+            "Output \" psych\"",
+            0.0192
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" nearest\"",
+            0.057
+          ],
+          [
+            "Output \" local\"",
+            0.0503
+          ],
+          [
+            "Output \" suicide\"",
+            0.0392
+          ],
+          [
+            "Output \" mental\"",
+            0.0185
+          ],
+          [
+            "Output \" Su\"",
+            0.0144
+          ],
+          [
+            "Output \" library\"",
+            0.0112
+          ],
+          [
+            "Output \" office\"",
+            0.0112
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0105
+          ],
+          [
+            "Output \" psych\"",
+            0.0105
+          ],
+          [
+            "Output \" doctor\"",
+            0.0099
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER. He",
+          "hospital": "hospital. He",
+          "emergency": "emergency room.",
+          "local": "local ER."
+        },
+        "patient": {
+          "nearest": "nearest bridge and",
+          "local": "local mental health",
+          "suicide": "suicide hotline",
+          "mental": "mental health clinic"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Grandma has been having narcolepsy episodes during the day, so we finally took her to a",
+        "patient": "Grandma has been drifting off at random and can't be shaken awake during the day, so we finally took her to a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.1182,
+        "patient": 0.2623
+      },
+      "language_penalty": 0.1441,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.4126
+          ],
+          [
+            "Output \" neurolog\"",
+            0.1949
+          ],
+          [
+            "Output \" specialist\"",
+            0.172
+          ],
+          [
+            "Output \" doctor\"",
+            0.1182
+          ],
+          [
+            "Output \" clinic\"",
+            0.0181
+          ],
+          [
+            "Output \" neuro\"",
+            0.011
+          ],
+          [
+            "Output \" neu\"",
+            0.0076
+          ],
+          [
+            "Output \" Dr\"",
+            0.0046
+          ],
+          [
+            "Output \" physician\"",
+            0.0036
+          ],
+          [
+            "Output \" doc\"",
+            0.0036
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.2623
+          ],
+          [
+            "Output \" neurolog\"",
+            0.2314
+          ],
+          [
+            "Output \" sleep\"",
+            0.1239
+          ],
+          [
+            "Output \" specialist\"",
+            0.1093
+          ],
+          [
+            "Output \" ger\"",
+            0.0276
+          ],
+          [
+            "Output \" clinic\"",
+            0.019
+          ],
+          [
+            "Output \" neu\"",
+            0.0168
+          ],
+          [
+            "Output \" neuro\"",
+            0.0148
+          ],
+          [
+            "Output \" physician\"",
+            0.0131
+          ],
+          [
+            "Output \" doc\"",
+            0.0131
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "sleep": "sleep specialist.",
+          "neurolog": "neurologist.",
+          "specialist": "specialist. He",
+          "doctor": "doctor. The"
+        },
+        "patient": {
+          "doctor": "doctor. The",
+          "neurolog": "neurologist.",
+          "sleep": "sleep specialist.",
+          "specialist": "specialist. The"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since I've had an adverse drug interaction and feeling off, this afternoon I'm going in to see my",
+        "patient": "Since I've been mixing up my new pills and feeling off, this afternoon I'm going in to see my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.3375,
+        "patient": 0.3621
+      },
+      "language_penalty": 0.0246,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.3375
+          ],
+          [
+            "Output \" primary\"",
+            0.0967
+          ],
+          [
+            "Output \" GP\"",
+            0.0853
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0518
+          ],
+          [
+            "Output \" PC\"",
+            0.0518
+          ],
+          [
+            "Output \" physician\"",
+            0.0457
+          ],
+          [
+            "Output \" rhe\"",
+            0.0148
+          ],
+          [
+            "Output \" family\"",
+            0.0148
+          ],
+          [
+            "Output \" doc\"",
+            0.0148
+          ],
+          [
+            "Output \" cardi\"",
+            0.0131
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.3621
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0916
+          ],
+          [
+            "Output \" GP\"",
+            0.0629
+          ],
+          [
+            "Output \" doc\"",
+            0.0433
+          ],
+          [
+            "Output \" primary\"",
+            0.0382
+          ],
+          [
+            "Output \" PC\"",
+            0.0382
+          ],
+          [
+            "Output \" pharmac\"",
+            0.0262
+          ],
+          [
+            "Output \" physician\"",
+            0.0204
+          ],
+          [
+            "Output \" end\"",
+            0.014
+          ],
+          [
+            "Output \" new\"",
+            0.014
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "primary": "primary care physician",
+          "GP": "GP. I",
+          "psychiatrist": "psychiatrist. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "psychiatrist": "psychiatrist. I",
+          "GP": "GP. I",
+          "doc": "doc. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I developed sudden hemiparesis this morning, so my wife is driving me to the",
+        "patient": "Half my face suddenly drooped and my arm went dead this morning, so my wife is driving me to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.3932,
+        "patient": 0.3896
+      },
+      "language_penalty": -0.0036,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.3932
+          ],
+          [
+            "Output \" ER\"",
+            0.3062
+          ],
+          [
+            "Output \" emergency\"",
+            0.1857
+          ],
+          [
+            "Output \" ED\"",
+            0.0135
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0119
+          ],
+          [
+            "Output \" doctor\"",
+            0.0119
+          ],
+          [
+            "Output \" nearest\"",
+            0.0119
+          ],
+          [
+            "Output \" urgent\"",
+            0.0092
+          ],
+          [
+            "Output \" clinic\"",
+            0.0044
+          ],
+          [
+            "Output \" neuro\"",
+            0.0041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.3896
+          ],
+          [
+            "Output \" hospital\"",
+            0.3896
+          ],
+          [
+            "Output \" emergency\"",
+            0.1265
+          ],
+          [
+            "Output \" doctor\"",
+            0.0249
+          ],
+          [
+            "Output \" urgent\"",
+            0.0104
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0081
+          ],
+          [
+            "Output \" nearest\"",
+            0.0056
+          ],
+          [
+            "Output \" er\"",
+            0.0049
+          ],
+          [
+            "Output \" E\"",
+            0.0038
+          ],
+          [
+            "Output \" ED\"",
+            0.0036
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "emergency": "emergency department.",
+          "ED": "ED. I"
+        },
+        "patient": {
+          "ER": "ER. I",
+          "hospital": "hospital.\u2011",
+          "emergency": "emergency room.",
+          "doctor": "doctor. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 14,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My mom keeps having absence seizures, so this week we're taking her to a",
+        "patient": "My mom keeps having these sudden staring spells where she blanks out, so this week we're taking her to a"
+      },
+      "target_token": "Output \" neurolog\"",
+      "probabilities": {
+        "clinical": 0.3607,
+        "patient": 0.6432
+      },
+      "language_penalty": 0.2825,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" neurolog\"",
+            0.3607
+          ],
+          [
+            "Output \" specialist\"",
+            0.1327
+          ],
+          [
+            "Output \" new\"",
+            0.0912
+          ],
+          [
+            "Output \" neu\"",
+            0.071
+          ],
+          [
+            "Output \" neuro\"",
+            0.0431
+          ],
+          [
+            "Output \" pediatric\"",
+            0.0335
+          ],
+          [
+            "Output \" doctor\"",
+            0.0261
+          ],
+          [
+            "Output \" sleep\"",
+            0.0203
+          ],
+          [
+            "Output \" hospital\"",
+            0.0158
+          ],
+          [
+            "Output \" clinic\"",
+            0.0116
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" neurolog\"",
+            0.6432
+          ],
+          [
+            "Output \" specialist\"",
+            0.0768
+          ],
+          [
+            "Output \" doctor\"",
+            0.0528
+          ],
+          [
+            "Output \" neu\"",
+            0.0466
+          ],
+          [
+            "Output \" neuro\"",
+            0.0411
+          ],
+          [
+            "Output \" cardi\"",
+            0.0194
+          ],
+          [
+            "Output \" sleep\"",
+            0.0133
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0067
+          ],
+          [
+            "Output \" new\"",
+            0.0052
+          ],
+          [
+            "Output \" local\"",
+            0.0036
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "neurolog": "neurologist.",
+          "specialist": "specialist. She",
+          "new": "new neurologist",
+          "neu": "neurology appointment"
+        },
+        "patient": {
+          "neurolog": "neurologist.",
+          "specialist": "specialist. I",
+          "doctor": "doctor. She",
+          "neu": "neurology appointment"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 15,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My sister has been diagnosed with major depressive disorder, so we're taking her to see a",
+        "patient": "My sister keeps saying the world feels gray and she can't feel joy anymore, so we're taking her to see a"
+      },
+      "target_token": "Output \" therapist\"",
+      "probabilities": {
+        "clinical": 0.2802,
+        "patient": 0.3114
+      },
+      "language_penalty": 0.0312,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" psychiatrist\"",
+            0.5236
+          ],
+          [
+            "Output \" therapist\"",
+            0.2802
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0552
+          ],
+          [
+            "Output \" doctor\"",
+            0.0295
+          ],
+          [
+            "Output \" mental\"",
+            0.0179
+          ],
+          [
+            "Output \" counsel\"",
+            0.0123
+          ],
+          [
+            "Output \" professional\"",
+            0.0123
+          ],
+          [
+            "Output \" psych\"",
+            0.0096
+          ],
+          [
+            "Output \" specialist\"",
+            0.0085
+          ],
+          [
+            "Output \" new\"",
+            0.0051
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" therapist\"",
+            0.3114
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.214
+          ],
+          [
+            "Output \" doctor\"",
+            0.214
+          ],
+          [
+            "Output \" professional\"",
+            0.0613
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0477
+          ],
+          [
+            "Output \" mental\"",
+            0.0421
+          ],
+          [
+            "Output \" counsel\"",
+            0.029
+          ],
+          [
+            "Output \" specialist\"",
+            0.0107
+          ],
+          [
+            "Output \" psych\"",
+            0.0073
+          ],
+          [
+            "Output \" shrink\"",
+            0.0073
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "psychiatrist": "psychiatrist. She",
+          "therapist": "therapist. She",
+          "psychologist": "psychologist. She",
+          "doctor": "doctor. What"
+        },
+        "patient": {
+          "therapist": "therapist. She",
+          "psychiatrist": "psychiatrist. She",
+          "doctor": "doctor. What",
+          "professional": "professional. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 16,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep having obstructive sleep apnea all night, so tomorrow I'm going in to see a",
+        "patient": "I keep jolting awake gasping like I stopped breathing all night, so tomorrow I'm going in to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.1176,
+        "patient": 0.0594
+      },
+      "language_penalty": -0.0582,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.3623
+          ],
+          [
+            "Output \" sleep\"",
+            0.3197
+          ],
+          [
+            "Output \" specialist\"",
+            0.1176
+          ],
+          [
+            "Output \" pulmon\"",
+            0.0337
+          ],
+          [
+            "Output \" physician\"",
+            0.0232
+          ],
+          [
+            "Output \" doc\"",
+            0.014
+          ],
+          [
+            "Output \" dentist\"",
+            0.014
+          ],
+          [
+            "Output \" ENT\"",
+            0.0109
+          ],
+          [
+            "Output \" Dr\"",
+            0.0066
+          ],
+          [
+            "Output \" new\"",
+            0.0052
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.4977
+          ],
+          [
+            "Output \" sleep\"",
+            0.1616
+          ],
+          [
+            "Output \" doc\"",
+            0.0674
+          ],
+          [
+            "Output \" specialist\"",
+            0.0594
+          ],
+          [
+            "Output \" pulmon\"",
+            0.0318
+          ],
+          [
+            "Output \" dr\"",
+            0.0219
+          ],
+          [
+            "Output \" GP\"",
+            0.0193
+          ],
+          [
+            "Output \" physician\"",
+            0.015
+          ],
+          [
+            "Output \" cardi\"",
+            0.015
+          ],
+          [
+            "Output \" Dr\"",
+            0.0103
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "sleep": "sleep specialist.",
+          "specialist": "specialist.\u2011",
+          "pulmon": "pulmonologist."
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "sleep": "sleep specialist.",
+          "doc": "doc. I",
+          "specialist": "specialist. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 17,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Grandpa is having an acute myocardial infarction at dinner, so we're rushing him to the",
+        "patient": "Grandpa's chest suddenly felt crushing and his arm went numb at dinner, so we're rushing him to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.6081,
+        "patient": 0.4095
+      },
+      "language_penalty": -0.1986,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.6081
+          ],
+          [
+            "Output \" ER\"",
+            0.1742
+          ],
+          [
+            "Output \" emergency\"",
+            0.1357
+          ],
+          [
+            "Output \" nearest\"",
+            0.0236
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0077
+          ],
+          [
+            "Output \"\n\"",
+            0.006
+          ],
+          [
+            "Output \" local\"",
+            0.0046
+          ],
+          [
+            "Output \" E\"",
+            0.0041
+          ],
+          [
+            "Output \" ICU\"",
+            0.0036
+          ],
+          [
+            "Output \" ambulance\"",
+            0.003
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.464
+          ],
+          [
+            "Output \" hospital\"",
+            0.4095
+          ],
+          [
+            "Output \" emergency\"",
+            0.0628
+          ],
+          [
+            "Output \" doctor\"",
+            0.0096
+          ],
+          [
+            "Output \" ED\"",
+            0.0055
+          ],
+          [
+            "Output \" E\"",
+            0.0055
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0052
+          ],
+          [
+            "Output \" nearest\"",
+            0.0043
+          ],
+          [
+            "Output \" ICU\"",
+            0.0026
+          ],
+          [
+            "Output \"\n\"",
+            0.0026
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital. He",
+          "ER": "ER. He",
+          "emergency": "emergency room.",
+          "nearest": "nearest hospital."
+        },
+        "patient": {
+          "ER": "ER.\u2011",
+          "hospital": "hospital.\u2011",
+          "emergency": "emergency room.",
+          "doctor": "doctor.\u2011"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 18,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I had an anticoagulant overdose and feel really off, so this afternoon I need to call my",
+        "patient": "I mixed up my new blood thinner doses and feel really off, so this afternoon I need to call my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.5234,
+        "patient": 0.467
+      },
+      "language_penalty": -0.0564,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.5234
+          ],
+          [
+            "Output \" GP\"",
+            0.043
+          ],
+          [
+            "Output \" primary\"",
+            0.0379
+          ],
+          [
+            "Output \" physician\"",
+            0.0295
+          ],
+          [
+            "Output \" cardi\"",
+            0.023
+          ],
+          [
+            "Output \" PC\"",
+            0.0203
+          ],
+          [
+            "Output \" hemat\"",
+            0.0203
+          ],
+          [
+            "Output \" pharmac\"",
+            0.0179
+          ],
+          [
+            "Output \" anticoag\"",
+            0.0158
+          ],
+          [
+            "Output \" H\"",
+            0.0158
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.467
+          ],
+          [
+            "Output \" pharmac\"",
+            0.1338
+          ],
+          [
+            "Output \" cardi\"",
+            0.0632
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.0492
+          ],
+          [
+            "Output \" primary\"",
+            0.0299
+          ],
+          [
+            "Output \" PC\"",
+            0.0205
+          ],
+          [
+            "Output \" nurse\"",
+            0.0181
+          ],
+          [
+            "Output \" clinic\"",
+            0.0181
+          ],
+          [
+            "Output \" prescribing\"",
+            0.0141
+          ],
+          [
+            "Output \" physician\"",
+            0.0124
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "GP": "GP. I",
+          "primary": "primary care physician",
+          "physician": "physician. I"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "pharmac": "pharmacist.",
+          "cardi": "cardiologist.",
+          "pharmacy": "pharmacy and ask"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 19,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At work I went into acute respiratory failure, so my manager told me to get to the",
+        "patient": "At work I suddenly couldn't catch my breath and my lips turned blue, so my manager told me to get to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.4101,
+        "patient": 0.3033
+      },
+      "language_penalty": -0.1068,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.4101
+          ],
+          [
+            "Output \" ER\"",
+            0.1937
+          ],
+          [
+            "Output \" emergency\"",
+            0.1331
+          ],
+          [
+            "Output \" doctor\"",
+            0.0807
+          ],
+          [
+            "Output \" nearest\"",
+            0.0231
+          ],
+          [
+            "Output \" ED\"",
+            0.0124
+          ],
+          [
+            "Output \" Emergency\"",
+            0.008
+          ],
+          [
+            "Output \" doctors\"",
+            0.0075
+          ],
+          [
+            "Output \" clinic\"",
+            0.0071
+          ],
+          [
+            "Output \" E\"",
+            0.0055
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.3033
+          ],
+          [
+            "Output \" ER\"",
+            0.2362
+          ],
+          [
+            "Output \" emergency\"",
+            0.1623
+          ],
+          [
+            "Output \" doctor\"",
+            0.1116
+          ],
+          [
+            "Output \" nearest\"",
+            0.0171
+          ],
+          [
+            "Output \" clinic\"",
+            0.0151
+          ],
+          [
+            "Output \" E\"",
+            0.0092
+          ],
+          [
+            "Output \" doctors\"",
+            0.0081
+          ],
+          [
+            "Output \" urgent\"",
+            0.0063
+          ],
+          [
+            "Output \" ED\"",
+            0.0056
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital.\u2011",
+          "ER": "ER. I",
+          "emergency": "emergency department as",
+          "doctor": "doctor.\u2011"
+        },
+        "patient": {
+          "hospital": "hospital. I",
+          "ER": "ER. I",
+          "emergency": "emergency room.",
+          "doctor": "doctor right away"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 20,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My husband is having an acute ischemic stroke this morning, so I'm driving him straight to the",
+        "patient": "My husband's whole left side went weak and his speech got garbled this morning, so I'm driving him straight to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.479,
+        "patient": 0.2132
+      },
+      "language_penalty": -0.2658,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.479
+          ],
+          [
+            "Output \" ER\"",
+            0.2905
+          ],
+          [
+            "Output \" emergency\"",
+            0.1555
+          ],
+          [
+            "Output \" nearest\"",
+            0.0347
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0088
+          ],
+          [
+            "Output \" E\"",
+            0.0041
+          ],
+          [
+            "Output \" closest\"",
+            0.0032
+          ],
+          [
+            "Output \"\n\"",
+            0.0025
+          ],
+          [
+            "Output \" ED\"",
+            0.0015
+          ],
+          [
+            "Output \" stroke\"",
+            0.0013
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ER\"",
+            0.6566
+          ],
+          [
+            "Output \" hospital\"",
+            0.2132
+          ],
+          [
+            "Output \" emergency\"",
+            0.0784
+          ],
+          [
+            "Output \" E\"",
+            0.0083
+          ],
+          [
+            "Output \" ED\"",
+            0.0073
+          ],
+          [
+            "Output \" nearest\"",
+            0.0064
+          ],
+          [
+            "Output \" er\"",
+            0.0057
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0039
+          ],
+          [
+            "Output \" urgent\"",
+            0.003
+          ],
+          [
+            "Output \" doctor\"",
+            0.0024
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "hospital": "hospital.\u2011",
+          "ER": "ER.\u2011",
+          "emergency": "emergency room.",
+          "nearest": "nearest hospital."
+        },
+        "patient": {
+          "ER": "ER. I",
+          "hospital": "hospital. He",
+          "emergency": "emergency room.",
+          "E": "E.R."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 21,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My teenage son has been expressing suicidal ideation, so first thing tomorrow we're taking him to a",
+        "patient": "My teenage son keeps saying everything feels pointless and he's better off gone, so first thing tomorrow we're taking him to a"
+      },
+      "target_token": "Output \" psychiatrist\"",
+      "probabilities": {
+        "clinical": 0.2785,
+        "patient": 0.1206
+      },
+      "language_penalty": -0.1579,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" psychiatrist\"",
+            0.2785
+          ],
+          [
+            "Output \" mental\"",
+            0.1316
+          ],
+          [
+            "Output \" therapist\"",
+            0.1161
+          ],
+          [
+            "Output \" counsel\"",
+            0.0548
+          ],
+          [
+            "Output \" crisis\"",
+            0.0548
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0484
+          ],
+          [
+            "Output \" psychiatric\"",
+            0.0427
+          ],
+          [
+            "Output \" professional\"",
+            0.0427
+          ],
+          [
+            "Output \" doctor\"",
+            0.0377
+          ],
+          [
+            "Output \" hospital\"",
+            0.0178
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.2552
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.1206
+          ],
+          [
+            "Output \" GP\"",
+            0.0939
+          ],
+          [
+            "Output \" professional\"",
+            0.0939
+          ],
+          [
+            "Output \" mental\"",
+            0.0731
+          ],
+          [
+            "Output \" therapist\"",
+            0.0569
+          ],
+          [
+            "Output \" counsel\"",
+            0.0345
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0269
+          ],
+          [
+            "Output \" crisis\"",
+            0.0269
+          ],
+          [
+            "Output \" school\"",
+            0.0163
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "psychiatrist": "psychiatrist. I",
+          "mental": "mental health professional",
+          "therapist": "therapist. I",
+          "counsel": "counselor."
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "psychiatrist": "psychiatrist. I",
+          "GP": "GP. I",
+          "professional": "professional. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 22,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since the divorce she has narcolepsy with sleep attacks and no one can wake her, so this week she's finally seeing a",
+        "patient": "Ever since the divorce she conks out cold in the middle of talking and no one can wake her, so this week she's finally seeing a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.2182,
+        "patient": 0.0734
+      },
+      "language_penalty": -0.1448,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.2801
+          ],
+          [
+            "Output \" specialist\"",
+            0.2182
+          ],
+          [
+            "Output \" neurolog\"",
+            0.1168
+          ],
+          [
+            "Output \" doctor\"",
+            0.103
+          ],
+          [
+            "Output \" new\"",
+            0.0708
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0552
+          ],
+          [
+            "Output \" neuro\"",
+            0.023
+          ],
+          [
+            "Output \" doc\"",
+            0.0139
+          ],
+          [
+            "Output \" therapist\"",
+            0.0085
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0066
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.3726
+          ],
+          [
+            "Output \" sleep\"",
+            0.176
+          ],
+          [
+            "Output \" neurolog\"",
+            0.0831
+          ],
+          [
+            "Output \" specialist\"",
+            0.0734
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.0647
+          ],
+          [
+            "Output \" shrink\"",
+            0.0445
+          ],
+          [
+            "Output \" therapist\"",
+            0.0185
+          ],
+          [
+            "Output \" new\"",
+            0.0174
+          ],
+          [
+            "Output \" doc\"",
+            0.0154
+          ],
+          [
+            "Output \" real\"",
+            0.0082
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "sleep": "sleep specialist.",
+          "specialist": "specialist. She",
+          "neurolog": "neurologist.",
+          "doctor": "doctor. She"
+        },
+        "patient": {
+          "doctor": "doctor.\u2011",
+          "sleep": "sleep specialist.",
+          "neurolog": "neurologist.",
+          "specialist": "specialist.\u2011"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 23,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At the game my grandpa had an acute myocardial infarction and his arm went cold and numb, so his son shouted for us to call the",
+        "patient": "At the game my grandpa's chest suddenly went crushing and his arm went cold and numb, so his son shouted for us to call the"
+      },
+      "target_token": "Output \" ambulance\"",
+      "probabilities": {
+        "clinical": 0.4014,
+        "patient": 0.3649
+      },
+      "language_penalty": -0.0365,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ambulance\"",
+            0.4014
+          ],
+          [
+            "Output \" param\"",
+            0.2435
+          ],
+          [
+            "Output \" emergency\"",
+            0.1673
+          ],
+          [
+            "Output \" EMS\"",
+            0.0257
+          ],
+          [
+            "Output \" med\"",
+            0.02
+          ],
+          [
+            "Output \" doctor\"",
+            0.0137
+          ],
+          [
+            "Output \" EMT\"",
+            0.0137
+          ],
+          [
+            "Output \" \"",
+            0.0137
+          ],
+          [
+            "Output \" police\"",
+            0.0074
+          ],
+          [
+            "Output \" medical\"",
+            0.0061
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ambulance\"",
+            0.3649
+          ],
+          [
+            "Output \" param\"",
+            0.322
+          ],
+          [
+            "Output \" emergency\"",
+            0.0718
+          ],
+          [
+            "Output \" med\"",
+            0.0264
+          ],
+          [
+            "Output \" EMT\"",
+            0.0233
+          ],
+          [
+            "Output \" doctor\"",
+            0.0206
+          ],
+          [
+            "Output \" \"",
+            0.0182
+          ],
+          [
+            "Output \" police\"",
+            0.0125
+          ],
+          [
+            "Output \" EMS\"",
+            0.011
+          ],
+          [
+            "Output \" game\"",
+            0.0097
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ambulance": "ambulance.\u2011",
+          "param": "paramedics",
+          "emergency": "emergency services.",
+          "EMS": "EMS. The"
+        },
+        "patient": {
+          "ambulance": "ambulance.\u2011",
+          "param": "paramedics",
+          "emergency": "emergency services.",
+          "med": "medics."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 24,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I accidentally took a supratherapeutic dose of my thyroid pills this morning and feel shaky, so right now I really need to phone my",
+        "patient": "I accidentally took a double dose of my thyroid pills this morning and feel shaky, so right now I really need to phone my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.6111,
+        "patient": 0.6409
+      },
+      "language_penalty": 0.0298,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.6111
+          ],
+          [
+            "Output \" end\"",
+            0.1203
+          ],
+          [
+            "Output \" GP\"",
+            0.1062
+          ],
+          [
+            "Output \" pharmac\"",
+            0.0269
+          ],
+          [
+            "Output \" physician\"",
+            0.0127
+          ],
+          [
+            "Output \" doc\"",
+            0.0127
+          ],
+          [
+            "Output \" thyroid\"",
+            0.0068
+          ],
+          [
+            "Output \" Dr\"",
+            0.006
+          ],
+          [
+            "Output \" doctors\"",
+            0.0056
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.0053
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.6409
+          ],
+          [
+            "Output \" end\"",
+            0.1114
+          ],
+          [
+            "Output \" GP\"",
+            0.0765
+          ],
+          [
+            "Output \" pharmac\"",
+            0.0362
+          ],
+          [
+            "Output \" doc\"",
+            0.0133
+          ],
+          [
+            "Output \" Dr\"",
+            0.0104
+          ],
+          [
+            "Output \" physician\"",
+            0.0104
+          ],
+          [
+            "Output \" dr\"",
+            0.0091
+          ],
+          [
+            "Output \" pharmacy\"",
+            0.0071
+          ],
+          [
+            "Output \" thyroid\"",
+            0.0063
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "end": "endocrin",
+          "GP": "GP. I",
+          "pharmac": "pharmacist."
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "end": "endocrin",
+          "GP": "GP. I",
+          "pharmac": "pharmacist."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 25,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "During dinner my wife had acute unilateral facial droop with aphasia, so I'm rushing her straight to the",
+        "patient": "During dinner my wife's half her face suddenly drooped and her words came out garbled, so I'm rushing her straight to the"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.1834,
+        "patient": 0.4401
+      },
+      "language_penalty": 0.2567,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ER\"",
+            0.4401
+          ],
+          [
+            "Output \" ED\"",
+            0.2079
+          ],
+          [
+            "Output \" hospital\"",
+            0.1834
+          ],
+          [
+            "Output \" emergency\"",
+            0.0596
+          ],
+          [
+            "Output \" nearest\"",
+            0.0319
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0081
+          ],
+          [
+            "Output \" A\"",
+            0.0052
+          ],
+          [
+            "Output \" doctor\"",
+            0.0043
+          ],
+          [
+            "Output \" local\"",
+            0.0043
+          ],
+          [
+            "Output \" E\"",
+            0.0038
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.4401
+          ],
+          [
+            "Output \" ER\"",
+            0.3427
+          ],
+          [
+            "Output \" emergency\"",
+            0.0867
+          ],
+          [
+            "Output \" nearest\"",
+            0.0281
+          ],
+          [
+            "Output \" doctor\"",
+            0.0193
+          ],
+          [
+            "Output \" ED\"",
+            0.0133
+          ],
+          [
+            "Output \" A\"",
+            0.0081
+          ],
+          [
+            "Output \" Emergency\"",
+            0.0043
+          ],
+          [
+            "Output \" E\"",
+            0.0043
+          ],
+          [
+            "Output \" local\"",
+            0.0038
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ER": "ER.\u2011",
+          "ED": "ED.\u2011",
+          "hospital": "hospital.\u2011",
+          "emergency": "emergency department."
+        },
+        "patient": {
+          "hospital": "hospital. She",
+          "ER": "ER. She",
+          "emergency": "emergency department.",
+          "nearest": "nearest hospital."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    }
+  ]
+}
