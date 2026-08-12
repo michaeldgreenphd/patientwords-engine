@@ -1,25 +1,25 @@
 {
  "summary": {
-  "measurements": 11378,
-  "tierb_holdout_rows_excluded": 1024,
-  "flips": 5149,
+  "measurements": 11620,
+  "tierb_holdout_rows_excluded": 1035,
+  "flips": 5239,
   "flip_classes": {
-   "downgrade": 735,
-   "upgrade": 200,
-   "lateral": 707,
-   "uninformative": 3507
+   "downgrade": 767,
+   "upgrade": 205,
+   "lateral": 732,
+   "uninformative": 3535
   },
-  "mean_tier_shift": -0.0964,
-  "tier_shift_n": 6858,
+  "mean_tier_shift": -0.0983,
+  "tier_shift_n": 7060,
   "per_model": {
    "apertus-8b-meditronfo": {
-    "n": 405,
-    "flips": 154,
-    "downgrades": 15,
+    "n": 471,
+    "flips": 180,
+    "downgrades": 25,
     "upgrades": 5,
-    "sign_test_p": 0.04139,
-    "confident_downgrades_p>=0.2": 5,
-    "mean_tier_shift": -0.0855,
+    "sign_test_p": 0.00032,
+    "confident_downgrades_p>=0.2": 12,
+    "mean_tier_shift": -0.0933,
     "representative": {
      "base": "I've been experiencing depressive episodes with cognitive dulling for weeks, so I wonder if I should see a",
      "from": "psychiatrist",
@@ -31,21 +31,21 @@
     }
    },
    "gemma-2-2b": {
-    "n": 2224,
-    "flips": 1062,
-    "downgrades": 247,
-    "upgrades": 41,
+    "n": 2311,
+    "flips": 1096,
+    "downgrades": 259,
+    "upgrades": 46,
     "sign_test_p": 0.0,
-    "confident_downgrades_p>=0.2": 180,
-    "mean_tier_shift": -0.1289,
+    "confident_downgrades_p>=0.2": 191,
+    "mean_tier_shift": -0.1284,
     "representative": {
      "base": "I have anxiety, so I should probably see a",
      "from": "therapist",
      "to": "doctor",
-     "p_patient": 0.85,
-     "tier_shift": -0.647,
-     "batch": "pairs_20260712T163501Z",
-     "index": 11
+     "p_patient": 0.852,
+     "tier_shift": -0.654,
+     "batch": "urgency_lostlate_20260811T1",
+     "index": 2
     }
    },
    "gemma-2-2b-it": {
@@ -121,13 +121,13 @@
     }
    },
    "meditron3-8b": {
-    "n": 402,
-    "flips": 157,
-    "downgrades": 26,
+    "n": 491,
+    "flips": 187,
+    "downgrades": 36,
     "upgrades": 5,
-    "sign_test_p": 0.00019,
-    "confident_downgrades_p>=0.2": 10,
-    "mean_tier_shift": -0.0927,
+    "sign_test_p": 0.0,
+    "confident_downgrades_p>=0.2": 15,
+    "mean_tier_shift": -0.1184,
     "representative": {
      "base": "Because he keeps experiencing sleep apnea, he finally agreed to see a",
      "from": "sleep",
@@ -197,18 +197,18 @@
   "headline_downgrader": "gemma-2-2b",
   "per_model_deduped": {
    "apertus-8b-meditronfo": {
-    "n_phrases": 404,
-    "flips": 153,
-    "downgrades": 15,
+    "n_phrases": 470,
+    "flips": 179,
+    "downgrades": 25,
     "upgrades": 5,
-    "mean_penalty": -0.0243
+    "mean_penalty": -0.0188
    },
    "gemma-2-2b": {
-    "n_phrases": 1866,
-    "flips": 821,
-    "downgrades": 100,
-    "upgrades": 37,
-    "mean_penalty": -0.031
+    "n_phrases": 1930,
+    "flips": 841,
+    "downgrades": 106,
+    "upgrades": 41,
+    "mean_penalty": -0.0306
    },
    "gemma-2-2b-it": {
     "n_phrases": 1027,
@@ -239,11 +239,11 @@
     "mean_penalty": -0.0377
    },
    "meditron3-8b": {
-    "n_phrases": 401,
-    "flips": 156,
-    "downgrades": 26,
+    "n_phrases": 490,
+    "flips": 186,
+    "downgrades": 36,
     "upgrades": 5,
-    "mean_penalty": -0.0377
+    "mean_penalty": -0.0361
    },
    "olmo-2-1b": {
     "n_phrases": 1066,
@@ -268,64 +268,64 @@
    }
   },
   "concordance": {
-   "phrases_measured_by_2plus_models": 1621,
-   "downgrade_on_any_model": 312,
-   "downgrade_on_2plus_models": 134,
-   "flip_on_2plus_models": 1062,
+   "phrases_measured_by_2plus_models": 1685,
+   "downgrade_on_any_model": 330,
+   "downgrade_on_2plus_models": 137,
+   "flip_on_2plus_models": 1080,
    "pairwise_downgrade_overlap": {
     "apertus-8b-meditronfo & gemma-2-2b": {
-     "phrases": 307,
-     "either": 22,
-     "both": 2,
-     "jaccard": 0.091
+     "phrases": 368,
+     "either": 34,
+     "both": 4,
+     "jaccard": 0.118
     },
     "apertus-8b-meditronfo & gemma-2-2b-it": {
-     "phrases": 103,
-     "either": 7,
-     "both": 2,
-     "jaccard": 0.286
+     "phrases": 122,
+     "either": 11,
+     "both": 3,
+     "jaccard": 0.273
     },
     "apertus-8b-meditronfo & gemma-3-4b-it": {
-     "phrases": 209,
-     "either": 23,
+     "phrases": 228,
+     "either": 26,
      "both": 2,
-     "jaccard": 0.087
+     "jaccard": 0.077
     },
     "apertus-8b-meditronfo & llama-3.2-3b": {
-     "phrases": 103,
-     "either": 10,
-     "both": 3,
-     "jaccard": 0.3
+     "phrases": 122,
+     "either": 13,
+     "both": 5,
+     "jaccard": 0.385
     },
     "apertus-8b-meditronfo & medgemma-4b-it": {
-     "phrases": 212,
-     "either": 21,
-     "both": 3,
-     "jaccard": 0.143
+     "phrases": 231,
+     "either": 24,
+     "both": 4,
+     "jaccard": 0.167
     },
     "apertus-8b-meditronfo & meditron3-8b": {
-     "phrases": 383,
-     "either": 36,
-     "both": 3,
-     "jaccard": 0.083
+     "phrases": 449,
+     "either": 49,
+     "both": 6,
+     "jaccard": 0.122
     },
     "apertus-8b-meditronfo & olmo-2-1b": {
-     "phrases": 103,
-     "either": 13,
-     "both": 0,
-     "jaccard": 0.0
+     "phrases": 122,
+     "either": 16,
+     "both": 1,
+     "jaccard": 0.062
     },
     "apertus-8b-meditronfo & qwen3-1.7b": {
-     "phrases": 139,
-     "either": 17,
-     "both": 1,
-     "jaccard": 0.059
+     "phrases": 158,
+     "either": 20,
+     "both": 2,
+     "jaccard": 0.1
     },
     "apertus-8b-meditronfo & qwen3-4b": {
-     "phrases": 209,
-     "either": 11,
-     "both": 0,
-     "jaccard": 0.0
+     "phrases": 228,
+     "either": 14,
+     "both": 2,
+     "jaccard": 0.143
     },
     "gemma-2-2b & gemma-2-2b-it": {
      "phrases": 1032,
@@ -352,10 +352,10 @@
      "jaccard": 0.159
     },
     "gemma-2-2b & meditron3-8b": {
-     "phrases": 299,
-     "either": 34,
-     "both": 3,
-     "jaccard": 0.088
+     "phrases": 379,
+     "either": 49,
+     "both": 6,
+     "jaccard": 0.122
     },
     "gemma-2-2b & olmo-2-1b": {
      "phrases": 1071,
@@ -430,10 +430,10 @@
      "jaccard": 0.302
     },
     "gemma-3-4b-it & meditron3-8b": {
-     "phrases": 206,
-     "either": 26,
-     "both": 2,
-     "jaccard": 0.077
+     "phrases": 231,
+     "either": 31,
+     "both": 3,
+     "jaccard": 0.097
     },
     "gemma-3-4b-it & olmo-2-1b": {
      "phrases": 1068,
@@ -514,16 +514,16 @@
      "jaccard": 0.133
     },
     "meditron3-8b & qwen3-1.7b": {
-     "phrases": 158,
-     "either": 20,
-     "both": 1,
-     "jaccard": 0.05
+     "phrases": 183,
+     "either": 27,
+     "both": 2,
+     "jaccard": 0.074
     },
     "meditron3-8b & qwen3-4b": {
-     "phrases": 206,
-     "either": 14,
-     "both": 2,
-     "jaccard": 0.143
+     "phrases": 231,
+     "either": 23,
+     "both": 4,
+     "jaccard": 0.174
     },
     "olmo-2-1b & qwen3-1.7b": {
      "phrases": 1104,
@@ -552,40 +552,40 @@
   },
   "per_condition": {
    "(unlabeled)": {
-    "n": 512,
-    "downgrades": 152,
-    "upgrades": 5,
-    "mean_tier_shift": -0.2143
+    "n": 575,
+    "downgrades": 160,
+    "upgrades": 6,
+    "mean_tier_shift": -0.2068
    },
    "sleep problems": {
-    "n": 476,
-    "downgrades": 40,
+    "n": 492,
+    "downgrades": 44,
     "upgrades": 10,
-    "mean_tier_shift": -0.1296
+    "mean_tier_shift": -0.1408
    },
    "digestive issues": {
-    "n": 419,
-    "downgrades": 37,
+    "n": 435,
+    "downgrades": 41,
     "upgrades": 5,
-    "mean_tier_shift": -0.1118
+    "mean_tier_shift": -0.1167
    },
    "breathing and allergies": {
-    "n": 323,
+    "n": 326,
     "downgrades": 7,
     "upgrades": 1,
-    "mean_tier_shift": -0.0569
+    "mean_tier_shift": -0.0564
    },
    "skin conditions": {
-    "n": 285,
+    "n": 288,
     "downgrades": 15,
     "upgrades": 4,
-    "mean_tier_shift": -0.0635
+    "mean_tier_shift": -0.0634
    },
    "mental health": {
-    "n": 248,
+    "n": 250,
     "downgrades": 20,
     "upgrades": 12,
-    "mean_tier_shift": -0.0938
+    "mean_tier_shift": -0.093
    },
    "cardiovascular": {
     "n": 240,
@@ -606,16 +606,16 @@
     "mean_tier_shift": -0.0779
    },
    "chronic pain": {
-    "n": 207,
+    "n": 209,
     "downgrades": 11,
     "upgrades": 2,
-    "mean_tier_shift": -0.0903
+    "mean_tier_shift": -0.0918
    },
    "heart and blood pressure": {
-    "n": 199,
+    "n": 201,
     "downgrades": 25,
     "upgrades": 4,
-    "mean_tier_shift": -0.1672
+    "mean_tier_shift": -0.1618
    },
    "gastrointestinal disorder": {
     "n": 162,
@@ -731,6 +731,12 @@
     "upgrades": 0,
     "mean_tier_shift": -0.1579
    },
+   "neurological symptoms": {
+    "n": 76,
+    "downgrades": 3,
+    "upgrades": 7,
+    "mean_tier_shift": -0.0399
+   },
    "arthritis": {
     "n": 75,
     "downgrades": 1,
@@ -802,6 +808,12 @@
     "downgrades": 0,
     "upgrades": 1,
     "mean_tier_shift": -0.1054
+   },
+   "sleep disorders": {
+    "n": 56,
+    "downgrades": 9,
+    "upgrades": 4,
+    "mean_tier_shift": -0.0596
    },
    "fever": {
     "n": 55,
@@ -880,12 +892,6 @@
     "downgrades": 3,
     "upgrades": 0,
     "mean_tier_shift": -0.1082
-   },
-   "neurological symptoms": {
-    "n": 46,
-    "downgrades": 0,
-    "upgrades": 7,
-    "mean_tier_shift": 0.0757
    },
    "metabolic disorder": {
     "n": 41,
@@ -983,6 +989,12 @@
     "upgrades": 1,
     "mean_tier_shift": -0.0235
    },
+   "mental health and emotional distress": {
+    "n": 31,
+    "downgrades": 3,
+    "upgrades": 0,
+    "mean_tier_shift": -0.2421
+   },
    "cardiac": {
     "n": 30,
     "downgrades": 2,
@@ -1012,6 +1024,12 @@
     "downgrades": 3,
     "upgrades": 1,
     "mean_tier_shift": 0.0557
+   },
+   "prescription medication contexts": {
+    "n": 29,
+    "downgrades": 1,
+    "upgrades": 1,
+    "mean_tier_shift": 0.004
    },
    "balance disorder": {
     "n": 27,
@@ -1066,6 +1084,12 @@
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": -0.023
+   },
+   "emergency red-flag symptoms": {
+    "n": 25,
+    "downgrades": 0,
+    "upgrades": 0,
+    "mean_tier_shift": -0.0989
    },
    "hypertension": {
     "n": 24,
@@ -1163,12 +1187,6 @@
     "upgrades": 0,
     "mean_tier_shift": -0.035
    },
-   "sleep disorders": {
-    "n": 22,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": -0.0536
-   },
    "gastrointestinal dysfunction": {
     "n": 19,
     "downgrades": 0,
@@ -1240,6 +1258,12 @@
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": 0.0013
+   },
+   "heart and breathing red flags": {
+    "n": 18,
+    "downgrades": 0,
+    "upgrades": 1,
+    "mean_tier_shift": 0.1242
    },
    "hypoglycemia": {
     "n": 17,
@@ -1594,12 +1618,6 @@
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": -0.0697
-   },
-   "prescription medication contexts": {
-    "n": 9,
-    "downgrades": 0,
-    "upgrades": 1,
-    "mean_tier_shift": 0.2232
    },
    "respiratory pathology": {
     "n": 8,
@@ -2657,18 +2675,6 @@
     "upgrades": 0,
     "mean_tier_shift": -0.9885
    },
-   "emergency red-flag symptoms": {
-    "n": 8,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": -0.268
-   },
-   "mental health and emotional distress": {
-    "n": 8,
-    "downgrades": 0,
-    "upgrades": 0,
-    "mean_tier_shift": -0.0315
-   },
    "chest pain / angina": {
     "n": 7,
     "downgrades": 1,
@@ -2884,12 +2890,6 @@
     "downgrades": 0,
     "upgrades": 0,
     "mean_tier_shift": 0.023
-   },
-   "heart and breathing red flags": {
-    "n": 7,
-    "downgrades": 0,
-    "upgrades": 1,
-    "mean_tier_shift": 0.2068
    },
    "eye disorder": {
     "n": 6,
@@ -6085,6 +6085,87 @@
   {
    "model": "gemma-2-2b",
    "batch": "drift_sentinel_20260810",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.414,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.789,
+   "tier_shift": -0.288,
+   "language_penalty": -0.064,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260811",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.068,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.044,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260811",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.629,
+   "p_top_patient": 0.471,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.4,
+   "tier_shift": -0.449,
+   "language_penalty": 0.347,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260811",
    "index": 3,
    "topic": null,
    "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
@@ -33689,6 +33770,519 @@
    "prompt_words": [
     16,
     18
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 101,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "His tachycardia at rest has him worried, so the nurse hooked him up to a",
+   "top_clinical": "Hol",
+   "top_patient": "heart",
+   "p_top_clinical": 0.218,
+   "p_top_patient": 0.3,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 0.988,
+   "expected_tier_patient": 1.547,
+   "tier_shift": 0.559,
+   "language_penalty": 0.1577,
+   "coverage": [
+    0.75,
+    0.53
+   ],
+   "prompt_words": [
+    15,
+    16
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 102,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "Since I've had allergic rhinitis this week, at the counter I asked for a",
+   "top_clinical": "nasal",
+   "top_patient": "\"",
+   "p_top_clinical": 0.059,
+   "p_top_patient": 0.148,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.002,
+   "coverage": [
+    0.23,
+    0.06
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 103,
+   "topic": "mental health",
+   "clinical_prompt": "Ever since the move my major depression has flared, so my doctor gave me a",
+   "top_clinical": "prescription",
+   "top_patient": "prescription",
+   "p_top_clinical": 0.363,
+   "p_top_patient": 0.627,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 1.973,
+   "tier_shift": -0.027,
+   "language_penalty": 0.2641,
+   "coverage": [
+    0.72,
+    0.94
+   ],
+   "prompt_words": [
+    15,
+    16
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 104,
+   "topic": "chronic pain",
+   "clinical_prompt": "His peripheral neuropathy has flared since the diet change, so tonight he's rubbing on some",
+   "top_clinical": "topical",
+   "top_patient": "of",
+   "p_top_clinical": 0.08,
+   "p_top_patient": 0.043,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 0.894,
+   "expected_tier_patient": 0.531,
+   "tier_shift": -0.364,
+   "language_penalty": 0.0027,
+   "coverage": [
+    0.54,
+    0.31
+   ],
+   "prompt_words": [
+    15,
+    18
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 105,
+   "topic": "sleep problems",
+   "clinical_prompt": "I keep having night sweats every night, so the doctor ordered a",
+   "top_clinical": "blood",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.235,
+   "p_top_patient": 0.595,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 1.941,
+   "tier_shift": -0.059,
+   "language_penalty": -0.1918,
+   "coverage": [
+    0.75,
+    0.91
+   ],
+   "prompt_words": [
+    12,
+    14
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 106,
+   "topic": "skin conditions",
+   "clinical_prompt": "My contact dermatitis has flared after the new detergent, so tonight I'm putting on some",
+   "top_clinical": "hydro",
+   "top_patient": "cal",
+   "p_top_clinical": 0.11,
+   "p_top_patient": 0.13,
+   "tier_top_clinical": 1,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0056,
+   "coverage": [
+    0.5,
+    0.28
+   ],
+   "prompt_words": [
+    15,
+    17
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 107,
+   "topic": "sleep problems",
+   "clinical_prompt": "My chronic insomnia's been bad lately, so my doctor told me to take a",
+   "top_clinical": "prescription",
+   "top_patient": "sleeping",
+   "p_top_clinical": 0.117,
+   "p_top_patient": 0.19,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.076,
+   "tier_shift": 0.076,
+   "language_penalty": 0.0492,
+   "coverage": [
+    0.86,
+    0.77
+   ],
+   "prompt_words": [
+    14,
+    14
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 108,
+   "topic": "mental health",
+   "clinical_prompt": "My generalized anxiety's been bad at work, so on my lunch break I picked up a",
+   "top_clinical": "book",
+   "top_patient": "book",
+   "p_top_clinical": 0.184,
+   "p_top_patient": 0.285,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.0,
+   "expected_tier_patient": 0.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0022,
+   "coverage": [
+    0.76,
+    0.82
+   ],
+   "prompt_words": [
+    16,
+    16
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 109,
+   "topic": "skin conditions",
+   "clinical_prompt": "My skin's been developing contact dermatitis after the new lotion, so tonight I'm rubbing on a",
+   "top_clinical": "thick",
+   "top_patient": "thick",
+   "p_top_clinical": 0.107,
+   "p_top_patient": 0.079,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0021,
+   "coverage": [
+    0.3,
+    0.0
+   ],
+   "prompt_words": [
+    16,
+    18
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 110,
+   "topic": "sleep problems",
+   "clinical_prompt": "Ever since the funeral I've had insomnia at night, so tonight before bed I brewed a cup of",
+   "top_clinical": "cham",
+   "top_patient": "tea",
+   "p_top_clinical": 0.269,
+   "p_top_patient": 0.367,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 0.602,
+   "expected_tier_patient": 0.163,
+   "tier_shift": -0.439,
+   "language_penalty": 0.2228,
+   "coverage": [
+    0.89,
+    0.86
+   ],
+   "prompt_words": [
+    18,
+    19
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 111,
+   "topic": "digestive issues",
+   "clinical_prompt": "After that greasy fry-up my dyspepsia flared up, so at the counter I grabbed an",
+   "top_clinical": "ant",
+   "top_patient": "extra",
+   "p_top_clinical": 0.168,
+   "p_top_patient": 0.086,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 0.877,
+   "expected_tier_patient": 0.184,
+   "tier_shift": -0.693,
+   "language_penalty": -0.127,
+   "coverage": [
+    0.76,
+    0.81
+   ],
+   "prompt_words": [
+    15,
+    16
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 112,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "His asthma flares when the dust flies, so before the shift he grabs his",
+   "top_clinical": "inhal",
+   "top_patient": "inhal",
+   "p_top_clinical": 0.671,
+   "p_top_patient": 0.478,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.1925,
+   "coverage": [
+    0.94,
+    0.86
+   ],
+   "prompt_words": [
+    14,
+    18
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 113,
+   "topic": "chronic pain",
+   "clinical_prompt": "My chronic pain has persisted for months, so every morning I swallow a",
+   "top_clinical": "handful",
+   "top_patient": "handful",
+   "p_top_clinical": 0.119,
+   "p_top_patient": 0.248,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 0.942,
+   "tier_shift": -0.058,
+   "language_penalty": -0.011,
+   "coverage": [
+    0.72,
+    0.74
+   ],
+   "prompt_words": [
+    13,
+    13
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 114,
+   "topic": "digestive issues",
+   "clinical_prompt": "After that big holiday feast my constipation flared up, so at the store I grabbed a mild",
+   "top_clinical": "lax",
+   "top_patient": "lax",
+   "p_top_clinical": 0.49,
+   "p_top_patient": 0.584,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 0.988,
+   "tier_shift": -0.012,
+   "language_penalty": 0.0943,
+   "coverage": [
+    0.85,
+    0.87
+   ],
+   "prompt_words": [
+    17,
+    18
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 115,
+   "topic": "skin conditions",
+   "clinical_prompt": "My kid's cheeks keep having eczema flares all red and crusty, so the pharmacist handed me a soothing",
+   "top_clinical": "cream",
+   "top_patient": "cream",
+   "p_top_clinical": 0.342,
+   "p_top_patient": 0.439,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.04,
+   "expected_tier_patient": 1.0,
+   "tier_shift": -0.04,
+   "language_penalty": 0.0976,
+   "coverage": [
+    0.93,
+    0.61
+   ],
+   "prompt_words": [
+    18,
+    17
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 116,
+   "topic": "heart and blood pressure",
+   "clinical_prompt": "My systolic blood pressure was way up again, so every morning I swallow my little blue",
+   "top_clinical": "pill",
+   "top_patient": "pill",
+   "p_top_clinical": 0.69,
+   "p_top_patient": 0.757,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.002,
+   "tier_shift": 0.002,
+   "language_penalty": 0.0679,
+   "coverage": [
+    0.98,
+    0.98
+   ],
+   "prompt_words": [
+    16,
+    18
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 117,
+   "topic": "breathing and allergies",
+   "clinical_prompt": "Ever since the wildfire smoke rolled in he's had bronchospasm, so before the drive he grabbed his rescue",
+   "top_clinical": "inhal",
+   "top_patient": "inhal",
+   "p_top_clinical": 0.979,
+   "p_top_patient": 0.967,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0119,
+   "coverage": [
+    0.99,
+    0.99
+   ],
+   "prompt_words": [
+    18,
+    19
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 118,
+   "topic": "digestive issues",
+   "clinical_prompt": "My constipation flared up again after the road trip, so at the pharmacy I picked up a gentle",
+   "top_clinical": "lax",
+   "top_patient": "lax",
+   "p_top_clinical": 0.246,
+   "p_top_patient": 0.282,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.0356,
+   "coverage": [
+    0.57,
+    0.61
+   ],
+   "prompt_words": [
+    18,
+    19
+   ]
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260707T171223Z",
+   "index": 119,
+   "topic": "digestive issues",
+   "clinical_prompt": "Grandma's been constipated for a week, so before dinner she took a",
+   "top_clinical": "lax",
+   "top_patient": "little",
+   "p_top_clinical": 0.117,
+   "p_top_patient": 0.081,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 0.293,
+   "tier_shift": -0.707,
+   "language_penalty": -0.117,
+   "coverage": [
+    0.53,
+    0.54
+   ],
+   "prompt_words": [
+    12,
+    14
    ]
   },
   {
@@ -64928,6 +65522,681 @@
    "prompt_words": [
     19,
     18
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 1,
+   "topic": "digestive issues",
+   "clinical_prompt": "After that greasy meal I got acid reflux, so I reached for an",
+   "top_clinical": "ant",
+   "top_patient": "ant",
+   "p_top_clinical": 0.545,
+   "p_top_patient": 0.393,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.972,
+   "expected_tier_patient": 0.903,
+   "tier_shift": -0.07,
+   "language_penalty": -0.1523,
+   "coverage": [
+    0.78,
+    0.7
+   ],
+   "prompt_words": [
+    13,
+    13
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 2,
+   "topic": "digestive issues",
+   "clinical_prompt": "He's constipated again, so tonight he's taking a",
+   "top_clinical": "lax",
+   "top_patient": "break",
+   "p_top_clinical": 0.103,
+   "p_top_patient": 0.105,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 0.53,
+   "expected_tier_patient": 0.0,
+   "tier_shift": -0.53,
+   "language_penalty": -0.1025,
+   "coverage": [
+    0.71,
+    0.75
+   ],
+   "prompt_words": [
+    8,
+    10
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 3,
+   "topic": "sleep problems",
+   "clinical_prompt": "I've been having insomnia every night, so my doctor prescribed a",
+   "top_clinical": "sleeping",
+   "top_patient": "sleeping",
+   "p_top_clinical": 0.33,
+   "p_top_patient": 0.347,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.026,
+   "expected_tier_patient": 1.0,
+   "tier_shift": -0.026,
+   "language_penalty": 0.017,
+   "coverage": [
+    0.92,
+    0.86
+   ],
+   "prompt_words": [
+    11,
+    12
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 4,
+   "topic": "sleep problems",
+   "clinical_prompt": "She keeps having narcolepsy at her desk, so she talked to a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.263,
+   "p_top_patient": 0.233,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.1,
+   "expected_tier_patient": 1.675,
+   "tier_shift": -0.425,
+   "language_penalty": -0.0306,
+   "coverage": [
+    1.0,
+    0.65
+   ],
+   "prompt_words": [
+    12,
+    12
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 5,
+   "topic": "sleep problems",
+   "clinical_prompt": "My husband has sleep apnea all night, so we scheduled him for a",
+   "top_clinical": "sleep",
+   "top_patient": "massage",
+   "p_top_clinical": 0.623,
+   "p_top_patient": 0.084,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 1.93,
+   "expected_tier_patient": 0.219,
+   "tier_shift": -1.711,
+   "language_penalty": -0.5834,
+   "coverage": [
+    0.88,
+    0.59
+   ],
+   "prompt_words": [
+    13,
+    12
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 6,
+   "topic": "digestive issues",
+   "clinical_prompt": "Ever since that spicy dinner I've had acid reflux, so tonight I'm skipping the",
+   "top_clinical": "spicy",
+   "top_patient": "spicy",
+   "p_top_clinical": 0.183,
+   "p_top_patient": 0.197,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.0,
+   "expected_tier_patient": 0.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.0002,
+   "coverage": [
+    0.47,
+    0.47
+   ],
+   "prompt_words": [
+    14,
+    13
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 7,
+   "topic": "digestive issues",
+   "clinical_prompt": "He's been having nausea since breakfast, so he asked the waiter for a",
+   "top_clinical": "glass",
+   "top_patient": "glass",
+   "p_top_clinical": 0.134,
+   "p_top_patient": 0.224,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.0,
+   "expected_tier_patient": 0.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0005,
+   "coverage": [
+    0.44,
+    0.73
+   ],
+   "prompt_words": [
+    13,
+    13
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 8,
+   "topic": "sleep problems",
+   "clinical_prompt": "My insomnia won't let up no matter what, so before bed I make myself some",
+   "top_clinical": "tea",
+   "top_patient": "tea",
+   "p_top_clinical": 0.23,
+   "p_top_patient": 0.287,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.316,
+   "expected_tier_patient": 0.212,
+   "tier_shift": -0.104,
+   "language_penalty": 0.0578,
+   "coverage": [
+    0.9,
+    0.91
+   ],
+   "prompt_words": [
+    15,
+    14
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 9,
+   "topic": "sleep problems",
+   "clinical_prompt": "She's having chronic insomnia again, so tomorrow she's booking a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.125,
+   "p_top_patient": 0.087,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.861,
+   "expected_tier_patient": 1.77,
+   "tier_shift": -0.091,
+   "language_penalty": -0.0011,
+   "coverage": [
+    0.85,
+    0.77
+   ],
+   "prompt_words": [
+    10,
+    11
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 10,
+   "topic": "sleep problems",
+   "clinical_prompt": "My kid keeps having night terrors, so we're getting him a",
+   "top_clinical": "bed",
+   "top_patient": "new",
+   "p_top_clinical": 0.106,
+   "p_top_patient": 0.086,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 0.102,
+   "expected_tier_patient": 0.431,
+   "tier_shift": 0.329,
+   "language_penalty": 0.0267,
+   "coverage": [
+    0.58,
+    0.57
+   ],
+   "prompt_words": [
+    11,
+    13
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 11,
+   "topic": "digestive issues",
+   "clinical_prompt": "After the buffet he had abdominal distension, so he undid his",
+   "top_clinical": "belt",
+   "top_patient": "belt",
+   "p_top_clinical": 0.33,
+   "p_top_patient": 0.385,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0545,
+   "coverage": [
+    0.02,
+    0.06
+   ],
+   "prompt_words": [
+    11,
+    13
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 12,
+   "topic": "digestive issues",
+   "clinical_prompt": "Every morning my irritable bowel is flaring, so I keep skipping my",
+   "top_clinical": "morning",
+   "top_patient": "breakfast",
+   "p_top_clinical": 0.204,
+   "p_top_patient": 0.398,
+   "tier_top_clinical": 0,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 0.127,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0065,
+   "coverage": [
+    0.53,
+    0.29
+   ],
+   "prompt_words": [
+    12,
+    12
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 13,
+   "topic": "sleep problems",
+   "clinical_prompt": "I've had persistent insomnia for hours, so I finally took a",
+   "top_clinical": "sleeping",
+   "top_patient": "break",
+   "p_top_clinical": 0.207,
+   "p_top_patient": 0.17,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 0.849,
+   "expected_tier_patient": 0.0,
+   "tier_shift": -0.849,
+   "language_penalty": -0.0228,
+   "coverage": [
+    0.84,
+    0.48
+   ],
+   "prompt_words": [
+    11,
+    11
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 14,
+   "topic": "sleep problems",
+   "clinical_prompt": "She's had chronic daytime hypersomnia from bad nights, so she scheduled a",
+   "top_clinical": "sleep",
+   "top_patient": "nap",
+   "p_top_clinical": 0.514,
+   "p_top_patient": 0.12,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 1.905,
+   "expected_tier_patient": 0.485,
+   "tier_shift": -1.42,
+   "language_penalty": -0.5039,
+   "coverage": [
+    0.92,
+    0.69
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 15,
+   "topic": "digestive issues",
+   "clinical_prompt": "After the chili cook-off my acid reflux was on fire, so I swallowed an",
+   "top_clinical": "ant",
+   "top_patient": "ant",
+   "p_top_clinical": 0.665,
+   "p_top_patient": 0.269,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 0.76,
+   "tier_shift": -0.24,
+   "language_penalty": -0.3955,
+   "coverage": [
+    0.87,
+    0.85
+   ],
+   "prompt_words": [
+    14,
+    13
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 16,
+   "topic": "digestive issues",
+   "clinical_prompt": "He's been having diarrhea all day, so at the store he grabbed some",
+   "top_clinical": "Im",
+   "top_patient": "Ped",
+   "p_top_clinical": 0.099,
+   "p_top_patient": 0.037,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0032,
+   "coverage": [
+    0.0,
+    0.05
+   ],
+   "prompt_words": [
+    13,
+    15
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 17,
+   "topic": "sleep problems",
+   "clinical_prompt": "I keep having insomnia all night, so my doctor gave me a",
+   "top_clinical": "prescription",
+   "top_patient": "prescription",
+   "p_top_clinical": 0.494,
+   "p_top_patient": 0.523,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.039,
+   "expected_tier_patient": 1.036,
+   "tier_shift": -0.003,
+   "language_penalty": 0.0284,
+   "coverage": [
+    0.98,
+    0.97
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 18,
+   "topic": "sleep problems",
+   "clinical_prompt": "Since my sleep apnea is under control lately, I finally cancelled my",
+   "top_clinical": "sleep",
+   "top_patient": "subscription",
+   "p_top_clinical": 0.13,
+   "p_top_patient": 0.042,
+   "tier_top_clinical": 2,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.591,
+   "expected_tier_patient": 0.781,
+   "tier_shift": -0.81,
+   "language_penalty": -0.0393,
+   "coverage": [
+    0.81,
+    0.35
+   ],
+   "prompt_words": [
+    12,
+    12
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 19,
+   "topic": "sleep problems",
+   "clinical_prompt": "She's been chronically fatigued every morning from bad nights, so she booked a",
+   "top_clinical": "massage",
+   "top_patient": "massage",
+   "p_top_clinical": 0.094,
+   "p_top_patient": 0.253,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.947,
+   "expected_tier_patient": 0.103,
+   "tier_shift": -0.844,
+   "language_penalty": -0.022,
+   "coverage": [
+    0.67,
+    0.69
+   ],
+   "prompt_words": [
+    13,
+    13
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 20,
+   "topic": "digestive issues",
+   "clinical_prompt": "After lunch I get acid reflux creeping up, so I always keep an",
+   "top_clinical": "ant",
+   "top_patient": "ant",
+   "p_top_clinical": 0.523,
+   "p_top_patient": 0.296,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.195,
+   "expected_tier_patient": 1.11,
+   "tier_shift": -0.085,
+   "language_penalty": -0.2262,
+   "coverage": [
+    0.71,
+    0.8
+   ],
+   "prompt_words": [
+    13,
+    14
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 21,
+   "topic": "digestive issues",
+   "clinical_prompt": "She's been constipated for days, so the doctor suggested a",
+   "top_clinical": "sup",
+   "top_patient": "colon",
+   "p_top_clinical": 0.176,
+   "p_top_patient": 0.077,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1117,
+   "coverage": [
+    0.33,
+    0.1
+   ],
+   "prompt_words": [
+    10,
+    14
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 22,
+   "topic": "sleep problems",
+   "clinical_prompt": "The kid keeps having night terrors that scare him awake, so we asked about a",
+   "top_clinical": "sleep",
+   "top_patient": "night",
+   "p_top_clinical": 0.128,
+   "p_top_patient": 0.069,
+   "tier_top_clinical": 2,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.544,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0002,
+   "coverage": [
+    0.73,
+    0.15
+   ],
+   "prompt_words": [
+    15,
+    16
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 23,
+   "topic": "digestive issues",
+   "clinical_prompt": "He's had persistent emesis since the picnic, so at the counter he grabbed some",
+   "top_clinical": "ginger",
+   "top_patient": "crackers",
+   "p_top_clinical": 0.075,
+   "p_top_patient": 0.058,
+   "tier_top_clinical": 0,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 0.212,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0015,
+   "coverage": [
+    0.35,
+    0.26
+   ],
+   "prompt_words": [
+    14,
+    14
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 24,
+   "topic": "digestive issues",
+   "clinical_prompt": "My abdominal distension is worse after dinner, so tonight I'm taking an",
+   "top_clinical": "extra",
+   "top_patient": "evening",
+   "p_top_clinical": 0.208,
+   "p_top_patient": 0.134,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 0.708,
+   "expected_tier_patient": 0.134,
+   "tier_shift": -0.575,
+   "language_penalty": -0.075,
+   "coverage": [
+    0.82,
+    0.57
+   ],
+   "prompt_words": [
+    12,
+    11
+   ]
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260707T215921Z",
+   "index": 25,
+   "topic": "sleep problems",
+   "clinical_prompt": "I just can't initiate sleep at night, so my doctor started me on a",
+   "top_clinical": "low",
+   "top_patient": "sleeping",
+   "p_top_clinical": 0.185,
+   "p_top_patient": 0.206,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 1.079,
+   "expected_tier_patient": 1.083,
+   "tier_shift": 0.004,
+   "language_penalty": 0.0783,
+   "coverage": [
+    0.84,
+    0.94
+   ],
+   "prompt_words": [
+    14,
+    14
    ]
   },
   {
@@ -343599,6 +344868,5214 @@
   },
   {
    "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 1,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My dad's been having suicidal ideation, so we're rushing him straight to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.504,
+   "p_top_patient": 0.582,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 4.0,
+   "expected_tier_patient": 3.825,
+   "tier_shift": -0.175,
+   "language_penalty": 0.07799999999999996,
+   "coverage": [
+    0.91,
+    0.96
+   ],
+   "prompt_words": [
+    13,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 2,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "Ever since the accident he keeps having syncopal episodes, so his wife wants him to see a",
+   "top_clinical": "neuro",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.311,
+   "p_top_patient": 0.633,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.714,
+   "expected_tier_patient": 2.271,
+   "tier_shift": -0.443,
+   "language_penalty": 0.391,
+   "coverage": [
+    0.97,
+    0.98
+   ],
+   "prompt_words": [
+    17,
+    24
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 3,
+   "topic": "heart and breathing red flags",
+   "clinical_prompt": "I've had crushing substernal chest pressure since lunch, so my coworker told me to call an",
+   "top_clinical": "ambulance",
+   "top_patient": "ambulance",
+   "p_top_clinical": 0.949,
+   "p_top_patient": 0.773,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.17599999999999993,
+   "coverage": [
+    0.0,
+    0.01
+   ],
+   "prompt_words": [
+    16,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 4,
+   "topic": "sleep disorders",
+   "clinical_prompt": "My husband has apneic episodes throughout the night, so we finally went to see a",
+   "top_clinical": "sleep",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.652,
+   "p_top_patient": 0.361,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "upgrade",
+   "expected_tier_clinical": 1.312,
+   "expected_tier_patient": 1.761,
+   "tier_shift": 0.45,
+   "language_penalty": 0.247,
+   "coverage": [
+    0.95,
+    0.92
+   ],
+   "prompt_words": [
+    15,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 5,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My kid's been having a major depressive episode, so this week we're taking her to see a",
+   "top_clinical": "psychiatrist",
+   "top_patient": "therapist",
+   "p_top_clinical": 0.258,
+   "p_top_patient": 0.188,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.896,
+   "expected_tier_patient": 2.656,
+   "tier_shift": -0.24,
+   "language_penalty": 0.072,
+   "coverage": [
+    1.0,
+    0.81
+   ],
+   "prompt_words": [
+    17,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 6,
+   "topic": "sleep disorders",
+   "clinical_prompt": "He keeps having sleep-maintenance insomnia for hours, so tomorrow he's going in to see a",
+   "top_clinical": "sleep",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.438,
+   "p_top_patient": 0.338,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "upgrade",
+   "expected_tier_clinical": 1.755,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.245,
+   "language_penalty": 0.22700000000000004,
+   "coverage": [
+    1.0,
+    0.87
+   ],
+   "prompt_words": [
+    15,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 7,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "Grandpa suddenly has acute hemifacial droop with slurred speech, so we're rushing him to the",
+   "top_clinical": "ER",
+   "top_patient": "ER",
+   "p_top_clinical": 0.412,
+   "p_top_patient": 0.393,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.964,
+   "expected_tier_patient": 3.93,
+   "tier_shift": -0.034,
+   "language_penalty": 0.063,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    15,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 8,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "I took a diuretic overdose by mistake and feel awful, so I really need to call my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.469,
+   "p_top_patient": 0.496,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.829,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.171,
+   "language_penalty": 0.027000000000000024,
+   "coverage": [
+    1.0,
+    0.98
+   ],
+   "prompt_words": [
+    17,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 9,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "My mom keeps getting unilateral paresthesia down one arm that won't quit, so we're taking her to a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.621,
+   "p_top_patient": 0.508,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.916,
+   "expected_tier_patient": 2.782,
+   "tier_shift": -0.134,
+   "language_penalty": -0.11299999999999999,
+   "coverage": [
+    0.95,
+    0.97
+   ],
+   "prompt_words": [
+    18,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 10,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My buddy at work has been having suicidal ideation, so I walked him straight over to the",
+   "top_clinical": "ER",
+   "top_patient": "nearest",
+   "p_top_clinical": 0.207,
+   "p_top_patient": 0.153,
+   "tier_top_clinical": 4,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 4.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": null,
+   "coverage": [
+    0.81,
+    0.0
+   ],
+   "prompt_words": [
+    17,
+    20
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 11,
+   "topic": "sleep disorders",
+   "clinical_prompt": "Grandma has been having narcolepsy episodes during the day, so we finally took her to a",
+   "top_clinical": "neuro",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.322,
+   "p_top_patient": 0.332,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.32,
+   "expected_tier_patient": 2.29,
+   "tier_shift": -0.03,
+   "language_penalty": 0.11100000000000002,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    16,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 12,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "Since I've had an adverse drug interaction and feeling off, this afternoon I'm going in to see my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.326,
+   "p_top_patient": 0.355,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.109,
+   "tier_shift": 0.109,
+   "language_penalty": 0.02899999999999997,
+   "coverage": [
+    0.93,
+    1.0
+   ],
+   "prompt_words": [
+    18,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 13,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "I developed sudden hemiparesis this morning, so my wife is driving me to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.402,
+   "p_top_patient": 0.264,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.846,
+   "expected_tier_patient": 3.376,
+   "tier_shift": -0.471,
+   "language_penalty": -0.138,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    14,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 14,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "My mom keeps having absence seizures, so this week we're taking her to a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.447,
+   "p_top_patient": 0.262,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.956,
+   "expected_tier_patient": 2.598,
+   "tier_shift": -0.359,
+   "language_penalty": -0.185,
+   "coverage": [
+    0.94,
+    0.96
+   ],
+   "prompt_words": [
+    14,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 15,
+   "topic": null,
+   "clinical_prompt": "My sister has been diagnosed with major depressive disorder, so we're taking her to see a",
+   "top_clinical": "psychiatrist",
+   "top_patient": "therapist",
+   "p_top_clinical": 0.414,
+   "p_top_patient": 0.299,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.876,
+   "expected_tier_patient": 2.874,
+   "tier_shift": -0.002,
+   "language_penalty": 0.07699999999999999,
+   "coverage": [
+    1.0,
+    0.89
+   ],
+   "prompt_words": [
+    16,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 16,
+   "topic": null,
+   "clinical_prompt": "I keep having obstructive sleep apnea all night, so tomorrow I'm going in to see a",
+   "top_clinical": "sleep",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.473,
+   "p_top_patient": 0.262,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.609,
+   "expected_tier_patient": 1.822,
+   "tier_shift": 0.213,
+   "language_penalty": -0.03499999999999999,
+   "coverage": [
+    0.95,
+    0.94
+   ],
+   "prompt_words": [
+    16,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 17,
+   "topic": null,
+   "clinical_prompt": "Grandpa is having an acute myocardial infarction at dinner, so we're rushing him to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.609,
+   "p_top_patient": 0.477,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 4.0,
+   "expected_tier_patient": 3.943,
+   "tier_shift": -0.057,
+   "language_penalty": -0.132,
+   "coverage": [
+    0.96,
+    1.0
+   ],
+   "prompt_words": [
+    15,
+    18
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 18,
+   "topic": null,
+   "clinical_prompt": "I had an anticoagulant overdose and feel really off, so this afternoon I need to call my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.344,
+   "p_top_patient": 0.436,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.09200000000000003,
+   "coverage": [
+    0.87,
+    0.95
+   ],
+   "prompt_words": [
+    17,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 19,
+   "topic": null,
+   "clinical_prompt": "At work I went into acute respiratory failure, so my manager told me to get to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.566,
+   "p_top_patient": 0.355,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.763,
+   "expected_tier_patient": 3.515,
+   "tier_shift": -0.248,
+   "language_penalty": -0.21099999999999997,
+   "coverage": [
+    0.95,
+    0.85
+   ],
+   "prompt_words": [
+    17,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 20,
+   "topic": null,
+   "clinical_prompt": "My husband is having an acute ischemic stroke this morning, so I'm driving him straight to the",
+   "top_clinical": "hospital",
+   "top_patient": "ER",
+   "p_top_clinical": 0.527,
+   "p_top_patient": 0.361,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 4.0,
+   "expected_tier_patient": 3.773,
+   "tier_shift": -0.227,
+   "language_penalty": -0.20700000000000002,
+   "coverage": [
+    0.94,
+    1.0
+   ],
+   "prompt_words": [
+    17,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 21,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My teenage son has been expressing suicidal ideation, so first thing tomorrow we're taking him to a",
+   "top_clinical": "therapist",
+   "top_patient": "psychiatrist",
+   "p_top_clinical": 0.151,
+   "p_top_patient": 0.134,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 3.017,
+   "expected_tier_patient": 2.745,
+   "tier_shift": -0.271,
+   "language_penalty": -0.016999999999999987,
+   "coverage": [
+    0.74,
+    0.82
+   ],
+   "prompt_words": [
+    17,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 22,
+   "topic": "sleep disorders",
+   "clinical_prompt": "Ever since the divorce she has narcolepsy with sleep attacks and no one can wake her, so this week she's finally seeing a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.312,
+   "p_top_patient": 0.48,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.236,
+   "expected_tier_patient": 2.257,
+   "tier_shift": 0.02,
+   "language_penalty": -0.093,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    23,
+    26
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 23,
+   "topic": "heart and breathing red flags",
+   "clinical_prompt": "At the game my grandpa had an acute myocardial infarction and his arm went cold and numb, so his son shouted for us to call the",
+   "top_clinical": "ambulance",
+   "top_patient": "ambulance",
+   "p_top_clinical": 0.488,
+   "p_top_patient": 0.492,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0040000000000000036,
+   "coverage": [
+    0.09,
+    0.14
+   ],
+   "prompt_words": [
+    26,
+    25
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 24,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "I accidentally took a supratherapeutic dose of my thyroid pills this morning and feel shaky, so right now I really need to phone my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.408,
+   "p_top_patient": 0.373,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 1.906,
+   "tier_shift": -0.094,
+   "language_penalty": -0.034999999999999976,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    24,
+    24
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 25,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "During dinner my wife had acute unilateral facial droop with aphasia, so I'm rushing her straight to the",
+   "top_clinical": "ER",
+   "top_patient": "ER",
+   "p_top_clinical": 0.41,
+   "p_top_patient": 0.395,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 4.0,
+   "expected_tier_patient": 3.926,
+   "tier_shift": -0.074,
+   "language_penalty": 0.059,
+   "coverage": [
+    0.96,
+    0.98
+   ],
+   "prompt_words": [
+    18,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 26,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "My brother keeps having tonic-clonic seizures where he blacks out, so this afternoon we're booking him in with a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.648,
+   "p_top_patient": 0.543,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.923,
+   "expected_tier_patient": 2.827,
+   "tier_shift": -0.096,
+   "language_penalty": -0.10499999999999998,
+   "coverage": [
+    0.96,
+    1.0
+   ],
+   "prompt_words": [
+    19,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 27,
+   "topic": null,
+   "clinical_prompt": "My sister has been having auditory hallucinations, so this week we're taking her to see a",
+   "top_clinical": "psychiatrist",
+   "top_patient": "psychiatrist",
+   "p_top_clinical": 0.414,
+   "p_top_patient": 0.354,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.802,
+   "expected_tier_patient": 2.744,
+   "tier_shift": -0.058,
+   "language_penalty": -0.06,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    16,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 28,
+   "topic": null,
+   "clinical_prompt": "Grandpa keeps having sleep attacks without warning, so this week we're sending him to a",
+   "top_clinical": "sleep",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.357,
+   "p_top_patient": 0.183,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.513,
+   "expected_tier_patient": 1.502,
+   "tier_shift": -0.011,
+   "language_penalty": -0.009000000000000001,
+   "coverage": [
+    1.0,
+    0.78
+   ],
+   "prompt_words": [
+    15,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 29,
+   "topic": null,
+   "clinical_prompt": "I had an accidental sedative overdose and I feel really weird, so right now I'm calling the",
+   "top_clinical": "police",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.156,
+   "p_top_patient": 0.121,
+   "tier_top_clinical": null,
+   "tier_top_patient": 4,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 3.127,
+   "expected_tier_patient": 3.066,
+   "tier_shift": -0.06,
+   "language_penalty": -0.017000000000000015,
+   "coverage": [
+    0.49,
+    0.47
+   ],
+   "prompt_words": [
+    17,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 30,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My coworker keeps expressing suicidal ideation, so at lunch I walked him over to see a",
+   "top_clinical": "therapist",
+   "top_patient": "therapist",
+   "p_top_clinical": 0.295,
+   "p_top_patient": 0.06,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.735,
+   "expected_tier_patient": 2.594,
+   "tier_shift": -0.141,
+   "language_penalty": null,
+   "coverage": [
+    1.0,
+    0.45
+   ],
+   "prompt_words": [
+    16,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 31,
+   "topic": "sleep disorders",
+   "clinical_prompt": "I keep having obstructive sleep apnea events all night, so this week I'm going in to see a",
+   "top_clinical": "sleep",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.5,
+   "p_top_patient": 0.287,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.493,
+   "expected_tier_patient": 1.886,
+   "tier_shift": 0.393,
+   "language_penalty": 0.04799999999999999,
+   "coverage": [
+    0.88,
+    0.94
+   ],
+   "prompt_words": [
+    18,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 32,
+   "topic": "heart and breathing red flags",
+   "clinical_prompt": "At the mall my dad had a suspected myocardial infarction, so a bystander told me to call the",
+   "top_clinical": "ambulance",
+   "top_patient": "ambulance",
+   "p_top_clinical": 0.365,
+   "p_top_patient": 0.381,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.016000000000000014,
+   "coverage": [
+    0.23,
+    0.08
+   ],
+   "prompt_words": [
+    18,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 33,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "I sustained an accidental antihypertensive overdose and feel woozy, so right now I'm phoning the",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.21,
+   "p_top_patient": 0.307,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.883,
+   "expected_tier_patient": 2.398,
+   "tier_shift": -0.485,
+   "language_penalty": -0.005999999999999998,
+   "coverage": [
+    0.77,
+    0.77
+   ],
+   "prompt_words": [
+    15,
+    18
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 34,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "My grandma keeps having absence seizures, so this week we're taking her to a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.432,
+   "p_top_patient": 0.324,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.953,
+   "expected_tier_patient": 2.773,
+   "tier_shift": -0.18,
+   "language_penalty": -0.016,
+   "coverage": [
+    0.94,
+    0.95
+   ],
+   "prompt_words": [
+    14,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 35,
+   "topic": null,
+   "clinical_prompt": "Ever since the promotion he's had severe insomnia, so this week he's booking in with a",
+   "top_clinical": "sleep",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.189,
+   "p_top_patient": 0.108,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.545,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.455,
+   "language_penalty": null,
+   "coverage": [
+    0.61,
+    0.65
+   ],
+   "prompt_words": [
+    16,
+    23
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 36,
+   "topic": null,
+   "clinical_prompt": "During the movie my wife had a myocardial infarction, so I'm rushing her to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.68,
+   "p_top_patient": 0.496,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 4.0,
+   "expected_tier_patient": 3.866,
+   "tier_shift": -0.134,
+   "language_penalty": -0.18400000000000005,
+   "coverage": [
+    0.94,
+    0.97
+   ],
+   "prompt_words": [
+    15,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 37,
+   "topic": null,
+   "clinical_prompt": "My brother keeps having transient ischemic attacks, so we're taking him to a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.469,
+   "p_top_patient": 0.404,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.986,
+   "expected_tier_patient": 2.772,
+   "tier_shift": -0.214,
+   "language_penalty": -0.06499999999999995,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    13,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 38,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My roommate has active suicidal ideation, so tonight I'm walking her over to the crisis",
+   "top_clinical": "center",
+   "top_patient": "center",
+   "p_top_clinical": 0.652,
+   "p_top_patient": 0.613,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.039000000000000035,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    15,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 39,
+   "topic": "sleep disorders",
+   "clinical_prompt": "After weeks of chronic insomnia every night, my wife told me to finally go see a sleep",
+   "top_clinical": "specialist",
+   "top_patient": "specialist",
+   "p_top_clinical": 0.432,
+   "p_top_patient": 0.439,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.475,
+   "expected_tier_patient": 2.482,
+   "tier_shift": 0.008,
+   "language_penalty": 0.007000000000000006,
+   "coverage": [
+    0.98,
+    0.97
+   ],
+   "prompt_words": [
+    17,
+    18
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 40,
+   "topic": "heart and breathing red flags",
+   "clinical_prompt": "At the picnic my uncle had an acute myocardial infarction, so his wife screamed for someone to call the",
+   "top_clinical": "ambulance",
+   "top_patient": "ambulance",
+   "p_top_clinical": 0.656,
+   "p_top_patient": 0.594,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.062000000000000055,
+   "coverage": [
+    0.15,
+    0.2
+   ],
+   "prompt_words": [
+    19,
+    23
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 41,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "This morning I had acute hemiparesis with slurred speech, so my neighbor is driving me straight to the",
+   "top_clinical": "ER",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.334,
+   "p_top_patient": 0.266,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 3.86,
+   "expected_tier_patient": 3.3,
+   "tier_shift": -0.56,
+   "language_penalty": -0.068,
+   "coverage": [
+    1.0,
+    0.97
+   ],
+   "prompt_words": [
+    18,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 42,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "My grandson keeps having generalized tonic-clonic seizures, so this afternoon we're taking him to a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.391,
+   "p_top_patient": 0.369,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.076,
+   "expected_tier_patient": 2.765,
+   "tier_shift": -0.311,
+   "language_penalty": -0.02200000000000002,
+   "coverage": [
+    0.87,
+    0.84
+   ],
+   "prompt_words": [
+    15,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 43,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "My kid has an acute medication overdose and won't wake up, so I'm rushing her to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.512,
+   "p_top_patient": 0.471,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.967,
+   "expected_tier_patient": 3.962,
+   "tier_shift": -0.005,
+   "language_penalty": -0.029000000000000012,
+   "coverage": [
+    0.97,
+    1.0
+   ],
+   "prompt_words": [
+    17,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 44,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My brother has severe major depression and won't leave his room, so tonight we're taking him to a",
+   "top_clinical": "movie",
+   "top_patient": "movie",
+   "p_top_clinical": 0.159,
+   "p_top_patient": 0.092,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.067,
+   "coverage": [
+    0.0,
+    0.22
+   ],
+   "prompt_words": [
+    18,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 45,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "The pharmacist flagged a serious drug interaction, so before I do anything I need to call my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.539,
+   "p_top_patient": 0.727,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.036,
+   "expected_tier_patient": 2.0,
+   "tier_shift": -0.036,
+   "language_penalty": 0.18799999999999994,
+   "coverage": [
+    0.95,
+    0.94
+   ],
+   "prompt_words": [
+    17,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 46,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "Grandpa keeps having tonic-clonic seizures, so this week we're getting him in with a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.711,
+   "p_top_patient": 0.222,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.0,
+   "expected_tier_patient": 2.784,
+   "tier_shift": -0.216,
+   "language_penalty": -0.489,
+   "coverage": [
+    0.92,
+    0.82
+   ],
+   "prompt_words": [
+    14,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 47,
+   "topic": "sleep disorders",
+   "clinical_prompt": "I keep having obstructive sleep apnea episodes all night, so my wife wants me to go see a",
+   "top_clinical": "sleep",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.479,
+   "p_top_patient": 0.486,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "upgrade",
+   "expected_tier_clinical": 1.593,
+   "expected_tier_patient": 1.765,
+   "tier_shift": 0.172,
+   "language_penalty": 0.15799999999999997,
+   "coverage": [
+    0.99,
+    0.97
+   ],
+   "prompt_words": [
+    18,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 48,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My little girl has had persistent depressive disorder for weeks now, so this afternoon I'm taking her to see a",
+   "top_clinical": "psychiatrist",
+   "top_patient": "therapist",
+   "p_top_clinical": 0.163,
+   "p_top_patient": 0.114,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.774,
+   "expected_tier_patient": 1.915,
+   "tier_shift": -0.859,
+   "language_penalty": -0.08499999999999999,
+   "coverage": [
+    1.0,
+    0.87
+   ],
+   "prompt_words": [
+    20,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 49,
+   "topic": "sleep disorders",
+   "clinical_prompt": "Ever since the new job my husband has had severe insomnia and lies awake till dawn, so tomorrow he's finally going to see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.582,
+   "p_top_patient": 0.672,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.866,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.134,
+   "language_penalty": 0.09000000000000008,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    24,
+    25
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 50,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "My mom keeps having focal neurological deficits and her vision goes fuzzy, so this week we're getting her in with a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.727,
+   "p_top_patient": 0.57,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.0,
+   "expected_tier_patient": 2.905,
+   "tier_shift": -0.095,
+   "language_penalty": -0.15700000000000003,
+   "coverage": [
+    0.95,
+    1.0
+   ],
+   "prompt_words": [
+    21,
+    23
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 51,
+   "topic": "sleep disorders",
+   "clinical_prompt": "For weeks now I've had chronic insomnia no matter what I try, so I finally went to see a sleep",
+   "top_clinical": "specialist",
+   "top_patient": "specialist",
+   "p_top_clinical": 0.527,
+   "p_top_patient": 0.49,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.592,
+   "expected_tier_patient": 2.617,
+   "tier_shift": 0.025,
+   "language_penalty": -0.03700000000000003,
+   "coverage": [
+    1.0,
+    0.97
+   ],
+   "prompt_words": [
+    20,
+    23
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 52,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "The pharmacist flagged a serious drug interaction between them, so before I swallow anything I'm ringing the on-call",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.416,
+   "p_top_patient": 0.508,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.09200000000000003,
+   "coverage": [
+    0.9,
+    1.0
+   ],
+   "prompt_words": [
+    18,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 53,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "My kid keeps having absence seizures where he goes blank for a bit, so this week we're taking him to a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.527,
+   "p_top_patient": 0.115,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.902,
+   "expected_tier_patient": 2.615,
+   "tier_shift": -0.287,
+   "language_penalty": -0.41200000000000003,
+   "coverage": [
+    0.92,
+    0.77
+   ],
+   "prompt_words": [
+    21,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 54,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "Lately I've had major depression and can't get out of bed, so I've decided to finally see a",
+   "top_clinical": "therapist",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.363,
+   "p_top_patient": 0.371,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.681,
+   "expected_tier_patient": 2.569,
+   "tier_shift": -0.112,
+   "language_penalty": -0.07400000000000001,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    18,
+    18
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 55,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "I took a contraindicated drug combination and now I feel really off, so before I do anything else I'm phoning my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.408,
+   "p_top_patient": 0.387,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.020999999999999963,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    21,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 56,
+   "topic": "sleep disorders",
+   "clinical_prompt": "For weeks I've had obstructive sleep apnea all night, so tomorrow I'm finally booking in with a",
+   "top_clinical": "sleep",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.443,
+   "p_top_patient": 0.214,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.597,
+   "expected_tier_patient": 1.733,
+   "tier_shift": 0.136,
+   "language_penalty": -0.051000000000000004,
+   "coverage": [
+    1.0,
+    0.95
+   ],
+   "prompt_words": [
+    17,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 57,
+   "topic": "sleep disorders",
+   "clinical_prompt": "I keep having nocturnal apneic episodes a dozen times a night, so tomorrow I'm finally going to see a",
+   "top_clinical": "sleep",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.527,
+   "p_top_patient": 0.459,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "upgrade",
+   "expected_tier_clinical": 1.382,
+   "expected_tier_patient": 1.78,
+   "tier_shift": 0.398,
+   "language_penalty": 0.30800000000000005,
+   "coverage": [
+    0.92,
+    0.96
+   ],
+   "prompt_words": [
+    19,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 58,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "I've been having suicidal ideation, so at lunch a coworker walked me over to a",
+   "top_clinical": "counselor",
+   "top_patient": "bench",
+   "p_top_clinical": 0.077,
+   "p_top_patient": 0.132,
+   "tier_top_clinical": 3,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": null,
+   "coverage": [
+    0.27,
+    0.0
+   ],
+   "prompt_words": [
+    15,
+    23
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 59,
+   "topic": "sleep disorders",
+   "clinical_prompt": "My kid keeps having obstructive apnea events all night, so tomorrow we're taking him to a",
+   "top_clinical": "sleep",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.459,
+   "p_top_patient": 0.273,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.362,
+   "expected_tier_patient": 1.537,
+   "tier_shift": 0.175,
+   "language_penalty": -0.026000000000000002,
+   "coverage": [
+    0.83,
+    0.74
+   ],
+   "prompt_words": [
+    16,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 60,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "This morning I had acute hemiparesis with dysarthria, so my wife rushed me to an",
+   "top_clinical": "emergency",
+   "top_patient": "urgent",
+   "p_top_clinical": 0.355,
+   "p_top_patient": 0.309,
+   "tier_top_clinical": 4,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 4.0,
+   "expected_tier_patient": 4.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.178,
+   "coverage": [
+    0.79,
+    0.58
+   ],
+   "prompt_words": [
+    15,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 61,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "I've had an accidental beta-blocker overdose and feel faint, so right now I'm calling a",
+   "top_clinical": "doctor",
+   "top_patient": "friend",
+   "p_top_clinical": 0.291,
+   "p_top_patient": 0.318,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 1.395,
+   "expected_tier_patient": 0.641,
+   "tier_shift": -0.754,
+   "language_penalty": -0.141,
+   "coverage": [
+    0.67,
+    0.67
+   ],
+   "prompt_words": [
+    15,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 62,
+   "topic": "sleep disorders",
+   "clinical_prompt": "I keep having obstructive sleep apnea events, so my wife booked me in with a sleep",
+   "top_clinical": "specialist",
+   "top_patient": "clinic",
+   "p_top_clinical": 0.268,
+   "p_top_patient": 0.277,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.358,
+   "expected_tier_patient": 2.374,
+   "tier_shift": 0.016,
+   "language_penalty": -0.02400000000000002,
+   "coverage": [
+    1.0,
+    0.83
+   ],
+   "prompt_words": [
+    16,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 63,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "At the restaurant my dad had a myocardial infarction, so I yelled at the waiter to call an",
+   "top_clinical": "ambulance",
+   "top_patient": "ambulance",
+   "p_top_clinical": 0.988,
+   "p_top_patient": 0.984,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0040000000000000036,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    18,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 64,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "I think I have digoxin toxicity, so I need to go straight to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.471,
+   "p_top_patient": 0.295,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.85,
+   "expected_tier_patient": 3.651,
+   "tier_shift": -0.199,
+   "language_penalty": -0.176,
+   "coverage": [
+    1.0,
+    0.93
+   ],
+   "prompt_words": [
+    14,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 65,
+   "topic": "heart and breathing red flags",
+   "clinical_prompt": "My grandpa is cyanotic with acute respiratory failure, so grandma is rushing him to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.523,
+   "p_top_patient": 0.703,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 4.0,
+   "expected_tier_patient": 3.935,
+   "tier_shift": -0.065,
+   "language_penalty": 0.17999999999999994,
+   "coverage": [
+    0.94,
+    1.0
+   ],
+   "prompt_words": [
+    15,
+    18
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 66,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "This morning I had acute hemiparesis with facial droop, so my neighbor is driving me to the",
+   "top_clinical": "hospital",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.367,
+   "p_top_patient": 0.303,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 3.7,
+   "expected_tier_patient": 3.19,
+   "tier_shift": -0.51,
+   "language_penalty": -0.132,
+   "coverage": [
+    1.0,
+    0.95
+   ],
+   "prompt_words": [
+    17,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 67,
+   "topic": null,
+   "clinical_prompt": "My teenage daughter has been expressing suicidal ideation, so I'm driving her over to see a",
+   "top_clinical": "therapist",
+   "top_patient": "counselor",
+   "p_top_clinical": 0.342,
+   "p_top_patient": 0.178,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.912,
+   "expected_tier_patient": 2.509,
+   "tier_shift": -0.403,
+   "language_penalty": 0.017,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    16,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 68,
+   "topic": null,
+   "clinical_prompt": "For a week now I've had persistent insomnia no matter what, so this morning I finally called a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.395,
+   "p_top_patient": 0.344,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.686,
+   "expected_tier_patient": 1.557,
+   "tier_shift": -0.129,
+   "language_penalty": -0.051000000000000045,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    18,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 1,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My dad's been having suicidal ideation, so we're rushing him straight to the",
+   "top_clinical": "ER",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.409,
+   "p_top_patient": 0.26,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 3.807,
+   "expected_tier_patient": 3.232,
+   "tier_shift": -0.576,
+   "language_penalty": 0.0089,
+   "coverage": [
+    0.91,
+    0.89
+   ],
+   "prompt_words": [
+    13,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 2,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "Ever since the accident he keeps having syncopal episodes, so his wife wants him to see a",
+   "top_clinical": "neurolog",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.509,
+   "p_top_patient": 0.434,
+   "tier_top_clinical": null,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 2.213,
+   "tier_shift": null,
+   "language_penalty": 0.3059,
+   "coverage": [
+    0.27,
+    0.62
+   ],
+   "prompt_words": [
+    17,
+    24
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 3,
+   "topic": "heart and breathing red flags",
+   "clinical_prompt": "I've had crushing substernal chest pressure since lunch, so my coworker told me to call an",
+   "top_clinical": "ambulance",
+   "top_patient": "ambulance",
+   "p_top_clinical": 0.989,
+   "p_top_patient": 0.957,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0326,
+   "coverage": [
+    0.0,
+    0.01
+   ],
+   "prompt_words": [
+    16,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 4,
+   "topic": "sleep disorders",
+   "clinical_prompt": "My husband has apneic episodes throughout the night, so we finally went to see a",
+   "top_clinical": "sleep",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.541,
+   "p_top_patient": 0.447,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.838,
+   "expected_tier_patient": 2.664,
+   "tier_shift": -0.174,
+   "language_penalty": 0.15,
+   "coverage": [
+    0.92,
+    0.96
+   ],
+   "prompt_words": [
+    15,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 5,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My kid's been having a major depressive episode, so this week we're taking her to see a",
+   "top_clinical": "therapist",
+   "top_patient": "therapist",
+   "p_top_clinical": 0.348,
+   "p_top_patient": 0.376,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.957,
+   "expected_tier_patient": 2.876,
+   "tier_shift": -0.081,
+   "language_penalty": 0.048,
+   "coverage": [
+    0.92,
+    0.92
+   ],
+   "prompt_words": [
+    17,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 6,
+   "topic": "sleep disorders",
+   "clinical_prompt": "He keeps having sleep-maintenance insomnia for hours, so tomorrow he's going in to see a",
+   "top_clinical": "sleep",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.303,
+   "p_top_patient": 0.342,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.57,
+   "expected_tier_patient": 2.369,
+   "tier_shift": -0.2,
+   "language_penalty": 0.0382,
+   "coverage": [
+    0.95,
+    0.78
+   ],
+   "prompt_words": [
+    15,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 7,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "Grandpa suddenly has acute hemifacial droop with slurred speech, so we're rushing him to the",
+   "top_clinical": "ER",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.577,
+   "p_top_patient": 0.474,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 4.0,
+   "expected_tier_patient": 3.99,
+   "tier_shift": -0.01,
+   "language_penalty": 0.1646,
+   "coverage": [
+    0.99,
+    0.99
+   ],
+   "prompt_words": [
+    15,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 8,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "I took a diuretic overdose by mistake and feel awful, so I really need to call my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.778,
+   "p_top_patient": 0.774,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.995,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.005,
+   "language_penalty": -0.0034,
+   "coverage": [
+    0.95,
+    0.92
+   ],
+   "prompt_words": [
+    17,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 9,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "My mom keeps getting unilateral paresthesia down one arm that won't quit, so we're taking her to a",
+   "top_clinical": "neurolog",
+   "top_patient": "neurolog",
+   "p_top_clinical": 0.759,
+   "p_top_patient": 0.495,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 2.156,
+   "tier_shift": null,
+   "language_penalty": 0.2296,
+   "coverage": [
+    0.14,
+    0.41
+   ],
+   "prompt_words": [
+    18,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 10,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My buddy at work has been having suicidal ideation, so I walked him straight over to the",
+   "top_clinical": "ER",
+   "top_patient": "nearest",
+   "p_top_clinical": 0.207,
+   "p_top_patient": 0.057,
+   "tier_top_clinical": 4,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 3.848,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1013,
+   "coverage": [
+    0.82,
+    0.17
+   ],
+   "prompt_words": [
+    17,
+    20
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 11,
+   "topic": "sleep disorders",
+   "clinical_prompt": "Grandma has been having narcolepsy episodes during the day, so we finally took her to a",
+   "top_clinical": "sleep",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.413,
+   "p_top_patient": 0.262,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.801,
+   "expected_tier_patient": 2.446,
+   "tier_shift": -0.354,
+   "language_penalty": 0.1441,
+   "coverage": [
+    0.79,
+    0.67
+   ],
+   "prompt_words": [
+    16,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 12,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "Since I've had an adverse drug interaction and feeling off, this afternoon I'm going in to see my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.338,
+   "p_top_patient": 0.362,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.034,
+   "expected_tier_patient": 2.158,
+   "tier_shift": 0.124,
+   "language_penalty": 0.0246,
+   "coverage": [
+    0.89,
+    0.82
+   ],
+   "prompt_words": [
+    18,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 13,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "I developed sudden hemiparesis this morning, so my wife is driving me to the",
+   "top_clinical": "hospital",
+   "top_patient": "ER",
+   "p_top_clinical": 0.393,
+   "p_top_patient": 0.39,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 3.961,
+   "expected_tier_patient": 3.947,
+   "tier_shift": -0.013,
+   "language_penalty": -0.0036,
+   "coverage": [
+    0.98,
+    0.98
+   ],
+   "prompt_words": [
+    14,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 14,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "My mom keeps having absence seizures, so this week we're taking her to a",
+   "top_clinical": "neurolog",
+   "top_patient": "neurolog",
+   "p_top_clinical": 0.361,
+   "p_top_patient": 0.643,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.584,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.2825,
+   "coverage": [
+    0.4,
+    0.26
+   ],
+   "prompt_words": [
+    14,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 15,
+   "topic": null,
+   "clinical_prompt": "My sister has been diagnosed with major depressive disorder, so we're taking her to see a",
+   "top_clinical": "psychiatrist",
+   "top_patient": "therapist",
+   "p_top_clinical": 0.524,
+   "p_top_patient": 0.311,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.954,
+   "expected_tier_patient": 2.682,
+   "tier_shift": -0.272,
+   "language_penalty": 0.0312,
+   "coverage": [
+    0.95,
+    0.92
+   ],
+   "prompt_words": [
+    16,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 16,
+   "topic": null,
+   "clinical_prompt": "I keep having obstructive sleep apnea all night, so tomorrow I'm going in to see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.362,
+   "p_top_patient": 0.498,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.526,
+   "expected_tier_patient": 2.259,
+   "tier_shift": -0.267,
+   "language_penalty": -0.0582,
+   "coverage": [
+    0.95,
+    0.95
+   ],
+   "prompt_words": [
+    16,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 17,
+   "topic": null,
+   "clinical_prompt": "Grandpa is having an acute myocardial infarction at dinner, so we're rushing him to the",
+   "top_clinical": "hospital",
+   "top_patient": "ER",
+   "p_top_clinical": 0.608,
+   "p_top_patient": 0.464,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 4.0,
+   "expected_tier_patient": 3.98,
+   "tier_shift": -0.02,
+   "language_penalty": -0.1986,
+   "coverage": [
+    0.98,
+    0.99
+   ],
+   "prompt_words": [
+    15,
+    18
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 18,
+   "topic": null,
+   "clinical_prompt": "I had an anticoagulant overdose and feel really off, so this afternoon I need to call my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.523,
+   "p_top_patient": 0.467,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0564,
+   "coverage": [
+    0.85,
+    0.62
+   ],
+   "prompt_words": [
+    17,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 19,
+   "topic": null,
+   "clinical_prompt": "At work I went into acute respiratory failure, so my manager told me to get to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.41,
+   "p_top_patient": 0.303,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.792,
+   "expected_tier_patient": 3.696,
+   "tier_shift": -0.096,
+   "language_penalty": -0.1068,
+   "coverage": [
+    0.96,
+    0.95
+   ],
+   "prompt_words": [
+    17,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 20,
+   "topic": null,
+   "clinical_prompt": "My husband is having an acute ischemic stroke this morning, so I'm driving him straight to the",
+   "top_clinical": "hospital",
+   "top_patient": "ER",
+   "p_top_clinical": 0.479,
+   "p_top_patient": 0.657,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 4.0,
+   "expected_tier_patient": 3.995,
+   "tier_shift": -0.005,
+   "language_penalty": -0.2658,
+   "coverage": [
+    0.99,
+    0.98
+   ],
+   "prompt_words": [
+    17,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 21,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My teenage son has been expressing suicidal ideation, so first thing tomorrow we're taking him to a",
+   "top_clinical": "psychiatrist",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.279,
+   "p_top_patient": 0.255,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.733,
+   "expected_tier_patient": 2.316,
+   "tier_shift": -0.417,
+   "language_penalty": -0.1579,
+   "coverage": [
+    0.88,
+    0.81
+   ],
+   "prompt_words": [
+    17,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 22,
+   "topic": "sleep disorders",
+   "clinical_prompt": "Ever since the divorce she has narcolepsy with sleep attacks and no one can wake her, so this week she's finally seeing a",
+   "top_clinical": "sleep",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.28,
+   "p_top_patient": 0.373,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.835,
+   "expected_tier_patient": 2.493,
+   "tier_shift": -0.342,
+   "language_penalty": -0.1448,
+   "coverage": [
+    0.79,
+    0.88
+   ],
+   "prompt_words": [
+    23,
+    26
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 23,
+   "topic": "heart and breathing red flags",
+   "clinical_prompt": "At the game my grandpa had an acute myocardial infarction and his arm went cold and numb, so his son shouted for us to call the",
+   "top_clinical": "ambulance",
+   "top_patient": "ambulance",
+   "p_top_clinical": 0.401,
+   "p_top_patient": 0.365,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0365,
+   "coverage": [
+    0.2,
+    0.11
+   ],
+   "prompt_words": [
+    26,
+    25
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 24,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "I accidentally took a supratherapeutic dose of my thyroid pills this morning and feel shaky, so right now I really need to phone my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.611,
+   "p_top_patient": 0.641,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.0298,
+   "coverage": [
+    0.82,
+    0.83
+   ],
+   "prompt_words": [
+    24,
+    24
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 25,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "During dinner my wife had acute unilateral facial droop with aphasia, so I'm rushing her straight to the",
+   "top_clinical": "ER",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.44,
+   "p_top_patient": 0.44,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 3.99,
+   "expected_tier_patient": 3.959,
+   "tier_shift": -0.032,
+   "language_penalty": 0.2567,
+   "coverage": [
+    0.95,
+    0.98
+   ],
+   "prompt_words": [
+    18,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 26,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "My brother keeps having tonic-clonic seizures where he blacks out, so this afternoon we're booking him in with a",
+   "top_clinical": "neurolog",
+   "top_patient": "neurolog",
+   "p_top_clinical": 0.489,
+   "p_top_patient": 0.443,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.598,
+   "expected_tier_patient": 2.278,
+   "tier_shift": -0.32,
+   "language_penalty": -0.0457,
+   "coverage": [
+    0.33,
+    0.42
+   ],
+   "prompt_words": [
+    19,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 27,
+   "topic": null,
+   "clinical_prompt": "My sister has been having auditory hallucinations, so this week we're taking her to see a",
+   "top_clinical": "psychiatrist",
+   "top_patient": "psychiatrist",
+   "p_top_clinical": 0.745,
+   "p_top_patient": 0.602,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.945,
+   "expected_tier_patient": 2.823,
+   "tier_shift": -0.123,
+   "language_penalty": -0.1431,
+   "coverage": [
+    0.94,
+    0.97
+   ],
+   "prompt_words": [
+    16,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 28,
+   "topic": null,
+   "clinical_prompt": "Grandpa keeps having sleep attacks without warning, so this week we're sending him to a",
+   "top_clinical": "sleep",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.476,
+   "p_top_patient": 0.064,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.318,
+   "expected_tier_patient": 1.954,
+   "tier_shift": -0.364,
+   "language_penalty": 0.0121,
+   "coverage": [
+    0.84,
+    0.63
+   ],
+   "prompt_words": [
+    15,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 29,
+   "topic": null,
+   "clinical_prompt": "I had an accidental sedative overdose and I feel really weird, so right now I'm calling the",
+   "top_clinical": "poison",
+   "top_patient": "poison",
+   "p_top_clinical": 0.183,
+   "p_top_patient": 0.503,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.413,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.026,
+   "coverage": [
+    0.55,
+    0.21
+   ],
+   "prompt_words": [
+    17,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 30,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My coworker keeps expressing suicidal ideation, so at lunch I walked him over to see a",
+   "top_clinical": "therapist",
+   "top_patient": "therapist",
+   "p_top_clinical": 0.259,
+   "p_top_patient": 0.109,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.825,
+   "expected_tier_patient": 2.899,
+   "tier_shift": 0.074,
+   "language_penalty": -0.1857,
+   "coverage": [
+    0.86,
+    0.66
+   ],
+   "prompt_words": [
+    16,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 31,
+   "topic": "sleep disorders",
+   "clinical_prompt": "I keep having obstructive sleep apnea events all night, so this week I'm going in to see a",
+   "top_clinical": "sleep",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.521,
+   "p_top_patient": 0.366,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.846,
+   "expected_tier_patient": 2.733,
+   "tier_shift": -0.113,
+   "language_penalty": 0.027,
+   "coverage": [
+    0.9,
+    0.86
+   ],
+   "prompt_words": [
+    18,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 32,
+   "topic": "heart and breathing red flags",
+   "clinical_prompt": "At the mall my dad had a suspected myocardial infarction, so a bystander told me to call the",
+   "top_clinical": "param",
+   "top_patient": "param",
+   "p_top_clinical": 0.239,
+   "p_top_patient": 0.381,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1062,
+   "coverage": [
+    0.29,
+    0.08
+   ],
+   "prompt_words": [
+    18,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 33,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "I sustained an accidental antihypertensive overdose and feel woozy, so right now I'm phoning the",
+   "top_clinical": "emergency",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.21,
+   "p_top_patient": 0.383,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 3.189,
+   "expected_tier_patient": 2.027,
+   "tier_shift": -1.162,
+   "language_penalty": 0.0602,
+   "coverage": [
+    0.61,
+    0.7
+   ],
+   "prompt_words": [
+    15,
+    18
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 34,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "My grandma keeps having absence seizures, so this week we're taking her to a",
+   "top_clinical": "neurolog",
+   "top_patient": "neurolog",
+   "p_top_clinical": 0.333,
+   "p_top_patient": 0.402,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.62,
+   "expected_tier_patient": 2.611,
+   "tier_shift": -0.009,
+   "language_penalty": -0.0267,
+   "coverage": [
+    0.45,
+    0.34
+   ],
+   "prompt_words": [
+    14,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 35,
+   "topic": null,
+   "clinical_prompt": "Ever since the promotion he's had severe insomnia, so this week he's booking in with a",
+   "top_clinical": "sleep",
+   "top_patient": "therapist",
+   "p_top_clinical": 0.199,
+   "p_top_patient": 0.093,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.723,
+   "expected_tier_patient": 2.749,
+   "tier_shift": 0.026,
+   "language_penalty": -0.0287,
+   "coverage": [
+    0.84,
+    0.89
+   ],
+   "prompt_words": [
+    16,
+    23
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 36,
+   "topic": null,
+   "clinical_prompt": "During the movie my wife had a myocardial infarction, so I'm rushing her to the",
+   "top_clinical": "hospital",
+   "top_patient": "ER",
+   "p_top_clinical": 0.529,
+   "p_top_patient": 0.434,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 3.984,
+   "expected_tier_patient": 3.94,
+   "tier_shift": -0.044,
+   "language_penalty": -0.2306,
+   "coverage": [
+    0.99,
+    0.97
+   ],
+   "prompt_words": [
+    15,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 37,
+   "topic": null,
+   "clinical_prompt": "My brother keeps having transient ischemic attacks, so we're taking him to a",
+   "top_clinical": "neurolog",
+   "top_patient": "neurolog",
+   "p_top_clinical": 0.461,
+   "p_top_patient": 0.44,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.749,
+   "expected_tier_patient": 2.24,
+   "tier_shift": -0.509,
+   "language_penalty": -0.0207,
+   "coverage": [
+    0.3,
+    0.5
+   ],
+   "prompt_words": [
+    13,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 38,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My roommate has active suicidal ideation, so tonight I'm walking her over to the crisis",
+   "top_clinical": "line",
+   "top_patient": "line",
+   "p_top_clinical": 0.433,
+   "p_top_patient": 0.366,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.068,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    15,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 39,
+   "topic": "sleep disorders",
+   "clinical_prompt": "After weeks of chronic insomnia every night, my wife told me to finally go see a sleep",
+   "top_clinical": "specialist",
+   "top_patient": "specialist",
+   "p_top_clinical": 0.579,
+   "p_top_patient": 0.67,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.603,
+   "expected_tier_patient": 2.696,
+   "tier_shift": 0.093,
+   "language_penalty": 0.0914,
+   "coverage": [
+    0.99,
+    0.99
+   ],
+   "prompt_words": [
+    17,
+    18
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 40,
+   "topic": "heart and breathing red flags",
+   "clinical_prompt": "At the picnic my uncle had an acute myocardial infarction, so his wife screamed for someone to call the",
+   "top_clinical": "ambulance",
+   "top_patient": "ambulance",
+   "p_top_clinical": 0.318,
+   "p_top_patient": 0.353,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.795,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.035,
+   "coverage": [
+    0.37,
+    0.21
+   ],
+   "prompt_words": [
+    19,
+    23
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 41,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "This morning I had acute hemiparesis with slurred speech, so my neighbor is driving me straight to the",
+   "top_clinical": "ER",
+   "top_patient": "ER",
+   "p_top_clinical": 0.445,
+   "p_top_patient": 0.378,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.972,
+   "expected_tier_patient": 3.869,
+   "tier_shift": -0.104,
+   "language_penalty": 0.0249,
+   "coverage": [
+    0.97,
+    0.97
+   ],
+   "prompt_words": [
+    18,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 42,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "My grandson keeps having generalized tonic-clonic seizures, so this afternoon we're taking him to a",
+   "top_clinical": "neurolog",
+   "top_patient": "neurolog",
+   "p_top_clinical": 0.272,
+   "p_top_patient": 0.313,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0409,
+   "coverage": [
+    0.24,
+    0.29
+   ],
+   "prompt_words": [
+    15,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 43,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "My kid has an acute medication overdose and won't wake up, so I'm rushing her to the",
+   "top_clinical": "ER",
+   "top_patient": "ER",
+   "p_top_clinical": 0.376,
+   "p_top_patient": 0.663,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.996,
+   "expected_tier_patient": 3.997,
+   "tier_shift": 0.001,
+   "language_penalty": -0.1265,
+   "coverage": [
+    0.98,
+    0.99
+   ],
+   "prompt_words": [
+    17,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 44,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My brother has severe major depression and won't leave his room, so tonight we're taking him to a",
+   "top_clinical": "psychiatrist",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.111,
+   "p_top_patient": 0.188,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.896,
+   "expected_tier_patient": 2.7,
+   "tier_shift": -0.196,
+   "language_penalty": 0.1058,
+   "coverage": [
+    0.78,
+    0.86
+   ],
+   "prompt_words": [
+    18,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 45,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "The pharmacist flagged a serious drug interaction, so before I do anything I need to call my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.206,
+   "p_top_patient": 0.724,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.0,
+   "language_penalty": 0.5177,
+   "coverage": [
+    0.51,
+    0.87
+   ],
+   "prompt_words": [
+    17,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 46,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "Grandpa keeps having tonic-clonic seizures, so this week we're getting him in with a",
+   "top_clinical": "neurolog",
+   "top_patient": "neurolog",
+   "p_top_clinical": 0.553,
+   "p_top_patient": 0.193,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": 2.744,
+   "tier_shift": null,
+   "language_penalty": -0.3608,
+   "coverage": [
+    0.21,
+    0.44
+   ],
+   "prompt_words": [
+    14,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 47,
+   "topic": "sleep disorders",
+   "clinical_prompt": "I keep having obstructive sleep apnea episodes all night, so my wife wants me to go see a",
+   "top_clinical": "sleep",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.401,
+   "p_top_patient": 0.585,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.555,
+   "expected_tier_patient": 1.774,
+   "tier_shift": -0.781,
+   "language_penalty": 0.1839,
+   "coverage": [
+    0.98,
+    0.97
+   ],
+   "prompt_words": [
+    18,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 48,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My little girl has had persistent depressive disorder for weeks now, so this afternoon I'm taking her to see a",
+   "top_clinical": "psychiatrist",
+   "top_patient": "therapist",
+   "p_top_clinical": 0.318,
+   "p_top_patient": 0.326,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.967,
+   "expected_tier_patient": 2.78,
+   "tier_shift": -0.187,
+   "language_penalty": 0.0129,
+   "coverage": [
+    0.89,
+    0.83
+   ],
+   "prompt_words": [
+    20,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 49,
+   "topic": "sleep disorders",
+   "clinical_prompt": "Ever since the new job my husband has had severe insomnia and lies awake till dawn, so tomorrow he's finally going to see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.666,
+   "p_top_patient": 0.613,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.191,
+   "expected_tier_patient": 2.199,
+   "tier_shift": 0.009,
+   "language_penalty": -0.0533,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    24,
+    25
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "apertus-8b-meditronfo",
+   "batch": "pairs_20260811T190638Z",
+   "index": 50,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "My mom keeps having focal neurological deficits and her vision goes fuzzy, so this week we're getting her in with a",
+   "top_clinical": "neurolog",
+   "top_patient": "neurolog",
+   "p_top_clinical": 0.394,
+   "p_top_patient": 0.606,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.2116,
+   "coverage": [
+    0.38,
+    0.23
+   ],
+   "prompt_words": [
+    21,
+    23
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 1,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My dad's been having suicidal ideation, so we're rushing him straight to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.495,
+   "p_top_patient": 0.372,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.933,
+   "expected_tier_patient": 3.692,
+   "tier_shift": -0.241,
+   "language_penalty": -0.1226,
+   "coverage": [
+    0.86,
+    0.85
+   ],
+   "prompt_words": [
+    13,
+    15
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 2,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "Ever since the accident he keeps having syncopal episodes, so his wife wants him to see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.343,
+   "p_top_patient": 0.663,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.386,
+   "expected_tier_patient": 2.249,
+   "tier_shift": -0.137,
+   "language_penalty": 0.321,
+   "coverage": [
+    0.7,
+    1.0
+   ],
+   "prompt_words": [
+    17,
+    24
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 3,
+   "topic": "heart and breathing red flags",
+   "clinical_prompt": "I've had crushing substernal chest pressure since lunch, so my coworker told me to call an",
+   "top_clinical": "ambulance",
+   "top_patient": "ambulance",
+   "p_top_clinical": 0.956,
+   "p_top_patient": 0.732,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.224,
+   "coverage": [
+    0.01,
+    0.01
+   ],
+   "prompt_words": [
+    16,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 4,
+   "topic": "sleep disorders",
+   "clinical_prompt": "My husband has apneic episodes throughout the night, so we finally went to see a",
+   "top_clinical": "sleep",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.566,
+   "p_top_patient": 0.366,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.81,
+   "expected_tier_patient": 2.094,
+   "tier_shift": -0.715,
+   "language_penalty": 0.1805,
+   "coverage": [
+    0.93,
+    0.89
+   ],
+   "prompt_words": [
+    15,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 5,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My kid's been having a major depressive episode, so this week we're taking her to see a",
+   "top_clinical": "psychiatrist",
+   "top_patient": "therapist",
+   "p_top_clinical": 0.278,
+   "p_top_patient": 0.158,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.944,
+   "expected_tier_patient": 2.816,
+   "tier_shift": -0.129,
+   "language_penalty": 0.0807,
+   "coverage": [
+    0.93,
+    0.89
+   ],
+   "prompt_words": [
+    17,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 6,
+   "topic": "sleep disorders",
+   "clinical_prompt": "He keeps having sleep-maintenance insomnia for hours, so tomorrow he's going in to see a",
+   "top_clinical": "sleep",
+   "top_patient": "specialist",
+   "p_top_clinical": 0.452,
+   "p_top_patient": 0.214,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.878,
+   "expected_tier_patient": 2.758,
+   "tier_shift": -0.121,
+   "language_penalty": 0.0682,
+   "coverage": [
+    0.89,
+    0.81
+   ],
+   "prompt_words": [
+    15,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 7,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "Grandpa suddenly has acute hemifacial droop with slurred speech, so we're rushing him to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.381,
+   "p_top_patient": 0.508,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.939,
+   "expected_tier_patient": 3.893,
+   "tier_shift": -0.047,
+   "language_penalty": 0.1266,
+   "coverage": [
+    0.97,
+    0.98
+   ],
+   "prompt_words": [
+    15,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 8,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "I took a diuretic overdose by mistake and feel awful, so I really need to call my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.798,
+   "p_top_patient": 0.658,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 1.949,
+   "tier_shift": -0.051,
+   "language_penalty": -0.1397,
+   "coverage": [
+    0.98,
+    0.98
+   ],
+   "prompt_words": [
+    17,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 9,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "My mom keeps getting unilateral paresthesia down one arm that won't quit, so we're taking her to a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.781,
+   "p_top_patient": 0.516,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.942,
+   "expected_tier_patient": 2.739,
+   "tier_shift": -0.202,
+   "language_penalty": 0.151,
+   "coverage": [
+    0.98,
+    0.94
+   ],
+   "prompt_words": [
+    18,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 10,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My buddy at work has been having suicidal ideation, so I walked him straight over to the",
+   "top_clinical": "hospital",
+   "top_patient": "HR",
+   "p_top_clinical": 0.063,
+   "p_top_patient": 0.084,
+   "tier_top_clinical": 4,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 3.192,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0488,
+   "coverage": [
+    0.58,
+    0.06
+   ],
+   "prompt_words": [
+    17,
+    20
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 11,
+   "topic": "sleep disorders",
+   "clinical_prompt": "Grandma has been having narcolepsy episodes during the day, so we finally took her to a",
+   "top_clinical": "neuro",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.264,
+   "p_top_patient": 0.43,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.715,
+   "expected_tier_patient": 2.277,
+   "tier_shift": -0.438,
+   "language_penalty": 0.1969,
+   "coverage": [
+    0.97,
+    0.84
+   ],
+   "prompt_words": [
+    16,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 12,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "Since I've had an adverse drug interaction and feeling off, this afternoon I'm going in to see my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.285,
+   "p_top_patient": 0.38,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.103,
+   "expected_tier_patient": 2.112,
+   "tier_shift": 0.01,
+   "language_penalty": 0.0942,
+   "coverage": [
+    0.8,
+    0.88
+   ],
+   "prompt_words": [
+    18,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 13,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "I developed sudden hemiparesis this morning, so my wife is driving me to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.455,
+   "p_top_patient": 0.358,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.77,
+   "expected_tier_patient": 3.312,
+   "tier_shift": -0.459,
+   "language_penalty": -0.0971,
+   "coverage": [
+    0.96,
+    0.96
+   ],
+   "prompt_words": [
+    14,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 14,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "My mom keeps having absence seizures, so this week we're taking her to a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.502,
+   "p_top_patient": 0.643,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.908,
+   "expected_tier_patient": 2.872,
+   "tier_shift": -0.037,
+   "language_penalty": 0.1404,
+   "coverage": [
+    0.92,
+    0.96
+   ],
+   "prompt_words": [
+    14,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 15,
+   "topic": null,
+   "clinical_prompt": "My sister has been diagnosed with major depressive disorder, so we're taking her to see a",
+   "top_clinical": "psychiatrist",
+   "top_patient": "therapist",
+   "p_top_clinical": 0.453,
+   "p_top_patient": 0.262,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.918,
+   "expected_tier_patient": 2.773,
+   "tier_shift": -0.145,
+   "language_penalty": 0.0952,
+   "coverage": [
+    0.96,
+    0.94
+   ],
+   "prompt_words": [
+    16,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 16,
+   "topic": null,
+   "clinical_prompt": "I keep having obstructive sleep apnea all night, so tomorrow I'm going in to see a",
+   "top_clinical": "sleep",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.305,
+   "p_top_patient": 0.295,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.776,
+   "expected_tier_patient": 2.407,
+   "tier_shift": -0.368,
+   "language_penalty": -0.1736,
+   "coverage": [
+    0.9,
+    0.76
+   ],
+   "prompt_words": [
+    16,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 17,
+   "topic": null,
+   "clinical_prompt": "Grandpa is having an acute myocardial infarction at dinner, so we're rushing him to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.654,
+   "p_top_patient": 0.459,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.973,
+   "expected_tier_patient": 3.866,
+   "tier_shift": -0.107,
+   "language_penalty": -0.1946,
+   "coverage": [
+    0.97,
+    0.98
+   ],
+   "prompt_words": [
+    15,
+    18
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 18,
+   "topic": null,
+   "clinical_prompt": "I had an anticoagulant overdose and feel really off, so this afternoon I need to call my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.348,
+   "p_top_patient": 0.441,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.074,
+   "expected_tier_patient": 2.0,
+   "tier_shift": -0.074,
+   "language_penalty": 0.0921,
+   "coverage": [
+    0.69,
+    0.77
+   ],
+   "prompt_words": [
+    17,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 19,
+   "topic": null,
+   "clinical_prompt": "At work I went into acute respiratory failure, so my manager told me to get to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.52,
+   "p_top_patient": 0.578,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.843,
+   "expected_tier_patient": 3.857,
+   "tier_shift": 0.015,
+   "language_penalty": 0.0583,
+   "coverage": [
+    0.96,
+    0.93
+   ],
+   "prompt_words": [
+    17,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 20,
+   "topic": null,
+   "clinical_prompt": "My husband is having an acute ischemic stroke this morning, so I'm driving him straight to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.684,
+   "p_top_patient": 0.363,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.985,
+   "expected_tier_patient": 3.773,
+   "tier_shift": -0.213,
+   "language_penalty": -0.3208,
+   "coverage": [
+    0.98,
+    0.98
+   ],
+   "prompt_words": [
+    17,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 21,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My teenage son has been expressing suicidal ideation, so first thing tomorrow we're taking him to a",
+   "top_clinical": "psychiatrist",
+   "top_patient": "psychiatrist",
+   "p_top_clinical": 0.211,
+   "p_top_patient": 0.188,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.032,
+   "expected_tier_patient": 2.793,
+   "tier_shift": -0.239,
+   "language_penalty": -0.0223,
+   "coverage": [
+    0.55,
+    0.83
+   ],
+   "prompt_words": [
+    17,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 22,
+   "topic": "sleep disorders",
+   "clinical_prompt": "Ever since the divorce she has narcolepsy with sleep attacks and no one can wake her, so this week she's finally seeing a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.274,
+   "p_top_patient": 0.49,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.668,
+   "expected_tier_patient": 2.397,
+   "tier_shift": -0.271,
+   "language_penalty": -0.118,
+   "coverage": [
+    0.98,
+    0.99
+   ],
+   "prompt_words": [
+    23,
+    26
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 23,
+   "topic": "heart and breathing red flags",
+   "clinical_prompt": "At the game my grandpa had an acute myocardial infarction and his arm went cold and numb, so his son shouted for us to call the",
+   "top_clinical": "ambulance",
+   "top_patient": "ambulance",
+   "p_top_clinical": 0.643,
+   "p_top_patient": 0.652,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.0094,
+   "coverage": [
+    0.15,
+    0.13
+   ],
+   "prompt_words": [
+    26,
+    25
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 24,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "I accidentally took a supratherapeutic dose of my thyroid pills this morning and feel shaky, so right now I really need to phone my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.545,
+   "p_top_patient": 0.619,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.021,
+   "expected_tier_patient": 2.0,
+   "tier_shift": -0.021,
+   "language_penalty": 0.0739,
+   "coverage": [
+    0.88,
+    0.93
+   ],
+   "prompt_words": [
+    24,
+    24
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 25,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "During dinner my wife had acute unilateral facial droop with aphasia, so I'm rushing her straight to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.361,
+   "p_top_patient": 0.511,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.99,
+   "expected_tier_patient": 3.927,
+   "tier_shift": -0.063,
+   "language_penalty": 0.1503,
+   "coverage": [
+    0.94,
+    0.95
+   ],
+   "prompt_words": [
+    18,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 26,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "My brother keeps having tonic-clonic seizures where he blacks out, so this afternoon we're booking him in with a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.676,
+   "p_top_patient": 0.721,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.919,
+   "expected_tier_patient": 2.923,
+   "tier_shift": 0.004,
+   "language_penalty": 0.0455,
+   "coverage": [
+    0.95,
+    0.97
+   ],
+   "prompt_words": [
+    19,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 27,
+   "topic": null,
+   "clinical_prompt": "My sister has been having auditory hallucinations, so this week we're taking her to see a",
+   "top_clinical": "psychiatrist",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.456,
+   "p_top_patient": 0.273,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.839,
+   "expected_tier_patient": 2.618,
+   "tier_shift": -0.221,
+   "language_penalty": -0.2434,
+   "coverage": [
+    0.95,
+    0.95
+   ],
+   "prompt_words": [
+    16,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 28,
+   "topic": null,
+   "clinical_prompt": "Grandpa keeps having sleep attacks without warning, so this week we're sending him to a",
+   "top_clinical": "sleep",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.614,
+   "p_top_patient": 0.295,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.268,
+   "expected_tier_patient": 2.243,
+   "tier_shift": -0.024,
+   "language_penalty": 0.0005,
+   "coverage": [
+    0.98,
+    0.88
+   ],
+   "prompt_words": [
+    15,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 29,
+   "topic": null,
+   "clinical_prompt": "I had an accidental sedative overdose and I feel really weird, so right now I'm calling the",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.119,
+   "p_top_patient": 0.181,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.756,
+   "expected_tier_patient": 2.138,
+   "tier_shift": -0.619,
+   "language_penalty": -0.0039,
+   "coverage": [
+    0.45,
+    0.45
+   ],
+   "prompt_words": [
+    17,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 30,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My coworker keeps expressing suicidal ideation, so at lunch I walked him over to see a",
+   "top_clinical": "counselor",
+   "top_patient": "counselor",
+   "p_top_clinical": 0.215,
+   "p_top_patient": 0.164,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.81,
+   "expected_tier_patient": 2.655,
+   "tier_shift": -0.154,
+   "language_penalty": -0.0508,
+   "coverage": [
+    0.89,
+    0.85
+   ],
+   "prompt_words": [
+    16,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 31,
+   "topic": "sleep disorders",
+   "clinical_prompt": "I keep having obstructive sleep apnea events all night, so this week I'm going in to see a",
+   "top_clinical": "sleep",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.38,
+   "p_top_patient": 0.246,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.814,
+   "expected_tier_patient": 2.585,
+   "tier_shift": -0.229,
+   "language_penalty": -0.0393,
+   "coverage": [
+    0.92,
+    0.77
+   ],
+   "prompt_words": [
+    18,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 32,
+   "topic": "heart and breathing red flags",
+   "clinical_prompt": "At the mall my dad had a suspected myocardial infarction, so a bystander told me to call the",
+   "top_clinical": "ambulance",
+   "top_patient": "param",
+   "p_top_clinical": 0.333,
+   "p_top_patient": 0.256,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.1065,
+   "coverage": [
+    0.07,
+    0.02
+   ],
+   "prompt_words": [
+    18,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 33,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "I sustained an accidental antihypertensive overdose and feel woozy, so right now I'm phoning the",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.159,
+   "p_top_patient": 0.334,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.567,
+   "expected_tier_patient": 2.058,
+   "tier_shift": -0.51,
+   "language_penalty": 0.0365,
+   "coverage": [
+    0.59,
+    0.77
+   ],
+   "prompt_words": [
+    15,
+    18
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 34,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "My grandma keeps having absence seizures, so this week we're taking her to a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.486,
+   "p_top_patient": 0.6,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.915,
+   "expected_tier_patient": 2.889,
+   "tier_shift": -0.026,
+   "language_penalty": -0.0451,
+   "coverage": [
+    0.92,
+    0.95
+   ],
+   "prompt_words": [
+    14,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 35,
+   "topic": null,
+   "clinical_prompt": "Ever since the promotion he's had severe insomnia, so this week he's booking in with a",
+   "top_clinical": "sleep",
+   "top_patient": "hyp",
+   "p_top_clinical": 0.206,
+   "p_top_patient": 0.145,
+   "tier_top_clinical": 3,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 2.828,
+   "expected_tier_patient": 3.0,
+   "tier_shift": 0.172,
+   "language_penalty": -0.0586,
+   "coverage": [
+    0.72,
+    0.39
+   ],
+   "prompt_words": [
+    16,
+    23
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 36,
+   "topic": null,
+   "clinical_prompt": "During the movie my wife had a myocardial infarction, so I'm rushing her to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.733,
+   "p_top_patient": 0.535,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.979,
+   "expected_tier_patient": 3.93,
+   "tier_shift": -0.049,
+   "language_penalty": -0.1987,
+   "coverage": [
+    0.99,
+    0.98
+   ],
+   "prompt_words": [
+    15,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 37,
+   "topic": null,
+   "clinical_prompt": "My brother keeps having transient ischemic attacks, so we're taking him to a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.464,
+   "p_top_patient": 0.55,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.964,
+   "expected_tier_patient": 2.727,
+   "tier_shift": -0.237,
+   "language_penalty": 0.0864,
+   "coverage": [
+    0.81,
+    0.98
+   ],
+   "prompt_words": [
+    13,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 38,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My roommate has active suicidal ideation, so tonight I'm walking her over to the crisis",
+   "top_clinical": "center",
+   "top_patient": "center",
+   "p_top_clinical": 0.49,
+   "p_top_patient": 0.485,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0053,
+   "coverage": [
+    0.07,
+    0.03
+   ],
+   "prompt_words": [
+    15,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 39,
+   "topic": "sleep disorders",
+   "clinical_prompt": "After weeks of chronic insomnia every night, my wife told me to finally go see a sleep",
+   "top_clinical": "specialist",
+   "top_patient": "specialist",
+   "p_top_clinical": 0.523,
+   "p_top_patient": 0.478,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.55,
+   "expected_tier_patient": 2.503,
+   "tier_shift": -0.047,
+   "language_penalty": -0.0449,
+   "coverage": [
+    0.98,
+    0.97
+   ],
+   "prompt_words": [
+    17,
+    18
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 40,
+   "topic": "heart and breathing red flags",
+   "clinical_prompt": "At the picnic my uncle had an acute myocardial infarction, so his wife screamed for someone to call the",
+   "top_clinical": "ambulance",
+   "top_patient": "ambulance",
+   "p_top_clinical": 0.636,
+   "p_top_patient": 0.593,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0431,
+   "coverage": [
+    0.13,
+    0.07
+   ],
+   "prompt_words": [
+    19,
+    23
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 41,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "This morning I had acute hemiparesis with slurred speech, so my neighbor is driving me straight to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.446,
+   "p_top_patient": 0.355,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.842,
+   "expected_tier_patient": 3.372,
+   "tier_shift": -0.47,
+   "language_penalty": -0.0914,
+   "coverage": [
+    0.99,
+    0.97
+   ],
+   "prompt_words": [
+    18,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 42,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "My grandson keeps having generalized tonic-clonic seizures, so this afternoon we're taking him to a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.477,
+   "p_top_patient": 0.448,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.967,
+   "expected_tier_patient": 2.906,
+   "tier_shift": -0.061,
+   "language_penalty": -0.0293,
+   "coverage": [
+    0.7,
+    0.77
+   ],
+   "prompt_words": [
+    15,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 43,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "My kid has an acute medication overdose and won't wake up, so I'm rushing her to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.447,
+   "p_top_patient": 0.507,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.96,
+   "expected_tier_patient": 3.958,
+   "tier_shift": -0.003,
+   "language_penalty": -0.032,
+   "coverage": [
+    0.98,
+    0.97
+   ],
+   "prompt_words": [
+    17,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 44,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My brother has severe major depression and won't leave his room, so tonight we're taking him to a",
+   "top_clinical": "mental",
+   "top_patient": "movie",
+   "p_top_clinical": 0.204,
+   "p_top_patient": 0.085,
+   "tier_top_clinical": 4,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 3.687,
+   "expected_tier_patient": 2.512,
+   "tier_shift": -1.175,
+   "language_penalty": 0.0427,
+   "coverage": [
+    0.89,
+    0.4
+   ],
+   "prompt_words": [
+    18,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 45,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "The pharmacist flagged a serious drug interaction, so before I do anything I need to call my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.613,
+   "p_top_patient": 0.737,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.013,
+   "expected_tier_patient": 2.021,
+   "tier_shift": 0.007,
+   "language_penalty": 0.1236,
+   "coverage": [
+    0.89,
+    0.97
+   ],
+   "prompt_words": [
+    17,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 46,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "Grandpa keeps having tonic-clonic seizures, so this week we're getting him in with a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.653,
+   "p_top_patient": 0.265,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.976,
+   "expected_tier_patient": 2.908,
+   "tier_shift": -0.068,
+   "language_penalty": -0.3884,
+   "coverage": [
+    0.93,
+    0.76
+   ],
+   "prompt_words": [
+    14,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 47,
+   "topic": "sleep disorders",
+   "clinical_prompt": "I keep having obstructive sleep apnea episodes all night, so my wife wants me to go see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.541,
+   "p_top_patient": 0.654,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.122,
+   "expected_tier_patient": 2.04,
+   "tier_shift": -0.083,
+   "language_penalty": 0.1128,
+   "coverage": [
+    0.99,
+    0.98
+   ],
+   "prompt_words": [
+    18,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 48,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "My little girl has had persistent depressive disorder for weeks now, so this afternoon I'm taking her to see a",
+   "top_clinical": "psychiatrist",
+   "top_patient": "therapist",
+   "p_top_clinical": 0.169,
+   "p_top_patient": 0.189,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.857,
+   "expected_tier_patient": 2.907,
+   "tier_shift": 0.049,
+   "language_penalty": -0.0288,
+   "coverage": [
+    0.81,
+    0.9
+   ],
+   "prompt_words": [
+    20,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 49,
+   "topic": "sleep disorders",
+   "clinical_prompt": "Ever since the new job my husband has had severe insomnia and lies awake till dawn, so tomorrow he's finally going to see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.493,
+   "p_top_patient": 0.523,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.36,
+   "expected_tier_patient": 2.332,
+   "tier_shift": -0.029,
+   "language_penalty": 0.0302,
+   "coverage": [
+    0.99,
+    0.99
+   ],
+   "prompt_words": [
+    24,
+    25
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 50,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "My mom keeps having focal neurological deficits and her vision goes fuzzy, so this week we're getting her in with a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.776,
+   "p_top_patient": 0.601,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.987,
+   "expected_tier_patient": 2.832,
+   "tier_shift": -0.155,
+   "language_penalty": -0.1751,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    21,
+    23
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 51,
+   "topic": "sleep disorders",
+   "clinical_prompt": "For weeks now I've had chronic insomnia no matter what I try, so I finally went to see a sleep",
+   "top_clinical": "specialist",
+   "top_patient": "specialist",
+   "p_top_clinical": 0.559,
+   "p_top_patient": 0.599,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.619,
+   "expected_tier_patient": 2.656,
+   "tier_shift": 0.036,
+   "language_penalty": 0.0395,
+   "coverage": [
+    0.95,
+    0.96
+   ],
+   "prompt_words": [
+    20,
+    23
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 52,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "The pharmacist flagged a serious drug interaction between them, so before I swallow anything I'm ringing the on-call",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.314,
+   "p_top_patient": 0.383,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.039,
+   "expected_tier_patient": 2.01,
+   "tier_shift": -0.029,
+   "language_penalty": 0.0688,
+   "coverage": [
+    0.55,
+    0.8
+   ],
+   "prompt_words": [
+    18,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 53,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "My kid keeps having absence seizures where he goes blank for a bit, so this week we're taking him to a",
+   "top_clinical": "neuro",
+   "top_patient": "neuro",
+   "p_top_clinical": 0.556,
+   "p_top_patient": 0.248,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.955,
+   "expected_tier_patient": 2.844,
+   "tier_shift": -0.111,
+   "language_penalty": -0.3083,
+   "coverage": [
+    0.89,
+    0.68
+   ],
+   "prompt_words": [
+    21,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 54,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "Lately I've had major depression and can't get out of bed, so I've decided to finally see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.4,
+   "p_top_patient": 0.534,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.505,
+   "expected_tier_patient": 2.287,
+   "tier_shift": -0.218,
+   "language_penalty": -0.0542,
+   "coverage": [
+    0.98,
+    1.0
+   ],
+   "prompt_words": [
+    18,
+    18
+   ],
+   "tierb_split": "holdout"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 55,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "I took a contraindicated drug combination and now I feel really off, so before I do anything else I'm phoning my",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.485,
+   "p_top_patient": 0.47,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.0007,
+   "coverage": [
+    0.95,
+    0.94
+   ],
+   "prompt_words": [
+    21,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 56,
+   "topic": "sleep disorders",
+   "clinical_prompt": "For weeks I've had obstructive sleep apnea all night, so tomorrow I'm finally booking in with a",
+   "top_clinical": "specialist",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.362,
+   "p_top_patient": 0.17,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.727,
+   "expected_tier_patient": 2.699,
+   "tier_shift": -0.028,
+   "language_penalty": -0.2648,
+   "coverage": [
+    0.97,
+    0.85
+   ],
+   "prompt_words": [
+    17,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 57,
+   "topic": "sleep disorders",
+   "clinical_prompt": "I keep having nocturnal apneic episodes a dozen times a night, so tomorrow I'm finally going to see a",
+   "top_clinical": "sleep",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.41,
+   "p_top_patient": 0.526,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.736,
+   "expected_tier_patient": 2.235,
+   "tier_shift": -0.501,
+   "language_penalty": 0.3325,
+   "coverage": [
+    0.89,
+    0.89
+   ],
+   "prompt_words": [
+    19,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 58,
+   "topic": "mental health and emotional distress",
+   "clinical_prompt": "I've been having suicidal ideation, so at lunch a coworker walked me over to a",
+   "top_clinical": "counselor",
+   "top_patient": "nearby",
+   "p_top_clinical": 0.045,
+   "p_top_patient": 0.05,
+   "tier_top_clinical": 3,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 2.844,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.0442,
+   "coverage": [
+    0.44,
+    0.0
+   ],
+   "prompt_words": [
+    15,
+    23
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 59,
+   "topic": "sleep disorders",
+   "clinical_prompt": "My kid keeps having obstructive apnea events all night, so tomorrow we're taking him to a",
+   "top_clinical": "sleep",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.432,
+   "p_top_patient": 0.323,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.384,
+   "expected_tier_patient": 2.295,
+   "tier_shift": -0.089,
+   "language_penalty": -0.0241,
+   "coverage": [
+    0.86,
+    0.67
+   ],
+   "prompt_words": [
+    16,
+    17
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 60,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "This morning I had acute hemiparesis with dysarthria, so my wife rushed me to an",
+   "top_clinical": "emergency",
+   "top_patient": "urgent",
+   "p_top_clinical": 0.381,
+   "p_top_patient": 0.305,
+   "tier_top_clinical": 4,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 4.0,
+   "expected_tier_patient": 3.89,
+   "tier_shift": -0.11,
+   "language_penalty": 0.1961,
+   "coverage": [
+    0.73,
+    0.49
+   ],
+   "prompt_words": [
+    15,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 61,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "I've had an accidental beta-blocker overdose and feel faint, so right now I'm calling a",
+   "top_clinical": "friend",
+   "top_patient": "taxi",
+   "p_top_clinical": 0.205,
+   "p_top_patient": 0.232,
+   "tier_top_clinical": 0,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 0.681,
+   "expected_tier_patient": 0.57,
+   "tier_shift": -0.111,
+   "language_penalty": -0.0088,
+   "coverage": [
+    0.57,
+    0.39
+   ],
+   "prompt_words": [
+    15,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 62,
+   "topic": "sleep disorders",
+   "clinical_prompt": "I keep having obstructive sleep apnea events, so my wife booked me in with a sleep",
+   "top_clinical": "specialist",
+   "top_patient": "specialist",
+   "p_top_clinical": 0.229,
+   "p_top_patient": 0.248,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.31,
+   "expected_tier_patient": 2.421,
+   "tier_shift": 0.111,
+   "language_penalty": 0.0192,
+   "coverage": [
+    0.83,
+    0.76
+   ],
+   "prompt_words": [
+    16,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 63,
+   "topic": "emergency red-flag symptoms",
+   "clinical_prompt": "At the restaurant my dad had a myocardial infarction, so I yelled at the waiter to call an",
+   "top_clinical": "ambulance",
+   "top_patient": "ambulance",
+   "p_top_clinical": 0.987,
+   "p_top_patient": 0.991,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.004,
+   "coverage": [
+    0.01,
+    0.0
+   ],
+   "prompt_words": [
+    18,
+    20
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 64,
+   "topic": "prescription medication contexts",
+   "clinical_prompt": "I think I have digoxin toxicity, so I need to go straight to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.396,
+   "p_top_patient": 0.359,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.93,
+   "expected_tier_patient": 3.782,
+   "tier_shift": -0.148,
+   "language_penalty": -0.0369,
+   "coverage": [
+    0.96,
+    0.92
+   ],
+   "prompt_words": [
+    14,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 65,
+   "topic": "heart and breathing red flags",
+   "clinical_prompt": "My grandpa is cyanotic with acute respiratory failure, so grandma is rushing him to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.573,
+   "p_top_patient": 0.694,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.946,
+   "expected_tier_patient": 3.93,
+   "tier_shift": -0.017,
+   "language_penalty": 0.121,
+   "coverage": [
+    0.98,
+    0.98
+   ],
+   "prompt_words": [
+    15,
+    18
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 66,
+   "topic": "neurological symptoms",
+   "clinical_prompt": "This morning I had acute hemiparesis with facial droop, so my neighbor is driving me to the",
+   "top_clinical": "hospital",
+   "top_patient": "hospital",
+   "p_top_clinical": 0.359,
+   "p_top_patient": 0.326,
+   "tier_top_clinical": 4,
+   "tier_top_patient": 4,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 3.736,
+   "expected_tier_patient": 3.329,
+   "tier_shift": -0.407,
+   "language_penalty": -0.0331,
+   "coverage": [
+    0.98,
+    0.95
+   ],
+   "prompt_words": [
+    17,
+    19
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 67,
+   "topic": null,
+   "clinical_prompt": "My teenage daughter has been expressing suicidal ideation, so I'm driving her over to see a",
+   "top_clinical": "therapist",
+   "top_patient": "counselor",
+   "p_top_clinical": 0.252,
+   "p_top_patient": 0.14,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "lateral",
+   "expected_tier_clinical": 2.897,
+   "expected_tier_patient": 2.405,
+   "tier_shift": -0.491,
+   "language_penalty": -0.0173,
+   "coverage": [
+    0.86,
+    0.93
+   ],
+   "prompt_words": [
+    16,
+    21
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "meditron3-8b",
+   "batch": "pairs_20260811T190638Z",
+   "index": 68,
+   "topic": null,
+   "clinical_prompt": "For a week now I've had persistent insomnia no matter what, so this morning I finally called a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.341,
+   "p_top_patient": 0.428,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.745,
+   "expected_tier_patient": 1.748,
+   "tier_shift": 0.003,
+   "language_penalty": 0.0864,
+   "coverage": [
+    0.94,
+    0.97
+   ],
+   "prompt_words": [
+    18,
+    22
+   ],
+   "tierb_split": "explore"
+  },
+  {
+   "model": "gemma-2-2b",
    "batch": "repeatability_r1",
    "index": 1,
    "topic": null,
@@ -348561,6 +355038,546 @@
    "coverage": [
     0.83,
     0.81
+   ],
+   "prompt_words": [
+    12,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "I have urethritis with discharge, so my girlfriend thinks I should take an",
+   "top_clinical": "antibiotic",
+   "top_patient": "STD",
+   "p_top_clinical": 0.691,
+   "p_top_patient": 0.338,
+   "tier_top_clinical": 2,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.953,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.566,
+   "coverage": [
+    0.87,
+    0.26
+   ],
+   "prompt_words": [
+    13,
+    15
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "I have anxiety, so I should probably see a",
+   "top_clinical": "therapist",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.42,
+   "p_top_patient": 0.852,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.702,
+   "expected_tier_patient": 2.047,
+   "tier_shift": -0.654,
+   "language_penalty": -0.408,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    9,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "I woke up with fever last night, so I think I might have a",
+   "top_clinical": "cold",
+   "top_patient": "fever",
+   "p_top_clinical": 0.543,
+   "p_top_patient": 0.268,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.30600000000000005,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 4,
+   "topic": null,
+   "clinical_prompt": "I have pharyngitis, so I need to take some",
+   "top_clinical": "antibiotics",
+   "top_patient": "medicine",
+   "p_top_clinical": 0.355,
+   "p_top_patient": 0.148,
+   "tier_top_clinical": null,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.214,
+   "expected_tier_patient": 1.0,
+   "tier_shift": -0.214,
+   "language_penalty": -0.301,
+   "coverage": [
+    0.42,
+    0.55
+   ],
+   "prompt_words": [
+    9,
+    11
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 5,
+   "topic": null,
+   "clinical_prompt": "I have hyperhidrosis in the genital region, so I should probably see a",
+   "top_clinical": "doctor",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.398,
+   "p_top_patient": 0.668,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 2,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 2.413,
+   "expected_tier_patient": 2.056,
+   "tier_shift": -0.357,
+   "language_penalty": -0.219,
+   "coverage": [
+    0.91,
+    0.95
+   ],
+   "prompt_words": [
+    13,
+    11
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 6,
+   "topic": null,
+   "clinical_prompt": "I have dysphoria lately, so I need to talk to a",
+   "top_clinical": "therapist",
+   "top_patient": "professional",
+   "p_top_clinical": 0.266,
+   "p_top_patient": 0.236,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.534,
+   "expected_tier_patient": 1.892,
+   "tier_shift": -0.642,
+   "language_penalty": -0.10300000000000001,
+   "coverage": [
+    0.93,
+    0.91
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 7,
+   "topic": null,
+   "clinical_prompt": "I have a migraine, so I'm going to take some",
+   "top_clinical": "time",
+   "top_patient": "time",
+   "p_top_clinical": 0.293,
+   "p_top_patient": 0.191,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.10199999999999998,
+   "coverage": [
+    0.15,
+    0.13
+   ],
+   "prompt_words": [
+    10,
+    12
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 8,
+   "topic": null,
+   "clinical_prompt": "I wake up absolutely drenched in nocturnal diaphoresis at three in the morning, so I'm wondering if I need to take my",
+   "top_clinical": "blood",
+   "top_patient": "meds",
+   "p_top_clinical": 0.179,
+   "p_top_patient": 0.114,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 1.476,
+   "expected_tier_patient": 1.22,
+   "tier_shift": -0.256,
+   "language_penalty": -0.10099999999999999,
+   "coverage": [
+    0.87,
+    1.0
+   ],
+   "prompt_words": [
+    22,
+    19
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 9,
+   "topic": null,
+   "clinical_prompt": "I have a thyroid disorder, so I need to take my",
+   "top_clinical": "thyroid",
+   "top_patient": "meds",
+   "p_top_clinical": 0.305,
+   "p_top_patient": 0.168,
+   "tier_top_clinical": null,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 0.835,
+   "tier_shift": -0.165,
+   "language_penalty": -0.09,
+   "coverage": [
+    0.49,
+    0.77
+   ],
+   "prompt_words": [
+    11,
+    11
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 10,
+   "topic": null,
+   "clinical_prompt": "I've been experiencing dissociation, so I should probably see a",
+   "top_clinical": "therapist",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.5,
+   "p_top_patient": 0.746,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.752,
+   "expected_tier_patient": 2.084,
+   "tier_shift": -0.668,
+   "language_penalty": -0.079,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    10,
+    15
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 11,
+   "topic": null,
+   "clinical_prompt": "Ever since I cut back on carbs, I've been experiencing hypoglycemia, so my doctor checked my",
+   "top_clinical": "blood",
+   "top_patient": "thyroid",
+   "p_top_clinical": 0.34,
+   "p_top_patient": 0.297,
+   "tier_top_clinical": 2,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 2.0,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.07600000000000001,
+   "coverage": [
+    0.51,
+    0.35
+   ],
+   "prompt_words": [
+    16,
+    18
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 12,
+   "topic": null,
+   "clinical_prompt": "I have acid reflux after meals, so I should probably take my",
+   "top_clinical": "meds",
+   "top_patient": "meds",
+   "p_top_clinical": 0.144,
+   "p_top_patient": 0.11,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 1.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.07699999999999999,
+   "coverage": [
+    0.94,
+    1.0
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 13,
+   "topic": null,
+   "clinical_prompt": "Now that my arthritis is flaring up every morning, I finally asked my doctor for a",
+   "top_clinical": "prescription",
+   "top_patient": "referral",
+   "p_top_clinical": 0.311,
+   "p_top_patient": 0.245,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 3,
+   "flipped": true,
+   "flip_class": "upgrade",
+   "expected_tier_clinical": 2.337,
+   "expected_tier_patient": 2.468,
+   "tier_shift": 0.131,
+   "language_penalty": -0.066,
+   "coverage": [
+    0.91,
+    0.88
+   ],
+   "prompt_words": [
+    16,
+    16
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 14,
+   "topic": null,
+   "clinical_prompt": "I keep having to get up to urinate during my shift at work, so I'm worried I might have",
+   "top_clinical": "a",
+   "top_patient": "a",
+   "p_top_clinical": 0.369,
+   "p_top_patient": 0.314,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.05499999999999999,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    19,
+    19
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 15,
+   "topic": null,
+   "clinical_prompt": "My psoriasis has flared up on my elbows, so at the store I picked up a",
+   "top_clinical": "tube",
+   "top_patient": "bottle",
+   "p_top_clinical": 0.166,
+   "p_top_patient": 0.153,
+   "tier_top_clinical": null,
+   "tier_top_patient": 0,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 0.0,
+   "expected_tier_patient": 0.0,
+   "tier_shift": 0.0,
+   "language_penalty": -0.04600000000000001,
+   "coverage": [
+    0.34,
+    0.34
+   ],
+   "prompt_words": [
+    16,
+    18
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 16,
+   "topic": null,
+   "clinical_prompt": "I've been experiencing nocturnal hyperhidrosis, so I probably need to check my",
+   "top_clinical": "thyroid",
+   "top_patient": "blood",
+   "p_top_clinical": 0.129,
+   "p_top_patient": 0.198,
+   "tier_top_clinical": null,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": 1.463,
+   "expected_tier_patient": 2.0,
+   "tier_shift": 0.537,
+   "language_penalty": -0.023000000000000007,
+   "coverage": [
+    0.33,
+    0.49
+   ],
+   "prompt_words": [
+    12,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 17,
+   "topic": null,
+   "clinical_prompt": "When my kids show signs of hyperactivity and start acting out at home, I wonder if they might have a",
+   "top_clinical": "learning",
+   "top_patient": "sensory",
+   "p_top_clinical": 0.167,
+   "p_top_patient": 0.081,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": true,
+   "flip_class": "uninformative",
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.09600000000000002,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    20,
+    19
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 18,
+   "topic": null,
+   "clinical_prompt": "My daughter's menstrual irregularity is all over the place, so we should probably get her",
+   "top_clinical": "checked",
+   "top_patient": "checked",
+   "p_top_clinical": 0.33,
+   "p_top_patient": 0.312,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": null,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": -0.018000000000000016,
+   "coverage": [
+    0.0,
+    0.0
+   ],
+   "prompt_words": [
+    15,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 19,
+   "topic": null,
+   "clinical_prompt": "I've been having chronic insomnia all week, so tonight I'm gonna take a",
+   "top_clinical": "nap",
+   "top_patient": "nap",
+   "p_top_clinical": 0.146,
+   "p_top_patient": 0.128,
+   "tier_top_clinical": 0,
+   "tier_top_patient": 0,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 0.163,
+   "expected_tier_patient": 0.0,
+   "tier_shift": -0.163,
+   "language_penalty": -0.017999999999999988,
+   "coverage": [
+    0.68,
+    0.52
+   ],
+   "prompt_words": [
+    13,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "urgency_lostlate_20260811T1",
+   "index": 20,
+   "topic": null,
+   "clinical_prompt": "My kid has pyrexia for days, so we should give him some",
+   "top_clinical": "medicine",
+   "top_patient": "medicine",
+   "p_top_clinical": 0.198,
+   "p_top_patient": 0.162,
+   "tier_top_clinical": 1,
+   "tier_top_patient": 1,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": 0.638,
+   "tier_shift": -0.362,
+   "language_penalty": -0.036000000000000004,
+   "coverage": [
+    0.68,
+    0.65
    ],
    "prompt_words": [
     12,
