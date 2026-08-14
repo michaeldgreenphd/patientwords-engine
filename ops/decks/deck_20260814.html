@@ -1,0 +1,83 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-14</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .new{border-left:3px solid #b4483d}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-14</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · red rule = new or moved today</p>
+
+<div class="card new" data-id="D1-MODEL-STATS-STALE-SIX-DAYS">
+  <h2>D1 · The site's headline statistics have been frozen for six days, and the gap is widening</h2>
+  <p>Every cycle republishes the payload, urgency, lens and tag-mass files — and leaves the numbers that carry the study's actual claims untouched, because <code>paired_stats_rigor.py</code> is in no step of the standing prompt's section 5. It is manual by omission, not by choice. This is the fourth cycle to record the same ask.</p>
+  <p>Meanwhile the backfill legs that move those numbers fire every day, including today's. The published <code>meditron3-8b</code> row still reads CI [−0.0498, <b>+0.0004</b>] at n=132 — the one interval covering zero, by four ten-thousandths — while the 08-10 probe put it at n=333 with the interval excluding zero.</p>
+  <p class="num">model_stats.json 2026-08-08T13:50:04Z · convergence.json 2026-08-08T13:53:09Z · six days · timeline.json carries no stamp at all</p>
+  <div class="chips"><button class="chip" data-v="add-to-section5">add paired_stats_rigor to the daily chain, accept it can trip claim_check</button><button class="chip" data-v="keep-manual-say-so">keep it manual, but say so explicitly in the standing prompt</button><button class="chip" data-v="refresh-once-now">refresh once now, decide the policy later</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D2-MEDICAL-FINETUNE-SENTENCE">
+  <h2>D2 · The medical fine-tune sentence is four days overdue, and D1 is blocked behind it</h2>
+  <p>The site says the two medical fine-tunes are the study's null cases. The 08-10 recomputation moved <code>meditron3-8b</code> to significant on <i>both</i> the penalty and the sign test (23 down vs 3 up, q=1.76e-04); <code>apertus</code> moved off zero on the interval but its flip test is still not significant (11v4, q=0.118). The honest split is now per-model, not per-family.</p>
+  <p>No cycle will publish that sentence on its own — that is the rule this entry exists to enforce. But it also means D1 cannot be actioned safely until the sentence exists: publishing the refreshed number before the prose is exactly the hazard. One choice unblocks both.</p>
+  <p class="num">nothing public over-claims today — the site still shows the pre-move numbers · the stale statements are internal (HANDOFF_20260804 §2, dashboard verdicts)</p>
+  <div class="chips"><button class="chip" data-v="per-model-sentence">write the per-model sentence, then refresh the stats</button><button class="chip" data-v="owner-drafts">you draft it, session publishes nothing until then</button><button class="chip" data-v="drop-null-framing">drop the null-case framing entirely</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D3-TRANSPORT-LOGLENS-DOC-CONFLICT">
+  <h2>D3 · Fourth cycle spent re-deciding the same documented contradiction</h2>
+  <p>Three governing documents disagree on whether the transport and loglens exporters run in the daily cycle. The standing prompt §5 says WIRED and gives the commands; the <code>publish-site-data</code> skill lists them in step 3 <i>and</i> forbids them in its Never list; <code>daily-ops-cycle</code> says not wired. Today ran both, agreeing with 08-10 and 08-12.</p>
+  <p>The risk is no longer that cycles diverge — they have agreed three times running. It is that two of the three documents remain positively wrong, so a session that follows either one silently stops refreshing two published payloads with every gate still green. This is a one-line fix in two files.</p>
+  <p class="num">no content impact today — both reproduced byte-identically except generated_utc · it mattered on 08-10, when skipping would have left both stale</p>
+  <div class="chips"><button class="chip" data-v="strike-never-lines">strike the stale Never lines from both skills</button><button class="chip" data-v="unwire-them">actually unwire them, fix the standing prompt instead</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D4-LENS-AXIS-TIMESCALE">
+  <h2>D4 · The remaining backfill axis is a month of cycles, not a week</h2>
+  <p>Circuit tracing is done — 39/39 batches, no gaps. Cross-model predictions reached full 7/7 parity on the round-1 batch today. What is left is lens readout with <code>save_raw</code>, at <b>3 of 39 batches</b> (4 once today's fill lands), and it moves about one batch per cycle because chunks are capped at ~25 pairs.</p>
+  <p>That axis is what gates transport and loglens beyond the single census batch. At the current cadence it converges in roughly 35 more cycles. Worth knowing the timescale before assuming those figures broaden soon.</p>
+  <p class="num">trace 39/39 · lens+save_raw 3/39 · fully-covered 0/39 · driven by this daily cycle only (the accelerator Routine has never existed)</p>
+  <div class="chips"><button class="chip" data-v="accept-month">accept the pace, let it converge</button><button class="chip" data-v="bigger-chunks">raise the lens chunk size and risk the 429 loss window</button><button class="chip" data-v="prioritise-subset">pick a subset of batches that matters and stop there</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D5-CIRCUIT-429-STATUS">
+  <h2>D5 · The 429 stall on the tracing lane — status, not yet a decision</h2>
+  <p>Five of seven circuit-trace runs failed on HTTP 429 over 08-11/08-12, which is why the lane was held empty on 08-12 (and why the drift series lost that day). Yesterday's sentinel went in as the first fire since the hold, and today's went into a fully free lane.</p>
+  <p>Both were still in flight at cycle end, so whether the rate limit has actually cleared is <i>still</i> unknown — this is the second cycle to end without the answer. If today's sentinel lands clean, the lane is healthy and no action is needed. The underlying fix, if it recurs, remains a policy choice.</p>
+  <p class="num">retry ladder tops out at 60s · all hosted lanes fire within ~20s of each other · per-pair checkpointing means no data is lost, only runner time</p>
+  <div class="chips"><button class="chip" data-v="wait-and-see">wait for today's sentinel, no change</button><button class="chip" data-v="longer-backoff">lengthen the backoff ladder</button><button class="chip" data-v="stagger-fires">stagger the hosted lanes' fire times</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<button id="copy">Copy decision summary</button>
+<div id="out"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(c){
+  c.querySelectorAll('.chip').forEach(function(ch){
+    ch.addEventListener('click',function(){
+      c.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on')});
+      ch.classList.add('on');
+    });
+  });
+});
+document.getElementById('copy').addEventListener('click',function(){
+  var lines=['DECISIONS 2026-08-14'];
+  document.querySelectorAll('.card').forEach(function(c){
+    var on=c.querySelector('.chip.on');
+    lines.push(c.dataset.id+' :: '+(on?on.dataset.v:'(no selection)'));
+  });
+  var t=lines.join('\n');
+  var o=document.getElementById('out');o.textContent=t;o.style.display='block';
+  if(navigator.clipboard)navigator.clipboard.writeText(t);
+});
+</script>
