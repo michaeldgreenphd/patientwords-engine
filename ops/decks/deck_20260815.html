@@ -67,6 +67,14 @@
   <div class="chips"><button class="chip" data-v="fix-environment">fix the environment so containers start on the ops branch</button><button class="chip" data-v="accept-recipe">accept the recipe as the permanent boot step</button><button class="chip" data-v="hold">decide later</button></div>
 </div>
 
+<div class="card new" data-id="D7-LANE-SHARING-PROTOCOL">
+  <h2>D7 · Two drivers share the logits lane, and today they collided</h2>
+  <p>The interim babysitter deliberately left a slot free for the 13:04Z cycle. This cycle ran long — Variant B bootstrap, then the full publish chain — and at 13:53/13:54 the babysitter reclaimed both slots while this cycle's backfill fire was mid-publish. The fire had already failed its push once (exit 1) and was <b>abandoned rather than published</b>: pushing it would have entered as a third run and silently evicted the babysitter's pending one.</p>
+  <p>Nothing was lost — <code>fire_trigger</code>'s guard did exactly its job, and the deferred leg is one $0 backfill chunk. But the arbitration was ordering luck, not design, and it is the first time the two drivers have contended for the same slot.</p>
+  <p class="num">abandoned: pairs_20260707T215921Z 76-80/80 x meditron3-8b (real gap, 75/80 covered) · no phantom journal entry · trigger file carries the babysitter's params</p>
+  <div class="chips"><button class="chip" data-v="reserve-window">reserve a window where the babysitter does not fire</button><button class="chip" data-v="babysitter-skips-logits">babysitter skips the logits lane on cycle days</button><button class="chip" data-v="accept-collision">accept it — the guard refuses correctly, cost is a deferred $0 leg</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
 <button id="copy">Copy decision summary</button>
 <div id="out"></div>
 <script>
