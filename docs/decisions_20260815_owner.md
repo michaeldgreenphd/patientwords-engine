@@ -14,16 +14,25 @@ retired rather than re-decided.
 The sanctioned replacement for every "the two medical fine-tunes are the study's null
 cases" sentence, verbatim:
 
-> the medical fine-tunes are no longer null cases: meditron downgrades 31 flips to 5
-> upgrades (p = 1.3×10⁻⁵) and apertus 18 to 5 (p = 0.011), with mean penalties −0.040
+> the medical fine-tunes are no longer null cases: meditron downgrades 35 flips to 6
+> upgrades (q = 9.7×10⁻⁶) and apertus 18 to 5 (q = 0.011), with mean penalties −0.041
 > and −0.022 whose intervals exclude zero; both are post-registration exploratory
 > additions, and the urgency tiers behind every flip call remain draft pending domain
 > review.
 
+**Numbers refreshed at deployment, wording unchanged.** The option-B draft the owner
+picked carried meditron at 31:5, q = 1.3×10⁻⁵, mean −0.040 — the 2026-08-12 figures.
+The `model_stats.json` republish this session (backfill legs having landed since) puts
+meditron at 35 down / 6 up, q = 9.7×10⁻⁶, mean −0.041 CI [−0.0526, −0.0294]; apertus is
+unchanged at 18:5, q = 0.011, mean −0.0224 CI [−0.0370, −0.0093]. A sanctioned sentence
+must match the file it ships with — that is the entire point of this decision — so the
+figures were updated to the published ones and the owner's chosen framing kept verbatim.
+The direction of the finding is unchanged and slightly stronger.
+
 This **supersedes** the 2026-08-08 sanctioned sentence, which said "their flip-direction
 tests remain underpowered (5 and 5 flips)" — untrue since the 08-10 recomputation.
-No other phrasing about the medical models is sanctioned. Deployment: the numbers ship
-with the `model_stats.json` republish (decision 5), never ahead of it.
+No other phrasing about the medical models is sanctioned. Deployed with the
+`model_stats.json` republish (decision 5), never ahead of it.
 
 ## 2 · OPENROUTER-LANE-UNCEILINGED-20260808 — ALREADY IMPLEMENTED
 

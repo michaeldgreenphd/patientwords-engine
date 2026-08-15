@@ -107,13 +107,29 @@ def check_simulated(rep: Report, site: Path, payload: dict) -> dict:
     known_keys(rep, a, payload,
                {"batches", "scenarios", "models_meta", "traced", "traced_by_model",
                 "holdout_withheld", "archive", "traces_site", "summary",
-                "depth_model", "urgency_meta", "featured"})
+                "depth_model", "urgency_meta", "featured", "steering_disclosure"})
     batches = need(rep, a, payload, "batches", list, "$") or []
     scenarios = need(rep, a, payload, "scenarios", list, "$") or []
     models_meta = need(rep, a, payload, "models_meta", list, "$") or []
     need(rep, a, payload, "traced", dict, "$")
     if "holdout_withheld" in payload and not _is(payload["holdout_withheld"], int):
         rep.err(a, "$.holdout_withheld", "must be an integer count")
+    # Steered batches publish under a disclosure block (owner decision
+    # 2026-08-15). If any scenario is flagged steered, the block must name its
+    # batch: an unlabelled steered scenario reads as an ordinary cadence draw.
+    disclosure = payload.get("steering_disclosure")
+    if disclosure is not None:
+        if not isinstance(disclosure, dict) or not disclosure.get("note"):
+            rep.err(a, "$.steering_disclosure", "must be an object carrying a 'note'")
+        declared = set((disclosure or {}).get("stamps") or [])
+        flagged = {s.get("batch") for s in scenarios if s.get("steered")}
+        missing = sorted(flagged - declared)
+        if missing:
+            rep.err(a, "$.steering_disclosure.stamps",
+                    f"steered scenarios from undeclared batches: {missing}")
+    elif any(s.get("steered") for s in scenarios):
+        rep.err(a, "$.steering_disclosure",
+                "scenarios are flagged steered but the payload declares no disclosure")
 
     if not scenarios:
         rep.err(a, "$.scenarios", "empty (simulated-scenarios/index.html throws 'empty')")
