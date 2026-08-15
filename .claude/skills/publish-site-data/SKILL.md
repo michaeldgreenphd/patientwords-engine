@@ -109,7 +109,6 @@ Exit 2 (empty sealed set): config error (wrong branch), never a pass.
 ## Never
 
 - Never edit page HTML, page text, figures, or labels — data files only, without exception.
-- Never run the transport/loglens exporters as part of the cycle (snapshot files).
 - Never publish a scale-framing sentence, or any new prose, without explicit owner approval.
 - Never remove or soften "draft pending domain review" labels.
 - Never hand-edit an exported payload, invent a number, or patch past an exporter refusal.

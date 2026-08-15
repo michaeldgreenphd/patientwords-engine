@@ -55,6 +55,18 @@ def write_dashboard(repo, spent, date=None, ceiling=2.0):
 @pytest.fixture
 def repo(tmp_path):
     (tmp_path / ".github" / "trigger").mkdir(parents=True)
+    wf = tmp_path / ".github" / "workflows"
+    wf.mkdir(parents=True)
+    # The fire path refuses a trigger no workflow on this branch reads (exit 7),
+    # so the throwaway repo needs a workflow naming each path, the way the real
+    # workflows do in their `paths:` filter. pab-probe is left OUT deliberately:
+    # it mirrors the real gemma branch, where the key is wired only on the PAB
+    # branch, and it is what test_unwired_trigger_refused_with_exit_7 fires.
+    wired = [t for t in ft.TRIGGERS if t != "pab-probe"]
+    body = "on:\n  push:\n    paths:\n" + "".join(
+        f'      - ".github/trigger/{name}.json"\n' for name in wired
+    )
+    (wf / "stub.yml").write_text(body, encoding="utf-8")
     (tmp_path / "ops").mkdir()
     return tmp_path
 
@@ -724,3 +736,30 @@ def test_inflight_lane_filter_and_override_scope():
     assert kind == "ok" and "override" in reason
     orl = {"models": "openai:openai/x", "max_spend": "1.0"}
     assert ft.budget_check(orl, dash, today, overrides=ov, trigger="advice-eval")[0] == "ceiling"
+
+
+def test_unwired_trigger_refused_with_exit_7(repo, capsys):
+    """A KNOWN key with no workflow behind it must refuse, not silently no-op.
+
+    Unknown keys already hard-error. A known-but-unwired key used to validate,
+    write the trigger file, journal the fire and push - running nothing, and
+    leaving a journal entry for a run that never existed (owner decision
+    2026-08-15). The key stays in TRIGGERS because it is wired on another
+    branch; the check is branch-local.
+    """
+    code = fire(repo, trigger="pab-probe",
+                params={"stage": "analyze", "max_spend": "1.0", "commit_sidecar": "false"},
+                note="unwired fire")
+    assert code == 7
+    assert "no workflow on this branch reads" in capsys.readouterr().err
+    assert not trigger_path(repo, "pab-probe").exists()      # nothing written
+    assert ft.load_journal(journal_path(repo)) == []          # nothing journaled
+
+
+def test_workflow_reads_trigger_is_branch_local(repo):
+    assert ft.workflow_reads_trigger(repo, "circuit-trace") is True
+    assert ft.workflow_reads_trigger(repo, "pab-probe") is False
+    # a workflow appearing on the branch flips it live, no code change needed
+    (repo / ".github" / "workflows" / "pab_probe.yml").write_text(
+        'on:\n  push:\n    paths:\n      - ".github/trigger/pab-probe.json"\n', encoding="utf-8")
+    assert ft.workflow_reads_trigger(repo, "pab-probe") is True

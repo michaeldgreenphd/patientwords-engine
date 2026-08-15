@@ -41,7 +41,13 @@ PAGES = [
     "methods.html",
     "technical/index.html",
     "simulated-scenarios/index.html",
+    # Two substantive live pages were missing here, so ~44 KB of published
+    # prose was invisible to every consumer of this extract - including the
+    # doc-accuracy sweep that checks page text against the data (owner
+    # decision 2026-08-15).
+    "simulated-scenarios/scenario.html",
     "llm/index.html",
+    "llm/code.html",
     "wording-differences/index.html",
     "dialect-differences/index.html",
     "translation/index.html",

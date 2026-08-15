@@ -70,8 +70,13 @@ main; trace outputs land on this branch — they interleave).
 - **Doc-accuracy sweep (Mondays):** mechanical cross-checks — fire_trigger
   TRIGGERS vs .github/trigger/ files vs workflows (three-way parity); frontend
   CLAUDE.md data contracts vs data/ inventory vs engine script inventory;
-  extract_site_text.py PAGES vs live pages; amendments cited in code vs
-  docs/preregistration_amendments.md; handoff docs vs the actual tree. Output:
+  extract_site_text.py PAGES vs live pages; amendments cited in code vs the
+  amendment docs (`docs/prereg_amendment2_depth.md`,
+  `prereg_amendment3_holdout.md`, `prereg_amendment4_steering.md`, and
+  `prereg_divergence_log.md` — the single `preregistration_amendments.md` this
+  line used to name exists only on main; a sweep reading it literally gets a
+  FileNotFoundError and could misreport "no amendments declared", owner
+  decision 2026-08-15); handoff docs vs the actual tree. Output:
   dated report under docs/audits/, ONE digest line; owner-needing items go to
   decisions_pending. Do not "fix" drift inside the sweep.
 
@@ -284,6 +289,15 @@ the scale result is not. When the full txcorpus numbers land, a framing
 sentence gets DRAFTED and put in the digest + `decisions_pending` for the
 owner to approve BEFORE it deploys. No cycle publishes that sentence on
 its own - same rule as claim_check prose: data yes, text no.
+
+Refresh the per-model statistics in the same pass: `python
+scripts/paired_stats_rigor.py --site ../patientwords` (owner decision
+2026-08-15, MODEL-STATS-PUBLISH-POLICY). It was the one published payload the
+cycle rebuilt everything around but never itself, so the site's cross-model
+numbers drifted a week behind the legs that move them. It can trip
+claim_check when a number a page quotes moves — that is the gate working:
+fix the prose or hold the file, never skip the refresh. `model_stats.json`
+carries no `generated_utc`, so nothing else can detect its staleness.
 
 After any data republish, run `python scripts/coverage_gaps.py` (specialty
 coverage; $0). When Tier B generation fires, take `topics` for the fire from

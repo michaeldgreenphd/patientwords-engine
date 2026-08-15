@@ -34,7 +34,8 @@ Pass --ignore-settle once the prior run is confirmed terminal in GitHub.
 Exit codes: 0 fired/ok, 2 queue refusal, 3 bad params, 4 budget refusal,
 5 no-op fire (trigger file already holds the params), 6 settle refusal (a
 same-trigger run was resolved inside the settle window and may still hold the
-GitHub concurrency group), 1 git failure.
+GitHub concurrency group), 7 unwired trigger (no workflow on this branch reads
+that trigger file, so the fire would run nothing), 1 git failure.
 No medical vocabulary lives in this file.
 """
 from __future__ import annotations
@@ -79,6 +80,32 @@ DEFAULT_DAILY_CEILING_USD = 2.0
 # minimal port 2026-08-07 for advice-eval fires whose models are all
 # OpenRouter-routed - owner routing instruction, decisions Addendum 3).
 DEFAULT_OPENROUTER_DAILY_CEILING_USD = 10.0
+
+
+WORKFLOW_DIR_RELPATH = ".github/workflows"
+
+
+def workflow_reads_trigger(repo, trigger: str) -> bool:
+    """True when some workflow on this branch reads this trigger's file path.
+
+    CI fires on a push that changes .github/trigger/<trigger>.json, so a trigger
+    key is only live where a workflow names that path. Checked per branch: the
+    same key can be wired on one branch and absent on another."""
+    needle = f"{TRIGGER_DIR_RELPATH}/{trigger}.json"
+    wf_dir = repo / WORKFLOW_DIR_RELPATH
+    try:
+        entries = sorted(wf_dir.iterdir())
+    except OSError:
+        return False
+    for path in entries:
+        if path.suffix not in (".yml", ".yaml"):
+            continue
+        try:
+            if needle in path.read_text(encoding="utf-8"):
+                return True
+        except OSError:
+            continue
+    return False
 
 
 def fire_lane(trigger: str, params: dict) -> str:
@@ -662,10 +689,23 @@ def cmd_fire(args):
         # journal entry's in-flight figure matches what budget_check counted
         max_spend, _ = fire_commitment(budget_params)  # valid here: budget_check vetted it
 
-    # 5. Refuse a no-op fire: identical trigger-file content means the push would
-    # not change the file, so CI would NOT fire, yet a journal entry would hold a
-    # phantom queue slot. Hard error; nothing is written.
+    # 5. Refuse a fire no workflow on THIS branch can answer. A key in TRIGGERS
+    # with no workflow reading its trigger path is worse than an unknown key:
+    # unknown keys hard-error, but a known-but-unwired key validates, writes the
+    # file, journals the fire, pushes - and runs nothing, leaving a journal entry
+    # for a run that never existed (owner decision 2026-08-15, filed as "a control
+    # with nothing behind it"). The key itself is NOT dropped: pab-probe is wired
+    # on the PAB branch (.github/workflows/pab_probe.yml), so deleting it here
+    # would strand that branch's tooling. The branch-local check is the fix.
     trigger_path = repo / TRIGGER_DIR_RELPATH / f"{args.trigger}.json"
+    if not workflow_reads_trigger(repo, args.trigger):
+        print(
+            f"refused: no workflow on this branch reads {TRIGGER_DIR_RELPATH}/{args.trigger}.json - "
+            "the fire would push, journal, and run nothing. Wire a workflow, or fire from the "
+            "branch that has one.",
+            file=sys.stderr,
+        )
+        return 7
     content = json.dumps(params, separators=(",", ":")) + "\n"
     try:
         unchanged = trigger_path.read_text(encoding="utf-8") == content
