@@ -3,24 +3,24 @@
   "persistence_layers": 2,
   "method_credit": "Jacobian lens: Gurnee et al., Transformer Circuits (2026); hosted by Neuronpedia. Readout = per-layer top-8 of the forming next-token distribution, rank recorded when the target appears.",
   "model": "gemma-2-2b",
-  "n_pairs": 2196,
+  "n_pairs": 2199,
   "formation": {
     "clinical": {
-      "n": 1587,
+      "n": 1589,
       "q25": 17,
       "median": 18,
       "q75": 21
     },
     "patient": {
-      "n": 1421,
+      "n": 1423,
       "q25": 17,
       "median": 19,
       "q75": 22
     },
-    "clinical_never": 609,
-    "patient_never": 775,
+    "clinical_never": 610,
+    "patient_never": 776,
     "lag": {
-      "n": 1353,
+      "n": 1355,
       "q25": 0,
       "median": 0,
       "q75": 1
@@ -38,7 +38,7 @@
       }
     },
     "held": {
-      "n": 1411
+      "n": 1413
     },
     "hijack": {
       "n": 126,
@@ -56,7 +56,7 @@
       }
     },
     "unreadable": {
-      "n": 488
+      "n": 489
     }
   },
   "points": [
@@ -496,6 +496,27 @@
     },
     {
       "dataset": "drift_sentinel_20260813",
+      "index": 3,
+      "clin_formed": 7,
+      "pat_formed": 7,
+      "class": "held"
+    },
+    {
+      "dataset": "drift_sentinel_20260814",
+      "index": 1,
+      "clin_formed": null,
+      "pat_formed": null,
+      "class": "unreadable"
+    },
+    {
+      "dataset": "drift_sentinel_20260814",
+      "index": 2,
+      "clin_formed": 7,
+      "pat_formed": 17,
+      "class": "held"
+    },
+    {
+      "dataset": "drift_sentinel_20260814",
       "index": 3,
       "clin_formed": 7,
       "pat_formed": 7,
@@ -15435,36 +15456,36 @@
   ],
   "window_sensitivity": {
     "1": {
-      "held": 584,
-      "unreadable": 1229,
+      "held": 585,
+      "unreadable": 1231,
       "capture": 226,
       "hijack": 157,
-      "clinical_never": 1351,
-      "patient_never": 1502
+      "clinical_never": 1353,
+      "patient_never": 1504
     },
     "2": {
-      "held": 863,
-      "unreadable": 923,
+      "held": 865,
+      "unreadable": 924,
       "capture": 205,
       "hijack": 205,
-      "clinical_never": 1101,
-      "patient_never": 1259
+      "clinical_never": 1102,
+      "patient_never": 1260
     },
     "4": {
-      "held": 1153,
-      "unreadable": 676,
+      "held": 1155,
+      "unreadable": 677,
       "capture": 217,
       "hijack": 150,
-      "clinical_never": 832,
+      "clinical_never": 833,
       "patient_never": 1036
     },
     "8": {
-      "held": 1411,
-      "unreadable": 488,
+      "held": 1413,
+      "unreadable": 489,
       "capture": 171,
       "hijack": 126,
-      "clinical_never": 609,
-      "patient_never": 775
+      "clinical_never": 610,
+      "patient_never": 776
     }
   },
   "exemplars": [
@@ -15674,15 +15695,15 @@
   },
   "instruction_tuning": {
     "it_model": "gemma-2-2b-it",
-    "n_paired": 63,
+    "n_paired": 65,
     "base_median": {
-      "n": 63,
+      "n": 65,
       "q25": 7,
       "median": 17,
       "q75": 18
     },
     "it_median": {
-      "n": 63,
+      "n": 65,
       "q25": 7,
       "median": 8,
       "q75": 18
@@ -15897,6 +15918,16 @@
         "index": 3,
         "base": 7,
         "it": 7
+      },
+      {
+        "index": 2,
+        "base": 17,
+        "it": 8
+      },
+      {
+        "index": 3,
+        "base": 7,
+        "it": 6
       },
       {
         "index": 5,
