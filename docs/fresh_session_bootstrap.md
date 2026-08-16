@@ -75,6 +75,7 @@ git fetch --filter=blob:none --no-tags origin claude/gemma-clinical-colloquial-i
 git sparse-checkout set --no-cone \
   '/*' '!/trace_out/*' '!/render_archives/*' \
   '/trace_out/*/*.json' '/trace_out/*/*.html' \
+  '/trace_out/*/jlens_raw/*' \
   '/trace_out/pairs_20260711T051145Z__jlens_gemma-2-2b/*' \
   '/trace_out/pairs_20260711T051145Z__loglens_gemma-2-2b/*' \
   '/trace_out/pairs_20260711T051145Z_txopus*/*' \
@@ -90,11 +91,24 @@ optional**: `export_jspace.py` and the transport/loglens exporters read
 it did on 2026-08-09. With them, the full publish chain ran clean on
 2026-08-11, `export_jspace.py` included.
 
+The **global** `'/trace_out/*/jlens_raw/*'` line is equally not optional, for a
+different reason (added 2026-08-16; blocker `planner-lens-sparse-miscount-20260815`).
+`backfill_planner.py:77` measures LENS coverage by globbing that path in the
+**working tree**, so whitelisting raw for the census batch alone makes the planner
+see 0 raw pairs everywhere else and report `lens+save_raw 3/39` when the git tree
+actually holds 39/39 COMPLETE. The planner then re-picks an already-complete batch
+(`pairs_20260706T172135Z` 1-2/2 was fired on 08-11 and again on 08-14 for this
+reason). With the global pattern the planner reports `lens+save_raw 39/39` and
+`[jlens-readout] COMPLETE - no gaps`, which is the truth. Cost: 6,835 `.gz` blobs
+across 92 dirs, materialized in well under a minute; `trace_out` goes 3.3G -> 6.6G.
+Verified on the 2026-08-16 cycle, which avoided a third wasted fire because of it.
+
 The site sibling needs no such care — it is small, and on 2026-08-11 its ops
 branch was byte-identical to `main`.
 
 Note that `docs/routine_standing_prompt.md` on **main** is a stale 172-line
-snapshot; the ops branch carries the authoritative 398-line version with the
+snapshot; the ops branch carries the authoritative version (412 lines as of
+2026-08-16) with the
 sub-items (3a2, 3b, 3c, 3c2, 3d, 4a, 4b) the cycle depends on. Re-read it from
 the branch after checkout, not before.
 
@@ -111,6 +125,18 @@ cd patientwords
 git sparse-checkout set --no-cone '/*' '!/modes/'
 git checkout claude/gemma-clinical-colloquial-interp-mavx04
 ```
+
+**But re-materialize `modes/` before running the contract gate** (2026-08-16).
+`validate_frontend_contract.py` resolves every scenario's `html` field against the
+site working tree, so with `modes/` excluded it emits one
+`render path missing on disk: modes/simulated/<batch>/index_NN.html` FAIL per
+published render — 153 of them on the 08-16 cycle, every one a checkout artifact
+(each path was present in `git ls-tree HEAD`). A session that trusts that output
+reads a healthy contract as broken, and "repairing" the payload from it would
+corrupt a good file. Run `git -C ../patientwords sparse-checkout disable` (925M,
+under a minute) before the gate; the true reading that cycle was 0 errors and the
+single known orphan-row warning. Verify a suspected FAIL against
+`git ls-tree -r HEAD <path>` before believing it.
 
 ## Verify before doing anything else
 
