@@ -1,0 +1,77 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-17</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .new{border-left:3px solid #b4483d}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-17</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · red rule = new or moved today</p>
+
+<div class="card new" data-id="D1-HOLDOUT-GUARD-DISAGREEMENT">
+  <h2>D1 · The two holdout guards disagree by one phrase — and nothing checks that they agree</h2>
+  <p>New today, from the Monday critic pass. <code>seal_check</code> seals <b>173</b> phrases; the statistics script's Amendment-1 filter excludes across <b>174</b>. Each guard is internally consistent and neither can see the other, so the gap sat there silently.</p>
+  <p>The extra phrase is an <b>orphan collector row</b>: <code>batch_index</code> is null, <code>is_holdout()</code> returns <b>False</b> for it, and its text appears in <i>no</i> <code>data/simulated</code> archive as either prompt side — exact or normalized. So it cannot be a Tier B holdout phrase. <b>The seal is not weakened and no published number is affected</b> (the row joins no scenario). What it does do is make the analysis over-exclude by one phrase, and make the logs print "174 holdout phrases" — a number a future session could read as the seal having grown.</p>
+  <p>The fix has an ordering constraint: the guard-agreement test is drafted and ready, but landing it <i>first</i> turns the suite red on this row. The critic deliberately did not land it — turning the suite red is not the critic's call.</p>
+  <p class="num">173 sealed vs 174 excluded · orphan row batch pairs_20260713T050939Z, model gemma-2-2b · test drafted in docs/critic/critic_20260817.md §5 · phrase text never printed anywhere</p>
+  <div class="chips"><button class="chip" data-v="drop-orphans-then-test">drop orphan rows (null batch_index + no archive match), then land the test</button><button class="chip" data-v="test-first-red">land the test now and accept a red suite until the row is fixed</button><button class="chip" data-v="test-only-no-fix">just log the count difference, no code change</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D2-MEDICAL-NULL-FRAMING-DEAD">
+  <h2>D2 · Medical null-case framing: moved again, now at 6× the n that opened the card</h2>
+  <p>Open since 08-08, and today it moved further in the same direction rather than stabilising. The overnight 8B backfill legs added <b>145 phrases to each</b> medical fine-tune. Both remain significant on both instruments; the intervals just got tighter.</p>
+  <p>Nothing on the site asserts the null-case framing — <code>claim_check</code> is green, and no page names either model. This is an <b>internal-doc correction</b>: the stale framing lives in <code>ops/dashboard.json:verdicts</code> and <code>HANDOFF_20260804</code> §2, which is step 6 of the orientation order every memoryless session reads first.</p>
+  <p class="num">meditron3-8b 481→626 phrases, −0.0404 [−0.0509, −0.0293], sign p_BH 9.75e-06→1.85e-05 · apertus-8b-meditronfo 503→648, −0.0212 [−0.0325, −0.0107], p_BH 1.26e-03→1.32e-03 · ten of ten CIs exclude zero, before and after · no significance verdict flipped today</p>
+  <div class="chips"><button class="chip" data-v="drop-null-framing">drop the null-case framing — medical fine-tuning does not protect against it</button><button class="chip" data-v="you-draft">you draft the sentence, sessions publish nothing until it exists</button><button class="chip" data-v="correction-register">add the §6 correction-register entry and move on</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D3-TRANSPORT-LOGLENS-DOC-CONFLICT">
+  <h2>D3 · Two governing docs still contradict each other on the j-lens exporters — and I had to pick one today</h2>
+  <p>Open since 08-09. <code>docs/routine_standing_prompt.md</code> §5 says the transport and loglens exporters are <b>WIRED</b> (owner option 1, 07-23) and the <code>publish-site-data</code> skill agrees; the <code>daily-ops-cycle</code> skill says <b>"do NOT run"</b> and cites the same §5.</p>
+  <p>Disclosing the call I made: I <b>ran</b> both, on the grounds that the standing prompt is the declared authority and the more specific publish skill concurs. Both reproduced their committed values exactly (loglens 23 paired, class agree 17, formation agree 18), so the publish was a no-op in substance — but a cycle should not have to adjudicate its own instructions, and the next session may well choose the other way.</p>
+  <p class="num">data/jlens_transport.json census 44 pairs, 5 exemplars · data/jlens_loglens.json 23 paired · both byte-stable except generated_utc</p>
+  <div class="chips"><button class="chip" data-v="wired-fix-skill">confirm WIRED — correct the daily-ops-cycle skill</button><button class="chip" data-v="unwire-fix-prompt">confirm NOT wired — correct the standing prompt</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D4-VARIANT-B-SIXTH">
+  <h2>D4 · Sixth consecutive container arrived on the wrong branch</h2>
+  <p>Every fresh Routine session since 08-11 has booted with both repos clean but sitting on <b>main-based session branches</b>, ops branch never fetched — and the branch named in the scheduled prompt does not exist in the checkout. Today's was the sixth in a row.</p>
+  <p>The recorded recipe works and cost about three minutes. The reason this is still a card is that the failure is <b>silent</b>: <code>ops/dashboard.json</code> reads as a month-stale 2026-07-09 copy with <code>tierb.start_utc</code> null, and a session that trusts it orients from entirely wrong numbers. The seal check is what catches it — an empty sealed set exits 2 — but only if the session runs it before acting.</p>
+  <p class="num">blocker container-materialization-20260809 · blobless fetch 2.7s vs a plain fetch that timed out at 2 min · docs/fresh_session_bootstrap.md Variant B</p>
+  <div class="chips"><button class="chip" data-v="fix-env">fix the environment so it clones the ops branch</button><button class="chip" data-v="prompt-points-recipe">keep the recipe — make the Routine prompt run it unconditionally</button><button class="chip" data-v="accept-tax">accept the 3-minute tax, no change</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<button id="copy">copy decisions</button>
+<div id="out"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(card){
+  card.querySelectorAll('.chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      card.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('on'); c.setAttribute('aria-pressed','false'); });
+      chip.classList.add('on'); chip.setAttribute('aria-pressed','true');
+    });
+  });
+});
+document.getElementById('copy').addEventListener('click', function(){
+  var lines = ['DECISIONS 2026-08-17'];
+  document.querySelectorAll('.card').forEach(function(card){
+    var on = card.querySelector('.chip.on');
+    lines.push(card.dataset.id + ': ' + (on ? on.dataset.v : '(no choice)'));
+  });
+  var text = lines.join('\n');
+  var out = document.getElementById('out');
+  out.textContent = text; out.style.display = 'block';
+  if (navigator.clipboard) { navigator.clipboard.writeText(text).catch(function(){}); }
+});
+</script>
