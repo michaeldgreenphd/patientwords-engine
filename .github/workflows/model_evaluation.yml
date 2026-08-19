@@ -57,9 +57,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.11"
 
@@ -99,17 +99,34 @@ jobs:
           print(json.dumps(params, indent=2))
           EOF
 
+
+      - name: Daily-ceiling gate (server-side; audit S2, owner-approved 2026-08-19)
+        env:
+          GATE_PARAMS: ${{ toJSON(steps.params.outputs) }}
+        run: |
+          printf '%s' "$GATE_PARAMS" > "$RUNNER_TEMP/gate_params.json"
+          python3 scripts/fire_trigger.py budget-gate --trigger model-evaluation --params-file "$RUNNER_TEMP/gate_params.json"
+
       - name: Run evaluation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Params reach the shell as env vars only: the runner substitutes ${{ }}
+          # before bash parses, so direct interpolation in the script body would
+          # execute a param containing $( ) or a quote.
+          P_LIST: ${{ steps.params.outputs.list }}
+          P_SCENARIO: ${{ steps.params.outputs.scenario }}
+          P_SAMPLE_SIZE: ${{ steps.params.outputs.sample_size }}
+          P_MAX_SPEND: ${{ steps.params.outputs.max_spend }}
+          P_PAIRS_FILE: ${{ steps.params.outputs.pairs_file }}
         run: |
-          ARGS=(--models ${{ steps.params.outputs.list }}
-            --scenario "${{ steps.params.outputs.scenario }}"
-            --sample-size "${{ steps.params.outputs.sample_size }}"
-            --max-spend "${{ steps.params.outputs.max_spend }}"
+          read -r -a MODELS <<< "$P_LIST"
+          ARGS=(--models "${MODELS[@]}"
+            --scenario "$P_SCENARIO"
+            --sample-size "$P_SAMPLE_SIZE"
+            --max-spend "$P_MAX_SPEND"
             --out eval_out)
-          if [ -n "${{ steps.params.outputs.pairs_file }}" ]; then
-            ARGS+=(--pairs "${{ steps.params.outputs.pairs_file }}")
+          if [ -n "$P_PAIRS_FILE" ]; then
+            ARGS+=(--pairs "$P_PAIRS_FILE")
           fi
           python -m medlang_circuits.evaluate_models "${ARGS[@]}"
 
@@ -228,7 +245,7 @@ jobs:
 
       - name: Upload performance log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: model-evaluation-${{ github.run_number }}
           path: eval_out/

@@ -802,6 +802,44 @@ def cmd_status(args):
     return 0
 
 
+def cmd_budget_gate(args):
+    """CI-side twin of cmd_fire's paid-path budget check (audit S2, owner-approved
+    2026-08-19). fire_trigger's ceiling is client-side only: a direct push of a
+    trigger file (merge, rebase, hand edit) runs the paid workflow without it.
+    This subcommand runs the SAME budget_check inside the workflow, against the
+    checked-out dashboard/journal/overrides, so the daily aggregate holds
+    server-side too. Exit 0 = clear (or a free fire); exit 6 = refuse the run.
+    """
+    repo = Path(args.repo).resolve()
+    if args.params_file:
+        params_path = Path(args.params_file)
+    else:
+        params_path = repo / TRIGGER_DIR_RELPATH / f"{args.trigger}.json"
+    try:
+        params = json.loads(params_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        print(f"budget-gate: cannot read params ({params_path}): {exc}", file=sys.stderr)
+        return 6
+    if args.trigger not in PAID_TRIGGERS and not is_mitigation_fire(args.trigger, params):
+        print(f"budget-gate: {args.trigger} is a free fire; clear")
+        return 0
+    budget_params = params if args.trigger in PAID_TRIGGERS \
+        else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
+    now = utc_now()
+    entries = load_journal(repo / JOURNAL_RELPATH)
+    dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
+    overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
+    kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),
+                                entries=entries, now=now,
+                                expire_hours=expire_hours_from_env(),
+                                overrides=overrides, trigger=args.trigger)
+    if kind == "ok":
+        print(f"budget-gate: clear - {reason}")
+        return 0
+    print(f"budget-gate: REFUSED - {reason}", file=sys.stderr)
+    return 6
+
+
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     common = argparse.ArgumentParser(add_help=False)
@@ -834,6 +872,15 @@ def build_parser():
 
     status = sub.add_parser("status", parents=[common], help="per-trigger active counts and queue view")
     status.set_defaults(func=cmd_status)
+
+    gate = sub.add_parser("budget-gate", parents=[common],
+                          help="CI-side daily-ceiling check; exit 6 refuses the run")
+    gate.add_argument("--trigger", required=True, choices=TRIGGERS)
+    gate.add_argument("--params-file", default=None,
+                      help="params JSON path (default: this checkout's trigger file - "
+                           "correct for push-fired runs; workflow_dispatch should pass "
+                           "its resolved params explicitly)")
+    gate.set_defaults(func=cmd_budget_gate)
     return parser
 
 

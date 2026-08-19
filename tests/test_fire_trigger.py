@@ -763,3 +763,48 @@ def test_workflow_reads_trigger_is_branch_local(repo):
     (repo / ".github" / "workflows" / "pab_probe.yml").write_text(
         'on:\n  push:\n    paths:\n      - ".github/trigger/pab-probe.json"\n', encoding="utf-8")
     assert ft.workflow_reads_trigger(repo, "pab-probe") is True
+
+
+def test_budget_gate_free_trigger_clears(repo, capsys):
+    (repo / ".github" / "trigger" / "logits-eval.json").write_text(
+        '{"models": "m", "limit": "25"}', encoding="utf-8")
+    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "logits-eval"])
+    assert rc == 0
+    assert "free fire" in capsys.readouterr().out
+
+
+def test_budget_gate_refuses_over_ceiling_with_exit_6(repo, capsys):
+    (repo / ".github" / "trigger" / "model-evaluation.json").write_text(
+        '{"model_selection": "claude-haiku-4-5", "max_spend": "999"}', encoding="utf-8")
+    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "model-evaluation"])
+    assert rc == 6
+    assert "REFUSED" in capsys.readouterr().err
+
+
+def test_budget_gate_clears_within_ceiling_and_reads_params_file(repo, tmp_path, capsys):
+    pf = tmp_path / "params.json"
+    pf.write_text('{"model_selection": "claude-haiku-4-5", "max_spend": "0.25"}',
+                  encoding="utf-8")
+    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "model-evaluation",
+                  "--params-file", str(pf)])
+    assert rc == 0
+    assert "clear" in capsys.readouterr().out
+
+
+def test_budget_gate_counts_landed_spend_from_dashboard(repo, capsys):
+    today = ft.utc_now().strftime("%Y-%m-%d")
+    (repo / "ops" / "dashboard.json").write_text(json.dumps({
+        "spend": {"daily_ceiling_usd": 2.0,
+                  "today": {"date": today, "spent_usd": 1.9, "anthropic_usd": 1.9}}}),
+        encoding="utf-8")
+    (repo / ".github" / "trigger" / "model-evaluation.json").write_text(
+        '{"model_selection": "claude-haiku-4-5", "max_spend": "0.50"}', encoding="utf-8")
+    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "model-evaluation"])
+    assert rc == 6
+    assert "REFUSED" in capsys.readouterr().err
+
+
+def test_budget_gate_missing_params_file_refuses(repo, capsys):
+    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "scenario-generation"])
+    assert rc == 6
+    assert "cannot read params" in capsys.readouterr().err

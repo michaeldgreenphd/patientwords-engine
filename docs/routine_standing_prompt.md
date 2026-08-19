@@ -141,6 +141,19 @@ Priority order when slots are free:
    verdict line into the brief (the site copy feeds the methods repeatability
    note and its manifest guards since 2026-07-15, the first movement day).
    DRIFT verdicts go in the digest headline, not just the brief body.
+   **Wait for it, then resolve it (audit S3, owner-approved 2026-08-19):**
+   the sentinel run takes ~20 min while the rest of the cycle finishes
+   sooner, and a cycle that closes first leaves the journal entry to expire
+   as a false missed-harvest (observed 2026-08-17 and -18). Before closing
+   the cycle: poll `git pull --rebase` every 5 minutes, up to 35 minutes,
+   until `trace_out/drift_sentinel_<YYYYMMDD>/batch_summary*.json` lands;
+   verify it, resolve the circuit-trace entry, run the drift verdict, THEN
+   write the dashboard and close. If it has not landed by the 35-minute
+   bound, leave the entry unresolved, say so in the brief, and let the next
+   cycle's opening harvest (below) pick it up. **Opening harvest backstop:**
+   at cycle start, if yesterday's drift-sentinel entry is still unresolved
+   and its output directory exists on the branch, verify and resolve it
+   before firing today's.
 3c. **Per-batch lens readout** ($0, jlens-readout slot free): every Tier B
    batch gets a hosted lens pull once its pairs file is on the branch:
    `models` `gemma-2-2b`, `topn` `8`, `save_raw` `true`, `commit_outputs`
