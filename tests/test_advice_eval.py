@@ -442,7 +442,9 @@ def test_workflow_defaults_cover_every_dispatch_input():
     inputs = set(wf[True]["workflow_dispatch"]["inputs"])  # yaml parses the 'on' key as True
     assert wf[True]["push"]["paths"] == [".github/trigger/advice-eval.json"]
     assert wf["concurrency"]["cancel-in-progress"] is False
-    params_run = wf["jobs"]["params"]["steps"][-1]["run"]
+    params_step = next(st for st in wf["jobs"]["params"]["steps"]
+                       if st.get("id") == "params")  # the S2 budget gate now follows it
+    params_run = params_step["run"]
     # push-path pitfall: the heredoc defaults dict must contain every trigger key
     for key in inputs:
         assert f'"{key}"' in params_run, f"workflow defaults dict is missing {key}"
