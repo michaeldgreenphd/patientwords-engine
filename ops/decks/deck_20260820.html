@@ -1,0 +1,102 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-20</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .chip:focus-visible{outline:2px solid #15803d;outline-offset:2px}
+  .new{border-left:3px solid #b4483d}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-20</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · red rule = new or moved today</p>
+
+<div class="card new" data-id="D1-MISSED-CYCLE-20260819">
+  <h2>D1 · The daily cycle did not run yesterday, and the instrument series lost a third day</h2>
+  <p>New today, and the most consequential thing in this deck. There is <b>no trace of a 2026-08-19 cycle</b>: no journal entry, no dated sentinel alias, no trace output, no brief, and <code>ops/dashboard.json</code> was still stamped 08-18T13:35Z when this session opened — <b>47 hours stale</b> against a 26-hour watchdog threshold.</p>
+  <p>What it cost: 08-19 is now a <b>third permanent hole</b> in both the output-drift and the lens-drift series, after 08-08 and 08-12. It is not recoverable — re-tracing a stale alias would measure today's model under yesterday's label. What it did <i>not</i> cost: the interim babysitter kept firing 8B backfill legs every ~2.5h all night, so no measurement was lost, only the instrument check. This cannot be diagnosed from inside the container; <code>list_triggers</code> is unapprovable here.</p>
+  <p class="num">trig_01H9YrMSHEDkyXWT4bxttihq · gaps now 08-08 (lane full) / 08-12 (alias not created) / 08-19 (no cycle) · days_measured 29 over 28 deltas · blocker circuit-sentinel-gap-20260808 updated</p>
+  <div class="chips"><button class="chip" data-v="check-routine">check the Routine in the claude.ai UI for a failed or skipped 08-19 firing</button><button class="chip" data-v="annotate-methods">annotate the three series holes on the methods page (I supply the data, you write the sentence)</button><button class="chip" data-v="babysitter-creates-alias">have the babysitter create+commit the dated alias when the cycle misses, so the day is at least recoverable</button><button class="chip" data-v="accept">accept occasional holes as the cost of a daily instrument</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D2-TIMELINE-CHAIN-GAP">
+  <h2>D2 · A published payload documented as "regenerated nightly" had not been regenerated in five weeks</h2>
+  <p>New today. <code>data/timeline.json</code> was stamped <b>2026-07-14</b>. Both the page comment in <code>simulated-scenarios/index.html</code> and the site <code>CLAUDE.md</code> data table describe it as regenerated nightly. The cause is prosaic: <code>scripts/study_timeline.py</code> appears in neither the standing prompt's §5 chain nor the publish skill, so no cycle has run it since.</p>
+  <p>I regenerated and deployed it this cycle — all three gates stayed green and <b>nothing rendered changed</b>, because the study-timeline strip was cut from the page on 2026-07-30 (your cut 3) and the file now has no consumer at all. So this is a bookkeeping decision, not a correctness one: keep the cadence, or admit the file is retired.</p>
+  <p class="num">69 batches · 66 generation batches · $20.909 lifetime generation · 820 trace summary parts · no page reads it since 2026-07-30</p>
+  <div class="chips"><button class="chip" data-v="add-to-chain">add study_timeline.py to standing prompt §5 and the publish skill</button><button class="chip" data-v="declare-retired">declare it retired data and drop the "regenerated nightly" claim from both docs</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D3-JOURNAL-EXPIRY-BLIND-SPOT">
+  <h2>D3 · The expiry blind spot recurred — and this time it was the missed cycle that caused it</h2>
+  <p>Open since 08-18, moved today. Yesterday's absent cycle meant nobody resolved the <b>08-18 drift sentinel</b>, so by the time this session opened its journal entry had aged past the expiry window and <code>resolve</code> again answered <i>"nothing to resolve"</i>. That is two consecutive sentinels the journal now under-counts, both GitHub-confirmed terminal with outputs verified on the branch.</p>
+  <p>Nothing was lost and no fire was unsafe. The point is that expiry is <b>silent</b>: a stalled driver reads identically to a healthy one. Option (b) below — an idle-lane alarm — is precisely what would have surfaced D1 a day earlier, which is why the two cards belong together.</p>
+  <p class="num">runs 32142393091 (08-18) and 32034825688 (08-17), both completed·success · outputs verified on branch · both permanently resolved:false in ops/trigger_journal.jsonl</p>
+  <div class="chips"><button class="chip" data-v="expire-with-audit">have `resolve` reconcile expired-but-terminal entries with an explicit marker</button><button class="chip" data-v="alarm-on-idle">leave the journal alone; add an idle-lane alarm to the digest</button><button class="chip" data-v="accept">accept both — expiry is a safety valve, the daily cycle is the reconciler</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D4-MEDICAL-NULL-FRAMING-DEAD">
+  <h2>D4 · Medical null-case framing: now wrong at ~930 phrases per model, with q an order of magnitude lower</h2>
+  <p>Open since 08-08, moved again today. The overnight backfill added roughly <b>215 phrases to each</b> 8B medical fine-tune, and both cases strengthened rather than softened.</p>
+  <p>Nothing on the site asserts the framing — <code>claim_check</code> is green and no page names either model. This remains an <b>internal-doc correction</b>: the stale "null cases" wording sits in <code>ops/dashboard.json:verdicts</code> and <code>HANDOFF_20260804</code> §2, which every memoryless session reads at orientation. I refreshed the numbers again today and again did not reword the framing.</p>
+  <p class="num">meditron3-8b 715→931 phrases, −0.034 [−0.0426, −0.0255], sign 50v13, p_BH 2.95e-05→6.03e-06 · apertus-8b-meditronfo 716→929, −0.0239 [−0.0334, −0.0147], 39v11, p_BH 7.62e-04→1.35e-04 · ten of ten CIs exclude zero · no verdict flipped</p>
+  <div class="chips"><button class="chip" data-v="drop-null-framing">drop the null-case framing — medical fine-tuning does not protect against it</button><button class="chip" data-v="you-draft">you draft the sentence; sessions publish nothing until it exists</button><button class="chip" data-v="correction-register">add the correction-register entry and move on</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D5-VARIANT-B-EIGHTH">
+  <h2>D5 · Eighth consecutive container arrived on the wrong branch</h2>
+  <p>Every fresh Routine session since 08-11 has booted with both repos clean but on <b>main-based session branches</b>, ops branch never fetched. Today was the eighth. The recipe worked verbatim this time — blobless fetch in seconds, sparse patterns, checkout — because the scheduled prompt now names the recipe explicitly and the doc was read before acting.</p>
+  <p>The exposure is unchanged and worth restating: the symptom reads as <i>healthy</i>. A clean <code>git status</code> and a plausible-looking dashboard (the month-stale main seed, <code>tierb.start_utc</code> null) are what a session sees before it looks. The seal check is the reliable detector, and only if run before acting.</p>
+  <p class="num">engine claude/epic-fermi-io89ou · site claude/compassionate-lovelace-io89ou · dashboard read 2026-07-09 until repaired · blocker container-materialization-20260809</p>
+  <div class="chips"><button class="chip" data-v="fix-env">fix the environment so it clones the ops branch</button><button class="chip" data-v="prompt-runs-recipe">keep the prompt-level fix; it worked today</button><button class="chip" data-v="accept-tax">accept the tax, no change</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D6-JLENS-DEPTH-PINS">
+  <h2>D6 · The depth-exporter pins are still recorded nowhere but inside the file they produce</h2>
+  <p>Open since 08-08, unchanged in substance but exercised again today. <code>export_jlens_depth.py</code> requires seven <code>--block</code> stems in order, an exemplar stem and index, and an <code>--annotate</code> pin; changing any of them silently churns a published figure. None of them is written down.</p>
+  <p>I reconstructed them from the committed payload — block ids in file order, exemplar from the <code>exemplar</code> object, the annotate pin from the one block carrying a non-null <code>annotation</code> — and the regenerated file came back <b>byte-identical except its timestamp</b>, which is the proof the reconstruction was right. It should not depend on a session being careful.</p>
+  <p class="num">7 blocks newest-first · exemplar pairs_20260711T051145Z#19 · annotate urgency_downgrades_20260707T1:5 · regen diff = 1 line (generated_utc)</p>
+  <div class="chips"><button class="chip" data-v="pin-file">commit the pins as a small JSON the exporter reads by default</button><button class="chip" data-v="document-only">write them into the standing prompt §5 and leave the CLI alone</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D7-HOLDOUT-GUARD-DISAGREEMENT">
+  <h2>D7 · The two holdout guards still disagree by one phrase</h2>
+  <p>Carried from the 08-17 critic pass, unchanged. <code>seal_check</code> seals <b>173</b> phrases (verified clean three times this cycle, before and after every publish) while the statistics script's Amendment-1 filter excludes across <b>174</b>. The extra one is an orphan collector row with a null <code>batch_index</code> matching no archive on either phrasing side, so it cannot be a Tier B holdout phrase.</p>
+  <p><b>The seal is not weakened and no published number is affected.</b> The costs are that the analysis over-excludes by one phrase and the logs print "174 holdout phrases" — a number a future session could read as the seal having grown.</p>
+  <p class="num">173 sealed vs 174 excluded · orphan row batch pairs_20260713T050939Z, model gemma-2-2b · test drafted in docs/critic/critic_20260817.md §5 · phrase text never printed anywhere</p>
+  <div class="chips"><button class="chip" data-v="drop-orphans-then-test">drop orphan rows, then land the guard-agreement test</button><button class="chip" data-v="test-first-red">land the test now and accept a red suite until the row is fixed</button><button class="chip" data-v="test-only-no-fix">just log the count difference, no code change</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<button id="copy">copy decisions</button>
+<div id="out"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(card){
+  card.querySelectorAll('.chip').forEach(function(chip){
+    chip.setAttribute('aria-pressed','false');
+    chip.addEventListener('click', function(){
+      card.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('on'); c.setAttribute('aria-pressed','false'); });
+      chip.classList.add('on'); chip.setAttribute('aria-pressed','true');
+    });
+  });
+});
+document.getElementById('copy').addEventListener('click', function(){
+  var lines = ['DECISIONS 2026-08-20'];
+  document.querySelectorAll('.card').forEach(function(card){
+    var on = card.querySelector('.chip.on');
+    lines.push(card.dataset.id + ': ' + (on ? on.dataset.v : '(no choice)'));
+  });
+  var text = lines.join('\n');
+  var out = document.getElementById('out');
+  out.textContent = text; out.style.display = 'block';
+  if (navigator.clipboard) { navigator.clipboard.writeText(text).catch(function(){}); }
+});
+</script>
