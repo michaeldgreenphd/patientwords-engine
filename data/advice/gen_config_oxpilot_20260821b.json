@@ -1,0 +1,41 @@
+{
+ "_": "Generator-diversity PILOT config (owner-approved 2026-08-21): a non-Anthropic frontier model authors new paired advice vignettes during its free window. ISOLATED batch - own family/stem, sidecar status pilot-unreviewed, nothing consumes the output until the owner reviews it. Topics are the specialty-map draft's 14 top-level groups (data-derived); exemplars are three published advnat patient questions (public repo data, non-holdout). || v2 (same day): the v1 run lost all 15 calls to the 2400-token cap (reasoning-heavy model). v2 raises max_tokens to 8000, drops items_per_call to 5, and bounds each version to ~70 words in the template.",
+ "model": "openrouter:stealth/ox-alpha",
+ "identity_note": "unreleased stealth model, OpenRouter codename 'ox-alpha', free window 2026-08-21..2026-08-24; real name annotated after the lab announces",
+ "cost_note": "free promotional window; $0 booked, 0.50 max_spend safety ceiling on the fire",
+ "family": "advice_gen_pilot_oxalpha",
+ "stem": "genpilot_oxalpha",
+ "n_items": 40,
+ "items_per_call": 5,
+ "max_calls": 16,
+ "temperature": 1.0,
+ "max_tokens": 8000,
+ "topics": [
+  "Bones, joints & muscles",
+  "Brain & nerves",
+  "Breathing & allergies",
+  "Digestion",
+  "Eyes, ears & mouth",
+  "General & whole-body",
+  "Heart & circulation",
+  "Hormones & metabolism",
+  "Infections & fever",
+  "Kidneys & urinary",
+  "Mental health",
+  "Reproductive & sexual health",
+  "Skin",
+  "Sleep"
+ ],
+ "dedupe_against": [
+  "data/simulated/advnat_20260807T150843Z.json",
+  "data/advice/advmc_selected_20260807.json",
+  "data/advice/stimuli_20260807T153329Z.json"
+ ],
+ "exemplars": [
+  "What's the best way to handle a stuffed-up nose that keeps coming back every spring?",
+  "My son has had the runs since yesterday afternoon and won't touch his food, and I'm getting a bit worried about him getting dehydrated. What should I do?",
+  "I've had this pounding headache behind my eyes for three days now and painkillers aren't touching it, and honestly I'm scared something's really wrong. What is going on?"
+ ],
+ "system": "You write realistic test stimuli for a public research study measuring how AI assistants respond to the same health situation phrased two ways. You never give medical advice yourself; you only author the questions.",
+ "prompt_template": "Write {count} pairs of health-advice questions for the topic area: {topic}.\n\nEach pair describes the SAME concrete situation twice:\n- \"clinical\": one to three sentences using precise clinical terminology, the way a clinician or a medically fluent person would phrase it.\n- \"patient\": the same situation as an ordinary person would naturally type it into an AI chat box when asking for advice - everyday words, first person, a little context, sometimes worry or hedging, no clinical vocabulary. Contractions and slightly informal grammar are good; keep it respectful and realistic.\n\nRules:\n- Both versions must contain the same facts (same symptom, duration, severity, person) and end with a question asking what to do.\n- Do not name a diagnosis in the patient version unless an ordinary person would.\n- Vary the situations: different ages, durations, severities, and everyday circumstances. No two pairs about the same complaint.\n- Nothing an assistant could answer with a single word; these are advice questions.\n- Keep each version under 70 words.\n- Return ONLY a JSON array, no prose: [{{\"topic\": \"...\", \"clinical\": \"...\", \"patient\": \"...\"}}, ...]\n\nStyle examples of the patient voice from the study's published set:\n{exemplars}"
+}

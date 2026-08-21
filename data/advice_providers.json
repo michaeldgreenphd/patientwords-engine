@@ -1,108 +1,112 @@
 {
-  "_readme": "Provider registry for scripts/advice_eval.py \u2014 REVIEWED COPY (consumer tiers verified 2026-07-21 against vendor free-tier docs and current coverage; sources in the integration notes). MEASUREMENT INTENT: each provider's consumer_default is the study's average-consumer proxy \u2014 the model the FREE / default tier of that vendor's consumer product serves, not the strongest API model. API models are PROXIES for consumer products: no product system prompt, no product safety wrapper, no memory \u2014 document the gap via a hand-run manual_ui calibration subset (import-manual-responses). Consumer tiers drift: every record archives the provider's exact resolved model string per call, and the pre-registration freezes a copy of this file. pricing = [input, output] USD per Mtok, used only by the local spend-ceiling math (worst-case, cache-miss rates); the true bill is the provider's. key_env names a GitHub Actions secret \u2014 keys never live in either repo or any local file.",
-  "anthropic": {
-    "api": "anthropic",
-    "consumer_product": "Claude (claude.ai) free tier",
-    "consumer_default": "claude-haiku-4-5",
-    "consumer_proxy_note": "VERIFIED 2026-07-21: claude.ai's free tier defaults to Claude Sonnet 5 (free/Pro default since 2026-07-01), with Haiku 4.5 selectable. haiku stays set here as the pilot's cost floor per owner decision 2026-07-21 \u2014 a deliberate mismatch with the free-tier default, recorded in the pre-registration; the consumer-proxy arm proper should run anthropic:claude-sonnet-5 as an override. No default_pricing on purpose: the script's conservative built-in fallback prices Anthropic calls for the ceiling reserve (deliberate, matches the example; the ceiling test pins this). UPDATE 2026-07-23 (owner-directed): the sonnet-5 arm now runs the full registered design as the true free-tier default; haiku records stand as the labeled cost-floor arm.",
-    "key_env": "ANTHROPIC_API_KEY"
+ "_readme": "Provider registry for scripts/advice_eval.py — REVIEWED COPY (consumer tiers verified 2026-07-21 against vendor free-tier docs and current coverage; sources in the integration notes). MEASUREMENT INTENT: each provider's consumer_default is the study's average-consumer proxy — the model the FREE / default tier of that vendor's consumer product serves, not the strongest API model. API models are PROXIES for consumer products: no product system prompt, no product safety wrapper, no memory — document the gap via a hand-run manual_ui calibration subset (import-manual-responses). Consumer tiers drift: every record archives the provider's exact resolved model string per call, and the pre-registration freezes a copy of this file. pricing = [input, output] USD per Mtok, used only by the local spend-ceiling math (worst-case, cache-miss rates); the true bill is the provider's. key_env names a GitHub Actions secret — keys never live in either repo or any local file.",
+ "anthropic": {
+  "api": "anthropic",
+  "consumer_product": "Claude (claude.ai) free tier",
+  "consumer_default": "claude-haiku-4-5",
+  "consumer_proxy_note": "VERIFIED 2026-07-21: claude.ai's free tier defaults to Claude Sonnet 5 (free/Pro default since 2026-07-01), with Haiku 4.5 selectable. haiku stays set here as the pilot's cost floor per owner decision 2026-07-21 — a deliberate mismatch with the free-tier default, recorded in the pre-registration; the consumer-proxy arm proper should run anthropic:claude-sonnet-5 as an override. No default_pricing on purpose: the script's conservative built-in fallback prices Anthropic calls for the ceiling reserve (deliberate, matches the example; the ceiling test pins this). UPDATE 2026-07-23 (owner-directed): the sonnet-5 arm now runs the full registered design as the true free-tier default; haiku records stand as the labeled cost-floor arm.",
+  "key_env": "ANTHROPIC_API_KEY"
+ },
+ "openai": {
+  "api": "openai-compat",
+  "base_url": "https://openrouter.ai/api/v1",
+  "consumer_product": "ChatGPT free tier",
+  "consumer_default": "openai/gpt-5.5",
+  "consumer_proxy_note": "PHASE 2 (2026-07-22, owner decision): routed via OpenRouter with the owner's prepaid key. ChatGPT's free tier serves GPT-5.5 Instant; OpenAI's chat-latest alias (the exact product-tuned Instant model) is NOT listed on OpenRouter, so openai/gpt-5.5 is the stated approximation - the same model family without the ChatGPT product tune. Recorded fidelity gap; a direct OPENAI_API_KEY pointing at chat-latest is the higher-fidelity upgrade path. Pricing = GPT-5.5 rate + ~5% aggregator margin, worst case for the ceiling math.",
+  "key_env": "OPENROUTER_API_KEY",
+  "default_pricing": [
+   5.25,
+   31.5
+  ],
+  "pricing": {
+   "openai/gpt-5.4-mini": [
+    0.8,
+    4.75
+   ]
   },
-  "openai": {
-    "api": "openai-compat",
-    "base_url": "https://openrouter.ai/api/v1",
-    "consumer_product": "ChatGPT free tier",
-    "consumer_default": "openai/gpt-5.5",
-    "consumer_proxy_note": "PHASE 2 (2026-07-22, owner decision): routed via OpenRouter with the owner's prepaid key. ChatGPT's free tier serves GPT-5.5 Instant; OpenAI's chat-latest alias (the exact product-tuned Instant model) is NOT listed on OpenRouter, so openai/gpt-5.5 is the stated approximation - the same model family without the ChatGPT product tune. Recorded fidelity gap; a direct OPENAI_API_KEY pointing at chat-latest is the higher-fidelity upgrade path. Pricing = GPT-5.5 rate + ~5% aggregator margin, worst case for the ceiling math.",
-    "key_env": "OPENROUTER_API_KEY",
-    "default_pricing": [
-      5.25,
-      31.5
-    ],
-    "pricing": {
-      "openai/gpt-5.4-mini": [
-        0.8,
-        4.75
-      ]
-    },
-    "fallback_note": "mini fallback arm (owner-directed 2026-07-23): the free ChatGPT tier falls back to a mini-class model once a session exhausts its GPT-5.5 message quota, so the mini arm measures the OVERFLOW experience of a non-paying user - labeled as the fallback arm, never as the default. SLUG CORRECTION (first fire, 2026-07-23): openai/gpt-5.5-mini does NOT exist on OpenRouter (400 Bad Request, run 30011607927, $0 spent); the arm runs openai/gpt-5.4-mini, the newest mini generation OpenRouter lists (verified via OpenRouter's public model pages). The exact mini variant the consumer product falls back to is unpublished and public sources conflict - recorded approximation; the manual_ui calibration subset measures the gap. Pricing = gpt-5.4-mini list ($0.75/$4.50) + ~5% markup + margin."
-  },
-  "google": {
-    "api": "openai-compat",
-    "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
-    "consumer_product": "Gemini app free tier",
-    "consumer_default": "gemini-3.5-flash",
-    "consumer_proxy_note": "VERIFIED 2026-07-21: the free Gemini app defaults to Gemini 3.5 Flash (consumer default since 2026-05-19, Google I/O). The free tier also carries a small daily allowance of 3.1 Pro for hard questions \u2014 the Flash default is the average-consumer path. OpenAI-compatible endpoint path confirmed. min_interval_seconds=10 (2026-07-22): the AI Studio free tier throttled run 1b after 16 calls with sustained 429s that outlast retry backoff - pace to ~6 requests/min including retry attempts.",
-    "key_env": "GEMINI_API_KEY",
-    "default_pricing": [
-      1.5,
-      9.0
-    ],
-    "min_interval_seconds": 10
-  },
-  "xai": {
-    "api": "openai-compat",
-    "base_url": "https://openrouter.ai/api/v1",
-    "consumer_product": "Grok free tier (X / grok.com)",
-    "consumer_default": "x-ai/grok-4.3",
-    "consumer_proxy_note": "PHASE 2 (2026-07-22): via OpenRouter (verified slug x-ai/grok-4.3, $1.25/$2.50 vendor rate + ~5%). The free grok.com / X surface serves limited Grok 4.3 access (~10 prompts per 2 h); same model id as the consumer default, vendor backend serves it.",
-    "key_env": "OPENROUTER_API_KEY",
-    "default_pricing": [
-      1.32,
-      2.63
-    ]
-  },
-  "deepseek": {
-    "api": "openai-compat",
-    "base_url": "https://openrouter.ai/api/v1",
-    "consumer_product": "DeepSeek app/web (free)",
-    "consumer_default": "deepseek/deepseek-v4-flash",
-    "consumer_proxy_note": "PHASE 2 (2026-07-22): via OpenRouter (verified slug deepseek/deepseek-v4-flash). Free app serves the V4 generation; the Expert/DeepThink toggle maps to the pro/reasoner - a second, NON-default arm. Flash chosen as the conservative non-reasoning consumer default; sources conflict on flash- vs pro-class for the web default - revisit at the calibration subset. Pricing = vendor rate + ~5%.",
-    "key_env": "OPENROUTER_API_KEY",
-    "default_pricing": [
-      0.15,
-      0.3
-    ]
-  },
-  "moonshot": {
-    "api": "openai-compat",
-    "base_url": "https://openrouter.ai/api/v1",
-    "consumer_product": "Kimi (free)",
-    "consumer_default": "moonshotai/kimi-k2.5",
-    "consumer_proxy_note": "PHASE 2 (2026-07-22): via OpenRouter (slug moonshotai/kimi-k2.5, $0.60/$3.00 vendor rate + ~5%). Free kimi.com serves a lighter variant than the paid K2.6 default; k2.5 is the closest match and the exact free-tier variant is unpublished - recorded approximation; the manual_ui calibration subset measures the gap.",
-    "key_env": "OPENROUTER_API_KEY",
-    "default_pricing": [
-      0.63,
-      3.15
-    ]
-  },
-  "openrouter": {
-    "api": "openai-compat",
-    "base_url": "https://openrouter.ai/api/v1",
-    "consumer_product": "aggregator (not itself a consumer product)",
-    "consumer_proxy_note": "Route to any vendor's model with ONE prepaid key (a hard external spend ceiling on top of the script's). Use for Llama-family models (Meta AI's consumer app has no public API; an open-weights Llama via openrouter:meta-llama/... is a stated-and-recorded approximation, and true Meta AI behavior belongs in the manual_ui arm) or to consolidate vendors under one secret (~5% markup, an intermediary in the request path \u2014 record in the pre-registration if used). Always pass an explicit openrouter:<vendor/model> spec \u2014 no consumer_default on purpose.",
-    "key_env": "OPENROUTER_API_KEY",
-    "default_pricing": [
-      5.0,
-      30.0
-    ],
-    "pricing_note": "default_pricing is a GPT-tier catch-all for arbitrary openrouter:<vendor/model> specs. Flash-tier reroutes need a per-model entry or the ceiling meter bills them ~12x real and chokes the run mid-flight (2026-07-22: runs 1c and hedge-resume archived openrouter gemini records at the catch-all rate - archived cost_usd stands, overstatement documented in the pre-registration). Rates below: vendor list price + OpenRouter ~5% markup + margin.",
-    "pricing": {
-      "google/gemini-3.5-flash": [
-        0.35,
-        2.75
-      ]
-    }
-  },
-  "copilot": {
-    "api": "manual_ui",
-    "consumer_product": "Microsoft Copilot (consumer)",
-    "consumer_proxy_note": "No public API for the consumer Copilot product (re-checked 2026-07-21). Capture responses by hand in the real UI and import with: advice_eval.py import-manual-responses. Records land in the same audit chain with capture.method=manual_ui."
-  },
-  "meta_ai": {
-    "api": "manual_ui",
-    "consumer_product": "Meta AI (consumer app)",
-    "consumer_proxy_note": "No public API for the consumer product; same manual_ui path as copilot. Open-weights Llama via openrouter is a separate, clearly-labeled approximation arm."
-  },
-  "_thinking_machines_note": "Re-checked 2026-07-21: still no consumer chat product \u2014 their shipped products are Tinker (fine-tuning API), the open-weights Inkling model (2026-07-15), and research-preview interaction models. No entry; re-check at the next revision.",
-  "_alias_vs_snapshot": "Recorded measurement decision (2026-07-23, owner-directed review): each provider's registered target stays the CONSUMER DEFAULT - a rolling alias wherever that is what the vendor's free tier serves - because the study measures the product consumers get, not a frozen build. The served build is pinned per record instead: model_returned plus build_fingerprint (body-level, e.g. system_fingerprint) plus request_id from response headers, captured from 2026-07-23 forward. Switching any arm to a dated snapshot id is an access-mode change and must be recorded in the pre-registration before the affected fire."
+  "fallback_note": "mini fallback arm (owner-directed 2026-07-23): the free ChatGPT tier falls back to a mini-class model once a session exhausts its GPT-5.5 message quota, so the mini arm measures the OVERFLOW experience of a non-paying user - labeled as the fallback arm, never as the default. SLUG CORRECTION (first fire, 2026-07-23): openai/gpt-5.5-mini does NOT exist on OpenRouter (400 Bad Request, run 30011607927, $0 spent); the arm runs openai/gpt-5.4-mini, the newest mini generation OpenRouter lists (verified via OpenRouter's public model pages). The exact mini variant the consumer product falls back to is unpublished and public sources conflict - recorded approximation; the manual_ui calibration subset measures the gap. Pricing = gpt-5.4-mini list ($0.75/$4.50) + ~5% markup + margin."
+ },
+ "google": {
+  "api": "openai-compat",
+  "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "consumer_product": "Gemini app free tier",
+  "consumer_default": "gemini-3.5-flash",
+  "consumer_proxy_note": "VERIFIED 2026-07-21: the free Gemini app defaults to Gemini 3.5 Flash (consumer default since 2026-05-19, Google I/O). The free tier also carries a small daily allowance of 3.1 Pro for hard questions — the Flash default is the average-consumer path. OpenAI-compatible endpoint path confirmed. min_interval_seconds=10 (2026-07-22): the AI Studio free tier throttled run 1b after 16 calls with sustained 429s that outlast retry backoff - pace to ~6 requests/min including retry attempts.",
+  "key_env": "GEMINI_API_KEY",
+  "default_pricing": [
+   1.5,
+   9.0
+  ],
+  "min_interval_seconds": 10
+ },
+ "xai": {
+  "api": "openai-compat",
+  "base_url": "https://openrouter.ai/api/v1",
+  "consumer_product": "Grok free tier (X / grok.com)",
+  "consumer_default": "x-ai/grok-4.3",
+  "consumer_proxy_note": "PHASE 2 (2026-07-22): via OpenRouter (verified slug x-ai/grok-4.3, $1.25/$2.50 vendor rate + ~5%). The free grok.com / X surface serves limited Grok 4.3 access (~10 prompts per 2 h); same model id as the consumer default, vendor backend serves it.",
+  "key_env": "OPENROUTER_API_KEY",
+  "default_pricing": [
+   1.32,
+   2.63
+  ]
+ },
+ "deepseek": {
+  "api": "openai-compat",
+  "base_url": "https://openrouter.ai/api/v1",
+  "consumer_product": "DeepSeek app/web (free)",
+  "consumer_default": "deepseek/deepseek-v4-flash",
+  "consumer_proxy_note": "PHASE 2 (2026-07-22): via OpenRouter (verified slug deepseek/deepseek-v4-flash). Free app serves the V4 generation; the Expert/DeepThink toggle maps to the pro/reasoner - a second, NON-default arm. Flash chosen as the conservative non-reasoning consumer default; sources conflict on flash- vs pro-class for the web default - revisit at the calibration subset. Pricing = vendor rate + ~5%.",
+  "key_env": "OPENROUTER_API_KEY",
+  "default_pricing": [
+   0.15,
+   0.3
+  ]
+ },
+ "moonshot": {
+  "api": "openai-compat",
+  "base_url": "https://openrouter.ai/api/v1",
+  "consumer_product": "Kimi (free)",
+  "consumer_default": "moonshotai/kimi-k2.5",
+  "consumer_proxy_note": "PHASE 2 (2026-07-22): via OpenRouter (slug moonshotai/kimi-k2.5, $0.60/$3.00 vendor rate + ~5%). Free kimi.com serves a lighter variant than the paid K2.6 default; k2.5 is the closest match and the exact free-tier variant is unpublished - recorded approximation; the manual_ui calibration subset measures the gap.",
+  "key_env": "OPENROUTER_API_KEY",
+  "default_pricing": [
+   0.63,
+   3.15
+  ]
+ },
+ "openrouter": {
+  "api": "openai-compat",
+  "base_url": "https://openrouter.ai/api/v1",
+  "consumer_product": "aggregator (not itself a consumer product)",
+  "consumer_proxy_note": "Route to any vendor's model with ONE prepaid key (a hard external spend ceiling on top of the script's). Use for Llama-family models (Meta AI's consumer app has no public API; an open-weights Llama via openrouter:meta-llama/... is a stated-and-recorded approximation, and true Meta AI behavior belongs in the manual_ui arm) or to consolidate vendors under one secret (~5% markup, an intermediary in the request path — record in the pre-registration if used). Always pass an explicit openrouter:<vendor/model> spec — no consumer_default on purpose.",
+  "key_env": "OPENROUTER_API_KEY",
+  "default_pricing": [
+   5.0,
+   30.0
+  ],
+  "pricing_note": "default_pricing is a GPT-tier catch-all for arbitrary openrouter:<vendor/model> specs. Flash-tier reroutes need a per-model entry or the ceiling meter bills them ~12x real and chokes the run mid-flight (2026-07-22: runs 1c and hedge-resume archived openrouter gemini records at the catch-all rate - archived cost_usd stands, overstatement documented in the pre-registration). Rates below: vendor list price + OpenRouter ~5% markup + margin. || stealth/ox-alpha priced 0/0 for its free promotional window (2026-08-21..24, owner-approved runs): the catch-all billed the 20:02Z elicitation at GPT-tier and ceiling-stopped a free run at 16/294 records. REMOVE or re-price this entry if the model is ever used after the window closes.",
+  "pricing": {
+   "google/gemini-3.5-flash": [
+    0.35,
+    2.75
+   ],
+   "stealth/ox-alpha": [
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "copilot": {
+  "api": "manual_ui",
+  "consumer_product": "Microsoft Copilot (consumer)",
+  "consumer_proxy_note": "No public API for the consumer Copilot product (re-checked 2026-07-21). Capture responses by hand in the real UI and import with: advice_eval.py import-manual-responses. Records land in the same audit chain with capture.method=manual_ui."
+ },
+ "meta_ai": {
+  "api": "manual_ui",
+  "consumer_product": "Meta AI (consumer app)",
+  "consumer_proxy_note": "No public API for the consumer product; same manual_ui path as copilot. Open-weights Llama via openrouter is a separate, clearly-labeled approximation arm."
+ },
+ "_thinking_machines_note": "Re-checked 2026-07-21: still no consumer chat product — their shipped products are Tinker (fine-tuning API), the open-weights Inkling model (2026-07-15), and research-preview interaction models. No entry; re-check at the next revision.",
+ "_alias_vs_snapshot": "Recorded measurement decision (2026-07-23, owner-directed review): each provider's registered target stays the CONSUMER DEFAULT - a rolling alias wherever that is what the vendor's free tier serves - because the study measures the product consumers get, not a frozen build. The served build is pinned per record instead: model_returned plus build_fingerprint (body-level, e.g. system_fingerprint) plus request_id from response headers, captured from 2026-07-23 forward. Switching any arm to a dated snapshot id is an access-mode change and must be recorded in the pre-registration before the affected fire."
 }

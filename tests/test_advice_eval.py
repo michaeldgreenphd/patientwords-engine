@@ -1168,3 +1168,13 @@ def test_advice_workflow_generate_step_wired():
     assert "gen_config != ''" in gen["if"]
     elicit_step = next(st for st in steps if (st.get("name") or "").startswith("Elicit"))
     assert "gen_config == ''" in elicit_step["if"]
+
+
+def test_parse_generated_pairs_salvages_truncated_array():
+    # A max_tokens stop mid-item must yield the complete leading items, not zero.
+    from scripts.advice_eval import _parse_generated_pairs
+    text = ('[\n {"topic": "t", "clinical": "Full first", "patient": "Full first easy"},\n'
+            ' {"topic": "t", "clinical": "Full second", "patient": "Full second easy"},\n'
+            ' {"topic": "t", "clinical": "Cut off mid')
+    items = _parse_generated_pairs(text)
+    assert [i["clinical"] for i in items] == ["Full first", "Full second"]

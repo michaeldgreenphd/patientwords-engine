@@ -695,12 +695,25 @@ def _parse_generated_pairs(text: str) -> list[dict]:
     a partial yield is still a yield. Raises ValueError only when no array
     parses at all."""
     start, end = text.find("["), text.rfind("]")
-    if start < 0 or end <= start:
+    if start < 0:
         raise ValueError("no JSON array in response")
-    try:
-        raw = json.loads(text[start:end + 1])
-    except json.JSONDecodeError as err:
-        raise ValueError(f"array does not parse: {err}") from err
+    raw = None
+    if end > start:
+        try:
+            raw = json.loads(text[start:end + 1])
+        except json.JSONDecodeError:
+            raw = None
+    if raw is None:
+        # Salvage a truncated array (a max_tokens stop mid-item is the common
+        # failure - the 20:19Z pilot lost all 15 calls to it): trim back to the
+        # last complete object and close the array.
+        tail = text.rfind("}")
+        if tail <= start:
+            raise ValueError("array does not parse and no complete object to salvage")
+        try:
+            raw = json.loads(text[start:tail + 1].rstrip().rstrip(",") + "]")
+        except json.JSONDecodeError as err:
+            raise ValueError(f"array does not parse even after salvage: {err}") from err
     if not isinstance(raw, list):
         raise ValueError("top-level JSON is not an array")
     items = []
