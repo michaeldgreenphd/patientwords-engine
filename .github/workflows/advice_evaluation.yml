@@ -66,6 +66,10 @@ on:
         description: "HARD judge spend ceiling in USD"
         type: string
         default: "0.50"
+      judge_max_tokens:
+        description: "Max output tokens per judge call (verbose non-Anthropic judges need headroom)"
+        type: string
+        default: "300"
       rubric:
         description: "Rubric path (domain-reviewed copy, not the .example)"
         type: string
@@ -121,6 +125,7 @@ jobs:
       judge: ${{ steps.params.outputs.judge }}
       judge_model: ${{ steps.params.outputs.judge_model }}
       judge_max_spend: ${{ steps.params.outputs.judge_max_spend }}
+      judge_max_tokens: ${{ steps.params.outputs.judge_max_tokens }}
       rubric: ${{ steps.params.outputs.rubric }}
       offset: ${{ steps.params.outputs.offset }}
       limit: ${{ steps.params.outputs.limit }}
@@ -154,6 +159,7 @@ jobs:
           IN_JUDGE: ${{ inputs.judge }}
           IN_JUDGE_MODEL: ${{ inputs.judge_model }}
           IN_JUDGE_MAX_SPEND: ${{ inputs.judge_max_spend }}
+          IN_JUDGE_MAX_TOKENS: ${{ inputs.judge_max_tokens }}
           IN_RUBRIC: ${{ inputs.rubric }}
           IN_OFFSET: ${{ inputs.offset }}
           IN_LIMIT: ${{ inputs.limit }}
@@ -174,7 +180,8 @@ jobs:
                       "translator_model": "claude-haiku-4-5",
                       "max_spend": "0.50",
                       "judge": "false", "judge_model": "claude-haiku-4-5",
-                      "judge_max_spend": "0.50", "rubric": "data/advice_rubric.draft.json",
+                      "judge_max_spend": "0.50", "judge_max_tokens": "300",
+                      "rubric": "data/advice_rubric.draft.json",
                       "offset": "0", "limit": "0", "commit_outputs": "true",
                       "restore_artifact_run_id": "",
                       "restore_merge_fork": "false"}
@@ -302,15 +309,18 @@ jobs:
         if: ${{ needs.params.outputs.judge == 'true' }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           STIMULI: ${{ needs.params.outputs.stimuli_file }}
           JUDGE_MODEL: ${{ needs.params.outputs.judge_model }}
           JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
+          JUDGE_MAX_TOKENS: ${{ needs.params.outputs.judge_max_tokens }}
           RUBRIC: ${{ needs.params.outputs.rubric }}
         run: |
           STEM=$(basename "$STIMULI" .json)
           python scripts/advice_eval.py judge \
             --responses "data/advice/responses_${STEM}.jsonl" \
-            --rubric "$RUBRIC" --judge-model "$JUDGE_MODEL" --max-spend "$JUDGE_MAX_SPEND"
+            --rubric "$RUBRIC" --judge-model "$JUDGE_MODEL" --max-spend "$JUDGE_MAX_SPEND" \
+            --judge-max-tokens "$JUDGE_MAX_TOKENS"
           python scripts/advice_eval.py analyze \
             --judgments "data/advice/judgments_${STEM}.jsonl" --rubric "$RUBRIC"
 

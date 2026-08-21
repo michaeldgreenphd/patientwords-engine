@@ -128,6 +128,26 @@ def test_export_contract(archive, monkeypatch):
     assert (site / "data" / "advice_scenarios.json").is_file()
 
 
+def test_export_second_opinion_judge_never_displaces_primary(archive):
+    # Second-judge records (provider-spec judge_model) appended AFTER the
+    # primary's would win the "later passes overwrite" rule; they must instead
+    # be excluded from published tiers and disclosed in run.secondary_judges.
+    jpath = archive["out_dir"] / f"judgments_{archive['stim'].stem}.jsonl"
+    primary = [json.loads(line) for line in jpath.read_text(encoding="utf-8").splitlines()]
+    with open(jpath, "a", encoding="utf-8") as f:
+        for j in primary:
+            f.write(json.dumps({**j, "judge_model": "prov-x:second-judge",
+                                "tier": "self_care"}) + "\n")
+    out = archive["tmp"] / "advice_scenarios.json"
+    ex.main(["--stimuli", str(archive["stim"]), "--out", str(out),
+             "--rubric", str(archive["rubric"])])
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    r0 = payload["scenarios"][0]["clinical"]["responses"][0]
+    assert all(sm["tier"] == "routine" for sm in r0["samples"])  # primary tiers intact
+    assert payload["model_summary"][0]["clinical"]["tier_counts"] == {"routine": 4}
+    assert payload["run"]["secondary_judges"] == {"prov-x:second-judge": len(primary)}
+
+
 def test_export_merges_rerouted_google_paths(tmp_path, monkeypatch):
     # 2026-07-22 access amendment: google's arm rerouted to OpenRouter mid-pilot.
     # Display rows merge the two access paths into one model family; duplicated

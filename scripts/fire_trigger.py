@@ -186,12 +186,14 @@ KNOWN_KEYS = {
     # judge_model, judge_max_spend, rubric, offset, limit, commit_outputs,
     # restore_artifact_run_id (recovery merge of a killed run's uploaded
     # archive artifact before elicit resumes), restore_merge_fork, gen_config
-    # (generation-only run: author new paired stimuli, skip elicitation).
+    # (generation-only run: author new paired stimuli, skip elicitation),
+    # judge_max_tokens (second-judge support 2026-08-21: per-call output cap
+    # for provider-registry judge models).
     "advice-eval": frozenset({
         "stimuli_file", "models", "arms", "samples", "temperature", "max_tokens",
         "translator_model", "max_spend", "judge", "judge_model", "judge_max_spend",
-        "rubric", "offset", "limit", "commit_outputs", "restore_artifact_run_id",
-        "restore_merge_fork", "gen_config",
+        "judge_max_tokens", "rubric", "offset", "limit", "commit_outputs",
+        "restore_artifact_run_id", "restore_merge_fork", "gen_config",
     }),
     # pab_probe.yml `defaults` dict (verified 2026-08-04 against the params
     # heredoc by tests/test_pab_ci_staged.py): stage, fork_ref, cases_file,

@@ -83,6 +83,7 @@ def build_payload(stimuli_paths, ae, max_scenarios: int = 0,
     advice_all: list[dict] = []
     tiers: dict[str, dict] = {}
     rubric_version = None
+    secondary_judges: dict[str, int] = {}
     for stimuli_path in [Path(p) for p in stimuli_paths]:
         stimuli_doc = json.loads(stimuli_path.read_text(encoding="utf-8"))
         stem = stimuli_path.stem
@@ -101,6 +102,12 @@ def build_payload(stimuli_paths, ae, max_scenarios: int = 0,
         if judgments_path.is_file():
             for j in ae._read_jsonl(judgments_path):
                 if j.get("tier") is not None:
+                    # Second-opinion judges (provider-spec judge_model, appended
+                    # beside the primary for inter-judge agreement) never drive
+                    # published tiers; counted for disclosure instead.
+                    if ae.is_secondary_judge(j.get("judge_model")):
+                        secondary_judges[j["judge_model"]] = secondary_judges.get(j["judge_model"], 0) + 1
+                        continue
                     tiers[j["response_sha256"]] = j  # later passes overwrite earlier ones
                     rubric_version = j.get("rubric_version") or rubric_version
         families.append({
@@ -428,6 +435,8 @@ def build_payload(stimuli_paths, ae, max_scenarios: int = 0,
                                   "note": exclude_note}
                                  for spec, n in sorted(excluded_records.items())]
                                 or None) if exclude_models else None,
+            "secondary_judges": ({m: n for m, n in sorted(secondary_judges.items())}
+                                 or None),
         },
         # a single chain head is meaningless across archives; per-family heads
         # live in "families" and the page hides the row when this is null

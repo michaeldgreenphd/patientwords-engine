@@ -1147,6 +1147,15 @@ def _judge_prompt(rubric: dict, response_text: str) -> str:
     return rubric["judge_instructions"].format(tiers=tiers, flags=flags, response=response_text)
 
 
+def is_secondary_judge(judge_model: str | None) -> bool:
+    """Provider-spec judges ('provider:model', always carrying ':') are second
+    opinions appended beside the primary judge for inter-judge agreement. The
+    primary site judge is a bare Anthropic model id, and clinician re-grades
+    enter under bare labels, so both keep the later-pass-overwrites path;
+    secondary judges must never displace them in analyze or the exporter."""
+    return ":" in (judge_model or "")
+
+
 def judge(args) -> Path:
     rubric = _load_json(args.rubric)
     rubric_sha = sha256_text(canonical_json(rubric))
@@ -1196,8 +1205,21 @@ def judge(args) -> Path:
     if args.dry_run or not todo:
         return out_path
 
-    tracker = CostTracker(args.max_spend, 300)
-    client = _client()
+    # Second-judge support (owner-approved 2026-08-21): the judge model may be a
+    # provider spec ('openrouter:vendor/model'), resolved through the same
+    # registry as elicit. Records carry judge_model, and the dedupe key already
+    # includes it, so a second judge appends beside the first - the archive
+    # holds both opinions and agreement is computable offline.
+    registry = _load_providers(getattr(args, "providers", DEFAULT_PROVIDERS))
+    spec = _resolve_spec(args.judge_model, registry)
+    is_anthropic = spec["provider"] == "anthropic"
+    judge_max_tokens = int(getattr(args, "judge_max_tokens", 300) or 300)
+    custom_pricing = {}
+    pricing = (spec["cfg"].get("pricing") or {}).get(spec["model"])
+    if pricing:
+        custom_pricing[args.judge_model] = (float(pricing[0]), float(pricing[1]))
+    tracker = CostTracker(args.max_spend, judge_max_tokens, custom_pricing)
+    client = _client() if is_anthropic else None
     n = 0
     try:
         with open(out_path, "a", encoding="utf-8") as f:
@@ -1206,9 +1228,15 @@ def judge(args) -> Path:
                     print(f"STOPPED EARLY: judge max_spend ceiling (${args.max_spend})")
                     break
                 # Blinding: the judge sees the response text only - never the prompt or arm.
-                res = _send_anthropic_retrying(
-                    client, args.judge_model, None, _judge_prompt(rubric, r["response_text"]), 300, 0.0
-                )
+                if is_anthropic:
+                    res = _send_anthropic_retrying(
+                        client, spec["model"], None,
+                        _judge_prompt(rubric, r["response_text"]), judge_max_tokens, 0.0)
+                else:
+                    _pace(spec["provider"], spec["cfg"])
+                    res = _send_compat(
+                        spec["cfg"], spec["model"], None,
+                        _judge_prompt(rubric, r["response_text"]), judge_max_tokens, 0.0)
                 raw_text, in_tok, out_tok, raw = res[:4]
                 judge_headers = res[4] if len(res) > 4 else {}
                 tracker.record(args.judge_model, in_tok, out_tok)
@@ -1289,8 +1317,13 @@ def analyze(args) -> Path:
     judgments = _read_jsonl(args.judgments)
     cells: dict[tuple, list[str]] = {}
     flags_by_arm: dict[str, dict[str, list[bool]]] = {}
+    secondary_judges: dict[str, int] = {}
+    include_secondary = bool(getattr(args, "include_secondary_judges", False))
     for j in judgments:
         if j.get("tier") is None:
+            continue
+        if is_secondary_judge(j.get("judge_model")) and not include_secondary:
+            secondary_judges[j["judge_model"]] = secondary_judges.get(j["judge_model"], 0) + 1
             continue
         cells.setdefault((j["stimulus_id"], j["model"], j["arm"]), []).append(j["tier"])
         for flag, value in (j.get("flags") or {}).items():
@@ -1482,6 +1515,7 @@ def analyze(args) -> Path:
         "generated_utc": utc_now_iso(), "engine_sha": engine_sha(),
         "rubric_sha256": sha256_text(canonical_json(rubric)), "rubric_version": rubric.get("version"),
         "judgments_file": str(args.judgments), "bootstrap": args.bootstrap, "seed": args.seed,
+        "secondary_judges_excluded": secondary_judges or None,
         "tier_order_least_to_most_urgent": [t["id"] for t in rubric["tiers"]],
         "flag_rates_by_arm": {
             arm: {flag: round(statistics.fmean(vals), 3) for flag, vals in flags.items()}
@@ -1923,7 +1957,11 @@ def build_parser() -> argparse.ArgumentParser:
     j = sub.add_parser("judge", help="paid: map archived responses to rubric tiers (re-runnable)")
     j.add_argument("--responses", required=True)
     j.add_argument("--rubric", default=DEFAULT_RUBRIC)
-    j.add_argument("--judge-model", default="claude-haiku-4-5")
+    j.add_argument("--judge-model", default="claude-haiku-4-5",
+                   help="bare Anthropic id or 'provider:model' spec via the registry")
+    j.add_argument("--judge-max-tokens", type=int, default=300,
+                   help="response budget per judge call (verbose non-Anthropic judges need more)")
+    j.add_argument("--providers", default=DEFAULT_PROVIDERS)
     j.add_argument("--max-spend", type=float, required=True)
     j.add_argument("--out")
     j.add_argument("--human-sample", type=int, default=0, help="also export a blinded human-coding CSV sample")
@@ -1940,6 +1978,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="responses archive for length + readability covariates (A3)")
     a.add_argument("--bootstrap", type=int, default=2000)
     a.add_argument("--seed", type=int, default=7)
+    a.add_argument("--include-secondary-judges", action="store_true",
+                   help="pool provider-spec second-opinion judges into the cells "
+                        "(default: excluded and counted in secondary_judges_excluded)")
     a.add_argument("--out")
 
     m = sub.add_parser("import-manual-responses",

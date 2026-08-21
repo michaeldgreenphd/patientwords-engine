@@ -263,6 +263,48 @@ def test_judge_records_unparseable(tmp_path, monkeypatch):
     assert all(r["tier"] is None and r["judge_error"] for r in rows)
 
 
+def test_judge_second_opinion_compat_appends_beside_primary(tmp_path, monkeypatch):
+    # A provider-spec judge (second opinion) goes through _send_compat, never
+    # the Anthropic client, and appends beside the primary judge's records in
+    # the SAME judgments file (dedupe key includes judge_model).
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path)
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(json.dumps(RUBRIC), encoding="utf-8")
+    ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric_path),
+             "--judge-model", "judge-x", "--max-spend", "1.0"])
+    jpath = resp.with_name(resp.stem.replace("responses_", "judgments_") + ".jsonl")
+    n_primary = len(jpath.read_text(encoding="utf-8").splitlines())
+    assert n_primary == 6
+
+    reg_path = tmp_path / "providers.json"
+    reg_path.write_text(json.dumps(REGISTRY), encoding="utf-8")
+
+    def compat_judge(cfg, model, system, user_text, max_tokens, temperature):
+        assert cfg["base_url"] == "https://fake.example/v1" and model == "model-z"
+        assert max_tokens == 555  # --judge-max-tokens reaches the call
+        return (json.dumps({"tier": "urgent", "flags": {"refusal": False}}),
+                10, 20, {"model": "model-z-live"}, {"x-request-id": "req-2j"})
+
+    def no_client():
+        raise AssertionError("_client must not be touched for a compat judge")
+
+    monkeypatch.setattr(ae, "_send_compat", compat_judge)
+    monkeypatch.setattr(ae, "_client", no_client)
+    second_args = ["judge", "--responses", str(resp), "--rubric", str(rubric_path),
+                   "--judge-model", "fakeai:model-z", "--providers", str(reg_path),
+                   "--judge-max-tokens", "555", "--max-spend", "1.0"]
+    ae.main(second_args)
+    rows = [json.loads(line) for line in jpath.read_text(encoding="utf-8").splitlines()]
+    assert len(rows) == 2 * n_primary
+    second = [r for r in rows if r["judge_model"] == "fakeai:model-z"]
+    assert len(second) == n_primary
+    assert all(r["tier"] == "urgent" and r["judge_request_id"] == "req-2j" for r in second)
+    assert all(r["judge_model"] == "judge-x" for r in rows if r not in second)
+    ae.main(second_args)  # idempotent per (response, rubric, judge_model)
+    assert len(jpath.read_text(encoding="utf-8").splitlines()) == 2 * n_primary
+
+
 # ------------------------------------------------------------------ analyze
 
 
@@ -299,6 +341,35 @@ def test_analyze_downgrade_and_recovery(tmp_path):
     assert paired["s2"]["class"] == "same"
     assert m1["within_prompt"]["patient"]["unanimous_share"] == 1.0
     assert m1["mean_rank_diff"]["mean"] == -0.5
+
+
+def test_analyze_excludes_secondary_judges(tmp_path):
+    # Second-opinion records (provider-spec judge_model) must not pollute the
+    # published cells: same rows judged "urgent" by a secondary judge leave
+    # every primary-judge statistic unchanged, and the exclusion is disclosed.
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(json.dumps(RUBRIC), encoding="utf-8")
+    rows = []
+    for k in (1, 2):
+        rows += [_judgment("s1", "clinical", "routine", k),
+                 _judgment("s1", "patient", "self_care", k)]
+    for r in list(rows):
+        rows.append({**r, "judge_model": "fakeai:model-z", "tier": "urgent"})
+    jpath = tmp_path / "judgments_x.jsonl"
+    jpath.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    ae.main(["analyze", "--judgments", str(jpath), "--rubric", str(rubric_path),
+             "--bootstrap", "50", "--seed", "7"])
+    out = json.loads((tmp_path / "analysis_x.json").read_text(encoding="utf-8"))
+    m1 = out["per_model"]["m1"]
+    assert m1["within_prompt"]["patient"]["unanimous_share"] == 1.0  # secondary tier never pooled
+    assert {p["stimulus_id"]: p["class"] for p in out["paired"]} == {"s1": "downgrade"}
+    assert out["secondary_judges_excluded"] == {"fakeai:model-z": 4}
+    # opting in pools them (cells stop being unanimous)
+    ae.main(["analyze", "--judgments", str(jpath), "--rubric", str(rubric_path),
+             "--bootstrap", "50", "--seed", "7", "--include-secondary-judges"])
+    out2 = json.loads((tmp_path / "analysis_x.json").read_text(encoding="utf-8"))
+    assert out2["secondary_judges_excluded"] is None
+    assert out2["per_model"]["m1"]["within_prompt"]["patient"]["unanimous_share"] == 0.0
 
 
 def test_modal_tier_tie_breaks_most_urgent():
