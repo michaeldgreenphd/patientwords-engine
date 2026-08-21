@@ -106,3 +106,22 @@ def test_featured_exemplar_index_first_hijack_else_zero_else_none():
                                     {"class": "hijack"}]) == 1
     assert featured_exemplar_index([{"class": "capture"}, {"class": "held"}]) == 0
     assert featured_exemplar_index([]) is None
+
+
+def test_drift_sentinel_dirs_excluded_from_census(tmp_path):
+    # JLENS-SENTINEL-CONTAMINATION-20260821 (owner-approved fix): dated
+    # sentinel dirs re-measure the same 3 frozen pairs daily and must never
+    # enter the published census.
+    root = tmp_path / "trace_out"
+    write_summary(root, "setA", "gemma-2-2b", [
+        result(1, [(1, "y")] * 3, [(2, "y")] * 3),
+    ])
+    write_summary(root, "drift_sentinel_20260820", "gemma-2-2b", [
+        result(1, [(1, "y")] * 3, [(1, "y")] * 3),
+        result(2, [(1, "y")] * 3, [(1, "y")] * 3),
+    ])
+    write_summary(root, "drift_sentinel_20260821", "gemma-2-2b", [
+        result(1, [(1, "y")] * 3, [(1, "y")] * 3),
+    ])
+    per_model, _holdout_excluded = collect(root)
+    assert len(per_model["gemma-2-2b"]) == 1  # only the real census row survives

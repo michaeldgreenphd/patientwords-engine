@@ -81,7 +81,7 @@ def collect(trace_root: Path):
     holdout_excluded = 0
     for part in sorted(trace_root.glob("*__jlens_*/jlens_summary.part_*.json")):
         dataset = part.parent.name.split("__jlens_")[0]
-        if (dataset.startswith("txcorpus_")
+        if (dataset.startswith(("txcorpus_", "drift_sentinel_"))
                 or dataset.endswith(("_txopus", "_txplacebo", "__context"))):
             # translated/placebo/context-arm lens readouts are NOT patient
             # profiles: their "patient" side is a rewrite or a prefixed prompt.
@@ -89,6 +89,11 @@ def collect(trace_root: Path):
             # here would pollute the formation census (txcorpus guard
             # 2026-07-15; arm stems added 2026-07-16 before the first census
             # regen with txopus/txplacebo lens dirs on disk).
+            # drift_sentinel_ dirs are the daily instrument check: the same 3
+            # frozen pairs re-measured every day under a dated stem, so each
+            # sweep would enter the census once per sentinel day and inflate
+            # every replicate-sensitive count (owner-approved fix 2026-08-21,
+            # JLENS-SENTINEL-CONTAMINATION-20260821).
             continue
         try:
             summary = json.loads(part.read_text(encoding="utf-8"))
