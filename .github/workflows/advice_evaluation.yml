@@ -22,6 +22,10 @@ on:
         description: "Repo path of the stimuli JSON (from advice_eval.py build-stimuli)"
         type: string
         default: ""
+      gen_config:
+        description: "Repo path of a generation config JSON; when set, the run GENERATES new paired stimuli and skips elicitation"
+        type: string
+        default: ""
       models:
         description: "Space/comma-separated specs: 'provider' (registry consumer default), 'provider:model', or bare Anthropic id"
         type: string
@@ -106,6 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       stimuli_file: ${{ steps.params.outputs.stimuli_file }}
+      gen_config: ${{ steps.params.outputs.gen_config }}
       models: ${{ steps.params.outputs.models }}
       arms: ${{ steps.params.outputs.arms }}
       samples: ${{ steps.params.outputs.samples }}
@@ -162,6 +167,7 @@ jobs:
           # keys in the trigger file are silently ignored by design; the fire
           # guard's KNOWN_KEYS mirrors this set).
           defaults = {"stimuli_file": "",
+                      "gen_config": "",
                       "models": "claude-haiku-4-5",
                       "arms": "clinical,patient",
                       "samples": "3", "temperature": "1.0", "max_tokens": "1024",
@@ -185,8 +191,9 @@ jobs:
                   v = os.environ.get("IN_" + k.upper(), "")
                   if v:
                       p[k] = v
-          if not p["stimuli_file"]:
-              raise SystemExit("stimuli_file is required (build stimuli first, commit, then fire)")
+          if not p["stimuli_file"] and not p["gen_config"]:
+              raise SystemExit("stimuli_file is required (build stimuli first, commit, then fire) "
+                               "unless gen_config is set (generation-only run)")
           float(p["max_spend"]); float(p["judge_max_spend"])  # fail fast on malformed ceilings
           out = os.environ["GITHUB_OUTPUT"]
           with open(out, "a", encoding="utf-8") as f:
@@ -230,8 +237,18 @@ jobs:
       - name: Install package
         run: pip install --quiet -e ".[llm]" requests
 
+      - name: Generate stimuli pairs (config-driven; owner reviews before anything consumes them)
+        if: ${{ needs.params.outputs.gen_config != '' }}
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEN_CONFIG: ${{ needs.params.outputs.gen_config }}
+        run: |
+          python scripts/advice_eval.py generate --config "$GEN_CONFIG" --out-dir data/advice
+
       - name: Download archive artifact (recovery after a killed run)
-        if: ${{ needs.params.outputs.restore_artifact_run_id != '' }}
+        if: ${{ needs.params.outputs.restore_artifact_run_id != '' && needs.params.outputs.gen_config == '' }}
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: advice-eval-outputs
@@ -240,7 +257,7 @@ jobs:
           path: /tmp/advice-restore
 
       - name: Merge restored archive (append-only, chain-verified)
-        if: ${{ needs.params.outputs.restore_artifact_run_id != '' }}
+        if: ${{ needs.params.outputs.restore_artifact_run_id != '' && needs.params.outputs.gen_config == '' }}
         env:
           STIMULI: ${{ needs.params.outputs.stimuli_file }}
           RESTORE_RUN: ${{ needs.params.outputs.restore_artifact_run_id }}
@@ -252,6 +269,7 @@ jobs:
             --stimuli "$STIMULI" --source-run-id "$RESTORE_RUN" $FLAG
 
       - name: Elicit (paid, ceiling-enforced, append-only archive)
+        if: ${{ needs.params.outputs.gen_config == '' }}
         env:
           # Provider keys per data/advice_providers.json key_env fields; secrets
           # that are not configured render empty and only fail the specific
@@ -318,7 +336,9 @@ jobs:
           if git diff --cached --quiet; then echo "No outputs to commit"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Advice eval: $(basename "${{ needs.params.outputs.stimuli_file }}" .json) (append-only archive + sidecars)"
+          STEM=$(basename "${{ needs.params.outputs.stimuli_file }}" .json)
+          [ -n "${{ needs.params.outputs.stimuli_file }}" ] || STEM="generated stimuli (pilot-unreviewed)"
+          git commit -m "Advice eval: $STEM (append-only archive + sidecars)"
           for i in 1 2 3 4 5; do
             if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
               exit 0

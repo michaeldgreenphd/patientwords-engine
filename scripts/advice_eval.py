@@ -680,6 +680,162 @@ def build_stimuli(args) -> Path:
     return out_path
 
 
+# --------------------------------------------------------------------- generate
+
+
+def _norm_prompt(text: str) -> str:
+    """Whitespace/case-insensitive key for dedupe against existing corpora."""
+    return " ".join(str(text).lower().split())
+
+
+def _parse_generated_pairs(text: str) -> list[dict]:
+    """Extract the JSON array of {clinical, patient[, topic]} items from a model
+    response. Tolerates prose around the array; drops malformed or degenerate
+    entries (missing side, identical sides) instead of failing the call —
+    a partial yield is still a yield. Raises ValueError only when no array
+    parses at all."""
+    start, end = text.find("["), text.rfind("]")
+    if start < 0 or end <= start:
+        raise ValueError("no JSON array in response")
+    try:
+        raw = json.loads(text[start:end + 1])
+    except json.JSONDecodeError as err:
+        raise ValueError(f"array does not parse: {err}") from err
+    if not isinstance(raw, list):
+        raise ValueError("top-level JSON is not an array")
+    items = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        clinical = str(entry.get("clinical") or "").strip()
+        patient = str(entry.get("patient") or "").strip()
+        if not clinical or not patient or _norm_prompt(clinical) == _norm_prompt(patient):
+            continue
+        items.append({"clinical": clinical, "patient": patient,
+                      "topic": str(entry.get("topic") or "").strip()})
+    return items
+
+
+def generate(args) -> Path:
+    """Generator-diversity pilot (owner-approved 2026-08-21): author NEW paired
+    advice vignettes with a non-Anthropic model through the provider registry.
+
+    Everything content-bearing (model spec, topics, style template, exemplars)
+    lives in the JSON config — no medical vocabulary in this file. Output is a
+    pairs list in the advnat shape (top_prompt = precise register, bottom_prompt
+    = everyday register) so `build-stimuli --source pairs` consumes it
+    unchanged. The batch is ISOLATED: its own family tag and stem, a sidecar
+    marked pilot-unreviewed, and nothing consumes it until the owner reviews.
+    Tier B holdout texts are refused on the astronomically-unlikely collision
+    path, same guard as build-stimuli."""
+    cfg_data = _load_json(args.config)
+    registry = _load_providers(args.providers)
+    spec = _resolve_spec(str(cfg_data["model"]), registry)
+    n_target = int(cfg_data["n_items"])
+    per_call = int(cfg_data.get("items_per_call", 8))
+    max_calls = int(cfg_data.get("max_calls", 20))
+    temperature = float(cfg_data.get("temperature", 1.0))
+    max_tokens = int(cfg_data.get("max_tokens", 2200))
+    system = cfg_data.get("system") or None
+    template = str(cfg_data["prompt_template"])
+    ex_block = "\n".join(f"- {e}" for e in (cfg_data.get("exemplars") or []))
+    topics = [str(t) for t in (cfg_data.get("topics") or [""])]
+
+    seen: set[str] = set()
+    for path in cfg_data.get("dedupe_against") or []:
+        try:
+            data = _load_json(path)
+        except (OSError, json.JSONDecodeError):
+            print(f"dedupe source unreadable, skipping: {path}")
+            continue
+        rows = data if isinstance(data, list) else (data.get("items") or [])
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            for key in ("top_prompt", "bottom_prompt", "clinical_body", "patient_body"):
+                value = row.get(key)
+                if value:
+                    seen.add(_norm_prompt(value))
+
+    tierb = _load_tierb_split()
+    out_pairs: list[dict] = []
+    calls = tokens_in = tokens_out = 0
+    dropped_dupe = dropped_holdout = unparseable = 0
+    while len(out_pairs) < n_target and calls < max_calls:
+        topic = topics[calls % len(topics)]
+        user_text = template.format(count=per_call, topic=topic, exemplars=ex_block)
+        _pace(spec["provider"], spec["cfg"])
+        res = _send_compat(spec["cfg"], spec["model"], system, user_text, max_tokens, temperature)
+        text, in_tok, out_tok = res[0], res[1], res[2]
+        calls += 1
+        tokens_in += in_tok
+        tokens_out += out_tok
+        try:
+            candidates = _parse_generated_pairs(text)
+        except ValueError as err:
+            unparseable += 1
+            print(f"call {calls}: {err}; continuing")
+            continue
+        for item in candidates:
+            if len(out_pairs) >= n_target:
+                break
+            key_c, key_p = _norm_prompt(item["clinical"]), _norm_prompt(item["patient"])
+            if key_c in seen or key_p in seen:
+                dropped_dupe += 1
+                continue
+            if tierb.is_holdout(item["clinical"]) or tierb.is_holdout(item["patient"]):
+                dropped_holdout += 1
+                continue
+            seen.add(key_c)
+            seen.add(key_p)
+            out_pairs.append({
+                "top_prompt": item["clinical"],
+                "bottom_prompt": item["patient"],
+                "family": cfg_data.get("family", "advice_gen_pilot"),
+                "generation": {
+                    "provider_spec": spec["spec"],
+                    "topic": item.get("topic") or topic,
+                    "identity_note": cfg_data.get("identity_note", ""),
+                },
+            })
+        print(f"call {calls}: kept {len(out_pairs)}/{n_target} so far")
+
+    stamp = utc_stamp()
+    stem = cfg_data.get("stem", "genpilot")
+    out_path = Path(args.out_dir) / f"{stem}_{stamp}.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(out_pairs, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    report = {
+        "task": "advice-stimuli-generation",
+        "status": "pilot-unreviewed",
+        "model": spec["spec"],
+        "identity_note": cfg_data.get("identity_note", ""),
+        "config": str(args.config),
+        "n_generated": len(out_pairs),
+        "n_target": n_target,
+        "calls": calls,
+        "input_tokens": tokens_in,
+        "output_tokens": tokens_out,
+        "cost_usd": 0.0,
+        "cost_note": cfg_data.get("cost_note", ""),
+        "dropped_duplicates": dropped_dupe,
+        "dropped_holdout_collisions": dropped_holdout,
+        "unparseable_calls": unparseable,
+        "created_utc": utc_now_iso(),
+        "engine_sha": engine_sha(),
+    }
+    out_path.with_suffix(".report.json").write_text(
+        json.dumps(report, indent=1) + "\n", encoding="utf-8")
+    print(f"generated {len(out_pairs)} pairs in {calls} calls -> {out_path}")
+    print(f"dropped: {dropped_dupe} duplicate(s), {dropped_holdout} holdout collision(s); "
+          f"{unparseable} unparseable call(s)")
+    print("PILOT-UNREVIEWED: nothing consumes this batch until the owner reviews it.")
+    if len(out_pairs) < n_target:
+        print(f"short of target ({len(out_pairs)}/{n_target}) after {calls} calls - "
+              "re-run with a fresh config or raise max_calls")
+    return out_path
+
+
 # ------------------------------------------------------------------------ elicit
 
 
@@ -1726,6 +1882,12 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--ask-suffix", default=None, help="appended verbatim to BOTH sides (default per source)")
     b.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
 
+    g = sub.add_parser("generate", help="author new paired vignettes via the provider "
+                                        "registry (config-driven; owner-reviewed before use)")
+    g.add_argument("--config", required=True, help="JSON config: model spec, topics, template, exemplars")
+    g.add_argument("--providers", default=DEFAULT_PROVIDERS)
+    g.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
+
     e = sub.add_parser("elicit", help="paid: sample advice per stimulus x arm x model")
     e.add_argument("--stimuli", required=True)
     e.add_argument("--models", required=True,
@@ -1822,6 +1984,8 @@ def main(argv=None) -> None:
         if args.complete_with_target and args.source != "payload":
             raise SystemExit("--complete-with-target only applies to --source payload")
         build_stimuli(args)
+    elif args.command == "generate":
+        generate(args)
     elif args.command == "elicit":
         elicit(args)
     elif args.command == "import-manual-responses":

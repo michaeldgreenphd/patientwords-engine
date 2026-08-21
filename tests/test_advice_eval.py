@@ -1124,3 +1124,47 @@ def test_repro_pack_builds_tolerate_missing_build_fields(tmp_path, monkeypatch):
     # completing at all is the regression proof: the None-vs-str sort crashed
     # before any manifest was written
     assert manifest["vendor_records"] == 2
+
+
+def test_parse_generated_pairs_tolerates_prose_and_drops_degenerates():
+    from scripts.advice_eval import _parse_generated_pairs
+    text = ('Here you go:\n[\n'
+            ' {"topic": "t1", "clinical": "Alpha beta gamma?", "patient": "Alpha beta easy?"},\n'
+            ' {"topic": "t2", "clinical": "Same both", "patient": "same  BOTH"},\n'
+            ' {"clinical": "", "patient": "only one side"},\n'
+            ' "not a dict",\n'
+            ' {"clinical": "Keep two", "patient": "Keep two friendly"}\n'
+            ']\nHope that helps!')
+    items = _parse_generated_pairs(text)
+    assert [i["clinical"] for i in items] == ["Alpha beta gamma?", "Keep two"]
+    assert items[0]["topic"] == "t1"
+
+
+def test_parse_generated_pairs_raises_without_array():
+    import pytest
+    from scripts.advice_eval import _parse_generated_pairs
+    with pytest.raises(ValueError):
+        _parse_generated_pairs("no array here")
+    with pytest.raises(ValueError):
+        _parse_generated_pairs("[{broken json]")
+
+
+def test_norm_prompt_collapses_case_and_whitespace():
+    from scripts.advice_eval import _norm_prompt
+    assert _norm_prompt("  A   b\tC ") == _norm_prompt("a b c")
+
+
+def test_advice_workflow_generate_step_wired():
+    # gen_config must ride the full param path (dispatch input -> defaults ->
+    # job output) and the generate step must gate on it while elicit gates off it.
+    import yaml
+    wf_path = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "advice_evaluation.yml"
+    wf = yaml.safe_load(wf_path.read_text(encoding="utf-8"))
+    inputs = wf[True]["workflow_dispatch"]["inputs"]
+    assert "gen_config" in inputs
+    assert "gen_config" in wf["jobs"]["params"]["outputs"]
+    steps = wf["jobs"]["advice"]["steps"]
+    gen = next(st for st in steps if "Generate stimuli" in (st.get("name") or ""))
+    assert "gen_config != ''" in gen["if"]
+    elicit_step = next(st for st in steps if (st.get("name") or "").startswith("Elicit"))
+    assert "gen_config == ''" in elicit_step["if"]
