@@ -132,7 +132,7 @@
   },
   {
    "page": "index.html",
-   "snippet": "0.45 after translation (clinical baseline 0.26) · July 7 trace",
+   "snippet": "0.45 after translation (clinical baseline 0.26) \u00b7 July 7 trace",
    "source": "data/provenance.json",
    "expr": "round(d['translation_cases']['grandma_laxative']['translated'][1],2)",
    "expected": 0.45
@@ -159,6 +159,22 @@
     160
    ],
    "_": "graph counts recomputed from the published matrix payload (complete 20-term sweep, 2026-07-17)"
+  },
+  {
+   "page": "technical/index.html",
+   "snippet": "serve separate hosts since 2026-07-31",
+   "source": "data/jlens_insights.json",
+   "expr": "d['host_state_provenance']['era_boundaries'][0]",
+   "expected": "2026-07-31",
+   "_": "D4 entry 1 (owner-approved 2026-08-21, CLAIM-MANIFEST-PROPERTY-GAP): the tuning-comparison aria-label's host-separation date must match the payload's era record, so the page's provenance claim cannot outlive its data."
+  },
+  {
+   "page": "technical/index.html",
+   "snippet": "phrases read under both the gemma-2-2b and gemma-2-2b-it ids",
+   "source": "data/jlens_insights.json",
+   "expr": "d['instruction_tuning']['n_paired'] - len({p['index'] for p in d['instruction_tuning']['pairs']})",
+   "expected": 0,
+   "_": "D4 entry 2 (owner-approved 2026-08-21): n_paired must equal the count of distinct phrase indices, so replicated rows (e.g. daily-sentinel sweeps) can never inflate the public pair count again."
   }
  ]
 }
