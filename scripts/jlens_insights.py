@@ -354,6 +354,20 @@ def main():
     rmap = render_map_from_scenarios(scenarios) if scenarios else {}
     payload = analyze(per_model, args.base_model, args.it_model, args.exemplars, render_map=rmap)
     payload["holdout_excluded"] = holdout_excluded  # Amendment 1/3 seal (sealed rows dropped)
+    # Owner decision D1 (2026-08-21, LENS-HOST-SEPARATION-20260731): the two
+    # served host ids stopped returning identical readouts on 2026-07-31 and
+    # stepped again on 2026-08-14 with byte-identical request parameters, so
+    # committed lens readouts span up to three host-side instrument eras.
+    # scripts/lens_sentinel_check.py tracks the eras going forward.
+    payload["host_state_provenance"] = {
+        "note": ("hosted lens readouts span up to three host-side instrument eras; "
+                 "era boundaries 2026-07-31 and 2026-08-14 (request parameters "
+                 "byte-identical throughout). Census batch re-measured under the "
+                 "current host state 2026-08-21; non-census lens dirs may mix eras."),
+        "era_boundaries": ["2026-07-31", "2026-08-14"],
+        "census_remeasured_utc": "2026-08-21",
+        "detail": "engine docs/critic/critic_20260821.md Finding 1; scripts/lens_sentinel_check.py",
+    }
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
