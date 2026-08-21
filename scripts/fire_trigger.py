@@ -180,16 +180,18 @@ KNOWN_KEYS = {
     # archive_renders.yml push path reads exactly cfg["tag"], cfg["runs"],
     # cfg.get("no_pngs"), cfg.get("prune") (verified 2026-07-09).
     "archive-renders": frozenset({"tag", "runs", "no_pngs", "prune"}),
-    # advice_evaluation.yml `defaults` dict (verified 2026-07-22): stimuli_file,
-    # models, arms, samples, temperature, max_tokens, translator_model,
-    # max_spend, judge, judge_model, judge_max_spend, rubric, offset, limit,
-    # commit_outputs, restore_artifact_run_id (recovery merge of a killed
-    # run's uploaded archive artifact before elicit resumes).
+    # advice_evaluation.yml `defaults` dict (verified 2026-07-22; gen_config
+    # added 2026-08-21 with the generation mode): stimuli_file, models, arms,
+    # samples, temperature, max_tokens, translator_model, max_spend, judge,
+    # judge_model, judge_max_spend, rubric, offset, limit, commit_outputs,
+    # restore_artifact_run_id (recovery merge of a killed run's uploaded
+    # archive artifact before elicit resumes), restore_merge_fork, gen_config
+    # (generation-only run: author new paired stimuli, skip elicitation).
     "advice-eval": frozenset({
         "stimuli_file", "models", "arms", "samples", "temperature", "max_tokens",
         "translator_model", "max_spend", "judge", "judge_model", "judge_max_spend",
         "rubric", "offset", "limit", "commit_outputs", "restore_artifact_run_id",
-        "restore_merge_fork",
+        "restore_merge_fork", "gen_config",
     }),
     # pab_probe.yml `defaults` dict (verified 2026-08-04 against the params
     # heredoc by tests/test_pab_ci_staged.py): stage, fork_ref, cases_file,
