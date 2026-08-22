@@ -263,6 +263,36 @@ def test_judge_records_unparseable(tmp_path, monkeypatch):
     assert all(r["tier"] is None and r["judge_error"] for r in rows)
 
 
+def test_judge_retries_failed_judgments_on_resume(tmp_path, monkeypatch):
+    # A null-tier record (empty/unparseable judge response) must not enter the
+    # dedupe set: a re-fire retries those keys, appending a real judgment
+    # beside the failed attempt; parsed records still never re-judge.
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path)
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(json.dumps(RUBRIC), encoding="utf-8")
+
+    def empty_judge(client, model, system, user_text, max_tokens, temperature):
+        return "", 5, 0, {"model": model}
+
+    args = ["judge", "--responses", str(resp), "--rubric", str(rubric_path),
+            "--judge-model", "judge-x", "--max-spend", "1.0"]
+    monkeypatch.setattr(ae, "_send", empty_judge)
+    monkeypatch.setattr(ae, "_client", lambda: object())
+    ae.main(args)
+    jpath = resp.with_name(resp.stem.replace("responses_", "judgments_") + ".jsonl")
+    rows = [json.loads(line) for line in jpath.read_text(encoding="utf-8").splitlines()]
+    assert len(rows) == 6 and all(r["tier"] is None for r in rows)
+
+    monkeypatch.setattr(ae, "_send", _stub_send)  # judge now answers properly
+    ae.main(args)
+    rows = [json.loads(line) for line in jpath.read_text(encoding="utf-8").splitlines()]
+    assert len(rows) == 12  # failed attempts stay as history, retries append
+    assert sum(1 for r in rows if r["tier"] == "routine") == 6
+    ae.main(args)  # parsed records do not re-judge
+    assert len(jpath.read_text(encoding="utf-8").splitlines()) == 12
+
+
 def test_judge_second_opinion_compat_appends_beside_primary(tmp_path, monkeypatch):
     # A provider-spec judge (second opinion) goes through _send_compat, never
     # the Anthropic client, and appends beside the primary judge's records in

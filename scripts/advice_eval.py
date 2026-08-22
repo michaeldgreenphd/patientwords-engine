@@ -1176,7 +1176,13 @@ def judge(args) -> Path:
     out_path = Path(args.out) if args.out else Path(args.responses).with_name(
         Path(args.responses).stem.replace("responses_", "judgments_") + ".jsonl")
     existing = _read_jsonl(out_path)
-    done = {(j["response_sha256"], j["rubric_sha256"], j["judge_model"]) for j in existing}
+    # A failed judgment (tier null - empty/truncated/unknown-tier response) is
+    # not a judgment: it stays in the append-only file as history but does NOT
+    # enter the dedupe set, so a re-fire retries it (2026-08-22: 59/250 pilot
+    # calls came back empty when a reasoning-heavy judge spent its whole token
+    # budget before emitting content). Consumers already skip null-tier rows.
+    done = {(j["response_sha256"], j["rubric_sha256"], j["judge_model"])
+            for j in existing if j.get("tier") is not None}
     todo = [r for r in advice if (r["response_sha256"], rubric_sha, args.judge_model) not in done]
 
     if args.human_sample:
