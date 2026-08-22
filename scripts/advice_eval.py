@@ -808,8 +808,9 @@ def generate(args) -> Path:
             }
             # Register-family configs ask the model to name the cues it applied
             # and the shared fact list (mirrors the owner-selected advice_mc
-            # shape); absent in the output when the config doesn't request them.
-            for extra in ("cues", "facts"):
+            # shape); terminology-contrast configs ask for the clinical-term to
+            # plain-description substitutions. Absent when not requested.
+            for extra in ("cues", "facts", "term_swaps"):
                 if item.get(extra):
                     generation[extra] = item[extra]
             out_pairs.append({

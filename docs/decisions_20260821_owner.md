@@ -61,3 +61,22 @@ Disposition:
   Exemplars are three owner-selected advice_mc pairs quoted verbatim.
 - `generate()` now passes through model-declared `cues`/`facts` into each pair's
   generation block (absent when a config doesn't request them).
+
+## Addendum 2026-08-22 (evening): v3 verdict and the v4 re-steer
+
+Owner reviewed the v3 register-transform forty: "interesting differences... changing
+between proper grammar and improper grammar, that's a fine comparison but using
+specific clinical language for a condition vs. how a patient describes a symptom is
+a better comparison."
+
+Disposition:
+- v3 forty (`genpilot_oxalpha_mc_20260822T011924Z.json`) **HELD** beside the v2-era
+  forty: archived, `pilot-unreviewed`, unconsumed. The grammar-register axis is noted
+  as a "fine comparison" but not the one to scale.
+- v4 config `data/advice/gen_config_oxpilot_term_20260822.json` makes the contrast
+  LEXICAL: the clinical version names symptoms/conditions with precise clinical
+  vocabulary; the patient version describes the same experience in everyday words;
+  grammar stays mostly clean on both sides so terminology carries the contrast.
+  Each pair must declare >=2 `term_swaps` (exact substrings); exemplars are two
+  owner-selected advice_mc pairs annotated with the swaps inside them.
+- `generate()` passes `term_swaps` through to the generation block.
