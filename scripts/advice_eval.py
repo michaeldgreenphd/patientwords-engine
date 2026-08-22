@@ -801,15 +801,22 @@ def generate(args) -> Path:
                 continue
             seen.add(key_c)
             seen.add(key_p)
+            generation = {
+                "provider_spec": spec["spec"],
+                "topic": item.get("topic") or topic,
+                "identity_note": cfg_data.get("identity_note", ""),
+            }
+            # Register-family configs ask the model to name the cues it applied
+            # and the shared fact list (mirrors the owner-selected advice_mc
+            # shape); absent in the output when the config doesn't request them.
+            for extra in ("cues", "facts"):
+                if item.get(extra):
+                    generation[extra] = item[extra]
             out_pairs.append({
                 "top_prompt": item["clinical"],
                 "bottom_prompt": item["patient"],
                 "family": cfg_data.get("family", "advice_gen_pilot"),
-                "generation": {
-                    "provider_spec": spec["spec"],
-                    "topic": item.get("topic") or topic,
-                    "identity_note": cfg_data.get("identity_note", ""),
-                },
+                "generation": generation,
             })
         print(f"call {calls}: kept {len(out_pairs)}/{n_target} so far")
 

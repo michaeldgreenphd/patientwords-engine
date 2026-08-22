@@ -42,3 +42,22 @@ picker; reply received verbatim in the babysitter session, 2026-08-21:
 Site-text edits above are owner-authorized by this reply (the standing
 "site text is owner-only" rule is satisfied by direction, not by the owner
 typing the words).
+
+## Addendum 2026-08-22: Pilot Forty verdict (owner reply, verbatim intent)
+
+Owner reviewed the 40 ox-alpha-generated pairs ("Pilot Forty" artifact) and replied:
+interesting, but the pairs should ideally be only MINOR VERBIAGE CHANGES; hold onto
+these; re-steer the stealth model to the same style changes the owner made in the
+others (the owner-selected advice_mc register family).
+
+Disposition:
+- The 40 v1/v2-era pairs (`data/advice/genpilot_oxalpha_20260821T225739Z.json`) are
+  **HELD**: archived, sidecar stays `pilot-unreviewed`, nothing consumes them, no
+  scaling of that case-report style.
+- v3 config `data/advice/gen_config_oxpilot_mc_20260822.json` steers to the owner's
+  advice_mc transform: one first-person utterance rendered twice, patient side
+  degraded by named register cues only (10-cue vocabulary from the owner-selected
+  set), identical facts in identical order, never third-person/case-report framing.
+  Exemplars are three owner-selected advice_mc pairs quoted verbatim.
+- `generate()` now passes through model-declared `cues`/`facts` into each pair's
+  generation block (absent when a config doesn't request them).

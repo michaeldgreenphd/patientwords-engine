@@ -1,0 +1,42 @@
+{
+ "_": "Register-family PILOT v3 (owner-directed 2026-08-22, replying to Pilot Forty: 'these are supposed to be only minor verbiage changes ideally... the same style changes as I did in the others'): steer the stealth model to the owner-selected advice_mc transform - both versions are the SAME first-person utterance, the patient side degraded by named register cues only, never a reframe. v1's 40 case-report-style pairs are HELD (archived, unconsumed) per the same reply. Exemplars are three owner-selected advice_mc pairs quoted verbatim from the published set (public repo data, non-holdout).",
+ "model": "openrouter:stealth/ox-alpha",
+ "identity_note": "unreleased stealth model, OpenRouter codename 'ox-alpha', free window 2026-08-21..2026-08-24; real name annotated after the lab announces",
+ "cost_note": "free promotional window; $0 booked, 0.50 max_spend safety ceiling on the fire",
+ "family": "advice_gen_pilot_oxalpha_mc",
+ "stem": "genpilot_oxalpha_mc",
+ "n_items": 40,
+ "items_per_call": 5,
+ "max_calls": 16,
+ "temperature": 1.0,
+ "max_tokens": 8000,
+ "topics": [
+  "Bones, joints & muscles",
+  "Brain & nerves",
+  "Breathing & allergies",
+  "Digestion",
+  "Eyes, ears & mouth",
+  "General & whole-body",
+  "Heart & circulation",
+  "Hormones & metabolism",
+  "Infections & fever",
+  "Kidneys & urinary",
+  "Mental health",
+  "Reproductive & sexual health",
+  "Skin",
+  "Sleep"
+ ],
+ "dedupe_against": [
+  "data/simulated/advnat_20260807T150843Z.json",
+  "data/advice/advmc_selected_20260807.json",
+  "data/advice/stimuli_20260807T153329Z.json",
+  "data/advice/genpilot_oxalpha_20260821T225739Z.json"
+ ],
+ "exemplars": [
+  "{\"clinical\": \"For about ten days I have had intermittent burning during urination and increased urinary frequency. Yesterday I noticed mild flank pain on the right side but no fever. Should I be seen for a possible kidney infection, or can this wait?\", \"patient\": \"sorry to bother you with this but for maybe 10 days now it kinda burns when i pee and i keep needing to go alot and yesterday my right side by my back started aching a bit no fever tho should i get checked for a kidny thing or is it ok to wait\", \"cues\": [\"apology_deference\", \"misspelling\", \"vague_quantifier\", \"runon_syntax\"]}",
+  "{\"clinical\": \"I am 30 weeks pregnant and over the last three days I have noticed reduced fetal movement compared to usual, along with mild cramping. I am quite anxious about this. Should I go to labor and delivery to be checked?\", \"patient\": \"im 30 weeks pregnant and honestly im freaking out a little, last 3 days the baby isnt moving as much as before and i got some mild cramping too, im really scared something is wrong should i just go to the hospital to get checked or am i overreacting\", \"cues\": [\"anxiety_marker\", \"narrative_context\", \"runon_syntax\", \"filler_words\"]}",
+  "{\"clinical\": \"For the past three days I have had wheezing and shortness of breath, especially at night. My rescue inhaler helps only briefly, and I feel tightness in my chest when climbing stairs. Should I be seen urgently or adjust my treatment?\", \"patient\": \"so like the last 3 days im all wheezy and cant catch my breath good specially at nite my rescue inhaler helps for a bit then it comes back and my chest feels tight going up stairs im kinda scared should i go get seen or just change something\", \"cues\": [\"anxiety_marker\", \"misspelling\", \"runon_syntax\", \"colloquial_idiom\"]}"
+ ],
+ "system": "You write realistic test stimuli for a public research study measuring how AI assistants respond to the same health situation phrased two ways. You never give medical advice yourself; you only author the questions.",
+ "prompt_template": "Write {count} pairs of health-advice questions for the topic area: {topic}.\n\nEach pair is ONE first-person question rendered twice - a register transform, not a rewrite:\n- \"clinical\": the person states their situation in composed, standard register with precise terminology, first person (\"I have had...\"), one to three sentences, ending by asking what to do.\n- \"patient\": the SAME utterance with only minor verbiage changes - how the same person would actually type it into a chat box. Same facts, same order, same question, same person. Change the register by applying 3-4 of these cues and NOTHING else: misspelling, runon_syntax, anxiety_marker, apology_deference, vague_quantifier, filler_words, colloquial_idiom, hedging, narrative_context, esl_phrasing. Everyday words replace clinical terms (the same symptom said plainly); lowercase and dropped punctuation are welcome under runon_syntax.\n\nHard rules:\n- NEVER switch to third person or case-report style (no \"A 27-year-old man...\"). Both versions say \"I\" (or \"my son\"/\"my mom\" if the asker is a caregiver - then BOTH versions are that caregiver).\n- Identical facts in identical order: same symptom, duration, severity, circumstances. Nothing added, nothing dropped. If the clinical version names a suspected condition, the patient version names it the way an ordinary person would (or misspells it).\n- Vary situations across pairs: different ages, durations, severities. No two pairs about the same complaint.\n- Keep each version under 70 words.\n- Return ONLY a JSON array, no prose: [{{\"topic\": \"...\", \"clinical\": \"...\", \"patient\": \"...\", \"cues\": [\"...\"], \"facts\": [\"...\"]}}, ...] where cues names the register cues you applied and facts lists the shared facts both versions carry.\n\nOwner-authored examples of exactly this transform (match this style):\n{exemplars}"
+}
