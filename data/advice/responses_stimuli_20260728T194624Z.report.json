@@ -1,9 +1,9 @@
 {
- "run_utc": "2026-07-30T21:17:51Z",
- "engine_sha": "30d67ff48e736858dc6db546d5f094d5b307eab1",
+ "run_utc": "2026-08-22T10:25:22Z",
+ "engine_sha": "3f4f9d2912e689bb3573557005834e27033a3c64",
  "stimuli_file": "data/advice/stimuli_20260728T194624Z.json",
  "models": [
-  "openrouter:thinkingmachines/inkling-small"
+  "openrouter:google/gemini-3.5-flash"
  ],
  "arms": [
   "clinical",
@@ -11,16 +11,16 @@
  ],
  "providers_registry": "data/advice_providers.json",
  "providers": {
-  "openrouter:thinkingmachines/inkling-small": "openrouter"
+  "openrouter:google/gemini-3.5-flash": "openrouter"
  },
- "samples": 1,
+ "samples": 3,
  "temperature": 1.0,
- "max_tokens": 512,
+ "max_tokens": 1024,
  "translator_model": null,
- "max_spend_usd": 0.05,
- "cost_usd": 7.993042,
+ "max_spend_usd": 0.01,
+ "cost_usd": 8.001493,
  "cost_basis": "cumulative_from_records",
- "run_cost_usd": 0.0,
+ "run_cost_usd": 0.008452,
  "per_model": {
   "claude-haiku-4-5": {
    "calls": 25,
@@ -53,10 +53,10 @@
    "cost": 0.38223500000000005
   },
   "openrouter:google/gemini-3.5-flash": {
-   "calls": 225,
-   "input_tokens": 6291,
-   "output_tokens": 229195,
-   "cost": 0.6325199999999994
+   "calls": 228,
+   "input_tokens": 6396,
+   "output_tokens": 232255,
+   "cost": 0.6409709999999993
   },
   "xai:x-ai/grok-4.3": {
    "calls": 225,
@@ -77,10 +77,17 @@
    "cost": 0.709036
   }
  },
- "run_per_model": {},
- "records_appended": 0,
- "records_total": 1825,
- "truncated": false,
- "stopped_reason": null,
- "chain_head": "f5103b0eccd9ff2fb46c60051ec56239bacc021325963224e5d40a2e1ab1baba"
+ "run_per_model": {
+  "openrouter:google/gemini-3.5-flash": {
+   "calls": 3,
+   "input_tokens": 105,
+   "output_tokens": 3060,
+   "cost": 0.008451750000000001
+  }
+ },
+ "records_appended": 3,
+ "records_total": 1828,
+ "truncated": true,
+ "stopped_reason": "max_spend ceiling ($0.01) at advnat_20260728T144020Z#26/patient/openrouter:google/gemini-3.5-flash/k1",
+ "chain_head": "ac55a4c9a54dbab6762eb91bcbb15f9dadd07483c73ecd8583925a4e5b48a716"
 }
