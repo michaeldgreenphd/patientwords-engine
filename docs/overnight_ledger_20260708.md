@@ -755,3 +755,6 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - genpilot_oxalpha_20260821T225739Z.report.json · $0.0000 · openrouter:stealth/ox-alpha · accepted — · —
 - genpilot_oxalpha_mc_20260822T011924Z.report.json · $0.0000 · openrouter:stealth/ox-alpha · accepted — · —
 - responses_stimuli_20260807T153329Z.report.json · $0.4812 · delta (cumulative $18.3687, day 2026-08-21)
+- genpilot_oxalpha_term_20260823T003442Z.report.json · $0.0000 · openrouter:stealth/ox-alpha · accepted — · —
+- judgments_stimuli_20260807T153329Z.report.json · $0.0086 · delta (cumulative $0.3566, day 2026-08-23)
+- responses_stimuli_20260728T194624Z.report.json · $0.0254 · delta (cumulative $8.0184, day 2026-08-23)
