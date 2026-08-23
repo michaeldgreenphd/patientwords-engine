@@ -1138,6 +1138,67 @@ def test_send_captures_headers_via_raw_response():
         "request_id": "req_123", "api_version": "2023-06-01", "build_fingerprint": "fp_abc"}
 
 
+def test_send_drops_temperature_when_sdk_rejects_it(monkeypatch):
+    # Regression (run 32610000348, 2026-08-23): CI's unpinned anthropic SDK removed
+    # `temperature` from Messages.create(), killing both Claude judge top-ups on the
+    # first call. _send must retry without the kwarg and stop sending it after that.
+    monkeypatch.setattr(ae, "_ANTHROPIC_NO_TEMPERATURE", False)
+    seen_kwargs = []
+
+    class Usage:
+        input_tokens, output_tokens = 3, 4
+
+    class Block:
+        type, text = "text", "ok"
+
+    class Parsed:
+        content, usage = [Block()], Usage()
+
+        def model_dump(self):
+            return {"model": "m-1"}
+
+    class Wrapped:
+        headers = {"Request-Id": "req_t"}
+
+        def parse(self):
+            return Parsed()
+
+    class RawAPI:
+        def create(self, **kw):
+            seen_kwargs.append(kw)
+            if "temperature" in kw:
+                raise TypeError("Messages.create() got an unexpected keyword argument 'temperature'")
+            return Wrapped()
+
+    class Messages:
+        with_raw_response = RawAPI()
+
+    class Client:
+        messages = Messages()
+
+    text, _, _, _, headers = ae._send(Client(), "m", None, "u", 64, 0.0)
+    assert text == "ok" and headers["request-id"] == "req_t"
+    assert "temperature" in seen_kwargs[0] and "temperature" not in seen_kwargs[1]
+    # Later calls skip the doomed attempt entirely.
+    text2, *_ = ae._send(Client(), "m", None, "u2", 64, 0.0)
+    assert text2 == "ok" and len(seen_kwargs) == 3 and "temperature" not in seen_kwargs[2]
+    # An unrelated TypeError still propagates.
+    monkeypatch.setattr(ae, "_ANTHROPIC_NO_TEMPERATURE", False)
+
+    class BadAPI:
+        def create(self, **kw):
+            raise TypeError("Messages.create() got an unexpected keyword argument 'bogus'")
+
+    class BadMessages:
+        with_raw_response = BadAPI()
+
+    class BadClient:
+        messages = BadMessages()
+
+    with pytest.raises(TypeError, match="bogus"):
+        ae._send(BadClient(), "m", None, "u", 64, 0.0)
+
+
 def test_send_compat_returns_headers(monkeypatch):
     class Resp:
         status_code = 200

@@ -255,6 +255,9 @@ def _client():
     return anthropic.Anthropic(api_key=key)
 
 
+_ANTHROPIC_NO_TEMPERATURE = False
+
+
 def _send(client, model: str, system: str | None, user_text: str, max_tokens: int, temperature: float):
     """One Messages call. Returns (text, input_tokens, output_tokens, raw_dict, headers).
 
@@ -262,23 +265,40 @@ def _send(client, model: str, system: str | None, user_text: str, max_tokens: in
     network. Headers ride along for build forensics (request id, api version) - the
     SDK's with_raw_response wrapper exposes them; older stubs returning a 4-tuple are
     tolerated by every caller (headers default to {}).
+
+    CI installs the anthropic SDK unpinned, and current releases dropped `temperature`
+    from Messages.create() (both Claude judge top-ups died on the first call, run
+    32610000348, 2026-08-23). On that TypeError the call retries without the kwarg and
+    the process stops sending it - callers get API-default sampling, which the CI log
+    line below discloses.
     """
+    global _ANTHROPIC_NO_TEMPERATURE
     kwargs = dict(
         model=model,
         max_tokens=max_tokens,
-        temperature=temperature,
         messages=[{"role": "user", "content": user_text}],
     )
+    if not _ANTHROPIC_NO_TEMPERATURE:
+        kwargs["temperature"] = temperature
     if system:
         kwargs["system"] = system
     headers: dict = {}
     raw_api = getattr(client.messages, "with_raw_response", None)
+    create = raw_api.create if raw_api is not None else client.messages.create
+    try:
+        result = create(**kwargs)
+    except TypeError as exc:
+        if "temperature" not in kwargs or "temperature" not in str(exc):
+            raise
+        _ANTHROPIC_NO_TEMPERATURE = True
+        print("anthropic: installed SDK rejects 'temperature'; continuing with API-default sampling")
+        kwargs.pop("temperature")
+        result = create(**kwargs)
     if raw_api is not None:
-        wrapped = raw_api.create(**kwargs)
-        headers = {str(k).lower(): str(v) for k, v in dict(getattr(wrapped, "headers", {}) or {}).items()}
-        response = wrapped.parse()
+        headers = {str(k).lower(): str(v) for k, v in dict(getattr(result, "headers", {}) or {}).items()}
+        response = result.parse()
     else:  # pragma: no cover - older SDKs without the wrapper
-        response = client.messages.create(**kwargs)
+        response = result
     text = "".join(b.text for b in response.content if getattr(b, "type", "") == "text").strip()
     usage = getattr(response, "usage", None)
     raw = response.model_dump() if hasattr(response, "model_dump") else json.loads(response.json())
