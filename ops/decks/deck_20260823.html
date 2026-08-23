@@ -1,0 +1,118 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-23</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .chip:focus-visible{outline:2px solid #15803d;outline-offset:2px}
+  .new{border-left:3px solid #b4483d}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #copy:focus-visible{outline:2px solid #15803d;outline-offset:2px}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-23</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · two new cards today (D1, D2), six carried · 24 open in all</p>
+
+<div class="card new" data-id="D1-SENTINEL-OUTAGE-CONSECUTIVE-20260823">
+  <h2>D1 · NEW · The drift sentinel has now failed two days running — the instrument is blind, not just missing a point</h2>
+  <p>Yesterday's sentinel failure looked like a bad day. Today's run (<code>32639162655</code>) died the same way — four attempts to <code>/api/graph/generate</code>, every one a <b>500</b>, 12:22:12Z → 12:28:08Z, zero pairs traced, $0 spent. Two consecutive days is a different thing from one.</p>
+  <p>Why it matters more than the missing dot: <b>an instrument that cannot take a reading cannot report a breach.</b> Two silent days is two days in which an output-drift step of any size would go unrecorded. Worse, <code>drift_sentinel.py</code> compares each day to the previous <i>measured</i> day — so a step that lands during the gap will be attributed to the <code>20260821 → next-measured</code> transition, <b>smearing its date</b> onto whatever day the endpoint recovers.</p>
+  <p>The diagnostic from 08-22 holds and strengthens: the j-lens endpoint on the <b>same host</b> was healthy <i>while</i> graph-generate was 500ing — the lens sentinel completed successfully at 12:22:20Z. New detail today: attempts 1 and 4 each hung ~2 minutes before erroring, so the endpoint accepts connections and fails late. That reads as a backend/capacity fault, not a rejected request.</p>
+  <p>I did not re-fire: the standing prompt allows one trace fire per group per cycle and this cycle used it on the sentinel itself. A same-day retry would need your explicit exception — but unlike the 08-08 case it would <b>not</b> mislabel the alias, and it is 3 pairs and $0.</p>
+  <p class="num">holes: 08-08 · 08-12 · 08-19 · 08-22 · 08-23 — five, first adjacent pair · series 30 measured days, 20260713..20260821 · runs 32572679035 (08-22), 32639162655 (08-23)</p>
+  <div class="chips"><button class="chip" data-v="ask-neuronpedia">ask Neuronpedia whether /api/graph/generate is degraded for gemma-2-2b</button><button class="chip" data-v="sanction-sameday-retry">sanction a same-day sentinel retry as a standing exception to one-trace-per-cycle</button><button class="chip" data-v="accept-and-annotate">accept the gaps and add a methods note that the series has five holes, two adjacent</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D2-PAYLOAD-SERIALIZATION-INDENT-20260823">
+  <h2>D2 · NEW · Two exporters disagree on JSON indent, so chain order silently swings the public payload by 4 MB</h2>
+  <p>Three scripts write the site's <code>simulated_scenarios.json</code>. <code>export_frontend_simulated.py:406</code> and <code>embed_scenario_joins.py:244</code> use <code>indent=2</code>; <code>export_traces_site.py:101</code> uses <code>indent=1</code>. <b>Whichever runs last sets the published format.</b></p>
+  <p>The committed file is <code>indent=1</code> (12,040,228 bytes) only because the previous cycle happened to end on the traces restamp. Running the chain in the order the standing prompt lists it ends on <code>indent=2</code> and produces <b>16,179,124 bytes — +34 % on a payload every page fetches</b>, with an identical line count and <b>zero semantic change</b>.</p>
+  <p>This cycle caught it only because the diff read as 1,481,728 changed lines — every line in the file. Re-running the restamp last restored <code>indent=1</code> and cut the real diff to 5,032 substantive lines. Unnoticed, it would have pushed a 4 MB regression to a public Pages site <i>and</i> made every future payload diff unreadable — which would hide the next real data movement. Neither gate would have failed: the contract check tests structure, <code>claim_check</code> tests numbers.</p>
+  <p>It is a code change, so this cycle did not make it.</p>
+  <p class="num">12,040,228 → 16,179,124 bytes · 740,872 lines either way · fix: one shared dump helper with a single indent constant, or a contract assertion that &gt;10 % size delta with unchanged scenario count is an ERROR</p>
+  <div class="chips"><button class="chip" data-v="shared-helper">give the three writers one shared dump helper with a single indent constant</button><button class="chip" data-v="contract-assert">add the size-delta contract assertion instead</button><button class="chip" data-v="both">do both</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D3-LENS-HOST-SEPARATION-20260731">
+  <h2>D3 · The two Neuronpedia host ids stopped agreeing three weeks ago and nothing noticed</h2>
+  <p>Open since 2026-08-21, unchanged in substance and still the most consequential carried item. The standing prompt records a "known alias" — <code>gemma-2-2b</code> and <code>gemma-2-2b-it</code> return byte-identical j-lens readouts, and the day they diverge is the day Neuronpedia separates the hosts. <b>They diverged on 2026-07-31</b> and have differed on <b>20 of the 30 measured days</b> since (re-verified today by <code>scripts/lens_sentinel_check.py</code>; no new step on 08-23).</p>
+  <p>Request parameters are byte-identical across the whole series, so the change is host-side. The committed lens corpus straddles up to three host states, and <code>jlens_depth</code>, <code>jlens_insights</code>, <code>jspace</code>, transport/loglens and the txcorpus lens-recovery line each mix them — a provenance fact the methods page does not state. I touched no lens payload and no page.</p>
+  <p class="num">steps: gemma-2-2b @07-31 (target-rank hits 71→51) and @08-14 (51→50) · gemma-2-2b-it @08-14 (71→76) · part files by era: 45 pre-07-31, 61 in 07-31..08-13, 2 post-08-14</p>
+  <div class="chips"><button class="chip" data-v="annotate-era">annotate the lens payloads with the host-state era and say so in the methods note</button><button class="chip" data-v="repull-census">re-pull the census batch under the current host</button><button class="chip" data-v="ask-neuronpedia">ask Neuronpedia what changed on 07-31 before deciding</button><button class="chip" data-v="accept-mixture">accept the mixture, document nothing further</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D4-JLENS-SENTINEL-CONTAMINATION-20260821">
+  <h2>D4 · The published tuning comparison is mostly daily-sentinel replicates, and the page prose is false</h2>
+  <p>Open since 2026-08-21, unchanged. <code>jlens_insights.py:82</code> excludes <code>txcorpus_*</code>, <code>*_txopus</code>, <code>*_txplacebo</code> and <code>*__context</code> from the lens census — but not <code>drift_sentinel_*</code>. The 3 frozen sentinel pairs are swept in once per sentinel day, for both host ids, and the count grows every day the sentinel fires.</p>
+  <p>The published block says <code>n_paired: 75</code> against 23 distinct phrases, and 26 of those 75 rows are <b>not</b> identical across the two ids — while the technical page asserts three times that the readouts are "identical on every pair". Code fix is one line in the exclusion list; the prose is yours. I changed neither.</p>
+  <p class="num">technical/index.html L523, L1354, L1356 · census 81/2214 replicate rows · note the sentinel did NOT fire successfully on 08-22 or 08-23, so the count is static for two days</p>
+  <div class="chips"><button class="chip" data-v="exclude-and-republish">add the exclusion, republish, then rewrite the prose to match</button><button class="chip" data-v="exclude-only">add the exclusion now; leave the prose until you can phrase it</button><button class="chip" data-v="prose-first">rewrite the prose first, leave the payload</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D5-MEDICAL-FINETUNE-FRAMING-20260808">
+  <h2>D5 · The medical fine-tunes keep moving further from zero as n grows, against the "null cases" framing</h2>
+  <p>Carried, and it moved again today. The 8B medical backfill closed <code>pairs_20260718T133020Z</code> for <code>meditron3-8b</code> and advanced <code>apertus-8b-meditronfo</code>. Both mean penalties moved <b>further from zero at larger n</b> — the opposite of what a null case does.</p>
+  <p>meditron3-8b 1,193 → 1,369 unique phrases, mean −0.0329 → <b>−0.0369</b>, CI [−0.0405,−0.0253] → [−0.0448,−0.0291], sign 57v14 → 63v14, p_BH 5.33e-07 → 4.24e-08. apertus 1,215 → 1,349, mean −0.0248 → <b>−0.0290</b>, CI [−0.0336,−0.0162] → [−0.0376,−0.0205], sign 46v17 → 49v19, p_BH 5.05e-04 → 5.37e-04.</p>
+  <p>Both CIs still exclude zero, so no verdict flips — but the framing question is now four cycles old and the evidence has only pointed one way. Note the apertus sign test stayed essentially flat while n grew 11 %, so the penalty and tier-downgrade instruments still are not moving in lockstep there.</p>
+  <p class="num">all ten models: mean penalty negative, 10/10 CIs exclude zero, no crossing today · the four confirmatory models unchanged in n, mean and sign test</p>
+  <div class="chips"><button class="chip" data-v="rewrite-framing">rewrite the framing to say the fine-tunes show the effect too</button><button class="chip" data-v="wait-full-n">wait until both 8B models close all 39 batches</button><button class="chip" data-v="keep-framing">keep the current framing, it is about something else</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D6-STAMPS-NORMALISATION-20260821">
+  <h2>D6 · The <code>--stamps</code> comment is false, and it cost a second consecutive cycle a round trip</h2>
+  <p>Open since 2026-08-21, raised then as low severity. Recording that it <b>hit live again today</b>, on this cycle's first exporter invocation. <code>export_frontend_simulated.py:111-115</code> says <code>--stamps</code> accepts either the bare stamp or the <code>pairs_&lt;stamp&gt;</code> stem and normalises; line 110 does no such thing — only the <code>--steered-stamps</code> path at line 116 strips the prefix.</p>
+  <p>Since the payload's own <code>batch</code> field carries the prefixed stem, a session that derives its stamp list the documented way and trusts the comment gets <code>FileNotFoundError: data/simulated/pairs_pairs_&lt;stamp&gt;.json</code>. It fails loudly and before writing anything, so nothing is ever at risk — but two cycles running have now paid for it. One-line fix.</p>
+  <p class="num">fix: apply the same .replace('pairs_', '', 1) at line 110 that line 116 already uses, or delete the comment</p>
+  <div class="chips"><button class="chip" data-v="fix-line-110">make the comment true — normalise at line 110</button><button class="chip" data-v="delete-comment">delete the comment instead</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D7-JLENS-DEPTH-PINS-20260808">
+  <h2>D7 · The depth figure's pins are partly unrecoverable, and I nearly churned the figure proving it</h2>
+  <p>Carried from 2026-08-08 (should <code>pairs_20260707T171223Z</code> become a block?), with a new and sharper edge found today. <code>export_jlens_depth.py</code> takes four pins. Three — <code>--block</code>, <code>--exemplar-stem</code>, <code>--exemplar-index</code> — are recoverable from the committed payload. <b><code>--annotate</code> is not.</b></p>
+  <p>Its effect is a per-block <code>annotation</code> object, and in the committed file that field is <code>null</code> — indistinguishable from "the pin was passed and produced nothing". This cycle inferred a pin from the payload's <code>examples</code> block, passed it, and <b>it changed the published figure</b> (populated the annotation with <i>"take my medication" becomes "take my health"</i>). Caught by diffing against the committed file and re-run without the flag, after which the file reproduced byte-identically except <code>generated_utc</code>.</p>
+  <p>So the pin-stability rule is currently enforced by the operator noticing a diff, for a pin whose correct value cannot be read off the artifact.</p>
+  <p class="num">fix: have export_jlens_depth.py record its full invocation into a _pins block in its own output, making the rule mechanically checkable</p>
+  <div class="chips"><button class="chip" data-v="record-pins">add the _pins block so pins are read, not inferred</button><button class="chip" data-v="add-block-0707">also add pairs_20260707T171223Z as a block</button><button class="chip" data-v="keep-six">keep the current six blocks, just record the pins</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D8-OPS-CADENCE-SINGLE-POINT">
+  <h2>D8 · Everything still depends on one daily cycle plus whatever timers happen to be alive</h2>
+  <p>Carried, and today is a clean illustration of both halves. The daily cycle is reclaim-proof since 08-04 and ran fine — eleventh consecutive Variant B container, bootstrapped and pushed without incident. But the "backfill accelerator" still <b>does not exist</b> (no unattended tick has ever appeared in 750+ journal entries), and the interim babysitter remains an owner-directed stopgap sharing the logits lane with no reservation protocol beyond <code>fire_trigger</code>'s own guard.</p>
+  <p>That guard did its job today: a settle refusal (exit 6) held a logits fire for ~15 minutes, and I waited it out in full rather than passing <code>--ignore-settle</code>, even though GitHub-confirmed terminality would have sanctioned the flag. A git exit-1 on another fire was repaired by hand and never re-fired. The machinery is behaving — the question is whether one cycle a day is the intended cadence now that generation is closed and only the 8B-medical prediction axis is still filling.</p>
+  <p class="num">backfill: LENS 39/39 COMPLETE · TRACE 39/39 COMPLETE · PREDICTIONS gaps only in meditron3-8b (33/39) and apertus-8b-meditronfo (32/39, closing chunk fired today)</p>
+  <div class="chips"><button class="chip" data-v="approve-accel">approve the accelerator Routine so the $0 lanes fill unattended</button><button class="chip" data-v="keep-babysitter">keep the interim babysitter as the stopgap</button><button class="chip" data-v="daily-is-enough">one daily cycle is enough now that only PREDICTIONS is filling</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<button id="copy">copy my answers</button>
+<div id="out" role="region" aria-label="copyable decision summary"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(card){
+  card.querySelectorAll('.chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      card.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('on'); c.setAttribute('aria-pressed','false'); });
+      chip.classList.add('on'); chip.setAttribute('aria-pressed','true');
+    });
+    chip.setAttribute('aria-pressed','false');
+  });
+});
+document.getElementById('copy').addEventListener('click', function(){
+  var lines = ['DECISIONS 2026-08-23'];
+  document.querySelectorAll('.card').forEach(function(card){
+    var on = card.querySelector('.chip.on');
+    if (on) lines.push(card.dataset.id + ' = ' + on.dataset.v);
+  });
+  if (lines.length === 1) lines.push('(nothing selected)');
+  var text = lines.join('\n');
+  var out = document.getElementById('out');
+  out.textContent = text; out.style.display = 'block';
+  if (navigator.clipboard) navigator.clipboard.writeText(text).catch(function(){});
+});
+</script>
