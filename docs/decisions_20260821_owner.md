@@ -80,3 +80,20 @@ Disposition:
   Each pair must declare >=2 `term_swaps` (exact substrings); exemplars are two
   owner-selected advice_mc pairs annotated with the swaps inside them.
 - `generate()` passes `term_swaps` through to the generation block.
+
+## Addendum 2026-08-23: v4 terminology-contrast pilot — PASSED, scale-up authorized
+
+Owner, 2026-08-23 (in chat, after reading the 18 v4 pairs on Pilot Forty round 3):
+"Pass it, although these aren't one for one word swaps they're still interesting
+simulations."
+
+Actions taken on the pass:
+- Scale config `data/advice/gen_config_oxterm_scale_20260823.json`: same
+  vocabulary-contrast task and exemplars as v4, target 80 pairs, and the nested
+  `term_swaps` output schema is dropped (it broke the generator's JSON on 10/16
+  v4 calls; the >=2-swaps rule stays as prose, the annotation layer goes).
+- Labeling per the owner's caveat: the family is recorded as terminology-contrast
+  SIMULATIONS, not one-for-one lexical swaps
+  (`advice_gen_oxalpha_term_scale`, stem `gen_oxalpha_term`).
+- Output stays pilot-isolated and owner-reviewed before anything consumes it.
+- Fired inside the free window (closes 2026-08-24); $0, 0.25 safety ceiling.
