@@ -1,23 +1,19 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-08-23T11:54:59Z",
+  "updated_utc": "2026-08-23T12:21:30Z",
   "updated_by": "session",
   "queue": {
     "circuit-trace": {
-      "running": null,
+      "running": {
+        "fired_utc": "2026-08-23T12:21:30Z",
+        "commit": "",
+        "note": "Daily drift sentinel 2026-08-23 ($0, standing item 3b): output-drift watch on the dated alias. Circuit-trace lane fully free at cycle open (0 active). The 08-22 sentinel FAILED on upstream Neuronpedia 500s and its entry is already resolved; 08-22 stays a permanent hole per blocker neuronpedia-graph-500-20260822 (different UTC day, so no same-day re-fire). Alias committed and pushed before firing. Fresh-session daily Routine cycle."
+      },
       "pending": null
     },
     "logits-eval": {
-      "running": {
-        "fired_utc": "2026-08-23T11:54:57Z",
-        "commit": "",
-        "note": "backfill PREDICTIONS: pairs_20260718T133020Z pairs 51-75/100 x apertus-8b-meditronfo (apertus at 50/100 on 0718; part_26 verified idx 26..50 25/25). Settle bypass: 26-50 apertus run 32623499088 + meditron 51-75 legs terminal with outputs committed (57abc583, c2f7f797), resolved. $0. INTERIM babysitter, owner-directed 2026-08-07."
-      },
-      "pending": {
-        "fired_utc": "2026-08-23T11:54:59Z",
-        "commit": "",
-        "note": "backfill PREDICTIONS: pairs_20260718T133020Z pairs 76-100/100 x meditron3-8b - final chunk, closes 0718 for meditron (75/100, part_51 verified idx 51..75 25/25) = 33/39. Chained pending behind apertus 51-75 (one running + one pending, no third). Settle bypass: prior legs terminal with outputs committed (57abc583, c2f7f797), resolved. $0. INTERIM babysitter, owner-directed 2026-08-07."
-      }
+      "running": null,
+      "pending": null
     },
     "activation-patching": {
       "running": null,
@@ -152,13 +148,13 @@
   "spend": {
     "generation_ceiling_usd": 8.0,
     "generation_spent_usd": 2.7678,
-    "lifetime_generation_usd": 71.1063,
+    "lifetime_generation_usd": 71.1403,
     "daily_ceiling_usd": 2.0,
     "today": {
-      "date": "2026-08-22",
-      "spent_usd": 0.0,
-      "anthropic_usd": 0.0,
-      "openrouter_usd": 0.0
+      "date": "2026-08-23",
+      "spent_usd": 0.034,
+      "anthropic_usd": 0.0086,
+      "openrouter_usd": 0.0254
     },
     "by_day": {
       "2026-07-09": 0.0039,
@@ -191,7 +187,8 @@
       "2026-08-09": 1.872,
       "2026-08-11": 1.7939,
       "2026-08-22": 0.0,
-      "2026-08-21": 0.4812
+      "2026-08-21": 0.4812,
+      "2026-08-23": 0.034
     },
     "entries_seen": [
       "boostgrid_lowrank.report.json",
@@ -353,9 +350,10 @@
       "pairs_20260811T190638Z.report.json",
       "genpilot_oxalpha_20260821T203312Z.report.json",
       "genpilot_oxalpha_20260821T225739Z.report.json",
-      "genpilot_oxalpha_mc_20260822T011924Z.report.json"
+      "genpilot_oxalpha_mc_20260822T011924Z.report.json",
+      "genpilot_oxalpha_term_20260823T003442Z.report.json"
     ],
-    "last_scan_utc": "2026-08-22T12:18:38Z",
+    "last_scan_utc": "2026-08-23T12:19:04Z",
     "alerts": [
       "Daily spend on 2026-07-29 has exceeded the $2 daily ceiling.",
       "Daily spend on 2026-08-04 has exceeded the $2 daily ceiling.",
@@ -433,7 +431,7 @@
       "responses_stimuli_20260721T235403Z.report.json": 8.303688,
       "responses_stimuli_20260722T003502Z.report.json": 0.951269,
       "responses_stimuli_20260722T112140Z.report.json": 0.4657,
-      "responses_stimuli_20260728T194624Z.report.json": 7.993042,
+      "responses_stimuli_20260728T194624Z.report.json": 8.018407,
       "judgments_stimuli_20260728T194624Z.report.json": 1.094273,
       "quadrants_20260729T151007Z.report.json": 0.055488,
       "featured_sim85_r3.report.json": 0.0,
@@ -516,13 +514,14 @@
       "pairs_20260806T135728Z.report.json": 0.168043,
       "advmc_20260807T135420Z.report.json": 0.500735,
       "advnat_20260807T150843Z.report.json": 0.42134,
-      "judgments_stimuli_20260807T153329Z.report.json": 0.347988,
+      "judgments_stimuli_20260807T153329Z.report.json": 0.356611,
       "responses_stimuli_20260807T153329Z.report.json": 18.368708,
       "pairs_20260809T172338Z.report.json": 1.872025,
       "pairs_20260811T190638Z.report.json": 1.79395,
       "genpilot_oxalpha_20260821T203312Z.report.json": 0.0,
       "genpilot_oxalpha_20260821T225739Z.report.json": 0.0,
-      "genpilot_oxalpha_mc_20260822T011924Z.report.json": 0.0
+      "genpilot_oxalpha_mc_20260822T011924Z.report.json": 0.0,
+      "genpilot_oxalpha_term_20260823T003442Z.report.json": 0.0
     },
     "by_day_by_channel": {
       "anthropic": {
@@ -533,13 +532,15 @@
         "2026-08-07": 0.922,
         "2026-08-08": 0.348,
         "2026-08-09": 1.872,
-        "2026-08-11": 1.7939
+        "2026-08-11": 1.7939,
+        "2026-08-23": 0.0086
       },
       "openrouter": {
         "2026-08-04": 5.6981,
         "2026-08-08": 17.8875,
         "2026-08-22": 0.0,
-        "2026-08-21": 0.4812
+        "2026-08-21": 0.4812,
+        "2026-08-23": 0.0254
       }
     },
     "openrouter_daily_ceiling_usd": 10.0
