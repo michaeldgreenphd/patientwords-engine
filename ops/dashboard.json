@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-08-24T13:30:00Z",
-  "updated_by": "routine",
+  "updated_utc": "2026-08-24T18:23:45Z",
+  "updated_by": "session",
   "queue": {
     "circuit-trace": {
       "running": null,
@@ -9,14 +9,14 @@
     },
     "logits-eval": {
       "running": {
-        "fired_utc": "2026-08-24T13:01:58Z",
+        "fired_utc": "2026-08-24T15:44:08Z",
         "commit": "",
-        "note": "backfill PREDICTIONS: pairs_20260731T211704Z pairs 76-100/100 x meditron3-8b - closes 0731 for meditron (75/100; part_51 verified idx 51..75, 25/25 with language_penalty). backfill_planner --include-8b-medical top logits pick; LENS and TRACE axes both COMPLETE 39/39 so no Tier B leg is displaced. Lane empty at fire time: both babysitter legs GitHub-confirmed terminal (runs 32717231125 + 32717232204, completed/success), part files verified, resolved this cycle. Settle window WAITED OUT in full across ~15 minutes, no --ignore-settle. Pending slot deliberately left free for the babysitter rotation. $0. Fresh-session daily Routine cycle."
+        "note": "backfill PREDICTIONS: pairs_20260803T132340Z pairs 1-25/100 x meditron3-8b - starts the next gap batch (0731 CLOSED for meditron = 35/39 via the Routine's leg, run 32730319765 completed/success; apertus 0731 76-100 run 32730923895 still in_progress). Chained pending behind apertus 0731 closer (one running + one pending, no third). Settle bypass: Routine's meditron 76-100 GitHub-confirmed completed/success, resolved. $0. INTERIM babysitter, owner-directed 2026-08-07."
       },
       "pending": {
-        "fired_utc": "2026-08-24T13:08:09Z",
+        "fired_utc": "2026-08-24T18:23:45Z",
         "commit": "",
-        "note": "backfill PREDICTIONS: pairs_20260731T211704Z pairs 76-100/100 x apertus-8b-meditronfo - final chunk, closes 0731 for apertus = 35/39 (part_51 verified idx 51..75 25/25). Chained pending behind the Routine's meditron 76-100 (running; its note left this slot for the babysitter rotation). Settle bypass: babysitter 51-75 legs GitHub-confirmed terminal (32717231125 + 32717232204 completed/success, Routine-verified+resolved); settle window stems from the Routine's cycle resolves. $0. INTERIM babysitter, owner-directed 2026-08-07."
+        "note": "backfill PREDICTIONS: pairs_20260803T132340Z pairs 1-25/100 x apertus-8b-meditronfo - 0731 CLOSED both 8Bs = 35/39 (apertus closer run 32730923895 completed/success 16:56Z, part_76 verified remotely idx 76..100 25/25 via API - local git degraded). Chained pending behind meditron 0803 1-25 (started ~16:56Z). Settle bypass: apertus 0731 closer GitHub-confirmed completed/success, resolved. $0. INTERIM babysitter, owner-directed 2026-08-07."
       }
     },
     "activation-patching": {
