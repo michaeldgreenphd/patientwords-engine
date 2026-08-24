@@ -325,6 +325,10 @@ def check_shapes(rep: Report, site: Path, joins: dict):
         "jspace.json": ({"empirical": bool, "source": dict, "panels": dict}, set()),
         "advice_scenarios.json": ({"selection": dict, "source": dict,
                                    "families": list}, set()),
+        "judge_agreement.json": ({"tier_order": list, "n_paired": int,
+                                  "exact": dict, "within_one": dict,
+                                  "lean": dict, "matrix": list,
+                                  "coverage": list, "policy": str}, set()),
         "drift_series.json": ({"pairs_file": str, "threshold": NUM,
                                "days_measured": list, "series": dict}, set()),
         # critic 2026-08-10: the three j-lens payloads the Technical page's chain
