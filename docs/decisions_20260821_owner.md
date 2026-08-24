@@ -97,3 +97,17 @@ Actions taken on the pass:
   (`advice_gen_oxalpha_term_scale`, stem `gen_oxalpha_term`).
 - Output stays pilot-isolated and owner-reviewed before anything consumes it.
 - Fired inside the free window (closes 2026-08-24); $0, 0.25 safety ceiling.
+
+## Addendum 2026-08-24: stealth model removed from the pipeline (owner-directed)
+
+Owner, 2026-08-24: "Now that its Monday and the steal model is no longer free,
+can you remove it from the pipeline."
+
+- `data/advice_providers.json`: the `stealth/ox-alpha` 0/0 pricing entry is
+  REMOVED (per the entry's own standing instruction). Any accidental
+  post-window call now bills at the GPT-tier catch-all and the spend ceiling
+  stops it immediately, instead of booking $0 against real charges.
+- The ox judging program had already been declared complete earlier today
+  (OpenRouter rate-limiting; final pooled agreement n=3,426, 75.6% exact,
+  97.7% within one tier). No ox fires of any kind after this point.
+- Archived window records keep their 0/0 cost_usd (append-only).
