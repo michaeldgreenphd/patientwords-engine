@@ -1,7 +1,7 @@
 {
  "schema_version": 1,
- "updated_utc": "2026-08-26T14:36:00Z",
- "updated_by": "routine",
+ "updated_utc": "2026-08-26T14:40:00Z",
+ "updated_by": "session",
  "queue": {
   "circuit-trace": {
    "running": null,
@@ -9,15 +9,11 @@
   },
   "logits-eval": {
    "running": {
-    "fired_utc": "2026-08-26T12:24:39Z",
-    "commit": "",
-    "note": "backfill PREDICTIONS: pairs_20260806T135728Z pairs 51-75/100 x apertus-8b-meditronfo. Interim babysitter's leg (run 32968439672, in_progress at cycle close). Not this cycle's to harvest."
-   },
-   "pending": {
     "fired_utc": "2026-08-26T14:00:07Z",
     "commit": "",
     "note": "backfill PREDICTIONS: pairs_20260806T135728Z pairs 76-100/100 x meditron3-8b - planner top pick, CLOSES 0806 for meditron (39/39 batches). Fired by this cycle into the free pending slot; verified absent from flight first. $0."
-   }
+   },
+   "pending": null
   },
   "activation-patching": {
    "running": null,
@@ -65,6 +61,13 @@
    "fired_utc": "2026-08-26T13:59:57Z",
    "status": "success",
    "note": "txcorpus priority2 lens chunk 12 (pairs 276-300 of 352), item 3c2 idle-slot fill. completed/success 14:02:03Z; jlens_summary.part_276.json verified 25 rows, idx 276..300. Resolved. Landed mid-cycle after the first pass of the j-lens chain, so the FULL affected chain was re-run rather than translation_scale alone - same consistency rule the 08-25 cycle applied to chunk 11."
+  },
+  {
+   "workflow": "logits_evaluation",
+   "run_id": 32968439672,
+   "fired_utc": "2026-08-26T12:24:54Z",
+   "status": "success",
+   "note": "Interim babysitter's apertus-8b-meditronfo 0806 51-75 leg, cross-harvested at cycle close. GitHub-confirmed completed/success 14:32:58Z; part_51.json verified idx 51..75, penalties 25/25. Resolved - leaving a landed terminal entry unresolved is the false missed-harvest the 08-17/08-18 cycles produced. apertus now 75/100 on 0806, its last gap batch."
   },
   {
    "workflow": "logits_evaluation",
