@@ -1,0 +1,120 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-26</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .chip:focus-visible{outline:2px solid #15803d;outline-offset:2px}
+  .new{border-left:3px solid #b4483d}
+  .good{border-left:3px solid #15803d}
+  table{border-collapse:collapse;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;margin:0 0 10px}
+  td,th{border-bottom:1px solid #c3c9d2;padding:3px 8px 3px 0;text-align:left}
+  th{color:#6d6c66;font-weight:normal}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #copy:focus-visible{outline:2px solid #15803d;outline-offset:2px}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-26</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · one good-news card (D0, nothing to decide), one new (D1), one escalated (D2), two carried · 28 open in all</p>
+
+<div class="card good" data-id="D0-SENTINEL-RECOVERED-20260826">
+  <h2>D0 · GOOD NEWS · The drift sentinel is reading again, and nothing moved while it was blind</h2>
+  <p>After four dark days, today's run went through. <code>32977549702</code> fired at 13:59:45Z and was <b>completed/success</b> at 14:34:27Z — all three pairs traced, six render files committed. Nothing changed on our side: identical parameters, identical alias shape, the fifth consecutive daily attempt. The Neuronpedia fault cleared on its own.</p>
+  <p><b>The reading is the reassuring one.</b> Today's point is compared against <code>20260821</code> — five days apart, spanning the entire outage — and it comes back <b>max |dp| 0.0</b>, with no top-word change on any tracked word. Whatever was wrong with the tracing endpoint, the model behind it did not drift while we could not watch.</p>
+  <p>One detail worth keeping: the successful run took <b>34m42s</b>, about five times the ~6m42s failure signature. A cycle that closed on its own schedule would have missed it and filed a fifth dark day. The wait-and-resolve rule added on 08-19 is what caught this — its first real save.</p>
+  <p>08-22 through 08-25 stay permanent holes; re-tracing a stale alias would measure today's model under a past label. That does not change, and card D2 on the methods prose still stands.</p>
+  <p class="num">run 32977549702 · 34m42s · series 30 → 31 measured days, now ending 20260826 · today vs 20260821 max |dp| 0.0 · breaches unchanged: 20260714→15 (0.027), 20260813→14 (0.023) · blockers neuronpedia-graph-500-2026082{2,3,4,5} all closed</p>
+  <div class="chips"><button class="chip" data-v="noted">noted, nothing needed</button><button class="chip" data-v="standing-retry-rule">still make same-day retry a standing rule for the next outage</button></div>
+</div>
+
+<div class="card new" data-id="D1-UNWIRED-CHECKS-BACKLOG-20260826">
+  <h2>D1 · NEW · Four checks are written, correct, and waiting on one yes/no from you</h2>
+  <p>Today's critic pass found <b>no new defect</b> — and that is what made this visible. Four separate automated checks have been drafted by past passes and each was declined for the same reason: landing an erroring assertion in the publish gate is a policy change only you can make, and each one would go <b>red on day one</b> for an underlying item you have not ruled on yet.</p>
+  <table>
+    <tr><th>check</th><th>drafted</th><th>would it pass today?</th></tr>
+    <tr><td>convergence n == model_stats n, per model</td><td>08-22</td><td>8 of 10 green, 2 red</td></tr>
+    <tr><td>payload freshness vs <code>_provenance.generated_utc</code></td><td>08-12</td><td>red on 2 payloads</td></tr>
+    <tr><td>reject claim-grade <code>engine_sha</code> ending <code>+dirty</code></td><td>08-12</td><td>red on every model_stats we publish</td></tr>
+    <tr><td>documented writer vs scripts the cycle runs</td><td>08-12</td><td>red on 2 files</td></tr>
+  </table>
+  <p>Each individual declination was sound. The compounding cost is what is new: <b>the defect the first check guards has quadrupled in four days while that check sat unwired</b> (see D2). The bottleneck stopped being analysis a while ago.</p>
+  <p>One answer unblocks all four. The middle option is the gentle one — land them as warnings, so they appear in every brief without ever blocking a publish.</p>
+  <p class="num">critic_20260812 (3 checks) · critic_20260822 (1 check) · all offline, all $0 to run · full working: docs/critic/critic_20260826.md item 5</p>
+  <div class="chips"><button class="chip" data-v="land-as-errors">land all four as errors; a red gate is the point</button><button class="chip" data-v="land-as-warnings">land all four as warnings first, promote to errors once the underlying items are closed</button><button class="chip" data-v="land-subset">land some — I will say which</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D2-TIMELINE-CHAIN-GAP-20260820">
+  <h2>D2 · ESCALATED · The same page now shows two numbers for the same model, 96 % apart</h2>
+  <p>The Technical page's Part 4 carries two things side by side: the accumulation curve (from <code>convergence.json</code>) and the cross-model table (from <code>model_stats.json</code>). The table is rebuilt every cycle. The curve has been frozen since <b>2026-08-20</b>.</p>
+  <table>
+    <tr><th>model</th><th>curve ends at</th><th>table says</th><th>gap today</th><th>gap on 08-22</th></tr>
+    <tr><td>apertus-8b-meditronfo</td><td>n=929</td><td><b>n=1,825</b></td><td>96 %</td><td>24 %</td></tr>
+    <tr><td>meditron3-8b</td><td>n=931</td><td><b>n=1,841</b></td><td>98 %</td><td>28 %</td></tr>
+    <tr><td>the other eight</td><td colspan="4">agree exactly, to the digit</td></tr>
+  </table>
+  <p>Four days ago the curve was short by about a quarter. Today it is short by about half the data. <b>The gap grows every cycle and will not stop on its own</b> — the 8B-medical backfill drives exactly these two models and only these two, while the curve stays frozen.</p>
+  <p>No statistic is wrong: both models are exploratory and both confidence intervals exclude zero either way. The cost is presentational, and it lands where it hurts most — the accumulation fold exists to show an estimate settling down as n grows, and two of its curves stop at half their n directly beside a table stating the true n.</p>
+  <p>The cause is one line long. <code>convergence_tracker.py</code> and <code>study_timeline.py</code> are both free and offline, and neither appears in the cycle's sanctioned publish chain — so a cycle that follows that chain exactly, as today's did, never runs them. I did not run them anyway: a cycle that quietly widens its own publish chain is the drift the critic exists to catch.</p>
+  <p class="num">convergence.json frozen at 2026-08-20T12:40:27Z · absent from routine_standing_prompt.md §5 and the publish-site-data skill · patientwords/CLAUDE.md:57-63 calls both “regenerated by the engine's nightly cycle” · third cycle raising it · docs/critic/critic_20260826.md</p>
+  <div class="chips"><button class="chip" data-v="add-both">add both scripts to the chain — they run nightly from now on</button><button class="chip" data-v="add-convergence-only">add convergence only; timeline has no page consumer, retire it</button><button class="chip" data-v="retire-both">declare both point-in-time and fix the CLAUDE.md wording instead</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D3-SEAL-REGISTRY-COVERAGE-20260825">
+  <h2>D3 · CARRIED · The holdout leak detector still checks 173 of 174 phrases</h2>
+  <p>Unchanged from yesterday and re-verified today: exactly one holdout phrase reaches the statistics exclusion set by a route the leak registry never walks (its collector label carries a <b>null batch index</b>, <code>pairs_20260713T050939Z#None</code>). Zero in the reverse direction.</p>
+  <p><b>Exposure today: none.</b> <code>seal check: CLEAN</code>, 173 phrases, 0 hits — run twice this cycle, before and after publishing. Amendment 1 excludes the phrase from every number. The seal holds in fact; it does not hold by construction.</p>
+  <p>Still unapplied for the same reason: <code>seal_check</code> is a publish gate, and widening a gate is your call. The fix can only add coverage, never remove it.</p>
+  <p class="num">seal_check.py:37-54 · paired_stats_rigor.py:105-106 · 173 vs 174 · docs/critic/critic_20260825.md HIGH-1</p>
+  <div class="chips"><button class="chip" data-v="apply-union">apply the union fix now</button><button class="chip" data-v="apply-and-investigate">apply it, and find out why that row has a null batch index</button><button class="chip" data-v="investigate-first">investigate the null batch index first</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D4-DRIFT-PROSE-HOLES-20260825">
+  <h2>D4 · CARRIED · The methods page still names three missing drift days. There are fourteen.</h2>
+  <p>Unchanged, and today's recovery makes it slightly worse: the four dark days 08-22 through 08-25 are now closed and permanent, so the count is <b>ten interior holes plus four</b>, against a page that names three. The series does now run to 20260826 rather than stopping at 08-21, which removes the “no sentence says where it ends” half of the problem going forward but not for the days already missing.</p>
+  <p>Still blocked the same way: no manifest claim references <code>drift_series.json</code>, and the manifest's expression sandbox exposes no <code>int</code> and no <code>range</code>, so interior holes cannot be computed from the payload as it stands. The check has to be made writable before it can be written.</p>
+  <p>The prose fix is yours — this cycle holds a data mandate and does not touch site text.</p>
+  <p class="num">methods.html:343-345 · 10 interior holes + 08-22..08-25 · claims_manifest.json 20 claims, 0 referencing drift · docs/critic/critic_20260825.md HIGH-2</p>
+  <div class="chips"><button class="chip" data-v="both-steps">emit the holes field and land the claim, then rewrite the prose</button><button class="chip" data-v="prose-now">rewrite the prose now; add the check later</button><button class="chip" data-v="check-only">emit the holes field only</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D5-QUEUE">
+  <h2>D5 · The queue is 28 deep and mostly cheap</h2>
+  <p>Twenty-eight entries are open. Several are single-digit-line changes that would go green immediately — D3's union fix, D2's chaining, and all four checks in D1 are already written.</p>
+  <p>Also worth knowing: Tier B generation is <b>closed</b> at 1,600/1,600 for $2.77 of the $8 budget, and the free backfill has completed both the tracing and lens axes (39/39 each). The remaining work is cross-model prediction coverage, which is converging steadily and costs nothing.</p>
+  <p class="num">28 open · oldest: AUDIT-DECIDED-EXECUTION, OPS-CADENCE-SINGLE-POINT · 1 added today, 1 escalated in place rather than duplicated · 4 blockers closed today</p>
+  <div class="chips"><button class="chip" data-v="batch-approve-cheap">standing go-ahead for cheap reversible fixes like D1, D2 and D3</button><button class="chip" data-v="triage-session">set aside one session to triage the whole queue with me</button><button class="chip" data-v="top-three">tell me the three you care about; I stop escalating the rest</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<button id="copy">copy my answers</button>
+<div id="out" role="region" aria-label="copyable decision summary"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(card){
+  card.querySelectorAll('.chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      card.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('on'); c.setAttribute('aria-pressed','false'); });
+      chip.classList.add('on'); chip.setAttribute('aria-pressed','true');
+    });
+    chip.setAttribute('aria-pressed','false');
+  });
+});
+document.getElementById('copy').addEventListener('click', function(){
+  var lines = ['DECISIONS 2026-08-26'];
+  document.querySelectorAll('.card').forEach(function(card){
+    var on = card.querySelector('.chip.on');
+    if (on) lines.push(card.dataset.id + ' = ' + on.dataset.v);
+  });
+  if (lines.length === 1) lines.push('(nothing selected)');
+  var text = lines.join('\n');
+  var out = document.getElementById('out');
+  out.textContent = text; out.style.display = 'block';
+  if (navigator.clipboard) navigator.clipboard.writeText(text).catch(function(){});
+});
+</script>
