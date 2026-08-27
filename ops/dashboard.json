@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-08-27T13:10:00Z",
+  "updated_utc": "2026-08-27T13:10:07Z",
   "updated_by": "session",
   "queue": {
     "circuit-trace": {
@@ -17,7 +17,11 @@
         "commit": "",
         "note": "backfill PREDICTIONS: pairs_20260706T201750Z pairs 1-13/13 x gemma-2-2b-it - planner top pick after this cycle's first two legs closed 0706T172135Z and 0706T175614Z (gemma-2-2b-it 15/39 -> 17/39). Lane 0 active. Settle bypass: BOTH prior legs GitHub-confirmed completed/success (runs 33074749539 at 13:06:23Z, 33074760382 at 13:08:32Z) with outputs committed and verified (part_01 rows 2/2 and 10/10, every row carrying language_penalty) - terminal, not occupying the group. Refilling the running slot because the interim babysitter closed its loop on 08-26 and this daily cycle is now the lane's only driver. $0."
       },
-      "pending": null
+      "pending": {
+        "fired_utc": "2026-08-27T13:10:07Z",
+        "commit": "",
+        "note": "backfill PREDICTIONS: pairs_20260706T210703Z pairs 1-6/6 x gemma-2-2b-it - the planner's next pick after 0706T201750Z by its own rule (backfill_planner.py:157-171, least-covered model gemma-2-2b-it, batches iterated sorted). Chained into the free PENDING slot; one running + one pending, no third. Not a duplicate - no gemma-2-2b-it leg for this batch exists in the journal. $0."
+      }
     },
     "activation-patching": {
       "running": null,
