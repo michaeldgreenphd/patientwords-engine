@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-08-27T13:01:55Z",
+  "updated_utc": "2026-08-27T13:02:03Z",
   "updated_by": "session",
   "queue": {
     "circuit-trace": {
@@ -17,7 +17,11 @@
         "commit": "",
         "note": "backfill PREDICTIONS: pairs_20260706T172135Z pairs 1-2/2 x gemma-2-2b-it - planner item 4a top pick (medical models all closed at 39/39 on 08-26, so the least-covered model is now gemma-2-2b-it at 15/39). Logits lane was 0 active at fire time; the interim babysitter closed its loop 2026-08-26 18:55Z (docs/coordination/backfill_8b_complete_20260826.md) so no leg of its is in flight. $0."
       },
-      "pending": null
+      "pending": {
+        "fired_utc": "2026-08-27T13:02:03Z",
+        "commit": "",
+        "note": "backfill PREDICTIONS: pairs_20260706T175614Z pairs 1-10/10 x gemma-2-2b-it - the planner's NEXT pick after 0706T172135Z, derived by its own rule (backfill_planner.py:157-171: medical first, then least-covered model = gemma-2-2b-it at 15/39; batches iterated sorted, this is the second gap batch of 24). Chained into the free PENDING slot; one running + one pending, no third. Not a duplicate - no gemma-2-2b-it leg for this batch exists in the journal. Sanctioned idle-logits backfill fill (standing prompt item 3a2 / 4a). $0."
+      }
     },
     "activation-patching": {
       "running": null,
