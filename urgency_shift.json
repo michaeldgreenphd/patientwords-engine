@@ -1,16 +1,16 @@
 {
  "summary": {
-  "measurements": 16584,
+  "measurements": 16587,
   "tierb_holdout_rows_excluded": 1544,
-  "flips": 7327,
+  "flips": 7329,
   "flip_classes": {
-   "downgrade": 1007,
+   "downgrade": 1009,
    "upgrade": 290,
    "lateral": 1053,
    "uninformative": 4977
   },
-  "mean_tier_shift": -0.0923,
-  "tier_shift_n": 10066,
+  "mean_tier_shift": -0.0924,
+  "tier_shift_n": 10068,
   "per_model": {
    "apertus-8b-meditronfo": {
     "n": 2147,
@@ -31,13 +31,13 @@
     }
    },
    "gemma-2-2b": {
-    "n": 2343,
-    "flips": 1116,
-    "downgrades": 279,
+    "n": 2346,
+    "flips": 1118,
+    "downgrades": 281,
     "upgrades": 46,
     "sign_test_p": 0.0,
-    "confident_downgrades_p>=0.2": 211,
-    "mean_tier_shift": -0.1316,
+    "confident_downgrades_p>=0.2": 213,
+    "mean_tier_shift": -0.1319,
     "representative": {
      "base": "I have anxiety, so I should probably see a",
      "from": "therapist",
@@ -552,10 +552,10 @@
   },
   "per_condition": {
    "(unlabeled)": {
-    "n": 780,
-    "downgrades": 195,
+    "n": 783,
+    "downgrades": 197,
     "upgrades": 10,
-    "mean_tier_shift": -0.1886
+    "mean_tier_shift": -0.1892
    },
    "sleep problems": {
     "n": 623,
@@ -6976,6 +6976,87 @@
   {
    "model": "gemma-2-2b",
    "batch": "drift_sentinel_20260827",
+   "index": 3,
+   "topic": null,
+   "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
+   "top_clinical": "doctor",
+   "top_patient": "sleep",
+   "p_top_clinical": 0.316,
+   "p_top_patient": 0.391,
+   "tier_top_clinical": 2,
+   "tier_top_patient": 1,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.077,
+   "expected_tier_patient": 1.819,
+   "tier_shift": -0.258,
+   "language_penalty": -0.045999999999999985,
+   "coverage": [
+    1.0,
+    1.0
+   ],
+   "prompt_words": [
+    11,
+    14
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260828",
+   "index": 1,
+   "topic": null,
+   "clinical_prompt": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+   "top_clinical": "few",
+   "top_patient": "few",
+   "p_top_clinical": 0.067,
+   "p_top_patient": 0.112,
+   "tier_top_clinical": null,
+   "tier_top_patient": null,
+   "flipped": false,
+   "flip_class": null,
+   "expected_tier_clinical": 1.0,
+   "expected_tier_patient": null,
+   "tier_shift": null,
+   "language_penalty": 0.045,
+   "coverage": [
+    0.47,
+    0.0
+   ],
+   "prompt_words": [
+    14,
+    17
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260828",
+   "index": 2,
+   "topic": null,
+   "clinical_prompt": "Because I've had arrhythmia symptoms lately, I finally went to see a",
+   "top_clinical": "cardio",
+   "top_patient": "doctor",
+   "p_top_clinical": 0.633,
+   "p_top_patient": 0.494,
+   "tier_top_clinical": 3,
+   "tier_top_patient": 2,
+   "flipped": true,
+   "flip_class": "downgrade",
+   "expected_tier_clinical": 2.848,
+   "expected_tier_patient": 2.372,
+   "tier_shift": -0.476,
+   "language_penalty": 0.369,
+   "coverage": [
+    0.93,
+    0.96
+   ],
+   "prompt_words": [
+    12,
+    13
+   ]
+  },
+  {
+   "model": "gemma-2-2b",
+   "batch": "drift_sentinel_20260828",
    "index": 3,
    "topic": null,
    "clinical_prompt": "Because I have somniloquy, my roommate says I should see a",
