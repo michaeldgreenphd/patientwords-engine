@@ -1,18 +1,14 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-08-28T13:20:00Z",
-  "updated_by": "routine",
+  "updated_utc": "2026-08-28T13:24:00Z",
+  "updated_by": "session",
   "queue": {
     "circuit-trace": {
       "running": null,
       "pending": null
     },
     "logits-eval": {
-      "running": {
-        "fired_utc": "2026-08-28T12:52:32Z",
-        "commit": "",
-        "note": "backfill PREDICTIONS pairs_20260706T175614Z 1-10/10 x gemma-2-2b (run 33172967463). Still in_progress at cycle close, GitHub-confirmed NOT terminal - deliberately left UNRESOLVED per standing prompt section 2, and no further logits fire was made into this lane. Next cycle's opening harvest picks it up."
-      },
+      "running": null,
       "pending": null
     },
     "activation-patching": {
@@ -73,8 +69,8 @@
       "workflow": "logits_evaluation",
       "run_id": 33172967463,
       "fired_utc": "2026-08-28T12:52:32Z",
-      "status": "in_progress",
-      "note": "backfill PREDICTIONS pairs_20260706T175614Z 1-10/10 x gemma-2-2b - chained pending. STILL IN_PROGRESS at cycle close (GitHub-checked 13:16Z, run created 12:53:29Z). NOT resolved and NOT counted in any coverage number published today; trace_out/pairs_20260706T175614Z__gemma-2-2b does not exist on the branch. Left for the next cycle's opening harvest. Its display_title reads 'Ledger: fold in...' because the exit-1 fire's trigger file was pushed in the same commit as the ledger update during the hand repair - the trigger payload itself is correct and was verified after the push."
+      "status": "success",
+      "note": "backfill PREDICTIONS pairs_20260706T175614Z 1-10/10 x gemma-2-2b - chained pending. LANDED LATE, after this cycle's first chain pass: GitHub-confirmed completed/success at 13:15:12Z; part_01 verified backend 'logits', idx 1..10, 10/10 rows carrying language_penalty. Resolved. The FULL affected chain was then re-run rather than one script - the same consistency rule the 08-25/26/27 cycles applied - and it moved no published statistic (model_stats provenance-only again, urgency_shift byte-identical). gemma-2-2b batch coverage 19/39 -> 20/39. Its display_title reads 'Ledger: fold in...' because the exit-1 fire's trigger file was pushed in the same commit as the ledger update during the hand repair; the trigger payload itself was verified correct after the push."
     },
     {
       "workflow": "circuit_trace_evaluation",
@@ -742,7 +738,7 @@
   },
   "verdicts": [
     "Cross-model asymmetry holds at scale (source: patientwords/data/model_stats.json, refreshed this cycle 2026-08-28 by paired_stats_rigor.py; 186 confirmatory-holdout pairs withheld from the payload, holdout phrases and rows excluded under Amendment 1, and outcome-selected supplementary rows excluded from the confirmatory population under POPULATION-DEF B). Ten models measured; every mean language penalty is negative and 10 of 10 have a 95% CI excluding zero. Range -0.0293 (apertus-8b-meditronfo) to -0.0507 (gemma-3-4b-it); BH q from 2.75e-08 to 1.29e-03.",
-    "NO MODEL MOVED TODAY. model_stats.json changed in its provenance block ONLY (engine_sha and generated_utc); every n, mean, CI and sign test is byte-identical to the 08-27 publish. The one logits leg that landed (pairs_20260706T172135Z x gemma-2-2b, 2 pairs) added no new phrase-level penalty because gemma-2-2b already carried those two pairs from the hosted-trace path - the leg closes a per-batch COVERAGE gap the planner tracks, not a statistical one. First cycle since 08-23 with no movement in any published statistic.",
+    "NO MODEL MOVED TODAY, across BOTH publish passes. model_stats.json changed in its provenance block only on each pass; every n, mean, CI and sign test is byte-identical to the 08-27 publish, and urgency_shift.json came out byte-identical on the second pass. The two logits legs that landed (pairs_20260706T172135Z and pairs_20260706T175614Z x gemma-2-2b, 12 pairs total) added no new phrase-level penalty because gemma-2-2b already carried those pairs from the hosted-trace path - they close per-batch COVERAGE gaps the planner tracks, not statistical ones. First cycle since 08-23 with no movement in any published statistic.",
     "THE TRANSLATED-CORPUS LENS AXIS IS CLOSED at 352/352 pairs (chunk 14 landed and verified this cycle). translation_scale.json's lens block moved accordingly: n_paired 350 -> 377, patient-never-formed 149 -> 159, recovered-to-formed 40 -> 43, formed-both 183 -> 195, lost-by-translation 18 -> 23. Per-model recovery means unchanged (gemma-2-2b +0.0360 n=37, gemma-3-4b-it +0.0312 n=350, qwen3-1.7b +0.0315 n=350). The at-scale TABLE auto-updates from this and that is sanctioned; NO framing sentence was drafted or deployed - the owner gate of 2026-07-15 still stands and now has a complete corpus behind it.",
     "INSTRUMENT HEALTHY, third consecutive day. The 2026-08-28 drift sentinel succeeded (run 33172841497, GitHub-confirmed completed/success 13:05:44Z, 13m59s - faster than either prior post-outage run). data/drift_series.json holds 33 measured days ending 20260828. Today vs 20260827 reads max |dp| 0.0 with top words unchanged: no new breach. Over the full span 2026-07-13..2026-08-28 the series has 33 measured days, 14 interior holes, and exactly TWO breaches over the 0.01 threshold - 20260714->20260715 max |dp| 0.027 and 20260813->20260814 max |dp| 0.023, both at pair 2 patient, both with top words unchanged.",
     "The two served Neuronpedia lens host ids diverged again today on all three sentinel pairs. That is every measured day since 2026-07-31 - four weeks. Standing prompt item 3d still calls them a 'known alias' and the site's jlens_depth integrity_note repeats it; both have been false for four weeks. Owner text/doc fix, tracked as LENS-HOST-SEPARATION-20260731 - this data-mandate cycle does not edit either."
@@ -758,7 +754,7 @@
     },
     {
       "date": "2026-08-28",
-      "text": "Cross-model PREDICTIONS backfill 260 -> 261 of 390 batch-legs (129 remaining), recomputed from backfill_planner.coverage() at cycle close. Per model out of 39: medgemma-4b-it, meditron3-8b, apertus-8b-meditronfo 39 each; gemma-3-4b-it 24; qwen3-1.7b 24; qwen3-4b 22; gemma-2-2b 19 (was 18); gemma-2-2b-it 19; llama-3.2-3b 18; olmo-2-1b 18. Only ONE leg closed this cycle, not the four the 08-27 cycle managed, because the second leg was still running at close and was left unresolved rather than counted. At one to four legs a cycle this axis is 30-130 cycles out - the pace question in BACKFILL-DRIVER-SINGLE-20260827 is unchanged and now has a second data point."
+      "text": "Cross-model PREDICTIONS backfill 260 -> 262 of 390 batch-legs (128 remaining), recomputed from backfill_planner.coverage() after BOTH legs landed. gemma-2-2b 18 -> 20 of 39; every other model unchanged (medgemma-4b-it, meditron3-8b, apertus-8b-meditronfo 39 each; gemma-3-4b-it 24; qwen3-1.7b 24; qwen3-4b 22; gemma-2-2b-it 19; llama-3.2-3b 18; olmo-2-1b 18). Both legs closed their batches, matching the 08-27 cycle's rate of two per running+pending fill. At two to four legs a cycle this axis is roughly 32-64 cycles out - the pace question in BACKFILL-DRIVER-SINGLE-20260827 is unchanged."
     },
     {
       "date": "2026-08-28",
@@ -766,7 +762,7 @@
     },
     {
       "date": "2026-08-28",
-      "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 33172841497, 13m59s) - third healthy Neuronpedia day after the 08-22..25 outage, and the fastest of the three. Series 32 -> 33 measured days ending 20260828; today vs 20260827 max |dp| 0.0, top words unchanged. Two breaches total, both historical (20260715 0.027, 20260814 0.023). 5 fires, all $0; 4 terminal and resolved, 1 still running at close."
+      "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 33172841497, 13m59s) - third healthy Neuronpedia day after the 08-22..25 outage, and the fastest of the three. Series 32 -> 33 measured days ending 20260828; today vs 20260827 max |dp| 0.0, top words unchanged. Two breaches total, both historical (20260715 0.027, 20260814 0.023). 5 fires, all $0, ALL FIVE terminal and resolved by cycle close; every lane left empty."
     },
     {
       "date": "2026-08-27",
@@ -1013,8 +1009,8 @@
   "notes": [
     "2026-08-28 cycle: Variant B container for the SIXTEENTH consecutive fresh session - both repos arrived clean but on main-based session branches (engine claude/epic-fermi-30ujz9, site claude/compassionate-lovelace-30ujz9) with the ops branch never fetched. docs/fresh_session_bootstrap.md Variant B applied verbatim in both: blobless fetch first, then the sparse patterns INCLUDING the global '/trace_out/*/jlens_raw/*' line, then checkout. Verified before acting: on the ops branch in both repos, sealed set populated at 173 (not the empty set a main checkout gives), push --dry-run clean. The site sibling was already present and NOT sparse, so modes/ was materialised and the contract gate read true (0 errors), no phantom 'render path missing on disk' FAILs. NOTE: this session's harness prompt designated the two main-based session branches; the scheduled ops prompt designates claude/gemma-clinical-colloquial-interp-mavx04 and that is where all state lives, so the ops branch was used and nothing was pushed to the session branches.",
     "2026-08-28: an exit-1 fire had to be repaired BY HAND and was not re-fired. The second logits fire (pairs_20260706T175614Z x gemma-2-2b) wrote its trigger file and journal entry, then its push was rejected non-fast-forward because CI had committed outputs meanwhile. Per the standing boundary the fire was NEVER re-run: the working tree was committed (a pending ledger_update edit was blocking the rebase), pulled with --rebase, and pushed. The rebase was clean - no ops/trigger_journal.jsonl conflict - and all 836 journal lines were re-verified as parsing JSON afterward. The trigger payload was read back from disk after the push and matches what was intended. Side effect worth knowing: because the trigger file rode the same commit as the ledger update, run 33172967463's display_title in GitHub reads 'Ledger: fold in the 2026-08-27 advice elicit + judge sidecars' rather than the fire message.",
-    "2026-08-28: the publish chain ran ONCE, not twice. Yesterday and the two days before it re-ran because legs landed mid-cycle; today the only run still outstanding at chain time was the second logits leg, which was still in_progress at close and therefore contributed nothing to publish. Chain order followed the standing prompt with embed_scenario_joins LAST so the payload keeps the indent=2 serialization of the committed copy - defect PAYLOAD-SERIALIZATION-INDENT-20260823 is unchanged and still unfixed; this is a workaround, not a fix. Site diff was checked before commit: exactly 10 data/*.json files, nothing outside data/, no page text.",
-    "2026-08-28 queue discipline: five fires, all $0, never more than one running plus one pending in any lane. circuit-trace got its single sanctioned trace fire (the sentinel) and the planner reports TRACE COMPLETE 39/39 anyway. jlens-readout got the lens sentinel plus the FINAL txcorpus chunk, and with the corpus now closed at 352/352 that lane has no standing item-3c2 work left. logits-eval was filled to running+pending once; no --ignore-settle was used at any point today. FOUR of the five lanes were left empty and resolved at cycle close; logits-eval was left with one running, unresolved, because the run is not terminal - resolving it on partial landing is the eviction hazard of 2026-07-09 and leaving it unresolved is what item 3b's opening-harvest backstop exists for.",
+    "2026-08-28: the publish chain ran TWICE. The first pass folded in the final txcorpus lens chunk, the drift sentinel and the first gemma-2-2b leg; the second gemma-2-2b leg then landed at 13:15:12Z, after that pass, so the FULL affected chain was re-run rather than the one script - the same consistency rule the 08-25, 08-26 and 08-27 cycles applied. The second pass moved no published statistic. Both passes ended with embed_scenario_joins so the payload keeps the indent=2 serialization of the committed copy; running export_traces_site last instead produces a 1.48-million-line whitespace diff and hides the real movement (defect PAYLOAD-SERIALIZATION-INDENT-20260823, unchanged and still unfixed - this is a workaround, not a fix). The site diff was checked before each commit: only data/*.json, nothing outside data/, no page text.",
+    "2026-08-28 queue discipline: five fires, all $0, never more than one running plus one pending in any lane, and ALL FIVE terminal, verified and resolved by cycle close - every lane left empty for the next driver. circuit-trace got its single sanctioned trace fire (the sentinel); the planner reports TRACE COMPLETE 39/39 anyway. jlens-readout got the lens sentinel plus the FINAL txcorpus chunk, and with the corpus closed at 352/352 that lane has no standing item-3c2 work left. logits-eval was filled to running+pending once and both legs closed. No --ignore-settle was used at any point today.",
     "2026-08-28 watchdog (item 6b): ONE LIMB FAILED at cycle open. ops/dashboard.json:updated_utc was 2026-08-27T17:34:47Z, about 19.2h old - inside the 26h bound, PASS. But no docs/critic/critic_<today or yesterday>.md existed: the newest was critic_20260826.md, because 08-27 was a Thursday and not a Mon/Wed/Fri floor day. The failure is therefore an artefact of the rule reading 'today or yesterday' against a three-day cadence, not evidence of a stalled orchestrator - and it is cured by today being a Friday floor day: this cycle ran the inline critic pass and wrote docs/critic/critic_20260828.md. No orchestrator triggers were recreated. The dashboard's advice-eval queue slot was also found holding a stale 'running' entry from the 08-27 evening session even though both its journal entries were resolved that night; cleared by the single writer this cycle."
   ],
   "decisions_log": [
