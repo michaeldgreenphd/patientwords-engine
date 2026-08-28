@@ -1,27 +1,19 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-08-28T12:54:25Z",
+  "updated_utc": "2026-08-28T13:11:44Z",
   "updated_by": "session",
   "queue": {
     "circuit-trace": {
-      "running": {
-        "fired_utc": "2026-08-28T12:51:42Z",
-        "commit": "",
-        "note": "Daily drift sentinel 2026-08-28 ($0, standing item 3b); alias committed and pushed before firing. Third attempt since the Neuronpedia /api/graph/generate 500 outage ended on 08-26; last two both succeeded. Circuit-trace lane 0 active at fire time and the planner reports TRACE COMPLETE 39/39, so the sentinel is this cycle single sanctioned trace fire."
-      },
+      "running": null,
       "pending": null
     },
     "logits-eval": {
       "running": {
-        "fired_utc": "2026-08-28T12:52:07Z",
-        "commit": "",
-        "note": "backfill PREDICTIONS: pairs_20260706T172135Z pairs 1-2/2 x gemma-2-2b - planner item 4a top pick. The four gemma-2-2b-it legs the 08-27 cycle fired took that id 15/39 -> 19/39, so the least-covered model is now gemma-2-2b itself at 18/39 (tied with llama-3.2-3b and olmo-2-1b; planner breaks the tie by its own ordering). Pairs file confirmed present on the branch before firing. Logits lane 0 active at fire time; the interim babysitter closed its loop 2026-08-26 18:55Z so no leg of its is in flight. $0."
-      },
-      "pending": {
         "fired_utc": "2026-08-28T12:52:32Z",
         "commit": "",
         "note": "backfill PREDICTIONS: pairs_20260706T175614Z pairs 1-10/10 x gemma-2-2b - the planner NEXT pick after 0706T172135Z by its own rule (backfill_planner.py _next_logits: least-covered model gemma-2-2b at 18/39, batches iterated sorted; recomputed this cycle from bp.coverage(), 21 gap batches, this is the second). Chained into the free PENDING slot; one running + one pending, no third. Not a duplicate - no gemma-2-2b leg for this batch exists in the journal. $0."
-      }
+      },
+      "pending": null
     },
     "activation-patching": {
       "running": null,
