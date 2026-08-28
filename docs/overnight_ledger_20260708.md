@@ -759,3 +759,6 @@ patching smoke run 1 = failure; diagnosis below after log pull.
 - judgments_stimuli_20260807T153329Z.report.json · $0.0086 · delta (cumulative $0.3566, day 2026-08-23)
 - responses_stimuli_20260728T194624Z.report.json · $0.0254 · delta (cumulative $8.0184, day 2026-08-23)
 - gen_oxalpha_term_20260823T181425Z.report.json · $0.0000 · openrouter:stealth/ox-alpha · accepted — · —
+- judgments_stimuli_20260827T141036Z.report.json · $0.1206 · alias · accepted — · —
+- responses_stimuli_20260827T141036Z.report.json · $0.1839 · alias · accepted — · —
+- responses_stimuli_20260827T141036Z.report.json · booked $0.0000 to 2026-08-27 (run_cost_usd); $0.1839 prior-runs balance folded to lifetime only (cost_basis=cumulative_from_records)
