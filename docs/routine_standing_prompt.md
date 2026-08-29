@@ -1,425 +1,124 @@
-# Daily Routine — standing prompt (Tier B vacation week)
+# Ops Routine — standing prompt (MAINTENANCE MODE, 2026-08-29)
 
-This file is the authority for the daily scheduled Routine
-(fresh session per firing since 2026-08-04, daily digest push). The
-Routine's baked-in prompt is deliberately short — see
-`docs/ops_routine_spec_20260804.md` — and points here, so each firing
-re-reads this file from the branch. Changes committed here take effect
-at the next firing; no recreation needed. It is committed so the owner
-and any session can audit precisely what the Routine does.
+This file is the authority for the scheduled ops Routine (fresh session per
+firing; every 3 days at 12:00 UTC since 2026-08-29, owner-approved
+maintenance downshift — daily during the active study). The Routine's
+baked-in prompt is short and points here, so each firing re-reads this file
+from the branch; changes committed here take effect at the next firing.
+The previous ACTIVE-STUDY version of this prompt (Tier B generation,
+tracing priorities, watchdog, critic) is preserved in git history at tag
+`pre-maintenance` context — see `git log -- docs/routine_standing_prompt.md`.
+
+**Why maintenance mode:** every measurement axis is complete (all six
+claim-grade models at 39/39 batches, backfill closed 2026-08-26 —
+`docs/coordination/backfill_8b_complete_20260826.md`), Tier B generation is
+done, and the owner has shifted to maintaining the repo. The cycle's job is
+now: keep the drift sentinel alive, harvest anything that lands, keep the
+published data honest, and touch nothing else.
 
 ---
 
-You are a fresh Claude session in the `patientwords-engine` repo (**public**
-engine repo — never write secrets, keys, or tokens into any file; the site
-is the sibling checkout `../patientwords`). The
-owner is on vacation. Your job is exactly ONE autonomous daily ops cycle
-for the pre-registered Tier B data-generation run. You have no memory of
-prior sessions — the repos are your memory.
+You are a fresh Claude session in `patientwords-engine` (**public** repo —
+never write secrets; the site is the sibling checkout `../patientwords`,
+also public). Run exactly ONE maintenance cycle. The repos are your memory.
 
-## 1 · Orient (read before acting, in this order)
+## 0 · Cadence gate (self-throttle while the cron is still daily)
 
-1. `CLAUDE.md` — hard conventions, execution model, queue discipline.
-2. `docs/preregistration_tierB.md` — the study design you are executing.
-   You may not deviate from it.
-3. `ops/dashboard.json` — current operational state (queue, spend, Tier B
-   progress, pending decisions).
-4. `ops/trigger_journal.jsonl` — fire history for the queue guard.
-5. The newest `docs/*ledger*.md` — running human log.
-6. `docs/HANDOFF_20260804.md` — architecture notes, the correction register for
-   documented-but-false claims, and open issues. (Root `HANDOFF.md` is
-   superseded and four weeks stale; do not orient from it.)
+The schedule is owner-controlled and may still fire daily. Immediately after
+bootstrap, check the newest `docs/briefs/brief_*.md` date and the journal:
+if the newest brief is **less than 2 days old** AND no journal-active entry
+is older than 8 hours, END the session now with the one-line digest
+`maintenance gate: cycle skipped (last brief <2d, queue quiet)` — run
+nothing else. This holds the effective cadence at ~every 3 days until the
+owner edits the schedule in the claude.ai Routines UI (at which point this
+gate simply never trips).
 
-Trust these files over anything you think you remember. `git pull --rebase`
-this branch and `git fetch origin main` first (generation archives land on
-main; trace outputs land on this branch — they interleave).
+## 1 · Orient
 
-## 2 · Harvest
+1. `CLAUDE.md` (both repos) — hard conventions, queue discipline.
+2. `docs/operators_handbook.md` — procedures, degradation drills, incident
+   case law. Follow its drills verbatim when git or the queue misbehaves.
+3. `ops/dashboard.json` — operational state. 4. `ops/trigger_journal.jsonl`.
 
-- For each workflow group, check what landed since the journal's active
-  entries fired: new `trace_out/*/batch_summary.part_*.json` chunks on this
-  branch, new `data/simulated/*.json` + `.report.json` archives on main
-  (copy Tier B batch files from main onto this branch when tracing needs
-  them — `git checkout origin/main -- <paths>`).
-- Mark a fire resolved ONLY when it is truly terminal:
-  `python scripts/fire_trigger.py resolve --trigger <name>`. **Eviction
-  hazard (learned 2026-07-09):** resolving on *partial* landing while the
-  GitHub run is still finishing lets a subsequent fire supersede a
-  still-pending run (queue eviction). Resolve only when ALL expected outputs
-  for that fire have landed; if a trace is still mid-flight (some expected
-  offsets missing), do NOT fire anything new into that group this cycle —
-  wait. Fire at most one trace per group per cycle; never add a third fire.
-- Never assume a silent queue means success; a missing expected output goes
-  into `blockers`, not down the memory hole.
+`git pull --rebase` the ops branch first; `git fetch origin main`. Journal
+conflicts merge as an ORDERED UNION (both sides, dedupe on
+(fired_utc, trigger) preferring remote, sort by fired_utc, verify every line
+parses, then RECHECK for revived-but-terminal entries). Dashboard conflicts
+keep this Routine's own side — you are its single writer.
 
-## 2b · Integrity checks ($0, local-only — audit 2026-07-21 R-A/R-C/R-F fold)
+## 2 · Harvest & resolve
 
-- **Seal check (every cycle):** `python scripts/seal_check.py`. Exit 1 = LEAK:
-  STOP all publishing this cycle, follow the 2026-07-14 remediation precedent
-  (redact/purge in-tree, never quote the text, history rewrite is an OWNER
-  decision), put the path+label hit list in the digest headline. Exit 2 =
-  config error (empty sealed set — wrong branch); fix before proceeding.
-  First live run (2026-07-21) caught 8 sealed phrases in the 07-12 reviewer
-  packet; redacted same day.
-- **Contract assertion (every cycle):** run
-  `python scripts/validate_frontend_contract.py --site ../patientwords` and
-  `python scripts/claim_check.py` against the COMMITTED site copies even when
-  nothing republished. New errors = flag in digest; fields no engine exporter
-  emits = hand-edit detector, list them. NEVER repair site payloads from this
-  check (two writers would race the publish path).
-- **Doc-accuracy sweep (Mondays):** mechanical cross-checks — fire_trigger
-  TRIGGERS vs .github/trigger/ files vs workflows (three-way parity); frontend
-  CLAUDE.md data contracts vs data/ inventory vs engine script inventory;
-  extract_site_text.py PAGES vs live pages; amendments cited in code vs the
-  amendment docs (`docs/prereg_amendment2_depth.md`,
-  `prereg_amendment3_holdout.md`, `prereg_amendment4_steering.md`, and
-  `prereg_divergence_log.md` — the single `preregistration_amendments.md` this
-  line used to name exists only on main; a sweep reading it literally gets a
-  FileNotFoundError and could misreport "no amendments declared", owner
-  decision 2026-08-15); handoff docs vs the actual tree. Output:
-  dated report under docs/audits/, ONE digest line; owner-needing items go to
-  decisions_pending. Do not "fix" drift inside the sweep.
+Check every journal-active entry against what landed. Resolve an entry ONLY
+after a per-entry terminality check — GitHub run status/conclusion via the
+GitHub tools, or committed outputs on the branch (say which in the brief).
+NEVER `resolve --all` without checking each active entry individually:
+another session may have fired since the journal was last read (the
+2026-08-26 mis-resolve, handbook §incidents). An entry past the 8h expiry
+becomes a missed-harvest record in the dashboard, not a silent drop.
 
-## 3 · Account
+## 3 · Drift sentinel (the one fire you own)
 
-Run `python scripts/ledger_update.py`. It scans cost sidecars, updates the
-spend and Tier B sections of `ops/dashboard.json`, and appends exact costs
-to the ledger. Never edit spend numbers by hand.
+3a. Commit the dated 3-pair alias `data/simulated/drift_sentinel_<today>.json`
+(copy the standing sentinel pairs), push, then fire via
+`python scripts/fire_trigger.py fire --trigger circuit-trace` with the
+sentinel params used in the journal's prior sentinel fires ($0,
+`commit_outputs` `true`).
 
-## 4 · Advance Tier B (the only firing you are allowed)
+3b. WAIT on it: 5-minute `git pull` polls, 35-minute bound. When outputs
+land, verify (3 pairs, penalties present), resolve the entry, and run the
+drift verdict against the pinned baseline (`scripts/drift_sentinel.py`,
+publishes `drift_series.json` to the site with the export gate below).
+Upstream 500s = a permanent hole recorded in the dashboard — NO same-day
+retries (owner rule, 2026-08-23). If a prior day's stray sentinel is
+sitting unharvested, harvest it first.
 
-Fire triggers ONLY via `python scripts/fire_trigger.py fire ...`. It
-enforces the one-running + one-pending queue discipline and the $2/day
-ceiling; if it refuses, you stop and record why. **Settle window (guards
-the eviction seam):** after you `resolve` an entry, a same-trigger fire
-within 15 min is refused (exit 6). This is intentional — wait out the
-window before the next fire in that group, or pass `--ignore-settle`
-ONLY when you have confirmed the prior run is truly terminal (outputs fully
-landed). Never use `--ignore-settle` to rush a still-running group. NEVER edit files under
-`.github/trigger/` by hand, never use `--force-evict`, never use
-`--override-budget`, and never touch trigger files in any merge or revert.
+3c. **Re-park the lane:** after the sentinel resolves, run
+`python scripts/fire_trigger.py park --trigger circuit-trace --ignore-settle`
+(terminality just confirmed). Parking keeps every trigger file's resting
+content a cheap no-op — the resting-state rule. If any OTHER trigger file
+was left un-parked by a stray fire, re-park that lane too once terminal.
 
-Priority order when slots are free:
+## 4 · No other fires
 
-1. **Generation** (scenario-generation slot free, Tier B accepted < 1,600,
-   validator-yield stopping rule not tripped): fire the next batch —
-   `fire --trigger scenario-generation --params '{"task":"pairs","num":"100",
-   "anthropic_model":"claude-haiku-4-5","max_spend":"0.50",
-   "seed_pairs":"medlang_circuits/data/ci_pairs_2panel.json",
-   "trace_sample_size":"0","_note":"tierB batch <k>"}'`
-   **Bootstrap:** if `tierb.start_utc` is null when you fire the FIRST Tier B
-   batch, set `tierb.start_utc` to the current UTC time in `ops/dashboard.json`
-   first — `ledger_update.py` attributes batches to Tier B only after that
-   stamp, so an unset stamp silently drops the whole run from the count.
-2. **Tracing** (circuit-trace slots free): fire screened trace chunks of the
-   oldest untraced Tier B batch: mode `2panel`, `screen_targets` `0.02`,
-   `offsets` in steps of 10 with `sample_size` `10`, `commit_outputs`
-   `true`. One batch per fire; chain, never stack a third.
-   **Before ANY measurement fire (trace, logits, lens): confirm the batch's
-   pairs file exists on the working branch and `git checkout origin/main -- 
-   data/simulated/<batch>.json data/simulated/<batch>.report.json` if not.**
-   Generation archives land on main; measurement workflows check out the
-   branch. All three batch-7 measurement runs failed on this on 2026-07-12.
-3. **Behavior** (logits-eval slot free): fire CPU logits for Tier B batches
-   not yet measured (all four models, $0).
-3a2. **Even-n across all eight models (owner directive 2026-07-16):** every
-   batch also gets an exploratory-model leg
-   (`llama-3.2-3b,olmo-2-1b,medgemma-4b-it,gemma-2-2b-it`, same pairs file,
-   $0) CHAINED behind the standard leg in the logits group - the standard
-   pre-registered leg always fires first, the exploratory leg second. Until
-   the backfill catches up (11 legs over batches 1-12, tracked in
-   queued_next), fill EVERY idle logits slot with the next backfill leg -
-   the owner explicitly approved multiple per day. Keep one fire per batch
-   file; the 6h job ceiling fits 4 models x 100 pairs comfortably but NOT
-   4 x 350 (txcorpus chunk-1 lesson).
-3b. **Drift sentinel** ($0, daily, owner-approved 2026-07-12): copy
-   `data/simulated/drift_sentinel.json` to
-   `data/simulated/drift_sentinel_<YYYYMMDD>.json` (no sidecar - $0 alias),
-   commit, and fire circuit-trace on it when a slot is free: mode `2panel`,
-   `sample_size` `3`, `offsets` `0`, `commit_outputs` `true`. After it lands,
-   run `python scripts/drift_sentinel.py --site ../patientwords` and carry its
-   verdict line into the brief (the site copy feeds the methods repeatability
-   note and its manifest guards since 2026-07-15, the first movement day).
-   DRIFT verdicts go in the digest headline, not just the brief body.
-   **Wait for it, then resolve it (audit S3, owner-approved 2026-08-19):**
-   the sentinel run takes ~20 min while the rest of the cycle finishes
-   sooner, and a cycle that closes first leaves the journal entry to expire
-   as a false missed-harvest (observed 2026-08-17 and -18). Before closing
-   the cycle: poll `git pull --rebase` every 5 minutes, up to 35 minutes,
-   until `trace_out/drift_sentinel_<YYYYMMDD>/batch_summary*.json` lands;
-   verify it, resolve the circuit-trace entry, run the drift verdict, THEN
-   write the dashboard and close. If it has not landed by the 35-minute
-   bound, leave the entry unresolved, say so in the brief, and let the next
-   cycle's opening harvest (below) pick it up. **Opening harvest backstop:**
-   at cycle start, if yesterday's drift-sentinel entry is still unresolved
-   and its output directory exists on the branch, verify and resolve it
-   before firing today's.
-3c. **Per-batch lens readout** ($0, jlens-readout slot free): every Tier B
-   batch gets a hosted lens pull once its pairs file is on the branch:
-   `models` `gemma-2-2b`, `topn` `8`, `save_raw` `true`, `commit_outputs`
-   `true` (add `gemma-2-2b-it` only for tuning-comparison pulls). Fire in
-   chunks of ~25 pairs (`offset`/`limit`), never whole 100-pair batches:
-   the readout writes its part file only at chunk end, so a mid-run 429
-   window loses the whole chunk (batch-9 lens, 2026-07-14). Raw is
-   standard since 2026-07-14: the per-position transport scan and top-K
-   window sensitivity (`scripts/jlens_position_scan.py`, referee item 7)
-   run only on responses saved raw. A batch is unmeasured if
-   `trace_out/<batch>__jlens_gemma-2-2b/` is absent. Chain, never stack.
-3c2. **Translated-corpus lens at scale** (owner standing direction,
-   2026-07-14): after Tier B batch pulls are current, fill idle jlens slots
-   with txcorpus chunks (`pairs_file` the txcorpus batch, `limit` `25`,
-   `save_raw` `true`) until the whole corpus has translated-side depth
-   profiles. Track progress by part files under
-   `trace_out/txcorpus_<stamp>__jlens_gemma-2-2b/`. Likewise fill idle
-   circuit-trace slots with txcorpus chunks for the consequential subset
-   (phrases where translation changes the top prediction, from
-   ops/translation_scale.json) - Tier B and the sentinel always outrank
-   these fills.
-3d. **Lens sentinel** ($0, daily, started 2026-07-14): after the day's
-   circuit sentinel alias exists (step 3b), fire jlens-readout on the same
-   `data/simulated/drift_sentinel_<YYYYMMDD>.json` with `models`
-   `gemma-2-2b,gemma-2-2b-it`, `topn` `8`, `save_raw` `true` - the
-   internals-drift watch that pairs with the output-drift watch. Compare
-   formation depths against the day-1 baseline (2026-07-14) in the brief
-   when they move. Known alias: both ids currently return byte-identical
-   readouts (ops/neuronpedia_issue_prefill.txt); keep firing both - the
-   day the -it responses diverge is the day Neuronpedia separates the
-   hosts, and the sentinel catches it. Until then -it lens data is NOT a
-   tuning comparison (the site already says so).
-4. **Idle-queue filler** (owner-approved 2026-07-09, lowest priority — only
-   when Tier B has no pending generation/tracing work for a slot): trace the
-   already-generated sociolect round-2 batch
-   (`data/simulated/dialects_20260708T215356Z.json`, $0, no generation
-   spend) in `dialect` mode. Pure extra data; never displaces Tier B work.
-4a. **Full-coverage backfill driver** (owner directive 2026-07-19: circuit
-   TRACE + j-lens LENS-with-`save_raw` + cross-model PREDICTIONS for EVERY
-   simulation batch, not just the freshest). Run `python
-   scripts/backfill_planner.py`; it reads committed `trace_out/` DEPTH per batch
-   and prints the highest-priority next $0 fire per lane — LENS first (it
-   unblocks the static transport/loglens exporters and is the sparsest axis),
-   then TRACE, then PREDICTIONS (medical models first, then the least-covered
-   model; 8B models chunked smaller). Fire whichever of the three lanes are free
-   (one-running + one-pending each); a pre-registered Tier B leg always outranks
-   a backfill fill. The planner is depth-aware — it resumes partial batches at
-   the next `offset` and converges to COMPLETE per-pair coverage — so it
-   supersedes hand-tracking backfill legs in `queued_next`. `--json` gives the
-   machine-readable plan. Everything here is $0; the GitHub runner backlog (heavy
-   logits legs can queue for hours), not cost, is the rate limit — keep the lanes
-   full and let it converge over days. Completing lens+`save_raw` on
-   `pairs_20260711T051145Z` (25 pairs) is what finally lets transport/loglens be
-   wired live (Section 5).
-   **8B-medical deferral LIFTED (owner 2026-08-07; original hold 2026-07-20):**
-   pass `--include-8b-medical` on every planner invocation — the two 8B medical
-   models (`meditron3-8b`, `apertus-8b-meditronfo`) now fill alongside the fast
-   models. Keep their legs chunked at <=50 pairs (8B class swap-path).
-   **Accelerator — DOES NOT EXIST (corrected 2026-07-27).** This section
-   previously stated that a `backfill-accel` Routine fires the $0 planner lanes
-   every ~2h. **It has never fired.** Zero unattended ticks appear in 280+
-   `ops/trigger_journal.jsonl` entries; every circuit-trace fire on record is
-   authored by an in-session timer or by this daily cycle. Creation was attempted
-   on 2026-07-20 and again on 2026-07-26 and was never confirmed (the
-   `create_trigger` call returns an approval error; `list_triggers` is likewise
-   unapprovable from inside the container, so existence CANNOT be verified here).
-   The false claim stood for seven days and was inherited as ground truth by every
-   session that read this file, which is why pace estimates repeatedly assumed a
-   saturated lane that was in fact idle 54.7% of 2026-07-24..27.
-   **Operating consequence:** assume the lane is driven ONLY by this daily cycle
-   plus whatever in-session timers happen to be alive. A container reclaim kills
-   those timers, nothing retries, and the lane then idles until the next daily
-   cycle — observed cost 12.7-21.6h per reclaim (worst 64.2h, 2026-08-01..02).
-   **Since 2026-08-04 the daily cycle itself is reclaim-proof** (fresh session
-   per firing, `trig_01H9YrMSHEDkyXWT4bxttihq`), so the worst case is bounded
-   by the daily cadence; the accelerator still does not exist.
-   **Acceptance test before this text may be reverted:** an unattended tick
-   present in the journal. Nothing less counts.
-
-Stopping rules (from the pre-registration): if two consecutive batches show
-validator yield < 50%, stop firing generation and record a decision for the
-owner. If `generation_spent_usd` would exceed $8, stop generation entirely.
-
-## 4b · Endpoint guard (owner decision 2026-07-14)
-
-The Tier B endpoint / holdout unsealing does NOT run on the calendar. It runs
-only on an explicit owner instruction (the word from the owner, e.g. "unseal").
-Until then: never run paired_stats on holdout rows, never lift a withholding
-gate, never regenerate any output with holdout phrases included - even on or
-after the registered endpoint date (2026-07-16). Amendments 1-3 govern what
-happens when the instruction arrives.
+Maintenance mode fires NOTHING but the sentinel and re-parks. The paid
+triggers (scenario-generation, model-evaluation, advice-eval) never fire
+without the owner's explicit words in a live chat. Measurement lanes stay
+parked; there is no backlog to advance.
 
 ## 5 · Publish data, never text
 
-If new results landed, run the export/collection chain per `CLAUDE.md`
-(pass `--archive-url https://github.com/michaeldgreenphd/patientwords-engine/releases`
-to `export_frontend_simulated.py` so `payload.archive` stays populated)
-and then `python scripts/export_traces_site.py --stamp-only` (re-stamps every
-scenario's `trace_url` for the self-building patientwords-traces Pages repo —
-its own Action mirrors the payload nightly at 15:00 UTC)
-(exporter, urgency collector) and commit the updated **data payloads only**
-to `../patientwords` (push the branch, then push branch:main as sanctioned).
-Do NOT edit any page HTML, page text, figures, or labels — the owner is
-editing site text personally; text edits will collide with theirs.
+Only when NEW measurement landed this cycle (a stray run, a sentinel with a
+drift verdict): run the sanctioned export chain per `CLAUDE.md` §Publishing
+and the site's data-contract table, then
+`python scripts/validate_frontend_contract.py --site ../patientwords` (must
+be 0 errors) and `python scripts/seal_check.py --site ../patientwords
+--extra docs,ops` (must be CLEAN) before pushing data payloads only. Never
+edit page HTML, text, figures, or labels. When nothing landed, skip this
+section entirely — do not republish unchanged data.
 
-After any data republish, run `python scripts/jlens_insights.py --site
-../patientwords` when new lens readouts landed (feeds the site's Technical
-page: formation depths, capture-vs-hijack taxonomy, tuning comparison).
+## 6 · Dashboard
 
-After any data republish (AFTER the urgency collector and depth exporter), run
-`python scripts/embed_scenario_joins.py --site ../patientwords` — embeds the
-pages' urgency/depth joins per scenario, urgency_meta, the redirect-gallery
-featured list (token blocklist from data/display_vocab.json), and the
-care-ladder/tap-demo pins from data/editorial_pins.json into the payload
-(audit M2+M3; idempotent, refuses without a payload).
-
-If the hand-measured dataset copy (site data/stress_pairs.json) is ever
-updated, re-run `python scripts/export_stress_featured.py --site
-../patientwords` afterward — it rewraps the file as {pairs, featured} with the
-home teaser's consequence ranking (audit M3 tail; idempotent). Dialect and
-jlens featured picks re-emit automatically from their own exporters.
-
-After any data republish, run `python scripts/export_pair_swaps.py --site
-../patientwords --depth ../patientwords/data/jlens_depth.json` (feeds the
-Technical page's TARGET & SWAP column; $0, offline). Run it AFTER
-`export_jlens_depth`/`jlens_insights` refresh so its `<batch>#<index>` join to
-the `jlens_depth` blocks is current; new batches show target-only until it
-re-runs. Verified byte-reproducible on this branch 2026-07-19.
-
-**Transport and loglens WIRED (2026-07-23, owner option 1).** The census batch
-(`pairs_20260711T051145Z`) now has 25/25 `save_raw` JACOBIAN_LENS runs and its
-`__loglens_` LOGIT_LENS runs on this branch; each exporter's regen reproduced
-its committed site file byte-identically except `generated_utc` (identical
-census numbers, exemplars, and agreement counts — loglens: 23 paired, class
-agree 17, formation agree 18). Run in the cycle after the depth exporter and
-before pair swaps:
-`python scripts/export_jlens_transport.py --site ../patientwords`
-`python scripts/export_jlens_loglens.py --site ../patientwords`
-
-After any data republish, when txcorpus logits or lens readouts landed, run
-`python scripts/translation_scale.py --site ../patientwords` (feeds the
-translation page's at-scale block and its lens recovery line; $0).
-**Scale-framing gate (owner decision 2026-07-15):** the at-scale TABLE
-auto-updates from data and that is sanctioned; any framing SENTENCE about
-the scale result is not. When the full txcorpus numbers land, a framing
-sentence gets DRAFTED and put in the digest + `decisions_pending` for the
-owner to approve BEFORE it deploys. No cycle publishes that sentence on
-its own - same rule as claim_check prose: data yes, text no.
-
-Refresh the per-model statistics in the same pass: `python
-scripts/paired_stats_rigor.py --site ../patientwords` (owner decision
-2026-08-15, MODEL-STATS-PUBLISH-POLICY). It was the one published payload the
-cycle rebuilt everything around but never itself, so the site's cross-model
-numbers drifted a week behind the legs that move them. It can trip
-claim_check when a number a page quotes moves — that is the gate working:
-fix the prose or hold the file, never skip the refresh. `model_stats.json`
-carries no `generated_utc`, so nothing else can detect its staleness.
-
-After any data republish, run `python scripts/coverage_gaps.py` (specialty
-coverage; $0). When Tier B generation fires, take `topics` for the fire from
-its `steer_topics` block so thin specialties fill first - corpus balance is
-a sampling decision, not an afterthought.
-
-After any data republish, run `python
-scripts/validate_frontend_contract.py --site ../patientwords` (audit-1
-structural gate, adopted 2026-07-17; report mode until F-M27's orphan-row
-trim lands, then add --strict). New errors mean an export broke the page
-contract: fix before pushing the site.
-
-After any data republish, run `python scripts/claim_check.py` (checks
-hardcoded prose numbers against `data/claims_manifest.json`). Exit 1 =
-refreshed data invalidated a sentence on the site: do NOT edit the prose
-from this session — put the exact FAIL line in the digest headline and
-`decisions_pending` so the owner (or the orchestrating session, which holds
-text-edit sanction) rewrites it. A `warn:` line means the prose was edited
-and the manifest needs updating — flag it the same way.
-
-## 6 · Update the dashboard
-
-Rewrite the relevant sections of `ops/dashboard.json` (you are its only
-writer): `updated_utc`, `updated_by: "routine"`, `queue` (from the journal),
-`runs_recent`, `tierb`, `verdicts` (only confirmatory-endpoint statements),
-`findings_delta` (only when a number actually moved), `decisions_pending`
-(add an entry ONLY when something genuinely needs the owner),
-`blockers`, `notes`.
-
-## 6b · Watchdog (the fresh-session Routine is the redundancy layer)
-
-The orchestrating session schedules its own nightly work (critic ~05:00 UTC,
-weekly synthesis, handoffs). Verify it is alive: check that
-`docs/critic/critic_<today or yesterday>.md` exists and that
-`ops/dashboard.json:updated_utc` is < 26h old. If either check fails, the
-orchestrator's wake chain has stalled — say so PROMINENTLY in the digest
-("orchestrator stalled since <time>; ops continue via this Routine") and
-carry on with this Routine's own cycle; do not attempt to recreate the
-orchestrator's triggers.
-
-**Critic re-established (2026-07-18, owner request).** Scope in
-`docs/critic_standing_prompt.md`. The standalone scheduled Routine (Mon/Wed/Fri 05:00
-UTC, fresh session) is PENDING the owner's in-client approval of the create-trigger
-permission — a chat "go" does not satisfy that gate. **Interim, in force now:** THIS
-daily 13:00 cycle runs one critic pass per the scope doc on Mon/Wed/Fri, and on demand
-whenever it sees a `claim_check` FAIL/warn, a drift/lens DRIFT headline, a CI failure,
-or an n-milestone in `data/model_stats.json` that could flip a significance verdict —
-writing `docs/critic/critic_<date>.md`. When the Routine is approved, record its trigger
-id in `ops/dashboard.json:critic` and fire it on signals instead of running inline. This
-supersedes the "do not recreate" line above for the critic — the owner asked for it back.
+Rewrite the relevant sections of `ops/dashboard.json` (single writer):
+`updated_utc`, `updated_by: "routine"`, `queue` from the journal,
+`runs_recent`, `blockers`, `notes`, `decisions_pending` (add an entry ONLY
+when something genuinely needs the owner).
 
 ## 7 · Brief, digest, commit
 
-- `python scripts/daily_brief.py --out docs/briefs/brief_<YYYYMMDD>.md`
-- Commit and push everything (engine branch; site data if any).
-- If 3+ entries sit in `decisions_pending`, also generate a phone-friendly
-  decision deck (self-contained HTML, one chip row per decision, a
-  copy-summary button that emits `DECISIONS <date>` lines) at
-  `ops/decks/deck_<YYYYMMDD>.html`, commit it, and mention it in the digest.
-- End your session with a final message whose FIRST LINE is exactly the
-  output of `python scripts/daily_brief.py --digest` — that line becomes
-  the owner's one daily push notification. Append one fixed footer
-  sentence: "Reply STOP in any session to freeze all automation."
-  (The Routine's id is recorded in `docs/ops_routine_spec_20260804.md`;
-  any session in this account can delete it via `delete_trigger`, and the
-  owner can pause it in the claude.ai Routines UI.) Keep the rest of the
-  message to a short paragraph. Exactly one cycle per firing: do not
-  schedule further work, do not loop.
+`python scripts/daily_brief.py --out docs/briefs/brief_<YYYYMMDD>.md`,
+commit and push everything. End with a final message whose FIRST LINE is
+exactly `python scripts/daily_brief.py --digest` output, plus the fixed
+footer: "Reply STOP in any session to freeze all automation." Keep the rest
+to a short paragraph. Exactly one cycle: no scheduling, no loops, no
+Routine creation.
 
 ## Boundaries (absolute)
 
-- Spend: $2/day operational ceiling (mechanically enforced by
-  `fire_trigger.py`); $8 total Tier B generation (pre-registered).
-- Never rewrite or delete anything under `data/simulated/` (append-only).
-- Never modify `.github/workflows/` or `.github/trigger/` by hand.
-- Never write secrets or API keys into any file. You have no keys locally;
-  they exist only as CI secrets. Never echo environment secrets.
-- Site: data files only, never text/HTML/figures.
-- When anything is ambiguous, do LESS: record it in `decisions_pending`
-  instead of acting. A missed day of generation is recoverable; a polluted
-  archive is not.
-
----
-
-**Mode change (2026-07-10, owner request — SUPERSEDED 2026-08-04):** the
-daily Routine was rebound to fire INTO the main orchestrator session
-(`trig_01Qczu2cNAsk1gYodan6auHb`) because its push notification had
-deep-linked the owner to an empty session without the repos. That binding
-made a container reclaim stop all measurement silently (three multi-day
-idles, worst 64.2h).
-
-**Mode change (2026-08-04, owner decision):** the daily cycle is a
-fresh-session-per-firing Routine again — `trig_01H9YrMSHEDkyXWT4bxttihq`,
-cron 13:00 UTC, per `docs/ops_routine_spec_20260804.md`. The 07-10 empty-
-session problem is addressed in the Routine's prompt: the fired session
-bootstraps both sibling checkouts on the working branch before acting. The
-old digest Routine was deleted at cutover. The fired session delivers the
-digest line as its completion push notification and runs this file's cycle
-verbatim; this file is re-read from the branch at each firing, so committed
-changes here take effect the next day without recreating the Routine.
-
-**Timezone note (2026-07-10):** owner is on Pacific time through Thursday
-2026-07-16. The 13:00 UTC firing is 6:00 AM PDT — the owner's requested
-delivery time — and reads as 9:00 AM EDT once they are back east. Same
-instant; the cron stays `0 13 * * *`. Do not "correct" it.
-
-**tag_mass + jspace wired (2026-07-29, owner directive).** After any data
-republish, also run `python scripts/export_tag_mass.py --site ../patientwords`
-(mean attribution mass, clin/off/struct by phrasing) and `python
-scripts/export_jspace.py --site ../patientwords` (the empirical three-panel
-J-space worked example; refuses without touching the site file when any raw is
-missing). Both $0, offline, byte-stable given unchanged inputs.
+Fire ONLY via `scripts/fire_trigger.py`; never `--override-budget`, never
+`--force-evict`, never hand-edit `.github/trigger/` files (including in
+merges — restore the target branch's trigger files before committing any
+merge). Ceilings stand: $2/day Anthropic operational. Both repos public.
+The Tier B holdout stays sealed (`seal_check` every cycle; report hits as
+path + batch#index labels only, never phrase text). `data/simulated/` is
+append-only. Sealed labels: pairs_20260809T172338Z #12 #27 #35 #45 #57 #62;
+pairs_20260811T190638Z #10 #23 #33 #54.

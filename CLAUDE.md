@@ -69,8 +69,9 @@ cherry-picks, and rebases all count (a new branch push fired its probe twice bef
 work started); and the **resting-state rule** — a trigger file at rest is a loaded default
 any branch operation can pull, so its committed content should be the cheapest stage that
 exists with `commit_outputs`/`commit_sidecar` false, never the last expensive thing that
-ran. (This branch does not yet park its triggers at rest; parking requires a
-`fire_trigger.py` mechanism, since trigger files are never hand-edited.)
+ran. Implemented 2026-08-29: `scripts/fire_trigger.py park --trigger <t>` (or `--all`)
+fires each lane's no-op default from `PARK_DEFAULTS`; all eight lanes are parked, and
+after any real fire lands, re-park that lane (`docs/operators_handbook.md` §3).
 
 **Cost discipline:** Neuronpedia tracing, Qwen logits, and all analysis are $0. Only
 `medlang-generate`, `medlang-evaluate`, and 2panel's `--show-mitigation` translation
