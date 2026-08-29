@@ -808,3 +808,55 @@ def test_budget_gate_missing_params_file_refuses(repo, capsys):
     rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "scenario-generation"])
     assert rc == 6
     assert "cannot read params" in capsys.readouterr().err
+
+
+# ------------------------------------------------------------------ park (resting-state rule)
+
+def test_park_defaults_all_validate():
+    for trigger, params in ft.PARK_DEFAULTS.items():
+        ft.validate_params(trigger, params)  # raises on any drifted key set
+        if "commit_outputs" in ft.KNOWN_KEYS[trigger]:
+            assert params["commit_outputs"] == "false", trigger
+        if trigger in ft.PAID_TRIGGERS:
+            assert ft.parse_max_spend(params.get("max_spend")) is not None, trigger
+
+
+def test_park_writes_no_op_default_with_marker(repo):
+    write_dashboard(repo, 0.0)
+    rc = ft.main(["park", "--repo", str(repo), "--trigger", "logits-eval", "--no-git"])
+    assert rc == 0
+    written = json.loads(trigger_path(repo, "logits-eval").read_text())
+    assert written["_parked"] == "true"
+    assert written["limit"] == "1"
+    assert written["commit_outputs"] == "false"
+    assert "_nonce" in written
+    entries = [json.loads(line) for line in journal_path(repo).read_text().splitlines()]
+    assert entries[-1]["trigger"] == "logits-eval"
+    assert "PARK" in entries[-1]["note"]
+
+
+def test_park_all_stops_at_first_refusal(repo, capsys):
+    # a full lane (two active entries) trips the queue guard mid-batch and the
+    # batch stops there instead of blindly continuing past a refusal
+    write_dashboard(repo, 0.0)
+    fire(repo, "circuit-trace")
+    fire(repo, "circuit-trace", params={"graph_model": "gemma-2-2b", "mode": "4quadrant"})
+    order = sorted(ft.PARK_DEFAULTS)
+    rc = ft.main(["park", "--repo", str(repo), "--all", "--no-git"])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "park stopped at circuit-trace" in err
+    # triggers before the refusal were parked; the refused one keeps its old content
+    for t in order:
+        if t == "circuit-trace":
+            assert "_parked" not in json.loads(trigger_path(repo, t).read_text())
+            break
+        assert json.loads(trigger_path(repo, t).read_text())["_parked"] == "true"
+
+
+def test_park_all_succeeds_with_budget(repo):
+    write_dashboard(repo, 0.0)
+    rc = ft.main(["park", "--repo", str(repo), "--all", "--no-git"])
+    assert rc == 0
+    for t in ft.PARK_DEFAULTS:
+        assert json.loads(trigger_path(repo, t).read_text())["_parked"] == "true"

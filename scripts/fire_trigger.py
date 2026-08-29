@@ -70,6 +70,45 @@ PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-ev
 # param, so the guard imputes a conservative flat commitment per fire.
 MITIGATION_IMPUTED_USD = 0.15
 
+# Resting-state parks: the cheapest legitimate stage per trigger, with
+# commit_outputs false wherever the workflow supports the key. A trigger file
+# at rest is a loaded default any branch operation can pull (merges, rebases,
+# and first-appearance pushes all fire the workflow), so its committed content
+# must never be the last expensive thing that ran. Parking goes through the
+# full fire path - journal, queue, settle, budget - and costs one cheap run
+# per park; after that, every accidental re-fire runs this no-op instead.
+# scenario-generation and model-evaluation have no commit flag (their archives
+# always land), so their parks are 1-item haiku runs (~$0.002/accident).
+PARK_TINY_PAIRS = "data/simulated/pairs_20260706T172135Z.json"  # 2-pair batch, known good
+PARK_DEFAULTS = {
+    "circuit-trace": {"mode": "2panel", "pairs_file": PARK_TINY_PAIRS, "sample_size": "1",
+                      "offsets": "0", "commit_outputs": "false"},
+    "logits-eval": {"models": "qwen3-1.7b", "pairs_file": PARK_TINY_PAIRS, "limit": "1",
+                    "offset": "0", "commit_outputs": "false"},
+    "activation-patching": {"pairs_file": PARK_TINY_PAIRS, "offsets": "0", "limit": "1",
+                            "commit_outputs": "false"},
+    "jlens-readout": {"models": "gemma-2-2b", "pairs_file": PARK_TINY_PAIRS, "limit": "1",
+                      "offset": "0", "topn": "1", "lens_type": "JACOBIAN_LENS",
+                      "save_raw": "false", "commit_outputs": "false"},
+    "scenario-generation": {"task": "pairs", "num": "1", "topics": "general wellness",
+                            "anthropic_model": "claude-haiku-4-5", "max_spend": "0.01"},
+    "model-evaluation": {"model_selection": "claude-haiku-4-5", "scenario": "two_step",
+                         "sample_size": "1", "pairs_file": PARK_TINY_PAIRS,
+                         "max_spend": "0.01"},
+    "archive-renders": {"tag": "park-noop", "runs": ["trace_out/pairs_20260706T172135Z"],
+                        "no_pngs": "true"},
+    # advice-eval: elicit over an archive whose (models x samples) cells are fully
+    # covered plans 0 calls; judge off. A true $0 no-op even when re-fired.
+    "advice-eval": {"stimuli_file": "data/advice/stimuli_20260827T141036Z.json",
+                    "models": "anthropic:claude-haiku-4-5", "samples": "1",
+                    "max_spend": "0.01", "judge": "false", "commit_outputs": "false"},
+    # pab-probe: not parked - its workflow lives on the PAB branch only.
+}
+PARK_NOTE = ("PARK (resting-state rule): cheapest no-op default committed so branch operations "
+             "that touch this trigger file re-run a $0/negligible stage instead of the last "
+             "expensive fire; commit_outputs false where the workflow supports it. "
+             "Owner-approved maintenance hardening, 2026-08-27.")
+
 
 def is_mitigation_fire(trigger, params):
     return trigger == "circuit-trace" and str(params.get("show_mitigation", "")).lower() in ("true", "1")
@@ -765,6 +804,34 @@ def cmd_fire(args):
     return 0
 
 
+def cmd_park(args):
+    """Fire the resting-state park default for one trigger (or every parkable one).
+
+    Each park is a real fire: it runs the full guard chain and costs one cheap
+    run in that trigger's lane. With --all, triggers park sequentially and the
+    first refusal stops the batch so the operator can read the guard's reason."""
+    triggers = sorted(PARK_DEFAULTS) if args.all else [args.trigger]
+    if not args.all and args.trigger not in PARK_DEFAULTS:
+        print(f"refused: no park default for {args.trigger!r} (parkable: {sorted(PARK_DEFAULTS)})",
+              file=sys.stderr)
+        return 3
+    for trigger in triggers:
+        params = dict(PARK_DEFAULTS[trigger])
+        params["_parked"] = "true"
+        params["_nonce"] = iso_utc(utc_now())  # guarantee the file changes so the push fires
+        ns = argparse.Namespace(
+            repo=args.repo, trigger=trigger, params=json.dumps(params), params_file=None,
+            note=PARK_NOTE, force_evict=False, ignore_settle=args.ignore_settle,
+            dry_run=args.dry_run, no_git=args.no_git, override_budget=False,
+        )
+        print(f"-- parking {trigger}")
+        rc = cmd_fire(ns)
+        if rc != 0:
+            print(f"park stopped at {trigger} (exit {rc}); earlier parks stand", file=sys.stderr)
+            return rc
+    return 0
+
+
 def cmd_resolve(args):
     repo = Path(args.repo).resolve()
     expire_hours = expire_hours_from_env()
@@ -868,6 +935,20 @@ def build_parser():
                       help="proceed past a daily-ceiling refusal only; a missing or "
                            "invalid max_spend is never overridable")
     fire.set_defaults(func=cmd_fire)
+
+    park = sub.add_parser("park", parents=[common],
+                          help="fire the resting-state no-op default for a trigger (or --all), "
+                               "so accidental re-fires run a cheap stage instead of the last "
+                               "expensive one")
+    park_t = park.add_mutually_exclusive_group(required=True)
+    park_t.add_argument("--trigger", choices=sorted(PARK_DEFAULTS))
+    park_t.add_argument("--all", action="store_true", help="park every parkable trigger, sequentially")
+    park.add_argument("--ignore-settle", action="store_true",
+                      help="park despite a same-trigger resolve inside the settle window, once "
+                           "the prior run is confirmed terminal in GitHub")
+    park.add_argument("--dry-run", action="store_true", help="print what would happen; write nothing")
+    park.add_argument("--no-git", action="store_true", help="write files but skip git add/commit/push")
+    park.set_defaults(func=cmd_park)
 
     resolve = sub.add_parser("resolve", parents=[common], help="mark the oldest active entry resolved")
     resolve.add_argument("--trigger", required=True, choices=TRIGGERS)
