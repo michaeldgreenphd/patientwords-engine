@@ -23,16 +23,16 @@
   #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
 </style>
 <h1>Decisions · 2026-08-29</h1>
-<p class="sub">tap a chip per card · copy at the bottom · paste into the session · one open question about today's sentinel (D0), one new and fixable (D1), one queue-policy call the cycle made conservatively (D2), one carried and unchanged (D3) · 31 open in all</p>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · one near-miss worth a rule change (D0), one new and fixable (D1), one queue-policy call the cycle made conservatively (D2), one carried and unchanged (D3) · 32 open in all</p>
 
-<div class="card new" data-id="D0-SENTINEL-OVERRAN-20260829">
-  <h2>D0 · TODAY'S SENTINEL IS STILL RUNNING — not failed, just slow</h2>
-  <p>Today's drift sentinel (<code>33252186725</code>) fired at 12:18:52Z and was still <b>in_progress</b> at 12:55Z, past the 35-minute window the cycle is instructed to wait out. I polled every 45–60 seconds to 12:54:39Z; no outputs appeared on the branch. Per the standing instruction I left the journal entry <b>unresolved</b>, did <b>not</b> re-fire it, and ran no drift verdict.</p>
-  <p>This is worth telling apart from the 08-22..08-25 outage. Those four runs <b>failed</b> in about 6m41s each with 500s from <code>/api/graph/generate</code>. This one has returned nothing at all, and the lens sentinel on the same host succeeded at 12:19:39Z. The three post-outage runs took 34m42s, 16m05s and 13m59s — so 36 minutes is long, but not yet outside what that endpoint has done.</p>
-  <p><b>Consequence:</b> <code>drift_series.json</code> is unchanged at <b>33 measured days ending 20260828</b>. 20260829 is a <b>pending</b> point, not a hole. Tomorrow's cycle opens by harvesting this run: if it landed, the day is recovered and nothing is lost.</p>
-  <p>Nothing needs deciding unless you want the wait rule changed. The one thing that would help: the circuit-trace lane now carries an unresolved entry, so tomorrow's cycle must clear it before firing the 08-30 sentinel.</p>
-  <p class="num">run 33252186725 · fired 12:18:52Z · in_progress at 12:55Z · bound 12:53:49Z · series 33 days ending 20260828 · entry left unresolved</p>
-  <div class="chips"><button class="chip" data-v="noted">noted, let tomorrow harvest it</button><button class="chip" data-v="lengthen-wait">lengthen the 35-minute wait</button><button class="chip" data-v="sanction-refire">sanction a same-day re-fire when this happens</button></div>
+<div class="card new" data-id="D0-SENTINEL-WAIT-BOUND-20260829">
+  <h2>D0 · NEAR MISS · The sentinel beat its own deadline by 3m41s, and a last-second check saved the day</h2>
+  <p>Today's drift sentinel took <b>38m38s</b> — the slowest run on record, against 34m42s, 16m05s and 13m59s for the three post-outage runs. The cycle is instructed to poll for it for <b>35 minutes</b> and then give up. I served that wait in full, polling every 45–60 seconds to 12:54:39Z, and it had not landed. The entry was duly recorded as unresolved and deferred to tomorrow.</p>
+  <p>A final GitHub status check before closing then found it <b>completed/success at 12:57:30Z</b>. So it was harvested in-cycle after all: outputs verified, entry resolved, verdict run. <b>Nothing was deferred and every lane closes empty.</b></p>
+  <p>The verdict itself is clean: <b>20260829 vs 20260828 reads max |dp| 0.0</b>, top words unchanged — no new breach. The series is at <b>34 measured days</b> ending 20260829, and still carries exactly two historical breaches (0.027 and 0.023). Fourth consecutive healthy Neuronpedia day.</p>
+  <p><b>What needs your call:</b> the 35-minute bound is now known to be tighter than this endpoint's worst case, and today only worked because of a check the rules do not require. Note this is a <i>successful</i> run overrunning the bound — different from the 08-22..08-25 dark days, which failed fast in ~6m41s.</p>
+  <p class="num">run 33252186725 · 12:18:52Z → 12:57:30Z = 38m38s · bound 12:53:49Z · overran by 3m41s · series 33 → 34 days ending 20260829 · max |dp| 0.0</p>
+  <div class="chips"><button class="chip" data-v="mandatory-check">make the terminal-state check mandatory before closing (recommended)</button><button class="chip" data-v="raise-45">raise the bound to 45 minutes</button><button class="chip" data-v="both">both</button><button class="chip" data-v="leave">leave it, the backstop is enough</button></div>
 </div>
 
 <div class="card new" data-id="D1-CONVERGENCE-NOT-IN-CHAIN-20260829">
