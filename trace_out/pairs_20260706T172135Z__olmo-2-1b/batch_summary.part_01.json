@@ -1,0 +1,262 @@
+{
+  "mode": "2panel",
+  "backend": "logits",
+  "graph_model": "olmo-2-1b",
+  "source_set": null,
+  "generation_params": {},
+  "start_index": 1,
+  "pairs_requested": 2,
+  "completed": true,
+  "screen_targets": null,
+  "inference": {
+    "method": "logits",
+    "hf_id": "allenai/OLMo-2-0425-1B",
+    "dtype": "bfloat16",
+    "revision": "a1847dff35000b4271fa70afc5db10fd29fedbdf",
+    "environment": {
+      "python": "3.11.16",
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+      "engine_sha": "b983b870b723",
+      "runner_image": "20260823.283.1",
+      "torch": "2.13.0+cpu",
+      "transformers": "5.14.1",
+      "accelerate": "1.14.0"
+    }
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My arrhythmia has been acting up all week, so I should probably call my",
+        "patient": "My ticker's been acting up all week, so I should probably call my"
+      },
+      "target_token": "Output \" cardi\"",
+      "probabilities": {
+        "clinical": 0.2098,
+        "patient": 0.019
+      },
+      "language_penalty": -0.1908,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.6263
+          ],
+          [
+            "Output \" cardi\"",
+            0.2098
+          ],
+          [
+            "Output \" doc\"",
+            0.0317
+          ],
+          [
+            "Output \" primary\"",
+            0.0118
+          ],
+          [
+            "Output \" physician\"",
+            0.0085
+          ],
+          [
+            "Output \" Dr\"",
+            0.0078
+          ],
+          [
+            "Output \" E\"",
+            0.007
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0055
+          ],
+          [
+            "Output \" GP\"",
+            0.0053
+          ],
+          [
+            "Output \" PC\"",
+            0.0041
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.7851
+          ],
+          [
+            "Output \" doc\"",
+            0.0314
+          ],
+          [
+            "Output \" cardi\"",
+            0.019
+          ],
+          [
+            "Output \" physician\"",
+            0.0185
+          ],
+          [
+            "Output \" primary\"",
+            0.0087
+          ],
+          [
+            "Output \" vet\"",
+            0.0072
+          ],
+          [
+            "Output \" Doctor\"",
+            0.0053
+          ],
+          [
+            "Output \" PC\"",
+            0.0049
+          ],
+          [
+            "Output \" GP\"",
+            0.0048
+          ],
+          [
+            "Output \" Dr\"",
+            0.0044
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "cardi": "cardiologist.",
+          "doc": "doc. I",
+          "primary": "primary care doctor"
+        },
+        "patient": {
+          "doctor": "doctor. I",
+          "doc": "doc. I",
+          "cardi": "cardiologist.",
+          "physician": "physician. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My dad's been showing signs of dementia, so we think he should visit a",
+        "patient": "My dad's been forgetting where he puts his keys all the time, so we think he should visit a"
+      },
+      "target_token": "Output \" neuro\"",
+      "probabilities": {
+        "clinical": 0.0457,
+        "patient": 0.0423
+      },
+      "language_penalty": -0.0034,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.2592
+          ],
+          [
+            "Output \" memory\"",
+            0.1115
+          ],
+          [
+            "Output \" neuro\"",
+            0.0457
+          ],
+          [
+            "Output \" nursing\"",
+            0.0437
+          ],
+          [
+            "Output \" dementia\"",
+            0.0404
+          ],
+          [
+            "Output \" ger\"",
+            0.0324
+          ],
+          [
+            "Output \" facility\"",
+            0.0291
+          ],
+          [
+            "Output \" specialist\"",
+            0.0273
+          ],
+          [
+            "Output \" place\"",
+            0.0265
+          ],
+          [
+            "Output \" senior\"",
+            0.0261
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" memory\"",
+            0.2289
+          ],
+          [
+            "Output \" doctor\"",
+            0.1225
+          ],
+          [
+            "Output \" neuro\"",
+            0.0423
+          ],
+          [
+            "Output \" therapist\"",
+            0.0362
+          ],
+          [
+            "Output \" psychologist\"",
+            0.0249
+          ],
+          [
+            "Output \" chiropr\"",
+            0.0241
+          ],
+          [
+            "Output \" psychiatrist\"",
+            0.022
+          ],
+          [
+            "Output \" Memory\"",
+            0.0206
+          ],
+          [
+            "Output \" clinic\"",
+            0.0176
+          ],
+          [
+            "Output \" place\"",
+            0.0161
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. What",
+          "memory": "memory care facility",
+          "neuro": "neurologist",
+          "nursing": "nursing home."
+        },
+        "patient": {
+          "memory": "memory clinic.",
+          "doctor": "doctor. What",
+          "neuro": "neurologist",
+          "therapist": "therapist. But"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    }
+  ]
+}
