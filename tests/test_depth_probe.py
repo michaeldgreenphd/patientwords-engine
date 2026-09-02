@@ -184,9 +184,11 @@ def test_push_path_defaults_dict_contains_every_trigger_key():
 
 def test_depth_mode_writes_a_distinct_dir_and_filename():
     """A depth probe is a different instrument; it must not land in the
-    behavioral batch_summary set that the frontend exporter globs."""
+    behavioral batch_summary set that the frontend exporter globs. The readout
+    window is in the directory name so re-running at a different topk cannot
+    overwrite an earlier window's results."""
     text = _workflow_text()
-    assert 'OUT_DIR=trace_out/depth_${STEM}__${MODEL}' in text
+    assert 'OUT_DIR=trace_out/depth_k${TOPK}_${STEM}__${MODEL}' in text
     assert 'SUMMARY_FILE=depth_probe.$PART.json' in text
     assert 'SUMMARY_FILE=batch_summary.$PART.json' in text
 
@@ -264,3 +266,13 @@ def test_main_uses_sync_model_only_for_lifecycle():
     assert "model = load_model(" in src
     assert "sync_model(load_model(" not in src
     assert "lifecycle = sync_model(model)" in src
+
+
+def test_topk_is_a_trigger_param_and_reaches_the_script():
+    """Step 1 of the integration plan re-runs the same measurement through a
+    wider readout window; the window must be settable from the trigger."""
+    fire = _load("fire_trigger")
+    text = _workflow_text()
+    assert "topk" in fire.KNOWN_KEYS["logits-eval"]
+    assert '"topk": "10"' in text                      # push-path default
+    assert '--topk "$TOPK"' in text                    # actually passed through
