@@ -44,7 +44,7 @@ LOCAL_SERVER_URL = os.environ.get("GRAPH_SERVER_URL", "http://localhost:5004")
 MODEL_REGISTRY: dict[str, str] = {
     "gemma-2-2b": "google/gemma-2-2b",       # confirmed working
     "gemma-3-4b-it": "google/gemma-3-4b-it", # registered; not served yet (400/404)
-    "qwen3-4b": "Qwen/Qwen3-4B",             # registered; hosted backend 500s
+    "qwen3-4b": "Qwen/Qwen3-4B",             # SERVES GRAPHS since 2026-09-02 (no transcoders)
     "qwen3-1.7b": "Qwen/Qwen3-1.7B",         # registered; not served yet (400/404)
 }
 
