@@ -208,6 +208,10 @@ def measure_depth(model, prompt, layers, topk):
     residual stream once and decodes each requested layer through the model's own
     final norm and lm_head, applying the family's post-unembed arithmetic
     (Gemma's softcap) so the rows are comparable to the model's real logits.
+
+    `model` must be the RAW model, never a `sync_model(...)` facade:
+    `layer_logits` is itself a sync free function that wraps the model it is
+    handed, and wrapping a facade raises "A coroutine object is required".
     """
     import torch
     from interp_engine import layer_logits
@@ -273,9 +277,12 @@ def main():
     print(f"Loading {hf_id} via interp-engine eager (cpu, bfloat16) ...", flush=True)
     # Eager on CPU is the only backend that serves every point without CUDA, and
     # trust_remote_code stays off: we never execute checkpoint-bundled code.
-    model = sync_model(load_model(hf_id, backend="eager", device="cpu",
-                                  dtype="bfloat16", trust_remote_code=False))
-    model.warmup()
+    model = load_model(hf_id, backend="eager", device="cpu",
+                       dtype="bfloat16", trust_remote_code=False)
+    # sync_model is ONLY for the async lifecycle methods. The raw model is what
+    # goes to layer_logits, which wraps it itself (see measure_depth).
+    lifecycle = sync_model(model)
+    lifecycle.warmup()
     layers = resolve_layers(args.layers, model.n_layers)
     print(f"  {model.n_layers} layers; probing {len(layers)}", flush=True)
 
@@ -312,7 +319,7 @@ def main():
                   f"informative={r['layers_informative']}/{r['layers_measured']}", flush=True)
         flush(completed=True)
     finally:
-        model.shutdown()
+        lifecycle.shutdown()
     print(f"Wrote {len(results)} results -> {summary_path}")
 
 

@@ -208,3 +208,59 @@ def test_interp_engine_is_pinned_in_constraints():
     constraints = (ROOT / "constraints.txt").read_text(encoding="utf-8")
     assert "interp-engine==" in constraints
     assert "einops==" in constraints
+
+
+# --- regression: the 2026-09-02 double-wrap crash ---------------------------
+
+def test_measure_depth_passes_the_model_through_untouched(monkeypatch):
+    """`layer_logits` is a sync free function that wraps the model itself.
+    Handing it a `sync_model(...)` facade instead of the raw model raised
+    'TypeError: A coroutine object is required' on the first pilot run.
+    """
+    import types
+
+    seen = {}
+    sentinel = types.SimpleNamespace(
+        to_tokens=lambda p: [[1, 2, 3]],
+        to_string=lambda i: f"tok{i}",
+    )
+
+    class FakeRow:
+        def float(self):
+            return self
+
+    class FakeLogits:
+        """[n_rows, vocab]; only the last row is read."""
+        def __getitem__(self, idx):
+            assert idx == -1, "measure_depth must read the LAST prompt position"
+            return FakeRow()
+
+    def fake_layer_logits(model, tokens, layers_by_type):
+        seen["model"] = model
+        seen["layers"] = layers_by_type
+        return {"logit_lens": {0: FakeLogits()}}
+
+    fake_ie = types.ModuleType("interp_engine")
+    fake_ie.layer_logits = fake_layer_logits
+    fake_torch = types.ModuleType("torch")
+    fake_torch.softmax = lambda logits, dim: "probs"
+    fake_torch.topk = lambda probs, k: types.SimpleNamespace(
+        values=types.SimpleNamespace(tolist=lambda: [0.6, 0.4]),
+        indices=types.SimpleNamespace(tolist=lambda: [7, 8]),
+    )
+    monkeypatch.setitem(sys.modules, "interp_engine", fake_ie)
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+
+    spreads = dp.measure_depth(sentinel, "a prompt", [0], topk=2)
+    assert seen["model"] is sentinel, "measure_depth must not re-wrap the model"
+    assert seen["layers"] == {"logit_lens": [0]}
+    assert spreads == {0: [["tok7", 0.6], ["tok8", 0.4]]}
+
+
+def test_main_uses_sync_model_only_for_lifecycle():
+    """Source-level guard for the same bug: the object handed to measure_depth
+    must be the raw load_model result, not the sync facade."""
+    src = (SCRIPTS / "depth_probe.py").read_text(encoding="utf-8")
+    assert "model = load_model(" in src
+    assert "sync_model(load_model(" not in src
+    assert "lifecycle = sync_model(model)" in src
