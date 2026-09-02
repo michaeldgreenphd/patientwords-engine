@@ -38,6 +38,14 @@ on:
         description: "Commit the per-model batch_summary back to the branch"
         type: boolean
         default: false
+      mode:
+        description: "logits = next-token behavior (default); depth = per-layer logit-lens tier curves"
+        type: string
+        default: "logits"
+      layers:
+        description: "depth mode only: 'all', 'every:N', or a comma list"
+        type: string
+        default: "all"
   push:
     paths:
       - ".github/trigger/logits-eval.json"
@@ -58,6 +66,8 @@ jobs:
       limit: ${{ steps.params.outputs.limit }}
       offset: ${{ steps.params.outputs.offset }}
       commit_outputs: ${{ steps.params.outputs.commit_outputs }}
+      mode: ${{ steps.params.outputs.mode }}
+      layers: ${{ steps.params.outputs.layers }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -79,12 +89,15 @@ jobs:
           IN_LIMIT: ${{ inputs.limit }}
           IN_OFFSET: ${{ inputs.offset }}
           IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
+          IN_MODE: ${{ inputs.mode }}
+          IN_LAYERS: ${{ inputs.layers }}
         run: |
           python - <<'EOF'
           import json, os
           defaults = {"models": "qwen3-4b qwen3-1.7b",
                       "pairs_file": "data/simulated/pairs_20260706T201750Z.json",
-                      "limit": "0", "offset": "0", "commit_outputs": "false"}
+                      "limit": "0", "offset": "0", "commit_outputs": "false",
+                      "mode": "logits", "layers": "all"}
           p = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/logits-eval.json", encoding="utf-8") as f:
@@ -108,8 +121,12 @@ jobs:
               f.write("limit=" + p["limit"] + "\n")
               f.write("offset=" + p["offset"] + "\n")
               f.write("commit_outputs=" + p["commit_outputs"] + "\n")
-          print("models:", models, "| pairs:", p["pairs_file"],
-                "| limit:", p["limit"], "| offset:", p["offset"])
+              f.write("mode=" + p["mode"] + "\n")
+              f.write("layers=" + p["layers"] + "\n")
+          if p["mode"] not in ("logits", "depth"):
+              raise SystemExit("mode must be 'logits' or 'depth', got " + repr(p["mode"]))
+          print("models:", models, "| pairs:", p["pairs_file"], "| mode:", p["mode"],
+                "| limit:", p["limit"], "| offset:", p["offset"], "| layers:", p["layers"])
           EOF
 
   eval:
@@ -144,6 +161,15 @@ jobs:
           pip install --quiet -c constraints.txt torch --index-url https://download.pytorch.org/whl/cpu
           pip install --quiet -c constraints.txt transformers accelerate
 
+      # Eager backend only. interp-engine keeps vLLM out of its base deps so the
+      # core installs without CUDA (docs/interp_engine_assessment.md section 1);
+      # asking for [vllm] here would pull GB of CUDA wheels onto a CPU runner.
+      - name: Install interp-engine (depth mode)
+        if: ${{ needs.params.outputs.mode == 'depth' }}
+        run: |
+          pip install --quiet -c constraints.txt interp-engine
+          python -c "import interp_engine, torch; print('interp-engine', interp_engine.__version__, '| torch', torch.__version__, '| cuda', torch.cuda.is_available())"
+
       # 7B/9B models exceed runner RAM during load (exit 137 on the 07-11
       # probe); the same swap provision that fixed the patching workflow.
       - name: Provision swap for large-model load
@@ -159,12 +185,23 @@ jobs:
           MODEL: ${{ matrix.model }}
           PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
           OFFSET: ${{ needs.params.outputs.offset }}
+          MODE: ${{ needs.params.outputs.mode }}
         run: |
           STEM=$(basename "$PAIRS_FILE" .json)
-          echo "OUT_DIR=trace_out/${STEM}__${MODEL}" >> "$GITHUB_ENV"
-          echo "PART=$(printf 'part_%02d' $((OFFSET + 1)))" >> "$GITHUB_ENV"
+          PART=$(printf 'part_%02d' $((OFFSET + 1)))
+          echo "PART=$PART" >> "$GITHUB_ENV"
+          if [ "$MODE" = "depth" ]; then
+            # separate dir: a depth probe is a different instrument from the
+            # behavioral run and must not merge into the same batch_summary set
+            echo "OUT_DIR=trace_out/depth_${STEM}__${MODEL}" >> "$GITHUB_ENV"
+            echo "SUMMARY_FILE=depth_probe.$PART.json" >> "$GITHUB_ENV"
+          else
+            echo "OUT_DIR=trace_out/${STEM}__${MODEL}" >> "$GITHUB_ENV"
+            echo "SUMMARY_FILE=batch_summary.$PART.json" >> "$GITHUB_ENV"
+          fi
 
       - name: Measure next-token behavior
+        if: ${{ needs.params.outputs.mode != 'depth' }}
         env:
           MODEL: ${{ matrix.model }}
           PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
@@ -175,19 +212,33 @@ jobs:
           python scripts/logits_eval.py --pairs "$PAIRS_FILE" --model "$MODEL" \
             --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET"
 
+      - name: Measure per-layer tier curves (depth mode)
+        if: ${{ needs.params.outputs.mode == 'depth' }}
+        env:
+          MODEL: ${{ matrix.model }}
+          PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
+          LIMIT: ${{ needs.params.outputs.limit }}
+          OFFSET: ${{ needs.params.outputs.offset }}
+          LAYERS: ${{ needs.params.outputs.layers }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}   # only needed for gated models (gemma)
+        run: |
+          PYTHONPATH=scripts python scripts/depth_probe.py --pairs "$PAIRS_FILE" \
+            --model "$MODEL" --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET" \
+            --layers "$LAYERS" --tiers data/urgency_tiers.draft.json
+
       - name: Commit the per-model summary to the branch
         if: ${{ always() && needs.params.outputs.commit_outputs == 'true' }}
         env:
           BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          if [ ! -f "$OUT_DIR/batch_summary.$PART.json" ]; then
+          if [ ! -f "$OUT_DIR/$SUMMARY_FILE" ]; then
             echo "No summary to commit"; exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add --sparse -f "$OUT_DIR/batch_summary.$PART.json"
-          git commit -m "Logits eval: $OUT_DIR (${{ matrix.model }}, next-token behavior)"
+          git add --sparse -f "$OUT_DIR/$SUMMARY_FILE"
+          git commit -m "Logits eval (${{ needs.params.outputs.mode }}): $OUT_DIR (${{ matrix.model }})"
           for i in 1 2 3 4 5; do
             # -X theirs: during rebase "theirs" is the run's own commit, so a
             # shared status file resolves last-writer-wins instead of stranding
@@ -204,17 +255,23 @@ jobs:
       - name: Job summary
         if: always()
         run: |
-          SUMMARY="$OUT_DIR/batch_summary.$PART.json"
+          SUMMARY="$OUT_DIR/$SUMMARY_FILE"
           if [ -f "$SUMMARY" ]; then
             {
-              echo "## Logits eval (${{ matrix.model }})"
+              echo "## ${{ needs.params.outputs.mode }} eval (${{ matrix.model }})"
               echo '```'
               python - "$SUMMARY" <<'EOF'
           import json, sys
           s = json.load(open(sys.argv[1]))
+          depth = s.get("mode") == "depth_probe"
           for r in s["results"]:
-              print(f"pair {r['index']:2d}  clin={r['probabilities']['clinical']}  "
-                    f"pat={r['probabilities']['patient']}  penalty={r['language_penalty']}")
+              if depth:
+                  print(f"pair {r['index']:2d}  first_divergence={r['first_divergence_layer']}  "
+                        f"final_gap={r['final_gap']}  max_abs_gap={r['max_abs_gap']}  "
+                        f"informative={r['layers_informative']}/{r['layers_measured']}")
+              else:
+                  print(f"pair {r['index']:2d}  clin={r['probabilities']['clinical']}  "
+                        f"pat={r['probabilities']['patient']}  penalty={r['language_penalty']}")
           EOF
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"

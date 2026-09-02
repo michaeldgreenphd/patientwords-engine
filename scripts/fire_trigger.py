@@ -192,7 +192,8 @@ KNOWN_KEYS = {
     }),
     # logits_evaluation.yml `defaults` dict (verified 2026-07-10): models, pairs_file,
     # limit, offset, commit_outputs.
-    "logits-eval": frozenset({"models", "pairs_file", "limit", "offset", "commit_outputs"}),
+    "logits-eval": frozenset({"models", "pairs_file", "limit", "offset", "commit_outputs",
+                              "mode", "layers"}),
     # activation_patching.yml `defaults` dict (verified 2026-07-09): pairs_file, limit,
     # layers, positions, model, offsets, commit_outputs.
     "activation-patching": frozenset({
