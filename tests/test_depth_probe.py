@@ -193,10 +193,53 @@ def test_depth_mode_writes_a_distinct_dir_and_filename():
     assert 'SUMMARY_FILE=batch_summary.$PART.json' in text
 
 
-def test_only_one_measure_step_runs_per_mode():
+def test_exactly_one_measure_step_runs_per_mode():
+    """The lane carries three measure steps and each mode must select exactly
+    one. A negated guard (`mode != 'depth'`) satisfied "only one" while there
+    were two modes, and would silently run the behavioral step under a third;
+    the check is therefore per-mode arithmetic, not a string match.
+    """
+    import yaml
+
+    steps = yaml.safe_load(_workflow_text())["jobs"]["eval"]["steps"]
+    measure = {s.get("name", ""): s.get("if", "") for s in steps
+               if s.get("name", "").startswith(("Measure ", "Re-measure "))}
+    assert len(measure) == 3, measure
+    for mode in ("logits", "depth", "verify"):
+        selected = [name for name, cond in measure.items() if f"mode == '{mode}'" in cond]
+        assert len(selected) == 1, f"mode {mode!r} selects {selected}"
+
+
+def test_verify_mode_writes_a_filename_no_behavioral_collector_globs():
+    """A verification run re-measures pairs the logits lane already published.
+    Landing it as batch_summary* would make the collectors read one set of
+    prompts as two independent measurements."""
     text = _workflow_text()
-    assert "if: ${{ needs.params.outputs.mode != 'depth' }}" in text   # behavioral
-    assert "if: ${{ needs.params.outputs.mode == 'depth' }}" in text   # depth
+    assert "OUT_DIR=trace_out/verify_${STEM}__${MODEL}" in text
+    assert "SUMMARY_FILE=verify_summary.$PART.json" in text
+
+
+def test_verify_mode_installs_interp_engine():
+    """It measures through interp-engine; without the install step it would
+    fail on import after the model download."""
+    import yaml
+
+    steps = yaml.safe_load(_workflow_text())["jobs"]["eval"]["steps"]
+    install = next(s for s in steps if "Install interp-engine" in s.get("name", ""))
+    assert "mode == 'verify'" in install["if"]
+    assert "mode == 'depth'" in install["if"]
+
+
+def test_verify_is_an_accepted_mode_value():
+    """The params job hard-errors on an unknown mode, so a trigger asking for
+    verify has to be listed there or the lane refuses the run."""
+    assert '"logits", "depth", "verify"' in _workflow_text()
+
+
+def test_verify_dtype_has_a_push_path_default():
+    """The push-path `defaults` dict must contain every trigger key: a key
+    missing there is dropped from a trigger file without error."""
+    assert '"dtype": "float32"' in _workflow_text()
 
 
 def test_interp_engine_is_installed_without_the_vllm_extra():

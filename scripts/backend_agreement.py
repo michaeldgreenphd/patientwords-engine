@@ -24,7 +24,7 @@ byte-identical, and reports:
   has no floor. Reported per side because the censoring is not symmetric and its
   asymmetry runs in the same direction as the effect under study.
 
-Nothing here re-measures anything: it is arithmetic over ``batch_summary*.json``
+Nothing here re-measures anything: it is arithmetic over the summary chunks
 files already on disk. $0, offline, no network, no model weights.
 
 Usage:
@@ -49,16 +49,46 @@ DEFAULT_NEAR = 0.01
 DEFAULT_FAR = 0.02
 
 
-def load_run(run_dir):
-    """Every ``batch_summary*.json`` chunk in one run directory, joined by index.
+# The two summary families this script can read. `batch_summary*` is a published
+# measurement (hosted graphs or the logits lane); `verify_summary*` is a
+# verification re-measurement from `scripts/verify_probs.py`. They live in
+# separate run directories by construction, which is what lets the pattern be
+# inferred rather than passed.
+SUMMARY_PATTERNS = ("batch_summary*.json", "verify_summary*.json")
 
-    Chunked CI runs write ``batch_summary.part_NN.json`` per chunk, so a run is
+
+def summary_paths(run_dir, pattern=None):
+    """The summary chunks in one run directory, and which family they came from.
+
+    A run directory holds one family or the other. Finding both means the caller
+    pointed at a directory where a verification run was written over a published
+    one - refused rather than resolved, because picking either would silently
+    compare something other than what was asked for.
+    """
+    if pattern:
+        paths = sorted(glob.glob(os.path.join(run_dir, pattern)))
+        if not paths:
+            raise SystemExit(f"no {pattern} under {run_dir}")
+        return paths
+    found = {pat: sorted(glob.glob(os.path.join(run_dir, pat))) for pat in SUMMARY_PATTERNS}
+    hits = {pat: paths for pat, paths in found.items() if paths}
+    if len(hits) > 1:
+        raise SystemExit(
+            f"{run_dir} holds more than one summary family ({', '.join(hits)}); "
+            f"pass --reference-pattern/--candidate-pattern to say which to read")
+    if not hits:
+        raise SystemExit(f"no {' or '.join(SUMMARY_PATTERNS)} under {run_dir}")
+    return next(iter(hits.values()))
+
+
+def load_run(run_dir, pattern=None):
+    """Every summary chunk in one run directory, joined by index.
+
+    Chunked CI runs write ``<family>.part_NN.json`` per chunk, so a run is
     the union of its parts. A later part wins on a duplicate index (a re-run
     fill-in chunk is written after the chunk it replaces).
     """
-    paths = sorted(glob.glob(os.path.join(run_dir, "batch_summary*.json")))
-    if not paths:
-        raise SystemExit(f"no batch_summary*.json under {run_dir}")
+    paths = summary_paths(run_dir, pattern)
     results, meta = {}, {}
     for path in paths:
         summary = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -163,12 +193,17 @@ def main():
     ap.add_argument("--reference", required=True, help="run dir treated as the reference backend")
     ap.add_argument("--candidate", required=True, help="run dir compared against it")
     ap.add_argument("--out", default=None, help="write the report JSON here")
+    ap.add_argument("--reference-pattern", default=None,
+                    help="summary glob for --reference (inferred when the run dir holds "
+                         "only one of %s)" % ", ".join(SUMMARY_PATTERNS))
+    ap.add_argument("--candidate-pattern", default=None,
+                    help="summary glob for --candidate")
     ap.add_argument("--near", type=float, default=DEFAULT_NEAR)
     ap.add_argument("--far", type=float, default=DEFAULT_FAR)
     args = ap.parse_args()
 
-    ref_results, ref_meta = load_run(args.reference)
-    cand_results, cand_meta = load_run(args.candidate)
+    ref_results, ref_meta = load_run(args.reference, args.reference_pattern)
+    cand_results, cand_meta = load_run(args.candidate, args.candidate_pattern)
     rows, mismatched = join(ref_results, cand_results)
     report = {
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),

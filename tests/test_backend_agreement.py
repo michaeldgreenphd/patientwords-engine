@@ -4,13 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from scripts.backend_agreement import compare, join, load_run
+from scripts.backend_agreement import SUMMARY_PATTERNS, compare, join, load_run
 
 
-def write_run(root: Path, name: str, backend: str, results, part="01"):
+def write_run(root: Path, name: str, backend: str, results, part="01",
+              family="batch_summary"):
     d = root / name
     d.mkdir(parents=True, exist_ok=True)
-    (d / f"batch_summary.part_{part}.json").write_text(json.dumps({
+    (d / f"{family}.part_{part}.json").write_text(json.dumps({
         "backend": backend, "graph_model": "model-x", "results": results}),
         encoding="utf-8")
     return d
@@ -92,3 +93,37 @@ def test_missing_summary_is_an_error_not_an_empty_report(tmp_path):
     (tmp_path / "empty").mkdir()
     with pytest.raises(SystemExit):
         load_run(tmp_path / "empty")
+
+
+
+def test_load_run_infers_the_verification_family_when_that_is_what_is_there(tmp_path):
+    """A verify run dir holds no batch_summary; reading it must not need a flag."""
+    rows = [result(1, ("c1", "p1"), (0.4, 0.3), -0.1)]
+    d = write_run(tmp_path, "verify", "interp-engine", rows, family="verify_summary")
+    results, meta = load_run(d)
+    assert meta["backend"] == "interp-engine"
+    assert list(results) == [1]
+
+
+def test_load_run_refuses_a_dir_holding_both_families(tmp_path):
+    """Silently picking one would compare something other than what was asked."""
+    d = write_run(tmp_path, "both", "logits", [])
+    write_run(tmp_path, "both", "interp-engine", [], family="verify_summary")
+    with pytest.raises(SystemExit) as exc:
+        load_run(d)
+    assert "more than one summary family" in str(exc.value)
+
+
+def test_load_run_honors_an_explicit_pattern_over_inference(tmp_path):
+    d = write_run(tmp_path, "both", "logits", [])
+    write_run(tmp_path, "both", "interp-engine", [], family="verify_summary")
+    assert load_run(d, "verify_summary*.json")[1]["backend"] == "interp-engine"
+
+
+def test_missing_summaries_name_every_family_it_looked_for(tmp_path):
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    with pytest.raises(SystemExit) as exc:
+        load_run(empty)
+    for pattern in SUMMARY_PATTERNS:
+        assert pattern in str(exc.value)

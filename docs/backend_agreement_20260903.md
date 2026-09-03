@@ -118,3 +118,65 @@ it splits the residual disagreement cleanly:
 
 Either way the comparison metric and the disagreement threshold should be
 written down before the run, per the study's own pre-registration discipline.
+
+## The verification lane (built 2026-09-03, not yet run)
+
+`scripts/verify_probs.py` is that third implementation, wired into the existing
+logits lane as `mode: verify` rather than a new trigger. The lane already
+installs interp-engine for `mode: depth`, so the verify path adds a step, not a
+queue.
+
+Run it (per `docs/operators_handbook.md` §3 and the `fire-trigger-safe` skill —
+this lane's fire discipline is unchanged):
+
+```json
+{"models":"gemma-2-2b","pairs_file":"data/simulated/pairs_20260706T201750Z.json",
+ "limit":"50","offset":"0","mode":"verify","dtype":"float32","commit_outputs":"true"}
+```
+
+Then compare, reference first:
+
+```bash
+python scripts/backend_agreement.py \
+  --reference trace_out/pairs_20260706T201750Z__gemma-2-2b \
+  --candidate trace_out/verify_pairs_20260706T201750Z__gemma-2-2b \
+  --out ops/backend_agreement_interp_<STAMP>.json
+```
+
+`load_run` infers which summary family a directory holds, so no extra flag is
+needed; it refuses a directory holding both rather than picking one.
+
+### Written down before the run, per the pre-registration discipline
+
+- **Metric:** the same `max_abs_penalty_delta` and per-pair penalty deltas the
+  hosted-vs-local report used. Nothing new is being scored, so nothing new is
+  being tuned.
+- **Threshold:** the hosted-vs-local run measured a 0.0315 maximum per-pair
+  penalty disagreement. Interp-engine fp32 vs local bf16 **at or below 0.0315**
+  reproduces the existing gap and leaves the cause unidentified; **materially
+  below it** (call it under 0.005, roughly the rounding floor of the hosted
+  numbers) points at the hosted service; **above it** means the disagreement is
+  larger than either pairing so far and no implementation should be treated as
+  exact.
+- **Decided in advance:** none of these outcomes changes a published number.
+  The only claim in scope is the methods sentence about aggregate replication.
+
+### Two things the run records rather than assumes
+
+1. **Tokenization parity** (`token_parity` per pair). `logits_eval.py` tokenizes
+   with the raw HF tokenizer; this path goes through interp-engine's
+   `to_tokens`. If those ever disagree, the row measures a different token
+   sequence, and its probability gap is not attributable to the engine. The
+   script prints the failing indices and the field is in the output, so a parity
+   failure cannot be silently averaged into the agreement number.
+2. **An uncensored target probability.** `GenStep.logits` is the full vocab
+   vector on the eager backend, so the target's probability is read from the
+   whole softmax. This is the same uncensored basis `logits_eval.py` uses and
+   deliberately *not* the hosted path's truncated top-10 — the censoring
+   documented above is a property of the hosted measurement, and reproducing it
+   here would hide the thing being measured.
+
+The output lands in its own directory under a `verify_summary.part_NN.json`
+name, with `backend: "interp-engine"`. Nothing downstream globs that prefix, so
+a verification run cannot be collected as a second published measurement of
+prompts the study has already measured once.

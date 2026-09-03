@@ -39,7 +39,7 @@ on:
         type: boolean
         default: false
       mode:
-        description: "logits = next-token behavior (default); depth = per-layer logit-lens tier curves"
+        description: "logits = next-token behavior (default); depth = per-layer logit-lens tier curves; verify = re-measure the logits numbers through interp-engine"
         type: string
         default: "logits"
       layers:
@@ -47,9 +47,13 @@ on:
         type: string
         default: "all"
       topk:
-        description: "depth mode only: spread size the tier coverage is measured within"
+        description: "depth/verify modes: spread size (tier coverage window; verify spread depth)"
         type: string
         default: "10"
+      dtype:
+        description: "verify mode only: float32 (default, removes dtype as a cause) or bfloat16 (matches logits mode)"
+        type: string
+        default: "float32"
   push:
     paths:
       - ".github/trigger/logits-eval.json"
@@ -73,6 +77,7 @@ jobs:
       mode: ${{ steps.params.outputs.mode }}
       layers: ${{ steps.params.outputs.layers }}
       topk: ${{ steps.params.outputs.topk }}
+      dtype: ${{ steps.params.outputs.dtype }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -97,13 +102,15 @@ jobs:
           IN_MODE: ${{ inputs.mode }}
           IN_LAYERS: ${{ inputs.layers }}
           IN_TOPK: ${{ inputs.topk }}
+          IN_DTYPE: ${{ inputs.dtype }}
         run: |
           python - <<'EOF'
           import json, os
           defaults = {"models": "qwen3-4b qwen3-1.7b",
                       "pairs_file": "data/simulated/pairs_20260706T201750Z.json",
                       "limit": "0", "offset": "0", "commit_outputs": "false",
-                      "mode": "logits", "layers": "all", "topk": "10"}
+                      "mode": "logits", "layers": "all", "topk": "10",
+                      "dtype": "float32"}
           p = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/logits-eval.json", encoding="utf-8") as f:
@@ -130,8 +137,9 @@ jobs:
               f.write("mode=" + p["mode"] + "\n")
               f.write("layers=" + p["layers"] + "\n")
               f.write("topk=" + p["topk"] + "\n")
-          if p["mode"] not in ("logits", "depth"):
-              raise SystemExit("mode must be 'logits' or 'depth', got " + repr(p["mode"]))
+              f.write("dtype=" + p["dtype"] + "\n")
+          if p["mode"] not in ("logits", "depth", "verify"):
+              raise SystemExit("mode must be 'logits', 'depth' or 'verify', got " + repr(p["mode"]))
           print("models:", models, "| pairs:", p["pairs_file"], "| mode:", p["mode"],
                 "| limit:", p["limit"], "| offset:", p["offset"], "| layers:", p["layers"])
           EOF
@@ -171,8 +179,8 @@ jobs:
       # Eager backend only. interp-engine keeps vLLM out of its base deps so the
       # core installs without CUDA (docs/interp_engine_assessment.md section 1);
       # asking for [vllm] here would pull GB of CUDA wheels onto a CPU runner.
-      - name: Install interp-engine (depth mode)
-        if: ${{ needs.params.outputs.mode == 'depth' }}
+      - name: Install interp-engine (depth and verify modes)
+        if: ${{ needs.params.outputs.mode == 'depth' || needs.params.outputs.mode == 'verify' }}
         run: |
           pip install --quiet -c constraints.txt interp-engine
           python -c "import interp_engine, torch; print('interp-engine', interp_engine.__version__, '| torch', torch.__version__, '| cuda', torch.cuda.is_available())"
@@ -203,13 +211,19 @@ jobs:
             # behavioral run and must not merge into the same batch_summary set
             echo "OUT_DIR=trace_out/depth_k${TOPK}_${STEM}__${MODEL}" >> "$GITHUB_ENV"
             echo "SUMMARY_FILE=depth_probe.$PART.json" >> "$GITHUB_ENV"
+          elif [ "$MODE" = "verify" ]; then
+            # separate dir AND a non-batch_summary filename: a verification run
+            # re-measures numbers the logits lane already published, and must
+            # never be collected as a second measurement of the same pairs
+            echo "OUT_DIR=trace_out/verify_${STEM}__${MODEL}" >> "$GITHUB_ENV"
+            echo "SUMMARY_FILE=verify_summary.$PART.json" >> "$GITHUB_ENV"
           else
             echo "OUT_DIR=trace_out/${STEM}__${MODEL}" >> "$GITHUB_ENV"
             echo "SUMMARY_FILE=batch_summary.$PART.json" >> "$GITHUB_ENV"
           fi
 
       - name: Measure next-token behavior
-        if: ${{ needs.params.outputs.mode != 'depth' }}
+        if: ${{ needs.params.outputs.mode == 'logits' }}
         env:
           MODEL: ${{ matrix.model }}
           PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
@@ -234,6 +248,21 @@ jobs:
           PYTHONPATH=scripts python scripts/depth_probe.py --pairs "$PAIRS_FILE" \
             --model "$MODEL" --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET" \
             --layers "$LAYERS" --topk "$TOPK" --tiers data/urgency_tiers.draft.json
+
+      - name: Re-measure the same prompts through interp-engine (verify mode)
+        if: ${{ needs.params.outputs.mode == 'verify' }}
+        env:
+          MODEL: ${{ matrix.model }}
+          PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
+          LIMIT: ${{ needs.params.outputs.limit }}
+          OFFSET: ${{ needs.params.outputs.offset }}
+          TOPK: ${{ needs.params.outputs.topk }}
+          DTYPE: ${{ needs.params.outputs.dtype }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}   # only needed for gated models (gemma)
+        run: |
+          PYTHONPATH=scripts python scripts/verify_probs.py --pairs "$PAIRS_FILE" \
+            --model "$MODEL" --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET" \
+            --topk "$TOPK" --dtype "$DTYPE"
 
       - name: Commit the per-model summary to the branch
         if: ${{ always() && needs.params.outputs.commit_outputs == 'true' }}
