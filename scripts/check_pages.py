@@ -20,6 +20,8 @@ Together they cover the documented failure mode; neither does alone.
 It drives the real pages in Chromium and fails on:
 
 * an uncaught page error or a console ``error`` (the JS broke outright);
+  note the summaries this script reads carry no ``continuations`` map (that is
+  ``logits_eval.py``'s), so nothing tier-related can be derived from them;
 * a failed request for anything under ``data/`` (a payload went missing or was
   renamed — the exporter's half of the contract);
 * a **visible** JS-populated ``<tbody>`` that renders **zero rows** (the silent
@@ -157,10 +159,18 @@ def check_page(page, base: str, url: str) -> dict:
             if body.count() == 0:
                 continue  # this page does not carry that table
             rows = loc.count()
-            # Visibility is consulted ONLY to interpret a zero. Gating on it
-            # first skipped five populated tables sitting inside collapsed
-            # <details> (2026-09-04) -- a check that quietly stops checking.
-            visible = body.is_visible()
+            # Visibility is consulted ONLY to interpret a zero, and it is the
+            # ENCLOSING TABLE's visibility, never the tbody's. Two prior bugs
+            # here, both 2026-09-04: gating on visibility before counting
+            # skipped five populated tables inside collapsed <details>; and
+            # asking the tbody itself was dead code -- an empty tbody has a
+            # zero-height box, so is_visible() is False whenever rows == 0 and
+            # the "empty while visible" verdict could never fire. The table
+            # element keeps its box when its body is empty (on-screen table ->
+            # True; hidden container or collapsed <details> -> False), which is
+            # exactly the discrimination wanted.
+            table = body.locator("xpath=ancestor::table[1]")
+            visible = table.is_visible() if table.count() else body.is_visible()
         except Exception as exc:
             findings.append(f"#{tid}: could not count rows ({exc})")
             continue

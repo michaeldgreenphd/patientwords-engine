@@ -40,6 +40,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import statistics
 from datetime import datetime, timezone
 from pathlib import Path
@@ -57,6 +58,25 @@ DEFAULT_FAR = 0.02
 SUMMARY_PATTERNS = ("batch_summary*.json", "verify_summary*.json")
 
 
+_PART_RE = re.compile(r"part_(\d+)")
+
+
+def _part_sorted(paths):
+    """Chunk files in NUMERIC part order.
+
+    "A later part wins on a duplicate index" is only true if later parts sort
+    later. A plain string sort puts part_100..part_109 between part_10 and
+    part_11 and part_351 before part_36; three batches on disk already reach
+    part_100+, so once an overlapping fill-in chunk lands there the EARLIER
+    chunk would silently win. Files without a part number sort first, in name
+    order, so a bare batch_summary.json is still overridden by any part.
+    """
+    def key(path):
+        m = _PART_RE.search(os.path.basename(path))
+        return (1, int(m.group(1)), path) if m else (0, 0, path)
+    return sorted(paths, key=key)
+
+
 def summary_paths(run_dir, pattern=None):
     """The summary chunks in one run directory, and which family they came from.
 
@@ -66,11 +86,11 @@ def summary_paths(run_dir, pattern=None):
     compare something other than what was asked for.
     """
     if pattern:
-        paths = sorted(glob.glob(os.path.join(run_dir, pattern)))
+        paths = _part_sorted(glob.glob(os.path.join(run_dir, pattern)))
         if not paths:
             raise SystemExit(f"no {pattern} under {run_dir}")
         return paths
-    found = {pat: sorted(glob.glob(os.path.join(run_dir, pat))) for pat in SUMMARY_PATTERNS}
+    found = {pat: _part_sorted(glob.glob(os.path.join(run_dir, pat))) for pat in SUMMARY_PATTERNS}
     hits = {pat: paths for pat, paths in found.items() if paths}
     if len(hits) > 1:
         raise SystemExit(

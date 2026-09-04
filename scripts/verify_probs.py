@@ -226,6 +226,10 @@ def main():
     lifecycle = sync_model(model)
     lifecycle.warmup()
     tokenizer = model.tokenizer
+    # The resolved HF commit, for the W5 pin table -- the same field
+    # logits_eval.py records. Without it a verify artifact cannot be tied to
+    # the checkpoint it measured (every run before 2026-09-04 recorded null).
+    revision = getattr(getattr(getattr(model, "hf_model", None), "config", None), "_commit_hash", None)
 
     start_index = args.offset + 1   # global 1-based join key, matching the trace path
     results = []
@@ -235,7 +239,7 @@ def main():
         # the measured prefix even when a slow CPU run is killed mid-batch.
         write_summary(args.out, build_summary(
             model_id, hf_id, results, start_index, dtype=args.dtype,
-            topk=args.topk, completed=completed), start_index)
+            topk=args.topk, completed=completed, revision=revision), start_index)
 
     def measure_fn(prompt, target_id, topk):
         return measure(model, tokenizer, prompt, target_id, topk)

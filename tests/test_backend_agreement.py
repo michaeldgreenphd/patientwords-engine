@@ -127,3 +127,28 @@ def test_missing_summaries_name_every_family_it_looked_for(tmp_path):
         load_run(empty)
     for pattern in SUMMARY_PATTERNS:
         assert pattern in str(exc.value)
+
+
+def test_parts_are_ordered_numerically_so_later_part_wins_past_99(tmp_path):
+    """String order puts part_100 between part_10 and part_11. With an index
+    present in both part_10 and part_100, the documented policy says part_100
+    wins; a string sort would let part_10 win. Three batches already reach
+    part_100+, so this is one fill-in chunk away from a wrong number."""
+    old = result(5, ("c5", "p5"), (0.1, 0.1), 0.0)
+    new = result(5, ("c5", "p5"), (0.9, 0.9), 0.0)
+    d = write_run(tmp_path, "run", "logits", [old], part="10")
+    write_run(tmp_path, "run", "logits", [new], part="100")
+    write_run(tmp_path, "run", "logits", [], part="09")
+    results, meta = load_run(d)
+    assert meta["parts"] == 3
+    assert results[5]["probabilities"]["clinical"] == 0.9
+
+
+def test_part_ordering_helper_is_numeric_and_stable():
+    from scripts.backend_agreement import _part_sorted
+    names = ["batch_summary.part_11.json", "batch_summary.part_100.json",
+             "batch_summary.part_09.json", "batch_summary.part_351.json",
+             "batch_summary.part_36.json", "batch_summary.json"]
+    got = [n.split("/")[-1] for n in _part_sorted(names)]
+    assert got == ["batch_summary.json", "batch_summary.part_09.json", "batch_summary.part_11.json",
+                   "batch_summary.part_36.json", "batch_summary.part_100.json", "batch_summary.part_351.json"]
