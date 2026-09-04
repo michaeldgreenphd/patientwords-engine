@@ -75,5 +75,20 @@ a quick read; the registered analysis clusters by phrase and is unchanged.
   per-pair spread, it would be the way to confirm the spread is generic
   prompt-sensitivity rather than an artifact of inserting a clause.
 - **Qualifier clauses are draft** pending domain review, like the urgency tiers.
-- The `identity` arm (clinical vs itself, penalty must be exactly 0) is an
-  instrument check, not a control; it is built by the same script.
+- The `identity` arm is an instrument check, not a control.
+
+## Identity arm (instrument check) — passed
+
+Each clinical prompt measured against **itself**, 50 pairs, same path. All 50
+came back with the two sides byte-identical and the two measured probabilities
+**exactly equal — zero pairs differed at all**, so the penalty is exactly 0.0
+throughout.
+
+That rules out a class of defect the language results could not distinguish from
+a finding: state carried between the two forward passes, a mis-ordered join
+between the clinical and patient sides, or a cached probability leaking across
+rows. Any of those would have shown here as a non-zero penalty on identical
+input. None did.
+
+It says nothing about language, and it is not evidence the measurement is
+*correct* — only that it is deterministic and correctly joined.
