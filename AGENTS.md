@@ -75,8 +75,15 @@ merges to `main`. When merging branches, keep the target branch's trigger files 
 (restore them before committing the merge) or you will re-fire runs and double-spend.
 Two corollaries (learned on the PAB branch, 2026-08-04, both observed live): **"changes"
 includes a trigger file appearing on a ref for the first time** — branch creation,
-cherry-picks, and rebases all count (a new branch push fired its probe twice before any
-work started); and the **resting-state rule** — a trigger file at rest is a loaded default
+cherry-picks, and rebases all count, and on a *new* ref **every** trigger file on it
+counts, not only the ones that differ from the parent (2026-09-04: creating a merge
+branch from `main` fired all eight lanes at once, two of them paid, with `main`'s live
+configs). Since 2026-09-04 every job in every push-to-run workflow carries
+`if: ${{ !github.event.created }}`, so the push that creates a ref is skipped
+(`tests/test_workflow_created_guard.py` enforces it on every workflow). Consequence:
+`fire_trigger.py`'s first push to a brand-new branch fires nothing — fire from an
+existing branch. Cherry-picks and rebases onto an existing branch still fire; and the
+**resting-state rule** — a trigger file at rest is a loaded default
 any branch operation can pull, so its committed content should be the cheapest stage that
 exists with `commit_outputs`/`commit_sidecar` false, never the last expensive thing that
 ran. Implemented 2026-08-29: `scripts/fire_trigger.py park --trigger <t>` (or `--all`)
