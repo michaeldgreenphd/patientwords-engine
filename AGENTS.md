@@ -58,6 +58,12 @@ changes on any pushed branch.
 | `archive-renders.json` | `archive_renders.yml` | zips run renders to a GitHub Release |
 | `activation-patching.json` | `activation_patching.yml` | CPU residual-stream patching grid ($0) |
 | `jlens-readout.json` | `jlens_readout.yml` | hosted Jacobian-lens depth readouts ($0) |
+| `advice-eval.json` | `advice_evaluation.yml` | deployed-assistant advice elicitation + judging (paid) |
+
+Eight lanes on this branch. `scripts/fire_trigger.py` also knows `pab-probe`, whose
+workflow exists only on the PAB branch. The fact-check of 2026-09-04 found this table
+one lane behind and `.github/trigger/README.md` six behind; nothing tests either
+against `TRIGGERS`/`PARK_DEFAULTS`, so recount when a lane is added.
 
 **Queue discipline (the sharpest tool in the repo):** every workflow has a per-branch
 concurrency group with `cancel-in-progress: false`, which means **one running + one
@@ -77,11 +83,14 @@ ran. Implemented 2026-08-29: `scripts/fire_trigger.py park --trigger <t>` (or `-
 fires each lane's no-op default from `PARK_DEFAULTS`; all eight lanes are parked, and
 after any real fire lands, re-park that lane (`docs/operators_handbook.md` §3).
 
-**Cost discipline:** Neuronpedia tracing, Qwen logits, and all analysis are $0. Only
-`medlang-generate`, `medlang-evaluate`, and 2panel's `--show-mitigation` translation
-panel spend Anthropic credits (~$0.015/pair on opus, ~$0.002 on haiku; mitigation
-fires are budget-guarded via an imputed commitment in `fire_trigger.py`); every paid
-run writes a `.report.json` (or `.mitigation.report.json`) sidecar with its cost. Session
+**Cost discipline:** Neuronpedia tracing, CPU logits, and all analysis are $0. Four
+lanes spend provider credits — `scenario-generation`, `model-evaluation`, `advice-eval`,
+and `circuit-trace` when `show_mitigation: true` (a flat $0.15 imputed per fire);
+`fire_trigger.py`'s `PAID_TRIGGERS` is the source of truth. Measured per accepted pair
+across the landed `.report.json` sidecars (2026-09-04): opus **$0.020**, haiku $0.0017,
+sonnet $0.060. Every paid generation run writes `<batch>.report.json` (one archived
+batch, `pairs_20260706T172135Z` — the park default — has none); mitigation runs write
+`mitigation.part_NN.report.json` under the trace dir. Session
 ledgers live in `docs/` when an overnight run is active.
 
 **Ops tooling (required path):** fire triggers ONLY via `scripts/fire_trigger.py` — it
@@ -90,20 +99,24 @@ one-running + one-pending discipline, hard-errors on unknown trigger keys (CI si
 ignores them), and refuses paid fires that would breach the $2/day operational ceiling
 counting landed **and in-flight** `max_spend`. `scripts/ledger_update.py` is the only
 writer of spend numbers (`ops/dashboard.json` + the ledger); `scripts/daily_brief.py`
-renders the 3-section brief and the push digest. `ops/dashboard.json` has one writer —
-the daily Routine session (`ops/README.md`, `docs/routine_standing_prompt.md`). Both
+renders the 3-section brief and the push digest. `ops/dashboard.json` is **committed**
+only by the daily Routine session (`ops/README.md`, `docs/routine_standing_prompt.md`);
+`fire_trigger.py` rewrites its `queue` block as a side effect of every fire, and any
+other session must `git checkout -- ops/dashboard.json` before committing. Both
 repos are public: never write secrets anywhere.
 
 ## Architecture
 
 **Tracing (`graph_client.py` → `batch_eval.py`).** `MODEL_REGISTRY` lists four Neuronpedia
-model ids, but **only `gemma-2-2b` actually produces hosted graphs** (verified 2026-07-07;
-the others 400/500 server-side — see `docs/cross-model.md`). Hosted requests retry on
+model ids. **`gemma-2-2b` is the only model with both hosted graphs and a transcoder
+source set.** `qwen3-4b` has served graphs since the 2026-09-02 re-probe but has no
+transcoders, so its features are untagged; the other two still 400/500 server-side
+(`docs/cross-model.md` has the dated table — re-probe before relying on any of this). Hosted requests retry on
 {429,500,502,503,504} with fresh slugs; a 400 aborts the batch immediately, and `run_batch`
 has no per-pair error records — a mid-batch failure just truncates `results`.
 `medlang-batch-eval` has four modes (`2panel`, `4quadrant`, `dialect`, `translation`) with
 different result schemas; `2panel` supports `--screen-targets` (clinical side traced first;
-unmeasurable pairs recorded as `screening.screened_out`, patient trace skipped) and
+unmeasurable pairs recorded as `screening.status == "screened_out"`, patient trace skipped) and
 `--show-mitigation` (third, LLM-translated panel — the only Anthropic call in 2panel).
 
 **Feature tagging.** Only gemma-2-2b has a transcoder source set
@@ -189,16 +202,19 @@ know them will pass a change that is destructive in this repo's terms:
   `trace_out/` summaries are measurements, not caches — a change that regenerates
   them differently is new data, not a refresh.
 * **Irreversible spend:** any change to a file under `.github/trigger/` fires its
-  workflow on push, including a merge that carries one. Two of those lanes spend
-  Anthropic credits. A trigger file changed incidentally — by a merge, rebase, or
+  workflow on push, including a merge that carries one. Four of those lanes can spend
+  provider credits (`PAID_TRIGGERS` plus mitigation on circuit-trace). A trigger file changed incidentally — by a merge, rebase, or
   branch creation — is a defect, not a formatting detail.
 * **The compatibility path that matters most:** `batch_summary*.json` is a shared
-  schema across the hosted, logits, and verification paths, and the frontend
-  exporter and every collector glob it. A field added, renamed, or given a new
+  schema across the hosted and logits paths, and the frontend exporter and every
+  collector glob it. Verification output is written as `verify_summary*.json` on
+  purpose so those collectors never ingest it; the two families share field names
+  but not a filename, and `backend_agreement.py` is the only reader of both. A field added, renamed, or given a new
   meaning needs the consumers named in the Architecture section checked.
-* **Single-writer invariants:** `ops/dashboard.json` is written only by the daily
-  Routine session; `scripts/ledger_update.py` is the only writer of spend numbers.
-  A second writer is a data-loss bug even when each write looks correct.
+* **Single-writer invariants:** `ops/dashboard.json` is committed only by the daily
+  Routine session (other sessions revert `fire_trigger.py`'s queue side effect before
+  committing); `scripts/ledger_update.py` is the only writer of spend numbers. A
+  second committer is a data-loss bug even when each write looks correct.
 
 ## Coding constraints
 
@@ -216,10 +232,12 @@ know them will pass a change that is destructive in this repo's terms:
   A measurement that quietly drops rows produces a plausible wrong number, which
   is worse than a crash. `expected_tier`'s coverage floor and `verify_probs.py`'s
   `token_parity` are the pattern: measure it, report it, refuse rather than guess.
-* **Type hints on new modules and new public functions.** Not a retrofit rule:
-  the existing scripts carry essentially none (0 of ~95 functions across the six
-  main ones as of 2026-09-04), so requiring them everywhere would make every pull
-  request a typing project and train everyone to dismiss the reviewer. New files
+* **Type hints on new modules and new public functions.** Not a retrofit rule.
+  The scripts the Architecture section names carry none (50 functions, 0 hinted,
+  2026-09-04), while newer scripts mostly do (40 of 73 files in `scripts/` have at
+  least one hinted function; `advice_eval.py` 52 of 61). Requiring hints everywhere
+  would turn every pull request into a typing project and train everyone to dismiss
+  the reviewer. New files
   and new entry points, yes; matching the surrounding style in an old file is not
   a finding.
 * **Analysis is decoupled from presentation.** This repo computes and emits data;
@@ -233,11 +251,12 @@ Every pull request here is reviewed by Codex and Copilot. Their findings are
 **hypotheses, not defects**, and the disposition is yours to establish:
 
 1. **Verify against the actual file before changing anything.** Read the lines
-   the finding names. A finding that misreads the file is common enough to plan
-   for: on the first reviewed pull request (`patientwords#4`, 2026-09-04) three
-   findings arrived, two were real, and one — a claim that a one-line pointer
-   file had a stray blank line — was a misreading of how a trailing newline
-   renders in a diff.
+   the finding names. On the first reviewed pull request (`patientwords#4`,
+   2026-09-04) five findings arrived across two rounds: four were real, one — a
+   claim that a one-line pointer file had a stray blank line — was a misreading of
+   how a trailing newline renders in a diff. A later fact-check of this file found
+   22 false or misleading assertions, half of them written that same day. Plan for
+   both error rates.
 2. **Give every finding a disposition on its own thread**: fixed, naming the
    commit; declined, naming the reason and the evidence; or not applicable, and
    why. Silence is not a disposition.
@@ -260,9 +279,10 @@ rather than only in a doc because nobody thinks to go looking.
 
 * **The logits lane runs bfloat16, and that is the dominant per-pair error term.**
   Measured 2026-09-04 (`docs/backend_agreement_20260903.md`): interp-engine
-  float32 agrees with the hosted service to **0.0005** — the rounding floor of
-  hosted's three-decimal numbers — while both disagree with our local bfloat16
-  path by ~0.004 mean and up to **0.031** per pair, roughly half the study's mean
+  float32 agrees with the hosted service to **0.0005 on 70 of 71 measurements** —
+  the rounding floor of hosted's three-decimal numbers; the 71st is the misread
+  token below (max 0.0273 with it). Both disagree with our local bfloat16 path by
+  0.004–0.006 mean and up to **0.032** per pair, roughly half the study's mean
   language penalty. `scripts/logits_eval.py` and `scripts/depth_probe.py` both
   hardcode bfloat16. Only gemma-2-2b has a second implementation to check
   against; for the other nine models the error is present but unmeasured.
@@ -275,16 +295,19 @@ rather than only in a doc because nobody thinks to go looking.
   token is a proper prefix of a higher-probability neighbour, which wordpiece
   vocabularies make routine. Not yet fixed; the hosted extraction path is what to
   inspect.
-* **Per-pair penalties are not a stable measurement.** The negative control run
-  2026-09-04 (`docs/negative_control_20260904.md`) measured each clinical prompt
-  against a longer *clinical* phrasing of itself, length-matched to the
-  treatment. The aggregate came back clean — control mean −0.0018, CI including
-  zero, against the treatment's −0.0603 excluding it — so the effect is
-  attributable to register. But the control's per-pair spread is sd 0.0895,
-  **33% of the treatment's variance**, with individual pairs reaching ±0.28.
-  Adding four neutral clinical words moves a pair's penalty by more than the
-  studied effect in a third of cases. **No claim may rest on a single pair's
-  penalty**; the aggregate phrase-clustered estimate is the only defensible one.
+* **Per-pair penalties and flip labels are not stable measurements.** The negative
+  control of 2026-09-04 (`docs/negative_control_20260904.md`, numbers regenerable
+  from `ops/negative_control_20260904.json`, seed 7) measured each clinical
+  prompt against a longer *clinical* phrasing of itself (+5.6 tokens vs the
+  treatment's +4.14). Control mean -0.0018, CI [-0.0259, 0.0234], includes
+  zero; treatment -0.0603, CI [-0.1046, -0.0192], excludes it. **The direction is
+  robust** (36/14 negative, sign test p = 0.0026); **the magnitude is
+  not** — the three most-negative pairs carry 45% of the effect, and without
+  them the CI is [-0.0702, 0.0002]. Cite the direction, not −0.06. The control's per-pair
+  sd is **58% of the treatment's** (variance ratio 0.33), pairs reach
+  -0.214/+0.277, and a neutral clause flips the top-1 prediction — a site
+  "redirect" — in 14 of 50 pairs. **No claim may rest on a single pair's penalty
+  or flip label**; the aggregate phrase-clustered estimate is the only defensible one.
 * **Consequence for all three.** None changes a published number as of 2026-09-04,
   and neither should be "cleaned up" quietly: `logits_eval.py` and the hosted
   path have already published values, so changing either re-runs and re-publishes
