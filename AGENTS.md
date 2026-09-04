@@ -275,7 +275,17 @@ rather than only in a doc because nobody thinks to go looking.
   token is a proper prefix of a higher-probability neighbour, which wordpiece
   vocabularies make routine. Not yet fixed; the hosted extraction path is what to
   inspect.
-* **Consequence for both.** Neither changes a published number as of 2026-09-04,
+* **Per-pair penalties are not a stable measurement.** The negative control run
+  2026-09-04 (`docs/negative_control_20260904.md`) measured each clinical prompt
+  against a longer *clinical* phrasing of itself, length-matched to the
+  treatment. The aggregate came back clean — control mean −0.0018, CI including
+  zero, against the treatment's −0.0603 excluding it — so the effect is
+  attributable to register. But the control's per-pair spread is sd 0.0895,
+  **33% of the treatment's variance**, with individual pairs reaching ±0.28.
+  Adding four neutral clinical words moves a pair's penalty by more than the
+  studied effect in a third of cases. **No claim may rest on a single pair's
+  penalty**; the aggregate phrase-clustered estimate is the only defensible one.
+* **Consequence for all three.** None changes a published number as of 2026-09-04,
   and neither should be "cleaned up" quietly: `logits_eval.py` and the hosted
   path have already published values, so changing either re-runs and re-publishes
   pairs that are live on the site. That is a decision, not a fix.
