@@ -164,7 +164,10 @@ def test_exhausted_500_retries_is_probe_negative_before_any_success(tmp_path, mo
     assert probe["supported"] is False
     assert "500" in probe["detail"] and "re-probe" in probe["detail"]
 
-    # mid-batch: first prompt succeeds, second 500s forever -> must raise
+    # mid-batch: first prompt succeeds, second 500s forever -> the pair is
+    # recorded as an error row, the partial summary still lands on disk, and
+    # the exit is nonzero (loud). Contract changed 2026-07-28: two 17T runs
+    # each lost 60 measured pairs to the old bare raise on one poisoned pair.
     class FlakySession:
         headers = {}
         calls = 0
@@ -185,10 +188,139 @@ def test_exhausted_500_retries_is_probe_negative_before_any_success(tmp_path, mo
             return Fake500()
 
     fake_requests.Session = lambda: FlakySession()
-    import pytest
-    with pytest.raises(RuntimeError):
-        jlens.main(["--pairs", str(pairs_path), "--model", "maybe-1b",
-                    "--out", str(tmp_path / "out2"), "--limit", "1"])
+    out2 = tmp_path / "out2"
+    rc = jlens.main(["--pairs", str(pairs_path), "--model", "maybe-1b",
+                     "--out", str(out2), "--limit", "1"])
+    assert rc == 1
+    summary = json.loads((out2 / "jlens_summary.part_01.json").read_text(encoding="utf-8"))
+    assert summary["results"] == []
+    assert summary["errors"][0]["index"] == 1
+    assert "patient" in summary["errors"][0]["error"]
+
+
+def _ok_response():
+    class OK:
+        status_code = 200
+        text = ""
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"meta": {}, "tokens": [{"results": []}], "done": {}}
+    return OK()
+
+
+def _fake_requests_module(session_factory):
+    import types
+    return types.SimpleNamespace(
+        Session=session_factory,
+        exceptions=types.SimpleNamespace(ConnectionError=OSError, Timeout=OSError),
+    )
+
+
+def _pairs_file(tmp_path, n):
+    pairs = [{"top_prompt": f"clin {i}", "bottom_prompt": f"pat {i}",
+              "target_clinical_token": "tgt", "generation": {}} for i in range(n)]
+    path = tmp_path / "pairs_z.json"
+    path.write_text(json.dumps(pairs), encoding="utf-8")
+    return path
+
+
+def test_poisoned_pair_is_skipped_and_batch_continues(tmp_path, monkeypatch):
+    """One pair that 500s forever must not truncate the batch: it becomes an
+    error row and every later pair is still measured (17T field failure)."""
+    class Fake500:
+        status_code = 500
+        text = "internal"
+
+    class Session:
+        headers = {}
+
+        def post(self, *a, **k):
+            # Pair 2 (prompts "clin 1"/"pat 1") 500s persistently - a poisoned
+            # pair; every other prompt succeeds. Keyed on the prompt so the
+            # retry loop's call count is irrelevant.
+            if "1" in (k.get("json") or {}).get("prompt", ""):
+                return Fake500()
+            return _ok_response()
+
+    import sys
+    monkeypatch.setitem(sys.modules, "requests", _fake_requests_module(lambda: Session()))
+    monkeypatch.setenv("NEURONPEDIA_API_KEY", "test-key")
+    monkeypatch.setattr(jlens.time, "sleep", lambda s: None)
+    out = tmp_path / "out"
+    rc = jlens.main(["--pairs", str(_pairs_file(tmp_path, 3)), "--model", "maybe-1b",
+                     "--out", str(out), "--limit", "3"])
+    assert rc == 1
+    summary = json.loads((out / "jlens_summary.part_01.json").read_text(encoding="utf-8"))
+    measured = [r["index"] for r in summary["results"]]
+    assert 1 in measured and 3 in measured
+    assert [e["index"] for e in summary["errors"]] == [2]
+    assert "partial" not in summary  # completed the chunk despite the error row
+
+
+def test_three_consecutive_failures_stop_the_run_keeping_data(tmp_path, monkeypatch):
+    """Consecutive pair failures mean the endpoint is down, not a poisoned
+    prompt: stop after 3, keep the measured prefix, mark partial, exit loud."""
+    class Fake500:
+        status_code = 500
+        text = "internal"
+
+    class Session:
+        headers = {}
+        calls = 0
+
+        def post(self, *a, **k):
+            Session.calls += 1
+            if Session.calls <= 2:  # pair 1 OK
+                return _ok_response()
+            return Fake500()        # everything after: down
+
+    import sys
+    monkeypatch.setitem(sys.modules, "requests", _fake_requests_module(lambda: Session()))
+    monkeypatch.setenv("NEURONPEDIA_API_KEY", "test-key")
+    monkeypatch.setattr(jlens.time, "sleep", lambda s: None)
+    out = tmp_path / "out"
+    rc = jlens.main(["--pairs", str(_pairs_file(tmp_path, 9)), "--model", "maybe-1b",
+                     "--out", str(out), "--limit", "9"])
+    assert rc == 1
+    summary = json.loads((out / "jlens_summary.part_01.json").read_text(encoding="utf-8"))
+    assert len(summary["results"]) == 1
+    assert len(summary["errors"]) == 3
+    assert summary["partial"] is True and "consecutive" in summary["_partial"]
+
+
+def test_summary_flushes_incrementally_during_the_run(tmp_path, monkeypatch):
+    """A crash or job timeout mid-run must still leave the measured prefix on
+    disk: the part file is flushed after every pair (marked as an in-progress
+    partial), so the workflow's always() commit step lands it."""
+    seen = {}
+
+    class Session:
+        headers = {}
+        calls = 0
+
+        def post(self, *a, **k):
+            Session.calls += 1
+            if Session.calls == 3:  # pair 1 done; peek at disk before pair 2 finishes
+                path = tmp_path / "out" / "jlens_summary.part_01.json"
+                seen["mid_run"] = json.loads(path.read_text(encoding="utf-8"))
+            return _ok_response()
+
+    import sys
+    monkeypatch.setitem(sys.modules, "requests", _fake_requests_module(lambda: Session()))
+    monkeypatch.setenv("NEURONPEDIA_API_KEY", "test-key")
+    monkeypatch.setattr(jlens.time, "sleep", lambda s: None)
+    out = tmp_path / "out"
+    rc = jlens.main(["--pairs", str(_pairs_file(tmp_path, 2)), "--model", "maybe-1b",
+                     "--out", str(out), "--limit", "2"])
+    assert rc == 0
+    assert len(seen["mid_run"]["results"]) == 1
+    assert seen["mid_run"]["partial"] is True
+    final = json.loads((out / "jlens_summary.part_01.json").read_text(encoding="utf-8"))
+    assert len(final["results"]) == 2
+    assert "partial" not in final and "errors" not in final
 
 
 def test_target_variants_cover_space_and_case_but_not_substrings():

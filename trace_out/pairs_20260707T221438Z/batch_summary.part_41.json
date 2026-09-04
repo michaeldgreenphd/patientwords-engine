@@ -1,0 +1,807 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 41,
+  "pairs_requested": 12,
+  "completed": false,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "5b1828668e03",
+    "runner_image": "20260720.247.2"
+  },
+  "results": [
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At the bar his heart went into atrial fibrillation, so his buddy told him to check his",
+        "patient": "At the bar his heart started doing that fluttery skippy thing, so his buddy told him to check his"
+      },
+      "target_token": "Output \" pulse\"",
+      "probabilities": {
+        "clinical": 0.186,
+        "patient": 0.134
+      },
+      "language_penalty": -0.05199999999999999,
+      "clinical_mass": {
+        "clinical": 0.2659,
+        "patient": 0.1163
+      },
+      "error_share": {
+        "clinical": 0.1013,
+        "patient": 0.104
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.099)",
+        "patient": "[L20\u00b7S]  \u2192 [L24\u00b7O] mentions of \"mobile\" technology | mobile \u2192 Output \" phone\" (p=0.221)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.27
+          ],
+          [
+            "Output \" pulse\"",
+            0.186
+          ],
+          [
+            "Output \" heart\"",
+            0.099
+          ],
+          [
+            "Output \" BP\"",
+            0.022
+          ],
+          [
+            "Output \" phone\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" phone\"",
+            0.221
+          ],
+          [
+            "Output \" pulse\"",
+            0.134
+          ],
+          [
+            "Output \" watch\"",
+            0.056
+          ],
+          [
+            "Output \" wallet\"",
+            0.049
+          ],
+          [
+            "Output \" email\"",
+            0.043
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 914,
+        "unique_to_a": 417,
+        "unique_to_b": 503
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_41.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_41.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_41_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_41_diff.png"
+      }
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every morning I line up my diuretics and swallow them with a",
+        "patient": "Every morning I line up my water pills and swallow them with a"
+      },
+      "target_token": "Output \" glass\"",
+      "probabilities": {
+        "clinical": 0.277,
+        "patient": 0.332
+      },
+      "language_penalty": 0.05499999999999999,
+      "clinical_mass": {
+        "clinical": 0.1966,
+        "patient": 0.1914
+      },
+      "error_share": {
+        "clinical": 0.1073,
+        "patient": 0.1065
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L22\u00b7O] food items and coffee, especially those related to F \u2192 Output \" cup\" (p=0.062)",
+        "patient": "embedding \u2192 [L22\u00b7O] food items and coffee, especially those related to F \u2192 Output \" cup\" (p=0.065)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" glass\"",
+            0.277
+          ],
+          [
+            "Output \" cup\"",
+            0.062
+          ],
+          [
+            "Output \" sip\"",
+            0.054
+          ],
+          [
+            "Output \" big\"",
+            0.054
+          ],
+          [
+            "Output \" large\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" glass\"",
+            0.332
+          ],
+          [
+            "Output \" cup\"",
+            0.065
+          ],
+          [
+            "Output \" sip\"",
+            0.051
+          ],
+          [
+            "Output \" big\"",
+            0.045
+          ],
+          [
+            "Output \" little\"",
+            0.04
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 961,
+        "unique_to_a": 335,
+        "unique_to_b": 359
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_42.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_42.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_42_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_42_diff.png"
+      }
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My psoriasis has flared up on my elbows, so at the store I picked up a",
+        "patient": "My skin's gone all scaly and flaky on my elbows, so at the store I picked up a"
+      },
+      "target_token": "Output \" tube\"",
+      "probabilities": {
+        "clinical": 0.166,
+        "patient": 0.12
+      },
+      "language_penalty": -0.04600000000000001,
+      "clinical_mass": {
+        "clinical": 0.2787,
+        "patient": 0.2628
+      },
+      "error_share": {
+        "clinical": 0.1097,
+        "patient": 0.1023
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" new\" (p=0.042)",
+        "patient": "embedding \u2192 Output \" little\" (p=0.039)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" tube\"",
+            0.166
+          ],
+          [
+            "Output \" bottle\"",
+            0.146
+          ],
+          [
+            "Output \" new\"",
+            0.042
+          ],
+          [
+            "Output \" few\"",
+            0.042
+          ],
+          [
+            "Output \" jar\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" bottle\"",
+            0.153
+          ],
+          [
+            "Output \" tube\"",
+            0.12
+          ],
+          [
+            "Output \" jar\"",
+            0.082
+          ],
+          [
+            "Output \" tub\"",
+            0.05
+          ],
+          [
+            "Output \" little\"",
+            0.039
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 900,
+        "unique_to_a": 476,
+        "unique_to_b": 452
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_43.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_43.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_43_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_43_diff.png"
+      }
+    },
+    {
+      "index": 44,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Whenever the pollen's thick my allergic asthma acts up, so before my run I use my",
+        "patient": "Whenever the pollen's thick my chest gets all tight and whistly, so before my run I use my"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.309,
+        "patient": 0.334
+      },
+      "language_penalty": 0.025000000000000022,
+      "clinical_mass": {
+        "clinical": 0.3609,
+        "patient": 0.3146
+      },
+      "error_share": {
+        "clinical": 0.1163,
+        "patient": 0.115
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" asthma\" (p=0.029)",
+        "patient": "embedding \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.334)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.309
+          ],
+          [
+            "Output \" al\"",
+            0.037
+          ],
+          [
+            "Output \" nasal\"",
+            0.032
+          ],
+          [
+            "Output \" puffer\"",
+            0.029
+          ],
+          [
+            "Output \" asthma\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.334
+          ],
+          [
+            "Output \" V\"",
+            0.066
+          ],
+          [
+            "Output \" puffer\"",
+            0.031
+          ],
+          [
+            "Output \" nasal\"",
+            0.027
+          ],
+          [
+            "Output \" nose\"",
+            0.024
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 965,
+        "unique_to_a": 312,
+        "unique_to_b": 396
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_44.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_44.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_44_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_44_diff.png"
+      }
+    },
+    {
+      "index": 45,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been having panic attacks in the elevator, so her boss handed her a",
+        "patient": "She's been having those racing scary spells in the elevator, so her boss handed her a"
+      },
+      "target_token": "Output \" gun\"",
+      "probabilities": {
+        "clinical": 0.067,
+        "patient": 0.064
+      },
+      "language_penalty": -0.0030000000000000027,
+      "clinical_mass": {
+        "clinical": 0.1415,
+        "patient": 0.1027
+      },
+      "error_share": {
+        "clinical": 0.0978,
+        "patient": 0.1018
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" panic\" (p=0.046)",
+        "patient": "embedding \u2192 Output \" new\" (p=0.050)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" gun\"",
+            0.067
+          ],
+          [
+            "Output \" panic\"",
+            0.046
+          ],
+          [
+            "Output \" Xan\"",
+            0.041
+          ],
+          [
+            "Output \" bottle\"",
+            0.036
+          ],
+          [
+            "Output \" small\"",
+            0.028
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" gun\"",
+            0.064
+          ],
+          [
+            "Output \" new\"",
+            0.05
+          ],
+          [
+            "Output \" copy\"",
+            0.034
+          ],
+          [
+            "Output \" bottle\"",
+            0.034
+          ],
+          [
+            "Output \" job\"",
+            0.027
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1058,
+        "unique_to_a": 509,
+        "unique_to_b": 484
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_45.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_45.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_45_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_45_diff.png"
+      }
+    },
+    {
+      "index": 46,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I nearly forgot my morning diuretics again, so I quickly poured a",
+        "patient": "I nearly forgot my morning water pills again, so I quickly poured a"
+      },
+      "target_token": "Output \" glass\"",
+      "probabilities": {
+        "clinical": 0.398,
+        "patient": 0.443
+      },
+      "language_penalty": 0.044999999999999984,
+      "clinical_mass": {
+        "clinical": 0.1281,
+        "patient": 0.1268
+      },
+      "error_share": {
+        "clinical": 0.1062,
+        "patient": 0.1049
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L22\u00b7O] food items and coffee, especially those related to F \u2192 Output \" cup\" (p=0.146)",
+        "patient": "embedding \u2192 [L22\u00b7O] food items and coffee, especially those related to F \u2192 Output \" cup\" (p=0.099)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" glass\"",
+            0.398
+          ],
+          [
+            "Output \" cup\"",
+            0.146
+          ],
+          [
+            "Output \" big\"",
+            0.042
+          ],
+          [
+            "Output \" bottle\"",
+            0.037
+          ],
+          [
+            "Output \" large\"",
+            0.033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" glass\"",
+            0.443
+          ],
+          [
+            "Output \" cup\"",
+            0.099
+          ],
+          [
+            "Output \" bottle\"",
+            0.06
+          ],
+          [
+            "Output \" big\"",
+            0.047
+          ],
+          [
+            "Output \" large\"",
+            0.032
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1066,
+        "unique_to_a": 302,
+        "unique_to_b": 321
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_46.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_46.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_46_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_46_diff.png"
+      }
+    },
+    {
+      "index": 47,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My elbows keep flaring with psoriasis, so at the pharmacy I picked up a",
+        "patient": "My elbows keep getting all crusty and scaly, so at the pharmacy I picked up a"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.068,
+        "patient": 0.061
+      },
+      "language_penalty": -0.007000000000000006,
+      "clinical_mass": {
+        "clinical": 0.3366,
+        "patient": 0.3048
+      },
+      "error_share": {
+        "clinical": 0.1086,
+        "patient": 0.1075
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" new\" (p=0.042)",
+        "patient": "embedding \u2192 Output \" little\" (p=0.047)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" tube\"",
+            0.112
+          ],
+          [
+            "Output \" bottle\"",
+            0.077
+          ],
+          [
+            "Output \" cream\"",
+            0.068
+          ],
+          [
+            "Output \" new\"",
+            0.042
+          ],
+          [
+            "Output \" small\"",
+            0.037
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" tube\"",
+            0.088
+          ],
+          [
+            "Output \" product\"",
+            0.061
+          ],
+          [
+            "Output \" cream\"",
+            0.061
+          ],
+          [
+            "Output \" bottle\"",
+            0.061
+          ],
+          [
+            "Output \" little\"",
+            0.047
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1063,
+        "unique_to_a": 335,
+        "unique_to_b": 407
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_47.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_47.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_47_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_47_diff.png"
+      }
+    },
+    {
+      "index": 48,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "His shoulder's had chronic bursitis all week, so the doctor handed him a",
+        "patient": "His shoulder's been acting up something awful all week, so the doctor handed him a"
+      },
+      "target_token": "Output \" prescription\"",
+      "probabilities": {
+        "clinical": 0.287,
+        "patient": 0.279
+      },
+      "language_penalty": -0.007999999999999952,
+      "clinical_mass": {
+        "clinical": 0.4051,
+        "patient": 0.3382
+      },
+      "error_share": {
+        "clinical": 0.1031,
+        "patient": 0.0987
+      },
+      "top_path": {
+        "clinical": "[L25\u00b7S]  \u2192 Output \" cor\" (p=0.120)",
+        "patient": "[L25\u00b7S]  \u2192 Output \" cor\" (p=0.033)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.287
+          ],
+          [
+            "Output \" shot\"",
+            0.12
+          ],
+          [
+            "Output \" cor\"",
+            0.12
+          ],
+          [
+            "Output \" bag\"",
+            0.039
+          ],
+          [
+            "Output \" bottle\"",
+            0.03
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" prescription\"",
+            0.279
+          ],
+          [
+            "Output \" shot\"",
+            0.062
+          ],
+          [
+            "Output \" couple\"",
+            0.049
+          ],
+          [
+            "Output \" script\"",
+            0.033
+          ],
+          [
+            "Output \" cor\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1036,
+        "unique_to_a": 435,
+        "unique_to_b": 435
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_48.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_48.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_48_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_48_diff.png"
+      }
+    },
+    {
+      "index": 49,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "During the barbecue I had bronchospasm, so I reached for an",
+        "patient": "During the barbecue my chest got all tight and whistly, so I reached for an"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.652,
+        "patient": 0.326
+      },
+      "language_penalty": -0.326,
+      "clinical_mass": {
+        "clinical": 0.3956,
+        "patient": 0.1936
+      },
+      "error_share": {
+        "clinical": 0.1203,
+        "patient": 0.1074
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.652)",
+        "patient": "embedding \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" old\" (p=0.094)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.652
+          ],
+          [
+            "Output \" al\"",
+            0.069
+          ],
+          [
+            "Output \" asthma\"",
+            0.047
+          ],
+          [
+            "Output \" Epi\"",
+            0.037
+          ],
+          [
+            "Output \" Al\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.326
+          ],
+          [
+            "Output \" old\"",
+            0.094
+          ],
+          [
+            "Output \" aspirin\"",
+            0.083
+          ],
+          [
+            "Output \" asthma\"",
+            0.057
+          ],
+          [
+            "Output \" anti\"",
+            0.044
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 614,
+        "unique_to_a": 647,
+        "unique_to_b": 745
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260707T221438Z/index_49.html",
+        "png": "trace_out/pairs_20260707T221438Z/index_49.png",
+        "diff_html": "trace_out/pairs_20260707T221438Z/index_49_diff.html",
+        "diff_png": "trace_out/pairs_20260707T221438Z/index_49_diff.png"
+      }
+    }
+  ]
+}

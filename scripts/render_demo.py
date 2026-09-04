@@ -3,7 +3,7 @@
 
 These are the synthetic sample-graph figures the site has always used for
 Figs. 1 and 4: the depression / "the blues" comparison with the stated
-numbers (prob(therapist) 0.86 clinical vs 0.35 patient, Language Penalty
+numbers (prob(therapist) 0.86 clinical vs 0.35 patient, Wording gap
 -51%). The graphs are hand-authored specimens - the point is to exercise the
 full rendering pipeline, not to report a live trace - and the site labels
 them as demonstration outputs.
@@ -213,7 +213,7 @@ def main() -> int:
     )
     for p, e in zip(panels, emph):
         p["emphasized"] = e
-    badge = {"lines": [{"text": "Language Penalty: −51% probability (0.86 → 0.35)",
+    badge = {"lines": [{"text": "Wording gap: −51% probability (0.86 → 0.35)",
                         "color": "#b4483d"}]}
     out2 = os.path.join(args.site, "modes", "2panel")
     os.makedirs(out2, exist_ok=True)

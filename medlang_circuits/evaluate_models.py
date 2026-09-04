@@ -166,9 +166,30 @@ def _score_classification(output: str, label: str) -> bool:
     return output.strip().lower() == label.strip().lower()
 
 
+def _adapt_generated_batch(data: list) -> dict[str, list[dict[str, Any]]]:
+    """Adapt a generated pairs archive (a list of {top_prompt, bottom_prompt,
+    generation{clinical_term, ...}} rows) to the eval schema: each pair becomes
+    a translation item whose expected term is the pair's clinical term, which
+    also feeds the two_step scenario. Batch archives carry no category labels,
+    so the classification list is empty and that scenario reports zero
+    attempts instead of failing."""
+    translation = []
+    for pair in data:
+        generation = pair.get("generation") or {}
+        term = generation.get("clinical_term")
+        patient = pair.get("bottom_prompt")
+        if term and patient:
+            translation.append({"patient": patient, "expected": [str(term)]})
+    if not translation:
+        raise ValueError("generated batch has no rows with a clinical term and a patient prompt")
+    return {"translation": translation, "classification": []}
+
+
 def load_pairs(path: str | Path | None = None) -> dict[str, list[dict[str, Any]]]:
     with open(path or DEFAULT_PAIRS_PATH, encoding="utf-8") as f:
         data = json.load(f)
+    if isinstance(data, list):
+        return _adapt_generated_batch(data)
     for key in DATA_KEYS:
         if key not in data or not isinstance(data[key], list):
             raise ValueError(f"eval pairs file missing '{key}' list")

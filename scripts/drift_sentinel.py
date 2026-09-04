@@ -134,14 +134,20 @@ def main():
     elif not deltas:
         print(f"drift sentinel: baseline only ({sorted(days)[-1]}), nothing to compare")
     elif breached:
-        worst = max(breached, key=lambda d: d["max_abs_delta"])
-        tops = ""
-        if worst.get("top_words_tracked"):
-            changed = worst.get("top_word_changes") or []
-            tops = ("; top words unchanged" if not changed
-                    else f"; top words CHANGED: {', '.join(changed)}")
-        print(f"drift sentinel: DRIFT max |dp| {worst['max_abs_delta']} at {worst['worst']} "
-              f"({worst['prev']} -> {worst['date']}, threshold {args.threshold}{tops})")
+        # Every breach prints, chronologically — not only the largest. A
+        # second, smaller breach used to be computed, stored in the payload,
+        # and never shown, so it aged out of every brief (owner-approved fix
+        # 2026-08-21, DRIFT-SECOND-BREACH-20260814).
+        for b in sorted(breached, key=lambda d: d["date"]):
+            tops = ""
+            if b.get("top_words_tracked"):
+                changed = b.get("top_word_changes") or []
+                tops = ("; top words unchanged" if not changed
+                        else f"; top words CHANGED: {', '.join(changed)}")
+            print(f"drift sentinel: DRIFT max |dp| {b['max_abs_delta']} at {b['worst']} "
+                  f"({b['prev']} -> {b['date']}, threshold {args.threshold}{tops})")
+        if len(breached) > 1:
+            print(f"drift sentinel: DRIFT on {len(breached)} days total")
     else:
         latest = deltas[-1]
         print(f"drift sentinel: stable, max |dp| {latest['max_abs_delta']} "

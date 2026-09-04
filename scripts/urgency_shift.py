@@ -430,6 +430,9 @@ if args.publish:
                      for t, c in tier_counts.items()}
     site_payload = {
         "vocabulary_status": vocab_meta.get("status", "draft pending domain review"),
+        # Audit 2026-07-28 L1: per-model cells with fewer phrases than this
+        # render as the page's pending state, not as rows/badges.
+        "render_min_n": 30,
         "tiers": vocab_meta.get("tiers"),
         "tier_examples": tier_examples,
         "summary": {k: summary[k] for k in ("measurements", "flips", "flip_classes",

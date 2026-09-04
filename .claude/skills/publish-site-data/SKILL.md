@@ -43,10 +43,12 @@ python scripts/urgency_shift.py --publish ../patientwords
 Writes the site's `data/urgency_shift.json`. Tier vocabulary is a draft data file; the
 site's "draft pending domain review" labels stay exactly as they are.
 
-**3. Wired j-lens exporters — these three ONLY, in this order.**
+**3. Wired j-lens exporters — these five ONLY, in this order.**
 ```
 python scripts/jlens_insights.py --site ../patientwords
 python scripts/export_jlens_depth.py --block ... --exemplar-stem ... --exemplar-index ... --site ../patientwords
+python scripts/export_jlens_transport.py --site ../patientwords
+python scripts/export_jlens_loglens.py --site ../patientwords
 python scripts/export_pair_swaps.py --site ../patientwords --depth ../patientwords/data/jlens_depth.json
 ```
 - For `export_jlens_depth.py`, reuse the pins of the committed
@@ -58,13 +60,11 @@ python scripts/export_pair_swaps.py --site ../patientwords --depth ../patientwor
   payload past a refusal.
 - `export_pair_swaps.py` runs AFTER depth/insights so its `<batch>#<index>` join is
   current; new batches show target-only until it re-runs. That is expected.
-- **NOT wired — do not run in the cycle:** `export_jlens_transport.py` and
-  `export_jlens_loglens.py` (owner decision 2026-07-19). Their inputs are not on this
-  branch (transport's census batch has 2 of 25 `save_raw` pairs here; no `__loglens_`
-  runs at all); a cycle regen would thin the published transport file from 23 pairs to 1.
-  Leave both site files as their committed snapshots until the missing `save_raw` /
-  `LOGIT_LENS` runs land on this branch AND a regen is re-verified to reproduce the
-  live structure.
+- **Transport and loglens wired 2026-07-23 (owner option 1).** The census batch's
+  25/25 `save_raw` JACOBIAN_LENS runs and its `__loglens_` LOGIT_LENS runs both landed
+  on this branch, and each exporter's regen reproduced its committed site file
+  byte-identically except `generated_utc` (identical census numbers, exemplars, and
+  agreement counts). All five j-lens exporters now run in the cycle.
 
 **4. Trace-URL restamp.** `python scripts/export_traces_site.py --stamp-only`
 Re-stamps every scenario's `trace_url` in the payload for the self-building
@@ -109,7 +109,6 @@ Exit 2 (empty sealed set): config error (wrong branch), never a pass.
 ## Never
 
 - Never edit page HTML, page text, figures, or labels — data files only, without exception.
-- Never run the transport/loglens exporters as part of the cycle (snapshot files).
 - Never publish a scale-framing sentence, or any new prose, without explicit owner approval.
 - Never remove or soften "draft pending domain review" labels.
 - Never hand-edit an exported payload, invent a number, or patch past an exporter refusal.
@@ -117,3 +116,12 @@ Exit 2 (empty sealed set): config error (wrong branch), never a pass.
 - Never "correct" intentional misspellings in phrase data; never rewrite `data/simulated/`.
 - Never write secrets into either repo (both public) and never let holdout phrase text
   reach any output or committed file.
+
+**Addendum (2026-07-29, owner directive):** step 3's exporter list gains two
+more, run after `export_pair_swaps.py`:
+```
+python scripts/export_tag_mass.py --site ../patientwords
+python scripts/export_jspace.py --site ../patientwords
+```
+Both $0/offline; `export_jspace.py` refuses (exit 3, site untouched) when a
+source raw is missing — treat as success-with-no-change.

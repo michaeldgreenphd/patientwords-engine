@@ -112,7 +112,10 @@ drafted into the digest + `decisions_pending`, never deployed), `coverage_gaps.p
 (feed its `steer_topics` into the next generation fire), `validate_frontend_contract.py
 --site ../patientwords`, and `python scripts/claim_check.py`. `claim_check` exit 1 or
 `warn:` → put the exact line in the digest headline + `decisions_pending`; NEVER edit
-site prose yourself. Do NOT run the transport/loglens exporters (not wired — §5).
+site prose yourself. The transport/loglens exporters ARE wired into the cycle
+(standing prompt §5, owner option 1 of 2026-07-23, re-confirmed 2026-08-15):
+run them per §5. They are snapshot files, so a run with no new census-batch
+data rewrites only `generated_utc` — that is expected, not a reason to skip.
 Commit data payloads only to `../patientwords`; push the branch, then branch:main.
 
 ## 6 · Dashboard (you are its only writer)

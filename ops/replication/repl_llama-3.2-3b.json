@@ -1,0 +1,23 @@
+{
+ "model": "llama-3.2-3b",
+ "n_phrases": 122,
+ "mean_penalty_pp": -5.0,
+ "downgrades": 9,
+ "upgrades": 0,
+ "choices": [
+  "Population: the 122 rows with model=='llama-3.2-3b' in /home/user/patientwords-engine/urgency_shift.json (119 from batch pairs_20260707T171223Z, 3 from pairs_20260710T011743Z).",
+  "Holdout rule implemented, quoted exactly: exclude a row iff it is a Tier B pair (carries the collector's tierb_split field, i.e. batches landed after the 2026-07-09 registration) AND int(hashlib.sha1(clinical_prompt.encode('utf-8')).hexdigest(), 16) % 10 == 0. I scoped the rule to Tier B because preregistration_tierB.md Amendment 1 says 'every Tier B pair is assigned to an analysis split'; verified my hash convention reproduces the collector's tierb_split labels on all 2037 Tier B rows in the file (224 holdout / 1813 explore, zero disagreements). For llama-3.2-3b this excluded 0 rows (its 3 Tier B rows are all explore-split). If the hash rule were instead applied to ALL rows including pre-registration Tier A, 11 more rows would drop (n=111) \u2014 I judged that contrary to the preregistration text.",
+  "Dedupe: one record per (model, clinical phrase); probabilities = mean of duplicate rows, flip direction = majority vote of flip_class, as the methods list specifies \u2014 a no-op here since all 122 clinical_prompt values are unique.",
+  "Penalty: used the per-row language_penalty field, after verifying against raw trace files that it equals probabilities.patient \u2212 probabilities.clinical for the designated clinical target_token (e.g. batch pairs_20260707T171223Z#1: 0.0025 \u2212 0.0074 = \u22120.0049), which matches the written definition 'prob of clinical next word under patient wording minus under clinical wording'. Mean = \u22120.050347 = \u22125.0 pp (1 decimal). Negative sign retained: patient wording lowers the clinical continuation's probability.",
+  "Downgrades/upgrades: used the per-row flip_class classification field already present (downgrade/upgrade/lateral/uninformative; null = no flip). Phrase-deduped counts: 9 downgrade, 0 upgrade, 12 lateral, 19 uninformative, 82 null.",
+  "Sample check field mapping: the row file's probability fields are named p_top_clinical/p_top_patient; verified them against the top-1 entry of predictive_spread.clinical/.patient in trace_out/<batch>__llama-3.2-3b/batch_summary.part_*.json joined on results[i]['index']; additionally verified language_penalty against probabilities.patient \u2212 probabilities.clinical.",
+  "Sample check tolerance: the collector stores rounded values (e.g. trace 0.1901 \u2192 row 0.19), so a value counts as matching if the trace value rounds to the row value at the row's printed decimal precision or |diff| <= 5e-4.",
+  "Sampling: random.Random(42).sample(sorted_deduped_phrase_list, 15) \u2014 sampled from the lexicographically sorted phrase list for determinism since the prompt did not fix an ordering.",
+  "Did not open any *stats* file, paired_stats*.py, or published model_stats.json; worked only from urgency_shift.json rows, trace_out batch summaries, technical/index.html methods list, and preregistration_tierB.md."
+ ],
+ "sample_check": {
+  "n_sampled": 15,
+  "n_matched": 15,
+  "mismatches": []
+ }
+}

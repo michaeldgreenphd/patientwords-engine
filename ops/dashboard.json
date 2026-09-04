@@ -1,134 +1,1200 @@
 {
- "schema_version": 1,
- "updated_utc": "2026-07-09T12:58:15Z",
- "updated_by": "session",
- "queue": {
-  "circuit-trace": {
-   "running": {
-    "fired_utc": "2026-07-09T11:52:00Z",
-    "commit": "0755730",
-    "note": "haiku-translator arm on downgrades_txhaiku (20-downgrade set)"
-   },
-   "pending": {
-    "fired_utc": "2026-07-09T11:55:00Z",
-    "commit": "2167d79",
-    "note": "trace of second haiku batch pairs_20260707T025842Z (equivalence n)"
-   }
+  "schema_version": 1,
+  "updated_utc": "2026-09-04T14:47:00Z",
+  "updated_by": "routine",
+  "queue": {
+    "circuit-trace": {
+      "running": {
+        "fired_utc": "2026-09-04T14:43:12Z",
+        "commit": "",
+        "note": "PARK (resting-state rule) fired after the sentinel was GitHub-confirmed terminal. STILL RUNNING at cycle close (run 33885370863) - entry deliberately left unresolved."
+      },
+      "pending": null
+    },
+    "logits-eval": {
+      "running": null,
+      "pending": null
+    },
+    "activation-patching": {
+      "running": null,
+      "pending": null
+    },
+    "jlens-readout": {
+      "running": null,
+      "pending": null
+    },
+    "scenario-generation": {
+      "running": null,
+      "pending": null
+    },
+    "model-evaluation": {
+      "running": null,
+      "pending": null
+    },
+    "archive-renders": {
+      "running": null,
+      "pending": null
+    },
+    "advice-eval": {
+      "running": null,
+      "pending": null
+    }
   },
-  "logits-eval": {
-   "running": {
-    "fired_utc": "2026-07-09T10:41:59Z",
-    "commit": "",
-    "note": "gemma-3-4b-it unified stem 3/4 refire"
-   },
-   "pending": null
-  },
-  "scenario-generation": {
-   "running": null,
-   "pending": null
-  },
-  "model-evaluation": {
-   "running": null,
-   "pending": null
-  },
-  "archive-renders": {
-   "running": null,
-   "pending": null
-  }
- },
- "runs_recent": [
-  {
-   "workflow": "circuit_trace_evaluation",
-   "fired_utc": "2026-07-09T11:52:00Z",
-   "status": "in_progress",
-   "note": "haiku-translator arm; 12/20 pairs landed by 12:15Z"
-  },
-  {
-   "workflow": "circuit_trace_evaluation",
-   "fired_utc": "2026-07-09T11:55:00Z",
-   "status": "pending",
-   "note": "second haiku batch trace, screened 0.02"
-  },
-  {
-   "workflow": "logits_evaluation",
-   "fired_utc": "2026-07-09T10:41:59Z",
-   "status": "in_progress",
-   "note": "gemma-3 stem 3/4 (final unified column)"
-  }
- ],
- "spend": {
-  "generation_ceiling_usd": 8.0,
-  "generation_spent_usd": 0.0,
-  "lifetime_generation_usd": 9.5632,
-  "daily_ceiling_usd": 2.0,
-  "today": {
-   "date": "2026-07-09",
-   "spent_usd": 0.0
-  },
-  "by_day": {
-   "2026-07-09": 0.0,
-   "2026-07-06": 0.5166,
-   "2026-07-07": 7.5623,
-   "2026-07-08": 1.4843
-  },
-  "entries_seen": [
-   "boostgrid_lowrank.report.json",
-   "boostgrid_s20.report.json",
-   "boostgrid_s2p5.report.json",
-   "boostgrid_s5.report.json",
-   "dialects_20260706T232102Z.report.json",
-   "dialects_20260707T000923Z.report.json",
-   "dialects_20260707T023223Z.report.json",
-   "dialects_20260707T155124Z.report.json",
-   "dialects_20260707T235906Z.report.json",
-   "dialects_20260708T011831Z.report.json",
-   "dialects_20260708T120729Z.report.json",
-   "dialects_20260708T201616Z.report.json",
-   "dialects_20260708T203111Z.report.json",
-   "dialects_20260708T212709Z.report.json",
-   "dialects_20260708T215356Z.report.json",
-   "downgrades_txhaiku.report.json",
-   "featured_sim85.report.json",
-   "featured_sim85_r2.report.json",
-   "grandma_r2.report.json",
-   "pairs_20260706T175614Z.report.json",
-   "pairs_20260706T201750Z.report.json",
-   "pairs_20260706T210703Z.report.json",
-   "pairs_20260707T023656Z.report.json",
-   "pairs_20260707T023704Z.report.json",
-   "pairs_20260707T023706Z.report.json",
-   "pairs_20260707T025842Z.report.json",
-   "pairs_20260707T154345Z.report.json",
-   "pairs_20260707T171223Z.report.json",
-   "pairs_20260707T215921Z.report.json",
-   "pairs_20260707T221438Z.report.json",
-   "quadrants_20260706T191617Z.report.json",
-   "urgency_downgrades_20260707T1__context.report.json",
-   "urgency_downgrades_20260707T1_steer.report.json",
-   "urgency_downgrades_boostgrid.report.json"
+  "runs_recent": [
+    {
+      "workflow": "circuit_trace_evaluation",
+      "run_id": 33883844106,
+      "fired_utc": "2026-09-04T14:27:34Z",
+      "status": "success",
+      "note": "Daily drift sentinel 2026-09-04 - the only measurement fire this cycle, and it landed well inside item 3b's 35-minute window. GitHub-confirmed completed/success 14:27:34Z -> 14:41:53Z (14m19s, against 20m14s on 09-01, 38m38s on 08-29, 13m59s on 08-28). Outputs verified on the branch before resolving: trace_out/drift_sentinel_20260904/batch_summary.part_01.json, backend 'hosted', source_set gemmascope-transcoder-16k, 3 rows, idx 1..3, language_penalty present on all three (0.045, 0.369, -0.046) - byte-identical to the 09-01 readings. Entry resolved and the verdict run in-cycle. SIXTH consecutive healthy sentinel for Neuronpedia /api/graph/generate since the 08-22..08-25 outage. drift_series.json 35 -> 36 measured days, now ending 20260904."
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "run_id": 33885370863,
+      "fired_utc": "2026-09-04T14:43:20Z",
+      "status": "in_progress",
+      "note": "Item 3c re-park of the circuit-trace lane, fired 14:43:12Z only after the sentinel run 33883844106 was GitHub-confirmed terminal (that confirmation is the stated basis for --ignore-settle, which the standing prompt itself prescribes for this re-park). $0, commit_outputs false, so nothing lands and nothing needs harvesting. NOT TERMINAL AT CYCLE CLOSE: GitHub read status 'in_progress' with no conclusion at 14:46:51Z, 3m31s in - well short of the 12m15s/12m18s the 08-29 and 09-02 parks took, so this is an ordinary in-flight run, NOT a stall. Per the resolve-only-when-terminal rule the journal entry was left UNRESOLVED rather than assumed good; see blocker PARK-UNRESOLVED-20260904 for the next cycle's opening harvest. The trigger file itself is already parked on disk and pushed, so the resting-state guarantee holds regardless of how the run finishes."
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "run_id": 33514886802,
+      "fired_utc": "2026-09-01T13:41:17Z",
+      "status": "success",
+      "note": "Daily drift sentinel 2026-09-01 - the only measurement fire this cycle, and it landed comfortably inside item 3b's window. GitHub-confirmed completed/success 13:41:17Z -> 14:01:31Z (20m14s, against 38m38s on 08-29, 13m59s on 08-28, 16m05s on 08-27 and 34m42s on 08-26). Outputs verified on the branch before resolving: trace_out/drift_sentinel_20260901/batch_summary.part_01.json, top-level backend 'hosted', 3 rows, idx 1..3, language_penalty present on all three (0.045, 0.369, -0.046), plus six render files. Entry resolved and the verdict run in-cycle. FIFTH consecutive healthy day for Neuronpedia /api/graph/generate since the 08-22..08-25 outage. drift_series.json 34 -> 35 measured days, now ending 20260901."
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "run_id": 33517179556,
+      "fired_utc": "2026-09-01T14:03:48Z",
+      "status": "success",
+      "note": "Item 3c re-park of the circuit-trace lane, fired only after the sentinel run 33514886802 was GitHub-confirmed terminal (that confirmation is the stated basis for --ignore-settle, which the standing prompt itself prescribes for this re-park). GitHub-confirmed completed/success 14:03:48Z -> 14:11:13Z (7m25s). $0, commit_outputs false, so nothing landed and nothing needed harvesting. Entry resolved in-cycle. All eight trigger files verified PARKED at cycle close: circuit-trace on today's nonce 2026-09-01T14:03:44Z, the other seven still on their 2026-08-29 park nonces. All nine lanes read 0 active."
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "run_id": 33252186725,
+      "fired_utc": "2026-08-29T12:18:52Z",
+      "status": "success",
+      "note": "Daily drift sentinel 2026-08-29 - SUCCEEDED, but only after overrunning item 3b's wait window. Fired 12:18:52Z; GitHub-confirmed completed/success at 12:57:30Z (38m38s - the SLOWEST run on record, against 34m42s on 08-26, 16m05s on 08-27 and 13m59s on 08-28). The cycle served the full 35-minute wait (fetch-polled every 45-60s from 12:19Z to 12:54:39Z, bound 12:53:49Z) and the run had not landed, so the entry was first left unresolved per item 3b. A final GitHub status check before closing found it terminal, so it was harvested in-cycle instead: batch_summary.part_01.json verified (top-level backend 'hosted', 3 rows, idx 1..3) plus six render files, entry resolved, verdict run. FOURTH consecutive healthy day for Neuronpedia /api/graph/generate after the four dark days 08-22..08-25. drift_series.json 33 -> 34 measured days, now ending 20260829."
+    },
+    {
+      "workflow": "jlens_readout",
+      "run_id": 33252190153,
+      "fired_utc": "2026-08-29T12:18:58Z",
+      "status": "success",
+      "note": "Daily lens sentinel 2026-08-29, both served host ids. completed/success 12:19:39Z; jlens_summary.part_01.json opened for each id and verified 3 results (idx 1..3). Resolved. The two ids diverged on ALL THREE pairs again - depth trajectory on 1/2/3, first_layer on 2/3, last_layer_rank on 3 - byte-identical in pattern to 08-27 and 08-28. That is every measured day since 2026-07-31; the standing LENS-HOST-SEPARATION finding, not an alias. Separately, BOTH ids' results are byte-identical to their own 08-28 readouts, so no internals drift day-over-day."
+    },
+    {
+      "workflow": "logits_evaluation",
+      "run_id": 33252194654,
+      "fired_utc": "2026-08-29T12:19:04Z",
+      "status": "success",
+      "note": "backfill PREDICTIONS pairs_20260706T172135Z 1-2/2 x llama-3.2-3b - planner item 4a top pick. completed/success 12:24:10Z; part_01 verified backend 'logits', idx 1..2, 2/2 rows carrying language_penalty. Resolved. llama-3.2-3b batch coverage 18/39 -> 19/39."
+    },
+    {
+      "workflow": "logits_evaluation",
+      "run_id": 33252251082,
+      "fired_utc": "2026-08-29T12:20:26Z",
+      "status": "success",
+      "note": "backfill PREDICTIONS pairs_20260706T172135Z 1-2/2 x olmo-2-1b - chained pending. completed/success 12:26:31Z; part_01 verified backend 'logits', idx 1..2, 2/2 penalties. Resolved. olmo-2-1b batch coverage 18/39 -> 19/39. This fire exited 1 (push rejected non-fast-forward because CI had committed outputs meanwhile); per the standing boundary it was NEVER re-fired - the written trigger file and journal entry were committed by hand, rebased and pushed, and the trigger payload was read back from disk and verified correct."
+    },
+    {
+      "workflow": "logits_evaluation",
+      "run_id": 33252822381,
+      "fired_utc": "2026-08-29T12:33:57Z",
+      "status": "success",
+      "note": "backfill PREDICTIONS pairs_20260706T175614Z 1-10/10 x llama-3.2-3b - the cycle's third leg, refilling the lane after the first two closed. completed/success 12:46:33Z; part_01 verified backend 'logits', idx 1..10, 10/10 penalties. Resolved. llama-3.2-3b batch coverage 19/39 -> 20/39. Settle bypass used once, on the basis that BOTH prior legs were GitHub-confirmed completed/success with outputs committed and verified."
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "run_id": 33172841497,
+      "fired_utc": "2026-08-28T12:51:45Z",
+      "status": "success",
+      "note": "Daily drift sentinel 2026-08-28 - SUCCEEDED. GitHub-confirmed completed/success at 13:05:44Z (13m59s, the fastest of the three post-outage runs: 34m42s on 08-26, 16m05s on 08-27). All three pairs traced (batch_summary.part_01.json, top-level backend 'hosted', idx 1..3) plus six render files. Waited out per item 3b, verified, resolved, verdict run. THIRD consecutive healthy day for Neuronpedia /api/graph/generate after the four dark days 08-22..08-25. drift_series.json 32 -> 33 measured days, now ending 20260828."
+    },
+    {
+      "workflow": "jlens_readout",
+      "run_id": 33172848364,
+      "fired_utc": "2026-08-28T12:51:51Z",
+      "status": "success",
+      "note": "Daily lens sentinel 2026-08-28, both served host ids. completed/success 12:52:32Z; jlens_summary.part_01.json opened for each id and verified 3 results (idx 1..3). Resolved. The two ids diverged on ALL THREE pairs again - depth on 1/2/3, first_layer on 2/3, last_layer_rank on 3, byte-identical in pattern to 08-27. That is every measured day since 2026-07-31; the standing LENS-HOST-SEPARATION finding, not an alias."
+    },
+    {
+      "workflow": "jlens_readout",
+      "run_id": 33172857288,
+      "fired_utc": "2026-08-28T12:51:55Z",
+      "status": "success",
+      "note": "txcorpus priority2 lens chunk 14 - THE FINAL CHUNK (pairs 326-352 of 352). completed/success 12:53:50Z; jlens_summary.part_326.json verified 27 rows, idx 326..352. Resolved. THE TRANSLATED-CORPUS LENS AXIS IS NOW CLOSED: recounted from disk at 352/352 distinct indices, zero missing. Fourteen chunks over 2026-07-17..2026-08-28."
+    },
+    {
+      "workflow": "logits_evaluation",
+      "run_id": 33172871223,
+      "fired_utc": "2026-08-28T12:52:10Z",
+      "status": "success",
+      "note": "backfill PREDICTIONS pairs_20260706T172135Z 1-2/2 x gemma-2-2b - planner item 4a top pick. completed/success 12:57:28Z; part_01 verified backend 'logits', idx 1..2, 2/2 rows carrying language_penalty. Resolved. gemma-2-2b batch coverage 18/39 -> 19/39."
+    },
+    {
+      "workflow": "logits_evaluation",
+      "run_id": 33172967463,
+      "fired_utc": "2026-08-28T12:52:32Z",
+      "status": "success",
+      "note": "backfill PREDICTIONS pairs_20260706T175614Z 1-10/10 x gemma-2-2b - chained pending. LANDED LATE, after this cycle's first chain pass: GitHub-confirmed completed/success at 13:15:12Z; part_01 verified backend 'logits', idx 1..10, 10/10 rows carrying language_penalty. Resolved. The FULL affected chain was then re-run rather than one script - the same consistency rule the 08-25/26/27 cycles applied - and it moved no published statistic (model_stats provenance-only again, urgency_shift byte-identical). gemma-2-2b batch coverage 19/39 -> 20/39. Its display_title reads 'Ledger: fold in...' because the exit-1 fire's trigger file was pushed in the same commit as the ledger update during the hand repair; the trigger payload itself was verified correct after the push."
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "run_id": 33074722672,
+      "fired_utc": "2026-08-27T13:01:40Z",
+      "status": "success",
+      "note": "Daily drift sentinel 2026-08-27 - SUCCEEDED. GitHub-confirmed completed/success at 13:17:45Z (16m05s, less than half the 34m42s the 08-26 recovery run took). All three pairs traced (batch_summary.part_01.json, idx 1..3, top-level backend 'hosted') plus six render files. Waited out per item 3b (fetch-polled to 13:17:56Z, well inside the 35-minute bound), verified, resolved, verdict run. SECOND consecutive healthy day for Neuronpedia /api/graph/generate after the four dark days 08-22..08-25. drift_series.json 31 -> 32 measured days, now ending 20260827."
+    },
+    {
+      "workflow": "jlens_readout",
+      "run_id": 33074730539,
+      "fired_utc": "2026-08-27T13:01:45Z",
+      "status": "success",
+      "note": "Daily lens sentinel 2026-08-27, both served host ids. completed/success 13:02:30Z; jlens_summary.part_01.json opened for each id and verified 3 results (idx 1..3). Resolved. The two ids diverged on ALL THREE pairs again (depth on 1/2/3, first_layer on 2/3, last_layer_rank on 3) - the standing LENS-HOST-SEPARATION finding, not an alias."
+    },
+    {
+      "workflow": "jlens_readout",
+      "run_id": 33074739469,
+      "fired_utc": "2026-08-27T13:01:51Z",
+      "status": "success",
+      "note": "txcorpus priority2 lens chunk 13 (pairs 301-325 of 352), item 3c2 idle-slot fill. completed/success 13:04:05Z; jlens_summary.part_301.json verified 25 rows, idx 301..325. Resolved. txcorpus lens coverage 300 -> 325/352; one 27-pair chunk left to close the corpus."
+    },
+    {
+      "workflow": "logits_evaluation",
+      "run_id": 33074749539,
+      "fired_utc": "2026-08-27T13:01:59Z",
+      "status": "success",
+      "note": "backfill PREDICTIONS pairs_20260706T172135Z 1-2/2 x gemma-2-2b-it - planner item 4a top pick. completed/success 13:06:23Z; part_01 verified idx 1..2, 2/2 penalties. Resolved."
+    }
   ],
-  "last_scan_utc": "2026-07-09T12:58:15Z",
-  "alerts": []
- },
- "tierb": {
-  "target_pairs": 1600,
-  "generator": "claude-haiku-4-5",
-  "start_utc": null,
-  "accepted_pairs": 0,
-  "traced_pairs": 0,
-  "screened_in_pairs": 0,
-  "batches": []
- },
- "verdicts": [],
- "findings_delta": [
-  {
-   "date": "2026-07-09",
-   "text": "haiku generator evidence complete: validator yield 76% vs opus 60%, screen-in 55% vs 48%, penalty at least as strong; translator arm tracing now"
+  "spend": {
+    "generation_ceiling_usd": 8.0,
+    "generation_spent_usd": 2.7678,
+    "lifetime_generation_usd": 71.4448,
+    "daily_ceiling_usd": 2.0,
+    "today": {
+      "date": "2026-08-28",
+      "spent_usd": 0.0,
+      "anthropic_usd": 0.0,
+      "openrouter_usd": 0.0
+    },
+    "by_day": {
+      "2026-07-09": 0.0039,
+      "2026-07-06": 0.5166,
+      "2026-07-07": 7.5623,
+      "2026-07-08": 1.4843,
+      "2026-07-10": 0.4063,
+      "2026-07-11": 0.1424,
+      "2026-07-12": 0.295,
+      "2026-07-13": 1.3391,
+      "2026-07-14": 0.4109,
+      "2026-07-15": 0.2437,
+      "2026-07-16": 0.4994,
+      "2026-07-17": 0.2406,
+      "2026-07-18": 0.1836,
+      "2026-07-19": 0.2449,
+      "2026-07-22": 0.9646,
+      "2026-07-23": 9.2915,
+      "2026-07-24": 0.3484,
+      "2026-07-28": 0.6624,
+      "2026-07-29": 9.1581,
+      "2026-07-31": 0.1794,
+      "2026-07-30": 0.0588,
+      "2026-08-04": 12.6863,
+      "2026-08-03": 0.1503,
+      "2026-08-05": 0.5608,
+      "2026-08-06": 0.168,
+      "2026-08-07": 0.922,
+      "2026-08-08": 18.2355,
+      "2026-08-09": 1.872,
+      "2026-08-11": 1.7939,
+      "2026-08-22": 0.0,
+      "2026-08-21": 0.4812,
+      "2026-08-23": 0.034,
+      "2026-08-24": 0.0,
+      "2026-08-27": 0.1206
+    },
+    "entries_seen": [
+      "boostgrid_lowrank.report.json",
+      "boostgrid_s20.report.json",
+      "boostgrid_s2p5.report.json",
+      "boostgrid_s5.report.json",
+      "dialects_20260706T232102Z.report.json",
+      "dialects_20260707T000923Z.report.json",
+      "dialects_20260707T023223Z.report.json",
+      "dialects_20260707T155124Z.report.json",
+      "dialects_20260707T235906Z.report.json",
+      "dialects_20260708T011831Z.report.json",
+      "dialects_20260708T120729Z.report.json",
+      "dialects_20260708T201616Z.report.json",
+      "dialects_20260708T203111Z.report.json",
+      "dialects_20260708T212709Z.report.json",
+      "dialects_20260708T215356Z.report.json",
+      "downgrades_txhaiku.report.json",
+      "featured_sim85.report.json",
+      "featured_sim85_r2.report.json",
+      "grandma_r2.report.json",
+      "pairs_20260706T175614Z.report.json",
+      "pairs_20260706T201750Z.report.json",
+      "pairs_20260706T210703Z.report.json",
+      "pairs_20260707T023656Z.report.json",
+      "pairs_20260707T023704Z.report.json",
+      "pairs_20260707T023706Z.report.json",
+      "pairs_20260707T025842Z.report.json",
+      "pairs_20260707T154345Z.report.json",
+      "pairs_20260707T171223Z.report.json",
+      "pairs_20260707T215921Z.report.json",
+      "pairs_20260707T221438Z.report.json",
+      "quadrants_20260706T191617Z.report.json",
+      "urgency_downgrades_20260707T1__context.report.json",
+      "urgency_downgrades_20260707T1_steer.report.json",
+      "urgency_downgrades_boostgrid.report.json",
+      "pairs_20260710T011743Z.report.json",
+      "pairs_20260710T050657Z.report.json",
+      "pairs_20260710T092635Z.report.json",
+      "pairs_20260710T133708Z.report.json",
+      "pairs_20260710T163230Z.report.json",
+      "pairs_20260711T051145Z.report.json",
+      "pairs_20260711T051145Z.mitigation.report.json",
+      "pairs_20260711T131752Z.report.json",
+      "pairs_20260712T051903Z.report.json",
+      "drift_sentinel.report.json",
+      "pairs_20260711T051145Z_txopus.mitigation.report.json",
+      "pairs_20260711T051145Z_txopus.report.json",
+      "pairs_20260711T051145Z_txplacebo.mitigation.report.json",
+      "pairs_20260711T051145Z_txplacebo.report.json",
+      "pairs_20260712T163501Z.report.json",
+      "pairs_20260713T031252Z.report.json",
+      "pairs_20260713T050937Z.report.json",
+      "pairs_20260713T050939Z.report.json",
+      "pairs_20260713T135755Z.report.json",
+      "txcorpus_20260714T224455Z.report.json",
+      "pairs_20260714T135150Z.report.json",
+      "quadrants_20260715T142413Z.report.json",
+      "pairs_20260715T132350Z.report.json",
+      "pairs_20260716T133552Z.report.json",
+      "pairs_20260717T132235Z.report.json",
+      "pairs_20260718T133020Z.report.json",
+      "quadrants_20260719T191948Z.report.json",
+      "pairs_20260719T132706Z.report.json",
+      "responses_stimuli_20260721T235403Z.report.json",
+      "dialects_20260723T001434Z.report.json",
+      "judgments_stimuli_20260721T235403Z.report.json",
+      "judgments_stimuli_20260722T112140Z.report.json",
+      "responses_stimuli_20260722T003502Z.report.json",
+      "responses_stimuli_20260722T112140Z.report.json",
+      "judgments_stimuli_20260722T003502Z.report.json",
+      "advnat_20260728T144020Z.report.json",
+      "responses_stimuli_20260728T194624Z.report.json",
+      "judgments_stimuli_20260728T194624Z.report.json",
+      "quadrants_20260729T151007Z.report.json",
+      "featured_sim85_r3.report.json",
+      "downgrades_txhaiku/mitigation.part_01.report.json",
+      "downgrades_txhaiku/mitigation.part_04.report.json",
+      "downgrades_txhaiku/mitigation.part_05.report.json",
+      "downgrades_txhaiku/mitigation.part_06.report.json",
+      "downgrades_txhaiku/mitigation.part_11.report.json",
+      "downgrades_txhaiku/mitigation.part_15.report.json",
+      "downgrades_txhaiku/mitigation.part_16.report.json",
+      "downgrades_txhaiku/mitigation.part_19.report.json",
+      "downgrades_txhaiku/mitigation.part_20.report.json",
+      "imported_pairs/mitigation.part_01.report.json",
+      "imported_pairs/mitigation.part_15.report.json",
+      "pairs_20260711T051145Z/mitigation.part_01.report.json",
+      "pairs_20260711T051145Z/mitigation.part_06.report.json",
+      "pairs_20260711T051145Z/mitigation.part_11.report.json",
+      "pairs_20260711T051145Z/mitigation.part_16.report.json",
+      "pairs_20260711T051145Z/mitigation.part_21.report.json",
+      "pairs_20260711T051145Z/mitigation.part_26.report.json",
+      "pairs_20260711T051145Z/mitigation.part_31.report.json",
+      "pairs_20260711T051145Z/mitigation.part_36.report.json",
+      "pairs_20260711T051145Z/mitigation.part_41.report.json",
+      "pairs_20260711T051145Z/mitigation.part_46.report.json",
+      "pairs_20260711T051145Z_txopus/mitigation.part_01.report.json",
+      "pairs_20260711T051145Z_txopus/mitigation.part_06.report.json",
+      "pairs_20260711T051145Z_txopus/mitigation.part_11.report.json",
+      "pairs_20260711T051145Z_txopus/mitigation.part_16.report.json",
+      "pairs_20260711T051145Z_txopus/mitigation.part_21.report.json",
+      "pairs_20260711T051145Z_txopus/mitigation.part_26.report.json",
+      "pairs_20260711T051145Z_txopus/mitigation.part_31.report.json",
+      "pairs_20260711T051145Z_txopus/mitigation.part_36.report.json",
+      "pairs_20260711T051145Z_txopus/mitigation.part_41.report.json",
+      "pairs_20260711T051145Z_txopus/mitigation.part_46.report.json",
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_01.report.json",
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_06.report.json",
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_11.report.json",
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_16.report.json",
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_21.report.json",
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_26.report.json",
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_31.report.json",
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_36.report.json",
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_41.report.json",
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_46.report.json",
+      "pairs_20260719T132706Z/mitigation.part_01.report.json",
+      "pairs_20260719T132706Z/mitigation.part_07.report.json",
+      "pairs_20260719T132706Z/mitigation.part_100.report.json",
+      "pairs_20260719T132706Z/mitigation.part_11.report.json",
+      "pairs_20260719T132706Z/mitigation.part_18.report.json",
+      "pairs_20260719T132706Z/mitigation.part_21.report.json",
+      "pairs_20260719T132706Z/mitigation.part_25.report.json",
+      "pairs_20260719T132706Z/mitigation.part_31.report.json",
+      "pairs_20260719T132706Z/mitigation.part_38.report.json",
+      "pairs_20260719T132706Z/mitigation.part_41.report.json",
+      "pairs_20260719T132706Z/mitigation.part_49.report.json",
+      "pairs_20260719T132706Z/mitigation.part_51.report.json",
+      "pairs_20260719T132706Z/mitigation.part_61.report.json",
+      "pairs_20260719T132706Z/mitigation.part_71.report.json",
+      "pairs_20260719T132706Z/mitigation.part_80.report.json",
+      "pairs_20260719T132706Z/mitigation.part_81.report.json",
+      "pairs_20260719T132706Z/mitigation.part_91.report.json",
+      "urgency_downgrades_20260707T1/mitigation.part_01.report.json",
+      "urgency_downgrades_20260707T1/mitigation.part_11.report.json",
+      "pairs_20260731T211704Z.report.json",
+      "toolcall_smoke_20260804T025400Z.reconciled.report.json",
+      "toolcall_smoke_20260804T042921Z.report.json",
+      "pab_generate_30879016218.reconciled.report.json",
+      "pab_generate_30880027373.reconciled.report.json",
+      "dialects_20260804T120912Z.report.json",
+      "dialects_20260804T121703Z.report.json",
+      "modeleval_20260804T121303Z.report.json",
+      "modeleval_20260804T122241Z.report.json",
+      "pairs_20260803T132340Z.report.json",
+      "pab_evaluate_30928336615.report.json",
+      "pab_generate_30910138394.report.json",
+      "pairs_20260804T190615Z.report.json",
+      "pairs_20260804T192506Z.report.json",
+      "pairs_20260805T002044Z.report.json",
+      "pairs_20260805T140130Z.report.json",
+      "pairs_20260806T135728Z.report.json",
+      "advmc_20260807T135420Z.report.json",
+      "advnat_20260807T150843Z.report.json",
+      "judgments_stimuli_20260807T153329Z.report.json",
+      "responses_stimuli_20260807T153329Z.report.json",
+      "pairs_20260809T172338Z.report.json",
+      "pairs_20260811T190638Z.report.json",
+      "genpilot_oxalpha_20260821T203312Z.report.json",
+      "genpilot_oxalpha_20260821T225739Z.report.json",
+      "genpilot_oxalpha_mc_20260822T011924Z.report.json",
+      "genpilot_oxalpha_term_20260823T003442Z.report.json",
+      "gen_oxalpha_term_20260823T181425Z.report.json",
+      "judgments_stimuli_20260827T141036Z.report.json",
+      "responses_stimuli_20260827T141036Z.report.json"
+    ],
+    "last_scan_utc": "2026-08-28T12:50:56Z",
+    "alerts": [
+      "Daily spend on 2026-07-29 has exceeded the $2 daily ceiling.",
+      "Daily spend on 2026-08-04 has exceeded the $2 daily ceiling.",
+      "Daily spend on 2026-08-08 has exceeded the $2 daily ceiling.",
+      "openrouter lane spend on 2026-08-08 has exceeded its $10 daily ceiling."
+    ],
+    "entries_folded": {
+      "advnat_20260728T144020Z.report.json": 0.6624,
+      "boostgrid_lowrank.report.json": 0.0,
+      "boostgrid_s20.report.json": 0.0,
+      "boostgrid_s2p5.report.json": 0.0,
+      "boostgrid_s5.report.json": 0.0,
+      "dialects_20260706T232102Z.report.json": 0.0099,
+      "dialects_20260707T000923Z.report.json": 0.0831,
+      "dialects_20260707T023223Z.report.json": 0.0836,
+      "dialects_20260707T155124Z.report.json": 0.0536,
+      "dialects_20260707T235906Z.report.json": 0.0134,
+      "dialects_20260708T011831Z.report.json": 0.0149,
+      "dialects_20260708T120729Z.report.json": 0.1893,
+      "dialects_20260708T201616Z.report.json": 0.1498,
+      "dialects_20260708T203111Z.report.json": 0.2521,
+      "dialects_20260708T212709Z.report.json": 0.4651,
+      "dialects_20260708T215356Z.report.json": 0.4131,
+      "dialects_20260723T001434Z.report.json": 0.0937,
+      "downgrades_txhaiku.report.json": 0.0,
+      "drift_sentinel.report.json": 0.0,
+      "featured_sim85.report.json": 0.0,
+      "featured_sim85_r2.report.json": 0.0,
+      "grandma_r2.report.json": 0.0,
+      "pairs_20260706T175614Z.report.json": 0.1238,
+      "pairs_20260706T201750Z.report.json": 0.194,
+      "pairs_20260706T210703Z.report.json": 0.1635,
+      "pairs_20260707T023656Z.report.json": 0.8207,
+      "pairs_20260707T023704Z.report.json": 1.4362,
+      "pairs_20260707T023706Z.report.json": 0.0985,
+      "pairs_20260707T025842Z.report.json": 0.0996,
+      "pairs_20260707T154345Z.report.json": 0.4099,
+      "pairs_20260707T171223Z.report.json": 2.4055,
+      "pairs_20260707T215921Z.report.json": 1.2911,
+      "pairs_20260707T221438Z.report.json": 0.7671,
+      "pairs_20260710T011743Z.report.json": 0.0816,
+      "pairs_20260710T050657Z.report.json": 0.0718,
+      "pairs_20260710T092635Z.report.json": 0.0988,
+      "pairs_20260710T133708Z.report.json": 0.0671,
+      "pairs_20260710T163230Z.report.json": 0.087,
+      "pairs_20260711T051145Z.mitigation.report.json": 0.02,
+      "pairs_20260711T051145Z.report.json": 0.0713,
+      "pairs_20260711T051145Z_txopus.mitigation.report.json": 0.075,
+      "pairs_20260711T051145Z_txopus.report.json": 0.0,
+      "pairs_20260711T051145Z_txplacebo.mitigation.report.json": 0.031,
+      "pairs_20260711T051145Z_txplacebo.report.json": 0.0,
+      "pairs_20260711T131752Z.report.json": 0.0711,
+      "pairs_20260712T051903Z.report.json": 0.0653,
+      "pairs_20260712T163501Z.report.json": 0.175,
+      "pairs_20260713T031252Z.report.json": 0.2612,
+      "pairs_20260713T050937Z.report.json": 0.3969,
+      "pairs_20260713T050939Z.report.json": 0.1728,
+      "pairs_20260713T135755Z.report.json": 0.3966,
+      "pairs_20260714T135150Z.report.json": 0.2102,
+      "pairs_20260715T132350Z.report.json": 0.181,
+      "pairs_20260716T133552Z.report.json": 0.4994,
+      "pairs_20260717T132235Z.report.json": 0.2406,
+      "pairs_20260718T133020Z.report.json": 0.1836,
+      "pairs_20260719T132706Z.report.json": 0.1434,
+      "quadrants_20260706T191617Z.report.json": 0.0254,
+      "quadrants_20260715T142413Z.report.json": 0.0627,
+      "quadrants_20260719T191948Z.report.json": 0.1015,
+      "txcorpus_20260714T224455Z.report.json": 0.197,
+      "urgency_downgrades_20260707T1__context.report.json": 0.0,
+      "urgency_downgrades_20260707T1_steer.report.json": 0.0,
+      "urgency_downgrades_boostgrid.report.json": 0.0,
+      "judgments_stimuli_20260721T235403Z.report.json": 0.1691,
+      "judgments_stimuli_20260722T003502Z.report.json": 0.3484,
+      "judgments_stimuli_20260722T112140Z.report.json": 0.2726,
+      "responses_stimuli_20260721T235403Z.report.json": 8.303688,
+      "responses_stimuli_20260722T003502Z.report.json": 0.951269,
+      "responses_stimuli_20260722T112140Z.report.json": 0.4657,
+      "responses_stimuli_20260728T194624Z.report.json": 8.018407,
+      "judgments_stimuli_20260728T194624Z.report.json": 1.094273,
+      "quadrants_20260729T151007Z.report.json": 0.055488,
+      "featured_sim85_r3.report.json": 0.0,
+      "downgrades_txhaiku/mitigation.part_01.report.json": 0.000567,
+      "downgrades_txhaiku/mitigation.part_04.report.json": 0.000211,
+      "downgrades_txhaiku/mitigation.part_05.report.json": 0.000187,
+      "downgrades_txhaiku/mitigation.part_06.report.json": 0.000923,
+      "downgrades_txhaiku/mitigation.part_11.report.json": 0.00083,
+      "downgrades_txhaiku/mitigation.part_15.report.json": 0.000189,
+      "downgrades_txhaiku/mitigation.part_16.report.json": 0.000573,
+      "downgrades_txhaiku/mitigation.part_19.report.json": 0.000197,
+      "downgrades_txhaiku/mitigation.part_20.report.json": 0.000205,
+      "imported_pairs/mitigation.part_01.report.json": 0.001761,
+      "imported_pairs/mitigation.part_15.report.json": 0.001947,
+      "pairs_20260711T051145Z/mitigation.part_01.report.json": 0.000479,
+      "pairs_20260711T051145Z/mitigation.part_06.report.json": 0.000304,
+      "pairs_20260711T051145Z/mitigation.part_11.report.json": 0.001007,
+      "pairs_20260711T051145Z/mitigation.part_16.report.json": 0.000203,
+      "pairs_20260711T051145Z/mitigation.part_21.report.json": 0.000624,
+      "pairs_20260711T051145Z/mitigation.part_26.report.json": 0.000599,
+      "pairs_20260711T051145Z/mitigation.part_31.report.json": 0.000631,
+      "pairs_20260711T051145Z/mitigation.part_36.report.json": 0.00059,
+      "pairs_20260711T051145Z/mitigation.part_41.report.json": 0.000366,
+      "pairs_20260711T051145Z/mitigation.part_46.report.json": 0.000444,
+      "pairs_20260711T051145Z_txopus/mitigation.part_01.report.json": 0.00242,
+      "pairs_20260711T051145Z_txopus/mitigation.part_06.report.json": 0.00247,
+      "pairs_20260711T051145Z_txopus/mitigation.part_11.report.json": 0.002835,
+      "pairs_20260711T051145Z_txopus/mitigation.part_16.report.json": 0.00094,
+      "pairs_20260711T051145Z_txopus/mitigation.part_21.report.json": 0.003195,
+      "pairs_20260711T051145Z_txopus/mitigation.part_26.report.json": 0.004295,
+      "pairs_20260711T051145Z_txopus/mitigation.part_31.report.json": 0.00382,
+      "pairs_20260711T051145Z_txopus/mitigation.part_36.report.json": 0.0032,
+      "pairs_20260711T051145Z_txopus/mitigation.part_41.report.json": 0.001855,
+      "pairs_20260711T051145Z_txopus/mitigation.part_46.report.json": 0.00403,
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_01.report.json": 0.000504,
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_06.report.json": 0.000509,
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_11.report.json": 0.000789,
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_16.report.json": 0.000193,
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_21.report.json": 0.000604,
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_26.report.json": 0.000859,
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_31.report.json": 0.000814,
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_36.report.json": 0.000635,
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_41.report.json": 0.000381,
+      "pairs_20260711T051145Z_txplacebo/mitigation.part_46.report.json": 0.000801,
+      "pairs_20260719T132706Z/mitigation.part_01.report.json": 0.000952,
+      "pairs_20260719T132706Z/mitigation.part_07.report.json": 0.0063,
+      "pairs_20260719T132706Z/mitigation.part_100.report.json": 0.000855,
+      "pairs_20260719T132706Z/mitigation.part_11.report.json": 0.001346,
+      "pairs_20260719T132706Z/mitigation.part_18.report.json": 0.006135,
+      "pairs_20260719T132706Z/mitigation.part_21.report.json": 0.000721,
+      "pairs_20260719T132706Z/mitigation.part_25.report.json": 0.006255,
+      "pairs_20260719T132706Z/mitigation.part_31.report.json": 0.001372,
+      "pairs_20260719T132706Z/mitigation.part_38.report.json": 0.006415,
+      "pairs_20260719T132706Z/mitigation.part_41.report.json": 0.001509,
+      "pairs_20260719T132706Z/mitigation.part_49.report.json": 0.006595,
+      "pairs_20260719T132706Z/mitigation.part_51.report.json": 0.001916,
+      "pairs_20260719T132706Z/mitigation.part_61.report.json": 0.001931,
+      "pairs_20260719T132706Z/mitigation.part_71.report.json": 0.001735,
+      "pairs_20260719T132706Z/mitigation.part_80.report.json": 0.00697,
+      "pairs_20260719T132706Z/mitigation.part_81.report.json": 0.001962,
+      "pairs_20260719T132706Z/mitigation.part_91.report.json": 0.001899,
+      "urgency_downgrades_20260707T1/mitigation.part_01.report.json": 0.00865,
+      "urgency_downgrades_20260707T1/mitigation.part_11.report.json": 0.01047,
+      "pairs_20260731T211704Z.report.json": 0.179376,
+      "toolcall_smoke_20260804T025400Z.reconciled.report.json": 0.0044689,
+      "toolcall_smoke_20260804T042921Z.report.json": 0.035342,
+      "pab_generate_30879016218.reconciled.report.json": 2.230015,
+      "pab_generate_30880027373.reconciled.report.json": 1.7556,
+      "dialects_20260804T120912Z.report.json": 0.046207,
+      "dialects_20260804T121703Z.report.json": 0.045714,
+      "modeleval_20260804T121303Z.report.json": 0.067947,
+      "modeleval_20260804T122241Z.report.json": 0.068015,
+      "pairs_20260803T132340Z.report.json": 0.150345,
+      "pab_evaluate_30928336615.report.json": 2.037125,
+      "pab_generate_30910138394.report.json": 5.698121,
+      "pairs_20260804T190615Z.report.json": 0.177174,
+      "pairs_20260804T192506Z.report.json": 0.52068,
+      "pairs_20260805T002044Z.report.json": 0.388476,
+      "pairs_20260805T140130Z.report.json": 0.172325,
+      "pairs_20260806T135728Z.report.json": 0.168043,
+      "advmc_20260807T135420Z.report.json": 0.500735,
+      "advnat_20260807T150843Z.report.json": 0.42134,
+      "judgments_stimuli_20260807T153329Z.report.json": 0.356611,
+      "responses_stimuli_20260807T153329Z.report.json": 18.368708,
+      "pairs_20260809T172338Z.report.json": 1.872025,
+      "pairs_20260811T190638Z.report.json": 1.79395,
+      "genpilot_oxalpha_20260821T203312Z.report.json": 0.0,
+      "genpilot_oxalpha_20260821T225739Z.report.json": 0.0,
+      "genpilot_oxalpha_mc_20260822T011924Z.report.json": 0.0,
+      "genpilot_oxalpha_term_20260823T003442Z.report.json": 0.0,
+      "gen_oxalpha_term_20260823T181425Z.report.json": 0.0,
+      "judgments_stimuli_20260827T141036Z.report.json": 0.120591,
+      "responses_stimuli_20260827T141036Z.report.json": 0.183916
+    },
+    "by_day_by_channel": {
+      "anthropic": {
+        "2026-08-04": 2.9628,
+        "2026-08-03": 0.1503,
+        "2026-08-05": 0.5608,
+        "2026-08-06": 0.168,
+        "2026-08-07": 0.922,
+        "2026-08-08": 0.348,
+        "2026-08-09": 1.872,
+        "2026-08-11": 1.7939,
+        "2026-08-23": 0.0086,
+        "2026-08-27": 0.1206
+      },
+      "openrouter": {
+        "2026-08-04": 5.6981,
+        "2026-08-08": 17.8875,
+        "2026-08-22": 0.0,
+        "2026-08-21": 0.4812,
+        "2026-08-23": 0.0254,
+        "2026-08-24": 0.0
+      }
+    },
+    "openrouter_daily_ceiling_usd": 10.0
+  },
+  "tierb": {
+    "target_pairs": 1600,
+    "generator": "claude-haiku-4-5",
+    "start_utc": "2026-07-10T01:14:38Z",
+    "accepted_pairs": 1600,
+    "traced_pairs": 1583,
+    "screened_in_pairs": null,
+    "batches": [
+      {
+        "file": "pairs_20260710T011743Z.json",
+        "accepted": 50,
+        "cost_usd": 0.081596,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260710T050657Z.json",
+        "accepted": 50,
+        "cost_usd": 0.071844,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260710T092635Z.json",
+        "accepted": 50,
+        "cost_usd": 0.098821,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260710T133708Z.json",
+        "accepted": 50,
+        "cost_usd": 0.067113,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260710T163230Z.json",
+        "accepted": 50,
+        "cost_usd": 0.087024,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260711T051145Z.json",
+        "accepted": 50,
+        "cost_usd": 0.071314,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260711T131752Z.json",
+        "accepted": 50,
+        "cost_usd": 0.071073,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260712T051903Z.json",
+        "accepted": 50,
+        "cost_usd": 0.065348,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260712T163501Z.json",
+        "accepted": 100,
+        "cost_usd": 0.175007,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260713T050939Z.json",
+        "accepted": 100,
+        "cost_usd": 0.172764,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260714T135150Z.json",
+        "accepted": 100,
+        "cost_usd": 0.210161,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260715T132350Z.json",
+        "accepted": 100,
+        "cost_usd": 0.181012,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260717T132235Z.json",
+        "accepted": 100,
+        "cost_usd": 0.240611,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260718T133020Z.json",
+        "accepted": 100,
+        "cost_usd": 0.183639,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260719T132706Z.json",
+        "accepted": 100,
+        "cost_usd": 0.143381,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260731T211704Z.json",
+        "accepted": 100,
+        "cost_usd": 0.179376,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260803T132340Z.json",
+        "accepted": 100,
+        "cost_usd": 0.150345,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260804T190615Z.json",
+        "accepted": 100,
+        "cost_usd": 0.177174,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260805T140130Z.json",
+        "accepted": 100,
+        "cost_usd": 0.172325,
+        "status": "landed"
+      },
+      {
+        "file": "pairs_20260806T135728Z.json",
+        "accepted": 100,
+        "cost_usd": 0.168043,
+        "status": "landed"
+      }
+    ],
+    "traced_pairs_any_backend": 1600,
+    "traced_pairs_method": "distinct (batch-stem, results[].index) pairs across trace_out/<stem>*/batch_summary*.json, scoped to the 20 campaign batches in tierb.batches; __jlens/__loglens/__patch/__context dirs excluded. traced_pairs counts hosted-graph backends only, reading the summary's TOP-LEVEL 'backend' field (results[] rows carry no backend key - reading it per-row silently counts every logits row as hosted and returns 1600); traced_pairs_any_backend counts every backend. NO AUTOMATED WRITER - recount before quoting. Recounted from disk 2026-08-29 by the daily cycle: 1,583 hosted-graph and 1,600 any-backend across the 20 campaign batches, unchanged from the 08-28 recount (today's three fires into campaign-adjacent batches were logits legs on pairs_20260706T172135Z/175614Z, which are NOT among the 20 campaign batches, and the only trace fire was the sentinel).",
+    "traced_pairs_recount_utc": "2026-08-29T13:05:00Z",
+    "generation_status": "COMPLETE 2026-08-06: 1,600/1,600 accepted across the 20 cadence batches. The validator-yield stopping rule never tripped. Generation spend closed at $2.7678 of the $8 pre-registered ceiling (35%). No further scenario-generation fire is warranted - priority-1 of the standing prompt is retired for this campaign."
+  },
+  "verdicts": [
+    "INSTRUMENT HEALTHY, sixth consecutive measured sentinel since the 08-22..08-25 outage. The 2026-09-04 drift sentinel succeeded (circuit-trace run 33883844106, GitHub-confirmed completed/success 14:27:34Z -> 14:41:53Z, 14m19s - the fastest of the six, and comfortably inside the 35-minute item 3b bound that the 08-29 run overran at 38m38s). Outputs verified before the verdict: batch_summary.part_01.json, backend 'hosted', source_set gemmascope-transcoder-16k, 3 rows, idx 1..3, language_penalty present on all three (0.045, 0.369, -0.046) - byte-identical to the 09-01 readings. data/drift_series.json now holds 36 measured days ending 20260904. Today vs 20260901 reads max |dp| 0.0 at pair 1 clinical with top words unchanged: NO NEW BREACH. Over the full span 2026-07-13..2026-09-04 the series has 36 measured days and exactly TWO breaches over the 0.01 threshold - 20260714->20260715 max |dp| 0.027 and 20260813->20260814 max |dp| 0.023, both at pair 2 patient, both with top words unchanged. Note the comparison spans a 3-day gap (20260901 -> 20260904): the cron downshifted to every 3 days on 08-29, so 09-02 and 09-03 are SCHEDULED gaps, not holes in the instrument.",
+    "PUBLISHED DATA IS HONEST, checked against the committed site copies both before and after this cycle's publish. validate_frontend_contract.py --site ../patientwords: 0 errors, 1 warning (the standing urgency_shift orphan-row warning, 1728/13652 rows joining no published scenario - unchanged). claim_check.py: all claims verified against their sources. seal_check.py --site ../patientwords --extra docs,ops: CLEAN, 173 sealed phrases, no hits across 3 roots - a populated sealed set, so not the exit-2 empty-config case. The six advice-arm STALE lines (anthropic, deepseek, google, moonshotai, openai, xai) carry deltas byte-identical to 08-28, 08-29 and 09-01 - responses_count 1825 -> 1834, judgments_count 1800 -> 2652 - so nothing moved there this cycle; they remain explained by ADVICE-PAYLOAD-UNPUBLISHED-20260828 and are informational, not errors. ONE CAVEAT ON REACH, new this cycle: these gates read the OPS BRANCH copies, and the live GitHub Pages site (patientwords main) is two sentinel publishes behind at 34 measured days ending 20260828. Nothing on the live site is wrong, only older - see blocker and decision SITE-MAIN-LAG-20260904.",
+    "Cross-model asymmetry holds at scale (source: patientwords/data/model_stats.json, last refreshed 2026-08-29 by paired_stats_rigor.py; 186 confirmatory-holdout pairs withheld from the payload, holdout phrases and rows excluded under Amendment 1, outcome-selected supplementary rows excluded from the confirmatory population under POPULATION-DEF B). Ten models measured; every mean language penalty is negative and 10 of 10 have a 95% CI excluding zero. Range -0.0293 (apertus-8b-meditronfo) to -0.0507 (gemma-3-4b-it). NOT recomputed this cycle - no new cross-model measurement landed, and maintenance mode does not republish unchanged data."
+  ],
+  "findings_delta": [
+    {
+      "date": "2026-08-29",
+      "text": "TWO MODELS MOVED - the first movement cycle since 2026-08-26. llama-3.2-3b took both of this cycle's larger legs (pairs_20260706T172135Z 2 pairs and 175614Z 10 pairs): 1,066 -> 1,078 unique phrases, mean -0.0314 -> -0.0316, sign-test downgrades 50 -> 51, p_raw 1.29e-03 -> 9.14e-04, BH q 1.29e-03 -> 1.05e-03. olmo-2-1b took the 2-pair leg: 1,066 -> 1,068 phrases, mean -0.0434 -> -0.0435. gemma-2-2b-it's BH q moved 1.26e-03 -> 1.05e-03 purely on re-ranking behind llama's new p. All ten models stay negative with CIs excluding zero."
+    },
+    {
+      "date": "2026-08-29",
+      "text": "convergence.json WAS NINE DAYS STALE and caught up this cycle. Its committed generated_utc was 2026-08-20T12:40:27Z, so the accumulation fold on the site's Technical page Part 4 had not moved since 08-20 while the legs behind it landed daily. Regenerating took gemma-2-2b-it, llama-3.2-3b and olmo-2-1b from 24 -> 33 accumulation points each; apertus-8b-meditronfo and meditron3-8b kept 33 points with refreshed values. Cause: convergence_tracker.py is NOT named in standing prompt section 5, which is exactly the omission the HANDOFF_20260804 correction register records against the publish-site-data skill. It has no generated_utc consumer that would have flagged it either. OWNER/DOC ITEM: add convergence_tracker.py to section 5 so it cannot silently fall behind again."
+    },
+    {
+      "date": "2026-08-29",
+      "text": "Cross-model PREDICTIONS backfill 262 -> 265 of 390 batch-legs (125 remaining), recomputed from backfill_planner.coverage() after all three legs landed. llama-3.2-3b 18 -> 20 of 39 and olmo-2-1b 18 -> 19; every other model unchanged (medgemma-4b-it, meditron3-8b, apertus-8b-meditronfo 39 each; gemma-3-4b-it 24; qwen3-1.7b 24; qwen3-4b 22; gemma-2-2b 20; gemma-2-2b-it 19). Three legs is above the 08-27/08-28 rate of two, but the lane finished the cycle with only one leg fired into it and its pending slot empty (see notes): at two to four legs a cycle this axis stays roughly 31-62 cycles out, and BACKFILL-DRIVER-SINGLE-20260827 is unchanged."
+    },
+    {
+      "date": "2026-08-29",
+      "text": "Contract-gate orphan rows 1,717 -> 1,728 (denominator 13,639 -> 13,652). The 11 added orphans are rows from the two backfilled batches (pairs_20260706T172135Z, pairs_20260706T175614Z), neither of which is among the 27 stamps in the public payload. Expected, the same mechanism as the 08-27 and 08-28 moves, not a regression. Gate still exits 0 with 0 errors."
+    },
+    {
+      "date": "2026-08-29",
+      "text": "DRIFT verdict: no new breach - but the sentinel took 38m38s, the slowest on record, and overran item 3b's 35-minute wait. Run 33252186725 completed/success 12:57:30Z, 3m41s after the poll gave up; a final GitHub status check before closing recovered it in-cycle, so nothing was deferred. Series 33 -> 34 measured days ending 20260829; today vs 20260828 max |dp| 0.0, top words unchanged. Fourth healthy Neuronpedia day after the 08-22..08-25 outage. Two models moved: llama-3.2-3b 1,066 -> 1,078 phrases (mean -0.0314 -> -0.0316) and olmo-2-1b 1,066 -> 1,068; all ten still negative with CIs excluding zero. 5 fires, all $0, ALL FIVE terminal and resolved; every lane left empty."
+    },
+    {
+      "date": "2026-08-28",
+      "text": "THE TXCORPUS LENS CORPUS IS CLOSED: 352/352. Chunk 14 (pairs 326-352, 27 rows verified idx 326..352) landed and was resolved this cycle, and a from-disk recount confirms zero missing indices across the whole priority2 corpus. Fourteen chunks since 2026-07-17. translation_scale lens block: n_paired 350 -> 377, never-formed 149 -> 159, recovered 40 -> 43, lost by translation 18 -> 23. Item 3c2's standing corpus fill has no work left; idle jlens slots now fall through to the backfill planner, which reports LENS COMPLETE 39/39."
+    },
+    {
+      "date": "2026-08-28",
+      "text": "NO published statistic moved. model_stats.json differs from yesterday's copy in exactly four lines, all provenance (engine_sha 65fdcc60999a+dirty -> 48d2c9c1d0d6+dirty, generated_utc). All ten models keep their n, mean, CI and sign test. This is the first no-movement cycle since 2026-08-23 and it is expected: only one small logits leg landed, on pairs already covered for that model by the hosted-trace path."
+    },
+    {
+      "date": "2026-08-28",
+      "text": "Cross-model PREDICTIONS backfill 260 -> 262 of 390 batch-legs (128 remaining), recomputed from backfill_planner.coverage() after BOTH legs landed. gemma-2-2b 18 -> 20 of 39; every other model unchanged (medgemma-4b-it, meditron3-8b, apertus-8b-meditronfo 39 each; gemma-3-4b-it 24; qwen3-1.7b 24; qwen3-4b 22; gemma-2-2b-it 19; llama-3.2-3b 18; olmo-2-1b 18). Both legs closed their batches, matching the 08-27 cycle's rate of two per running+pending fill. At two to four legs a cycle this axis is roughly 32-64 cycles out - the pace question in BACKFILL-DRIVER-SINGLE-20260827 is unchanged."
+    },
+    {
+      "date": "2026-08-28",
+      "text": "Contract-gate orphan rows 1,715 -> 1,717 (denominator 13,639 -> 13,641). The two added orphans are the gemma-2-2b rows from the landed backfill leg on pairs_20260706T172135Z, a batch that is not among the 27 stamps in the public payload. Expected, not a regression - the same mechanism as the 08-27 move."
+    },
+    {
+      "date": "2026-08-28",
+      "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 33172841497, 13m59s) - third healthy Neuronpedia day after the 08-22..25 outage, and the fastest of the three. Series 32 -> 33 measured days ending 20260828; today vs 20260827 max |dp| 0.0, top words unchanged. Two breaches total, both historical (20260715 0.027, 20260814 0.023). 5 fires, all $0, ALL FIVE terminal and resolved by cycle close; every lane left empty."
+    },
+    {
+      "date": "2026-08-27",
+      "text": "gemma-2-2b-it was the only model to move: 1,027 -> 1,058 unique phrases, mean -0.0398 -> -0.0403, CI [-0.0507, -0.0299]. Four backfill legs closed four batches for it (pairs_20260706T172135Z, 175614Z, 201750Z, 210703Z), taking its batch coverage 15/39 -> 19/39. Still negative with a CI excluding zero; no crossing, no sign change."
+    },
+    {
+      "date": "2026-08-27",
+      "text": "Both 8B medical fine-tunes reached 1,864 unique phrases - exact parity with medgemma-4b-it and with each other - as the final 0806 closers (landed 08-26 evening, after that cycle's chain had run) folded in: apertus 1,825 -> 1,864 (mean -0.0295 -> -0.0293, toward zero), meditron 1,841 -> 1,864 (mean -0.0349 -> -0.0351, away from zero). Opposite directions, same day, 4th decimal."
+    },
+    {
+      "date": "2026-08-27",
+      "text": "translation_scale.json lens block moved as txcorpus priority2 chunk 13 folded in: 38 of 132 never-formed phrases now form -> 40 of 149; lost by translation 17 -> 18. txcorpus lens coverage 300 -> 325/352, leaving one 27-pair chunk. Per-model recovery means unchanged (gemma-2-2b +0.0360 n=37, gemma-3-4b-it +0.0312 n=350, qwen3-1.7b +0.0315 n=350). The at-scale TABLE auto-updates from this and that is sanctioned; NO framing sentence was drafted or deployed."
+    },
+    {
+      "date": "2026-08-27",
+      "text": "Contract-gate orphan rows moved for the first time in four cycles: 1,696 -> 1,715 in absolute count (denominator 13,546 -> 13,639). The 19 added orphans are the new gemma-2-2b-it and drift-sentinel rows, which join no published scenario because neither gemma-2-2b-it nor the sentinel batch is in the 4-model, 27-stamp public payload. Expected, not a regression - but it ends the 'absolute count static, only the denominator grows' reading the last three briefs carried."
+    },
+    {
+      "date": "2026-08-27",
+      "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 33074722672, 16m05s) - second healthy Neuronpedia day after the 08-22..25 outage. Series 31 -> 32 measured days ending 20260827; today vs 20260826 max |dp| 0.0, top words unchanged. Two breaches total, both historical (20260715 0.027, 20260814 0.023). 7 runs, all success, all $0."
+    },
+    {
+      "date": "2026-09-01",
+      "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 33514886802, 20m14s, GitHub-confirmed) - fifth healthy Neuronpedia day since the 08-22..25 outage, and back inside item 3b's 35-minute bound after 08-29's 38m38s. Series 34 -> 35 measured days ending 20260901; today vs 20260829 max |dp| 0.0, top words unchanged. The 08-30 and 08-31 gaps are the new 3-day cadence, not holes. Two breaches total, both historical (20260715 0.027, 20260814 0.023). Gates: contract 0 errors, claim_check clean, seal CLEAN 173. 2 runs, both success, both $0."
+    },
+    {
+      "date": "2026-09-04",
+      "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 33883844106, 14m19s, GitHub-confirmed) - sixth healthy Neuronpedia day since the 08-22..25 outage and the fastest of the six. Series 35 -> 36 measured days ending 20260904; today vs 20260901 max |dp| 0.0, top words unchanged. The 09-02 and 09-03 gaps are the 3-day cadence, not holes. Two breaches total, both historical (20260715 0.027, 20260814 0.023). Gates: contract 0 errors, claim_check clean, seal CLEAN 173. NEW: live site main is 2 publishes behind the branch (34 days vs 36) - SITE-MAIN-LAG-20260904. 2 runs, both success, both $0."
+    }
+  ],
+  "decisions_pending": [
+    {
+      "id": "SITE-MAIN-LAG-20260904",
+      "recorded_utc": "2026-09-04T15:00:00Z",
+      "what": "Does maintenance mode intend the live site to stop receiving sentinel updates, or is the branch -> main merge simply missing from the maintenance standing prompt? The active-study prompt ended section 5 with 'push the branch, then branch:main'; the 2026-08-29 maintenance rewrite dropped that clause, and two cycles (09-01, 09-04) have since published drift_series.json to the ops branch only. Live main therefore shows 34 measured days ending 20260828; the branch shows 36 ending 20260904. Both readings are internally honest - no number is wrong, the live one is just older - so nothing is currently misleading a reader, but the gap widens by one point every cycle. TWO CLEAN OPTIONS: (a) restore the merge step to docs/routine_standing_prompt.md section 5 and let the cycle fast-forward main each time, or (b) state explicitly in section 5 that maintenance-mode publishes are branch-only and main advances on owner instruction, so future cycles stop treating the lag as an anomaly. Either is a one-line edit to the standing prompt. The cycle will not merge to a live public site on its own authority."
+    },
+    {
+      "id": "SENTINEL-WAIT-BOUND-20260829",
+      "recorded_utc": "2026-08-29T13:15:00Z",
+      "what": "LOW, new today, and it nearly cost a measured day. Item 3b tells the cycle to poll for the drift sentinel for at most 35 minutes and then leave the entry unresolved for the next day's opening harvest. Today's run took 38m38s (fired 12:18:52Z, completed/success 12:57:30Z) - the slowest on record, against 34m42s / 16m05s / 13m59s for the three post-outage runs. The full wait was served and still expired 3m41s early. The day was recovered only because a final GitHub status check happened before the cycle closed; had it not, 20260829 would have sat unresolved overnight and the drift verdict would have been a day late. Note the bound has now been exceeded by a SUCCESSFUL run, which is different from the 08-22..08-25 case where runs failed fast. FIX OPTIONS: (a) raise the item 3b bound to 45 minutes, (b) keep 35 minutes but make a terminal-state GitHub check mandatory before closing the cycle - which is what actually saved today and costs one API call, or (c) leave it and rely on the opening-harvest backstop. Recommend (b), optionally with (a). OWNER: pick one.",
+      "resolved": null
+    },
+    {
+      "id": "CONVERGENCE-NOT-IN-CHAIN-20260829",
+      "recorded_utc": "2026-08-29T13:05:00Z",
+      "what": "MEDIUM, new today. data/convergence.json - the accumulation fold the site's Technical page Part 4 renders - was published with a generated_utc of 2026-08-20T12:40:27Z, nine days stale, while the cross-model legs that move it landed daily. This cycle regenerated it (gemma-2-2b-it, llama-3.2-3b, olmo-2-1b each 24 -> 33 accumulation points; apertus and meditron kept 33 with refreshed values) and published the result. ROOT CAUSE, and why it went unseen: convergence_tracker.py is not named in docs/routine_standing_prompt.md section 5, so no cycle was obliged to run it; the publish-site-data skill omits it too, which is exactly what the HANDOFF_20260804 correction register already records against that skill ('missing embed_scenario_joins.py, paired_stats_rigor.py, convergence_tracker.py, drift_sentinel.py --site'). Two of those four have since been folded into section 5 by name; convergence_tracker.py has not. Nothing else can detect its staleness automatically the way a claim_check number would. FIX: add 'python scripts/convergence_tracker.py --site ../patientwords' to standing prompt section 5 (after paired_stats_rigor.py, before the gates) and to the publish-site-data skill. OWNER: approve the one-line addition to both, or say the fold is deliberately hand-driven and should carry a note saying so.",
+      "resolved": null
+    },
+    {
+      "id": "PLANNER-8B-BANNER-FALSE-20260828",
+      "recorded_utc": "2026-08-28T13:20:00Z",
+      "what": "LOW, and it is new today (critic floor pass, docs/critic/critic_20260828.md LOW-2). scripts/backfill_planner.py:213-216 prints '8B-medical (apertus-8b-meditronfo, meditron3-8b): HELD until every other axis is complete' EVEN WHEN --include-8b-medical is passed. summarize() derives that banner from _others_complete(cov) alone and never sees the flag; plan() at line 188 does honour it (allow_deferred = (not defer_8b_medical) or _others_complete(cov)), so BEHAVIOUR IS CORRECT and no run has been mis-fired - both 8B models are already 39/39 and are never the planner's pick regardless. Only the banner lies. But the owner LIFTED that hold on 2026-08-07 and standing prompt section 4a directs passing the flag on every invocation, so a session that reads the banner literally concludes the deferral is still in force and contradicts both the standing prompt and the owner's decision. Five prior critic passes quoted this output without catching it. This is the documented-but-false-claim class that the HANDOFF_20260804 correction register exists for and that the seven-day phantom-accelerator claim is the headline case of. FIX (one line, NOT applied by this cycle - engine code changes are not this data-mandate cycle's to land unasked): thread the flag through as summarize(cov, include_8b=args.include_8b_medical) with released = include_8b or _others_complete(cov), plus a regression test asserting the banner reads RELEASED when the flag is passed, per the repo rule that every bug fix gets one. OWNER: approve the one-line fix, or say to leave it and note the banner as known-false in section 4a."
+    },
+    {
+      "id": "ADVICE-PAYLOAD-UNPUBLISHED-20260828",
+      "recorded_utc": "2026-08-28T13:20:00Z",
+      "what": "LOW / FYI, surfaced by the contract gate today. validate_frontend_contract.py now emits SIX STALE lines (anthropic, deepseek, google, moonshotai, openai, xai), all carrying the same deltas: responses_count 1825 -> 1834, judgments_count 1800 -> 2652, with responses_chain_head, judgments_sha256 and registry_sha256 all moved. STALE is informational - the gate still exits 0 with 0 errors. Cause: the site's advice payload was last generated 2026-08-24T22:45:31Z, so the deltas span EVERY advice run since then (the ox-alpha second-judge chain plus the owner-approved elicit + judge pair of 2026-08-27, runs 33081127948 and 33099244229, both completed/success, $0.1206 booked) - which is why the judgments delta (+852) far exceeds the 112-call elicitation. This cycle did NOT republish it: export_advice_scenarios.py is not in standing prompt section 5, and the advice workstream is driven by a separate owner-directed session that holds its rubric and gating decisions. Recorded so the STALE lines are not mistaken for drift and so the owner can decide whether the advice payload should be republished by that session or folded into the daily chain."
+    },
+    {
+      "id": "BACKFILL-DRIVER-SINGLE-20260827",
+      "recorded_utc": "2026-08-27T13:22:00Z",
+      "what": "MEDIUM, and it is new today. The interim babysitter (owner-directed 2026-08-07) CLOSED its loop on 2026-08-26 18:55Z after finishing the 8B-medical backfill - see docs/coordination/backfill_8b_complete_20260826.md, 'the babysitter loop ... will not re-arm'. It was the driver that kept the logits lane full between daily cycles: over 08-25..08-26 it fired roughly ten legs a day on ~150-minute ticks. From 2026-08-26 18:55Z the lane had NO driver until this cycle opened at 13:01Z - about 18 idle hours, and that is now the steady state between cycles. Remaining $0 backfill measured this cycle by backfill_planner: LENS and TRACE are COMPLETE (39/39 each), but cross-model PREDICTIONS is far from it. Recomputed from the planner this cycle, batches COMPLETE per model out of 39: medgemma-4b-it, meditron3-8b and apertus-8b-meditronfo 39/39 each; gemma-3-4b-it 24/39; qwen3-1.7b 24/39; qwen3-4b 22/39; gemma-2-2b-it 19/39 (was 15/39 before today); gemma-2-2b, llama-3.2-3b and olmo-2-1b 18/39 each. That is 130 remaining batch-legs in total. This cycle fired four legs and closed four batches; at four a cycle the PREDICTIONS axis is roughly 33 cycles from converged, i.e. about a month. OWNER CHOICE: (a) accept the daily-cadence pace and let it converge over ~a month - everything here is $0, the only cost is elapsed time; (b) re-arm a babysitter or an accelerator to keep the lane full between cycles, accepting the lane-sharing collisions documented in LANE-SHARING-PROTOCOL-20260815 and the tick-164 mis-resolve incident; or (c) declare the cross-model PREDICTIONS backfill complete-enough and stop, accepting that seven of the ten ids stay short of full per-batch coverage. Note for (c): the 08-26 handoff note docs/coordination/backfill_8b_complete_20260826.md says 'all six claim-grade models ... have full-parity coverage', which is true of the 8B pair it was closing but NOT of the planner's per-batch measure for gemma-2-2b (18/39), gemma-3-4b-it (24/39), qwen3-1.7b (24/39) or qwen3-4b (22/39) - do not decide (c) from that sentence. No daily-ops work blocks on this - the cycle keeps firing the planner's picks either way. Related but distinct from OPS-CADENCE-SINGLE-POINT, which was about the daily cycle itself surviving container reclaims; that is solved (fresh-session Routine since 08-04). This is about what drives the lane in the other 23 hours."
+    },
+    {
+      "id": "UNWIRED-CHECKS-BACKLOG-20260826",
+      "recorded_utc": "2026-08-26T14:36:00Z",
+      "what": "MEDIUM, and it is a meta-finding the critic floor pass surfaced today rather than a new defect. FOUR checks now sit written-but-unwired, each drafted by a prior critic pass, each declined for the same stated reason: landing an erroring assertion in the publish gate is an owner-visible policy change, and each would fail RED on day one for a defect the owner has not yet ruled on. The four: (1) cross-payload equality, convergence.models[m].points[-1].n_phrases == model_stats.per_model[m].penalty.n_phrases - exact by construction, no tolerance needed, would emit 10 checks today with 8 green and 2 red (critic_20260822); (2) freshness assertion on any payload carrying _provenance.generated_utc, 48h budget for the two the docs call nightly (critic_20260812); (3) dirty-provenance assertion, error on any claim-grade _provenance.engine_sha ending in '+dirty' - which today is EVERY published model_stats.json, checked back through 08-25 (critic_20260812); (4) chain-parity assertion, cross-check the writer names in the site CLAUDE.md data-contract table against the scripts the cycle actually runs (critic_20260812). Each declination was individually sound. The compounding cost is what is new: the defect check (1) guards has quadrupled in four days while the check waited. THE BOTTLENECK IS NO LONGER ANALYSIS - IT IS A SINGLE OWNER DECISION on whether validate_frontend_contract.py may go red. OWNER: one yes/no unblocks all four ('land them and accept a red gate until the underlying items are ruled on'), or say which subset should land as warnings rather than errors. Full evidence: docs/critic/critic_20260826.md item 5. || 2026-08-28: check (1) is now MORE expensive to keep waiting, and the number the owner was quoted on 08-26 is stale. It would emit 3 red today, not 2 (gemma-2-2b-it joined on 08-27), and the largest red is a factor-TWO disagreement live on technical/. No fifth check was drafted this cycle - deliberately. The bottleneck is not analysis, it is the single owner yes/no already stated in this entry; adding a fifth unwired check would inflate the queue without moving it. Today's contribution is to price the decision rather than enlarge it."
+    },
+    {
+      "id": "SEAL-REGISTRY-COVERAGE-20260825",
+      "recorded_utc": "2026-08-25T13:20:00Z",
+      "what": "HIGH (critic_20260825.md HIGH-1). The holdout LEAK DETECTOR covers 173 of 174 holdout phrases. seal_check.py:37-54 builds its registry from Tier B data/simulated/pairs_*.json keyed on top_prompt (173 phrases); paired_stats_rigor.py:105-106 builds the Amendment-1 exclusion set from collector rows keyed on clinical_prompt with tierb_split=='holdout' (174 phrases). Recomputed this cycle: exactly ONE phrase is in the second set and not the first, and zero in the reverse direction. Its collector label is pairs_20260713T050939Z#None - a null batch_index, i.e. the collector could not join that row back to a pairs-file index, so the phrase reaches the row set by a path the seal registry never enumerates. Amendment 1 still excludes it from every statistic, so no number is wrong; but had it appeared in a published file, seal_check would still have printed CLEAN. EXPOSURE: NONE - hand-scanned this cycle with seal_check's own normalisation over ../patientwords, docs/ and ops/: 0 files hit. The seal holds in fact, not by construction, and every 'seal check: CLEAN' line since the check went live has meant 99.4% coverage without saying so. OWNER: approve widening sealed_registry() to a UNION with the collector's holdout labels (registry.setdefault(r['clinical_prompt'], f\"{r['batch']}#{r['batch_index']}\") for rows flagged holdout). It can only add coverage, never remove it. NOT applied by this cycle - seal_check is a publish gate and changing a gate's behaviour is an owner call."
+    },
+    {
+      "id": "DRIFT-PROSE-HOLES-20260825",
+      "recorded_utc": "2026-08-25T13:20:00Z",
+      "what": "HIGH (critic_20260825.md HIGH-2), and it is a TEXT fix this data-mandate cycle did not make. patientwords/methods.html:343-345 reads 'The daily drift record has three permanently missing days - August 8, 12, and 19 - when no check ran.' Recomputed from the published drift_series.json: the span is 2026-07-13 -> 2026-08-21, 40 calendar days with 30 measured, so there are TEN interior holes - 07-24, 07-25, 07-26, 07-27, 07-28, 08-01, 08-02, 08-08, 08-12, 08-19 - plus FOUR trailing dark days (08-22..08-25) the page does not mention at all, and no sentence anywhere tells a reader the series ends on August 21. The seven unlisted days are the container-reclaim idles this repo already documents in routine_standing_prompt.md section 4a ('idle 54.7% of 2026-07-24..27', 'worst 64.2h, 2026-08-01..02'). WHY NOTHING CAUGHT IT: data/claims_manifest.json holds 20 claims and NOT ONE references drift_series.json, so claim_check passes correctly on a sentence it was never told about; the page's only runtime-filled drift value is rt-sentinel-max. OWNER: (a) rewrite the sentence, (b) approve emitting an explicit 'holes' list and 'last_measured' from drift_sentinel.py so the claim becomes writable - the manifest sandbox exposes no int/range, so interior holes are NOT computable from the current payload, which is why the check could not have been written."
+    },
+    {
+      "id": "DOC-SWEEP-DRIFT-20260824",
+      "recorded_utc": "2026-08-24T13:20:00Z",
+      "what": "Monday doc-accuracy sweep (docs/audits/doc_accuracy_20260824.md) found two items that are new this week, both doc/text edits this data-mandate cycle did not make. (1) The engine CLAUDE.md trigger table lists SEVEN of the eight live triggers on this branch - advice-eval / advice_evaluation.yml is absent, and it is a PAID lane (fire_trigger.py:67 PAID_TRIGGERS) with its own $10/day OpenRouter ceiling, so a session orienting from CLAUDE.md alone would not learn the repo has a fourth paid lane. (2) The reverse direction of the extract_site_text.py PAGES check was run for the first time: 20 .html files live outside modes/, 8 are not in PAGES, and seven of those are redirect stubs, the 404 page, or the share card - but clinical/index.html is 20,418 bytes of substantive prose with no redirect meta and is outside the extraction path entirely. Carried over unchanged from the 08-17 sweep: the tierb_freeze_checklist.md:17 citation of the main-only preregistration_amendments.md, the missing docs/site_text_outline.md, and the 'Amendments 1-3' citation with no amendment-1 file. OWNER: (a) add advice-eval to the CLAUDE.md table, (b) decide whether clinical/index.html belongs in PAGES."
+    },
+    {
+      "id": "SENTINEL-OUTAGE-CONSECUTIVE-20260823",
+      "recorded_utc": "2026-08-23T12:49:05Z",
+      "what": "The daily drift sentinel has now FAILED TWO CONSECUTIVE DAYS on upstream Neuronpedia 500s (runs 32572679035 on 08-22, 32639162655 on 08-23), both specific to /api/graph/generate while the j-lens endpoint on the same host stayed healthy. The output-drift series holds 30 measured days ending 20260821, with five holes and the first adjacent pair. Two days is the point at which 'wait it out' stops being free: the instrument cannot report a breach it cannot measure, and a step landing in the gap will be misattributed to the 20260821->next-measured transition. THREE OPTIONS, all owner or text calls this data-mandate cycle did not make: (a) ask Neuronpedia whether /api/graph/generate is degraded for gemma-2-2b; (b) sanction a SAME-DAY retry for the sentinel specifically - it is 3 pairs and $0, and unlike the 08-08 case a same-UTC-day retry does not mislabel the alias, but it needs an explicit exception to the one-trace-fire-per-group-per-cycle rule; (c) accept the gaps and add a methods provenance note stating the series has five holes, two adjacent. Full evidence: docs/critic/critic_20260823.md HIGH finding; blocker neuronpedia-graph-500-20260823. || 2026-08-24 - NOW THREE CONSECUTIVE DAYS. Today's sentinel failed identically (run 32728951245, GitHub-confirmed completed/failure 12:53:48Z, 6m41s, /api/graph/generate, zero pairs, $0) while the j-lens endpoint on the same host succeeded at 12:48:08Z. The series is unchanged at 30 measured days ending 20260821 and now carries SIX holes with THREE CONSECUTIVE (08-22, 08-23, 08-24). The three options in this entry are unchanged, but their relative weight is not: option (c) - a methods provenance note stating the series has holes - has stopped being the fallback and is now the minimum, because a reader of the site's repeatability note is currently not told the instrument has been dark for three days, and that is true regardless of what happens with (a) or (b). This cycle did NOT re-fire: the same-day retry exception the owner granted covered 08-23 specifically, and the one trace fire per group per cycle was spent on the sentinel itself. A standing rule for this failure mode - retry once same-day whenever the sentinel dies on an upstream 5xx, no further approval needed - would have saved three days of judgement calls and is worth deciding on its own. Evidence: blocker neuronpedia-graph-500-20260824; docs/critic/critic_20260824.md Item 4."
+    },
+    {
+      "id": "PAYLOAD-SERIALIZATION-INDENT-20260823",
+      "recorded_utc": "2026-08-23T12:49:05Z",
+      "what": "NEW DEFECT, medium severity, no automated check would have caught it. Three writers touch the site's simulated_scenarios.json and they disagree on JSON indent: export_frontend_simulated.py:406 and embed_scenario_joins.py:244 write indent=2, export_traces_site.py:101 writes indent=1. Whichever runs LAST sets the published format. The committed file was indent=1 (12,040,228 bytes) because the previous cycle happened to end on export_traces_site.py; running the chain in the order standing prompt section 5 lists it (traces restamp early, embed_scenario_joins later) ends on indent=2 and produces 16,179,124 bytes - +34% on a payload every page fetches - with an identical line count (740,872) and ZERO semantic change. This cycle noticed only because the diff read as 1,481,728 changed lines, i.e. every line; re-running export_traces_site.py --stamp-only last restored indent=1 and cut the real diff to 5,032 substantive lines. Unnoticed, it would have pushed a 4 MB regression to a public Pages site AND made every future payload diff unreadable, hiding the next real data movement. validate_frontend_contract.py checks structure not serialization; claim_check.py checks numbers; neither fails. PROPOSED FIX (code change, outside this cycle's data mandate): give the three writers one shared dump helper with a single indent constant so chain order cannot change the format; failing that, add a contract assertion that a >10% size delta with an unchanged scenario count is an ERROR. Full evidence: docs/critic/critic_20260823.md MEDIUM finding."
+    },
+    {
+      "id": "LENS-HOST-SEPARATION-20260731",
+      "recorded_utc": "2026-08-21T13:02:00Z",
+      "what": "The two served Neuronpedia host ids stopped returning identical j-lens readouts on 2026-07-31 and have diverged on every one of the 18 measured days since. docs/routine_standing_prompt.md 3d records the opposite as a 'known alias' and says the day they diverge is the day Neuronpedia separates the hosts. The sentinel captured it; nothing ever computed the comparison, because every cycle compared each host id ONLY to the previous measured day - a step that lands once and then holds is invisible from the following day onward. Per-host steps: gemma-2-2b on 2026-07-31 (target-rank hits 71 -> 51) and 2026-08-14 (51 -> 50); gemma-2-2b-it on 2026-08-14 (71 -> 76). Request parameters are byte-identical across the whole 28-day series (JACOBIAN_LENS, top_n 8, same endpoint, same 3 frozen pairs), so the change is host-side. EXPOSURE: committed lens part files by era (excluding sentinel dirs) are 45 pre-07-31, 61 in 07-31..08-13, 2 post-08-14, so jlens_depth.json, jlens_insights.json, jspace.json, transport/loglens and the txcorpus lens-recovery line each mix up to three host states - a provenance fact the methods page does not state. WRITTEN THIS CYCLE: scripts/lens_sentinel_check.py ($0, offline, read-only) + tests/test_lens_sentinel_check.py (5 tests, passing), which compare every dated readout against both the previous day and the day-1 baseline per host and report cross-host agreement, so a historical step cannot age out of view. OWNER ACTION: decide whether to annotate the lens payloads with the host-state era, re-pull the census batch under the current host, ask Neuronpedia what changed, or accept the mixture. All are text or re-measurement decisions this data-mandate cycle did not make. Full evidence: docs/critic/critic_20260821.md Finding 1; deck card D1."
+    },
+    {
+      "id": "JLENS-SENTINEL-CONTAMINATION-20260821",
+      "recorded_utc": "2026-08-21T13:02:00Z",
+      "what": "scripts/jlens_insights.py:82 globs *__jlens_*/jlens_summary.part_*.json and excludes txcorpus_*, *_txopus, *_txplacebo and *__context - but NOT drift_sentinel_*. Each dated sentinel dir is a distinct dataset key, so the 3 frozen sentinel pairs are swept into the published lens census once per sentinel day, for both host ids. Consequences in the payload published this cycle: instruction_tuning.n_paired reads 75 but resolves to 25 distinct (index, base, it) tuples over 23 distinct phrases (21 real census-batch phrases from pairs_20260711T051145Z plus 2 sentinel phrases repeated 27x each); 26 of the 75 rows are NOT identical across the two ids, spanning phrase indices 2, 32, 35 and 45; and the published medians (base 17, it 8) are driven by the replicates. Meanwhile patientwords/technical/index.html asserts three times - L1354, L1356, and the figure aria-label at L523 - that the readouts are 'identical on every pair', and L1356 interpolates the inflated n_paired, so the page currently tells readers '75 phrases'. Secondary: the same rows put 81 of 2,214 points rows (3.7%) into the base formation census, growing by 3 every day the sentinel fires. NOTHING WAS CHANGED: site text is owner-only and hand-patching an exported payload is out of bounds. The code fix is one line in the exclusion list plus a republish; the prose rewrite is the owner's. This is also why the j-lens exporters were NOT re-run this cycle. Full evidence: docs/critic/critic_20260821.md Finding 2; deck card D2."
+    },
+    {
+      "id": "DRIFT-SECOND-BREACH-20260814",
+      "recorded_utc": "2026-08-21T13:02:00Z",
+      "what": "The output-drift series has TWO threshold breaches, not one: 20260714 -> 20260715 (max |dp| 0.027) and 20260813 -> 20260814 (max |dp| 0.023), both over the 0.01 threshold. ops/dashboard.json:verdicts has asserted for the past week that the 07-15 step is 'the series' only movement'; that has been false since 2026-08-14. Mechanism is a near-twin of the lens blind spot in a different script: drift_sentinel.py prints only max(breached, key=max_abs_delta), so a second, smaller breach is computed, stored in the payload, and never printed - every cycle since 08-14 read the familiar 07-15 headline and wrote 'only movement'. Today itself is quiet (20260821 vs 20260820 max |dp| 0.0, sixth flat day). What raises this above a logging nit: 2026-08-14 is ALSO the day the lens sentinel stepped on both host ids, so two independent instruments recorded a change on the same date, on the same 3 frozen pairs, with byte-identical request parameters. OWNER ACTION: decide whether drift_sentinel.py should print every breach (it rewrites the daily brief headline, so this cycle did not change it), and whether 2026-08-14 should be annotated on the methods page as a confirmed instrument change. Full evidence: docs/critic/critic_20260821.md Finding 3; deck card D3."
+    },
+    {
+      "id": "CLAIM-MANIFEST-PROPERTY-GAP-20260821",
+      "recorded_utc": "2026-08-21T13:02:00Z",
+      "what": "claim_check.py exited 0 this cycle, correctly - none of the numbers in the three findings above has an entry in data/claims_manifest.json. The manifest guards VALUES a page hardcodes; it cannot guard a PROPERTY a page asserts about a payload ('identical on every pair'), which is exactly the shape that let the tuning-comparison prose outlive its data. Two entries drafted but deliberately NOT landed (a manifest entry that fails on day one puts the gate red for a defect the owner has not ruled on): (1) assert jlens_insights.instruction_tuning has zero rows where base != it; (2) assert the interpolated n_paired equals the count of DISTINCT phrase indices, so replication cannot inflate a public count again. OWNER ACTION: land both right after the JLENS-SENTINEL-CONTAMINATION fix so they go green immediately, or land them now and accept a red gate. Full evidence: docs/critic/critic_20260821.md Finding 4; deck card D4."
+    },
+    {
+      "id": "STAMPS-NORMALISATION-20260821",
+      "recorded_utc": "2026-08-21T13:02:00Z",
+      "what": "Low severity, hit live this cycle. scripts/export_frontend_simulated.py:111-116 comments that --stamps 'Accept[s] either spelling (bare stamp or pairs_<stamp> stem) and normalise[s] to the bare stamp', citing a past incident where a mismatch published a steered batch as ordinary. Line 110 does no normalization - only the --steered-stamps path at line 116 strips the prefix. Passing the documented pairs_<stamp> spelling crashes with FileNotFoundError: data/simulated/pairs_pairs_<stamp>.json. It fails loudly and before writing anything, so nothing is at risk; worked around by passing bare stamps. It is a documented-but-false claim of exactly the class docs/HANDOFF_20260804.md warns about. Fix is one line: apply the same .replace('pairs_', '', 1) at line 110. Full evidence: docs/critic/critic_20260821.md Finding 5; deck card D8."
+    },
+    {
+      "id": "MISSED-CYCLE-20260819",
+      "recorded_utc": "2026-08-20T12:52:24Z",
+      "what": "The daily 13:00 UTC Routine did not run on 2026-08-19. Evidence: no journal entry of any kind between the babysitter's 08-19 logits ticks, no drift-sentinel or lens-sentinel fire for that date, no dated alias data/simulated/drift_sentinel_20260819.json, no trace_out/drift_sentinel_20260819*, no docs/briefs/brief_20260819.md, and ops/dashboard.json still stamped 2026-08-18T13:35:16Z when this session opened - 47h stale against the 26h watchdog threshold. Cost: 2026-08-19 is now a THIRD permanent hole in both the output-drift and lens-drift series (after 08-08 and 08-12); it is not recoverable, since re-tracing a stale alias would measure today's model under yesterday's label. The logits lane was unaffected - the interim babysitter kept firing 8B backfill legs every ~2.5h through the night, which is why no measurement was lost, only the instrument check. This cannot be diagnosed from inside the container: list_triggers is unapprovable here. OWNER ACTION: check trig_01H9YrMSHEDkyXWT4bxttihq in the claude.ai Routines UI for a failed or skipped 08-19 firing, and say whether the sentinel series should be annotated with its three holes on the methods page."
+    },
+    {
+      "id": "TIMELINE-CHAIN-GAP-20260820",
+      "recorded_utc": "2026-08-20T12:52:24Z",
+      "what": "data/timeline.json was stamped 2026-07-14 - five weeks stale - while the site page comment and the site CLAUDE.md data table both describe it as 'regenerated nightly'. Cause: scripts/study_timeline.py appears in neither the standing prompt's section 5 chain nor the publish-site-data skill, so no cycle has run it since 07-14. Regenerated this cycle (69 batches, 66 generation batches, $20.909 lifetime generation, 820 trace summary parts) and deployed; all three gates stayed green and nothing rendered changed, because the study-timeline strip was cut from simulated-scenarios/index.html on 2026-07-30 (owner cut 3) and the file now has no page consumer. DECISION NEEDED: either (a) add study_timeline.py to standing prompt section 5 and the publish skill so the file keeps its documented nightly cadence, or (b) declare it retired data and drop the 'regenerated nightly' claim from the page comment and site CLAUDE.md. Both are text/doc edits this data-mandate cycle did not make. || 2026-08-22 (critic C1): the gap is WIDER than this entry states and it has now reached the public site. scripts/convergence_tracker.py is absent from the same section-5 chain, so data/convergence.json is also stale (2026-08-20T12:40:27Z) while data/model_stats.json was refreshed today - and the two disagree on n for the same two models on the same page (technical/ Part 4): convergence says apertus-8b-meditronfo n=929 and meditron3-8b n=931, model_stats says 1,215 and 1,193. Verified by re-running convergence_tracker.py to a scratch path and diffing: only the final accumulation point of those two models moved, point counts identical 33->33. No confirmatory number is affected (both models are exploratory and both CIs exclude zero in both builds) - it is a presentation-integrity defect. Decision is now: add BOTH convergence_tracker.py and study_timeline.py to the section-5 chain (and to the publish-site-data skill), or state that both payloads are deliberately point-in-time and fix the site CLAUDE.md text that calls them nightly. docs/critic/critic_20260822.md carries the exact cross-payload contract assertion that would have caught it; it was NOT wired, because wiring it today would fail the gate on data this cycle is not sanctioned to republish. || 2026-08-24 (critic F1) - THE GAP HAS ROUGHLY DOUBLED IN TWO DAYS AND NOW REACHES A CONFIRMATORY MODEL. convergence.json is still stamped 2026-08-20T12:40:27Z and timeline.json 2026-08-20T12:46:17Z while model_stats.json was refreshed again today. Final accumulation point vs today's statistics, both rendered on technical/ Part 4: apertus-8b-meditronfo 929 vs 1,503 phrases (gap 574, was 286 on 08-22); meditron3-8b 931 vs 1,503 (gap 572, was 262); and NEWLY REPORTED, gemma-2-2b - a PRE-REGISTERED CONFIRMATORY model - 1,364 vs 1,712 (gap 348). One detail should be settled before the fix is chosen: for gemma-2-2b the two payloads disagree on n while agreeing on the estimate to four decimals (convergence -0.032 [-0.0400, -0.0240]; model_stats -0.0320 [-0.0402, -0.0240]), which two different n's cannot generally produce - so convergence.n_phrases and model_stats.n_unique_phrases are probably counting different things. convergence declares 'pairs_* batches only ... Tier B exploration split only' and its last point is through_batch pairs_20260806T135728Z, i.e. it never reaches the two supplementary stamps. If that is by design the two numbers are not comparable and should not sit unlabelled on one page; if it is not, one is wrong. No confirmatory verdict is affected - every CI excludes zero in both builds. Refreshing convergence.json alone would close the 8B gaps and leave the gemma-2-2b one, so the definitional question comes first. || 2026-08-25 (critic MEDIUM-3): STILL OPEN and now five days of measured drift. Published generated_utc read this cycle: convergence.json 2026-08-20T12:40:27Z and timeline.json 2026-08-20T12:46:17Z, both unchanged since the 08-20 cycle that regenerated them, while model_stats.json (13:05:28Z) and drift_series.json (13:09:01Z) refreshed TODAY from the same legs. Re-verified mechanically: grep -c 'timeline|convergence' docs/routine_standing_prompt.md returns 0 and the publish-site-data skill names neither, yet both writers exist and both take --site. This is the same defect the owner fixed for model_stats.json on 2026-08-15 (MODEL-STATS-PUBLISH-POLICY - 'the one published payload the cycle rebuilt everything around but never itself'); its two siblings were left behind. Nothing compares any of these generated_utc values to anything, so no gate detects the drift - that missing staleness assertion is itself the check worth writing. No new decision id opened; this entry already covers it. || 2026-08-26 (critic floor pass, ESCALATION - the defect is now GROWING DAILY and fast). The convergence/model_stats n divergence has QUADRUPLED in four days. On 08-22 the critic measured apertus 929 vs 1,215 and meditron 931 vs 1,193 (24% and 28% understatement). Today, with convergence.json still frozen at 2026-08-20T12:40:27Z and model_stats refreshed every cycle: apertus 929 vs 1,825 and meditron 931 vs 1,841 - 96% and 98% understatement, on the same page (technical/ Part 4), with the other eight models still agreeing to the digit. The cause is mechanical and will not self-correct: the 8B-medical backfill drives exactly these two models every cycle while the curve stays frozen, so EVERY further cycle widens it. Still a presentation-integrity defect, not a statistical one (both models exploratory, both CIs exclude zero in both builds) - but the accumulation fold's job is to show an estimate stabilising as n grows, and two curves truncated at half their n sit directly beside a table stating the true n. DECISION UNCHANGED AND ONE LINE: either add BOTH scripts/convergence_tracker.py and scripts/study_timeline.py to routine_standing_prompt.md section 5 and the publish-site-data skill (both $0, offline, run after paired_stats_rigor since they read the same collector rows), or drop the 'regenerated by the engine's nightly cycle' claim from patientwords/CLAUDE.md:57-63. NOT run by this cycle, for the third time and the same reason: running an exporter the sanctioned chain does not name is a cycle silently widening its own publish chain. Full evidence: docs/critic/critic_20260826.md. || 2026-08-28 (critic floor pass, docs/critic/critic_20260828.md HIGH-1): ESCALATED AGAIN, and the gap is now the widest it has been. THREE published payloads share one identical stale stamp and dirty sha - the fingerprint of a single manual sweep on 08-20 that nothing has repeated: convergence.json 2026-08-20T12:41:36Z, retrace_consistency.json 2026-08-20T12:41:47Z (both 9ad71e913a95+dirty) and timeline.json 2026-08-20T12:46:17Z. All three are 192 hours old while every other claim-grade payload on the site is 23.7h. Cross-payload equality recomputed against the committed site copies this cycle: apertus-8b-meditronfo convergence 929 vs model_stats 1,864; meditron3-8b 931 vs 1,864; gemma-2-2b-it 1,027 vs 1,058. On 2026-08-22 the two 8B rows read 929 vs 1,215 and 931 vs 1,193 - gaps of 286 and 262. Six days on they are 935 and 933: MORE THAN TRIPLED (3.27x and 3.56x). gemma-2-2b-it crossed from green to red on 08-27. So the check critic_20260822 priced as '8 green, 2 red' would today emit 7 GREEN and 3 RED. Consequence on the page: technical/ Part 4 renders the accumulation fold from convergence.json beside the cross-model table built from model_stats.json, so for both 8B medical fine-tunes the curve ends at just under HALF the n the table beside it quotes (929/1,864 = 49.8%, 931/1,864 = 49.9%). Both numbers trace to a committed source, so claim_check and the contract gate both pass - no automated check encodes cross-payload agreement. Root cause re-confirmed this cycle: grep for 'convergence' in docs/routine_standing_prompt.md returns NOTHING, and convergence_tracker.py / study_timeline.py / retrace_consistency.py appear in neither section 5 nor the publish-site-data skill. This cycle did NOT regenerate convergence.json on its own: that would silently close the gap the owner is being asked to rule on and would leave the next cycle in the same position, because the chain still would not carry the writer. The remedy is the identical one-line addition that fixed model_stats.json on 2026-08-15 (MODEL-STATS-PUBLISH-POLICY). Option (b) 'declare retired' remains defensible for timeline.json (no page consumer since the 07-30 owner cut) but NOT for convergence.json, which is live on technical/.",
+      "updated_utc": "2026-08-22T12:40:00Z"
+    },
+    {
+      "id": "JOURNAL-EXPIRY-BLIND-SPOT-20260818",
+      "recorded_utc": "2026-08-18T13:35:16Z",
+      "what": "Three terminal runs went unresolved overnight and fire_trigger's expiry window silently absorbed them. The interim babysitter's last two logits fires (08-17 20:39:01Z, 20:39:29Z) and the 08-17 drift sentinel (13:23:09Z) were never resolved; by this cycle all three had aged past the expiry window, so `resolve --trigger ...` reported 'nothing to resolve' and they remain resolved:false in ops/trigger_journal.jsonl permanently. All three are GitHub-confirmed terminal (runs 32034825688, 32066947361, 32066971123, completed/success) with outputs verified on the branch, so no fire this cycle was unsafe and nothing was lost. The issue is that expiry is silent: a stalled babysitter reads identically to a healthy one, the journal's resolved flags now under-count what finished, and nothing reported the ~15.8h all-lane idle between 21:40Z 08-17 and 13:26Z 08-18. Options on deck card D1: (a) have `resolve` reconcile expired-but-terminal entries with an explicit marker, (b) leave the journal and add an idle-lane alarm to the digest, (c) accept both as designed. No code changed this cycle (data-only mandate). || RECURRED 2026-08-20: the 2026-08-18 drift sentinel (fired 13:26:40Z, run 32142393091 completed/success, trace_out/drift_sentinel_20260818/batch_summary.part_01.json verified on the branch) had likewise aged past the expiry window before this cycle opened, so `resolve --trigger circuit-trace` again reported 'nothing to resolve'. That is two consecutive sentinels the journal now under-counts, and it happened this time because NO CYCLE RAN ON 2026-08-19 - the exact failure mode option (b)'s idle-lane alarm was proposed to catch. Deck card D1 options unchanged: (a) reconcile expired-but-terminal entries with an explicit marker, (b) leave the journal and add an idle-lane alarm to the digest, (c) accept both as designed. No code changed this cycle (data-only mandate). || 2026-08-22 (critic C2): quantified for the first time. ops/trigger_journal.jsonl holds 729 entries; 142 of them (19.5%) carry resolved:false, evicted:false and sit outside fire_trigger's active window, so `resolve` can never reach them and `status` never shows them. They span 2026-07-09 to 2026-08-18. Zero entries are marked evicted, so the one-running-plus-one-pending discipline has not silently dropped a run - the defect is purely in the audit trail. Operational consequence: the journal answers 'what is in flight now' correctly and 'did every fire ever land' not at all; any reconstruction must use GitHub Actions plus the committed trace_out/ tree. Fix options unchanged: resolve-on-harvest by run id, or an explicit `expired` state distinct from resolved:false.",
+      "updated_utc": "2026-08-22T12:40:00Z"
+    },
+    {
+      "id": "dialect-prose-date-drift-20260730",
+      "recorded_utc": "2026-07-30T03:55:00Z",
+      "what": "claim_check FAIL after the small-multiples republish: dialect-differences/index.html prose says 'traced July 16 and 17, 2026' but data/dialects.json is now stamped 2026-07-30 (full 20-term re-trace). Owner text-edit needed; proposed rewrite: 'traced July 16-17 and re-traced July 29-30, 2026'. Data push proceeded per the claim-gate protocol.",
+      "resolved": "2026-07-30: owner approved the re-traced statement; the legibility session implemented it better in site commit 04ad31b - the dateline is runtime-filled from data/dialects.json:updated (em-dash pending state, can never drift again), and the static manifest guard was retired accordingly (fad4874). No static sentence needed. Reaches deployed main with the next sanctioned branch:main push (nightly cycle at latest). claim_check green."
+    },
+    {
+      "id": "AUDIT-DECIDED-EXECUTION",
+      "what": "Owner acknowledged 2026-07-31 (D3). Remaining OWNER acts, unblocking the advice n=100 expansion: prereg signature; coding the 25 judge-agreement items; choosing one pooled-33% caveat sentence from the drafted candidates. No daily-ops work blocks on these."
+    },
+    {
+      "id": "OPS-CADENCE-SINGLE-POINT",
+      "what": "Ops ran zero fires on Aug 1-2 (all lanes idle ~48h; dashboard 64h stale). Root cause is structural and already documented: the daily cycle fires into the main session and the 'backfill accelerator' never existed. Choose: (a) approve the fresh-session Routine in-client so a reclaim cannot stop ops, or (b) accept the pace and we restate 'daily' as 'runs when the session runs' in the briefs. Cannot be fixed session-side: create_trigger needs your approval."
+    },
+    {
+      "id": "MEDICAL-FINETUNE-FRAMING-20260808",
+      "recorded_utc": "2026-08-08T14:00:43Z",
+      "what": "The 'the two medical fine-tunes are the study's null cases' framing (dashboard verdicts, HANDOFF_20260804 section 2, briefs) is now wrong on BOTH instruments for BOTH models, at much larger n than when this was first flagged. As of the 2026-08-18 refresh: meditron3-8b n=715 phrases, penalty -0.0367 [-0.0466,-0.0274], sign test 41v10 p_BH=2.95e-05; apertus-8b-meditronfo n=716, -0.0202 [-0.0307,-0.0098], 28v7 p_BH=0.000762. Both CIs exclude zero and both sign tests are significant (the original flag was raised when apertus was n=104 and meditron's sign test was still p_BH=1.00). No SITE prose asserts the null-case framing - claim_check passes - so this is an internal-doc correction, not a live page error. Owner: approve rewording of the dashboard verdict and the handoff section. || As of the 2026-08-20 refresh the case is stronger again, at ~930 phrases each: meditron3-8b n=931, penalty -0.034 [-0.0426,-0.0255], sign test 50v13 p_BH=6.03e-06; apertus-8b-meditronfo n=929, -0.0239 [-0.0334,-0.0147], 39v11 p_BH=0.000135. Both CIs still exclude zero and both q values fell by roughly an order of magnitude since 08-18. The 'null cases' framing has now been wrong for twelve days across every surface that carries it.",
+      "resolved": null,
+      "updated_utc": "2026-08-18T13:33:40Z"
+    },
+    {
+      "id": "JLENS-DEPTH-PINS-20260808",
+      "recorded_utc": "2026-08-08T14:00:43Z",
+      "what": "pairs_20260707T171223Z finished lens+save_raw at 119/119 this cycle - the first complete full-batch lens set outside the census batch - but it is not among the six --block pins of export_jlens_depth.py, so it reaches no published figure. Pins change only on explicit owner instruction (publish-site-data SKILL: an ad-hoc pin change silently churns the figure and breaks manifest-guarded prose), so this cycle regenerated with the committed pins unchanged. Owner: add it as a block, or say to keep the current six.",
+      "resolved": null
+    },
+    {
+      "id": "OPENROUTER-LANE-UNCEILINGED-20260808",
+      "recorded_utc": "2026-08-08T14:00:43Z",
+      "what": "The $2/day guard cannot see the OpenRouter lane. ledger_update.check_ceilings compares the ALL-channel daily total against daily_ceiling_usd, while fire_trigger's blocking guard sums max_spend on the ANTHROPIC lane only. Today: Anthropic $0.3480 (well under), OpenRouter $17.8875 (no mechanical ceiling at all). So the alert fired and nothing was ever blocked. Separately the booked figure overstates the day: data/advice/responses_stimuli_20260807T153329Z.report.json carries cost_basis='cumulative_from_records', so its whole six-model campaign total ($17.8875, 1,764 calls) was booked to its run_utc day on first sight, though run_cost_usd for today's leg was $6.0936 against a $6.50 cap. Owner: (a) set an explicit OpenRouter daily ceiling for fire_trigger to enforce, and (b) have check_ceilings report per lane and prefer run_cost_usd when cost_basis is cumulative. Spend code is single-writer, so this cycle changed nothing.",
+      "resolved": null
+    },
+    {
+      "id": "JLENS-TRANSPORT-LOGLENS-DOC-CONFLICT-20260809",
+      "recorded_utc": "2026-08-09T14:13:07Z",
+      "what": "The three governing docs disagree on whether export_jlens_transport.py and export_jlens_loglens.py run in the daily cycle. docs/routine_standing_prompt.md §5 says they are WIRED (2026-07-23, owner option 1) and gives exact commands; .claude/skills/publish-site-data step 3 lists them; but that SAME skill's 'Never' list says 'Never run the transport/loglens exporters as part of the cycle (snapshot files)', and .claude/skills/daily-ops-cycle says 'Do NOT run the transport/loglens exporters (not wired - §5)'. This cycle SKIPPED both (the conservative reading). No content was lost: their census batch pairs_20260711T051145Z saw no new data this cycle, so a regen would have changed only generated_utc. Owner: please settle which doc is right so cycles stop diverging. || 2026-08-10: this cycle RAN both, following docs/routine_standing_prompt.md as the stated authority ('where a skill compresses, that file governs'). Unlike 08-09 it mattered: the census batch pairs_20260711T051145Z gained its 26-50 lens chunk, so transport moved 25 -> 44 census pairs and loglens re-derived (23 paired, agree 17/18). Skipping would have left both site payloads stale against their own inputs. Two consecutive cycles have now made opposite calls on the same day's rules - please settle it. || 2026-08-12 - THIRD CYCLE, THIRD TIME THE DOCS FORCED A JUDGEMENT CALL. Ran both again, agreeing with 08-10 and following docs/routine_standing_prompt.md as the stated authority. It did not matter to content this time: transport re-derived the same census (44 pairs, patient-never 16) and loglens the same agreement counts (23 paired, class 17, formation 18), so only generated_utc moved in the two published files. The contradiction is still live inside a single file - publish-site-data step 3 says run them, its own Never list says never - and it is now the longest-standing unforced ambiguity in the cycle docs. || 2026-08-13: this cycle took the OPPOSITE reading and RAN both, on the grounds that docs/routine_standing_prompt.md self-describes as 'the authority' and the daily-ops-cycle skill defers to it where they differ. Evidence for the owner's decision: both exporters reproduced their committed site files byte-identically except generated_utc (transport census 44 pairs / patient-never 16 / 2 exemplars; loglens 23 paired / class agree 17 / formation agree 18). So across two cycles, running them and skipping them produced the SAME published content - the conflict is real but currently zero-stakes, and it stays open only because the docs still contradict each other. Cheapest fix is to delete the two stale 'Never'/'Do NOT' bullets in the skills, since the standing prompt and the publish-site-data step 3 body already agree. || 2026-08-14 - FOURTH CYCLE, THIRD IDENTICAL JUDGEMENT CALL. Ran both again, following docs/routine_standing_prompt.md section 5 as the stated authority over the publish-site-data skill's own contradictory 'Never' line and daily-ops-cycle's 'not wired'. No content impact today (both reproduced byte-identically except generated_utc; census 44 pairs, loglens 23 paired / agree 17 / 18). Every cycle since 08-10 has decided it the same way, so the risk is no longer divergence between cycles - it is that two of the three governing documents remain positively wrong, and a session that follows either one would silently stop refreshing two published payloads with both gates green."
+    },
+    {
+      "id": "MODEL-STATS-PUBLISH-POLICY-20260810",
+      "recorded_utc": "2026-08-10T13:50:00Z",
+      "what": "data/model_stats.json is not in the standing prompt's §5 publish chain, so the daily cycle refreshes every payload EXCEPT the per-model statistics - while firing, every cycle, the backfill legs that move them. Result: the site's cross-model numbers are from 2026-08-08 and today's recomputation differs materially (see MEDICAL-FINETUNE-FRAMING). It is also the only major payload with no generated_utc, so no automated check can see the staleness. Owner: (a) add 'paired_stats_rigor.py --site ../patientwords' to §5 and accept that it can trip claim_check (which is the designed behaviour), or (b) keep it manual and say so explicitly in the standing prompt. Today it is manual by omission, not by choice. Cheap prerequisite either way: stamp generated_utc in the bundle, then have validate_frontend_contract warn when it lags urgency_shift.json. || 2026-08-12 - SCOPE IS WIDER THAN THIS ENTRY AND ONE PREMISE IS WRONG. (a) It is not just model_stats: convergence.json is also stamped 2026-08-08T13:53:09Z, and timeline.json is stamped 2026-07-14T13:42:38Z - 29 days. (b) The premise 'it is the only major payload with no generated_utc' is incorrect: model_stats.json and convergence.json both carry _provenance.generated_utc (that is how these dates were read), so the proposed staleness check needs no new stamping work and can be written today; timeline.json is the one with no engine_sha. (c) The site CLAUDE.md:56-64 does not merely omit these files - it positively asserts all three are 'regenerated by the engine's nightly cycle', so the doc is wrong, not silent, and a session reading it would reasonably assume freshness. (d) NEW AND SEPARATE: all three carry _provenance.engine_sha '7f3b6777d552+dirty' - the study's claim-grade statistics were computed from an uncommitted working tree and are not reproducible from any commit. Nothing rejects a +dirty provenance stamp. Proposed checks in docs/critic/critic_20260812.md (freshness budget, +dirty rejection, documented-writer-vs-cycle parity). This cycle again did NOT regenerate, for the reason already on file. || 2026-08-14 - SIXTH DAY, STILL UNRESOLVED, AND THE GAP IS WIDENING. model_stats.json _provenance.generated_utc 2026-08-08T13:50:04Z, convergence.json 2026-08-08T13:53:09Z - both six days old while this cycle republished eight other payloads and fired another backfill leg that moves them. The 08-10 probe result (meditron3-8b n 132 -> 333, CI [-0.0498,+0.0004] -> [-0.0493,-0.0211] excluding zero, sign test 5v1 q=0.26 -> 23v3 q=1.76e-04) is now four days old and still not on the site, which continues to carry the pre-move numbers and the 'medical fine-tunes are the null cases' framing. Today's on-disk coverage over the 25 published stamps, against published n_rows: meditron3-8b 258 vs 132, apertus 233 vs 104, gemma-2-2b 3023 vs 1772 (upper bounds - pre-dedupe and including withheld holdout rows - so direction and scale only). This is the fourth consecutive cycle to record the same ask: (a) add paired_stats_rigor.py to the standing prompt's section 5 and accept it can trip claim_check, or (b) keep it manual and say so explicitly. It is still manual by omission, not by choice."
+    },
+    {
+      "id": "PAB-PROBE-NO-CI-TARGET-20260810",
+      "recorded_utc": "2026-08-10T13:50:00Z",
+      "what": "'pab-probe' is a known key in fire_trigger.TRIGGERS but has no .github/trigger/pab-probe.json and no workflow reading that path (Monday doc sweep item 1). fire_trigger hard-errors on UNKNOWN keys so a fire cannot silently no-op - but a KNOWN key with no workflow does exactly that: it would validate, write the trigger file, journal the fire, push, and run nothing, leaving a journal entry for a run that never existed. Owner/orchestrator: wire the workflow or drop the key. A session cannot fix it (both remedies are hand-edits to .github/, forbidden here)."
+    },
+    {
+      "id": "DOC-SWEEP-DRIFT-20260810",
+      "recorded_utc": "2026-08-10T13:50:00Z",
+      "what": "Two documentation drifts from the Monday sweep (docs/audits/doc_accuracy_20260810.md), both needing an owner/orchestrator edit rather than a cycle fix. (1) The standing prompt §2b tells the sweep to cross-check 'docs/preregistration_amendments.md' - that file does not exist on the ops branch (only on main; the branch split it into prereg_amendment2/3/4 + prereg_divergence_log). A session following §2b literally gets a FileNotFoundError and could misread it as 'no amendments declared'. (2) extract_site_text.py's PAGES list misses two substantive live pages - simulated-scenarios/scenario.html (29.3 KB) and llm/code.html (14.6 KB) - so ~44 KB of published prose is invisible to every consumer of the extractor, including text review. The other seven unlisted files are correctly out of scope (five redirect stubs, 404, share card)."
+    },
+    {
+      "id": "STEERED-BATCH-PUBLICATION-20260811",
+      "recorded_utc": "2026-08-11T13:59:27Z",
+      "what": "pairs_20260809T172338Z (the owner-approved steered batch, 69 accepted at $1.872 on opus-4-8, mined at the validated multi-tier-downgrade veins) finished its circuit trace on 2026-08-10 and is now fully measured, but it is NOT published: it is not one of the 20 Tier B campaign batches (generation closed at batch 20 on 08-06), and the 08-10 journal records 6 holdout-colliding indices in it. This cycle held it out of the exporter's --stamps rather than change the public corpus composition unasked, so the payload stayed at 25 stamps / 1,647 scenarios. Owner: should the steered batch join the public payload (and if so, is its downgrade-vein sampling disclosed as steered rather than random), or does it stay an internal measurement set feeding the patching/downgrade analysis only? No cycle should add it on its own - it changes what the public corpus is a sample OF. || 2026-08-12 - A SECOND BATCH NOW SITS IN THE SAME STATE. pairs_20260811T190638Z has completed its round-2 trace (68/68) and its apertus/meditron3 logits legs, and like 0809 it is measured but unpublished. This cycle again held both out of --stamps, keeping the payload at 25 stamps / 1,647 scenarios. Their urgency rows are what moved the contract orphan-row warning 1,185/9,363 -> 1,359/9,579 - dead weight in the public payload, not contamination of any claim. Please decide the CLASS (do measured non-campaign batches ever join the public corpus, and with what disclosure) rather than batch by batch; a third will exist before long."
+    },
+    {
+      "id": "BACKFILL-PLANNER-LENS-SPARSE-20260815",
+      "recorded_utc": "2026-08-15T13:56:00Z",
+      "what": "Pick the fix for the planner's LENS mis-count (blocker planner-lens-sparse-miscount-20260815). backfill_planner.py globs the working tree for jlens_raw, which the documented fresh-session sparse checkout does not materialize, so it reports lens+save_raw 3/39 when the git tree says 39/39 COMPLETE. Option A: add '/trace_out/*/jlens_raw/*' to the Variant B patterns in docs/fresh_session_bootstrap.md - simple, but pulls ~6,823 extra blobs into every fresh container. Option B (recommended): make the planner read coverage from 'git ls-tree -r HEAD' rather than the filesystem, correct under sparse, full and partial checkouts alike. Either way the LENS lane is already complete, so the loss so far is a redundant $0 fire per cycle plus a false 3/39 statistic that reached the briefs, the Tier B verdict and yesterday's decision deck (card D4 asked you to accept ~35 more cycles of lens backfill that are not needed). || 2026-08-16: Option A APPLIED AS AN INTERIM STOPGAP (not a resolution of this decision - the A-vs-B choice is still yours). '/trace_out/*/jlens_raw/*' is now in the Variant B patterns in docs/fresh_session_bootstrap.md, with the reason recorded next to it. Measured cost is lower than the estimate in this card: 6,835 .gz across 92 dirs, materialized in well under a minute, trace_out 3.3G -> 6.6G on a 252G disk with 23G free before the pull. Measured benefit: the planner now prints 'lens+save_raw 39/39' and '[jlens-readout] COMPLETE - no gaps', this cycle made NO redundant lens fire, and export_jspace.py succeeded instead of refusing. Option B (planner reads 'git ls-tree -r HEAD') remains the better permanent fix and is untouched - it is a code change, and a data-mandate cycle does not write code. The false 3/39 statistic is now corrected everywhere this cycle writes: brief, verdicts and deck card.",
+      "status_20260816": "interim stopgap applied; owner still to choose A (keep sparse pattern) or B (planner reads git tree)"
+    },
+    {
+      "id": "LANE-SHARING-PROTOCOL-20260815",
+      "recorded_utc": "2026-08-15T13:56:00Z",
+      "what": "Two independent drivers now share the logits lane - this daily cycle and the owner-directed interim babysitter (2026-08-07) - and today they collided: the babysitter deliberately left a slot free for the 13:04Z cycle, the cycle ran long on the Variant B bootstrap plus the full publish chain, and the babysitter reclaimed both slots at 13:53/13:54 while this cycle's fire was mid-publish. fire_trigger's guard did its job - nothing was evicted, and the cycle abandoned its fire rather than push a third entry - but the arbitration was luck of the ordering, not design. Options: (a) give the daily cycle a reserved window in which the babysitter does not fire; (b) have the babysitter skip the logits lane entirely on days the cycle runs; (c) accept the collision, since fire_trigger refuses correctly and the only cost is a deferred $0 leg. (c) is defensible and needs no code - but it should be a choice on the record rather than a habit."
+    },
+    {
+      "id": "HOLDOUT-GUARD-DISAGREEMENT-20260817",
+      "recorded_utc": "2026-08-17T13:38:16Z",
+      "what": "The two holdout guards disagree by exactly one phrase and nothing asserts they should agree. seal_check.sealed_registry() seals 173 phrases (derived via is_holdout() over data/simulated/); paired_stats_rigor's Amendment-1 filter excludes across 174 holdout phrases (derived from collector rows carrying tierb_split='holdout'). The extra phrase is an ORPHAN collector row: batch=pairs_20260713T050939Z, model=gemma-2-2b, batch_index=null, its text present in NO data/simulated archive as top_prompt or bottom_prompt (exact or NFKC/whitespace/case-normalized), and is_holdout() returns False for it. The seal is therefore NOT weakened - the phrase cannot be a Tier B holdout phrase - and no published number is affected, since the row joins no scenario. Live effects: the interim analysis over-excludes by one phrase (conservative), and the holdout-phrase count printed in logs (174) overstates the true sealed set (173), which a future session could misread as the seal having grown. Owner/orchestrator decision: drop orphan rows whose clinical_prompt matches no archive and whose batch_index is null, THEN land the guard-agreement regression test drafted in docs/critic/critic_20260817.md section 5. The critic deliberately did not land the test this cycle because it would fail immediately on this row and turning the suite red is not the critic's call."
+    }
+  ],
+  "blockers": [
+    {
+      "id": "PARK-UNRESOLVED-20260904",
+      "recorded_utc": "2026-09-04T14:47:00Z",
+      "what": "The item 3c re-park of circuit-trace (fired 2026-09-04T14:43:12Z, run 33885370863) had not reached a terminal state when this cycle closed - GitHub read status 'in_progress', no conclusion, at 14:46:51Z, only 3m31s in. That is NOT a stall: the comparable parks took 12m15s (08-29) and 12m18s (09-02), and this cycle simply finished its other work first. The entry was left UNRESOLVED rather than resolved on assumption, per the resolve-only-when-truly-terminal rule. IMPACT: none on correctness. The park is $0 with commit_outputs false, so it commits nothing and there is nothing to harvest; .github/trigger/circuit-trace.json is already on its park nonce on the branch, so the resting-state guarantee holds however the run ends. The only cost is one open journal entry in the circuit-trace lane, which leaves that lane at 1 active until it is resolved. NEXT CYCLE, opening harvest: read run 33885370863's terminal state FIRST, then 'python scripts/fire_trigger.py resolve --trigger circuit-trace' before firing the next sentinel - otherwise the sentinel fire competes with a stale active entry. If the run failed, the park simply did not execute; re-park then, do not re-fire anything else."
+    },
+    {
+      "id": "SITE-MAIN-LAG-20260904",
+      "recorded_utc": "2026-09-04T15:00:00Z",
+      "what": "The LIVE public site (patientwords main, which GitHub Pages serves) is two sentinel publishes behind the ops branch. Site main tip is 16d03cb, 'drift_series: fold in the 2026-08-29 sentinel (33 -> 34 measured days)'. The 09-01 publish (e0e55f9, 35 days) and today's 09-04 publish (943e330, 36 days) both sit on claude/gemma-clinical-colloquial-interp-mavx04 and are NOT ancestors of main - verified with git merge-base --is-ancestor. So the live page reads 34 measured days ending 20260828 while the branch reads 36 ending 20260904. Cause is a spec gap, not an error: the ACTIVE-STUDY standing prompt said 'push the branch, then branch:main', and the MAINTENANCE-MODE rewrite of 2026-08-29 dropped that clause - its section 5 ends at 'before pushing data payloads only'. The 09-01 cycle also did not merge, so this is now the settled behaviour of two consecutive maintenance cycles. NOT ACTED ON: merging to main publishes to a live public site, the standing prompt no longer instructs it, and 'when ambiguous, do LESS'. Owner decision recorded as SITE-MAIN-LAG-20260904 in decisions_pending."
+    },
+    {
+      "id": "JOURNAL-EXPIRED-PARKS-20260902",
+      "recorded_utc": "2026-09-04T15:00:00Z",
+      "what": "Two journal entries carried resolved:false into this cycle - circuit-trace fired 2026-09-02T12:51:50Z and logits-eval fired 2026-09-02T23:41:40Z, both PARK fires left open when the 09-02 interactive session closed. Per-entry terminality was checked individually (no resolve --all): circuit-trace = run 33632353641, GitHub-confirmed completed/success 12:52:08Z -> 13:04:26Z; logits-eval = run 33696256845, GitHub-confirmed completed/success 23:41:44Z -> 23:43:30Z. Both are commit_outputs:false parks, so NOTHING landed and there was nothing to harvest. fire_trigger.py resolve declined both ('no active journal entries') because both are past the 8h expiry and the tool no longer counts them active - status reads 0 active on every lane, so they occupy no slot and blocked nothing this cycle. Recorded here as missed-harvest records rather than hand-edited in the journal (hand-editing the journal is an absolute boundary). NO ACTION NEEDED; this is the JOURNAL-EXPIRY-BLIND-SPOT-20260818 pattern recurring, and it is benign for parks specifically because a park commits no outputs."
+    },
+    {
+      "id": "sentinel-overran-window-20260829",
+      "recorded_utc": "2026-08-29T13:05:00Z",
+      "what": "The 2026-08-29 drift sentinel (circuit-trace run 33252186725, fired 12:18:52Z) had not reached a terminal state when this cycle closed. GitHub reported status 'in_progress' with no conclusion at 12:55Z - 36+ minutes and counting, against 34m42s / 16m05s / 13m59s for the three post-outage runs of 08-26, 08-27 and 08-28. Item 3b's wait was served in full: fetch-polled every 45-60 seconds from 12:19Z to 12:54:39Z against the 12:53:49Z bound, and trace_out/drift_sentinel_20260829/ never appeared on the branch. Per item 3b the journal entry was LEFT UNRESOLVED and the run was NOT re-fired; no drift verdict could be computed, so data/drift_series.json still holds 33 measured days ending 20260828 and 20260829 is a PENDING point, not yet a hole. IMPORTANT DISTINCTION from blocker neuronpedia-graph-500-20260825: the 08-22..08-25 dark runs each FAILED in ~6m41s with 500s from /api/graph/generate and committed nothing; this run has not failed, it is slow, and the lens sentinel on the same host succeeded at 12:19:39Z. NEXT CYCLE: the opening-harvest backstop should read this run's terminal state first, verify trace_out/drift_sentinel_20260829/batch_summary*.json if it landed, resolve the circuit-trace entry, and run the drift verdict for 20260829 BEFORE firing the 08-30 sentinel - the lane is otherwise blocked with one active entry. || RESOLVED SAME CYCLE 2026-08-29T13:15:00Z: a final GitHub status check before closing found the run completed/success at 12:57:30Z - 3m41s past the poll that gave up, 38m38s end to end. Outputs verified on the branch (batch_summary.part_01.json, backend 'hosted', idx 1..3, plus six render files), the circuit-trace entry was resolved in-cycle, and the drift verdict ran: 20260829 vs 20260828 max |dp| 0.0 at pair 1 clinical, top words unchanged - NO NEW BREACH. drift_series.json 33 -> 34 measured days ending 20260829, republished to the site. Nothing was deferred to tomorrow and the circuit-trace lane closes empty. The standing lesson survives the resolution: 38m38s exceeds item 3b's 35-minute bound, so the bound is now known to be tighter than this endpoint's worst case - see decisions_pending SENTINEL-WAIT-BOUND-20260829.",
+      "resolved": "2026-08-29T13:15:00Z"
+    },
+    {
+      "id": "neuronpedia-graph-500-20260825",
+      "recorded_utc": "2026-08-25T13:20:00Z",
+      "what": "FOURTH CONSECUTIVE DAY of drift-sentinel failure on upstream Neuronpedia /api/graph/generate. Run 32850912192, fired 13:01:46Z, GitHub-confirmed completed/failure at 13:08:28Z (6m42s) - the same signature and duration as 32572679035 (08-22), 32639162655 (08-23), 32728951245 (08-24) and the two owner-sanctioned 08-23 retries. Job log read this session (job 97811468347): four attempts to https://www.neuronpedia.org/api/graph/generate, 13:02:24Z-13:08:24Z, every one a 500 Internal Server Error with the documented 15s/30s/60s backoff; attempts 1 and 4 HUNG ~2 minutes before returning the 500, i.e. a server-side backend fault rather than a fast reject. Died on the first pair's clinical side. Zero pairs traced, 'No trace outputs to commit', no artifact, $0. The fault stays specific to /api/graph/generate: today's lens sentinel on the SAME host (jlens_readout run 32850922921) completed/success at 13:02:43Z, INSIDE the failing window - four days running that the graph endpoint is the only thing down. CONSEQUENCE: data/drift_series.json still holds 30 measured days ending 20260821; the dark run is now FOUR consecutive days. NOT re-fired this cycle - the same-day retry exception the owner granted was for 08-23 specifically, and one trace fire per group per cycle was spent on the sentinel itself. Escalates decisions_pending SENTINEL-OUTAGE-CONSECUTIVE-20260823 from three days to four. Full evidence: docs/critic/critic_20260825.md. || RESOLVED 2026-08-26: the endpoint recovered on its own. Run 32977549702 (fired 13:59:45Z) completed/success at 14:34:27Z with all three pairs traced and six render files committed - no change was made on this side, the fifth consecutive daily attempt simply went through. Four dark days total (08-22..08-25), all four permanent holes in the output-drift series. Nothing was lost beyond those four points: the recovered reading against 20260821 shows max |dp| 0.0, so no drift went unobserved during the window.",
+      "resolved": "2026-08-26T14:36:00Z"
+    },
+    {
+      "id": "neuronpedia-graph-500-20260824",
+      "recorded_utc": "2026-08-24T13:20:00Z",
+      "what": "THIRD CONSECUTIVE DAY of drift-sentinel failure on upstream Neuronpedia /api/graph/generate. Run 32728951245, fired 12:47:03Z, GitHub-confirmed completed/failure at 12:53:48Z (6m41s) - the same signature and duration as run 32572679035 (08-22) and 32639162655 (08-23) plus the two owner-sanctioned 08-23 retries. Zero pairs traced, no outputs committed, $0. The fault stays specific to /api/graph/generate: today's lens sentinel on the SAME host (jlens_readout run 32728973009) completed/success at 12:48:08Z, inside the failing window - three days running that the graph endpoint is the only thing down. CONSEQUENCE: data/drift_series.json still holds 30 measured days ending 20260821; the series carries six holes and three of them are now CONSECUTIVE. NOT re-fired this cycle - the same-day retry exception the owner granted was for 08-23 specifically, and one trace fire per group per cycle was spent on the sentinel itself. Escalates decisions_pending SENTINEL-OUTAGE-CONSECUTIVE-20260823 from two days to three. Full evidence: docs/critic/critic_20260824.md, Item 4. || RESOLVED 2026-08-26: the endpoint recovered on its own. Run 32977549702 (fired 13:59:45Z) completed/success at 14:34:27Z with all three pairs traced and six render files committed - no change was made on this side, the fifth consecutive daily attempt simply went through. Four dark days total (08-22..08-25), all four permanent holes in the output-drift series. Nothing was lost beyond those four points: the recovered reading against 20260821 shows max |dp| 0.0, so no drift went unobserved during the window.",
+      "resolved": "2026-08-26T14:36:00Z"
+    },
+    {
+      "id": "neuronpedia-graph-500-20260823",
+      "recorded_utc": "2026-08-23T12:49:05Z",
+      "what": "SECOND CONSECUTIVE DAY of the same upstream failure, which changes it from an outage to a sustained one. Run 32639162655 (circuit-trace, completed/FAILURE 12:28:11Z) died on the first pair's clinical side: four attempts to https://www.neuronpedia.org/api/graph/generate, every one a 500 Internal Server Error, with the documented 15s/30s/60s backoff, 12:22:12Z -> 12:28:08Z. Zero pairs traced, 'No trace outputs to commit', no artifact, $0 spent. 2026-08-23 is the FIFTH permanent hole in the output-drift series (after 08-08, 08-12, 08-19, 08-22) and forms the first ADJACENT PAIR with 08-22. Consequence beyond the missing point: drift_sentinel.py compares each day to the previous MEASURED day, so a drift step that lands during the gap will be attributed to the 20260821->next-measured transition, smearing its date; and no breach of any size can be reported for two days. DIAGNOSTIC (holds from 08-22 and strengthens): the j-lens endpoint on the SAME host was healthy minutes on either side - the lens sentinel run 32639167279 completed/success at 12:22:20Z, i.e. WHILE graph-generate was returning 500s, and txcorpus chunk 9 queued clean - so the fault is specific to /api/graph/generate, not to Neuronpedia generally. NEW DETAIL: attempts 1 and 4 each hung ~2 minutes before erroring (12:22:12->12:24:17, 12:26:03->12:28:08), so the endpoint accepts connections and fails late, consistent with a backend/capacity fault rather than a rejected request. NOT re-fired: standing prompt section 2 allows at most one trace fire per group per cycle and this cycle used it on the sentinel. The journal entry IS resolved - the run is terminal, and leaving it unresolved would block tomorrow's sentinel. OWNER DECISION NEEDED (see decisions_pending SENTINEL-OUTAGE-CONSECUTIVE-20260823): ask Neuronpedia, sanction a same-day sentinel retry, or accept and annotate the gaps. || RESOLVED 2026-08-26: the endpoint recovered on its own. Run 32977549702 (fired 13:59:45Z) completed/success at 14:34:27Z with all three pairs traced and six render files committed - no change was made on this side, the fifth consecutive daily attempt simply went through. Four dark days total (08-22..08-25), all four permanent holes in the output-drift series. Nothing was lost beyond those four points: the recovered reading against 20260821 shows max |dp| 0.0, so no drift went unobserved during the window.",
+      "resolved": "2026-08-26T14:36:00Z"
+    },
+    {
+      "id": "neuronpedia-graph-500-20260822",
+      "recorded_utc": "2026-08-22T12:40:00Z",
+      "what": "The 2026-08-22 drift sentinel FAILED and 2026-08-22 is a permanent hole in the output-drift series - the fourth after 08-08, 08-12 and 08-19. Run 32572679035 (circuit-trace, completed/FAILURE 12:26:11Z) died on the first pair's clinical side: four attempts to https://www.neuronpedia.org/api/graph/generate, every one a 500 Internal Server Error, with the documented 30s/60s backoff, 12:20:08Z -> 12:26:07Z. Zero pairs traced, 'No trace outputs to commit', no artifact, $0 spent. Upstream outage, not our code and not a queue fault - the lane was empty and the alias was committed and pushed before firing. IMPORTANT DIAGNOSTIC: the j-lens endpoint on the SAME host was healthy minutes later - both lens-sentinel host ids and txcorpus priority2 chunk 8 landed clean at 12:20-12:22Z - so the failure looks specific to /api/graph/generate rather than to Neuronpedia generally. NOT re-fired: standing prompt section 2 allows at most one trace fire per group per cycle and this cycle used it. Unlike the 08-08 case a same-day retry would NOT mislabel the alias, so the next cycle should simply re-fire the 2026-08-22 alias if it is still the same UTC day, and otherwise fire that day's own alias and leave 08-22 as a hole. The journal entry IS resolved - the run is terminal, and leaving it unresolved would have blocked tomorrow's sentinel. || RESOLVED 2026-08-26: the endpoint recovered on its own. Run 32977549702 (fired 13:59:45Z) completed/success at 14:34:27Z with all three pairs traced and six render files committed - no change was made on this side, the fifth consecutive daily attempt simply went through. Four dark days total (08-22..08-25), all four permanent holes in the output-drift series. Nothing was lost beyond those four points: the recovered reading against 20260821 shows max |dp| 0.0, so no drift went unobserved during the window.",
+      "resolved": "2026-08-26T14:36:00Z"
+    }
+  ],
+  "notes": [
+    "2026-09-04 cycle: the section 0 cadence gate did NOT trip - newest brief was brief_20260901.md at 3 days old (gate wants <2d) and no journal-active entry was older than 8 hours, so the cycle ran in full. 2026-09-02 and 2026-09-03 have no alias and no sentinel: SCHEDULED gaps under the owner-approved 08-29 three-day downshift, not missed cycles and not holes in the drift series.",
+    "2026-09-04 bootstrap: Variant B container again - both repos arrived clean but on main-based harness session branches (engine claude/compassionate-ritchie-ptfam5, site claude/nice-bardeen-ptfam5) with the ops branch never fetched, so ops/dashboard.json read as the month-stale main seed until repaired. docs/fresh_session_bootstrap.md Variant B applied verbatim: blobless fetch first (1.9s class; a plain fetch of ~20GB of history is unusable), then the sparse patterns INCLUDING the global '/trace_out/*/jlens_raw/*' line, then checkout. 930 batch_summary*.json materialised. The site sibling needed the same treatment (it was also on a session branch) and is non-sparse with modes/ present (464 render HTML), so the contract gate read true - 0 errors, no phantom 'render path missing on disk' FAILs. push --dry-run verified before any fire.",
+    "2026-09-04 coexistence: a separate owner-driven session is working PR #4 on branch claude/interp-engine-integration-2u1t49 and fired six logits-eval runs there on 09-03/09-04 (third-implementation verify, then negative controls on the qualified and identity arms, each followed by a park). Those runs are on a DIFFERENT branch, so their per-branch concurrency groups are disjoint from the ops branch's and they occupied none of this cycle's lanes; they are also absent from this branch's ops/trigger_journal.jsonl. Recorded so a future cycle reading GitHub's unfiltered run list does not mistake them for stray ops-branch fires needing harvest. NOTE for future cycles: the GitHub MCP actions_list tool IGNORES its branch and workflow_id filters in this session - it returned identical unfiltered results for every filter passed - so terminality had to be established by paging the global list and matching head_branch by eye.",
+    "2026-09-01 cycle: FIRST FIRING UNDER THE 3-DAY MAINTENANCE CADENCE, and the §0 cadence gate correctly did NOT trip - newest brief was brief_20260829.md at 3 days old (gate wants <2d) and no journal-active entry was older than 8 hours, so the cycle ran in full. 2026-08-30 and 2026-08-31 have no alias and no sentinel: those are SCHEDULED gaps under the owner-approved 08-29 downshift, and must not be read as missed cycles or as holes in the drift series.",
+    "2026-09-01 bootstrap: Variant B container for the EIGHTEENTH consecutive fresh session - both repos arrived clean but on main-based harness session branches (engine claude/compassionate-ritchie-lm7emq, site claude/nice-bardeen-lm7emq) with the ops branch never fetched. docs/fresh_session_bootstrap.md Variant B applied verbatim in the engine: blobless fetch first (completed in seconds; a plain fetch is unusable against ~20GB of history), then the sparse patterns INCLUDING the global '/trace_out/*/jlens_raw/*' line, then checkout (3m20s). The site sibling was already present and non-sparse with modes/ materialised (464 render HTML files), so the contract gate read true - 0 errors, no phantom 'render path missing on disk' FAILs. Verified before acting: ops branch in both repos, sealed set populated at 173 (not the empty set a main checkout gives), push --dry-run clean in both, 929 batch summaries on disk. Nothing was pushed to the harness session branches.",
+    "2026-09-01 queue discipline: TWO fires, both $0, both in the circuit-trace lane and strictly sequential - the drift sentinel, then the item 3c re-park after it was GitHub-confirmed terminal (--ignore-settle used on that basis, per the standing prompt's own instruction for the re-park). Never more than one running and one pending in any lane. All eight trigger files verified PARKED at cycle close; circuit-trace carries today's nonce, the other seven still carry their 2026-08-29 park nonces, so no lane was left hot by a stray fire. No paid trigger was touched: scenario-generation, model-evaluation and advice-eval stayed parked and unfired, which maintenance mode requires absent explicit owner words.",
+    "2026-09-01 harvest: three journal entries remain formally unresolved but are BOOKKEEPING RESIDUE, not lost measurement, and all three were GitHub-confirmed terminal this cycle with their outputs verified present. (1) advice-eval 2026-08-22T01:59:22Z = second-judge chain 3/5, run 32544991834, completed/cancelled at the 300-min timeout with outputs landed - later runs' notes record the harvest. (2) advice-eval 2026-08-22T07:11:16Z = chain 4/5, run 32558932427, completed/cancelled with outputs landed, likewise harvested. (3) jlens-readout 2026-08-23T12:22:14Z = txcorpus priority2 lens chunk 9 (pairs 201-225), which landed COMPLETE: trace_out/txcorpus_priority2_20260714T224455Z__jlens_gemma-2-2b/jlens_summary.part_201.json holds 25 results at idx 201..225, and the corpus closed at 352/352 on 08-28. All three aged past fire_trigger's 8h liveness window, so `status` reads 0 active in every lane and `resolve` cannot reach them - the known JOURNAL-EXPIRY-BLIND-SPOT-20260818. Recorded here rather than dropped; no re-fire, and no lane is actually occupied by them.",
+    "2026-09-01 accounting: scripts/ledger_update.py run before any fire, as the sole writer of spend numbers - 0 new sidecars, lifetime $71.4448, Tier B generation $2.7678 of the $8 ceiling, today $0 of the $2 daily ceiling. Both fires this cycle were $0, so no dollar figure moved and none was typed by hand. Note spend.today.date still reads 2026-08-28 because ledger_update only advances it on a day with booked spend; that is the tool's behaviour, not a stale hand edit.",
+    "2026-08-29 cycle: Variant B container for the SEVENTEENTH consecutive fresh session - both repos arrived clean but on main-based session branches (engine claude/epic-fermi-sp80t7, site claude/compassionate-lovelace-sp80t7) with the ops branch never fetched. docs/fresh_session_bootstrap.md Variant B applied verbatim in the engine: blobless fetch first (1.9s class, vs the unusable plain fetch), then the sparse patterns INCLUDING the global '/trace_out/*/jlens_raw/*' line, then checkout. The site sibling was already present, non-sparse and with modes/ materialised (464 render HTML files), so the contract gate read true - 0 errors, no phantom 'render path missing on disk' FAILs. Verified before acting: ops branch in both repos, sealed set populated at 173 (not the empty set a main checkout gives), push --dry-run clean, 925 batch summaries on disk. NOTE: this session's harness prompt designated the two main-based session branches; the scheduled ops prompt designates claude/gemma-clinical-colloquial-interp-mavx04 and that is where all state lives, so the ops branch was used and nothing was pushed to the session branches.",
+    "2026-08-29: an exit-1 fire had to be repaired BY HAND and was NOT re-fired - the second time this has happened in two cycles, same cause. The olmo-2-1b fire wrote its trigger file and journal entry, then its push was rejected non-fast-forward because CI had committed the lens-sentinel outputs meanwhile. Per the standing boundary the fire was never re-run: the tree was already clean, so it was a straight pull --rebase (clean, no ops/trigger_journal.jsonl conflict) and push. All 840 journal lines were re-verified as parsing JSON afterward, and the trigger payload was read back from disk and matches what was intended. Run 33252251082 duly fired and succeeded.",
+    "2026-08-29 queue discipline: five fires, all $0, never more than one running plus one pending in any lane, and ALL FIVE terminal, verified and resolved by cycle close - every lane left empty for the next driver. The drift sentinel came closest to being carried over: it overran item 3b's 35-minute wait and was already recorded as unresolved when a final GitHub status check found it completed/success at 12:57:30Z, so it was harvested in-cycle (see blocker sentinel-overran-window-20260829, resolved, and decisions_pending SENTINEL-WAIT-BOUND-20260829). --ignore-settle was used ONCE, on the third logits leg, with both prior legs GitHub-confirmed completed/success and their outputs committed and verified - the basis item 4 requires. A FOURTH logits leg was then refused with exit 6 on the same settle window; it was NOT bypassed a second time, so the logits lane closed with its pending slot empty. That is a deliberate do-less call costing one 10-pair leg: the conservative reading of 'never work around a refusal' won over section 3a2's 'fill EVERY idle logits slot'. If the owner would rather the lane stay saturated, a second same-cycle bypass on GitHub-confirmed-terminal runs is the change to sanction."
+  ],
+  "decisions_log": [
+    {
+      "date": "2026-07-19",
+      "by": "owner (chat) + session",
+      "decision": "SCALE-FRAMING signed off and deployed (dynamic at-scale finding, translation page). Critic re-established (owner 'go'): scope committed, interim via daily cycle Mon/Wed/Fri + signals; standalone Routine pending owner in-client approval of the create-trigger permission. UI consolidation + credibility fixes + Gemini polish landed on main and verified clean by this cycle (2 drifted holdout claim_check guards re-anchored)."
+    },
+    {
+      "date": "2026-07-17",
+      "by": "session (overnight, autonomous)",
+      "decision": "Overnight investigation: the confirmatory-population filter (_OBS_RE stem-only) does not exclude the sonnet outcome-selected supplementary sets that share the pairs_ stem; the docstring claimed they were excluded but the mechanism never did it. Nothing published is contaminated (verified). An attempted generator==haiku fix OVER-excluded the legit July 6-7 pilots (n 836->632), revealing this is a pre-registration population DECISION, not a bug - reverted all stats-code changes, surfaced as POPULATION-DEF with 3 quantified options. Committed the unambiguous ops fix only: scenario_generation default sonnet-5 -> haiku-4-5 (the batch-13 trap). Ops chain this cycle: jlens batch-12 chunks 3-4, logits backfill leg 4, drift sentinel day-5 fired; sonnet batch-13 quarantined (not traced); meditron successors-unified still running."
+    },
+    {
+      "date": "2026-07-17",
+      "by": "owner (chat)",
+      "decision": "MEDICAL SUCCESSORS INCORPORATED: owner signed the Meditron3-8B license acknowledgment and surfaced EPFLiGHT/Apertus-8B-MeditronFO (newest meditron lineage, no acknowledgment gate) - both added to the logits model map and a joint limit-3 probe fired ($0, 8B swap-path check). If clean: unified 122-phrase run + join the exploratory nightly leg + backfill so they even up per the 07-16 even-n directive; both register post-registration exploratory. meditron-7b (2023, gated 403) RETIRED from the queue - the daily re-probe is dropped; map entry kept for the record."
+    },
+    {
+      "date": "2026-07-17",
+      "by": "session (audit 1 landing, owner-sanctioned routing)",
+      "decision": "AUDIT 1 HIGHS LANDED (11 of 11, each verified then fixed with regression tests where testable): H01 archive prune+no_pngs refusal; H02/H03 model-evaluation ledger sidecar to main (crash fallback books max_spend as estimated); H04 eval export merges by model id + engine artifact re-seeded from the site's intact 3-model copy; H05 generation cost sidecar lands even at count=0; H06 batch summaries carry pairs_requested/completed (trace + logits); H07 paid loops keep partial spend accountable (scenario_gen x3 + translate_corpus); H08 jlens_insights refuses empty census; H09 jlens_readout mid-batch 4xx keeps measured pairs, partial-marked; H10 still-tracing line subtracts sealed holdout; H11 scenario.html no longer renders base numbers under another model's chip. Validator (validate_frontend_contract.py + tests) adopted from the audit branch into the publish chain (report mode); it immediately caught 3 fresh errors, 2 fixed (stale specialties.json sync, provenance batch timestamp), 1 registered (F-M27 orphan urgency rows). 37 mediums + 50 lows queued for coming cycles from docs/audit1_report.md."
+    },
+    {
+      "date": "2026-07-17",
+      "by": "owner (morning deck, all six chips)",
+      "decision": "(1) meditron: owner requested gated access; daily idle re-probe until it loads. (2) Queued list: wire steering router column (exploratory, from the landed pilot) + sentinel status line; trim per-position. (3) Dialect: publish round 2 (15 of 20 terms landed; rest join at next cycle), feature the seizure term. (4) Wording 2x2: swap in the palpitations frame (grammar +13.0/+9.6pp, word -9.8/-13.2pp). (5) AMENDMENT 4 SIGNED AS DRAFTED, in force: layers 19/21 frozen, pair-level either-layer primary, 15-per-class floor; docs/prereg_amendment4_steering.md. (6) Audit session repointed at the working branch by the owner; fixes route through this session when its report lands. Owner also asked for suggestions of current, actually-used HF healthcare models to add (meditron is 2 years old)."
+    },
+    {
+      "date": "2026-07-16",
+      "by": "owner (chat, morning)",
+      "decision": "EVEN N ACROSS ALL EIGHT MODELS: the four exploratory models (llama-3.2-3b, olmo-2-1b, medgemma-4b-it, gemma-2-2b-it) join the nightly measurement legs - standard pre-registered leg fires first per batch, exploratory leg chains second. Backfill of the ~800 landed Tier B pairs they have never seen runs in every idle logits slot (owner: 'welcome to do more in a day'); leg 1/11 fired (batch 1, 50 pairs). Registration labels unchanged: the four stay post-registration exploratory regardless of n."
+    },
+    {
+      "date": "2026-07-15",
+      "by": "owner (chat, afternoon)",
+      "decision": "Fig. 1 (wording page): OPTION A, keep the inhaler pair (scenario 85) - still the record single-model penalty (-65pp) of all 369 traced; the anxiety (4/4 models to ' doctor') and angina candidates stay as documented runners-up. Owner commissioned NEW RUNS for the other two figures: (1) grammar 2x2 expansion - 10 fresh quadrant frames generated (opus, $0.25 ceiling, topics steered cardio/mental-health/asthma/reflux/sleep), trace to follow; (2) dialect round-2 batch (20 baselines x 8 framings + baselines = 180 graphs) promoted from idle filler to the trace queue, chunked at 5 items. Goal: rank both by how much the top answers move under the swap and deliver a top-10 set the owner can toggle through before choosing what the pages display. Pages untouched until the owner picks."
+    },
+    {
+      "date": "2026-07-12",
+      "decision": "Owner: 'go 100'. Tier B generation moves to num=100 per daily fire (max_spend 0.50) from batch 9 onward; overall $8 generation ceiling unchanged."
+    },
+    {
+      "date": "2026-07-12",
+      "decision": "Owner: items 5-7 approved (translation placebo, drift sentinel, reviewer packet); items 2-3 fired earlier today. Amendment 2 stays DRAFT: owner treats the current run as a demonstration pending patient-sourced exemplars and colleague/Anthropic feedback before a final run. Fable access extended through 2026-07-19; Tuesday downshift becomes a health check."
+    },
+    {
+      "date": "2026-07-13",
+      "decision": "Owner approved a SUPPLEMENTARY emergency/critical-scenario stress set, separate from Tier B. Fired: 20 pairs, claude-sonnet-5 generator (mechanically excluded from Tier B attribution), seeds data/simulated/emergency_stress_seeds.json, protocol docs/emergency_stress_set.md. Critic: after it lands, copy to branch, fire trace/logits/lens, and add a batch-exclusion sensitivity check to the rigor stats before pooling."
+    },
+    {
+      "date": "2026-07-13",
+      "decision": "Owner approved severity-inversion and misspelling supplementary sets (seeds committed, docs/supplementary_stress_sets.md). Critic run 5 fires severity inversion 07-14 (sonnet, num 10, 0.50), misspelling 07-15, one set per day behind the Tier B batch. Determinism finding published to methods, limitations, and the gallery."
+    },
+    {
+      "date": "2026-07-13",
+      "decision": "Owner asked after llama and the medical model. Llama shows as a pending row and graduates when today's unified run lands. biomistral-7b exclusion is now visible on the model-evaluations page with the safetensors reason. meditron-7b (epfl-llm, official org) added to the logits model map as the medical-domain replacement candidate: critic run 5 fires a limit-3 probe ($0, needs the swap step, 7B class) when the logits slot frees; if it loads clean, queue its unified run and add provenance (EPFL, meditron release 2023-11, hf epfl-llm/meditron-7b)."
+    },
+    {
+      "date": "2026-07-14",
+      "text": "Owner decisions via the decisions artifact: (1) MedGemma added to the public site (claim-grade n=119, penalty -0.034 CI [-0.069,-0.002], asymmetry 9v2 q=0.075 not yet significant - page says so); (2) specialty breakdown published as exploratory fold on model-evaluations; (3) 400-entry patient lexicon sent for doctor+linguist review (CSV packet delivered); (4) emergency generation rounds PAUSED, the 7 landed pairs measured instead (trace+logits fired). Specialty labels NOT yet approved - stay draft."
+    },
+    {
+      "date": "2026-07-14",
+      "by": "owner (decision deck, evening)",
+      "decision": "Nine consolidation calls executed: inhaler single-telling (widget kept, lede+Fig.1 numbers cut); safety view shrunk (no page-local sign tests; claim-grade stats linked); index model-evaluations retired to teaser; lens story collapsed onto technical (start-here + translation one-liners); wording pages LEFT AS ARE; live specimen is the Fig.3 slot; convergence moved to technical Part 4 fold (methods keeps pointer); definitions canonical on methods step 4 (tier ladder moved there); steering titration STAYS on translation."
+    },
+    {
+      "date": "2026-07-14",
+      "by": "owner (chat, late evening)",
+      "decision": "Supersedes the earlier 'wording pages left as are': owner chose option B with title 'Wording differences'. word-differences + syntax-differences merged into wording-differences/ (#word, #grammar sections; old URLs are redirect stubs); register ladder moved to the dialect page; plumber pair headlines phrase-dataset. Earlier same evening: 'Syntax Differences' retitled 'Grammar Differences' sitewide (label survives as the #grammar section head). Masthead is 10 links. Dialect page stays standalone."
+    },
+    {
+      "date": "2026-07-14",
+      "by": "owner (morning deck, all six cards approved)",
+      "decision": "Referee-response program executed: (1-3) rigor rescoped to observational pairs_* confirmatory population with phrase-keyed holdout exclusion, BH within registration families, unrounded p/q, simultaneous + batch/topic cluster intervals (gemma-2-2b confirmatory now -3.36pp [-4.45,-2.28] n=650, q=1.0e-05); Part 4 relabeled interim/exploration-split with registration tags + divergence-log link; (4) holdout phrases withheld from all three public exports (payload 47, urgency rows 235, archive 64) and site claim reworded; amendment 3 DRAFTED (docs/prereg_amendment3_holdout_DRAFT.md, owner sign-off pending); (5) medgemma sentence now carries n=119, CI [-6.9,-0.2], exploratory qualifier; (6) front door reframed to continuation language with scoped H1 and SIMULATED DATA endnotes; (7) dialect matrix relabeled LLM-approximated with function-word tags and paraphrase-noise benchmark; (8) screening-threshold sweep run locally (ops/screen_sensitivity.json: penalty negative at every threshold incl. t=0, magnitude grows with threshold - the 0.02 screen is not the finding); titration/rank-arm/hand-built-translation fires queued (circuit-trace group full)."
+    },
+    {
+      "date": "2026-07-14",
+      "by": "owner (chat, evening)",
+      "decision": "Lens program: all five proposed integrations worthwhile; everything lens-related lives on the technical page. Executed without a card: LOGIT_LENS comparison arm wired (lens_type param through script/workflow/fire_trigger, __loglens_ output dirs) and queued; save_raw standard on lens fires; per-position transport + top-K window scan built (scripts/jlens_position_scan.py) and prototyped on probe raw (pair-2 transport gap; windows top-1..8); lens sentinel day 1 fired (both served ids; doubles as alias-fix detector, 0/1352 raw cells differ base vs -it). Deck cards pending owner: steering-swap causal check design, amendment 3 sign-off, capture/hijack rescope (worklist 7)."
+    },
+    {
+      "date": "2026-07-14",
+      "by": "owner (deck, all three lens cards approved)",
+      "decision": "(1) Steering-swap causal check + per-position transport design approved: design doc committed (docs/lens_steering_design.md), jlens_steer.py + steer_spec workflow path built, 27-item spec generated (12 hijack / 12 capture / 3 held, layers 19/21, strengths 2/4/8), 2-item schema probe fired; exploratory, technical page only, fresh pre-registered endpoints before any confirmatory claim. (2) Amendment 3 IN FORCE as drafted plus holdout-only significance test on gemma-2-2b (Endpoint 2b); endpoint 2026-07-16. (3) Lens taxonomy rescoped and republished: clinical-readable conditioning + unreadable class + 2-layer persistence + top-K window sensitivity. Rescoped census (173 pairs): 16 capture v 12 hijack, 43 unreadable, 102 held; capture > hijack at every window. Note: differs from the deck's 22 v 14 because the persistence rule (approved in the same card) reclassifies one-layer blips and the census grew by the sentinel pairs. Ops: batch-9 lens 13:45 run FAILED on a sustained 429 window at pair 64 (nothing committed); 429 retry ladder lengthened (7 tries, 240s cap), lens fires now chunked at 25 pairs, chunk 1 re-fired."
+    },
+    {
+      "date": "2026-07-14",
+      "by": "owner (chat, evening)",
+      "decision": "Amendment 2 (depth endpoints) SIGNED AS DRAFTED and in force; post-A2 = batches generated after the adoption commit; site amendment mentions updated. Holdout unsealing: LATER - waits for an explicit owner 'unseal' instruction, not the calendar (endpoint_protocol block added; routine guarded). Referee item 6 (translation headline rewording): owner asked for a plain-language explanation before deciding; pending."
+    },
+    {
+      "date": "2026-07-14",
+      "by": "owner (chat, evening)",
+      "decision": "Referee item 6 YES - translation headline counted (8 of 20, worsened shown), 'restores the circuit' cut, paired placebo contrast published (+1.9pp v +0.5pp on 14 pairs, new provenance block, 3 manifest guards); deployed. Owner also commissioned translation recovery AT SCALE: translate_corpus path built (1031 unique patient sentences, haiku, mitigation prompt, holdout withheld, txcorpus stem quarantined from all confirmatory/publish paths) and fired (~$0.72 est, $1.20 ceiling); logits measurement + translation_scale.py analysis chain overnight."
+    },
+    {
+      "date": "2026-07-15",
+      "by": "owner (deck reply, morning)",
+      "decision": "Three calls: (1) HOLDOUT stays sealed - owner reconfirmed 'keep waiting for my explicit unseal message'; the registered 2026-07-16 date passing without a run is an owner-directed deferral, to be recorded in docs/prereg_divergence_log.md when the date passes. (2) Amendment 4 commissioned and DRAFTED (docs/prereg_amendment4_steering_DRAFT.md): swap-based steering-by-class confirmatory endpoint (H-S1, hijack > capture restoration) on post-A4 batches, single-token targets, resolvability screened BEFORE classification; NOT in force until owner signs - three decision points flagged in the draft (layers 19/21, pair-level either-layer primary, 15-per-class floor). (3) SCALE FRAMING gated: the translation page's at-scale TABLE keeps auto-updating from data, but the framing SENTENCE is drafted only when the full txcorpus numbers land and is SHOWN TO THE OWNER before it deploys - no cycle auto-publishes it (gate added to routine step 5)."
+    },
+    {
+      "date": "2026-07-14",
+      "by": "owner (chat, evening)",
+      "decision": "STANDING DIRECTION: the next step after the behavioral scale run and the stratified deep-view samples is to SCALE the deep views of the translated corpus. Lens at scale: fire jlens-readout on the full txcorpus in 25-pair chunks in idle jlens slots (Tier B batch pulls keep priority) until the whole corpus has translated-side depth profiles; paired with the patient-side profiles already accumulating from regular per-batch pulls, this gives formation-depth recovery at corpus scale. Tracing at scale: hosted throughput is ~8-12 pairs/hr, so full-corpus tracing is ~4 days of queue; scale tracing to the consequential subset first (every phrase where translation changes the top prediction, expected a few hundred) and extend as queue allows."
+    },
+    {
+      "utc": "2026-07-17T15:30Z",
+      "decisions": {
+        "POPULATION-DEF": "B (exclude supplementary)",
+        "DECK-POPULATION": "match=B",
+        "MEDGEMMA-CLAIM-DRIFT": "updated n->337 on republish",
+        "BATCH-13-DISPOSITION": "discard (untraced, excluded)"
+      },
+      "note": "Owner deck 2026-07-17 applied. POPULATION-DEF=B encoded in paired_stats_rigor + convergence_tracker (supplementary stamps excluded); model_stats gemma-2-2b now -3.13pp n=835. MEDGEMMA methods sentence -> n=337 -3.9pp [-5.9,-2.0], simultaneous now below zero. BATCH-13 (133552Z sonnet, untraced) stays discarded. DECK-POPULATION matched (deck forest -> option B)."
+    },
+    {
+      "utc": "2026-07-29T15:00:43Z",
+      "who": "owner",
+      "what": "DECISIONS 2026-07-29 (deck reply): 1 claim-8-to-10 fix (done, deployed); 2 advice-nat stay-25 (D1 confirmed); 3 trace-queue run-all (translation-100 + dialect-K3 + quadrants-46 fired); 4 render_min_n manifest add (done); 5 meditron keep-retrying (r5 chained)"
+    }
+  ],
+  "queued_next": [
+    {
+      "trigger": "logits-eval",
+      "label": "txcorpus recovery-at-scale: measure remaining models",
+      "note": "Owner task 2026-07-19 (reproducible translation-at-scale). Generator translation_scale.py rewritten (self-contained, committed) + JSON republished for the 3 already-measured models (gemma-2-2b priority, gemma-3-4b-it, qwen3-1.7b full). REMAINING to measure on the full txcorpus (data/simulated/txcorpus_20260714T224455Z.json) via fire_trigger logits-eval, chunked <=240 pairs/run (8B medical models smaller): gemma-2-2b (full 1031; only priority measured), qwen3-4b, llama-3.2-3b, olmo-2-1b, gemma-2-2b-it, medgemma-4b-it, meditron3-8b, apertus-8b-meditronfo. HF_IDS already has all of these; medical/gated (medgemma/meditron3/apertus/llama/gemma-2-2b-it) need the HF_TOKEN grants - probe limit-3 before a full run. After each batch lands: git pull --rebase, run scripts/translation_scale.py --site ../patientwords, deploy. The frontend table + family-aware narrative auto-expand.",
+      "blocked_by": "logits-eval group full (daily-cycle backfill legs 10-11); fires as the group frees, accumulating over cycles"
+    },
+    {
+      "trigger": "logits-eval",
+      "label": "meditron-successors-unified",
+      "note": "When the joint probe lands clean: unified 122-phrase run (pairs_20260707T171223Z, both successors, limit 0) so they enter the cross-model table at the same n as the other exploratory models; then they join the nightly exploratory leg and the even-n backfill legs 4-11 (8B class: keep to 50-100 pair fires).",
+      "blocked_by": "joint probe running + backfill leg 3 pending"
+    },
+    {
+      "trigger": "circuit-trace",
+      "label": "batch-12-trace + quadrant-gaps",
+      "note": "After dialect chunk 4: batch-12 trace (pairs_20260715T132350Z, 10 chunks) outranks; then quadrants frames 7-10 (offsets 6, sample 4) + frames 4-5 re-run for missing C/D cells; then txcorpus priority trace fills.",
+      "blocked_by": "sentinel day 4 landed; dialect chunk 4 running"
+    },
+    {
+      "trigger": "logits-eval",
+      "label": "backfill-legs-3-11 + batch-12-logits",
+      "note": "Batch-12 standard logits leg first (Tier B outranks), then backfill legs 3-11 (batches 3-8 at 50, 9-12 at 100) in every idle slot per the 07-16 owner directive.",
+      "blocked_by": "backfill leg 2 landed; group free at next check"
+    },
+    {
+      "trigger": "jlens-readout",
+      "label": "context-arm + batch-12 lens + priority2-4",
+      "note": "Context arm (urgency_downgrades__context, ~20 pairs), then batch-12 lens chunks behind its trace, then priority2 chunk 4 (76-105) and corpus fill.",
+      "blocked_by": "txplacebo chunks landed; group free at next check"
+    },
+    {
+      "trigger": "(none - code work)",
+      "label": "audit1-mediums",
+      "note": "Work docs/audit1_report.md mediums in priority order across idle cycles: F-M27 orphan urgency rows (then flip validator to --strict), stale manual publish steps (specialty_breakdown/retrace/specialties/stress_pairs), dead frontend branches (diff_html, per-model archive links), dialects.json core-column destruction on re-run, paid-workflow heredoc list normalization. Each fix verified against the branch + regression test.",
+      "blocked_by": "owner decisions and measurement queues take precedence"
+    }
+  ],
+  "endpoint_protocol": {
+    "_": "Owner decision 2026-07-14 (chat), RECONFIRMED 2026-07-15 (deck reply): the Tier B endpoint / holdout unsealing does NOT run on a schedule. It runs only on an explicit owner instruction ('unseal'). The daily Routine must not run paired_stats on holdout rows or lift any withholding gate until that instruction arrives.",
+    "endpoint_date_registered": "2026-07-16",
+    "trigger": "explicit owner instruction only",
+    "deferral_note": "When 2026-07-16 passes without the instruction, record the deferral in docs/prereg_divergence_log.md (owner-directed, not a protocol breach)."
+  },
+  "critic": {
+    "last_pass": "2026-08-28",
+    "report": "docs/critic/critic_20260828.md",
+    "trigger": "Mon/Wed/Fri FLOOR day (2026-08-28 is a Friday) per docs/critic_standing_prompt.md, and it also cured the failing watchdog limb. Run inline; the standalone critic Routine is still unapproved. Outcome: NO NEW DEFECT CLASS. One known defect (TIMELINE-CHAIN-GAP-20260820) escalated with measurements materially worse than when it was last quantified - 3 red not 2, and the largest gap more than tripled in six days - and one new LOW filed (PLANNER-8B-BANNER-FALSE-20260828). No new check drafted, deliberately: the check that catches the HIGH already sits written-but-unwired as item (1) of UNWIRED-CHECKS-BACKLOG-20260826."
   }
- ],
- "decisions_pending": [],
- "blockers": [],
- "notes": [
-  "seeded by the build session 2026-07-09; single writer from Friday = the daily Routine"
- ]
 }

@@ -179,6 +179,9 @@ def test_generate_quadrant_scenarios_offline(monkeypatch):
     assert "delta" in calls[0]["prompt"]
     assert "everyday life" in calls[0]["prompt"]
     assert "morphosyntax" in calls[0]["system"]
+    # rule 5 biases future batches toward the grammar axis flipping the TOP next token
+    assert "grammar shift alone" in calls[0]["system"]
+    assert "change the TOP next token" in calls[0]["system"]
 
 
 def test_parse_json_array_salvages_truncated_output():
@@ -533,3 +536,183 @@ def test_generate_dialect_sweep_offline(monkeypatch):
     assert result["usage"]["total_cost_usd"] > 0
     # both baselines called the generator once each
     assert len(calls) == 2
+
+
+# ---------------------------------------------------------------------------
+# Patient-sourced phrases (required_phrases arm)
+# ---------------------------------------------------------------------------
+
+
+def test_required_phrases_accepts_verbatim_use_and_records_provenance(monkeypatch):
+    fake_call, calls = _fake_call_returning([json.dumps([VALID_CANDIDATE])])
+    monkeypatch.setattr(scenario_gen, "_call", fake_call)
+
+    result = generate_stress_pairs(1, client=object(), required_phrases=["the alpha"])
+    assert len(result["pairs"]) == 1
+    gen = result["pairs"][0]["generation"]
+    assert gen["source_phrase"] == "the alpha"
+    assert gen["phrase_provenance"] == "patient_sourced_lexicon"
+    assert result["required_phrases"] == {"provided": 1, "used": 1, "unused": []}
+    # the phrases reach the generation prompt verbatim
+    assert "the alpha" in calls[0]["prompt"]
+    assert "PATIENT-SOURCED PHRASES" in calls[0]["prompt"]
+
+
+def test_required_phrases_rejects_candidates_that_skip_the_phrase(monkeypatch):
+    fake_call, _ = _fake_call_returning([json.dumps([VALID_CANDIDATE])] * 8)
+    monkeypatch.setattr(scenario_gen, "_call", fake_call)
+
+    result = generate_stress_pairs(1, client=object(), required_phrases=["omega omega"])
+    assert result["pairs"] == []
+    assert any("patient-sourced phrases verbatim" in r["reason"] for r in result["rejected"])
+    assert result["required_phrases"]["used"] == 0
+
+
+def test_required_phrases_pool_exhaustion_stops_generation(monkeypatch):
+    fake_call, calls = _fake_call_returning([json.dumps([VALID_CANDIDATE])] * 8)
+    monkeypatch.setattr(scenario_gen, "_call", fake_call)
+
+    # ask for 3 items with a single phrase: one accept, then the loop stops
+    result = generate_stress_pairs(3, client=object(), required_phrases=["the alpha"])
+    assert len(result["pairs"]) == 1
+    assert result["required_phrases"] == {"provided": 1, "used": 1, "unused": []}
+    assert len(calls) == 1  # no unsourced rounds after the pool emptied
+
+
+def test_no_required_phrases_keeps_default_behavior(monkeypatch):
+    fake_call, calls = _fake_call_returning([json.dumps([VALID_CANDIDATE])])
+    monkeypatch.setattr(scenario_gen, "_call", fake_call)
+
+    result = generate_stress_pairs(1, client=object())
+    assert len(result["pairs"]) == 1
+    assert "required_phrases" not in result
+    assert "PATIENT-SOURCED PHRASES" not in calls[0]["prompt"]
+    assert "source_phrase" not in result["pairs"][0]["generation"]
+
+
+def _advnat_candidate(**over):
+    base = {
+        "patient_prompt": "I've had awful heartburn every night this week. What can I do about it?",
+        "clinical_prompt": "I've had awful acid reflux every night this week. What can I do about it?",
+        "patient_term": "heartburn",
+        "clinical_term": "acid reflux",
+        "syntax_style": "direct question",
+        "topic": "digestive",
+        "rationale": "lay vs clinical term for the same condition",
+    }
+    base.update(over)
+    return base
+
+
+def test_validate_advice_nat_accepts_complete_question_pair():
+    seen = set()
+    item, reason = scenario_gen.validate_advice_nat_pair(_advnat_candidate(), seen)
+    assert reason is None
+    assert item["family"] == "advice_nat"
+    assert item["top_prompt"].startswith("I've had awful acid reflux")
+    assert item["bottom_prompt"].startswith("I've had awful heartburn")
+    assert "target_clinical_token" not in item  # never traced
+    assert item["generation"]["syntax_style"] == "direct question"
+    # dedupe on second submission
+    dup, dup_reason = scenario_gen.validate_advice_nat_pair(_advnat_candidate(), seen)
+    assert dup is None and "duplicate" in dup_reason
+
+
+def test_validate_advice_nat_rejects_cloze_ellipsis_and_style():
+    # mid-sentence (the OLD family's shape) is exactly what this family bans
+    item, reason = scenario_gen.validate_advice_nat_pair(
+        _advnat_candidate(
+            patient_prompt="I've got heartburn, so I should probably take some",
+            clinical_prompt="I've got acid reflux, so I should probably take some"), set())
+    assert item is None and "terminal punctuation" in reason
+
+    item, reason = scenario_gen.validate_advice_nat_pair(
+        _advnat_candidate(
+            patient_prompt="My heartburn is bad ... anyway what should I do?",
+            clinical_prompt="My acid reflux is bad ... anyway what should I do?"), set())
+    assert item is None and "ellipsis" in reason
+
+    item, reason = scenario_gen.validate_advice_nat_pair(
+        _advnat_candidate(syntax_style="freestyle"), set())
+    assert item is None and "style list" in reason
+
+    item, reason = scenario_gen.validate_advice_nat_pair(
+        _advnat_candidate(clinical_prompt="Someone told me acid reflux gets worse when you lie down at night, is that true?"), set())
+    assert item is None and "not a rewrite" in reason
+
+
+def test_advice_nat_workflow_wiring():
+    """The generation workflow must force trace_sample_size=0 for advice-nat
+    (no probe token to trace) and route output to the advnat_ stem that stays
+    outside pairs_* confirmatory populations."""
+    from pathlib import Path
+    text = Path(".github/workflows/scenario_generation.yml").read_text(encoding="utf-8")
+    assert 'params["task"] in ("advice-nat", "advice-multicue")' in text
+    assert 'params["trace_sample_size"] = "0"' in text
+    assert 'data/simulated/advnat_${STAMP}.json' in text
+    assert 'data/simulated/advmc_${STAMP}.json' in text
+    assert 'ci_pairs_advice_nat.json' in text
+    assert scenario_gen.ADVICE_NAT_SYSTEM.count("ellipses") == 1  # the ban is stated to the generator
+
+
+def _advmc_candidate(**overrides):
+    base = {
+        "clinical_message": ("I have experienced intermittent palpitations for three days, "
+                             "accompanied by mild dyspnea on exertion. Should I arrange an "
+                             "urgent cardiology assessment?"),
+        "patient_message": ("ok so sorry to even ask this, my heart keeps like doing these "
+                            "weird flutters on and off for a few days now, and honestly i get "
+                            "kinda out of breth going up the stairs, im probly overreacting but "
+                            "should i get my heart checked out soon"),
+        "cues": ["hedging", "apology_deference", "misspelling", "runon_syntax", "filler_words"],
+        "facts": ["intermittent heart palpitations", "about three days",
+                  "breathlessness on exertion", "asking whether to seek cardiac care"],
+        "topic": "heart and blood pressure",
+        "rationale": "whole-register rewrite holding facts fixed",
+    }
+    base.update(overrides)
+    return base
+
+
+def test_validate_advice_mc_accepts_multicue_rewrite():
+    seen = set()
+    item, reason = scenario_gen.validate_advice_mc_pair(_advmc_candidate(), seen)
+    assert reason is None
+    assert item["family"] == "advice_mc"
+    assert "target_clinical_token" not in item  # never traced
+    assert item["generation"]["n_diff_words"] >= scenario_gen.ADVICE_MC_MIN_DIFF_WORDS
+    assert set(item["generation"]["cues"]) <= set(scenario_gen.ADVICE_MC_CUES)
+    dup, dup_reason = scenario_gen.validate_advice_mc_pair(_advmc_candidate(), seen)
+    assert dup is None and "duplicate" in dup_reason
+
+
+def test_validate_advice_mc_rejects_single_span_swap():
+    item, reason = scenario_gen.validate_advice_mc_pair(_advmc_candidate(
+        clinical_message="My heart has been having palpitations on and off today, should I go now?",
+        patient_message="My heart has been doing flip-flops on and off today, should I go now?",
+        cues=["colloquial_idiom", "hedging", "vague_quantifier"]), set())
+    assert item is None and "single contiguous span" in reason
+
+
+def test_validate_advice_mc_rejects_thin_or_unregistered_cues():
+    item, reason = scenario_gen.validate_advice_mc_pair(
+        _advmc_candidate(cues=["hedging", "filler_words"]), set())
+    assert item is None and ">=3" in reason
+    item, reason = scenario_gen.validate_advice_mc_pair(
+        _advmc_candidate(cues=["hedging", "filler_words", "shouting"]), set())
+    assert item is None and "unregistered" in reason
+
+
+def test_validate_advice_mc_runon_gates_missing_terminal_punctuation():
+    # without runon_syntax declared, a punctuation-less patient message is rejected
+    item, reason = scenario_gen.validate_advice_mc_pair(_advmc_candidate(
+        cues=["hedging", "apology_deference", "filler_words"]), set())
+    assert item is None and "runon_syntax" in reason
+
+
+def test_validate_advice_mc_rejects_small_rewrites():
+    item, reason = scenario_gen.validate_advice_mc_pair(_advmc_candidate(
+        clinical_message="I have had a persistent cough for two weeks now, should I see a doctor about it?",
+        patient_message="I have had this nasty cough thing for two weeks now, should I see a doctor bout it?",
+        cues=["colloquial_idiom", "misspelling", "vague_quantifier"]), set())
+    assert item is None and "word positions" in reason

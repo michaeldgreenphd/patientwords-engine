@@ -1,0 +1,736 @@
+{
+  "mode": "dialect",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 6,
+  "pairs_requested": 45,
+  "completed": false,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "773c625d6179",
+    "runner_image": "20260714.240.1"
+  },
+  "results": [
+    {
+      "index": 6,
+      "mode": "dialect",
+      "baseline_prompt": "He's got seasonal hay fever from the pollen, so he's off to buy some",
+      "held_fixed": "clinical",
+      "term": "got seasonal hay fever",
+      "target_token": "Output \" anti\"",
+      "baseline_probability": 0.271,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording same register and meaning",
+          "prompt": "He's got seasonal hay fever from the pollen, and he's heading out to purchase some",
+          "probability": 0.2,
+          "delta_vs_baseline": -0.07100000000000001
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording same register",
+          "prompt": "He's got seasonal hay fever from the pollen, therefore he's going to get some",
+          "probability": 0.059,
+          "delta_vs_baseline": -0.21200000000000002
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses keep every key word",
+          "prompt": "Because of the pollen, he's got seasonal hay fever, so he's off to buy some",
+          "probability": 0.254,
+          "delta_vs_baseline": -0.017000000000000015
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only same content",
+          "prompt": "He's got seasonal hay fever from the pollen, yet he's off to buy some",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording same register",
+          "prompt": "He's got seasonal hay fever from the pollen, so he's going to buy some",
+          "probability": 0.196,
+          "delta_vs_baseline": -0.07500000000000001
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" anti\"",
+            0.271
+          ],
+          [
+            "Output \" hay\"",
+            0.078
+          ],
+          [
+            "Output \" new\"",
+            0.042
+          ],
+          [
+            "Output \" allergy\"",
+            0.042
+          ],
+          [
+            "Output \" tablets\"",
+            0.037
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" anti\"",
+              0.2
+            ],
+            [
+              "Output \" allergy\"",
+              0.107
+            ],
+            [
+              "Output \" new\"",
+              0.065
+            ],
+            [
+              "Output \" medication\"",
+              0.057
+            ],
+            [
+              "Output \" over\"",
+              0.039
+            ]
+          ],
+          [
+            [
+              "Output \" hay\"",
+              0.097
+            ],
+            [
+              "Output \" sort\"",
+              0.085
+            ],
+            [
+              "Output \" anti\"",
+              0.059
+            ],
+            [
+              "Output \" relief\"",
+              0.059
+            ],
+            [
+              "Output \" kind\"",
+              0.059
+            ]
+          ],
+          [
+            [
+              "Output \" anti\"",
+              0.254
+            ],
+            [
+              "Output \" hay\"",
+              0.083
+            ],
+            [
+              "Output \" new\"",
+              0.064
+            ],
+            [
+              "Output \" tablets\"",
+              0.057
+            ],
+            [
+              "Output \" more\"",
+              0.044
+            ]
+          ],
+          [
+            [
+              "Output \" more\"",
+              0.264
+            ],
+            [
+              "Output \" new\"",
+              0.085
+            ],
+            [
+              "Output \" hay\"",
+              0.046
+            ],
+            [
+              "Output \".\"",
+              0.031
+            ],
+            [
+              "Output \" for\"",
+              0.028
+            ]
+          ],
+          [
+            [
+              "Output \" anti\"",
+              0.196
+            ],
+            [
+              "Output \" allergy\"",
+              0.072
+            ],
+            [
+              "Output \" hay\"",
+              0.05
+            ],
+            [
+              "Output \" Clar\"",
+              0.039
+            ],
+            [
+              "Output \" of\"",
+              0.039
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.1115
+      },
+      "top_path": {
+        "baseline": "[L3\u00b7S]  \u2192 [L4\u00b7C] words describing a medical or allergic reaction | me \u2192 [L6\u00b7C] text about allergies and allergic reactions | allerg \u2192 [L18\u00b7C] words related to allergic rhinitis and asthma, plus  \u2192 [L22\u00b7C] words or phrases related to allergic reactions and t \u2192 Output \" hay\" (p=0.078)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260723T001434Z/index_06.html",
+        "png": "trace_out/dialects_20260723T001434Z/index_06.png"
+      }
+    },
+    {
+      "index": 7,
+      "mode": "dialect",
+      "baseline_prompt": "She kept getting gastroesophageal reflux at dinner, so she asked the waiter for a",
+      "held_fixed": "clinical",
+      "term": "gastroesophageal reflux",
+      "target_token": "Output \" glass\"",
+      "baseline_probability": 0.149,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording same register and meaning",
+          "prompt": "During dinner, she experienced repeated gastroesophageal reflux, which prompted her to request from the waiter a",
+          "probability": 0.205,
+          "delta_vs_baseline": 0.055999999999999994
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording same register",
+          "prompt": "She was troubled by recurring gastroesophageal reflux throughout her meal, so she turned to the waiter for a",
+          "probability": 0.162,
+          "delta_vs_baseline": 0.013000000000000012
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses keep every key word",
+          "prompt": "Because she kept getting gastroesophageal reflux at dinner, she asked the waiter for a",
+          "probability": 0.14,
+          "delta_vs_baseline": -0.00899999999999998
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only same content",
+          "prompt": "She kept getting gastroesophageal reflux during dinner, so she asked the waiter for a",
+          "probability": 0.159,
+          "delta_vs_baseline": 0.010000000000000009
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording same register",
+          "prompt": "She kept experiencing gastroesophageal reflux at dinner, so she asked the waiter for a",
+          "probability": 0.264,
+          "delta_vs_baseline": 0.11500000000000002
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" glass\"",
+            0.149
+          ],
+          [
+            "Output \" little\"",
+            0.062
+          ],
+          [
+            "Output \" small\"",
+            0.033
+          ],
+          [
+            "Output \" plate\"",
+            0.029
+          ],
+          [
+            "Output \" cup\"",
+            0.029
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" glass\"",
+              0.205
+            ],
+            [
+              "Output \" cup\"",
+              0.066
+            ],
+            [
+              "Output \" small\"",
+              0.046
+            ],
+            [
+              "Output \" bottle\"",
+              0.04
+            ],
+            [
+              "Output \" piece\"",
+              0.025
+            ]
+          ],
+          [
+            [
+              "Output \" glass\"",
+              0.162
+            ],
+            [
+              "Output \" recommendation\"",
+              0.126
+            ],
+            [
+              "Output \" solution\"",
+              0.126
+            ],
+            [
+              "Output \" remedy\"",
+              0.052
+            ],
+            [
+              "Output \" suggestion\"",
+              0.046
+            ]
+          ],
+          [
+            [
+              "Output \" glass\"",
+              0.14
+            ],
+            [
+              "Output \" little\"",
+              0.045
+            ],
+            [
+              "Output \" small\"",
+              0.035
+            ],
+            [
+              "Output \" cup\"",
+              0.027
+            ],
+            [
+              "Output \" plate\"",
+              0.027
+            ]
+          ],
+          [
+            [
+              "Output \" glass\"",
+              0.159
+            ],
+            [
+              "Output \" little\"",
+              0.052
+            ],
+            [
+              "Output \" small\"",
+              0.035
+            ],
+            [
+              "Output \" cup\"",
+              0.031
+            ],
+            [
+              "Output \" plate\"",
+              0.028
+            ]
+          ],
+          [
+            [
+              "Output \" glass\"",
+              0.264
+            ],
+            [
+              "Output \" cup\"",
+              0.046
+            ],
+            [
+              "Output \" little\"",
+              0.046
+            ],
+            [
+              "Output \" small\"",
+              0.028
+            ],
+            [
+              "Output \" drink\"",
+              0.028
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.1052
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 Output \" small\" (p=0.033)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260723T001434Z/index_07.html",
+        "png": "trace_out/dialects_20260723T001434Z/index_07.png"
+      }
+    },
+    {
+      "index": 8,
+      "mode": "dialect",
+      "baseline_prompt": "My migraine's been throbbing on one side all morning, so I closed the blinds and went to lie",
+      "held_fixed": "clinical",
+      "term": "migraine's",
+      "target_token": "Output \" down\"",
+      "baseline_probability": 0.855,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording same register and meaning",
+          "prompt": "My migraine's been throbbing on one side throughout the morning, so I closed the blinds and went to lie",
+          "probability": 0.855,
+          "delta_vs_baseline": 0.0
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording same register",
+          "prompt": "My migraine's been throbbing on one side all morning, so I shut the blinds and went to lie",
+          "probability": 0.84,
+          "delta_vs_baseline": -0.015000000000000013
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses keep every key word",
+          "prompt": "Since my migraine's been throbbing on one side all morning, I closed the blinds and went to lie",
+          "probability": 0.82,
+          "delta_vs_baseline": -0.03500000000000003
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only same content",
+          "prompt": "My migraine's been throbbing in one side all morning, so I closed the blinds, then went to lie",
+          "probability": 0.855,
+          "delta_vs_baseline": 0.0
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording same register",
+          "prompt": "My migraine's been throbbing on one side all morning, so I closed the blinds and lay",
+          "probability": 0.547,
+          "delta_vs_baseline": -0.30799999999999994
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" down\"",
+            0.855
+          ],
+          [
+            "Output \" in\"",
+            0.062
+          ],
+          [
+            "Output \" on\"",
+            0.062
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" down\"",
+              0.855
+            ],
+            [
+              "Output \" on\"",
+              0.07
+            ],
+            [
+              "Output \" in\"",
+              0.055
+            ]
+          ],
+          [
+            [
+              "Output \" down\"",
+              0.84
+            ],
+            [
+              "Output \" in\"",
+              0.069
+            ],
+            [
+              "Output \" on\"",
+              0.069
+            ]
+          ],
+          [
+            [
+              "Output \" down\"",
+              0.82
+            ],
+            [
+              "Output \" in\"",
+              0.076
+            ],
+            [
+              "Output \" on\"",
+              0.076
+            ]
+          ],
+          [
+            [
+              "Output \" down\"",
+              0.855
+            ],
+            [
+              "Output \" on\"",
+              0.07
+            ],
+            [
+              "Output \" in\"",
+              0.048
+            ]
+          ],
+          [
+            [
+              "Output \" down\"",
+              0.547
+            ],
+            [
+              "Output \" on\"",
+              0.156
+            ],
+            [
+              "Output \" in\"",
+              0.156
+            ],
+            [
+              "Output \"ed\"",
+              0.024
+            ],
+            [
+              "Output \" back\"",
+              0.015
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.0908
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 [L19\u00b7O] instances of the word \"slow\" paired with \"down\" or o \u2192 [L24\u00b7O] phrases made of multiple short words related to low  \u2192 Output \" down\" (p=0.855)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260723T001434Z/index_08.html",
+        "png": "trace_out/dialects_20260723T001434Z/index_08.png"
+      }
+    },
+    {
+      "index": 9,
+      "mode": "dialect",
+      "baseline_prompt": "My allergic rhinitis is really getting to me this week, so on the way home I stopped to buy some",
+      "held_fixed": "clinical",
+      "term": "My allergic rhinitis is",
+      "target_token": "Output \" allergy\"",
+      "baseline_probability": 0.088,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording same register and meaning",
+          "prompt": "My allergic rhinitis is acting up quite badly this week, so I made a stop on my way home to pick up some",
+          "probability": 0.064,
+          "delta_vs_baseline": -0.023999999999999994
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording same register",
+          "prompt": "My allergic rhinitis is being particularly bothersome to me right now, so during my commute home I went ahead and purchased some",
+          "probability": 0.058,
+          "delta_vs_baseline": -0.029999999999999992
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses keep every key word",
+          "prompt": "On the way home this week, since My allergic rhinitis is really bothering me, I stopped to buy some",
+          "probability": 0.092,
+          "delta_vs_baseline": 0.0040000000000000036
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only same content",
+          "prompt": "My allergic rhinitis is really getting at me this week, so along the way home I stopped for buying some",
+          "probability": 0.076,
+          "delta_vs_baseline": -0.011999999999999997
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording same register",
+          "prompt": "My allergic rhinitis is really getting to me these days this week, so on my way home I stopped to buy some",
+          "probability": 0.09,
+          "delta_vs_baseline": 0.0020000000000000018
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" allergy\"",
+            0.088
+          ],
+          [
+            "Output \" Sud\"",
+            0.069
+          ],
+          [
+            "Output \" Ben\"",
+            0.061
+          ],
+          [
+            "Output \" Clar\"",
+            0.054
+          ],
+          [
+            "Output \" anti\"",
+            0.054
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" Z\"",
+              0.073
+            ],
+            [
+              "Output \" allergy\"",
+              0.064
+            ],
+            [
+              "Output \" anti\"",
+              0.057
+            ],
+            [
+              "Output \" Clar\"",
+              0.057
+            ],
+            [
+              "Output \" new\"",
+              0.057
+            ]
+          ],
+          [
+            [
+              "Output \" Z\"",
+              0.085
+            ],
+            [
+              "Output \" new\"",
+              0.085
+            ],
+            [
+              "Output \" over\"",
+              0.066
+            ],
+            [
+              "Output \" allergy\"",
+              0.058
+            ],
+            [
+              "Output \" F\"",
+              0.058
+            ]
+          ],
+          [
+            [
+              "Output \" allergy\"",
+              0.092
+            ],
+            [
+              "Output \" anti\"",
+              0.063
+            ],
+            [
+              "Output \" nasal\"",
+              0.056
+            ],
+            [
+              "Output \" Clar\"",
+              0.043
+            ],
+            [
+              "Output \" Sud\"",
+              0.043
+            ]
+          ],
+          [
+            [
+              "Output \" allergy\"",
+              0.076
+            ],
+            [
+              "Output \" new\"",
+              0.066
+            ],
+            [
+              "Output \" over\"",
+              0.041
+            ],
+            [
+              "Output \" anti\"",
+              0.041
+            ],
+            [
+              "Output \" more\"",
+              0.036
+            ]
+          ],
+          [
+            [
+              "Output \" allergy\"",
+              0.09
+            ],
+            [
+              "Output \" Sud\"",
+              0.049
+            ],
+            [
+              "Output \" anti\"",
+              0.049
+            ],
+            [
+              "Output \" over\"",
+              0.038
+            ],
+            [
+              "Output \" medicine\"",
+              0.038
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.1013
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 Output \" allergy\" (p=0.088)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260723T001434Z/index_09.html",
+        "png": "trace_out/dialects_20260723T001434Z/index_09.png"
+      }
+    }
+  ]
+}

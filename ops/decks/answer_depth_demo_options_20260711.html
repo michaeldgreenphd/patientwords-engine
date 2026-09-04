@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Answer Depth · choices</title>
+<style>
+  :root{
+    --paper:#faf9f5; --ink:#1c1c19; --clinical:#15803d; --penalty:#b4483d;
+    --muted:#6d6c66; --structural:#c3c9d2; --hairline:#dcdad2; --teal:#0f766e;
+    --serif:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);
+    font-size:16px;line-height:1.55;padding:16px 14px 120px;max-width:520px;margin:0 auto}
+  .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  h1{font-size:22px;margin:6px 0 4px}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 16px}
+  h2{font-size:13px;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;
+     color:var(--muted);font-weight:600;margin:24px 0 8px}
+  .card{border:1px solid var(--hairline);border-top:2px solid var(--ink);
+    padding:12px 14px;margin:0 0 12px;background:#fff}
+  .card h3{font-size:16px;margin:0 0 4px}
+  .card p{font-size:13.5px;color:var(--ink);margin:0 0 10px}
+  .card p.m{color:var(--muted);font-size:12.5px}
+  .seg{display:flex;gap:8px;flex-wrap:wrap}
+  .seg button{flex:1;min-width:86px;font-family:var(--mono);font-size:12px;letter-spacing:.06em;
+    padding:11px 8px;background:none;border:1.5px solid var(--structural);color:var(--muted);
+    cursor:pointer;border-radius:3px}
+  .seg button[aria-pressed=true]{border-color:var(--clinical);color:var(--clinical);font-weight:700;
+    background:#eef5ef}
+  .seg button.neg[aria-pressed=true]{border-color:var(--penalty);color:var(--penalty);background:#f8efee}
+  .seg button:focus-visible{outline:2px solid var(--clinical);outline-offset:2px}
+  textarea{width:100%;border:1px solid var(--hairline);background:#fff;font-family:var(--serif);
+    font-size:14px;padding:10px;min-height:64px;border-radius:3px}
+  .bar{position:fixed;bottom:0;left:0;right:0;background:var(--paper);
+    border-top:1px solid var(--ink);padding:10px 14px calc(10px + env(safe-area-inset-bottom));}
+  .bar-inner{max-width:520px;margin:0 auto;display:flex;gap:10px;align-items:center}
+  .bar button{flex:1;font-family:var(--mono);font-size:13px;letter-spacing:.08em;padding:13px;
+    background:var(--ink);color:var(--paper);border:0;cursor:pointer;border-radius:3px}
+  .bar button:focus-visible{outline:2px solid var(--clinical);outline-offset:2px}
+  .bar .n{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:64px;text-align:right}
+  #out{font-family:var(--mono);font-size:11.5px;white-space:pre-wrap;background:#fff;
+    border:1px dashed var(--structural);padding:10px;margin:14px 0 0;display:none}
+  .ok{color:var(--clinical);font-family:var(--mono);font-size:11px;display:none;margin-left:6px}
+</style>
+</head>
+<body>
+<p class="tag">internal · tap your choices · 2026-07-12</p>
+<h1>Answer Depth: your calls</h1>
+<p class="sub">Tap through, then Copy choices at the bottom and paste the result back to
+Claude. Selections stay saved on this phone.</p>
+
+<h2>Demonstrations</h2>
+<div id="demos"></div>
+
+<h2>Open questions</h2>
+<div id="qs"></div>
+
+<h2>Anything else</h2>
+<textarea id="note" placeholder="optional note for Claude"></textarea>
+
+<div id="out" aria-live="polite"></div>
+
+<div class="bar"><div class="bar-inner">
+  <span class="n" id="count">0 / 11</span>
+  <button id="copy" type="button">Copy choices</button>
+  <span class="ok" id="ok">copied</span>
+</div></div>
+
+<script>
+var DEMOS=[
+ ["A","90-second site walk","Close-up example, unit rows, methods figure, translation test. Default for any meeting."],
+ ["B","Live Neuronpedia instrument","Paste a pair, watch the readout, steer it. Needs one page check first."],
+ ["C","Monitoring-loop pitch","Readout as free production triage; one card in the 07-17 deck."],
+ ["D","Anthropic collaboration hook","Their Monday lens, our Friday causal check and prediction; deck card with the ask."],
+ ["E","40-second screen capture","For email and slack; make after the mitigation arm lands."]
+];
+var QS=[
+ ["Q1","Lost-late translation row","Batch-6 translation arm is running. When the class reaches n of 3:",
+  [["publish automatically",1],["hold for my review",0]]],
+ ["Q2","Gallery republish","Adding Tier B batches to the public gallery lights the depth badges and grows the scenario count:",
+  [["republish, cap 25 renders, flag in digest",1],["hold for now",0]]],
+ ["Q3","Confirmatory language","Depth findings stay exploratory until endpoints are pre-registered:",
+  [["draft the prereg for my review",1],["not yet",0]]],
+ ["Q4","Neuronpedia aliasing issue","The instruct id returns readouts identical to base; asking is public:",
+  [["draft it, I decide",1],["post it",0],["drop it",0]]],
+ ["Q5","Top-8 floor wording","Low-probability answers are invisible to the lens:",
+  [["current clause stands",1],["expand to a full sentence",0]]],
+ ["Q6","Tab name","Answer Depth is live in the nav:",
+  [["keep",1],["rename, see note",0]]]
+];
+var state={};
+try{state=JSON.parse(localStorage.getItem('ad-choices')||'{}');}catch(e){}
+
+function save(){try{localStorage.setItem('ad-choices',JSON.stringify(state));}catch(e){}
+  var done=DEMOS.filter(function(d){return state[d[0]];}).length+
+           QS.filter(function(q){return state[q[0]];}).length;
+  document.getElementById('count').textContent=done+' / '+(DEMOS.length+QS.length);}
+
+function seg(key,choices,neg){
+  var wrap=document.createElement('div');wrap.className='seg';
+  wrap.setAttribute('role','group');
+  choices.forEach(function(c){
+    var b=document.createElement('button');b.type='button';b.textContent=c;
+    if(neg&&neg.indexOf(c)>=0)b.className='neg';
+    b.setAttribute('aria-pressed',state[key]===c?'true':'false');
+    b.onclick=function(){
+      state[key]=c;save();
+      Array.prototype.forEach.call(wrap.children,function(x){
+        x.setAttribute('aria-pressed',x===b?'true':'false');});
+    };
+    wrap.appendChild(b);
+  });
+  return wrap;
+}
+
+var dm=document.getElementById('demos');
+DEMOS.forEach(function(d){
+  var c=document.createElement('div');c.className='card';
+  c.innerHTML='<h3>'+d[0]+' · '+d[1]+'</h3><p class="m">'+d[2]+'</p>';
+  c.appendChild(seg(d[0],['run','later','skip'],['skip']));
+  dm.appendChild(c);
+});
+var qm=document.getElementById('qs');
+QS.forEach(function(q){
+  var c=document.createElement('div');c.className='card';
+  c.innerHTML='<h3>'+q[0]+' · '+q[1]+'</h3><p class="m">'+q[2]+'</p>';
+  var labels=q[3].map(function(x){return x[0]+(x[1]?' (default)':'');});
+  c.appendChild(seg(q[0],labels));
+  qm.appendChild(c);
+});
+document.getElementById('note').value=state._note||'';
+document.getElementById('note').addEventListener('input',function(e){
+  state._note=e.target.value;save();});
+save();
+
+function summary(){
+  var lines=['ANSWER DEPTH CHOICES · '+new Date().toISOString().slice(0,10)];
+  DEMOS.forEach(function(d){lines.push(d[0]+' '+d[1]+': '+(state[d[0]]||'(no answer)'));});
+  QS.forEach(function(q){lines.push(q[0]+' '+q[1]+': '+(state[q[0]]||'(no answer)'));});
+  if(state._note)lines.push('NOTE: '+state._note);
+  return lines.join('\n');
+}
+document.getElementById('copy').onclick=function(){
+  var text=summary();
+  var out=document.getElementById('out');
+  out.textContent=text;out.style.display='block';
+  function done(){var ok=document.getElementById('ok');ok.style.display='inline';
+    setTimeout(function(){ok.style.display='none';},2000);}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done,function(){/* text shown below anyway */});
+  }else{
+    var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);
+    ta.select();try{document.execCommand('copy');done();}catch(e){}
+    document.body.removeChild(ta);
+  }
+  out.scrollIntoView({behavior:'smooth',block:'center'});
+};
+</script>
+</body>
+</html>

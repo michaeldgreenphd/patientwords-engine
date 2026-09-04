@@ -1,0 +1,100 @@
+# Ops Routine — creation spec (fresh session per firing)
+
+> **STATUS: CREATED 2026-08-04, owner-approved.** Routine id
+> `trig_01H9YrMSHEDkyXWT4bxttihq`, name `patientwords daily ops cycle`, cron
+> `0 13 * * *` UTC, fresh session per firing, completion push notification on.
+> First firing 2026-08-04 ~13:03 UTC. The prior Routine
+> (`trig_01Qczu2cNAsk1gYodan6auHb`, "patientwords daily ops digest", bound to
+> the old orchestrator session) was **deleted** minutes before its 13:00
+> firing — cross-session `update_trigger` (disable-in-place) is not enabled
+> for this org, so retirement meant deletion; its run history lives on in the
+> journal, dashboard, and briefs. Contrary to the "Why it cannot be created
+> from a session" section below (kept for the record), `create_trigger` and
+> `list_triggers` worked without an approval wall from the 2026-08-04
+> takeover session — the block was surface-specific, not universal.
+> **ROOT CAUSE CONFIRMED 2026-08-05 (owner screenshots):** the three "silent"
+> firings were not dead sessions — they ran, cloned both repos fresh, oriented,
+> and passed every gate, but had NO GitHub push credentials (no repo sources
+> attached, no `add_repo` tool), so nothing could fire, commit, or publish, and
+> their local work vanished with their containers. Tool-created Routines cannot
+> attach repo sources; only the claude.ai Routines UI can. Recreate there with
+> both repos attached — that is the entire fix. (The tool-created Routine
+> `trig_01H9YrMSHEDkyXWT4bxttihq` was deleted on 2026-08-05 once this was
+> confirmed.)
+> **Known limitation:** Routines created via the in-session tool store no MCP
+> connectors, so the fired sessions run without `mcp__github__*` tools. The
+> cycle is git-native and does not require them; if GitHub-API access ever
+> becomes necessary, recreate the Routine from the claude.ai Routines UI with
+> the GitHub connector attached.
+
+## Why
+
+The daily cycle currently fires into the main session, so a container reclaim
+stops all measurement silently. Three multi-day idles so far: 2026-07-24..27,
+07-30, and 08-01..02 — the last one 64.2 hours with zero fires journaled and all
+eight lanes idle. Binding the cycle to a fresh session per firing removes the
+dependency on any one conversation staying alive.
+
+## Why it cannot be created from a session
+
+`create_trigger` and even the read-only `list_triggers` return
+`MCP error -32003: MCP tool call requires approval` on this owner's surface.
+Four attempts across 2026-07-20, 07-26, and 08-04. **Create it in the Routines
+UI directly** rather than having a session call the tool and waiting on an
+approval prompt that has never arrived.
+
+## Settings
+
+| Field | Value |
+|---|---|
+| Name | `patientwords daily ops cycle` |
+| Schedule | `0 13 * * *` — 13:00 UTC daily. Cron is evaluated in UTC; convert from local before entering. |
+| Session mode | **Create a new session on each firing.** This is the entire point — do not bind it to an existing session. |
+| Repos | `michaeldgreenphd/patientwords-engine` and `michaeldgreenphd/patientwords` |
+| Branch | `claude/gemma-clinical-colloquial-interp-mavx04` on both |
+
+## Prompt text
+
+Paste verbatim. It is deliberately short: the cycle's real instructions live in
+the repo, which is the point of a fresh session — it re-reads current state
+instead of inheriting a stale memory of it.
+
+---
+
+You are a fresh session with the `patientwords-engine` and `patientwords` repos,
+both on branch `claude/gemma-clinical-colloquial-interp-mavx04`. You have no
+memory of prior sessions; the repos are your memory.
+
+Run **exactly ONE** autonomous daily ops cycle, following
+`docs/routine_standing_prompt.md` sections 1–7 in order. Read that file before
+acting — it is the authority, and this message does not restate it.
+
+Orient first from `CLAUDE.md` (both repos), `docs/HANDOFF_20260804.md`,
+`ops/dashboard.json`, and `ops/trigger_journal.jsonl`. Treat repo documentation
+as unreliable: a 2026-08-03 census found 56 of 74 documented claims false or
+partly wrong, and `docs/HANDOFF_20260804.md` §6 carries the correction register.
+Recompute any number you intend to publish or report.
+
+All boundaries in the standing prompt are absolute: the $2/day operational and
+$8 Tier B generation ceilings, the one-running + one-pending queue discipline,
+resolve-only-when-terminal, append-only `data/simulated/`, no secrets in either
+public repo, and the Tier B holdout stays sealed absent an explicit owner
+instruction to unseal.
+
+Fire triggers only through `scripts/fire_trigger.py`. Never `--force-evict` or
+`--override-budget`. If a fire exits 1, the trigger file and journal entry are
+already written — never re-fire; repair git by hand.
+
+Exactly one cycle. Do not schedule further work, and do not create Routines.
+
+---
+
+## After creating it
+
+1. Retire or rebind the existing Routine that fires into the old orchestrator
+   session, or it will keep waking a conversation nobody is reading.
+2. Update `ops/README.md` and `docs/routine_standing_prompt.md` §4a to describe
+   the new arrangement — §4a currently documents the single-point-of-failure as
+   the live condition.
+3. Replace the STATUS header at the top of this file with the creation date and
+   the Routine's id.

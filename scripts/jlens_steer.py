@@ -118,6 +118,34 @@ def main(argv=None):
     part = f"part_{args.offset + 1:02d}"
 
     results = []
+
+    def flush(partial_reason=None):
+        # Written after every item so a job-timeout or crash still lands the
+        # measured prefix (the workflow's commit step runs on always()).
+        # Chunk-1 of the steering-100 run (2026-07-28) lost 19 measured items
+        # to the 60-min ceiling because the summary was only written at the end.
+        summary = {
+            "mode": "jsteer",
+            "backend": "jlens-hosted",
+            "graph_model": model,
+            "spec": args.spec,
+            "layers": layers,
+            "strengths": strengths,
+            "top_n": args.topn,
+            "start_index": args.offset + 1,
+            "endpoint": jr.LENS_ENDPOINT,
+            "_": ("EXPLORATORY steering-swap pilot (docs/lens_steering_design.md). "
+                  "No confirmatory claim; fresh pre-registered endpoints required first."),
+            "method_credit": ("Jacobian lens + steering: Gurnee et al., Transformer Circuits "
+                              "2026; hosted by neuronpedia.org"),
+            "results": results,
+        }
+        if partial_reason:
+            summary["partial"] = True
+            summary["_partial"] = partial_reason
+        (out_dir / f"jsteer_summary.{part}.json").write_text(
+            json.dumps(summary, indent=1) + "\n", encoding="utf-8")
+
     for i, item in enumerate(items):
         index = args.offset + i + 1
         target = item["target"]
@@ -141,13 +169,7 @@ def main(argv=None):
                     # abort loudly, but never discard completed items again
                     # (the 20:43 grid run lost 10 measured items this way)
                     if results:
-                        partial = {"mode": "jsteer", "graph_model": model, "spec": args.spec,
-                                   "layers": layers, "strengths": strengths, "top_n": args.topn,
-                                   "start_index": args.offset + 1, "partial": True,
-                                   "_": f"partial: aborted mid-run ({err})",
-                                   "results": results}
-                        (out_dir / f"jsteer_summary.{part}.json").write_text(
-                            json.dumps(partial, indent=1) + "\n", encoding="utf-8")
+                        flush(f"partial: aborted mid-run ({err})")
                     raise
                 probe = {"model": model, "steering_supported": False,
                          "detail": f"{err} (persistent failure on the first call; "
@@ -185,29 +207,13 @@ def main(argv=None):
                                    "completion": completion_token(response),
                                    "parse_status": status}
         results.append(row)
+        flush("in-progress flush (crash/timeout protection)")
         base = row["calls"].get("baseline", {})
         print(f"item {index} [{item['class']}]: baseline final_rank={base.get('final_rank')} "
               + " ".join(f"{k}={v['final_rank']}" for k, v in row["calls"].items()
                          if k != "baseline"))
 
-    summary = {
-        "mode": "jsteer",
-        "backend": "jlens-hosted",
-        "graph_model": model,
-        "spec": args.spec,
-        "layers": layers,
-        "strengths": strengths,
-        "top_n": args.topn,
-        "start_index": args.offset + 1,
-        "endpoint": jr.LENS_ENDPOINT,
-        "_": ("EXPLORATORY steering-swap pilot (docs/lens_steering_design.md). "
-              "No confirmatory claim; fresh pre-registered endpoints required first."),
-        "method_credit": ("Jacobian lens + steering: Gurnee et al., Transformer Circuits "
-                          "2026; hosted by neuronpedia.org"),
-        "results": results,
-    }
-    (out_dir / f"jsteer_summary.{part}.json").write_text(
-        json.dumps(summary, indent=1) + "\n", encoding="utf-8")
+    flush(None)
     probe = {"model": model, "steering_supported": True, "items_measured": len(results),
              "checked_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     (out_dir / "jsteer_probe.json").write_text(json.dumps(probe, indent=1) + "\n",

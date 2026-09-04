@@ -1,0 +1,120 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-24</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .chip:focus-visible{outline:2px solid #15803d;outline-offset:2px}
+  .new{border-left:3px solid #b4483d}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #copy:focus-visible{outline:2px solid #15803d;outline-offset:2px}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-24</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · one new card today (D3), two escalated (D1, D2), five carried · 25 open in all</p>
+
+<div class="card new" data-id="D1-SENTINEL-OUTAGE-CONSECUTIVE-20260823">
+  <h2>D1 · ESCALATED · Third day running the drift sentinel could not take a reading</h2>
+  <p>Same failure a third time. Today's run (<code>32728951245</code>) fired at 12:47:03Z and was <b>completed/failure</b> at 12:53:48Z — 6m41s, the identical signature to 08-22 and 08-23, on Neuronpedia's <code>/api/graph/generate</code>. Zero pairs traced, nothing committed, $0 spent.</p>
+  <p>Two blind days was the last card. <b>Three is a different object.</b> The output-drift series still ends at <code>20260821</code> and now carries <b>six holes, three of them consecutive</b>. The comparison <code>drift_sentinel.py</code> makes is always against the previous <i>measured</i> day, so whenever the endpoint recovers, its reading will be charged against 20260821 — a transition spanning four days or more, with any step inside it smeared onto the recovery date.</p>
+  <p>The diagnostic is now three-for-three and stays narrow: the j-lens endpoint on the <b>same host</b> succeeded at 12:48:08Z, minutes after the graph endpoint failed. Nothing about the request changed; the graph backend is the only thing down.</p>
+  <p>I did not re-fire. The same-day retry you sanctioned covered 08-23 specifically, and this cycle's one trace fire per group went to the sentinel itself. The three options below are unchanged from yesterday — but my read has changed: <b>option (c) has stopped being the fallback.</b> Whatever happens with Neuronpedia or with retries, a reader of the site's repeatability note is currently not told the instrument has been dark for three days, and that is true either way. There is also a fourth option worth deciding on its own merits, below.</p>
+  <p class="num">holes: 08-08 · 08-12 · 08-19 · <b>08-22 · 08-23 · 08-24</b> — six, three consecutive · series 30 measured days, 20260713..20260821 · runs 32572679035, 32639162655, 32641002377, 32653647264, 32728951245</p>
+  <div class="chips"><button class="chip" data-v="ask-neuronpedia">ask Neuronpedia whether /api/graph/generate is degraded for gemma-2-2b</button><button class="chip" data-v="standing-retry-rule">make same-day retry a STANDING rule whenever the sentinel dies on an upstream 5xx — no per-day approval</button><button class="chip" data-v="annotate-methods">add the methods provenance note now: series has six holes, three consecutive</button><button class="chip" data-v="annotate-and-standing-rule">both: the methods note now, plus the standing retry rule</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D2-TIMELINE-CHAIN-GAP-20260820">
+  <h2>D2 · ESCALATED · The two payloads on Technical Part 4 now disagree about a <i>confirmatory</i> model</h2>
+  <p>Open since 08-20, widened by the 08-22 critic, and measurably worse today. <code>convergence.json</code> and <code>timeline.json</code> are still stamped <b>2026-08-20</b> because neither <code>convergence_tracker.py</code> nor <code>study_timeline.py</code> is in the section-5 publish chain, while <code>model_stats.json</code> is rebuilt every cycle. Both files render on the same page.</p>
+  <p>Final accumulation point vs today's statistics:</p>
+  <p class="num">apertus-8b-meditronfo &nbsp; 929 vs 1,503 &nbsp;→ gap <b>574</b> (was 286 on 08-22)<br>meditron3-8b &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 931 vs 1,503 &nbsp;→ gap <b>572</b> (was 262)<br>gemma-2-2b <i>(confirmatory)</i> 1,364 vs 1,712 → gap <b>348</b> (not previously reported)</p>
+  <p>Two things changed since the last card. The 8B gaps have <b>roughly doubled in two days</b>, and the disagreement is no longer confined to exploratory models — <code>gemma-2-2b</code> is pre-registered.</p>
+  <p><b>One detail should be settled before you pick a fix.</b> For <code>gemma-2-2b</code> the two payloads disagree on n while agreeing on the estimate to four decimals (convergence −0.032 [−0.0400, −0.0240]; model_stats −0.0320 [−0.0402, −0.0240]). Two different n's cannot generally produce the same bootstrap interval, so the two fields are probably <i>counting different things</i>: convergence declares "pairs_* batches only … Tier B exploration split only" and its last point is <code>through_batch pairs_20260806T135728Z</code>, never reaching the two supplementary stamps. If that is by design, refreshing the file closes the 8B gaps and leaves the gemma one — and the real fix is labelling, not cadence.</p>
+  <p>No confirmatory verdict is affected: every CI excludes zero in both builds. This is presentation integrity, but it is now visible to a reader who simply looks at one page.</p>
+  <p class="num">convergence.json generated_utc 2026-08-20T12:40:27Z · timeline.json 2026-08-20T12:46:17Z · model_stats.json 2026-08-24T12:50:08Z · full working: docs/critic/critic_20260824.md F1</p>
+  <div class="chips"><button class="chip" data-v="define-then-chain">answer the definitional question first, then add both scripts to section 5</button><button class="chip" data-v="chain-now">add both to section 5 now and label the page afterwards</button><button class="chip" data-v="label-pointintime">declare both payloads point-in-time and fix the site CLAUDE.md "regenerated nightly" claim</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D3-DOC-SWEEP-DRIFT-20260824">
+  <h2>D3 · NEW · Monday sweep: a paid lane missing from CLAUDE.md, and a 20 KB page outside the text-extraction path</h2>
+  <p>Two findings are new this week; both are doc/text edits a data-mandate cycle does not make.</p>
+  <p><b>(1)</b> The engine <code>CLAUDE.md</code> trigger table lists <b>seven of the eight</b> live triggers on this branch. <code>advice-eval</code> / <code>advice_evaluation.yml</code> is absent — and it is a <b>paid</b> lane (<code>fire_trigger.py:67</code> <code>PAID_TRIGGERS</code>) with its own $10/day OpenRouter ceiling. A session orienting from CLAUDE.md alone would not learn the repo has a fourth paid lane.</p>
+  <p><b>(2)</b> The reverse direction of the <code>extract_site_text.py</code> PAGES check was run for the first time. Twenty <code>.html</code> files live outside <code>modes/</code>; eight are not in PAGES. Seven are redirect stubs, the 404 page, or the share card — fine. <b><code>clinical/index.html</code> is not</b>: 20,418 bytes of substantive prose, no redirect meta, entirely outside the extraction path.</p>
+  <p>Carried over unchanged from the 08-17 sweep: <code>tierb_freeze_checklist.md:17</code> still cites the main-only <code>preregistration_amendments.md</code> as a live source; <code>docs/site_text_outline.md</code> is still absent; the "Amendments 1-3" citation still has no amendment-1 file.</p>
+  <p class="num">report: docs/audits/doc_accuracy_20260824.md · trigger parity otherwise clean 8/8 · data-contract parity clean · pab-probe still branch-scoped and benign</p>
+  <div class="chips"><button class="chip" data-v="both">add advice-eval to the table and put clinical/index.html in PAGES</button><button class="chip" data-v="table-only">fix the CLAUDE.md table only</button><button class="chip" data-v="pages-only">add clinical/index.html to PAGES only</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D4-PAYLOAD-SERIALIZATION-INDENT-20260823">
+  <h2>D4 · Two exporters disagree on JSON indent, so chain order swings the public payload by 4 MB</h2>
+  <p>Open since yesterday, unchanged. Three scripts write <code>simulated_scenarios.json</code>: <code>export_frontend_simulated.py:406</code> and <code>embed_scenario_joins.py:244</code> use <code>indent=2</code>, <code>export_traces_site.py:101</code> uses <code>indent=1</code>. Whichever runs last sets the published format — same line count, zero semantic change, <b>+34 % bytes</b>.</p>
+  <p>Today's chain ended on the traces restamp again, so the committed file stayed <code>indent=1</code> and the diff stayed readable. That is luck holding, not a fix. Neither gate would catch it: the contract check tests structure, <code>claim_check</code> tests numbers.</p>
+  <p class="num">12,040,228 → 16,179,124 bytes · 740,872 lines either way · fix: one shared dump helper, or a contract assertion that &gt;10 % size delta with unchanged scenario count is an ERROR</p>
+  <div class="chips"><button class="chip" data-v="shared-helper">one shared dump helper with a single indent constant</button><button class="chip" data-v="contract-assert">the size-delta contract assertion instead</button><button class="chip" data-v="both">do both</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D5-LENS-HOST-SEPARATION-20260731">
+  <h2>D5 · The two Neuronpedia host ids stopped agreeing three weeks ago</h2>
+  <p>Open since 08-21, unchanged in substance. The standing prompt records a "known alias" — <code>gemma-2-2b</code> and <code>gemma-2-2b-it</code> return byte-identical j-lens readouts, and the day they diverge is the day Neuronpedia separates the hosts. They diverged on <b>2026-07-31</b> and have differed on <b>21 of the 31 measured days</b> since (re-verified today; no new step on 08-24).</p>
+  <p>Request parameters are byte-identical across the series, so the change is host-side. The committed lens corpus straddles up to three host states and several published payloads mix them — a provenance fact the methods page does not state. No lens payload and no page was touched.</p>
+  <p class="num">steps: gemma-2-2b @07-31 and @08-14 · gemma-2-2b-it @08-14 · lens sentinel is the one instrument that has kept working through the graph outage</p>
+  <div class="chips"><button class="chip" data-v="annotate-era">annotate the lens payloads with the host-state era and say so in the methods note</button><button class="chip" data-v="repull-census">re-pull the census batch under the current host</button><button class="chip" data-v="ask-neuronpedia">ask Neuronpedia what changed on 07-31 first</button><button class="chip" data-v="accept-mixture">accept the mixture, document nothing further</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D6-JLENS-SENTINEL-CONTAMINATION-20260821">
+  <h2>D6 · The published tuning comparison is mostly daily-sentinel replicates, and the page prose is false</h2>
+  <p>Open since 08-21, unchanged. <code>jlens_insights.py:82</code> excludes <code>txcorpus_*</code>, <code>*_txopus</code>, <code>*_txplacebo</code> and <code>*__context</code> from the lens census — but not <code>drift_sentinel_*</code>. The 3 frozen sentinel pairs are swept in once per sentinel day, for both host ids.</p>
+  <p>The technical page asserts three times that the readouts are "identical on every pair" while the block itself contains rows that are not. Code fix is one line in the exclusion list; the prose is yours. Neither was changed. <b>Note the count has been static for three days</b> — because the lens sentinel keeps succeeding, but the <i>circuit</i> sentinel has not, so no new alias day has entered the census since 08-21.</p>
+  <p class="num">technical/index.html L523, L1354, L1356 · jlens_insights census this cycle: 2,133 pairs, capture 171 / held 1,369 / hijack 126 / unreadable 467</p>
+  <div class="chips"><button class="chip" data-v="exclude-and-republish">add the exclusion, republish, then rewrite the prose to match</button><button class="chip" data-v="exclude-only">add the exclusion now; leave the prose until you can phrase it</button><button class="chip" data-v="prose-first">rewrite the prose first, leave the payload</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D7-MEDICAL-FINETUNE-FRAMING-20260808">
+  <h2>D7 · The medical fine-tunes keep moving further from zero, not toward it</h2>
+  <p>Open since 08-08. Today's backfill moved both 8B medical models again, and again in the same direction: <code>apertus-8b-meditronfo</code> 1,349 → <b>1,503</b> unique phrases with the mean going −0.0290 → <b>−0.0314</b>, and <code>meditron3-8b</code> 1,369 → <b>1,503</b> with −0.0369 → <b>−0.0379</b>. Both CIs still exclude zero; both p_BH tightened.</p>
+  <p>That is now several consecutive cycles in which the medical fine-tunes have grown <i>more</i> negative as n grew. Whatever the framing ends up being, "the study's null cases" is not what the data has been doing.</p>
+  <p class="num">apertus p_BH 5.37e-04 → 3.85e-04 · meditron p_BH 4.24e-08 → 1.55e-08 · both post-registration exploratory, BH within family</p>
+  <div class="chips"><button class="chip" data-v="reframe">rewrite the framing to match what the numbers have done</button><button class="chip" data-v="wait-for-close">wait until PREDICTIONS closes on both models (34/39 now)</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D8-CLAIM-MANIFEST-COVERAGE">
+  <h2>D8 · <code>claim_check</code> guards six of twenty-eight published payloads</h2>
+  <p>Related to the open <code>CLAIM-MANIFEST-PROPERTY-GAP-20260821</code> but a different axis: that card is about the manifest guarding <i>values</i> rather than <i>properties</i>; this is about <b>breadth</b>. The manifest holds 20 claims drawn from six sources. Twenty-two published payloads have no entry at all — every j-lens payload, <code>translation_scale</code>, <code>tag_mass</code>, <code>jspace</code>, <code>convergence</code>, <code>timeline</code>, <code>drift_series</code>, <code>stress_pairs</code>, <code>retrace_consistency</code>.</p>
+  <p>It showed up harmlessly today: <code>translation_scale.json</code>'s lens block moved (n_paired 225 → 250, never-formed 89 → 96, recovered 27 → 30, lost 11 → 14) and a green <code>claim_check</code> said nothing about it, because nothing on that page is in the manifest. Had a sentence quoted "27 of 89", no gate in the repo would have noticed it going stale.</p>
+  <p class="num">two entries would close most of it: the translation recovery counts, and the jlens_depth formation medians the technical page quotes</p>
+  <div class="chips"><button class="chip" data-v="add-two">add those two manifest entries</button><button class="chip" data-v="add-broadly">work through all twenty-two, one payload per cycle</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<button id="copy">copy my answers</button>
+<div id="out" role="region" aria-label="copyable decision summary"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(card){
+  card.querySelectorAll('.chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      card.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('on'); c.setAttribute('aria-pressed','false'); });
+      chip.classList.add('on'); chip.setAttribute('aria-pressed','true');
+    });
+    chip.setAttribute('aria-pressed','false');
+  });
+});
+document.getElementById('copy').addEventListener('click', function(){
+  var lines = ['DECISIONS 2026-08-24'];
+  document.querySelectorAll('.card').forEach(function(card){
+    var on = card.querySelector('.chip.on');
+    if (on) lines.push(card.dataset.id + ' = ' + on.dataset.v);
+  });
+  if (lines.length === 1) lines.push('(nothing selected)');
+  var text = lines.join('\n');
+  var out = document.getElementById('out');
+  out.textContent = text; out.style.display = 'block';
+  if (navigator.clipboard) navigator.clipboard.writeText(text).catch(function(){});
+});
+</script>

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PatientWords decisions — 2026-07-29</title>
+<style>
+  :root{--paper:#faf9f5;--ink:#111827;--green:#15803d;--red:#b4483d;--muted:#6d6c66;--hair:#c3c9d2;}
+  body{margin:0;background:var(--paper);color:var(--ink);
+       font-family:'Iowan Old Style',Palatino,Georgia,serif;line-height:1.5;font-size:1rem;}
+  .wrap{max-width:40rem;margin:0 auto;padding:1.1rem 1rem 4rem;}
+  .eyebrow{font-family:ui-monospace,Menlo,monospace;font-size:.7rem;letter-spacing:.14em;
+           text-transform:uppercase;color:var(--muted);}
+  h1{font-size:1.35rem;margin:.2rem 0 .8rem;font-weight:600;}
+  .card{background:#fff;border:1px solid var(--hair);border-radius:6px;padding:.8rem .95rem;margin:.7rem 0;}
+  .card h2{font-size:.98rem;margin:0 0 .3rem;font-weight:600;}
+  .card h2 .n{color:var(--green);font-family:ui-monospace,Menlo,monospace;font-size:.8rem;margin-right:.4rem;}
+  .card p{margin:.3rem 0;font-size:.92rem;}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:.45rem;}
+  .chip{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;border:1px solid var(--hair);
+        border-radius:5px;background:#fff;color:var(--ink);padding:.3rem .6rem;cursor:pointer;}
+  .chip[aria-pressed="true"]{border-color:var(--green);color:var(--green);font-weight:600;}
+  .chip:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
+  .note{color:var(--muted);font-size:.82rem;}
+  button.copy{font-family:ui-monospace,Menlo,monospace;font-size:.85rem;background:var(--green);
+        color:var(--paper);border:none;border-radius:5px;padding:.5rem 1rem;cursor:pointer;margin-top:1rem;}
+  pre{background:#f1efe9;border:1px solid var(--hair);border-radius:6px;padding:.7rem .8rem;
+      font-size:.8rem;overflow-x:auto;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">PatientWords · daily decisions · 2026-07-29</p>
+  <h1>Five decisions, one tap each</h1>
+
+  <div class="card" data-id="CLAIM-8-TO-10">
+    <h2><span class="n">1</span>Site says "8 models"; the data now has 10</h2>
+    <p>Apertus (n=75) and Meditron (n=30, still pending display) entered the stats, so two
+    sentences on the technical and methods pages understate coverage. Mechanical edit: 8 → 10.</p>
+    <div class="chips" role="group" aria-label="decision 1">
+      <button class="chip" data-v="fix">fix the count</button>
+      <button class="chip" data-v="leave">leave as is</button>
+    </div>
+  </div>
+
+  <div class="card" data-id="ADVICE-NAT-REMAINDER">
+    <h2><span class="n">2</span>Natural-question family: stay at 25 or resume later?</h2>
+    <p>Stopped at 25 of the registered 75 at your direction (deviation logged). Resuming the
+    other 50 later costs ≈$17 (≈$12 OpenRouter). No urgency — just confirming intent.</p>
+    <div class="chips" role="group" aria-label="decision 2">
+      <button class="chip" data-v="stay-25">stay at 25</button>
+      <button class="chip" data-v="resume-later">resume when funded</button>
+    </div>
+  </div>
+
+  <div class="card" data-id="TRACE-QUEUE">
+    <h2><span class="n">3</span>Paid trace queue (parked)</h2>
+    <p>Approved in the audit but parked under today's tightened budget: translation-100
+    (~$0.13), quadrants 4→50 (~$0.28), dialect K=3 re-traces. All small; total &lt; $0.75.</p>
+    <div class="chips" role="group" aria-label="decision 3">
+      <button class="chip" data-v="run-all">run all three</button>
+      <button class="chip" data-v="translation-only">translation-100 only</button>
+      <button class="chip" data-v="hold">keep parked</button>
+    </div>
+  </div>
+
+  <div class="card" data-id="MANIFEST-RENDER-MIN-N">
+    <h2><span class="n">4</span>Contract manifest: add the new render_min_n field</h2>
+    <p>The n≥30 render gate we shipped emits a field the site-contract checker doesn't know,
+    so it warns every cycle. Adding it to the audited manifest is mechanical.</p>
+    <div class="chips" role="group" aria-label="decision 4">
+      <button class="chip" data-v="add">add it</button>
+      <button class="chip" data-v="hold">hold</button>
+    </div>
+  </div>
+
+  <div class="card" data-id="MEDITRON-FALLBACK">
+    <h2><span class="n">5</span>Meditron keeps dying at model load (4 attempts soon)</h2>
+    <p>Three fast load-deaths plus today's hung load. If attempt 4 also fails: keep retrying
+    in smaller bites, or accept n=65/75 for meditron with the gap disclosed?</p>
+    <div class="chips" role="group" aria-label="decision 5">
+      <button class="chip" data-v="keep-retrying">keep retrying</button>
+      <button class="chip" data-v="accept-gap">accept the gap</button>
+    </div>
+  </div>
+
+  <button class="copy" id="copy">Copy decision summary</button>
+  <pre id="out" hidden></pre>
+  <p class="note">Tap one chip per card, then copy — the summary pastes straight into chat.</p>
+</div>
+<script>
+  document.querySelectorAll('.chips').forEach(function(g){
+    g.addEventListener('click', function(e){
+      if(!e.target.classList.contains('chip'))return;
+      g.querySelectorAll('.chip').forEach(function(c){c.setAttribute('aria-pressed','false');});
+      e.target.setAttribute('aria-pressed','true');
+    });
+  });
+  document.getElementById('copy').addEventListener('click', function(){
+    var lines = ['DECISIONS 2026-07-29'];
+    document.querySelectorAll('.card').forEach(function(card, i){
+      var on = card.querySelector('.chip[aria-pressed="true"]');
+      lines.push((i+1) + ' ' + card.dataset.id.toLowerCase() + ': ' + (on ? on.dataset.v : '(no choice)'));
+    });
+    var text = lines.join('\n');
+    var out = document.getElementById('out');
+    out.textContent = text; out.hidden = false;
+    if (navigator.clipboard) navigator.clipboard.writeText(text);
+  });
+</script>
+</body>
+</html>

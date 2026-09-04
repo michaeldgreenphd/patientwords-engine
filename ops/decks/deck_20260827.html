@@ -1,0 +1,125 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-27</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .chip:focus-visible{outline:2px solid #15803d;outline-offset:2px}
+  .new{border-left:3px solid #b4483d}
+  .good{border-left:3px solid #15803d}
+  table{border-collapse:collapse;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;margin:0 0 10px}
+  td,th{border-bottom:1px solid #c3c9d2;padding:3px 8px 3px 0;text-align:left}
+  th{color:#6d6c66;font-weight:normal}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #copy:focus-visible{outline:2px solid #15803d;outline-offset:2px}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-27</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · one good-news card (D0, nothing to decide), one new (D1), one escalated with a fresh measurement (D2), one escalated (D3), one carried (D4) · 29 open in all</p>
+
+<div class="card good" data-id="D0-INSTRUMENT-HEALTHY-20260827">
+  <h2>D0 · GOOD NEWS · Second clean sentinel day, and it read four times faster</h2>
+  <p>Run <code>33074722672</code> fired at 13:01:40Z and was <b>completed/success</b> at 13:17:45Z — all three pairs traced, six render files committed. That is <b>16m05s</b>, against 34m42s for yesterday's recovery run and the ~6m42s failure signature of the outage. Two healthy days in a row is now a recovery, not a coincidence.</p>
+  <p>Today's point against <code>20260826</code> reads <b>max |dp| 0.0</b> with no top-word change. The series is at <b>32 measured days</b> ending <code>20260827</code>, and it still carries exactly two threshold breaches, both historical: 20260714→15 at 0.027 and 20260813→14 at 0.023.</p>
+  <p>Separately, the 8B-medical logits backfill finished last night. <code>apertus-8b-meditronfo</code> and <code>meditron3-8b</code> are both at <b>1,864 unique phrases</b> — exact parity with each other and with <code>medgemma-4b-it</code>. All ten models remain negative with a 95 % CI excluding zero. Nothing to decide here.</p>
+  <p class="num">run 33074722672 · 16m05s · series 31 → 32 days · 14 interior holes over 07-13..08-27 (08-22..25 among them, permanent) · 7 runs fired today, 7 succeeded, $0</p>
+  <div class="chips"><button class="chip" data-v="noted">noted, nothing needed</button><button class="chip" data-v="standing-retry-rule">still make same-day retry a standing rule for the next outage</button></div>
+</div>
+
+<div class="card new" data-id="D1-BACKFILL-DRIVER-SINGLE-20260827">
+  <h2>D1 · NEW · The babysitter closed its loop. Nothing drives the logits lane between cycles now.</h2>
+  <p>The interim babysitter you authorised on 2026-08-07 finished the 8B-medical backfill and <b>shut itself down</b> at 2026-08-26 18:55Z, recording that it "will not re-arm". It was firing roughly ten legs a day on ~150-minute ticks. From that moment until this cycle opened at 13:01Z the lane had <b>no driver at all</b> — about 18 idle hours — and that is now the steady state between daily cycles.</p>
+  <p>The two cheap axes are done. Circuit <b>TRACE</b> and j-lens <b>LENS+save_raw</b> both read <b>39/39 COMPLETE</b>. Cross-model <b>PREDICTIONS</b> is not close:</p>
+  <table>
+    <tr><th>model</th><th>batches complete</th><th></th><th>model</th><th>batches complete</th></tr>
+    <tr><td>medgemma-4b-it</td><td><b>39/39</b></td><td></td><td>qwen3-4b</td><td>22/39</td></tr>
+    <tr><td>meditron3-8b</td><td><b>39/39</b></td><td></td><td>gemma-2-2b-it</td><td>19/39 <i>(15 this morning)</i></td></tr>
+    <tr><td>apertus-8b-meditronfo</td><td><b>39/39</b></td><td></td><td>gemma-2-2b</td><td>18/39</td></tr>
+    <tr><td>gemma-3-4b-it</td><td>24/39</td><td></td><td>llama-3.2-3b</td><td>18/39</td></tr>
+    <tr><td>qwen3-1.7b</td><td>24/39</td><td></td><td>olmo-2-1b</td><td>18/39</td></tr>
+  </table>
+  <p>That is <b>130 remaining batch-legs</b>. This cycle fired four and closed four. At four a cycle the axis is about <b>33 cycles — a month</b> — from converged. Everything in it is $0; the only cost is elapsed time.</p>
+  <p><b>One caution if you are drawn to the third option.</b> Last night's handoff note says "all six claim-grade models have full-parity coverage". That is true of the 8B pair it was closing, but it is <b>not</b> true on the planner's per-batch measure — <code>gemma-2-2b</code> is at 18/39, <code>gemma-3-4b-it</code> 24/39, <code>qwen3-1.7b</code> 24/39, <code>qwen3-4b</code> 22/39. Please do not decide "complete enough" from that sentence.</p>
+  <p class="num">docs/coordination/backfill_8b_complete_20260826.md · backfill_planner.py --include-8b-medical, recomputed this cycle · related but distinct from OPS-CADENCE-SINGLE-POINT, which was about the daily cycle surviving reclaims and is solved</p>
+  <div class="chips"><button class="chip" data-v="accept-daily-pace">accept the daily pace — $0, converges in ~a month</button><button class="chip" data-v="rearm-babysitter">re-arm a babysitter to keep the lane full between cycles</button><button class="chip" data-v="stop-backfill">stop the PREDICTIONS backfill where it is</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D2-LENS-HOST-SEPARATION-20260731">
+  <h2>D2 · ESCALATED · Measured today: the two lens hosts split on a clean date and never went back</h2>
+  <p>This has been open since 07-31 as "the ids have diverged". Today the cycle measured every sentinel day with both host ids present, and the result is sharper than the note it replaces — there is no mixture, no intermittency, just a <b>clean break</b>:</p>
+  <table>
+    <tr><th>window</th><th>measured days</th><th>readouts</th></tr>
+    <tr><td>20260714 → 20260730</td><td>10</td><td><b>identical</b> on every day</td></tr>
+    <tr><td>20260731 → 20260827</td><td><b>24</b></td><td><b>divergent</b> on every day</td></tr>
+  </table>
+  <p>Today all three sentinel pairs differ — <code>depth</code> on pairs 1/2/3, <code>first_layer</code> on 2/3, <code>last_layer_rank</code> on 3.</p>
+  <p><b>Two published texts still say the opposite.</b> The standing prompt's item 3d calls them a "known alias" and says the day they diverge is the day Neuronpedia separates the hosts — that day was four weeks ago. And <code>data/jlens_depth.json</code> ships an <code>integrity_note</code> reading "the gemma-2-2b-it model id returns lens readouts identical to the base model across all measured pairs (verified 2026-07-11); one model is reported until Neuronpedia confirms separate hosts." That string is hardcoded in <code>export_jlens_depth.py</code>, so every republish re-ships it. This cycle did not touch it: it is a claim, and claims are yours.</p>
+  <p class="num">34 sentinel days with both ids · 10 identical, 24 divergent · break at 20260731 · site data/jlens_depth.json:integrity_note · docs/routine_standing_prompt.md item 3d</p>
+  <div class="chips"><button class="chip" data-v="rewrite-both">rewrite both texts to say the hosts separated on 2026-07-31</button><button class="chip" data-v="rewrite-site-only">fix the shipped integrity_note now, leave the standing prompt to me</button><button class="chip" data-v="treat-as-tuning">treat -it as a real tuning comparison from 07-31 onward</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D3-TIMELINE-CHAIN-GAP-20260820">
+  <h2>D3 · ESCALATED AGAIN · The frozen curve now disagrees with the table on three models, not two</h2>
+  <p>The Technical page's Part 4 shows the accumulation curve (<code>convergence.json</code>) beside the cross-model table (<code>model_stats.json</code>). The table is rebuilt every cycle. The curve has been frozen since <b>2026-08-20</b> because <code>study_timeline.py</code> / the convergence generator sit in no documented publish chain, so no cycle runs them.</p>
+  <table>
+    <tr><th>model</th><th>curve n</th><th>table n</th><th>gap today</th><th>gap 08-26</th></tr>
+    <tr><td>apertus-8b-meditronfo</td><td>929</td><td><b>1,864</b></td><td>101 %</td><td>96 %</td></tr>
+    <tr><td>meditron3-8b</td><td>931</td><td><b>1,864</b></td><td>100 %</td><td>98 %</td></tr>
+    <tr><td>gemma-2-2b-it</td><td>1,027</td><td><b>1,058</b></td><td>3 %</td><td>0 %</td></tr>
+  </table>
+  <p><code>gemma-2-2b-it</code> is new to this list today — it went out of agreement the moment this cycle's four backfill legs landed. The other seven models still agree exactly. The pattern is mechanical: any model the backfill touches drops out of agreement and stays out.</p>
+  <p class="num">convergence.json generated_utc 2026-08-20T12:40:27Z · 7 days stale · recomputed against today's model_stats · the same gate the D-card on unwired checks would have caught on day one</p>
+  <div class="chips"><button class="chip" data-v="wire-convergence">add the convergence generator to the section-5 chain</button><button class="chip" data-v="drop-curve">drop the curve from the page until it can be regenerated</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D4-UNWIRED-CHECKS-BACKLOG-20260826">
+  <h2>D4 · CARRIED · Four checks still written, correct, and waiting on one yes/no</h2>
+  <p>Unchanged from yesterday's card and still the highest-leverage answer on the board: four automated checks drafted by past critic passes, each declined for the same reason — landing an erroring assertion in the publish gate is a policy change only you can make, and each would go red on day one for an item you have not ruled on.</p>
+  <p>Worth noting against D3 above: the first of the four is <i>"convergence n == model_stats n, per model"</i>. Had it been wired, it would have flagged <code>gemma-2-2b-it</code> the moment it drifted today, instead of the drift being found by hand. Yesterday that check would have been 8 of 10 green; today it is <b>7 of 10</b>.</p>
+  <p>One answer unblocks all four. The middle option is the gentle one — land them as warnings, so they appear in every brief without ever blocking a publish.</p>
+  <p class="num">critic_20260812 (3 checks) · critic_20260822 (1 check) · all offline, all $0 · full working in docs/critic/critic_20260826.md item 5</p>
+  <div class="chips"><button class="chip" data-v="land-as-errors">land all four as errors; a red gate is the point</button><button class="chip" data-v="land-as-warnings">land all four as warnings first</button><button class="chip" data-v="land-subset">land some — I will say which</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<button id="copy">Copy my answers</button>
+<div id="out"></div>
+
+<script>
+document.querySelectorAll('.card').forEach(function (card) {
+  card.querySelectorAll('.chip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var on = chip.classList.contains('on');
+      card.querySelectorAll('.chip').forEach(function (c) {
+        c.classList.remove('on');
+        c.setAttribute('aria-pressed', 'false');
+      });
+      if (!on) { chip.classList.add('on'); chip.setAttribute('aria-pressed', 'true'); }
+    });
+    chip.setAttribute('aria-pressed', 'false');
+  });
+});
+
+document.getElementById('copy').addEventListener('click', function () {
+  var lines = ['DECISIONS 2026-08-27'];
+  document.querySelectorAll('.card').forEach(function (card) {
+    var picked = card.querySelector('.chip.on');
+    if (picked) { lines.push(card.dataset.id + ' :: ' + picked.dataset.v); }
+  });
+  if (lines.length === 1) { lines.push('(nothing selected)'); }
+  var text = lines.join('\n');
+  var out = document.getElementById('out');
+  out.textContent = text;
+  out.style.display = 'block';
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(function () {});
+  }
+});
+</script>

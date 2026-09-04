@@ -107,13 +107,29 @@ def check_simulated(rep: Report, site: Path, payload: dict) -> dict:
     known_keys(rep, a, payload,
                {"batches", "scenarios", "models_meta", "traced", "traced_by_model",
                 "holdout_withheld", "archive", "traces_site", "summary",
-                "depth_model", "urgency_meta", "featured"})
+                "depth_model", "urgency_meta", "featured", "steering_disclosure"})
     batches = need(rep, a, payload, "batches", list, "$") or []
     scenarios = need(rep, a, payload, "scenarios", list, "$") or []
     models_meta = need(rep, a, payload, "models_meta", list, "$") or []
     need(rep, a, payload, "traced", dict, "$")
     if "holdout_withheld" in payload and not _is(payload["holdout_withheld"], int):
         rep.err(a, "$.holdout_withheld", "must be an integer count")
+    # Steered batches publish under a disclosure block (owner decision
+    # 2026-08-15). If any scenario is flagged steered, the block must name its
+    # batch: an unlabelled steered scenario reads as an ordinary cadence draw.
+    disclosure = payload.get("steering_disclosure")
+    if disclosure is not None:
+        if not isinstance(disclosure, dict) or not disclosure.get("note"):
+            rep.err(a, "$.steering_disclosure", "must be an object carrying a 'note'")
+        declared = set((disclosure or {}).get("stamps") or [])
+        flagged = {s.get("batch") for s in scenarios if s.get("steered")}
+        missing = sorted(flagged - declared)
+        if missing:
+            rep.err(a, "$.steering_disclosure.stamps",
+                    f"steered scenarios from undeclared batches: {missing}")
+    elif any(s.get("steered") for s in scenarios):
+        rep.err(a, "$.steering_disclosure",
+                "scenarios are flagged steered but the payload declares no disclosure")
 
     if not scenarios:
         rep.err(a, "$.scenarios", "empty (simulated-scenarios/index.html throws 'empty')")
@@ -239,7 +255,11 @@ def check_simulated(rep: Report, site: Path, payload: dict) -> dict:
 def check_urgency(rep: Report, data: dict, joins: dict):
     a = "urgency_shift.json"
     known_keys(rep, a, data, {"rows", "summary", "tiers", "tier_examples",
-                              "vocabulary_status"})
+                              "vocabulary_status", "render_min_n"})
+    # render gate (2026-07-28): pages pend any per-model cell below this n
+    rmn = data.get("render_min_n")
+    if rmn is not None and (not isinstance(rmn, int) or rmn < 1):
+        rep.err(a, "$.render_min_n", "must be a positive integer when present")
     vocab = need(rep, a, data, "vocabulary_status", str, "$")
     if vocab is not None and not vocab.strip():
         rep.err(a, "$.vocabulary_status", "empty (the draft label is load-bearing)")
@@ -299,6 +319,32 @@ def check_shapes(rep: Report, site: Path, joins: dict):
                                     "lens_recovery": dict}, set()),
         "jlens_insights.json": ({"model": str, "n_pairs": int, "points": (list, dict),
                                  "taxonomy": (list, dict)}, set()),
+        # critic 2026-07-31: newer exporter outputs gain shape coverage
+        "tag_mass.json": ({"empirical": bool, "n_pairs": dict, "clinical": dict,
+                           "patient": dict}, set()),
+        "jspace.json": ({"empirical": bool, "source": dict, "panels": dict}, set()),
+        "advice_scenarios.json": ({"selection": dict, "source": dict,
+                                   "families": list}, set()),
+        "judge_agreement.json": ({"tier_order": list, "n_paired": int,
+                                  "exact": dict, "within_one": dict,
+                                  "lean": dict, "matrix": list,
+                                  "coverage": list, "policy": str}, set()),
+        "drift_series.json": ({"pairs_file": str, "threshold": NUM,
+                               "days_measured": list, "series": dict}, set()),
+        # critic 2026-08-10: the three j-lens payloads the Technical page's chain
+        # dereferences had no shape coverage, so a malformed export degraded
+        # silently to the figure's "pending" state with every gate still green.
+        # display_vocab.json is the dialect page's token blocklist and gates the
+        # redirect gallery's featured picks - same silent-degrade shape.
+        "jlens_transport.json": ({"generated_utc": str, "model": str,
+                                  "census_batch": str, "n_pairs": int, "census": dict,
+                                  "exemplars": list, "per_pair": list}, set()),
+        "jlens_loglens.json": ({"generated_utc": str, "model": str, "jacobian": dict,
+                                "logit": dict, "agreement": dict, "per_pair": list}, set()),
+        "jlens_swaps.json": ({"swaps": dict}, set()),
+        "display_vocab.json": ({"version": int, "match": str,
+                                "fragment_blocklist": list,
+                                "function_word_targets": dict}, set()),
     }
     for name, (required, nullable) in specs.items():
         data = load(site, name, rep)
@@ -428,6 +474,23 @@ def main():
         print(f"error: {site}/data is not a directory", file=sys.stderr)
         sys.exit(2)
     rep = validate(site, Path(args.engine) if args.engine else None, strict=args.strict)
+
+    # repro-pack currency (owner directive 2026-07-23): a sent vendor pack that has
+    # gone stale against the archive must surface within a daily cycle, not wait for
+    # someone to remember. The disclosure log lives in the engine checkout.
+    engine_root = Path(args.engine) if args.engine else Path(__file__).resolve().parents[1]
+    log = engine_root / "ops" / "disclosure_log.jsonl"
+    if log.is_file() and log.stat().st_size > 0:
+        import subprocess
+        r = subprocess.run(
+            [sys.executable, str(engine_root / "scripts" / "advice_eval.py"), "repro-pack", "--check",
+             "--log", str(log)],
+            capture_output=True, text=True, cwd=str(engine_root))
+        if not args.quiet and r.stdout.strip():
+            print(r.stdout.strip())
+        if r.returncode == 2:
+            rep.errors.append("repro-pack --check: a SENT vendor pack is stale or superseded-unsent "
+                              "(see lines above) - an updated pack is owed before any per-model publication")
 
     if not args.quiet:
         for w in rep.warnings:

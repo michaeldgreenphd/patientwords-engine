@@ -34,6 +34,11 @@ def trigger_path(repo, name="circuit-trace"):
 def fire(repo, trigger="circuit-trace", params=None, extra=(), note="test fire"):
     if params is None:
         params = {"graph_model": "gemma-2-2b", "mode": "2panel"}
+    # commit_outputs must be stated explicitly wherever the workflow supports it
+    # (validate_params guard); the helper builds a valid fire, and the guard has
+    # its own dedicated test
+    if isinstance(params, dict) and "commit_outputs" in ft.KNOWN_KEYS.get(trigger, set()):
+        params = {"commit_outputs": "true", **params}
     argv = ["fire", "--repo", str(repo), "--trigger", trigger,
             "--params", json.dumps(params), "--note", note, "--no-git", *extra]
     return ft.main(argv)
@@ -50,6 +55,18 @@ def write_dashboard(repo, spent, date=None, ceiling=2.0):
 @pytest.fixture
 def repo(tmp_path):
     (tmp_path / ".github" / "trigger").mkdir(parents=True)
+    wf = tmp_path / ".github" / "workflows"
+    wf.mkdir(parents=True)
+    # The fire path refuses a trigger no workflow on this branch reads (exit 7),
+    # so the throwaway repo needs a workflow naming each path, the way the real
+    # workflows do in their `paths:` filter. pab-probe is left OUT deliberately:
+    # it mirrors the real gemma branch, where the key is wired only on the PAB
+    # branch, and it is what test_unwired_trigger_refused_with_exit_7 fires.
+    wired = [t for t in ft.TRIGGERS if t != "pab-probe"]
+    body = "on:\n  push:\n    paths:\n" + "".join(
+        f'      - ".github/trigger/{name}.json"\n' for name in wired
+    )
+    (wf / "stub.yml").write_text(body, encoding="utf-8")
     (tmp_path / "ops").mkdir()
     return tmp_path
 
@@ -232,10 +249,41 @@ def test_budget_check_pure_function_returns_structured_kind():
     assert ft.budget_check({"max_spend": float("nan")}, dash, "2026-07-09")[0] == "invalid"
 
 
+def test_budget_dated_ceiling_override():
+    # Owner-authorized dated raise (ops/budget_overrides.json): applies to exactly
+    # its UTC date, carries its reason into the guard message, and a malformed
+    # entry fails closed to the standing ceiling.
+    ov = {"2026-07-23": {"ceiling_usd": 5.0, "reason": "build day"}}
+    kind, reason = ft.budget_check({"max_spend": "4.5"}, {}, "2026-07-23", overrides=ov)
+    assert kind == "ok" and "owner ceiling override" in reason and "build day" in reason
+    # any other date: standing default 2.0 refuses the same fire
+    assert ft.budget_check({"max_spend": "4.5"}, {}, "2026-07-24", overrides=ov)[0] == "ceiling"
+    # the raised day still refuses past the raised ceiling
+    assert ft.budget_check({"max_spend": "5.5"}, {}, "2026-07-23", overrides=ov)[0] == "ceiling"
+    # malformed override entry -> fail closed to the standing ceiling
+    bad = {"2026-07-23": {"ceiling_usd": "lots"}}
+    assert ft.budget_check({"max_spend": "4.5"}, {}, "2026-07-23", overrides=bad)[0] == "ceiling"
+    # loader tolerates a missing file
+    assert ft.load_budget_overrides("/nonexistent/budget_overrides.json") == {}
+
+
 def test_validate_params_pure_function():
-    assert ft.validate_params("circuit-trace", {"graph_model": "g", "_note": "n"}) is None
+    assert ft.validate_params(
+        "circuit-trace", {"graph_model": "g", "commit_outputs": "true", "_note": "n"}) is None
     with pytest.raises(ValueError):
         ft.validate_params("circuit-trace", "not a dict")
+
+
+def test_validate_params_requires_explicit_commit_outputs():
+    # the push path defaults commit_outputs to false, which measures and then
+    # discards every output (the seven lost meditron fires); the key must be
+    # stated explicitly wherever the workflow supports it
+    with pytest.raises(ValueError, match="commit_outputs"):
+        ft.validate_params("logits-eval", {"models": "m", "limit": 1})
+    assert ft.validate_params(
+        "logits-eval", {"models": "m", "limit": 1, "commit_outputs": "false"}) is None
+    # triggers without the key in their workflow are unaffected
+    assert ft.validate_params("archive-renders", {"tag": "t"}) is None
     for trigger, params in [("circuit-trace", {"graph_modle": "g"}),
                             ("scenario-generation", {"tsak": "pairs"}),
                             ("logits-eval", {"limt": 0}),
@@ -620,3 +668,195 @@ def test_judged_fire_journal_entry_records_summed_commitment(repo):
         "task": "pairs", "num": "5", "max_spend": "1.2", "_nonce": "j6"}) == 4
     assert fire(repo, "scenario-generation", {
         "task": "pairs", "num": "5", "max_spend": "0.9", "_nonce": "j7"}) == 0
+
+
+def test_budget_ceiling_counts_anthropic_channel_only():
+    """CHANNEL-SPLIT (owner 2026-08-04): the daily guard reads
+    today.anthropic_usd when the ledger recorded the split, so
+    separately-authorized OpenRouter spend cannot block Anthropic fires;
+    dashboards without the split fall back to the pooled figure."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    split = {"spend": {"daily_ceiling_usd": 2.0,
+                       "today": {"date": today, "spent_usd": 4.25,
+                                 "anthropic_usd": 0.25, "openrouter_usd": 4.0}}}
+    verdict, _ = ft.budget_check({"max_spend": "0.50"}, split, today)
+    assert verdict == "ok"
+    pooled = {"spend": {"daily_ceiling_usd": 2.0,
+                        "today": {"date": today, "spent_usd": 4.25}}}
+    verdict, msg = ft.budget_check({"max_spend": "0.50"}, pooled, today)
+    assert verdict == "ceiling" and "4.25" in msg
+
+
+def test_fire_lane_resolution():
+    """Lanes minimal port 2026-08-07: only an all-OpenRouter advice-eval fire
+    leaves the anthropic lane; everything ambiguous fails closed."""
+    orl = "openai:openai/x,openrouter:google/y"
+    assert ft.fire_lane("advice-eval", {"models": orl}) == "openrouter"
+    assert ft.fire_lane("advice-eval", {"models": "anthropic:claude-x," + orl}) == "anthropic"  # mixed
+    assert ft.fire_lane("advice-eval", {"models": "claude-x"}) == "anthropic"      # bare id = Anthropic
+    assert ft.fire_lane("advice-eval", {"models": ""}) == "anthropic"              # workflow default
+    assert ft.fire_lane("advice-eval", {}) == "anthropic"
+    assert ft.fire_lane("scenario-generation", {"models": orl}) == "anthropic"     # other triggers
+
+
+def test_budget_check_openrouter_lane_uses_its_own_ceiling():
+    orl = {"models": "openai:openai/x,openrouter:google/y", "max_spend": "8.0"}
+    # anthropic day is FULL, but the all-openrouter fire counts its own lane
+    dash = {"spend": {"daily_ceiling_usd": 2.0,
+                      "today": {"date": "2026-08-07", "anthropic_usd": 2.0,
+                                "openrouter_usd": 0.0, "spent_usd": 2.0}}}
+    kind, reason = ft.budget_check(orl, dash, "2026-08-07", trigger="advice-eval")
+    assert kind == "ok" and "openrouter lane" in reason
+    # the openrouter ceiling itself still refuses
+    orl_big = dict(orl, max_spend="11.0")
+    assert ft.budget_check(orl_big, dash, "2026-08-07", trigger="advice-eval")[0] == "ceiling"
+    # a mixed-model fire stays on the (full) anthropic lane
+    mixed = {"models": "anthropic:claude-x,openai:openai/x", "max_spend": "1.0"}
+    assert ft.budget_check(mixed, dash, "2026-08-07", trigger="advice-eval")[0] == "ceiling"
+    # missing channel split falls back pooled - fail closed on the openrouter lane too
+    dash_pooled = {"spend": {"today": {"date": "2026-08-07", "spent_usd": 9.5}}}
+    assert ft.budget_check(orl, dash_pooled, "2026-08-07", trigger="advice-eval")[0] == "ceiling"
+
+
+def test_inflight_lane_filter_and_override_scope():
+    now = ft.utc_now()
+    today = now.strftime("%Y-%m-%d")
+    entries = [{"trigger": "advice-eval", "fired_utc": ft.iso_utc(now), "resolved": False,
+                "evicted": False, "max_spend": 8.0, "lane": "openrouter"}]
+    # the openrouter in-flight hold does not block the anthropic lane
+    assert ft.inflight_max_spend(entries, today, now, 8.0, lane="anthropic") == 0.0
+    assert ft.inflight_max_spend(entries, today, now, 8.0, lane="openrouter") == 8.0
+    # a dated owner override raises the ANTHROPIC ceiling only
+    dash = {"spend": {"daily_ceiling_usd": 2.0,
+                      "today": {"date": today, "anthropic_usd": 0.0, "openrouter_usd": 9.5,
+                                "spent_usd": 9.5}}}
+    ov = {today: {"ceiling_usd": 10.0, "reason": "owner"}}
+    anth = {"models": "anthropic:claude-x", "max_spend": "5.0"}
+    kind, reason = ft.budget_check(anth, dash, today, overrides=ov, trigger="advice-eval")
+    assert kind == "ok" and "override" in reason
+    orl = {"models": "openai:openai/x", "max_spend": "1.0"}
+    assert ft.budget_check(orl, dash, today, overrides=ov, trigger="advice-eval")[0] == "ceiling"
+
+
+def test_unwired_trigger_refused_with_exit_7(repo, capsys):
+    """A KNOWN key with no workflow behind it must refuse, not silently no-op.
+
+    Unknown keys already hard-error. A known-but-unwired key used to validate,
+    write the trigger file, journal the fire and push - running nothing, and
+    leaving a journal entry for a run that never existed (owner decision
+    2026-08-15). The key stays in TRIGGERS because it is wired on another
+    branch; the check is branch-local.
+    """
+    code = fire(repo, trigger="pab-probe",
+                params={"stage": "analyze", "max_spend": "1.0", "commit_sidecar": "false"},
+                note="unwired fire")
+    assert code == 7
+    assert "no workflow on this branch reads" in capsys.readouterr().err
+    assert not trigger_path(repo, "pab-probe").exists()      # nothing written
+    assert ft.load_journal(journal_path(repo)) == []          # nothing journaled
+
+
+def test_workflow_reads_trigger_is_branch_local(repo):
+    assert ft.workflow_reads_trigger(repo, "circuit-trace") is True
+    assert ft.workflow_reads_trigger(repo, "pab-probe") is False
+    # a workflow appearing on the branch flips it live, no code change needed
+    (repo / ".github" / "workflows" / "pab_probe.yml").write_text(
+        'on:\n  push:\n    paths:\n      - ".github/trigger/pab-probe.json"\n', encoding="utf-8")
+    assert ft.workflow_reads_trigger(repo, "pab-probe") is True
+
+
+def test_budget_gate_free_trigger_clears(repo, capsys):
+    (repo / ".github" / "trigger" / "logits-eval.json").write_text(
+        '{"models": "m", "limit": "25"}', encoding="utf-8")
+    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "logits-eval"])
+    assert rc == 0
+    assert "free fire" in capsys.readouterr().out
+
+
+def test_budget_gate_refuses_over_ceiling_with_exit_6(repo, capsys):
+    (repo / ".github" / "trigger" / "model-evaluation.json").write_text(
+        '{"model_selection": "claude-haiku-4-5", "max_spend": "999"}', encoding="utf-8")
+    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "model-evaluation"])
+    assert rc == 6
+    assert "REFUSED" in capsys.readouterr().err
+
+
+def test_budget_gate_clears_within_ceiling_and_reads_params_file(repo, tmp_path, capsys):
+    pf = tmp_path / "params.json"
+    pf.write_text('{"model_selection": "claude-haiku-4-5", "max_spend": "0.25"}',
+                  encoding="utf-8")
+    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "model-evaluation",
+                  "--params-file", str(pf)])
+    assert rc == 0
+    assert "clear" in capsys.readouterr().out
+
+
+def test_budget_gate_counts_landed_spend_from_dashboard(repo, capsys):
+    today = ft.utc_now().strftime("%Y-%m-%d")
+    (repo / "ops" / "dashboard.json").write_text(json.dumps({
+        "spend": {"daily_ceiling_usd": 2.0,
+                  "today": {"date": today, "spent_usd": 1.9, "anthropic_usd": 1.9}}}),
+        encoding="utf-8")
+    (repo / ".github" / "trigger" / "model-evaluation.json").write_text(
+        '{"model_selection": "claude-haiku-4-5", "max_spend": "0.50"}', encoding="utf-8")
+    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "model-evaluation"])
+    assert rc == 6
+    assert "REFUSED" in capsys.readouterr().err
+
+
+def test_budget_gate_missing_params_file_refuses(repo, capsys):
+    rc = ft.main(["budget-gate", "--repo", str(repo), "--trigger", "scenario-generation"])
+    assert rc == 6
+    assert "cannot read params" in capsys.readouterr().err
+
+
+# ------------------------------------------------------------------ park (resting-state rule)
+
+def test_park_defaults_all_validate():
+    for trigger, params in ft.PARK_DEFAULTS.items():
+        ft.validate_params(trigger, params)  # raises on any drifted key set
+        if "commit_outputs" in ft.KNOWN_KEYS[trigger]:
+            assert params["commit_outputs"] == "false", trigger
+        if trigger in ft.PAID_TRIGGERS:
+            assert ft.parse_max_spend(params.get("max_spend")) is not None, trigger
+
+
+def test_park_writes_no_op_default_with_marker(repo):
+    write_dashboard(repo, 0.0)
+    rc = ft.main(["park", "--repo", str(repo), "--trigger", "logits-eval", "--no-git"])
+    assert rc == 0
+    written = json.loads(trigger_path(repo, "logits-eval").read_text())
+    assert written["_parked"] == "true"
+    assert written["limit"] == "1"
+    assert written["commit_outputs"] == "false"
+    assert "_nonce" in written
+    entries = [json.loads(line) for line in journal_path(repo).read_text().splitlines()]
+    assert entries[-1]["trigger"] == "logits-eval"
+    assert "PARK" in entries[-1]["note"]
+
+
+def test_park_all_stops_at_first_refusal(repo, capsys):
+    # a full lane (two active entries) trips the queue guard mid-batch and the
+    # batch stops there instead of blindly continuing past a refusal
+    write_dashboard(repo, 0.0)
+    fire(repo, "circuit-trace")
+    fire(repo, "circuit-trace", params={"graph_model": "gemma-2-2b", "mode": "4quadrant"})
+    order = sorted(ft.PARK_DEFAULTS)
+    rc = ft.main(["park", "--repo", str(repo), "--all", "--no-git"])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "park stopped at circuit-trace" in err
+    # triggers before the refusal were parked; the refused one keeps its old content
+    for t in order:
+        if t == "circuit-trace":
+            assert "_parked" not in json.loads(trigger_path(repo, t).read_text())
+            break
+        assert json.loads(trigger_path(repo, t).read_text())["_parked"] == "true"
+
+
+def test_park_all_succeeds_with_budget(repo):
+    write_dashboard(repo, 0.0)
+    rc = ft.main(["park", "--repo", str(repo), "--all", "--no-git"])
+    assert rc == 0
+    for t in ft.PARK_DEFAULTS:
+        assert json.loads(trigger_path(repo, t).read_text())["_parked"] == "true"

@@ -1,0 +1,99 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-15</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .new{border-left:3px solid #b4483d}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-15</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · red rule = new or moved today</p>
+
+<div class="card new" data-id="D1-LENS-AXIS-MISCOUNT">
+  <h2>D1 · Yesterday's card D4 was wrong: the lens axis is already finished</h2>
+  <p>D4 asked you to accept "roughly 35 more cycles" to finish lens readout, on the stated basis of <b>3 of 39 batches</b> covered. That number is an artifact. <code>backfill_planner.py</code> counts <code>save_raw</code> coverage by globbing the <i>working tree</i> for <code>trace_out/&lt;batch&gt;/jlens_raw/*.gz</code>, and the fresh-session sparse checkout materialises <code>jlens_raw</code> for only the census batch and the txcorpus dirs. Counted from the git tree instead, <b>all 39 batches are complete</b>.</p>
+  <p>So there is no month of cycles, and nothing gates transport/loglens beyond the census batch on coverage grounds. The cost so far is small but real: the planner re-picks an already-finished batch every cycle (<code>pairs_20260706T172135Z</code> 1–2/2, both yesterday and today), and briefs have carried a false coverage statistic. No jlens backfill was fired today as a result.</p>
+  <p class="num">6,823 raw files across 90 dirs in the HEAD tree · 4,740 under pairs_ batches · planner reports 3/39 · git tree says 39/39</p>
+  <div class="chips"><button class="chip" data-v="planner-reads-git">fix the planner to count from git ls-tree (correct under any checkout)</button><button class="chip" data-v="widen-sparse">widen the bootstrap sparse patterns instead (~6.8k extra blobs per container)</button><button class="chip" data-v="both">do both</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D2-MODEL-STATS-STALE-SEVEN-DAYS">
+  <h2>D2 · The site's headline statistics are now seven days frozen</h2>
+  <p>Unchanged ask, one day worse. Every cycle republishes the payload, urgency, lens and tag-mass files and leaves the numbers carrying the study's actual claims untouched, because <code>paired_stats_rigor.py</code> appears in no step of the standing prompt's section 5. Manual by omission, not by choice. Fifth cycle recording it.</p>
+  <p>The published <code>meditron3-8b</code> row still reads CI [−0.0498, <b>+0.0004</b>] at n=132 — the one interval covering zero, by four ten-thousandths — while the 08-10 probe put it at n=333 with the interval excluding zero. Backfill legs that move that number fired again today.</p>
+  <p class="num">model_stats.json + convergence.json still stamped 2026-08-08 · seven days · timeline.json carries no stamp at all</p>
+  <div class="chips"><button class="chip" data-v="add-to-section5">add paired_stats_rigor to the daily chain, accept it can trip claim_check</button><button class="chip" data-v="keep-manual-say-so">keep it manual, but say so explicitly in the standing prompt</button><button class="chip" data-v="refresh-once-now">refresh once now, decide the policy later</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D3-MEDICAL-FINETUNE-SENTENCE">
+  <h2>D3 · The medical fine-tune sentence is five days overdue, and D2 is blocked behind it</h2>
+  <p>The site says the two medical fine-tunes are the study's null cases. The 08-10 recomputation moved <code>meditron3-8b</code> to significant on <i>both</i> the penalty and the sign test (23 down vs 3 up, q=1.76e-04); <code>apertus</code> moved off zero on the interval but its flip test is still not significant (11v4, q=0.118). The honest split is per-model now, not per-family.</p>
+  <p>No cycle will publish that sentence on its own — that is the rule this entry enforces. It also means D2 cannot be actioned safely until the sentence exists: publishing the refreshed number before the prose is exactly the hazard. One choice unblocks both.</p>
+  <p class="num">nothing public over-claims today — the site still shows the pre-move numbers · the stale statements are internal (HANDOFF_20260804 §2, dashboard verdicts)</p>
+  <div class="chips"><button class="chip" data-v="per-model-sentence">write the per-model sentence, then refresh the stats</button><button class="chip" data-v="owner-drafts">you draft it, session publishes nothing until then</button><button class="chip" data-v="drop-null-framing">drop the null-case framing entirely</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D4-TRANSPORT-LOGLENS-DOC-CONFLICT">
+  <h2>D4 · Fifth cycle spent re-deciding the same documented contradiction</h2>
+  <p>Three governing documents still disagree on whether the transport and loglens exporters run in the daily cycle. The standing prompt §5 says WIRED and gives the commands; the <code>publish-site-data</code> skill lists them in step 3 <i>and</i> forbids them in its Never list; <code>daily-ops-cycle</code> says not wired. Today ran both, agreeing with 08-10, 08-12 and 08-14.</p>
+  <p>The risk is not divergence — cycles have agreed four times running. It is that two of the three documents remain positively wrong, so a session following either one silently stops refreshing two published payloads with every gate still green. One-line fix in two files.</p>
+  <p class="num">no content impact today — both reproduced byte-identically except generated_utc · census 44 pairs, patient-never 16 · loglens 23 paired, class agree 17</p>
+  <div class="chips"><button class="chip" data-v="strike-never-lines">strike the stale Never lines from both skills</button><button class="chip" data-v="unwire-them">actually unwire them, fix the standing prompt instead</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D5-CIRCUIT-429-CLEARED">
+  <h2>D5 · The 429 stall looks cleared — closing this unless you disagree</h2>
+  <p>Five of seven circuit-trace runs failed on HTTP 429 over 08-11/08-12, which is why the lane was held empty on 08-12 and the drift series lost that day. Since then: yesterday's sentinel completed success (31805594159), and today's fired into a fully free lane with the lens sentinel completing success within seconds (31887774974).</p>
+  <p>Two clean cycles is the answer the last two decks ended without. Unless you want the backoff work anyway, this closes with no code change.</p>
+  <p class="num">today's circuit sentinel 31887769765 still in flight at cycle end · lens sentinel green · retry ladder unchanged (tops out at 60s)</p>
+  <div class="chips"><button class="chip" data-v="close-it">close it, no change</button><button class="chip" data-v="longer-backoff">lengthen the backoff ladder anyway</button><button class="chip" data-v="stagger-fires">stagger the hosted lanes' fire times</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D6-OPS-CADENCE-AND-BOOTSTRAP">
+  <h2>D6 · Four consecutive containers have arrived on the wrong branch</h2>
+  <p>Every fresh Routine session since 08-12 has booted with both repos clean but sitting on a main-based session branch, ops branch never fetched — so <code>ops/dashboard.json</code> reads as a month-stale main copy with <code>tierb.start_utc</code> null. The bootstrap recipe repairs it in about three minutes and worked verbatim again today, so no cycle has been lost.</p>
+  <p>It is still ~3 minutes of every cycle spent on environment repair, and it is silent: a session that orients from the harness-injected branch names rather than the scheduled prompt lands on main and reports wrong numbers with no error anywhere.</p>
+  <p class="num">plain fetch of the ops branch timed out at 2min and 8min today · blobless fetch ~2s · recipe documented at docs/fresh_session_bootstrap.md Variant B</p>
+  <div class="chips"><button class="chip" data-v="fix-environment">fix the environment so containers start on the ops branch</button><button class="chip" data-v="accept-recipe">accept the recipe as the permanent boot step</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D7-LANE-SHARING-PROTOCOL">
+  <h2>D7 · Two drivers share the logits lane, and today they collided</h2>
+  <p>The interim babysitter deliberately left a slot free for the 13:04Z cycle. This cycle ran long — Variant B bootstrap, then the full publish chain — and at 13:53/13:54 the babysitter reclaimed both slots while this cycle's backfill fire was mid-publish. The fire had already failed its push once (exit 1) and was <b>abandoned rather than published</b>: pushing it would have entered as a third run and silently evicted the babysitter's pending one.</p>
+  <p>Nothing was lost — <code>fire_trigger</code>'s guard did exactly its job, and the deferred leg is one $0 backfill chunk. But the arbitration was ordering luck, not design, and it is the first time the two drivers have contended for the same slot.</p>
+  <p class="num">abandoned: pairs_20260707T215921Z 76-80/80 x meditron3-8b (real gap, 75/80 covered) · no phantom journal entry · trigger file carries the babysitter's params</p>
+  <div class="chips"><button class="chip" data-v="reserve-window">reserve a window where the babysitter does not fire</button><button class="chip" data-v="babysitter-skips-logits">babysitter skips the logits lane on cycle days</button><button class="chip" data-v="accept-collision">accept it — the guard refuses correctly, cost is a deferred $0 leg</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<button id="copy">Copy decision summary</button>
+<div id="out"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(c){
+  c.querySelectorAll('.chip').forEach(function(ch){
+    ch.addEventListener('click',function(){
+      c.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on')});
+      ch.classList.add('on');
+    });
+  });
+});
+document.getElementById('copy').addEventListener('click',function(){
+  var lines=['DECISIONS 2026-08-15'];
+  document.querySelectorAll('.card').forEach(function(c){
+    var on=c.querySelector('.chip.on');
+    lines.push(c.dataset.id+' :: '+(on?on.dataset.v:'(no selection)'));
+  });
+  var t=lines.join('\n');
+  var o=document.getElementById('out');o.textContent=t;o.style.display='block';
+  if(navigator.clipboard){navigator.clipboard.writeText(t);}
+});
+</script>

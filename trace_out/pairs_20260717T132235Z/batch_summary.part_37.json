@@ -1,0 +1,633 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 37,
+  "pairs_requested": 20,
+  "completed": false,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "22588f5f47e9",
+    "runner_image": "20260720.247.2"
+  },
+  "results": [
+    {
+      "index": 37,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I think I have fallopian tube obstruction, so we should probably get an",
+        "patient": "I think my tubes might be blocked, so we should probably get an"
+      },
+      "target_token": "Output \" ultrasound\"",
+      "probabilities": {
+        "clinical": 0.402,
+        "patient": 0.637
+      },
+      "language_penalty": 0.235,
+      "clinical_mass": {
+        "clinical": 0.3736,
+        "patient": 0.2728
+      },
+      "error_share": {
+        "clinical": 0.1041,
+        "patient": 0.0927
+      },
+      "top_path": {
+        "clinical": "[L22\u00b7S]  \u2192 [L24\u00b7O] computer code and markup, and statistics-related lan \u2192 Output \" I\" (p=0.054)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" appointment\" (p=0.028)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ultrasound\"",
+            0.402
+          ],
+          [
+            "Output \" MRI\"",
+            0.102
+          ],
+          [
+            "Output \" H\"",
+            0.079
+          ],
+          [
+            "Output \" I\"",
+            0.054
+          ],
+          [
+            "Output \" appointment\"",
+            0.042
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ultrasound\"",
+            0.637
+          ],
+          [
+            "Output \" MRI\"",
+            0.036
+          ],
+          [
+            "Output \" abortion\"",
+            0.032
+          ],
+          [
+            "Output \" appointment\"",
+            0.028
+          ],
+          [
+            "Output \" X\"",
+            0.028
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 791,
+        "unique_to_a": 536,
+        "unique_to_b": 472
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_37.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_37.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_37_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_37_diff.png"
+      }
+    },
+    {
+      "index": 38,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing polyuria, so I'm worried I might have a",
+        "patient": "I've been spending half my day in the bathroom, so I'm worried I might have a"
+      },
+      "target_token": "Output \" UTI\"",
+      "probabilities": {
+        "clinical": 0.357,
+        "patient": 0.167
+      },
+      "language_penalty": -0.18999999999999997,
+      "clinical_mass": {
+        "clinical": 0.3904,
+        "patient": 0.2767
+      },
+      "error_share": {
+        "clinical": 0.1012,
+        "patient": 0.0868
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L20\u00b7C] words related to medical procedures, especially rela \u2192 [L25\u00b7C] medical terminology and symptoms related to kidney f \u2192 Output \" kidney\" (p=0.218)",
+        "patient": "embedding \u2192 Output \" urinary\" (p=0.062)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" UTI\"",
+            0.357
+          ],
+          [
+            "Output \" kidney\"",
+            0.218
+          ],
+          [
+            "Output \" urinary\"",
+            0.091
+          ],
+          [
+            "Output \" uti\"",
+            0.033
+          ],
+          [
+            "Output \" bladder\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" UTI\"",
+            0.167
+          ],
+          [
+            "Output \" problem\"",
+            0.07
+          ],
+          [
+            "Output \" urinary\"",
+            0.062
+          ],
+          [
+            "Output \" kidney\"",
+            0.042
+          ],
+          [
+            "Output \" cold\"",
+            0.033
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 464,
+        "unique_to_a": 991,
+        "unique_to_b": 931
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_38.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_38.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_38_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_38_diff.png"
+      }
+    },
+    {
+      "index": 39,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm experiencing weight gain with reduced caloric intake, so my doctor thinks I might be",
+        "patient": "My clothes don't fit anymore even though I barely eat, so my doctor thinks I might be"
+      },
+      "target_token": "Output \" hypo\"",
+      "probabilities": {
+        "clinical": 0.083,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2985,
+        "patient": 0.2413
+      },
+      "error_share": {
+        "clinical": 0.1046,
+        "patient": 0.0975
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L20\u00b7C] words or phrases related to medical symptoms, condit \u2192 Output \" suffering\" (p=0.051)",
+        "patient": "embedding \u2192 [L18\u00b7C] terminology related to mental health and medical con \u2192 [L20\u00b7C] words or phrases related to medical symptoms, condit \u2192 Output \" suffering\" (p=0.039)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hypo\"",
+            0.083
+          ],
+          [
+            "Output \" ane\"",
+            0.057
+          ],
+          [
+            "Output \" having\"",
+            0.057
+          ],
+          [
+            "Output \" insulin\"",
+            0.057
+          ],
+          [
+            "Output \" suffering\"",
+            0.051
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pregnant\"",
+            0.369
+          ],
+          [
+            "Output \" ane\"",
+            0.105
+          ],
+          [
+            "Output \" depressed\"",
+            0.039
+          ],
+          [
+            "Output \" suffering\"",
+            0.039
+          ],
+          [
+            "Output \" having\"",
+            0.03
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 534,
+        "unique_to_a": 1006,
+        "unique_to_b": 952
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_39.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_39.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_39_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_39_diff.png"
+      }
+    },
+    {
+      "index": 40,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "We're experiencing infertility, so we should probably see a",
+        "patient": "We've been trying for a baby but nothing's happening, so we should probably see a"
+      },
+      "target_token": "Output \" reproductive\"",
+      "probabilities": {
+        "clinical": 0.026,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3345,
+        "patient": 0.3105
+      },
+      "error_share": {
+        "clinical": 0.0953,
+        "patient": 0.0947
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" fertility\" (p=0.359)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.664)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" fertility\"",
+            0.359
+          ],
+          [
+            "Output \" doctor\"",
+            0.281
+          ],
+          [
+            "Output \" specialist\"",
+            0.192
+          ],
+          [
+            "Output \" reproductive\"",
+            0.026
+          ],
+          [
+            "Output \" counselor\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.664
+          ],
+          [
+            "Output \" fertility\"",
+            0.148
+          ],
+          [
+            "Output \" specialist\"",
+            0.07
+          ],
+          [
+            "Output \" dr\"",
+            0.023
+          ],
+          [
+            "Output \" GP\"",
+            0.016
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 570,
+        "unique_to_a": 611,
+        "unique_to_b": 599
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_40.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_40.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_40_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_40_diff.png"
+      }
+    },
+    {
+      "index": 41,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have erectile dysfunction lately, so my partner thinks I should see a",
+        "patient": "I've been having trouble getting it up lately, so my partner thinks I should see a"
+      },
+      "target_token": "Output \" uro\"",
+      "probabilities": {
+        "clinical": 0.067,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3779,
+        "patient": 0.2751
+      },
+      "error_share": {
+        "clinical": 0.1082,
+        "patient": 0.1009
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.633)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.613)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.633
+          ],
+          [
+            "Output \" therapist\"",
+            0.086
+          ],
+          [
+            "Output \" uro\"",
+            0.067
+          ],
+          [
+            "Output \" specialist\"",
+            0.041
+          ],
+          [
+            "Output \" sex\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.613
+          ],
+          [
+            "Output \" specialist\"",
+            0.073
+          ],
+          [
+            "Output \" therapist\"",
+            0.05
+          ],
+          [
+            "Output \" doc\"",
+            0.034
+          ],
+          [
+            "Output \" professional\"",
+            0.024
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 658,
+        "unique_to_a": 558,
+        "unique_to_b": 628
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_41.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_41.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_41_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_41_diff.png"
+      }
+    },
+    {
+      "index": 42,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been passing turbid urine all day, so I'm worried I might have a",
+        "patient": "I've been passing cloudy water all day, so I'm worried I might have a"
+      },
+      "target_token": "Output \" UTI\"",
+      "probabilities": {
+        "clinical": 0.5,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4039,
+        "patient": 0.1445
+      },
+      "error_share": {
+        "clinical": 0.1049,
+        "patient": 0.096
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" urinary\" (p=0.184)",
+        "patient": "embedding \u2192 Output \" bad\" (p=0.054)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" UTI\"",
+            0.5
+          ],
+          [
+            "Output \" urinary\"",
+            0.184
+          ],
+          [
+            "Output \" bladder\"",
+            0.112
+          ],
+          [
+            "Output \" kidney\"",
+            0.099
+          ],
+          [
+            "Output \" uti\"",
+            0.032
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" problem\"",
+            0.214
+          ],
+          [
+            "Output \" leak\"",
+            0.167
+          ],
+          [
+            "Output \" bad\"",
+            0.054
+          ],
+          [
+            "Output \" clogged\"",
+            0.037
+          ],
+          [
+            "Output \" clog\"",
+            0.029
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 751,
+        "unique_to_a": 556,
+        "unique_to_b": 672
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_42.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_42.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_42_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_42_diff.png"
+      }
+    },
+    {
+      "index": 43,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My brother came down with something nasty last week, and now I have fever, so I think I might have caught a",
+        "patient": "My brother came down with something nasty last week, and now I'm running hot, so I think I might have caught a"
+      },
+      "target_token": "Output \" cold\"",
+      "probabilities": {
+        "clinical": 0.471,
+        "patient": 0.439
+      },
+      "language_penalty": -0.03199999999999997,
+      "clinical_mass": {
+        "clinical": 0.2788,
+        "patient": 0.2243
+      },
+      "error_share": {
+        "clinical": 0.1018,
+        "patient": 0.0992
+      },
+      "top_path": {
+        "clinical": "[L16\u00b7S]  \u2192 [L19\u00b7C] words and phrases related to being sick and medical  \u2192 Output \" cold\" (p=0.471)",
+        "patient": "embedding \u2192 [L17\u00b7C] discussion of medical conditions with location on th \u2192 [L19\u00b7C] words and phrases related to being sick and medical  \u2192 Output \" cold\" (p=0.439)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cold\"",
+            0.471
+          ],
+          [
+            "Output \" bug\"",
+            0.135
+          ],
+          [
+            "Output \" bad\"",
+            0.05
+          ],
+          [
+            "Output \" bit\"",
+            0.044
+          ],
+          [
+            "Output \" little\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cold\"",
+            0.439
+          ],
+          [
+            "Output \" bug\"",
+            0.098
+          ],
+          [
+            "Output \" little\"",
+            0.052
+          ],
+          [
+            "Output \" bit\"",
+            0.052
+          ],
+          [
+            "Output \" bad\"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1170,
+        "unique_to_a": 191,
+        "unique_to_b": 266
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_43.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_43.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_43_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_43_diff.png"
+      }
+    }
+  ]
+}

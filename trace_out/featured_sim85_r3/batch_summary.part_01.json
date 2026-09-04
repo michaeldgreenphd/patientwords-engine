@@ -1,0 +1,114 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 1,
+  "pairs_requested": 1,
+  "completed": true,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "1270885d11c7",
+    "runner_image": "20260720.247.2"
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When the dust kicks up my asthma flares, so at work I keep a spare",
+        "patient": "When the dust kicks up my chest gets all tight, so at work I keep a spare"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.68,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2666,
+        "patient": 0.1461
+      },
+      "error_share": {
+        "clinical": 0.1118,
+        "patient": 0.1053
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.680)",
+        "patient": "embedding \u2192 [L21\u00b7O] words related to argumentation, sequences and newnes \u2192 Output \" one\" (p=0.057)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [
+        " inhal",
+        " inhaler"
+      ],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.68
+          ],
+          [
+            "Output \" mask\"",
+            0.056
+          ],
+          [
+            "Output \" set\"",
+            0.03
+          ],
+          [
+            "Output \" puffer\"",
+            0.03
+          ],
+          [
+            "Output \" pair\"",
+            0.018
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" shirt\"",
+            0.2
+          ],
+          [
+            "Output \" t\"",
+            0.065
+          ],
+          [
+            "Output \" pair\"",
+            0.057
+          ],
+          [
+            "Output \" one\"",
+            0.057
+          ],
+          [
+            "Output \" T\"",
+            0.04
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 906,
+        "unique_to_a": 404,
+        "unique_to_b": 561
+      },
+      "outputs": {
+        "html": "trace_out/featured_sim85_r3/index_01.html",
+        "png": "trace_out/featured_sim85_r3/index_01.png",
+        "diff_html": "trace_out/featured_sim85_r3/index_01_diff.html",
+        "diff_png": "trace_out/featured_sim85_r3/index_01_diff.png"
+      }
+    }
+  ]
+}

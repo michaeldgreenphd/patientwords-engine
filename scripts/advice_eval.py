@@ -38,6 +38,7 @@ import importlib.util
 import json
 import os
 import random
+import re
 import statistics
 import subprocess
 import time
@@ -54,6 +55,9 @@ DEFAULT_RUBRIC = "data/advice_rubric.json"
 # than typed consumer speech (owner preference, 2026-07-22)
 DEFAULT_ASK_SUFFIX_PAYLOAD = "... anyway what should I do?"
 DEFAULT_ASK_SUFFIX_MANUAL = "What should I do?"
+# --complete-with-target keeps "anyway" so the completed set differs from the
+# truncated registered set ONLY in the target word being present vs cut off.
+DEFAULT_ASK_SUFFIX_COMPLETED = "Anyway what should I do?"
 ARMS = ("clinical", "patient", "translated")
 DEFAULT_MAX_TOKENS = 1024
 DEFAULT_SAMPLES = 3
@@ -251,24 +255,118 @@ def _client():
     return anthropic.Anthropic(api_key=key)
 
 
-def _send(client, model: str, system: str | None, user_text: str, max_tokens: int, temperature: float):
-    """One Messages call. Returns (text, input_tokens, output_tokens, raw_dict).
+_ANTHROPIC_NO_TEMPERATURE = False
 
-    Module-level seam: tests monkeypatch this; nothing else in the module touches the network.
+
+def _send(client, model: str, system: str | None, user_text: str, max_tokens: int, temperature: float):
+    """One Messages call. Returns (text, input_tokens, output_tokens, raw_dict, headers).
+
+    Module-level seam: tests monkeypatch this; nothing else in the module touches the
+    network. Headers ride along for build forensics (request id, api version) - the
+    SDK's with_raw_response wrapper exposes them; older stubs returning a 4-tuple are
+    tolerated by every caller (headers default to {}).
+
+    CI installs the anthropic SDK unpinned, and current releases dropped `temperature`
+    from Messages.create() (both Claude judge top-ups died on the first call, run
+    32610000348, 2026-08-23). On that TypeError the call retries without the kwarg and
+    the process stops sending it - callers get API-default sampling, which the CI log
+    line below discloses.
     """
+    global _ANTHROPIC_NO_TEMPERATURE
     kwargs = dict(
         model=model,
         max_tokens=max_tokens,
-        temperature=temperature,
         messages=[{"role": "user", "content": user_text}],
     )
+    if not _ANTHROPIC_NO_TEMPERATURE:
+        kwargs["temperature"] = temperature
     if system:
         kwargs["system"] = system
-    response = client.messages.create(**kwargs)
+    headers: dict = {}
+    raw_api = getattr(client.messages, "with_raw_response", None)
+    create = raw_api.create if raw_api is not None else client.messages.create
+    try:
+        result = create(**kwargs)
+    except TypeError as exc:
+        if "temperature" not in kwargs or "temperature" not in str(exc):
+            raise
+        _ANTHROPIC_NO_TEMPERATURE = True
+        print("anthropic: installed SDK rejects 'temperature'; continuing with API-default sampling")
+        kwargs.pop("temperature")
+        result = create(**kwargs)
+    if raw_api is not None:
+        headers = {str(k).lower(): str(v) for k, v in dict(getattr(result, "headers", {}) or {}).items()}
+        response = result.parse()
+    else:  # pragma: no cover - older SDKs without the wrapper
+        response = result
     text = "".join(b.text for b in response.content if getattr(b, "type", "") == "text").strip()
     usage = getattr(response, "usage", None)
     raw = response.model_dump() if hasattr(response, "model_dump") else json.loads(response.json())
-    return text, getattr(usage, "input_tokens", 0), getattr(usage, "output_tokens", 0), raw
+    return text, getattr(usage, "input_tokens", 0), getattr(usage, "output_tokens", 0), raw, headers
+
+
+_LAST_CALL_AT: dict[str, float] = {}
+
+
+def _pace(provider: str, cfg: dict) -> None:
+    """Space calls to one provider by the registry's min_interval_seconds.
+
+    Free consumer tiers enforce tight request budgets, and retries alone make
+    it WORSE — every retry is itself a request against the quota (run 1b died
+    on sustained Gemini free-tier 429s after 16 successes, 2026-07-22).
+    Pacing is data: the registry entry decides, per provider."""
+    interval = cfg.get("min_interval_seconds")
+    if not interval:
+        return
+    last = _LAST_CALL_AT.get(provider)
+    now = time.monotonic()
+    if last is not None and now - last < float(interval):
+        time.sleep(float(interval) - (now - last))
+    _LAST_CALL_AT[provider] = time.monotonic()
+
+
+RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504, 522, 529})
+COMPAT_RETRIES = 5
+COMPAT_BACKOFF_SECONDS = (2, 4, 8, 16, 32)
+
+
+def _send_anthropic_retrying(client, model, system, user_text, max_tokens, temperature):
+    """_send plus transient-status retries, mirroring _send_compat's policy.
+
+    The Anthropic path originally had none: pilot 2b died mid-run on a single
+    Cloudflare 522 from api.anthropic.com during a translation call after the
+    SDK's own quick retries gave up (run 29913634215, 2026-07-22). Honors the
+    error body's retry_after when present (1-120 s cap)."""
+    for attempt in range(COMPAT_RETRIES + 1):
+        try:
+            return _send(client, model, system, user_text, max_tokens, temperature)
+        except Exception as exc:
+            status = getattr(exc, "status_code", None)
+            if status not in RETRYABLE_STATUSES or attempt >= COMPAT_RETRIES:
+                raise
+            wait = COMPAT_BACKOFF_SECONDS[min(attempt, len(COMPAT_BACKOFF_SECONDS) - 1)]
+            body = getattr(exc, "body", None)
+            if isinstance(body, dict) and body.get("retry_after") is not None:
+                try:
+                    wait = max(1.0, min(float(body["retry_after"]), 120.0))
+                except (TypeError, ValueError):
+                    pass
+            print(f"anthropic {model}: transient {status}; retry {attempt + 1}/{COMPAT_RETRIES} in {wait}s")
+            time.sleep(wait)
+
+
+def _finish_reason(raw) -> str | None:
+    """Why generation stopped, across API shapes: Anthropic surfaces stop_reason at the
+    top level; OpenAI-compatible providers (all compat-path vendors incl. OpenRouter)
+    put finish_reason on the first choice. Without this, a max-token truncation on the
+    compat path is unattributable in the archive's convenience field (the full raw
+    response is archived either way, so older records remain recoverable)."""
+    if not isinstance(raw, dict):
+        return None
+    if raw.get("stop_reason") is not None:
+        return raw.get("stop_reason")
+    choices = raw.get("choices") or [{}]
+    return (choices[0] or {}).get("finish_reason")
 
 
 def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
@@ -276,7 +374,15 @@ def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
     """One OpenAI-compatible chat call (OpenAI, Gemini, xAI, DeepSeek, Moonshot,
     OpenRouter, ... all expose this shape). Same return tuple as _send; same
     monkeypatch seam for tests. The provider's key comes from the env var named
-    in the registry (an Actions secret in CI - never a local file)."""
+    in the registry (an Actions secret in CI - never a local file).
+
+    Transient statuses (429/500/502/503/504 - free consumer tiers throw these
+    routinely; run 1 died on a single Gemini 503, 2026-07-22) retry with
+    exponential backoff, honoring Retry-After when the provider sends one.
+    A success status whose body is not JSON (gateway edges serve HTML error
+    pages with a 200; overnight attempt 2 crashed on one 4h19m in, 2026-07-29)
+    retries under the same policy. Anything else, or exhaustion, raises: the
+    elicit loop archives what landed and a re-fire resumes past it."""
     try:
         import requests
     except ImportError as exc:  # pragma: no cover
@@ -290,17 +396,60 @@ def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
     messages = ([{"role": "system", "content": system}] if system else []) + [
         {"role": "user", "content": user_text}
     ]
-    resp = requests.post(
-        f"{base_url}/chat/completions",
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        json={"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature},
-        timeout=180,
-    )
-    resp.raise_for_status()
-    raw = resp.json()
-    text = ((raw.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
-    usage = raw.get("usage") or {}
-    return text.strip(), usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0), raw
+    for attempt in range(COMPAT_RETRIES + 1):
+        resp = requests.post(
+            f"{base_url}/chat/completions",
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+            json={"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature},
+            timeout=180,
+        )
+        if resp.status_code in RETRYABLE_STATUSES and attempt < COMPAT_RETRIES:
+            try:
+                wait = float(resp.headers.get("Retry-After", ""))
+            except (TypeError, ValueError):
+                wait = COMPAT_BACKOFF_SECONDS[min(attempt, len(COMPAT_BACKOFF_SECONDS) - 1)]
+            wait = min(max(wait, 1.0), 120.0)
+            print(f"transient {resp.status_code} from {base_url} ({model}); "
+                  f"retry {attempt + 1}/{COMPAT_RETRIES} in {wait:.0f}s")
+            time.sleep(wait)
+            continue
+        resp.raise_for_status()
+        try:
+            raw = resp.json()
+        except ValueError:
+            # a 200 whose body is an HTML error page, not JSON (gateway edge)
+            if attempt < COMPAT_RETRIES:
+                wait = COMPAT_BACKOFF_SECONDS[min(attempt, len(COMPAT_BACKOFF_SECONDS) - 1)]
+                print(f"non-JSON {resp.status_code} body from {base_url} ({model}); "
+                      f"retry {attempt + 1}/{COMPAT_RETRIES} in {wait:.0f}s")
+                time.sleep(wait)
+                continue
+            raise RuntimeError(f"non-JSON response body from {base_url} ({model}) "
+                               f"after {COMPAT_RETRIES} retries (status {resp.status_code})")
+        text = ((raw.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+        usage = raw.get("usage") or {}
+        headers = {str(k).lower(): str(v) for k, v in dict(resp.headers or {}).items()}
+        return text.strip(), usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0), raw, headers
+
+
+def _build_info(raw, headers) -> dict:
+    """Forensic fields for a call: request id and api-version from response headers,
+    plus any body-level build fingerprint (system_fingerprint class) lifted to a
+    first-class field. Provider absence -> nulls; the full raw body is archived
+    regardless, so nothing is lost when a vendor renames these."""
+    headers = headers or {}
+    def pick(*names):
+        for n in names:
+            v = headers.get(n)
+            if v:
+                return v
+        return None
+    raw = raw if isinstance(raw, dict) else {}
+    return {
+        "request_id": pick("request-id", "x-request-id", "openrouter-request-id", "x-amzn-requestid"),
+        "api_version": pick("anthropic-version", "openai-version", "api-version"),
+        "build_fingerprint": raw.get("system_fingerprint") or raw.get("build_fingerprint"),
+    }
 
 
 # ------------------------------------------------------------------- hash chain
@@ -311,6 +460,31 @@ def _seal_record(record: dict, prev_sha: str | None) -> dict:
     record["prev_sha256"] = prev_sha
     record["record_sha256"] = sha256_text(canonical_json(record))
     return record
+
+
+def _cumulative_from_records(rows: list[dict]) -> tuple[float, dict]:
+    """Ledger-facing totals recomputed from the archive itself.
+
+    Sidecars overwrite per stimuli-stem, so a per-run cost_usd silently drops
+    earlier runs' spend from the daily guard once a resume overwrites it. The
+    records are the durable source: every paid record carries its own cost_usd,
+    so the archive-cumulative sum is always the true total for the stem."""
+    total = 0.0
+    per_model: dict[str, dict] = {}
+    for r in rows:
+        if "cost_usd" not in r:
+            continue  # advice_skipped and other zero-call bookkeeping records
+        cost = float(r.get("cost_usd") or 0.0)
+        bucket = per_model.setdefault(
+            r.get("model_requested") or "?",
+            {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0},
+        )
+        bucket["calls"] += 1
+        bucket["input_tokens"] += int(r.get("input_tokens") or 0)
+        bucket["output_tokens"] += int(r.get("output_tokens") or 0)
+        bucket["cost"] += cost
+        total += cost
+    return round(total, 6), per_model
 
 
 def verify_chain(rows: list[dict]) -> tuple[bool, str]:
@@ -359,7 +533,12 @@ def _stimulus(item_id, clinical_text, patient_text, ask_suffix, source_ref=None,
 def build_stimuli(args) -> Path:
     items = []
     if args.source == "payload":
-        ask = args.ask_suffix if args.ask_suffix is not None else DEFAULT_ASK_SUFFIX_PAYLOAD
+        complete = bool(getattr(args, "complete_with_target", False))
+        overrides = json.loads(getattr(args, "complete_override", None) or "{}")
+        if overrides and not complete:
+            raise SystemExit("--complete-override requires --complete-with-target")
+        ask = args.ask_suffix if args.ask_suffix is not None else (
+            DEFAULT_ASK_SUFFIX_COMPLETED if complete else DEFAULT_ASK_SUFFIX_PAYLOAD)
         payload = _load_json(args.payload)
         scenarios = payload.get("scenarios") or []
         picked = 0
@@ -373,13 +552,39 @@ def build_stimuli(args) -> Path:
             penalty = s.get("language_penalty")
             if args.min_abs_penalty and (penalty is None or abs(penalty) < args.min_abs_penalty):
                 continue
+            # hedges: the next-token top HELD but its probability collapsed -
+            # the complementary stress condition to --only-flips (does the
+            # advice shift even when the top prediction did not?)
+            if getattr(args, "only_hedges", False) and (
+                    s.get("flipped") or penalty is None or penalty >= 0):
+                continue
             ref = {"batch": s.get("batch"), "batch_index": s.get("batch_index")}
             meta = {"language_penalty": penalty, "flipped": bool(s.get("flipped")), "topic": s.get("topic")}
+            item_id = f"{s.get('batch')}#{s.get('batch_index')}"
+            c_body, p_body = s["clinical_prompt"], s["patient_prompt"]
+            if complete:
+                # Finish the measured probe sentence with the pair's own
+                # intended word (payload data, e.g. the full word behind a
+                # wordpiece target) so the stimulus is a complete thought.
+                # Same word on both sides: the single-swap discipline holds.
+                # Owner-approved overrides (data passed at build time) cover
+                # pairs whose intended word is not a complete noun.
+                word = str(overrides.get(item_id) or s.get("intended_target")
+                           or s.get("target_token") or "").strip()
+                if not word:
+                    print(f"skip {item_id}: nothing to complete with "
+                          "(no intended_target/target_token in the payload)")
+                    continue
+                c_body = f"{c_body.rstrip()} {word}."
+                p_body = f"{p_body.rstrip()} {word}."
+                meta["completed_with"] = word
+                if item_id in overrides:
+                    meta["completion_override"] = True
             items.append(
                 _stimulus(
-                    f"{s.get('batch')}#{s.get('batch_index')}",
-                    s["clinical_prompt"],
-                    s["patient_prompt"],
+                    item_id,
+                    c_body,
+                    p_body,
                     ask,
                     ref,
                     meta,
@@ -392,9 +597,15 @@ def build_stimuli(args) -> Path:
             "kind": "payload",
             "path": str(args.payload),
             "only_flips": bool(args.only_flips),
+            "only_hedges": bool(getattr(args, "only_hedges", False)),
             "min_abs_penalty": args.min_abs_penalty,
+            "complete_with_target": complete,
+            "complete_overrides": overrides,
             "note": "published payload withholds Tier B holdout rows upstream (holdout_withheld)",
         }
+        if complete:
+            for it in items:
+                print("  completed:", it["patient_message"])
     elif args.source == "pairs":
         ask = args.ask_suffix if args.ask_suffix is not None else DEFAULT_ASK_SUFFIX_PAYLOAD
         tierb = _load_tierb_split()
@@ -444,10 +655,28 @@ def build_stimuli(args) -> Path:
             if item_id in seen_ids:
                 raise SystemExit(f"{args.manual_in}: duplicate id {item_id}")
             seen_ids.add(item_id)
-            items.append(
-                _stimulus(item_id, clinical_text, patient_text, ask, {"manual": True},
-                          {"notes": entry.get("notes")})
-            )
+            item = _stimulus(item_id, clinical_text, patient_text, ask, {"manual": True},
+                             {"notes": entry.get("notes")})
+            # A2: optional clinician-adjudicated reference tier (data authored
+            # by owner + domain reviewer; analyze scores accuracy/under/over
+            # against it). Passed through verbatim; tier validity is checked
+            # at analyze time against the rubric actually in force.
+            ref = entry.get("reference")
+            if ref is not None:
+                if not isinstance(ref, dict) or not ref.get("tier"):
+                    raise SystemExit(f"{args.manual_in}: item {item_id}: 'reference' must be an "
+                                     "object with at least a 'tier'")
+                item["reference"] = ref
+            # B2/B3/B4 schema: optional situation grouping + variant tag so
+            # manual vignettes can carry misattribution / paraphrase /
+            # messiness designs; analyze-side comparisons come in phase 2.
+            for key in ("situation_id", "variant"):
+                if entry.get(key) is not None:
+                    if not isinstance(entry[key], str) or not entry[key].strip():
+                        raise SystemExit(f"{args.manual_in}: item {item_id}: '{key}' must be a "
+                                         "non-empty string when present")
+                    item[key] = entry[key].strip()
+            items.append(item)
         source_desc = {"kind": "manual", "path": str(args.manual_in)}
 
     if not items:
@@ -468,6 +697,183 @@ def build_stimuli(args) -> Path:
     )
     print(f"wrote {len(items)} paired stimuli -> {out_path}")
     print("review the assembled messages by eye before eliciting; the pair texts are the experiment.")
+    return out_path
+
+
+# --------------------------------------------------------------------- generate
+
+
+def _norm_prompt(text: str) -> str:
+    """Whitespace/case-insensitive key for dedupe against existing corpora."""
+    return " ".join(str(text).lower().split())
+
+
+def _parse_generated_pairs(text: str) -> list[dict]:
+    """Extract the JSON array of {clinical, patient[, topic]} items from a model
+    response. Tolerates prose around the array; drops malformed or degenerate
+    entries (missing side, identical sides) instead of failing the call —
+    a partial yield is still a yield. Raises ValueError only when no array
+    parses at all."""
+    start, end = text.find("["), text.rfind("]")
+    if start < 0:
+        raise ValueError("no JSON array in response")
+    raw = None
+    if end > start:
+        try:
+            raw = json.loads(text[start:end + 1])
+        except json.JSONDecodeError:
+            raw = None
+    if raw is None:
+        # Salvage a truncated array (a max_tokens stop mid-item is the common
+        # failure - the 20:19Z pilot lost all 15 calls to it): trim back to the
+        # last complete object and close the array.
+        tail = text.rfind("}")
+        if tail <= start:
+            raise ValueError("array does not parse and no complete object to salvage")
+        try:
+            raw = json.loads(text[start:tail + 1].rstrip().rstrip(",") + "]")
+        except json.JSONDecodeError as err:
+            raise ValueError(f"array does not parse even after salvage: {err}") from err
+    if not isinstance(raw, list):
+        raise ValueError("top-level JSON is not an array")
+    items = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        clinical = str(entry.get("clinical") or "").strip()
+        patient = str(entry.get("patient") or "").strip()
+        if not clinical or not patient or _norm_prompt(clinical) == _norm_prompt(patient):
+            continue
+        items.append({"clinical": clinical, "patient": patient,
+                      "topic": str(entry.get("topic") or "").strip()})
+    return items
+
+
+def generate(args) -> Path:
+    """Generator-diversity pilot (owner-approved 2026-08-21): author NEW paired
+    advice vignettes with a non-Anthropic model through the provider registry.
+
+    Everything content-bearing (model spec, topics, style template, exemplars)
+    lives in the JSON config — no medical vocabulary in this file. Output is a
+    pairs list in the advnat shape (top_prompt = precise register, bottom_prompt
+    = everyday register) so `build-stimuli --source pairs` consumes it
+    unchanged. The batch is ISOLATED: its own family tag and stem, a sidecar
+    marked pilot-unreviewed, and nothing consumes it until the owner reviews.
+    Tier B holdout texts are refused on the astronomically-unlikely collision
+    path, same guard as build-stimuli."""
+    cfg_data = _load_json(args.config)
+    registry = _load_providers(args.providers)
+    spec = _resolve_spec(str(cfg_data["model"]), registry)
+    n_target = int(cfg_data["n_items"])
+    per_call = int(cfg_data.get("items_per_call", 8))
+    max_calls = int(cfg_data.get("max_calls", 20))
+    temperature = float(cfg_data.get("temperature", 1.0))
+    max_tokens = int(cfg_data.get("max_tokens", 2200))
+    system = cfg_data.get("system") or None
+    template = str(cfg_data["prompt_template"])
+    ex_block = "\n".join(f"- {e}" for e in (cfg_data.get("exemplars") or []))
+    topics = [str(t) for t in (cfg_data.get("topics") or [""])]
+
+    seen: set[str] = set()
+    for path in cfg_data.get("dedupe_against") or []:
+        try:
+            data = _load_json(path)
+        except (OSError, json.JSONDecodeError):
+            print(f"dedupe source unreadable, skipping: {path}")
+            continue
+        rows = data if isinstance(data, list) else (data.get("items") or [])
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            for key in ("top_prompt", "bottom_prompt", "clinical_body", "patient_body"):
+                value = row.get(key)
+                if value:
+                    seen.add(_norm_prompt(value))
+
+    tierb = _load_tierb_split()
+    out_pairs: list[dict] = []
+    calls = tokens_in = tokens_out = 0
+    dropped_dupe = dropped_holdout = unparseable = 0
+    while len(out_pairs) < n_target and calls < max_calls:
+        topic = topics[calls % len(topics)]
+        user_text = template.format(count=per_call, topic=topic, exemplars=ex_block)
+        _pace(spec["provider"], spec["cfg"])
+        res = _send_compat(spec["cfg"], spec["model"], system, user_text, max_tokens, temperature)
+        text, in_tok, out_tok = res[0], res[1], res[2]
+        calls += 1
+        tokens_in += in_tok
+        tokens_out += out_tok
+        try:
+            candidates = _parse_generated_pairs(text)
+        except ValueError as err:
+            unparseable += 1
+            print(f"call {calls}: {err}; continuing")
+            continue
+        for item in candidates:
+            if len(out_pairs) >= n_target:
+                break
+            key_c, key_p = _norm_prompt(item["clinical"]), _norm_prompt(item["patient"])
+            if key_c in seen or key_p in seen:
+                dropped_dupe += 1
+                continue
+            if tierb.is_holdout(item["clinical"]) or tierb.is_holdout(item["patient"]):
+                dropped_holdout += 1
+                continue
+            seen.add(key_c)
+            seen.add(key_p)
+            generation = {
+                "provider_spec": spec["spec"],
+                "topic": item.get("topic") or topic,
+                "identity_note": cfg_data.get("identity_note", ""),
+            }
+            # Register-family configs ask the model to name the cues it applied
+            # and the shared fact list (mirrors the owner-selected advice_mc
+            # shape); terminology-contrast configs ask for the clinical-term to
+            # plain-description substitutions. Absent when not requested.
+            for extra in ("cues", "facts", "term_swaps"):
+                if item.get(extra):
+                    generation[extra] = item[extra]
+            out_pairs.append({
+                "top_prompt": item["clinical"],
+                "bottom_prompt": item["patient"],
+                "family": cfg_data.get("family", "advice_gen_pilot"),
+                "generation": generation,
+            })
+        print(f"call {calls}: kept {len(out_pairs)}/{n_target} so far")
+
+    stamp = utc_stamp()
+    stem = cfg_data.get("stem", "genpilot")
+    out_path = Path(args.out_dir) / f"{stem}_{stamp}.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(out_pairs, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    report = {
+        "task": "advice-stimuli-generation",
+        "status": "pilot-unreviewed",
+        "model": spec["spec"],
+        "identity_note": cfg_data.get("identity_note", ""),
+        "config": str(args.config),
+        "n_generated": len(out_pairs),
+        "n_target": n_target,
+        "calls": calls,
+        "input_tokens": tokens_in,
+        "output_tokens": tokens_out,
+        "cost_usd": 0.0,
+        "cost_note": cfg_data.get("cost_note", ""),
+        "dropped_duplicates": dropped_dupe,
+        "dropped_holdout_collisions": dropped_holdout,
+        "unparseable_calls": unparseable,
+        "created_utc": utc_now_iso(),
+        "engine_sha": engine_sha(),
+    }
+    out_path.with_suffix(".report.json").write_text(
+        json.dumps(report, indent=1) + "\n", encoding="utf-8")
+    print(f"generated {len(out_pairs)} pairs in {calls} calls -> {out_path}")
+    print(f"dropped: {dropped_dupe} duplicate(s), {dropped_holdout} holdout collision(s); "
+          f"{unparseable} unparseable call(s)")
+    print("PILOT-UNREVIEWED: nothing consumes this batch until the owner reviews it.")
+    if len(out_pairs) < n_target:
+        print(f"short of target ({len(out_pairs)}/{n_target}) after {calls} calls - "
+              "re-run with a fresh config or raise max_calls")
     return out_path
 
 
@@ -558,16 +964,21 @@ def elicit(args) -> Path:
 
     def timed_send(spec_key, system, text, max_tokens, temperature):
         r = resolved.get(spec_key)  # None for the bare-model translator: anthropic path
+        if r is not None:
+            _pace(r["provider"], r["cfg"])
         sent = utc_now_iso()
         t0 = time.monotonic()
         if r is None or r["cfg"].get("api", "anthropic") == "anthropic":
             endpoint = "anthropic"
             model = r["model"] if r else spec_key
-            out_text, in_tok, out_tok, raw = _send(anthropic_client(), model, system, text, max_tokens, temperature)
+            res = _send_anthropic_retrying(
+                anthropic_client(), model, system, text, max_tokens, temperature)
         else:
             endpoint = r["cfg"].get("base_url", "")
-            out_text, in_tok, out_tok, raw = _send_compat(r["cfg"], r["model"], system, text,
-                                                          max_tokens, temperature)
+            res = _send_compat(r["cfg"], r["model"], system, text,
+                               max_tokens, temperature)
+        out_text, in_tok, out_tok, raw = res[:4]
+        headers = res[4] if len(res) > 4 else {}
         latency_ms = int((time.monotonic() - t0) * 1000)
         cost = tracker.record(spec_key, in_tok, out_tok)
         return out_text, raw, {
@@ -575,6 +986,7 @@ def elicit(args) -> Path:
             "input_tokens": in_tok, "output_tokens": out_tok, "cost_usd": round(cost, 6),
             "model_returned": raw.get("model"),
             "provider": (r or {}).get("provider", "anthropic"), "endpoint": endpoint,
+            **_build_info(raw, headers),
         }
 
     try:
@@ -624,13 +1036,14 @@ def elicit(args) -> Path:
                 "request": {"system": None, "message": message, "temperature": args.temperature,
                             "max_tokens": args.max_tokens},
                 "response_text": text, "response_sha256": sha256_text(text),
-                "stop_reason": raw.get("stop_reason"), "response_raw": raw,
+                "stop_reason": _finish_reason(raw), "response_raw": raw,
                 "translation_sha256": (translations.get((item["id"], args.translator_model)) or {}).get(
                     "output_sha256") if arm == "translated" else None,
                 **env, **base_env,
             })
     finally:
         all_rows = _read_jsonl(out_path)
+        cum_cost, cum_per_model = _cumulative_from_records(all_rows)
         _write_json(sidecar_path, {
             "run_utc": utc_now_iso(), "engine_sha": base_env["engine_sha"],
             "stimuli_file": str(args.stimuli), "models": models, "arms": arms,
@@ -638,8 +1051,11 @@ def elicit(args) -> Path:
             "providers": {spec: r["provider"] for spec, r in resolved.items()},
             "samples": args.samples, "temperature": args.temperature, "max_tokens": args.max_tokens,
             "translator_model": args.translator_model if "translated" in arms else None,
-            "max_spend_usd": args.max_spend, "cost_usd": round(tracker.spent, 6),
-            "per_model": tracker.per_model, "records_appended": n_written,
+            "max_spend_usd": args.max_spend,
+            "cost_usd": cum_cost, "cost_basis": "cumulative_from_records",
+            "run_cost_usd": round(tracker.spent, 6),
+            "per_model": cum_per_model, "run_per_model": tracker.per_model,
+            "records_appended": n_written,
             "records_total": len(all_rows), "truncated": tracker.truncated,
             "stopped_reason": stopped_reason,
             "chain_head": all_rows[-1]["record_sha256"] if all_rows else None,
@@ -759,6 +1175,15 @@ def _judge_prompt(rubric: dict, response_text: str) -> str:
     return rubric["judge_instructions"].format(tiers=tiers, flags=flags, response=response_text)
 
 
+def is_secondary_judge(judge_model: str | None) -> bool:
+    """Provider-spec judges ('provider:model', always carrying ':') are second
+    opinions appended beside the primary judge for inter-judge agreement. The
+    primary site judge is a bare Anthropic model id, and clinician re-grades
+    enter under bare labels, so both keep the later-pass-overwrites path;
+    secondary judges must never displace them in analyze or the exporter."""
+    return ":" in (judge_model or "")
+
+
 def judge(args) -> Path:
     rubric = _load_json(args.rubric)
     rubric_sha = sha256_text(canonical_json(rubric))
@@ -772,11 +1197,36 @@ def judge(args) -> Path:
     out_path = Path(args.out) if args.out else Path(args.responses).with_name(
         Path(args.responses).stem.replace("responses_", "judgments_") + ".jsonl")
     existing = _read_jsonl(out_path)
-    done = {(j["response_sha256"], j["rubric_sha256"], j["judge_model"]) for j in existing}
+    # A failed judgment (tier null - empty/truncated/unknown-tier response) is
+    # not a judgment: it stays in the append-only file as history but does NOT
+    # enter the dedupe set, so a re-fire retries it (2026-08-22: 59/250 pilot
+    # calls came back empty when a reasoning-heavy judge spent its whole token
+    # budget before emitting content). Consumers already skip null-tier rows.
+    done = {(j["response_sha256"], j["rubric_sha256"], j["judge_model"])
+            for j in existing if j.get("tier") is not None}
     todo = [r for r in advice if (r["response_sha256"], rubric_sha, args.judge_model) not in done]
 
     if args.human_sample:
-        sample = random.Random(args.seed).sample(advice, min(args.human_sample, len(advice)))
+        # A4: stratify by arm — the judge cannot be fully blinded to register
+        # (responses echo the user's words), so judge-vs-human agreement must
+        # be reportable PER ARM at comparable n. Rows stay blinded (text only).
+        rng = random.Random(args.seed)
+        by_arm: dict[str, list[dict]] = {}
+        for r in advice:
+            by_arm.setdefault(r.get("arm") or "?", []).append(r)
+        arms_present = sorted(by_arm)
+        want = min(args.human_sample, len(advice))
+        per_arm = max(1, want // max(1, len(arms_present)))
+        sample = []
+        for arm in arms_present:
+            pool = by_arm[arm]
+            sample.extend(rng.sample(pool, min(per_arm, len(pool))))
+        # top up to the requested n from the remainder, still seeded
+        if len(sample) < want:
+            chosen = {id(r) for r in sample}
+            rest = [r for r in advice if id(r) not in chosen]
+            sample.extend(rng.sample(rest, min(want - len(sample), len(rest))))
+        rng.shuffle(sample)  # no arm-blocked ordering hints for the coder
         human_path = out_path.with_name(out_path.stem + "_human_sample.csv")
         with open(human_path, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
@@ -789,8 +1239,21 @@ def judge(args) -> Path:
     if args.dry_run or not todo:
         return out_path
 
-    tracker = CostTracker(args.max_spend, 300)
-    client = _client()
+    # Second-judge support (owner-approved 2026-08-21): the judge model may be a
+    # provider spec ('openrouter:vendor/model'), resolved through the same
+    # registry as elicit. Records carry judge_model, and the dedupe key already
+    # includes it, so a second judge appends beside the first - the archive
+    # holds both opinions and agreement is computable offline.
+    registry = _load_providers(getattr(args, "providers", DEFAULT_PROVIDERS))
+    spec = _resolve_spec(args.judge_model, registry)
+    is_anthropic = spec["provider"] == "anthropic"
+    judge_max_tokens = int(getattr(args, "judge_max_tokens", 300) or 300)
+    custom_pricing = {}
+    pricing = (spec["cfg"].get("pricing") or {}).get(spec["model"])
+    if pricing:
+        custom_pricing[args.judge_model] = (float(pricing[0]), float(pricing[1]))
+    tracker = CostTracker(args.max_spend, judge_max_tokens, custom_pricing)
+    client = _client() if is_anthropic else None
     n = 0
     try:
         with open(out_path, "a", encoding="utf-8") as f:
@@ -799,9 +1262,17 @@ def judge(args) -> Path:
                     print(f"STOPPED EARLY: judge max_spend ceiling (${args.max_spend})")
                     break
                 # Blinding: the judge sees the response text only - never the prompt or arm.
-                raw_text, in_tok, out_tok, raw = _send(
-                    client, args.judge_model, None, _judge_prompt(rubric, r["response_text"]), 300, 0.0
-                )
+                if is_anthropic:
+                    res = _send_anthropic_retrying(
+                        client, spec["model"], None,
+                        _judge_prompt(rubric, r["response_text"]), judge_max_tokens, 0.0)
+                else:
+                    _pace(spec["provider"], spec["cfg"])
+                    res = _send_compat(
+                        spec["cfg"], spec["model"], None,
+                        _judge_prompt(rubric, r["response_text"]), judge_max_tokens, 0.0)
+                raw_text, in_tok, out_tok, raw = res[:4]
+                judge_headers = res[4] if len(res) > 4 else {}
                 tracker.record(args.judge_model, in_tok, out_tok)
                 parsed = _extract_json_object(raw_text)
                 entry = {
@@ -810,6 +1281,7 @@ def judge(args) -> Path:
                     "judge_model": args.judge_model, "rubric_sha256": rubric_sha,
                     "rubric_version": rubric.get("version"), "judged_utc": utc_now_iso(),
                     "judge_raw": raw_text,
+                    "judge_request_id": _build_info(raw, judge_headers).get("request_id"),
                 }
                 if parsed and parsed.get("tier") in tier_ids:
                     entry["tier"] = parsed["tier"]
@@ -845,14 +1317,47 @@ def _modal_tier(tiers: list[str], rank: dict[str, int]) -> str | None:
     return max((t for t, c in counts.items() if c == best), key=lambda t: rank.get(t, -1))
 
 
+def _pairwise_disagreement(labels: list) -> float | None:
+    """P(two randomly chosen labels differ); None with fewer than 2 labels.
+    The 'lottery' primitive (A3): applied to models' modal tiers it is the
+    consumer lottery, applied to one model's K samples the self-lottery."""
+    n = len(labels)
+    if n < 2:
+        return None
+    counts: dict = {}
+    for lab in labels:
+        counts[lab] = counts.get(lab, 0) + 1
+    same = sum(k * (k - 1) for k in counts.values())
+    return 1.0 - same / (n * (n - 1))
+
+
+def _text_covariates(text: str) -> tuple[int, float]:
+    """(word count, Flesch-Kincaid grade). Arithmetic only — no vocabulary:
+    sentences = runs of .!? ; syllables = vowel groups per word (min 1)."""
+    words = [w.strip(".,;:!?()[]\"'") for w in text.split()]
+    words = [w for w in words if w]
+    n_words = len(words)
+    if not n_words:
+        return 0, 0.0
+    n_sent = max(1, len([s for s in re.split(r"[.!?]+", text) if s.strip()]))
+    n_syl = sum(max(1, len(re.findall(r"[aeiouyAEIOUY]+", w))) for w in words)
+    grade = 0.39 * (n_words / n_sent) + 11.8 * (n_syl / n_words) - 15.59
+    return n_words, round(grade, 2)
+
+
 def analyze(args) -> Path:
     rubric = _load_json(args.rubric)
     rank = {t["id"]: i for i, t in enumerate(rubric["tiers"])}
     judgments = _read_jsonl(args.judgments)
     cells: dict[tuple, list[str]] = {}
     flags_by_arm: dict[str, dict[str, list[bool]]] = {}
+    secondary_judges: dict[str, int] = {}
+    include_secondary = bool(getattr(args, "include_secondary_judges", False))
     for j in judgments:
         if j.get("tier") is None:
+            continue
+        if is_secondary_judge(j.get("judge_model")) and not include_secondary:
+            secondary_judges[j["judge_model"]] = secondary_judges.get(j["judge_model"], 0) + 1
             continue
         cells.setdefault((j["stimulus_id"], j["model"], j["arm"]), []).append(j["tier"])
         for flag, value in (j.get("flags") or {}).items():
@@ -934,15 +1439,125 @@ def analyze(args) -> Path:
             },
         }
 
+    def _mean3(vals):
+        return round(statistics.fmean(vals), 3) if vals else None
+
+    # A2: reference-tier scoring — clinician ground truth from the stimuli
+    # file (data authored by owner + domain reviewer, never Python). Turns
+    # difference into quality: accuracy / under- / over-triage per model x
+    # arm, and the thesis endpoint under_triage_patient_minus_clinical.
+    reference_scoring = None
+    if getattr(args, "stimuli", None):
+        refs = {}
+        for it in _load_json(args.stimuli).get("items", []):
+            tier = (it.get("reference") or {}).get("tier")
+            if tier is not None:
+                if tier not in rank:
+                    raise SystemExit(f"{args.stimuli}: item {it.get('id')}: reference tier "
+                                     f"{tier!r} is not a tier id of the rubric in force")
+                refs[it["id"]] = rank[tier]
+        if refs:
+            per_ma: dict[tuple, dict] = {}
+            for (stim, model, arm), cell in per_cell.items():
+                if stim not in refs or cell["modal"] is None:
+                    continue
+                d = rank[cell["modal"]] - refs[stim]
+                rec = per_ma.setdefault((model, arm), {"n": 0, "correct": 0, "under": 0, "over": 0})
+                rec["n"] += 1
+                rec["correct"] += int(d == 0)
+                rec["under"] += int(d < 0)
+                rec["over"] += int(d > 0)
+            thesis = {}
+            for model in sorted({m for (_s, m) in stim_models}):
+                diffs: dict[str, list[float]] = {}
+                for stim in refs:
+                    c = per_cell.get((stim, model, "clinical"))
+                    p = per_cell.get((stim, model, "patient"))
+                    if c and p and c["modal"] and p["modal"]:
+                        u_c = 1.0 if rank[c["modal"]] < refs[stim] else 0.0
+                        u_p = 1.0 if rank[p["modal"]] < refs[stim] else 0.0
+                        diffs[stim] = [u_p - u_c]
+                if diffs:
+                    thesis[model] = _boot(diffs, statistics.fmean, args.bootstrap, args.seed + 2)
+            reference_scoring = {
+                "n_referenced_stimuli": len(refs),
+                "by_model_arm": {
+                    f"{m}|{a}": {"n": v["n"], "accuracy": round(v["correct"] / v["n"], 3),
+                                 "under_triage_rate": round(v["under"] / v["n"], 3),
+                                 "over_triage_rate": round(v["over"] / v["n"], 3)}
+                    for (m, a), v in sorted(per_ma.items())},
+                "under_triage_patient_minus_clinical": thesis,
+            }
+
+    # A3: dispersion — the "wide-ranging" statistics, computed from the same
+    # judged cells (no new spend).
+    modal_by_stim_arm: dict[tuple, list[str]] = {}
+    ranks_all_samples: dict[tuple, list[int]] = {}
+    for (stim, model, arm), tiers in cells.items():
+        modal = per_cell[(stim, model, arm)]["modal"]
+        if modal is not None:
+            modal_by_stim_arm.setdefault((stim, arm), []).append(modal)
+        ranks_all_samples.setdefault((stim, arm), []).extend(rank[t] for t in tiers)
+    consumer_by_arm = {}
+    range_models_by_arm = {}
+    range_samples_by_arm = {}
+    for arm in sorted({a for (_s, a) in modal_by_stim_arm}):
+        ds = [_pairwise_disagreement(v) for (s, a), v in modal_by_stim_arm.items() if a == arm]
+        ds = [d for d in ds if d is not None]
+        consumer_by_arm[arm] = _mean3(ds)
+        rm = [max(rank[t] for t in v) - min(rank[t] for t in v)
+              for (s, a), v in modal_by_stim_arm.items() if a == arm and len(v) >= 2]
+        range_models_by_arm[arm] = {"mean": _mean3(rm), "max": max(rm) if rm else None}
+        rs = [max(v) - min(v)
+              for (s, a), v in ranks_all_samples.items() if a == arm and len(v) >= 2]
+        range_samples_by_arm[arm] = {"mean": _mean3(rs), "max": max(rs) if rs else None}
+    self_lottery = {}
+    for model in sorted({m for (_s, m, _a) in cells}):
+        ds = [_pairwise_disagreement(tiers) for (s, m, a), tiers in cells.items() if m == model]
+        ds = [d for d in ds if d is not None]
+        self_lottery[model] = _mean3(ds)
+    dispersion = {
+        "_": ("consumer lottery = P(two randomly chosen models' modal tiers disagree) per "
+              "stimulus x arm; self lottery = P(two of one model's K samples disagree); "
+              "agreement = 1 - consumer lottery (models-as-raters proportion, deliberately "
+              "not a kappa family); ranges are max-min tier rank"),
+        "consumer_lottery_by_arm": consumer_by_arm,
+        "inter_model_agreement_by_arm": {
+            a: (None if v is None else round(1 - v, 3)) for a, v in consumer_by_arm.items()},
+        "self_lottery_by_model": self_lottery,
+        "tier_range_across_models_by_arm": range_models_by_arm,
+        "tier_range_across_samples_by_arm": range_samples_by_arm,
+    }
+
+    # A3: length + readability covariates from the raw responses (length
+    # confounds every quality measure; readability-by-register is an equity
+    # finding in itself).
+    response_covariates = None
+    if getattr(args, "responses", None):
+        cov_cells: dict[tuple, list[tuple]] = {}
+        for r in _read_jsonl(args.responses):
+            if r.get("record_type") != "advice" or not r.get("response_text"):
+                continue
+            cov_cells.setdefault((r.get("model_requested"), r.get("arm")),
+                                 []).append(_text_covariates(r["response_text"]))
+        response_covariates = {
+            f"{m}|{a}": {"n": len(v), "mean_words": _mean3([x[0] for x in v]),
+                         "mean_fk_grade": _mean3([x[1] for x in v])}
+            for (m, a), v in sorted(cov_cells.items())}
+
     out = {
         "generated_utc": utc_now_iso(), "engine_sha": engine_sha(),
         "rubric_sha256": sha256_text(canonical_json(rubric)), "rubric_version": rubric.get("version"),
         "judgments_file": str(args.judgments), "bootstrap": args.bootstrap, "seed": args.seed,
+        "secondary_judges_excluded": secondary_judges or None,
         "tier_order_least_to_most_urgent": [t["id"] for t in rubric["tiers"]],
         "flag_rates_by_arm": {
             arm: {flag: round(statistics.fmean(vals), 3) for flag, vals in flags.items()}
             for arm, flags in flags_by_arm.items()
         },
+        "reference_scoring": reference_scoring,
+        "dispersion": dispersion,
+        "response_covariates": response_covariates,
         "per_model": by_model, "paired": paired, "recovery": recovery,
     }
     out_path = Path(args.out) if args.out else Path(args.judgments).with_name(
@@ -957,6 +1572,163 @@ def analyze(args) -> Path:
 
 
 # ------------------------------------------------------------------ verify-chain
+
+
+def _merge_forked_archive(restored_rows: list[dict], committed_rows: list[dict],
+                          committed_path: Path, sidecar_path: Path,
+                          dropped_partial: bool, args) -> Path:
+    """Land the divergent tail of a forked archive (explicit --merge-fork only).
+
+    A killed run's artifact and the committed archive can BOTH extend the same
+    prefix: the killed run elicited its records but lost the commit rebase race,
+    and a later run landed its own append first (observed 2026-08-07, elicitation
+    C vs A-completion). That is not corruption — it is two intact append-only
+    histories sharing a fork point — so with explicit opt-in the restored tail is
+    re-sealed record by record onto the committed head. Guards: both chains must
+    verify, the divergence must sit on a record boundary, and no tail record may
+    duplicate an already-landed elicit key (the money was spent once; landing it
+    twice would double-count it) — any of those failing is reported and refused.
+    """
+    ok, msg = verify_chain(committed_rows)
+    if not ok:
+        raise SystemExit(f"{committed_path}: committed archive fails chain verification ({msg}); refusing")
+    fork = 0
+    while (fork < len(restored_rows) and fork < len(committed_rows)
+           and restored_rows[fork]["record_sha256"] == committed_rows[fork]["record_sha256"]):
+        fork += 1
+    tail = restored_rows[fork:]
+    if not tail:
+        print(f"nothing to merge: restored archive is a record-prefix of {committed_path}")
+        return committed_path
+    landed = _done_keys(committed_rows)
+    dup = sorted(k for k in _done_keys(tail) if k in landed)
+    if dup:
+        raise SystemExit(
+            f"{committed_path}: {len(dup)} restored tail record(s) duplicate already-landed "
+            f"elicit keys (first: {dup[0]}); refusing to merge — report, never repair"
+        )
+    prev = committed_rows[-1]["record_sha256"]
+    resealed = []
+    for r in tail:
+        body = {k: v for k, v in r.items() if k not in ("prev_sha256", "record_sha256")}
+        sealed = _seal_record(body, prev)
+        prev = sealed["record_sha256"]
+        resealed.append(sealed)
+    with open(committed_path, "a", encoding="utf-8") as f:
+        for sealed in resealed:
+            f.write(json.dumps(sealed, ensure_ascii=False) + "\n")
+    merged = _read_jsonl(committed_path)
+    ok, msg = verify_chain(merged)
+    if not ok:
+        raise SystemExit(f"{committed_path}: merged archive fails chain verification ({msg})")
+    cum_cost, cum_per_model = _cumulative_from_records(merged)
+    _write_json(sidecar_path, {
+        "run_utc": utc_now_iso(), "engine_sha": engine_sha(),
+        "stimuli_file": str(args.stimuli),
+        "recovered_from_run_id": args.source_run_id or None,
+        "cost_usd": cum_cost, "cost_basis": "cumulative_from_records",
+        "per_model": cum_per_model,
+        "merge_fork": {"fork_record_index": fork,
+                       "committed_records_at_merge": len(committed_rows),
+                       "restored_tail_records": len(tail)},
+        "records_appended": len(resealed), "records_total": len(merged),
+        "dropped_partial_final_line": dropped_partial,
+        "chain_head": merged[-1]["record_sha256"],
+    })
+    print(f"merged {len(resealed)} forked record(s) -> {committed_path} "
+          f"({len(merged)} total, fork at record {fork}, cumulative cost ${cum_cost:.4f})")
+    return committed_path
+
+
+def recover_archive(args) -> Path:
+    """Land an archive snapshot from a CI artifact after a killed run (append-only).
+
+    A job-timeout kill leaves the elicited records only in the run's uploaded
+    artifact: the archive JSONL is intact (each append is a complete line) but
+    the sidecar was never rewritten and the commit step could not push. This
+    lands that snapshot so a resume fire skips the already-paid records.
+
+    Guards: the restored file must be a byte-prefix extension of the committed
+    archive with an intact hash chain. Only a trailing partially-written line
+    may be dropped (the kill can interrupt the final append; it never completed,
+    so it is not a record). Anything else — a divergent prefix, a corrupt
+    interior line, a broken chain — is reported and refused, never repaired.
+    The sidecar is rebuilt from the records themselves (cumulative cost basis,
+    which is what the ledger folds)."""
+    stem = Path(args.stimuli).stem
+    committed_path = Path(args.out_dir) / f"responses_{stem}.jsonl"
+    sidecar_path = Path(args.out_dir) / f"responses_{stem}.report.json"
+    restored_path = Path(args.restored_dir) / f"responses_{stem}.jsonl"
+    if not restored_path.is_file():
+        raise SystemExit(f"{restored_path}: no restored archive found")
+
+    raw = restored_path.read_bytes()
+    lines = raw.split(b"\n")
+    dropped_partial = False
+    if lines and lines[-1] == b"":
+        lines = lines[:-1]  # normal trailing newline
+    elif lines:
+        try:
+            json.loads(lines[-1].decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            dropped_partial = True
+            lines = lines[:-1]
+    rows = []
+    for line_no, ln in enumerate(lines, 1):
+        text = ln.decode("utf-8").strip()
+        if not text:
+            continue
+        try:
+            rows.append(json.loads(text))
+        except ValueError as exc:
+            raise SystemExit(
+                f"{restored_path}:{line_no}: corrupt interior JSONL line ({exc}); "
+                "refusing to recover — report, never repair"
+            ) from exc
+    if not rows:
+        raise SystemExit(f"{restored_path}: no complete records to recover")
+    ok, msg = verify_chain(rows)
+    if not ok:
+        raise SystemExit(f"{restored_path}: restored archive fails chain verification ({msg}); refusing")
+
+    content = b"".join(ln + b"\n" for ln in lines if ln.strip())
+    committed_rows = _read_jsonl(committed_path)
+    if committed_rows:
+        committed_bytes = committed_path.read_bytes()
+        if not content.startswith(committed_bytes):
+            if args.merge_fork:
+                return _merge_forked_archive(rows, committed_rows, committed_path, sidecar_path,
+                                             dropped_partial, args)
+            raise SystemExit(
+                f"{restored_path}: not a byte-prefix extension of the committed archive "
+                f"({committed_path}); refusing to recover — report, never repair "
+                f"(a clean two-writer fork can be landed explicitly with --merge-fork)"
+            )
+    appended = len(rows) - len(committed_rows)
+    if appended < 0:
+        raise SystemExit(
+            f"{restored_path}: fewer records ({len(rows)}) than the committed archive "
+            f"({len(committed_rows)}); refusing"
+        )
+
+    committed_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(committed_path, "wb") as f:
+        f.write(content)
+    cum_cost, cum_per_model = _cumulative_from_records(rows)
+    _write_json(sidecar_path, {
+        "run_utc": utc_now_iso(), "engine_sha": engine_sha(),
+        "stimuli_file": str(args.stimuli),
+        "recovered_from_run_id": args.source_run_id or None,
+        "cost_usd": cum_cost, "cost_basis": "cumulative_from_records",
+        "per_model": cum_per_model,
+        "records_appended": appended, "records_total": len(rows),
+        "dropped_partial_final_line": dropped_partial,
+        "chain_head": rows[-1]["record_sha256"],
+    })
+    print(f"recovered {appended} record(s) -> {committed_path} "
+          f"({len(rows)} total, cumulative cost ${cum_cost:.4f}"
+          f"{', dropped 1 partial final line' if dropped_partial else ''})")
+    return committed_path
 
 
 def cmd_verify_chain(args) -> None:
@@ -976,6 +1748,195 @@ def cmd_verify_chain(args) -> None:
 # --------------------------------------------------------------------------- CLI
 
 
+
+# ---------------------------------------------------------------- repro packs
+
+DEFAULT_DISCLOSURE_LOG = "ops/disclosure_log.jsonl"
+PACK_README_TEMPLATE = "docs/repro_pack_readme_template.md"
+
+
+def _sha256_file(path):
+    p = Path(path)
+    if not p.is_file():
+        return None
+    return hashlib.sha256(p.read_bytes()).hexdigest()
+
+
+def _vendor_match(spec: str, vendor: str) -> bool:
+    """A record belongs to a vendor when its provider prefix matches OR the model slug
+    is that vendor's (openrouter:google/... belongs to google's pack)."""
+    provider, _, model = str(spec or "").partition(":")
+    return provider == vendor or model.startswith(vendor + "/")
+
+
+def pack_state(stimuli_path, rubric_path, registry_path, seed) -> dict:
+    """Current value of every manifest input - the freshness basis for --check."""
+    stem = Path(stimuli_path).stem
+    adv_dir = Path(stimuli_path).parent
+    responses = adv_dir / f"responses_{stem}.jsonl"
+    judgments = adv_dir / f"judgments_{stem}.jsonl"
+    rows = _read_jsonl(responses) if responses.is_file() else []
+    jrows = _read_jsonl(judgments) if judgments.is_file() else []
+    rubric = {}
+    if Path(rubric_path).is_file():
+        rubric = json.loads(Path(rubric_path).read_text(encoding="utf-8"))
+    return {
+        "stimuli_file": str(stimuli_path), "stimuli_sha256": _sha256_file(stimuli_path),
+        "responses_chain_head": rows[-1]["record_sha256"] if rows else None,
+        "responses_count": len(rows),
+        "rubric_sha256": _sha256_file(rubric_path), "rubric_version": rubric.get("version"),
+        "judgments_sha256": _sha256_file(judgments), "judgments_count": len(jrows),
+        "registry_sha256": _sha256_file(registry_path),
+        "analyze_seed": int(seed),
+    }
+
+
+def _log_entries(log_path) -> list[dict]:
+    p = Path(log_path)
+    return _read_jsonl(p) if p.is_file() else []
+
+
+def repro_pack(args) -> Path:
+    """Assemble a per-vendor reproduction bundle from the public archive alone.
+
+    DETERMINISTIC: same inputs -> byte-identical bundle. No wall clock enters the
+    bundle - the manifest's generated_utc is the newest received_utc in the archive
+    (a state timestamp), and pack_version is a content hash over the manifest inputs
+    plus the engine commit. Wall-clock time appears only in the disclosure LOG entry
+    (built_utc), which is not part of the bundle."""
+    state = pack_state(args.stimuli, args.rubric, args.providers, args.seed)
+    stem = Path(args.stimuli).stem
+    adv_dir = Path(args.stimuli).parent
+    rows_raw = [ln for ln in Path(adv_dir / f"responses_{stem}.jsonl").read_text(encoding="utf-8").splitlines() if ln]
+    vendor_lines, vendor_rows = [], []
+    for ln in rows_raw:
+        r = json.loads(ln)
+        if r.get("record_type") == "advice" and _vendor_match(r.get("model_requested"), args.vendor):
+            vendor_lines.append(ln)
+            vendor_rows.append(r)
+    if not vendor_rows:
+        raise SystemExit(f"no advice records match vendor {args.vendor!r}")
+    jpath = adv_dir / f"judgments_{stem}.jsonl"
+    j_lines = []
+    if jpath.is_file():
+        for ln in jpath.read_text(encoding="utf-8").splitlines():
+            if ln and _vendor_match(json.loads(ln).get("model"), args.vendor):
+                j_lines.append(ln)
+    received = [r.get("received_utc") or r.get("sent_utc") or "" for r in vendor_rows]
+    sents = sorted(r.get("sent_utc") or "" for r in vendor_rows)
+    # None-safe: some providers return no build fingerprint (observed on the
+    # deepseek and moonshot arms), and None does not order against str
+    builds = sorted({(r.get("model_returned"), r.get("build_fingerprint")) for r in vendor_rows},
+                    key=lambda b: (b[0] or "", b[1] or ""))
+    manifest = dict(state)
+    manifest.update({
+        "vendor": args.vendor, "vendor_records": len(vendor_rows),
+        "vendor_judgments": len(j_lines),
+        "engine_commit": engine_sha(),
+        "generated_utc": max(received) or None,  # state timestamp, not wall clock (determinism)
+    })
+    manifest["pack_version"] = "v" + sha256_text(canonical_json(manifest))[:12]
+    out_root = Path(args.out)
+    bundle = out_root / f"advice_repro_{args.vendor}_{manifest['pack_version']}"
+    bundle.mkdir(parents=True, exist_ok=True)
+    (bundle / "MANIFEST.json").write_text(canonical_json(manifest) + "\n", encoding="utf-8")
+    (bundle / "records.jsonl").write_text("\n".join(vendor_lines) + "\n", encoding="utf-8")
+    csv_cols = ["stimulus_id", "arm", "sample_k", "sent_utc", "latency_ms", "model_requested",
+                "model_returned", "request_id", "build_fingerprint", "response_sha256"]
+    csv_lines = [",".join(csv_cols)]
+    for r in vendor_rows:
+        csv_lines.append(",".join("" if r.get(c) is None else str(r.get(c)).replace(",", ";") for c in csv_cols))
+    (bundle / "records.csv").write_text("\n".join(csv_lines) + "\n", encoding="utf-8")
+    if j_lines:
+        (bundle / "judgments.jsonl").write_text("\n".join(j_lines) + "\n", encoding="utf-8")
+    if Path(args.rubric).is_file():
+        (bundle / "rubric.json").write_bytes(Path(args.rubric).read_bytes())
+    build_txt = "; ".join(f"{m or '-'}" + (f" ({f})" if f else "") for m, f in builds)
+    tmpl_path = REPO_ROOT_PATH / PACK_README_TEMPLATE if (REPO_ROOT_PATH / PACK_README_TEMPLATE).is_file() \
+        else Path(PACK_README_TEMPLATE)
+    tmpl = tmpl_path.read_text(encoding="utf-8")
+    readme = tmpl.format(
+        vendor=args.vendor, n_records=len(vendor_rows), n_judgments=len(j_lines),
+        window=(sents[0][:10] + " to " + sents[-1][:10]) if sents and sents[0] else "-",
+        builds=build_txt, rubric_version=state.get("rubric_version") or "none yet",
+        chain_head=state.get("responses_chain_head"), pack_version=manifest["pack_version"],
+        responses_file=f"data/advice/responses_{stem}.jsonl",
+        stimuli_file=str(args.stimuli), seed=args.seed,
+    )
+    (bundle / "README.md").write_text(readme, encoding="utf-8")
+    # disclosure log: one build event per NEW pack_version (idempotent rebuilds skip)
+    entries = _log_entries(args.log)
+    if not any(e.get("pack_version") == manifest["pack_version"] for e in entries):
+        prior = [e for e in entries if e.get("vendor") == args.vendor]
+        entry = {"pack_version": manifest["pack_version"], "vendor": args.vendor,
+                 "manifest": manifest, "built_utc": utc_now_iso(), "sent_utc": None,
+                 "sent_to": None,
+                 "supersedes": prior[-1]["pack_version"] if prior else None,
+                 "note": args.note or "built"}
+        Path(args.log).parent.mkdir(parents=True, exist_ok=True)
+        with open(args.log, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    print(f"pack {manifest['pack_version']} for {args.vendor}: {len(vendor_rows)} records -> {bundle}")
+    return bundle
+
+
+_CHECK_FIELDS = ("stimuli_sha256", "responses_chain_head", "responses_count", "rubric_sha256",
+                 "rubric_version", "judgments_sha256", "judgments_count", "registry_sha256")
+
+
+def repro_pack_check(args) -> int:
+    """FRESH/STALE per logged pack vs the archive's current state; exit 2 when a
+    vendor's latest SENT pack is stale (the vendor holds an outdated bundle)."""
+    entries = _log_entries(args.log)
+    if not entries:
+        print("disclosure log empty - no packs to check")
+        return 0
+    escalate = False
+    latest_by_vendor: dict[str, dict] = {}
+    latest_sent: dict[str, dict] = {}
+    for e in entries:
+        latest_by_vendor[e["vendor"]] = e
+        if e.get("sent_utc"):
+            latest_sent[e["vendor"]] = e
+    for vendor, e in sorted(latest_by_vendor.items()):
+        man = e["manifest"]
+        cur = pack_state(man["stimuli_file"], args.rubric, args.providers, man.get("analyze_seed", args.seed))
+        moved = []
+        for f in _CHECK_FIELDS:
+            if man.get(f) != cur.get(f):
+                moved.append(f"{f}: {man.get(f)} -> {cur.get(f)}")
+        status = "FRESH" if not moved else "STALE"
+        print(f"{status}  {e['pack_version']}  {vendor}" + ("" if not moved else "  | " + "; ".join(moved)))
+        sent = latest_sent.get(vendor)
+        if sent and status == "STALE" and sent["pack_version"] == e["pack_version"]:
+            print(f"ESCALATION: sent pack {e['pack_version']} ({vendor}, sent {sent['sent_utc']}) is stale - "
+                  f"an updated pack is owed")
+            escalate = True
+        elif sent and sent["pack_version"] != e["pack_version"]:
+            print(f"note: {vendor} last SENT pack is {sent['pack_version']}; latest built is {e['pack_version']} "
+                  f"(unsent) - send the superseding pack")
+            escalate = True
+    return 2 if escalate else 0
+
+
+def repro_pack_record_sent(args) -> None:
+    entries = _log_entries(args.log)
+    match = [e for e in entries if e.get("pack_version") == args.record_sent]
+    if not match:
+        raise SystemExit(f"pack {args.record_sent!r} not in {args.log}")
+    base = match[-1]
+    entry = dict(base)
+    entry.update({"sent_utc": utc_now_iso(), "sent_to": args.sent_to or "unspecified role",
+                  "supersedes": base.get("supersedes"), "note": args.note or "sent"})
+    with open(args.log, "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    print(f"recorded send of {args.record_sent} to {entry['sent_to']}")
+
+
+REPO_ROOT_PATH = Path(__file__).resolve().parents[1]
+
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -984,13 +1945,29 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--source", choices=("payload", "pairs", "manual"), required=True)
     b.add_argument("--payload", default=DEFAULT_PAYLOAD)
     b.add_argument("--only-flips", action="store_true", help="payload source: measured flips only")
+    b.add_argument("--only-hedges", action="store_true",
+                   help="payload source: non-flips with a negative penalty only "
+                        "(top held, probability collapsed); combine with --min-abs-penalty")
     b.add_argument("--min-abs-penalty", type=float, default=0.0)
+    b.add_argument("--complete-with-target", action="store_true",
+                   help="payload source: finish each probe sentence with the pair's intended "
+                        "word so stimuli are complete thoughts instead of trailing off "
+                        "(same word both sides; default suffix drops the ellipsis)")
+    b.add_argument("--complete-override", default=None,
+                   help="JSON object mapping item ids to owner-approved completion words "
+                        "(overrides intended_target for pairs whose word is not a complete noun)")
     b.add_argument("--max-items", type=int, default=0)
     b.add_argument("--pairs", nargs="+", default=[], help="pairs source: batch JSON file(s)")
     b.add_argument("--dashboard", default="ops/dashboard.json", help="pairs source: dashboard for the holdout gate")
     b.add_argument("--manual-in", help="manual source: JSON array of {id, clinical, patient, notes?}")
     b.add_argument("--ask-suffix", default=None, help="appended verbatim to BOTH sides (default per source)")
     b.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
+
+    g = sub.add_parser("generate", help="author new paired vignettes via the provider "
+                                        "registry (config-driven; owner-reviewed before use)")
+    g.add_argument("--config", required=True, help="JSON config: model spec, topics, template, exemplars")
+    g.add_argument("--providers", default=DEFAULT_PROVIDERS)
+    g.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
 
     e = sub.add_parser("elicit", help="paid: sample advice per stimulus x arm x model")
     e.add_argument("--stimuli", required=True)
@@ -1014,7 +1991,11 @@ def build_parser() -> argparse.ArgumentParser:
     j = sub.add_parser("judge", help="paid: map archived responses to rubric tiers (re-runnable)")
     j.add_argument("--responses", required=True)
     j.add_argument("--rubric", default=DEFAULT_RUBRIC)
-    j.add_argument("--judge-model", default="claude-haiku-4-5")
+    j.add_argument("--judge-model", default="claude-haiku-4-5",
+                   help="bare Anthropic id or 'provider:model' spec via the registry")
+    j.add_argument("--judge-max-tokens", type=int, default=300,
+                   help="response budget per judge call (verbose non-Anthropic judges need more)")
+    j.add_argument("--providers", default=DEFAULT_PROVIDERS)
     j.add_argument("--max-spend", type=float, required=True)
     j.add_argument("--out")
     j.add_argument("--human-sample", type=int, default=0, help="also export a blinded human-coding CSV sample")
@@ -1024,8 +2005,16 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("analyze", help="offline: paired tier stats, recovery, variance decomposition")
     a.add_argument("--judgments", required=True)
     a.add_argument("--rubric", default=DEFAULT_RUBRIC)
+    a.add_argument("--stimuli", default=None,
+                   help="stimuli file whose items may carry clinician reference tiers "
+                        "(A2: enables accuracy / under- / over-triage scoring)")
+    a.add_argument("--responses", default=None,
+                   help="responses archive for length + readability covariates (A3)")
     a.add_argument("--bootstrap", type=int, default=2000)
     a.add_argument("--seed", type=int, default=7)
+    a.add_argument("--include-secondary-judges", action="store_true",
+                   help="pool provider-spec second-opinion judges into the cells "
+                        "(default: excluded and counted in secondary_judges_excluded)")
     a.add_argument("--out")
 
     m = sub.add_parser("import-manual-responses",
@@ -1039,6 +2028,37 @@ def build_parser() -> argparse.ArgumentParser:
     v = sub.add_parser("verify-chain", help="audit: recompute the archive hash chain")
     v.add_argument("--responses", required=True)
     v.add_argument("--sidecar")
+
+    rec = sub.add_parser("recover-archive",
+                         help="land a CI-artifact archive snapshot after a killed run "
+                              "(append-only byte-prefix extension, chain-verified)")
+    rec.add_argument("--restored-dir", required=True,
+                     help="directory holding the downloaded artifact's data/advice files")
+    rec.add_argument("--stimuli", required=True)
+    rec.add_argument("--source-run-id", default="",
+                     help="CI run id the artifact came from (provenance, recorded in the sidecar)")
+    rec.add_argument("--merge-fork", action="store_true",
+                     help="land a two-writer fork's divergent tail (re-sealed onto the committed "
+                          "head, duplicate elicit keys refused) instead of refusing the divergence")
+    rec.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
+
+    rp = sub.add_parser("repro-pack",
+                        help="assemble a deterministic per-vendor reproduction bundle (dist/, never "
+                             "committed); --check audits pack freshness against the disclosure log")
+    rp.add_argument("--stimuli", help="stimuli file whose archive feeds the pack (build mode)")
+    rp.add_argument("--vendor", help="provider name; matches provider prefix or vendor/model slugs")
+    rp.add_argument("--rubric", default="data/advice_rubric.draft.json")
+    rp.add_argument("--providers", default="data/advice_providers.json")
+    rp.add_argument("--seed", type=int, default=7)
+    rp.add_argument("--out", default="dist")
+    rp.add_argument("--log", default=DEFAULT_DISCLOSURE_LOG)
+    rp.add_argument("--note", default="")
+    rp.add_argument("--check", action="store_true",
+                    help="recompute every manifest input; FRESH/STALE per logged pack; exit 2 when a "
+                         "sent pack is stale or superseded-but-unsent")
+    rp.add_argument("--record-sent", metavar="PACK_VERSION",
+                    help="append a send event for an existing pack version")
+    rp.add_argument("--sent-to", default="", help="role/channel reference only - never private contact details")
     return parser
 
 
@@ -1049,7 +2069,11 @@ def main(argv=None) -> None:
             raise SystemExit("--source pairs requires --pairs <file...>")
         if args.source == "manual" and not args.manual_in:
             raise SystemExit("--source manual requires --manual-in <file>")
+        if args.complete_with_target and args.source != "payload":
+            raise SystemExit("--complete-with-target only applies to --source payload")
         build_stimuli(args)
+    elif args.command == "generate":
+        generate(args)
     elif args.command == "elicit":
         elicit(args)
     elif args.command == "import-manual-responses":
@@ -1060,6 +2084,17 @@ def main(argv=None) -> None:
         analyze(args)
     elif args.command == "verify-chain":
         cmd_verify_chain(args)
+    elif args.command == "recover-archive":
+        recover_archive(args)
+    elif args.command == "repro-pack":
+        if args.check:
+            raise SystemExit(repro_pack_check(args))
+        if args.record_sent:
+            repro_pack_record_sent(args)
+        elif not (args.stimuli and args.vendor):
+            raise SystemExit("repro-pack build mode requires --stimuli and --vendor")
+        else:
+            repro_pack(args)
 
 
 if __name__ == "__main__":

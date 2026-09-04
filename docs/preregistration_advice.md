@@ -1,4 +1,9 @@
-# Pre-registration — frontier-advice arm pilot (DRAFT, pending owner sign-off)
+# Pre-registration — frontier-advice arm pilot (SIGNED)
+
+**Signature.** Signed by the study owner (Michael D. Green), 2026-07-28, by recorded
+instruction in the orchestrating session ("sign the prereg and Amendment 5"),
+following the registered human-coding gate report of the same day
+(data/advice/human/agreement_report.json; coder: the study owner, disclosed).
 
 Signed: owner (approval recorded in session chat, "I am comfortable with the
 preregistration"), 2026-07-22 UTC. Two lines remain open and BLOCK the steps
@@ -60,10 +65,45 @@ Rubric sha256 (recorded when the clinician-reviewed rubric lands as
 
 ## Provider-access disclosure (fill at signing)
 
-Access mode: `TODO — direct keys per vendor / single prepaid OpenRouter key /
-hybrid`. If OpenRouter carries any vendor: an intermediary sits in the request
-path (~5% markup, its own response metadata); proprietary models are still
-served by the vendor's backend. Direct keys are the higher-fidelity option.
+Access mode, phase 1 (recorded 2026-07-22): **direct vendor keys — Anthropic
+plus Google (AI Studio free tier)**; no intermediary in the request path for
+either.
+
+Access mode, phase 2 (recorded 2026-07-22, before those vendors' first fire):
+**openai, xai, deepseek, moonshot via OpenRouter** (owner's prepaid key — a
+hard external ceiling; ~5% markup; an aggregator sits in the request path;
+the vendor's own backend still serves each model). Verified slugs:
+`openai/gpt-5.5`, `x-ai/grok-4.3`, `deepseek/deepseek-v4-flash`,
+`moonshotai/kimi-k2.5`. One recorded fidelity gap: ChatGPT's free tier serves
+the product-tuned GPT-5.5 *Instant* (OpenAI's `chat-latest` alias), which
+OpenRouter does not list — `openai/gpt-5.5` is the stated approximation; a
+direct OpenAI key remains the higher-fidelity upgrade path. Registry re-frozen
+at this revision:
+`3342a30d4aff91236914e3d984343d8c6f47541d64450ca23d05f587d7f8f4a2`
+
+Access mode change (recorded 2026-07-22, before the affected fires):
+google's direct AI Studio free tier proved daily-quota-capped — run 1b and
+the first hedge run died on sustained 429s despite 10 s pacing and transient
+retries. Per the owner's conditional pre-approval (session chat 2026-07-22),
+the google arm's REMAINDER routes via OpenRouter
+(`openrouter:google/gemini-3.5-flash`, vendor-served, ~5% markup, aggregator
+in the request path). Records carry the exact spec they were elicited under;
+the direct-path records stand unchanged; cells re-elicited under the new spec
+are additional records, never replacements. Analysis joins google's two
+access paths by `model_returned`.
+
+Metering amendment (recorded 2026-07-22, after runs 1c and hedge-resume):
+the registry's aggregator catch-all `default_pricing` (5, 30 USD/Mtok, sized
+for GPT-tier slugs) metered the rerouted `openrouter:google/gemini-3.5-flash`
+calls at ~12x the flash-tier rate, so both runs hit their `max_spend`
+ceilings early (11 and 7 gemini records landed before truncation). The
+archives stand as written — the per-record `cost_usd` values for those
+records carry the inflated metering rate, the token counts are the measured
+truth, and real cost is recomputable from them. The registry now carries a
+per-model rate for the slug ([0.35, 2.75] USD/Mtok = vendor list + markup +
+margin; regression test `test_registry_prices_rerouted_gemini_slug`).
+Registry re-frozen at this revision:
+`84acef3606cb8afa10cabe5a0c72cc772a5838a8111a47f297e8cf6f7ae59fee`
 
 ## The consumer-proxy caveat (repeat in every writeup)
 
@@ -74,6 +114,147 @@ products with no API (Copilot, Meta AI), never disguised as API output; and a
 ~5-stimulus hand-run calibration subset in the real UIs of API-reachable
 products so the API-vs-product gap is measured, not assumed.
 
+## Amendment 1 (2026-07-22, owner-directed): evaluation extensions A1–A5
+
+Adopted from `docs/advice_arm_extensions.md` before any judged run; the
+signature above stands and this amendment is owner-directed in session chat.
+
+**Primary confirmatory endpoint (supersedes the endpoint ranking above once
+clinician reference tiers are adjudicated):**
+`under_triage_patient_minus_clinical` — the difference in under-triage rate
+(modal tier below the clinician-adjudicated reference tier) between patient
+and clinical phrasing, per provider, cluster-bootstrap CI over stimuli.
+Direction: patient > clinical. **Registered null:** no difference is a
+reportable result. Endpoints 1–5 above become secondary. Reference tiers are
+data in the stimuli file (`reference` block, owner + domain reviewer);
+`analyze --stimuli` computes accuracy / under_triage_rate / over_triage_rate
+per model × arm.
+
+**Descriptive secondaries (A3, registered as descriptive — no directional
+claim):** consumer lottery (P two randomly chosen models' modal tiers
+disagree, per arm), self-lottery per model, per-stimulus tier ranges across
+models and samples, inter-model agreement (1 − lottery; models-as-raters
+proportion, deliberately not a kappa family), and response covariates (length
+in words, Flesch–Kincaid grade) by model × arm — length is a confound to
+report, readability-by-register an equity observation.
+
+**Flag secondaries (A1):** rates of `safety_netting` and
+`clarifying_question` (rubric rev 1.1-draft) by arm × provider. Registered
+null: no difference by arm.
+
+**Measurement limitation (A4):** the judge cannot be fully blinded to
+register (responses echo the asker's words). The human-coding sample is drawn
+stratified by arm and judge-vs-human agreement is reported per arm; a
+material per-arm agreement gap bounds every register-difference claim and is
+stated in the limitations text.
+
+## Amendment 2 (2026-07-22, owner-directed): provisional machine coding
+
+Owner direction (session chat 2026-07-22): before the clinician-reviewed
+rubric lands, a PROVISIONAL machine coding pass may run so the site's figures
+can show placeholder grades. Terms, all binding:
+
+- Judge `claude-haiku-4-5`, blinded exactly as registered (response text
+  only), against the committed draft rubric `data/advice_rubric.draft.json`
+  (version 1.1-draft; sha256 recorded per judgment as always).
+- Every surface showing these codings labels them machine-coded and
+  provisional pending clinician review; the rubric version string carries
+  `-draft` and the site derives the label from it mechanically.
+- Provisional codings are EXCLUDED from every registered endpoint and any
+  claim-grade use. The registered gate stands: no claim-grade judged use
+  before the clinician-reviewed rubric and the blinded human-coded agreement
+  sample.
+- When the clinician-reviewed rubric lands, the judge re-runs under it and
+  the new judgments supersede the provisional ones everywhere they are
+  published. Clinician re-grades of individual items enter through the same
+  judgments path. Provisional judgment files are retained append-only for
+  audit; nothing is rewritten.
+- Reproducibility: each judgment record carries the judge model, the rubric
+  sha256 it was coded under, and the sha256 of the exact response text coded.
+
+## Amendment 3 (2026-07-23, owner-directed): build forensics + vendor reproduction packs
+
+**Build capture (additive; the hash chain is unaffected).** From 2026-07-23
+forward every elicitation record also carries `request_id` and `api_version`
+from the provider's response headers and a first-class `build_fingerprint`
+lifted from the body (system_fingerprint class), so any single call can be
+correlated in the vendor's own logs. Records from before this date — the
+1,238-call registered pilot included — carry body-level version strings
+(`model_returned`, full raw body) but no request ids; the new fields apply
+from the next elicitation forward and the n=100 scale run will carry them in
+full.
+
+**Alias vs snapshot (recorded measurement decision).** Each provider's
+registered target remains the CONSUMER DEFAULT — a rolling alias wherever
+that is what the vendor's free tier serves — because the study measures the
+product consumers get, not a frozen build. The served build is pinned per
+record (`model_returned` + `build_fingerprint` + `request_id`) rather than by
+freezing the request id. Switching any arm to a dated snapshot id is an
+access-mode change, recorded here before the affected fire. These fields join
+the weekly advice drift sentinel when it exists: same pinned probes, any
+change in served build between weeks is flagged.
+
+**Vendor reproduction packs and sequencing (binding).** Per-vendor
+reproduction packs (`advice_eval.py repro-pack`) assemble, from the public
+archive alone: the claims and caveats, every record involving that vendor's
+model with full request/response forensics, the chain-verification command
+and expected head, the versioned rubric and that vendor's judgments, and the
+exact seeded analyze command. Rules: (1) a pack goes to the affected vendor
+BEFORE any public per-model comparison is published; (2) any public
+per-model claim cites the pack version it is reproducible from, and that
+version must be FRESH at publication time per `repro-pack --check`; (3) a
+sent pack is never rebuilt in place — state changes produce a superseding
+version in `ops/disclosure_log.jsonl` (append-only, public, no
+vendor-private contact details), and a STALE pack with a recorded send is a
+digest-level escalation until an updated pack is owed and sent.
+
+## Amendment 4 (2026-07-23, owner-directed): free-tier fidelity arms
+
+Two arms join the registered design, both at the full 25 x 3 arms x K=3:
+`anthropic:claude-sonnet-5` — the actual free claude.ai default since
+2026-07-01, closing the recorded haiku mismatch (haiku records stand as the
+labeled cost-floor arm) — and a mini-class arm approximating the model the
+free ChatGPT tier falls back to when a session exhausts its GPT-5.5 quota,
+labeled as the free-tier OVERFLOW arm, never as the default. Both are judged
+under the same provisional machine-coding terms as Amendment 2 and carry the
+Amendment 3 build forensics.
+
+**Slug correction (2026-07-23, first fire):** the amendment as drafted named
+`openai:openai/gpt-5.5-mini` with the slug explicitly unverified. The first
+fire confirmed it does not exist on OpenRouter (400 Bad Request, run
+30011607927, $0 spent, no records). The overflow arm runs
+`openai:openai/gpt-5.4-mini` instead — the newest mini generation OpenRouter
+lists (verified 2026-07-23 against OpenRouter's public model pages). The
+exact mini variant the consumer product falls back to is unpublished and
+public sources conflict; this is a recorded access-mode approximation of the
+overflow experience, same status as the `openai/gpt-5.5` ≈ chat-latest
+approximation, and the manual_ui calibration subset measures the gap.
+
+## Supplementary exploratory sets
+
+Owner-invited cheap exploratory runs (2026-07-22, "a few more experiments...
+situations that stress the models") use their own stamped stimuli files and
+are **excluded from the registered endpoints above**, reported separately and
+labeled exploratory. First such set: `stimuli_20260722T003502Z.json` — 9
+"hedge" pairs (top prediction held, probability collapsed ≥25 pp, no flip;
+`--only-hedges --min-abs-penalty 0.25`), asking whether advice shifts even
+when the next-token top does not.
+
+Second set (built 2026-07-22, not yet fired):
+`stimuli_20260722T112140Z.json` — the same 25 registered flip pairs with each
+probe sentence **completed by its own pair's intended word**
+(`--complete-with-target`; suffix "Anyway what should I do?", ellipsis
+dropped, wording otherwise identical). Motivation: the registered stimuli
+trail off mid-sentence by construction (they are the measured next-token
+probes), and pilot responses show models reacting to the truncation itself;
+this set measures that artifact by differing from the registered set only in
+the target word being present. Two items (`pairs_20260706T201750Z#1`, `#10`)
+whose intended word "sleeping" is not a complete noun carry the
+owner-approved completion "sleeping pill" (`--complete-override`, session
+chat 2026-07-22; recorded per item as `completion_override`). Supersedes
+`stimuli_20260722T111215Z.json` (same build minus the overrides; retained,
+append-only archive, never fired).
+
 ## Exclusions and integrity
 
 - Tier B holdout phrases never appear in stimuli (payload sourcing is
@@ -83,3 +264,65 @@ products so the API-vs-product gap is measured, not assumed.
   no cross-week comparison before the advice drift sentinel exists.
 - This arm evaluates advice **for measurement**; it never dispenses advice.
   The engine README carries the owner-approved amendment to that effect.
+
+## Amendment 5 (2026-07-28, owner-directed): natural-question stimulus family — SIGNED (2026-07-28, same instruction as the base signature)
+
+The registered stimulus construction (traced flip pairs completed by the fixed
+ask suffix) produces a structural monoculture, and the pilot shows it leaks
+into measurement: several archived responses react to the truncated sentence
+itself ("your message might have gotten cut off") rather than the medical
+content. A SECOND stimulus family joins the design:
+
+- **Construction.** 75 pairs of complete, natural-sounding advice-seeking
+  messages generated by `medlang-generate advice-nat` (validator:
+  `validate_advice_nat_pair`). Each pair shares an identical syntactic frame;
+  exactly one contiguous term span differs (colloquial patient expression vs
+  precise clinical equivalent, swap span <= 6 words). Messages end with
+  terminal punctuation; ellipses and fill-in-the-blank framing are rejected
+  mechanically. Each item carries one of eight registered `syntax_style`
+  labels; generation steers coverage across them - sentence-structure variance
+  is the point of the family.
+- **Relation to the tracing arm.** None mechanistically: these pairs have no
+  probe token, are never traced (the generation workflow forces
+  `trace_sample_size=0` for the task), and land under the `advnat_` stem,
+  which never matches the `pairs_*` confirmatory population regex.
+- **Elicitation and analysis.** Same protocol as the registered pilot
+  (providers registry, K=3, hash-chained archive, Amendment 3 build
+  forensics); the cloze family (n=25) and the natural family (n=75) are
+  analyzed and reported SEPARATELY - the family label travels with every
+  record - with a registered secondary contrast: does the wording-tier gap
+  replicate under natural syntax, and does it differ by syntax_style?
+- **Arms.** clinical / patient, plus the translated arm when the owner elects
+  it at fire time. Amendment 2's machine-coding quarantine applies unchanged;
+  the human-coding gate instrument covers this family in its next draw.
+- **Sequencing.** No elicitation fires until (a) the registered human-coding
+  gate has reported agreement and (b) this amendment and the base document
+  carry the owner's signature. Generation of the stimulus pairs themselves
+  (paid, ~$0.50-1.50) may run first: stimuli are inert until elicited.
+
+## Deviation D1 (2026-07-29, owner-directed): natural-question family stopped at n=25
+
+Amendment 5 registered n=75 for the natural-question family. On 2026-07-29 the
+owner directed collection to stop at 25 stimuli ("I think I only want to have
+2 more of the full sentence scenarios that way we have 25 that are partially
+completed and 25 that are full sentences"), balancing the two families at
+n=25 each and matching the remaining OpenRouter budget after the overnight
+double-elicitation incident (see ops/trigger_journal.jsonl, fires of
+2026-07-28T19:47Z and 2026-07-29T03:09Z; ~$5.94 of duplicate spend was
+unrecoverable). Logged BEFORE any confirmatory analysis of the family.
+
+Consequences, stated in advance of analysis:
+- The family's registered secondary contrast (wording-tier gap under natural
+  syntax; syntax_style differences) runs at n=25, not n=75 — reduced power,
+  and per-style cells (8 styles over 25 items) are descriptive only.
+- Stimuli 26–75 remain registered and inert; a later owner decision may
+  resume collection under this amendment without re-registration, but any
+  analysis run before that resume uses the n=25 set and says so.
+- The two families still analyze separately per Amendment 5; the site page
+  pools them for DISPLAY (one scenario list, one figure denominator, family
+  label on every scenario and record) — display pooling is not an analysis
+  claim.
+
+**D1 owner confirmation (2026-07-29):** the owner confirmed the n=25 stop by
+decision reply ("advice-nat-remainder: stay-25"). Stimuli 26-75 remain
+registered and inert.

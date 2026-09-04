@@ -1,0 +1,1164 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 51,
+  "pairs_requested": 10,
+  "completed": true,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "15dac12e686b",
+    "runner_image": "20260720.247.2"
+  },
+  "results": [
+    {
+      "index": 51,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have hyperhidrosis in the genital region, so I should probably see a",
+        "patient": "I'm sweating buckets down there, so I should probably see a",
+        "translated": "I am experiencing excessive perspiration in the genital area, so I should probably see a"
+      },
+      "target_token": "Output \" dermatologist\"",
+      "probabilities": {
+        "clinical": 0.242,
+        "patient": 0.023,
+        "translated": 0.1
+      },
+      "language_penalty": -0.219,
+      "clinical_mass": {
+        "clinical": 0.4148,
+        "patient": 0.2717,
+        "translated": 0.3938
+      },
+      "error_share": {
+        "clinical": 0.1097,
+        "patient": 0.0983,
+        "translated": 0.0996
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.398)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.668)",
+        "translated": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.574)"
+      },
+      "mitigation_recovery": 0.07700000000000001,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.398
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.242
+          ],
+          [
+            "Output \" uro\"",
+            0.069
+          ],
+          [
+            "Output \" specialist\"",
+            0.061
+          ],
+          [
+            "Output \" doc\"",
+            0.033
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.668
+          ],
+          [
+            "Output \" doc\"",
+            0.103
+          ],
+          [
+            "Output \" uro\"",
+            0.043
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.023
+          ],
+          [
+            "Output \" specialist\"",
+            0.023
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" doctor\"",
+            0.574
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.1
+          ],
+          [
+            "Output \" uro\"",
+            0.068
+          ],
+          [
+            "Output \" gyne\"",
+            0.06
+          ],
+          [
+            "Output \" specialist\"",
+            0.032
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 560,
+        "unique_to_a": 759,
+        "unique_to_b": 725
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260719T132706Z/index_51.html",
+        "png": "trace_out/pairs_20260719T132706Z/index_51.png",
+        "diff_html": "trace_out/pairs_20260719T132706Z/index_51_diff.html",
+        "diff_png": "trace_out/pairs_20260719T132706Z/index_51_diff.png"
+      }
+    },
+    {
+      "index": 52,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have vulvovaginitis, so I need to take my",
+        "patient": "I've got this itchy, burny feeling down there, so I need to take my",
+        "translated": "I have dysuria and pruritus in the genital area, so I need to take my"
+      },
+      "target_token": "Output \" medication\"",
+      "probabilities": {
+        "clinical": 0.048,
+        "patient": null,
+        "translated": 0.067
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3755,
+        "patient": 0.2604,
+        "translated": 0.3542
+      },
+      "error_share": {
+        "clinical": 0.1084,
+        "patient": 0.1015,
+        "translated": 0.1095
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.054)",
+        "patient": "embedding \u2192 [L18\u00b7O] words related to the process of urination, particula \u2192 [L25\u00b7O] words relating to plumbing | bathrooms and toilets \u2192 Output \" bath\" (p=0.065)",
+        "translated": "embedding \u2192 Output \" own\" (p=0.067)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" meds\"",
+            0.07
+          ],
+          [
+            "Output \" medicine\"",
+            0.054
+          ],
+          [
+            "Output \" own\"",
+            0.054
+          ],
+          [
+            "Output \" vaginal\"",
+            0.048
+          ],
+          [
+            "Output \" medication\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" meds\"",
+            0.074
+          ],
+          [
+            "Output \" bath\"",
+            0.065
+          ],
+          [
+            "Output \" daily\"",
+            0.045
+          ],
+          [
+            "Output \" shower\"",
+            0.045
+          ],
+          [
+            "Output \" clothes\"",
+            0.045
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" medicine\"",
+            0.087
+          ],
+          [
+            "Output \" medication\"",
+            0.067
+          ],
+          [
+            "Output \" own\"",
+            0.067
+          ],
+          [
+            "Output \" meds\"",
+            0.053
+          ],
+          [
+            "Output \" penis\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 622,
+        "unique_to_a": 698,
+        "unique_to_b": 831
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260719T132706Z/index_52.html",
+        "png": "trace_out/pairs_20260719T132706Z/index_52.png",
+        "diff_html": "trace_out/pairs_20260719T132706Z/index_52_diff.html",
+        "diff_png": "trace_out/pairs_20260719T132706Z/index_52_diff.png"
+      }
+    },
+    {
+      "index": 53,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have nocturia, so I probably need an",
+        "patient": "I'm up five times a night to pee, so I probably need an",
+        "translated": "I'm up five times a night with nocturia, so I probably need an"
+      },
+      "target_token": "Output \" alarm\"",
+      "probabilities": {
+        "clinical": 0.314,
+        "patient": 0.277,
+        "translated": 0.338
+      },
+      "language_penalty": -0.03699999999999998,
+      "clinical_mass": {
+        "clinical": 0.2616,
+        "patient": 0.1787,
+        "translated": 0.267
+      },
+      "error_share": {
+        "clinical": 0.0905,
+        "patient": 0.0922,
+        "translated": 0.0955
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" alarm\" (p=0.314)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" adult\" (p=0.090)",
+        "translated": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" alarm\" (p=0.338)"
+      },
+      "mitigation_recovery": 0.061,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" alarm\"",
+            0.314
+          ],
+          [
+            "Output \" en\"",
+            0.102
+          ],
+          [
+            "Output \" extra\"",
+            0.09
+          ],
+          [
+            "Output \" over\"",
+            0.038
+          ],
+          [
+            "Output \" anti\"",
+            0.026
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" alarm\"",
+            0.277
+          ],
+          [
+            "Output \" en\"",
+            0.169
+          ],
+          [
+            "Output \" adult\"",
+            0.09
+          ],
+          [
+            "Output \" extra\"",
+            0.062
+          ],
+          [
+            "Output \" over\"",
+            0.029
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" alarm\"",
+            0.338
+          ],
+          [
+            "Output \" en\"",
+            0.085
+          ],
+          [
+            "Output \" over\"",
+            0.041
+          ],
+          [
+            "Output \" extra\"",
+            0.031
+          ],
+          [
+            "Output \" anti\"",
+            0.031
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 625,
+        "unique_to_a": 752,
+        "unique_to_b": 723
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260719T132706Z/index_53.html",
+        "png": "trace_out/pairs_20260719T132706Z/index_53.png",
+        "diff_html": "trace_out/pairs_20260719T132706Z/index_53_diff.html",
+        "diff_png": "trace_out/pairs_20260719T132706Z/index_53_diff.png"
+      }
+    },
+    {
+      "index": 54,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have acute pharyngitis, so I'm probably fighting an",
+        "patient": "My throat feels like it's on fire, so I'm probably fighting an",
+        "translated": "My throat feels like it's experiencing severe pain, so I'm probably fighting an"
+      },
+      "target_token": "Output \" infection\"",
+      "probabilities": {
+        "clinical": 0.691,
+        "patient": 0.656,
+        "translated": 0.684
+      },
+      "language_penalty": -0.03499999999999992,
+      "clinical_mass": {
+        "clinical": 0.4291,
+        "patient": 0.3101,
+        "translated": 0.3614
+      },
+      "error_share": {
+        "clinical": 0.1006,
+        "patient": 0.0922,
+        "translated": 0.0922
+      },
+      "top_path": {
+        "clinical": "[L18\u00b7S]  \u2192 [L19\u00b7C] words and phrases related to being sick and medical  \u2192 [L24\u00b7C] words related to disease and infection in a scientif \u2192 Output \" infection\" (p=0.691)",
+        "patient": "embedding \u2192 [L19\u00b7C] words and phrases related to being sick and medical  \u2192 Output \" illness\" (p=0.029)",
+        "translated": "embedding \u2192 [L19\u00b7C] words and phrases related to being sick and medical  \u2192 Output \" illness\" (p=0.044)"
+      },
+      "mitigation_recovery": 0.028000000000000025,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" infection\"",
+            0.691
+          ],
+          [
+            "Output \" upper\"",
+            0.175
+          ],
+          [
+            "Output \" ear\"",
+            0.014
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.007
+          ],
+          [
+            "Output \" immune\"",
+            0.007
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" infection\"",
+            0.656
+          ],
+          [
+            "Output \" upper\"",
+            0.129
+          ],
+          [
+            "Output \" illness\"",
+            0.029
+          ],
+          [
+            "Output \" awful\"",
+            0.025
+          ],
+          [
+            "Output \" oncoming\"",
+            0.017
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" infection\"",
+            0.684
+          ],
+          [
+            "Output \" upper\"",
+            0.105
+          ],
+          [
+            "Output \" illness\"",
+            0.044
+          ],
+          [
+            "Output \" oncoming\"",
+            0.018
+          ],
+          [
+            "Output \" awful\"",
+            0.016
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 592,
+        "unique_to_a": 646,
+        "unique_to_b": 665
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260719T132706Z/index_54.html",
+        "png": "trace_out/pairs_20260719T132706Z/index_54.png",
+        "diff_html": "trace_out/pairs_20260719T132706Z/index_54_diff.html",
+        "diff_png": "trace_out/pairs_20260719T132706Z/index_54_diff.png"
+      }
+    },
+    {
+      "index": 55,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have stress urinary incontinence, so I should talk to my",
+        "patient": "I'm having trouble staying dry down there during the day, so I should talk to my",
+        "translated": "I'm having trouble with urinary incontinence during the day, so I should talk to my"
+      },
+      "target_token": "Output \" uro\"",
+      "probabilities": {
+        "clinical": 0.107,
+        "patient": 0.11,
+        "translated": 0.069
+      },
+      "language_penalty": 0.0030000000000000027,
+      "clinical_mass": {
+        "clinical": 0.3842,
+        "patient": 0.2508,
+        "translated": 0.3418
+      },
+      "error_share": {
+        "clinical": 0.0974,
+        "patient": 0.0915,
+        "translated": 0.0943
+      },
+      "top_path": {
+        "clinical": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L19\u00b7O] words related to money, taxes, debt, and legal confl \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.479)",
+        "patient": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.340)",
+        "translated": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.582)"
+      },
+      "mitigation_recovery": -0.040999999999999995,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.479
+          ],
+          [
+            "Output \" uro\"",
+            0.107
+          ],
+          [
+            "Output \" doc\"",
+            0.065
+          ],
+          [
+            "Output \" GP\"",
+            0.044
+          ],
+          [
+            "Output \" Dr\"",
+            0.027
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.34
+          ],
+          [
+            "Output \" doc\"",
+            0.183
+          ],
+          [
+            "Output \" uro\"",
+            0.11
+          ],
+          [
+            "Output \" dr\"",
+            0.041
+          ],
+          [
+            "Output \" Dr\"",
+            0.032
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" doctor\"",
+            0.582
+          ],
+          [
+            "Output \" GP\"",
+            0.079
+          ],
+          [
+            "Output \" uro\"",
+            0.069
+          ],
+          [
+            "Output \" doc\"",
+            0.042
+          ],
+          [
+            "Output \" OB\"",
+            0.016
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 499,
+        "unique_to_a": 672,
+        "unique_to_b": 827
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260719T132706Z/index_55.html",
+        "png": "trace_out/pairs_20260719T132706Z/index_55.png",
+        "diff_html": "trace_out/pairs_20260719T132706Z/index_55_diff.html",
+        "diff_png": "trace_out/pairs_20260719T132706Z/index_55_diff.png"
+      }
+    },
+    {
+      "index": 56,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have thyroid dysfunction, so I need to get my",
+        "patient": "My thyroid's been acting up, so I need to get my",
+        "translated": "My thyroid has been malfunctioning, so I need to get my"
+      },
+      "target_token": "Output \" levels\"",
+      "probabilities": {
+        "clinical": 0.097,
+        "patient": 0.149,
+        "translated": 0.137
+      },
+      "language_penalty": 0.05199999999999999,
+      "clinical_mass": {
+        "clinical": 0.3553,
+        "patient": 0.3194,
+        "translated": 0.3163
+      },
+      "error_share": {
+        "clinical": 0.0984,
+        "patient": 0.0968,
+        "translated": 0.0948
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" thyroid\" (p=0.264)",
+        "patient": "embedding \u2192 Output \" thyroid\" (p=0.090)",
+        "translated": "embedding \u2192 Output \" thyroid\" (p=0.137)"
+      },
+      "mitigation_recovery": -0.011999999999999983,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" thyroid\"",
+            0.264
+          ],
+          [
+            "Output \" TSH\"",
+            0.125
+          ],
+          [
+            "Output \" blood\"",
+            0.125
+          ],
+          [
+            "Output \" levels\"",
+            0.097
+          ],
+          [
+            "Output \" hormones\"",
+            0.059
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.191
+          ],
+          [
+            "Output \" levels\"",
+            0.149
+          ],
+          [
+            "Output \" TSH\"",
+            0.09
+          ],
+          [
+            "Output \" thyroid\"",
+            0.09
+          ],
+          [
+            "Output \" meds\"",
+            0.048
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" thyroid\"",
+            0.137
+          ],
+          [
+            "Output \" levels\"",
+            0.137
+          ],
+          [
+            "Output \" blood\"",
+            0.121
+          ],
+          [
+            "Output \" hormones\"",
+            0.094
+          ],
+          [
+            "Output \" TSH\"",
+            0.073
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 784,
+        "unique_to_a": 408,
+        "unique_to_b": 470
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260719T132706Z/index_56.html",
+        "png": "trace_out/pairs_20260719T132706Z/index_56.png",
+        "diff_html": "trace_out/pairs_20260719T132706Z/index_56_diff.html",
+        "diff_png": "trace_out/pairs_20260719T132706Z/index_56_diff.png"
+      }
+    },
+    {
+      "index": 57,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I'm experiencing nocturnal hyperhidrosis, so I probably need to get my",
+        "patient": "I'm sweating through my clothes at night, so I probably need to get my",
+        "translated": "I am experiencing nocturnal diaphoresis, so I probably need to get my"
+      },
+      "target_token": "Output \" hands\"",
+      "probabilities": {
+        "clinical": 0.147,
+        "patient": null,
+        "translated": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2563,
+        "patient": 0.1588,
+        "translated": 0.3068
+      },
+      "error_share": {
+        "clinical": 0.1085,
+        "patient": 0.0972,
+        "translated": 0.1084
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" own\" (p=0.029)",
+        "patient": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.050)",
+        "translated": "embedding \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.064)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hands\"",
+            0.147
+          ],
+          [
+            "Output \" sweat\"",
+            0.13
+          ],
+          [
+            "Output \" feet\"",
+            0.048
+          ],
+          [
+            "Output \" doctor\"",
+            0.033
+          ],
+          [
+            "Output \" own\"",
+            0.029
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.119
+          ],
+          [
+            "Output \" temperature\"",
+            0.082
+          ],
+          [
+            "Output \" body\"",
+            0.063
+          ],
+          [
+            "Output \" sleep\"",
+            0.05
+          ],
+          [
+            "Output \" heart\"",
+            0.03
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" blood\"",
+            0.223
+          ],
+          [
+            "Output \" thyroid\"",
+            0.082
+          ],
+          [
+            "Output \" sleep\"",
+            0.064
+          ],
+          [
+            "Output \" heart\"",
+            0.039
+          ],
+          [
+            "Output \" doctor\"",
+            0.039
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 696,
+        "unique_to_a": 789,
+        "unique_to_b": 734
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260719T132706Z/index_57.html",
+        "png": "trace_out/pairs_20260719T132706Z/index_57.png",
+        "diff_html": "trace_out/pairs_20260719T132706Z/index_57_diff.html",
+        "diff_png": "trace_out/pairs_20260719T132706Z/index_57_diff.png"
+      }
+    },
+    {
+      "index": 58,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I keep getting these recurrent urinary tract infections, so I should probably take an",
+        "patient": "I keep getting these painful flare-ups down below, so I should probably take an",
+        "translated": "I keep getting these painful exacerbations in the lower abdomen/pelvic region, so I should probably take an"
+      },
+      "target_token": "Output \" antibiotic\"",
+      "probabilities": {
+        "clinical": 0.676,
+        "patient": 0.2,
+        "translated": 0.166
+      },
+      "language_penalty": -0.47600000000000003,
+      "clinical_mass": {
+        "clinical": 0.439,
+        "patient": 0.2868,
+        "translated": 0.3556
+      },
+      "error_share": {
+        "clinical": 0.1001,
+        "patient": 0.096,
+        "translated": 0.0988
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7O] the word \"taken\" and words/phrases around it, especi \u2192 [L19\u00b7C] words related to the process of scientific research, \u2192 [L20\u00b7C] language related to medical treatment, especially fo \u2192 [L21\u00b7C] terminology related to medical treatment or conditio \u2192 [L22\u00b7C] sentences related to drug use | medications \u2192 [L23\u00b7C] terminology related to the creation and benefits of  \u2192 Output \" anti\" (p=0.063)",
+        "patient": "embedding \u2192 Output \" over\" (p=0.065)",
+        "translated": "embedding \u2192 Output \" abdominal\" (p=0.061)"
+      },
+      "mitigation_recovery": -0.034,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" antibiotic\"",
+            0.676
+          ],
+          [
+            "Output \" anti\"",
+            0.063
+          ],
+          [
+            "Output \" over\"",
+            0.043
+          ],
+          [
+            "Output \" antibiotics\"",
+            0.038
+          ],
+          [
+            "Output \" extra\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" anti\"",
+            0.2
+          ],
+          [
+            "Output \" antibiotic\"",
+            0.138
+          ],
+          [
+            "Output \" over\"",
+            0.065
+          ],
+          [
+            "Output \" aspirin\"",
+            0.045
+          ],
+          [
+            "Output \" ant\"",
+            0.045
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" antibiotic\"",
+            0.166
+          ],
+          [
+            "Output \" ultrasound\"",
+            0.114
+          ],
+          [
+            "Output \" anti\"",
+            0.114
+          ],
+          [
+            "Output \" x\"",
+            0.078
+          ],
+          [
+            "Output \" abdominal\"",
+            0.061
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 712,
+        "unique_to_a": 518,
+        "unique_to_b": 653
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260719T132706Z/index_58.html",
+        "png": "trace_out/pairs_20260719T132706Z/index_58.png",
+        "diff_html": "trace_out/pairs_20260719T132706Z/index_58_diff.html",
+        "diff_png": "trace_out/pairs_20260719T132706Z/index_58_diff.png"
+      }
+    },
+    {
+      "index": 59,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing a loss of libido, so I need to talk to my",
+        "patient": "My husband says I'm not interested anymore, so I need to talk to my",
+        "translated": "My husband says I have a decreased interest in sexual activity anymore, so I need to talk to my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.475,
+        "patient": 0.058,
+        "translated": 0.652
+      },
+      "language_penalty": -0.417,
+      "clinical_mass": {
+        "clinical": 0.283,
+        "patient": 0.1011,
+        "translated": 0.2494
+      },
+      "error_share": {
+        "clinical": 0.0863,
+        "patient": 0.0835,
+        "translated": 0.0925
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.475)",
+        "patient": "embedding \u2192 Output \" husband\" (p=0.075)",
+        "translated": "[L15\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.652)"
+      },
+      "mitigation_recovery": 0.594,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.475
+          ],
+          [
+            "Output \" husband\"",
+            0.064
+          ],
+          [
+            "Output \" doc\"",
+            0.064
+          ],
+          [
+            "Output \" GP\"",
+            0.044
+          ],
+          [
+            "Output \" partner\"",
+            0.039
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" therapist\"",
+            0.158
+          ],
+          [
+            "Output \" friends\"",
+            0.096
+          ],
+          [
+            "Output \" husband\"",
+            0.075
+          ],
+          [
+            "Output \" doctor\"",
+            0.058
+          ],
+          [
+            "Output \" friend\"",
+            0.058
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" doctor\"",
+            0.652
+          ],
+          [
+            "Output \" doc\"",
+            0.037
+          ],
+          [
+            "Output \" OB\"",
+            0.029
+          ],
+          [
+            "Output \" GP\"",
+            0.029
+          ],
+          [
+            "Output \" Dr\"",
+            0.025
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 455,
+        "unique_to_a": 793,
+        "unique_to_b": 844
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260719T132706Z/index_59.html",
+        "png": "trace_out/pairs_20260719T132706Z/index_59.png",
+        "diff_html": "trace_out/pairs_20260719T132706Z/index_59_diff.html",
+        "diff_png": "trace_out/pairs_20260719T132706Z/index_59_diff.png"
+      }
+    },
+    {
+      "index": 60,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I woke up with profuse nocturnal perspiration, so I'm probably going through my",
+        "patient": "I woke up with my nightgown soaked, so I'm probably going through my",
+        "translated": "I woke up with my nightgown soaked, so I'm probably going through my menopause."
+      },
+      "target_token": "Output \" menopause\"",
+      "probabilities": {
+        "clinical": 0.066,
+        "patient": null,
+        "translated": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.1435,
+        "patient": 0.1154,
+        "translated": 0.0947
+      },
+      "error_share": {
+        "clinical": 0.0982,
+        "patient": 0.1028,
+        "translated": 0.0927
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" \" (p=0.052)",
+        "patient": "embedding \u2192 Output \" \" (p=0.040)",
+        "translated": "embedding \u2192 Output \"\n\n\" (p=0.186)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-haiku-4-5",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" first\"",
+            0.109
+          ],
+          [
+            "Output \" menopause\"",
+            0.066
+          ],
+          [
+            "Output \" own\"",
+            0.059
+          ],
+          [
+            "Output \" \"",
+            0.052
+          ],
+          [
+            "Output \" \"\"",
+            0.052
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" period\"",
+            0.231
+          ],
+          [
+            "Output \" second\"",
+            0.097
+          ],
+          [
+            "Output \" first\"",
+            0.066
+          ],
+          [
+            "Output \" third\"",
+            0.059
+          ],
+          [
+            "Output \" \"",
+            0.04
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" I\"",
+            0.238
+          ],
+          [
+            "Output \" My\"",
+            0.047
+          ],
+          [
+            "Output \"  \"",
+            0.047
+          ],
+          [
+            "Output \" It\"",
+            0.047
+          ],
+          [
+            "Output \" But\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 943,
+        "unique_to_a": 407,
+        "unique_to_b": 443
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260719T132706Z/index_60.html",
+        "png": "trace_out/pairs_20260719T132706Z/index_60.png",
+        "diff_html": "trace_out/pairs_20260719T132706Z/index_60_diff.html",
+        "diff_png": "trace_out/pairs_20260719T132706Z/index_60_diff.png"
+      }
+    }
+  ]
+}

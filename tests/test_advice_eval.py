@@ -263,6 +263,78 @@ def test_judge_records_unparseable(tmp_path, monkeypatch):
     assert all(r["tier"] is None and r["judge_error"] for r in rows)
 
 
+def test_judge_retries_failed_judgments_on_resume(tmp_path, monkeypatch):
+    # A null-tier record (empty/unparseable judge response) must not enter the
+    # dedupe set: a re-fire retries those keys, appending a real judgment
+    # beside the failed attempt; parsed records still never re-judge.
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path)
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(json.dumps(RUBRIC), encoding="utf-8")
+
+    def empty_judge(client, model, system, user_text, max_tokens, temperature):
+        return "", 5, 0, {"model": model}
+
+    args = ["judge", "--responses", str(resp), "--rubric", str(rubric_path),
+            "--judge-model", "judge-x", "--max-spend", "1.0"]
+    monkeypatch.setattr(ae, "_send", empty_judge)
+    monkeypatch.setattr(ae, "_client", lambda: object())
+    ae.main(args)
+    jpath = resp.with_name(resp.stem.replace("responses_", "judgments_") + ".jsonl")
+    rows = [json.loads(line) for line in jpath.read_text(encoding="utf-8").splitlines()]
+    assert len(rows) == 6 and all(r["tier"] is None for r in rows)
+
+    monkeypatch.setattr(ae, "_send", _stub_send)  # judge now answers properly
+    ae.main(args)
+    rows = [json.loads(line) for line in jpath.read_text(encoding="utf-8").splitlines()]
+    assert len(rows) == 12  # failed attempts stay as history, retries append
+    assert sum(1 for r in rows if r["tier"] == "routine") == 6
+    ae.main(args)  # parsed records do not re-judge
+    assert len(jpath.read_text(encoding="utf-8").splitlines()) == 12
+
+
+def test_judge_second_opinion_compat_appends_beside_primary(tmp_path, monkeypatch):
+    # A provider-spec judge (second opinion) goes through _send_compat, never
+    # the Anthropic client, and appends beside the primary judge's records in
+    # the SAME judgments file (dedupe key includes judge_model).
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path)
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(json.dumps(RUBRIC), encoding="utf-8")
+    ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric_path),
+             "--judge-model", "judge-x", "--max-spend", "1.0"])
+    jpath = resp.with_name(resp.stem.replace("responses_", "judgments_") + ".jsonl")
+    n_primary = len(jpath.read_text(encoding="utf-8").splitlines())
+    assert n_primary == 6
+
+    reg_path = tmp_path / "providers.json"
+    reg_path.write_text(json.dumps(REGISTRY), encoding="utf-8")
+
+    def compat_judge(cfg, model, system, user_text, max_tokens, temperature):
+        assert cfg["base_url"] == "https://fake.example/v1" and model == "model-z"
+        assert max_tokens == 555  # --judge-max-tokens reaches the call
+        return (json.dumps({"tier": "urgent", "flags": {"refusal": False}}),
+                10, 20, {"model": "model-z-live"}, {"x-request-id": "req-2j"})
+
+    def no_client():
+        raise AssertionError("_client must not be touched for a compat judge")
+
+    monkeypatch.setattr(ae, "_send_compat", compat_judge)
+    monkeypatch.setattr(ae, "_client", no_client)
+    second_args = ["judge", "--responses", str(resp), "--rubric", str(rubric_path),
+                   "--judge-model", "fakeai:model-z", "--providers", str(reg_path),
+                   "--judge-max-tokens", "555", "--max-spend", "1.0"]
+    ae.main(second_args)
+    rows = [json.loads(line) for line in jpath.read_text(encoding="utf-8").splitlines()]
+    assert len(rows) == 2 * n_primary
+    second = [r for r in rows if r["judge_model"] == "fakeai:model-z"]
+    assert len(second) == n_primary
+    assert all(r["tier"] == "urgent" and r["judge_request_id"] == "req-2j" for r in second)
+    assert all(r["judge_model"] == "judge-x" for r in rows if r not in second)
+    ae.main(second_args)  # idempotent per (response, rubric, judge_model)
+    assert len(jpath.read_text(encoding="utf-8").splitlines()) == 2 * n_primary
+
+
 # ------------------------------------------------------------------ analyze
 
 
@@ -301,6 +373,35 @@ def test_analyze_downgrade_and_recovery(tmp_path):
     assert m1["mean_rank_diff"]["mean"] == -0.5
 
 
+def test_analyze_excludes_secondary_judges(tmp_path):
+    # Second-opinion records (provider-spec judge_model) must not pollute the
+    # published cells: same rows judged "urgent" by a secondary judge leave
+    # every primary-judge statistic unchanged, and the exclusion is disclosed.
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(json.dumps(RUBRIC), encoding="utf-8")
+    rows = []
+    for k in (1, 2):
+        rows += [_judgment("s1", "clinical", "routine", k),
+                 _judgment("s1", "patient", "self_care", k)]
+    for r in list(rows):
+        rows.append({**r, "judge_model": "fakeai:model-z", "tier": "urgent"})
+    jpath = tmp_path / "judgments_x.jsonl"
+    jpath.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    ae.main(["analyze", "--judgments", str(jpath), "--rubric", str(rubric_path),
+             "--bootstrap", "50", "--seed", "7"])
+    out = json.loads((tmp_path / "analysis_x.json").read_text(encoding="utf-8"))
+    m1 = out["per_model"]["m1"]
+    assert m1["within_prompt"]["patient"]["unanimous_share"] == 1.0  # secondary tier never pooled
+    assert {p["stimulus_id"]: p["class"] for p in out["paired"]} == {"s1": "downgrade"}
+    assert out["secondary_judges_excluded"] == {"fakeai:model-z": 4}
+    # opting in pools them (cells stop being unanimous)
+    ae.main(["analyze", "--judgments", str(jpath), "--rubric", str(rubric_path),
+             "--bootstrap", "50", "--seed", "7", "--include-secondary-judges"])
+    out2 = json.loads((tmp_path / "analysis_x.json").read_text(encoding="utf-8"))
+    assert out2["secondary_judges_excluded"] is None
+    assert out2["per_model"]["m1"]["within_prompt"]["patient"]["unanimous_share"] == 0.0
+
+
 def test_modal_tier_tie_breaks_most_urgent():
     rank = {"self_care": 0, "routine": 1, "urgent": 2}
     assert ae._modal_tier(["self_care", "urgent"], rank) == "urgent"
@@ -330,6 +431,30 @@ def test_resolve_spec_variants(tmp_path):
         ae._resolve_spec("nosuch:model", reg)
     with pytest.raises(SystemExit, match="import-manual-responses"):
         ae._resolve_spec("no_api", reg)  # manual_ui providers cannot be elicited via API
+
+
+def test_finish_reason_captured_across_api_shapes():
+    # Critic item 2026-07-22: compat-path records archived stop_reason=None, so a
+    # Gemini max-token truncation was unattributable in the convenience field.
+    assert ae._finish_reason({"stop_reason": "end_turn"}) == "end_turn"  # anthropic shape
+    assert ae._finish_reason({"choices": [{"finish_reason": "length"}]}) == "length"  # compat shape
+    assert ae._finish_reason({"choices": []}) is None
+    assert ae._finish_reason({}) is None
+    assert ae._finish_reason(None) is None
+
+
+def test_registry_prices_rerouted_gemini_slug():
+    # 2026-07-22: runs 1c and hedge-resume choked their max_spend ceilings because the
+    # rerouted openrouter:google/gemini-3.5-flash spec fell through to the aggregator's
+    # GPT-tier default_pricing (5, 30) - ~12x the flash-tier rate. The committed registry
+    # must carry a per-model entry, resolved ahead of default_pricing exactly as elicit does.
+    reg = ae._load_providers(Path(__file__).resolve().parents[1] / "data" / "advice_providers.json")
+    r = ae._resolve_spec("openrouter:google/gemini-3.5-flash", reg)
+    pricing = (r["cfg"].get("pricing") or {}).get(r["model"]) or r["cfg"].get("default_pricing")
+    assert tuple(pricing) == (0.35, 2.75)
+    other = ae._resolve_spec("openrouter:meta-llama/llama-4-maverick", reg)
+    fallback = (other["cfg"].get("pricing") or {}).get(other["model"]) or other["cfg"].get("default_pricing")
+    assert tuple(fallback) == (5.0, 30.0)  # arbitrary slugs keep the conservative catch-all
 
 
 def test_elicit_openai_compat_provider(tmp_path, monkeypatch):
@@ -418,7 +543,800 @@ def test_workflow_defaults_cover_every_dispatch_input():
     inputs = set(wf[True]["workflow_dispatch"]["inputs"])  # yaml parses the 'on' key as True
     assert wf[True]["push"]["paths"] == [".github/trigger/advice-eval.json"]
     assert wf["concurrency"]["cancel-in-progress"] is False
-    params_run = wf["jobs"]["params"]["steps"][-1]["run"]
+    params_step = next(st for st in wf["jobs"]["params"]["steps"]
+                       if st.get("id") == "params")  # the S2 budget gate now follows it
+    params_run = params_step["run"]
     # push-path pitfall: the heredoc defaults dict must contain every trigger key
     for key in inputs:
         assert f'"{key}"' in params_run, f"workflow defaults dict is missing {key}"
+
+
+def test_send_compat_retries_transient_statuses_then_succeeds(monkeypatch):
+    # run 1 (2026-07-22) died on a single Gemini 503: transient statuses must
+    # retry with backoff, honoring Retry-After, before giving up
+    calls = []
+
+    class FakeResp:
+        def __init__(self, status, body=None, retry_after=None):
+            self.status_code = status
+            self.headers = {"Retry-After": retry_after} if retry_after else {}
+            self._body = body or {}
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise RuntimeError(f"HTTP {self.status_code}")
+
+        def json(self):
+            return self._body
+
+    ok = {"choices": [{"message": {"content": "fine"}}],
+          "usage": {"prompt_tokens": 5, "completion_tokens": 7}}
+    seq = [FakeResp(503), FakeResp(429, retry_after="2"), FakeResp(200, ok)]
+
+    class FakeRequests:
+        @staticmethod
+        def post(url, **kw):
+            calls.append(url)
+            return seq[len(calls) - 1]
+
+    naps = []
+    monkeypatch.setattr(ae.time, "sleep", lambda s: naps.append(s))
+    monkeypatch.setitem(__import__("sys").modules, "requests", FakeRequests)
+    monkeypatch.setenv("FAKE_KEY", "k")
+    cfg = {"api": "openai-compat", "base_url": "https://x.example/v1", "key_env": "FAKE_KEY"}
+    text, in_tok, out_tok, raw, headers = ae._send_compat(cfg, "m", None, "hello", 64, 1.0)
+    assert (text, in_tok, out_tok) == ("fine", 5, 7)
+    assert len(calls) == 3 and len(naps) == 2
+    assert naps[1] == 2.0          # Retry-After honored on the 429
+
+
+def test_send_compat_exhausts_retries_and_raises(monkeypatch):
+    class FakeResp:
+        status_code = 503
+        headers = {}
+
+        def raise_for_status(self):
+            raise RuntimeError("HTTP 503")
+
+        def json(self):  # pragma: no cover
+            return {}
+
+    class FakeRequests:
+        @staticmethod
+        def post(url, **kw):
+            return FakeResp()
+
+    monkeypatch.setattr(ae.time, "sleep", lambda s: None)
+    monkeypatch.setitem(__import__("sys").modules, "requests", FakeRequests)
+    monkeypatch.setenv("FAKE_KEY", "k")
+    cfg = {"api": "openai-compat", "base_url": "https://x.example/v1", "key_env": "FAKE_KEY"}
+    with pytest.raises(RuntimeError, match="503"):
+        ae._send_compat(cfg, "m", None, "hello", 64, 1.0)
+
+
+def test_send_compat_retries_non_json_success_body(monkeypatch):
+    # overnight attempt 2 (2026-07-29) crashed 4h19m in: a gateway served an
+    # HTML error page with a 200, so resp.json() raised uncaught and killed the
+    # run. Non-JSON success bodies must retry like a transient status.
+    class FakeResp:
+        def __init__(self, body=None):
+            self.status_code = 200
+            self.headers = {}
+            self._body = body
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            if self._body is None:
+                raise ValueError("Expecting value: line 203 column 1 (char 1111)")
+            return self._body
+
+    ok = {"choices": [{"message": {"content": "fine"}}],
+          "usage": {"prompt_tokens": 5, "completion_tokens": 7}}
+    seq = [FakeResp(), FakeResp(ok)]
+    calls = []
+
+    class FakeRequests:
+        @staticmethod
+        def post(url, **kw):
+            calls.append(url)
+            return seq[len(calls) - 1]
+
+    naps = []
+    monkeypatch.setattr(ae.time, "sleep", lambda s: naps.append(s))
+    monkeypatch.setitem(__import__("sys").modules, "requests", FakeRequests)
+    monkeypatch.setenv("FAKE_KEY", "k")
+    cfg = {"api": "openai-compat", "base_url": "https://x.example/v1", "key_env": "FAKE_KEY"}
+    text, in_tok, out_tok, raw, headers = ae._send_compat(cfg, "m", None, "hello", 64, 1.0)
+    assert (text, in_tok, out_tok) == ("fine", 5, 7)
+    assert len(calls) == 2 and len(naps) == 1
+
+
+def test_send_compat_non_json_exhaustion_raises_runtime_error(monkeypatch):
+    class FakeResp:
+        status_code = 200
+        headers = {}
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            raise ValueError("Expecting value")
+
+    class FakeRequests:
+        @staticmethod
+        def post(url, **kw):
+            return FakeResp()
+
+    monkeypatch.setattr(ae.time, "sleep", lambda s: None)
+    monkeypatch.setitem(__import__("sys").modules, "requests", FakeRequests)
+    monkeypatch.setenv("FAKE_KEY", "k")
+    cfg = {"api": "openai-compat", "base_url": "https://x.example/v1", "key_env": "FAKE_KEY"}
+    with pytest.raises(RuntimeError, match="non-JSON response body"):
+        ae._send_compat(cfg, "m", None, "hello", 64, 1.0)
+
+
+def test_build_stimuli_only_hedges_filter(tmp_path, monkeypatch):
+    # hedges: not flipped, penalty negative and past the magnitude floor
+    payload = {"scenarios": [
+        {"batch": "b", "batch_index": 1, "clinical_prompt": "c1", "patient_prompt": "p1",
+         "flipped": True, "language_penalty": -0.5},                  # flip: excluded
+        {"batch": "b", "batch_index": 2, "clinical_prompt": "c2", "patient_prompt": "p2",
+         "flipped": False, "language_penalty": -0.4},                 # hedge: kept
+        {"batch": "b", "batch_index": 3, "clinical_prompt": "c3", "patient_prompt": "p3",
+         "flipped": False, "language_penalty": 0.2},                  # gained: excluded
+        {"batch": "b", "batch_index": 4, "clinical_prompt": "c4", "patient_prompt": "p4",
+         "flipped": False, "language_penalty": -0.05},                # below floor: excluded
+    ]}
+    pp = tmp_path / "payload.json"
+    pp.write_text(json.dumps(payload))
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data" / "advice").mkdir(parents=True)
+    ae.main(["build-stimuli", "--source", "payload", "--payload", str(pp),
+             "--only-hedges", "--min-abs-penalty", "0.25"])
+    out = sorted((tmp_path / "data" / "advice").glob("stimuli_*.json"))[-1]
+    d = json.loads(out.read_text())
+    assert [it["id"] for it in d["items"]] == ["b#2"]
+    assert d["source"]["only_hedges"] is True
+
+
+# ---------------- evaluation extensions (A-items + B-schema, 2026-07-22) ----
+
+
+def test_manual_passthrough_reference_situation_variant(tmp_path, monkeypatch):
+    manual = write_manual(tmp_path, [
+        {"id": "v1", "clinical": "flurb alpha with a", "patient": "flurb allo wobbly with a",
+         "reference": {"tier": "routine", "source": "clinician_panel",
+                       "adjudicated_by": "dr-x", "date": "2026-07-22"},
+         "situation_id": "sit_1", "variant": "neutral"},
+        {"id": "v2", "clinical": "flurb beta with a", "patient": "flurb bee all weird with a",
+         "situation_id": "sit_1", "variant": "misattributed"},
+    ])
+    out_dir = tmp_path / "advice"
+    ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual),
+             "--out-dir", str(out_dir)])
+    doc = json.loads(next(out_dir.glob("stimuli_*.json")).read_text(encoding="utf-8"))
+    v1, v2 = doc["items"]
+    assert v1["reference"]["tier"] == "routine" and v1["reference"]["adjudicated_by"] == "dr-x"
+    assert "reference" not in v2
+    assert (v1["situation_id"], v1["variant"]) == ("sit_1", "neutral")
+    assert (v2["situation_id"], v2["variant"]) == ("sit_1", "misattributed")
+
+
+def test_manual_reference_must_be_object_with_tier(tmp_path, monkeypatch):
+    manual = write_manual(tmp_path, [
+        {"id": "v1", "clinical": "a1 with a", "patient": "a2 with a", "reference": {"source": "x"}}])
+    with pytest.raises(SystemExit, match="reference"):
+        ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(manual),
+                 "--out-dir", str(tmp_path / "advice")])
+
+
+def _write_rubric(tmp_path):
+    rubric = {"version": "t", "tiers": [{"id": "low", "label": "L", "definition": "d"},
+                                        {"id": "mid", "label": "M", "definition": "d"},
+                                        {"id": "high", "label": "H", "definition": "d"}],
+              "flags": [], "judge_instructions": "{tiers}{flags}{response}"}
+    p = tmp_path / "rubric.json"
+    p.write_text(json.dumps(rubric), encoding="utf-8")
+    return p
+
+
+def _jrow(stim, model, arm, tier, k=1):
+    return {"stimulus_id": stim, "model": model, "arm": arm, "tier": tier, "sample_k": k,
+            "response_sha256": f"{stim}{model}{arm}{k}", "rubric_sha256": "r",
+            "judge_model": "j", "flags": {}}
+
+
+def test_analyze_reference_scoring_and_thesis_endpoint(tmp_path):
+    rubric = _write_rubric(tmp_path)
+    stimuli = {"items": [
+        {"id": "s1", "reference": {"tier": "high"}},
+        {"id": "s2", "reference": {"tier": "mid"}}]}
+    sp = tmp_path / "stimuli.json"
+    sp.write_text(json.dumps(stimuli), encoding="utf-8")
+    rows = [
+        # model A: correct on clinical, under-triages patient on both stimuli
+        _jrow("s1", "A", "clinical", "high"), _jrow("s1", "A", "patient", "low"),
+        _jrow("s2", "A", "clinical", "mid"), _jrow("s2", "A", "patient", "low"),
+        # model B: over-triages s2 clinical, matches elsewhere
+        _jrow("s1", "B", "clinical", "high"), _jrow("s1", "B", "patient", "high"),
+        _jrow("s2", "B", "clinical", "high"), _jrow("s2", "B", "patient", "mid"),
+    ]
+    jp = tmp_path / "judgments_x.jsonl"
+    jp.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    ae.main(["analyze", "--judgments", str(jp), "--rubric", str(rubric),
+             "--stimuli", str(sp), "--bootstrap", "50", "--seed", "1"])
+    out = json.loads((tmp_path / "analysis_x.json").read_text(encoding="utf-8"))
+    ref = out["reference_scoring"]
+    assert ref["n_referenced_stimuli"] == 2
+    a_clin = ref["by_model_arm"]["A|clinical"]
+    a_pat = ref["by_model_arm"]["A|patient"]
+    assert a_clin == {"n": 2, "accuracy": 1.0, "under_triage_rate": 0.0, "over_triage_rate": 0.0}
+    assert a_pat["under_triage_rate"] == 1.0
+    b_clin = ref["by_model_arm"]["B|clinical"]
+    assert b_clin["over_triage_rate"] == 0.5 and b_clin["accuracy"] == 0.5
+    # thesis endpoint: A under-triages patient but not clinical -> +1.0 mean
+    thesis_a = ref["under_triage_patient_minus_clinical"]["A"]
+    assert thesis_a["mean"] == 1.0
+    assert out["dispersion"]["consumer_lottery_by_arm"]["patient"] is not None
+
+
+def test_analyze_dispersion_and_covariates(tmp_path):
+    rubric = _write_rubric(tmp_path)
+    rows = [
+        # s1 clinical: A and B disagree (high vs low) -> lottery 1.0
+        _jrow("s1", "A", "clinical", "high"), _jrow("s1", "B", "clinical", "low"),
+        # s2 clinical: A and B agree -> lottery 0.0
+        _jrow("s2", "A", "clinical", "mid"), _jrow("s2", "B", "clinical", "mid"),
+        # self-lottery: model A s3 clinical, K=2 disagreeing samples
+        _jrow("s3", "A", "clinical", "low", k=1), _jrow("s3", "A", "clinical", "high", k=2),
+    ]
+    jp = tmp_path / "judgments_y.jsonl"
+    jp.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    resp = [
+        {"record_type": "advice", "model_requested": "A", "arm": "clinical",
+         "response_text": "Take a rest. Then call someone."},
+        {"record_type": "advice", "model_requested": "A", "arm": "clinical",
+         "response_text": "Rest now."},
+        {"record_type": "translation", "model_requested": "T", "response_text": "ignored"},
+    ]
+    rp = tmp_path / "responses_y.jsonl"
+    rp.write_text("\n".join(json.dumps(r) for r in resp) + "\n", encoding="utf-8")
+    ae.main(["analyze", "--judgments", str(jp), "--rubric", str(rubric),
+             "--responses", str(rp), "--bootstrap", "50", "--seed", "1"])
+    out = json.loads((tmp_path / "analysis_y.json").read_text(encoding="utf-8"))
+    disp = out["dispersion"]
+    # consumer lottery over s1 (1.0), s2 (0.0); s3 has a single model -> excluded
+    assert disp["consumer_lottery_by_arm"]["clinical"] == 0.5
+    assert disp["inter_model_agreement_by_arm"]["clinical"] == 0.5
+    # self lottery: only s3 has K>=2 for A -> 1.0; B has no multi-sample cell
+    assert disp["self_lottery_by_model"]["A"] == 1.0
+    assert disp["self_lottery_by_model"]["B"] is None
+    assert disp["tier_range_across_models_by_arm"]["clinical"]["max"] == 2
+    cov = out["response_covariates"]["A|clinical"]
+    assert cov["n"] == 2 and cov["mean_words"] == 4.0
+    assert isinstance(cov["mean_fk_grade"], float)
+
+
+def test_human_sample_stratified_by_arm(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, sidecar = _elicit(tmp_path, monkeypatch, stim_path)
+    rubric = _write_rubric(tmp_path)
+    out = tmp_path / "judgments_z.jsonl"
+    ae.main(["judge", "--responses", str(resp), "--rubric", str(rubric),
+             "--out", str(out), "--human-sample", "4", "--max-spend", "0.1", "--dry-run"])
+    csv_path = out.with_name(out.stem + "_human_sample.csv")
+    lines = csv_path.read_text(encoding="utf-8").splitlines()
+    shas = [ln.split(",")[0] for ln in lines[1:]]
+    rows = {r["response_sha256"]: r for r in ae._read_jsonl(resp) if r.get("record_type") == "advice"}
+    arms = [rows[s]["arm"] for s in shas if s in rows]
+    # 1 stimulus x 3 arms x K=2 archive: a 4-row sample must span >1 arm
+    assert len(set(arms)) >= 2
+
+
+def test_pace_spaces_same_provider_calls(monkeypatch):
+    naps = []
+    clock = {"t": 100.0}
+    monkeypatch.setattr(ae.time, "monotonic", lambda: clock["t"])
+    monkeypatch.setattr(ae.time, "sleep", lambda s: naps.append(round(s, 3)))
+    ae._LAST_CALL_AT.clear()
+    cfg = {"min_interval_seconds": 10}
+    ae._pace("g", cfg)             # first call: no wait
+    clock["t"] = 103.0
+    ae._pace("g", cfg)             # 3s later: wait the remaining 7
+    ae._pace("other", {})          # unpaced provider: never waits
+    assert naps == [7.0]
+    ae._LAST_CALL_AT.clear()
+
+
+# ---------------------------------------------------------------- recover-archive
+
+
+def test_sidecar_cost_is_cumulative_across_resumes(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, sidecar = _elicit(tmp_path, monkeypatch, stim_path)
+    first = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert first["cost_basis"] == "cumulative_from_records"
+    assert first["cost_usd"] == pytest.approx(first["run_cost_usd"], abs=1e-5)
+    _elicit(tmp_path, monkeypatch, stim_path)  # resume appends nothing
+    second = json.loads(sidecar.read_text(encoding="utf-8"))
+    # the overwritten sidecar keeps the archive's full spend for the ledger
+    assert second["run_cost_usd"] == 0.0
+    assert second["cost_usd"] == pytest.approx(first["cost_usd"])
+
+
+def _recover(stim_path, restored_dir, out_dir, *extra):
+    ae.main(["recover-archive", "--restored-dir", str(restored_dir), "--stimuli", str(stim_path),
+             "--source-run-id", "424242", "--out-dir", str(out_dir), *extra])
+
+
+def test_recover_archive_lands_extension(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, sidecar = _elicit(tmp_path, monkeypatch, stim_path)
+    full = resp.read_bytes()
+    rows = [json.loads(x) for x in full.decode("utf-8").splitlines()]
+    restored_dir = tmp_path / "restore"
+    restored_dir.mkdir()
+    (restored_dir / resp.name).write_bytes(full)
+    # committed archive truncated to its first 3 records: the killed-run state
+    resp.write_bytes(b"".join(line + b"\n" for line in full.splitlines()[:3]))
+    _recover(stim_path, restored_dir, resp.parent)
+    assert resp.read_bytes() == full
+    side = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert side["records_total"] == len(rows)
+    assert side["records_appended"] == len(rows) - 3
+    assert side["chain_head"] == rows[-1]["record_sha256"]
+    assert side["recovered_from_run_id"] == "424242"
+    assert side["cost_basis"] == "cumulative_from_records"
+    assert side["cost_usd"] == pytest.approx(
+        sum(float(r.get("cost_usd") or 0.0) for r in rows if "cost_usd" in r))
+    # idempotent: recovering the same snapshot again changes nothing
+    _recover(stim_path, restored_dir, resp.parent)
+    assert resp.read_bytes() == full
+
+
+def test_recover_archive_drops_only_partial_final_line(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, sidecar = _elicit(tmp_path, monkeypatch, stim_path)
+    full = resp.read_bytes()
+    n = len(full.decode("utf-8").splitlines())
+    restored_dir = tmp_path / "restore"
+    restored_dir.mkdir()
+    # the kill can interrupt the final append mid-line (no trailing newline)
+    (restored_dir / resp.name).write_bytes(full + b'{"record_type": "advice", "half-writ')
+    resp.unlink()  # no committed archive at all (nothing landed before the kill)
+    _recover(stim_path, restored_dir, resp.parent)
+    assert resp.read_bytes() == full
+    side = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert side["dropped_partial_final_line"] is True and side["records_total"] == n
+
+
+def test_recover_archive_refuses_divergent_prefix(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path)
+    rows = ae._read_jsonl(resp)
+    # restored file with an intact chain that does NOT extend the committed
+    # bytes: drop the first record and re-seal from a fresh chain root
+    prev = None
+    resealed = []
+    for r in rows[1:]:
+        body = {k: v for k, v in r.items() if k not in ("record_sha256", "prev_sha256")}
+        sealed = ae._seal_record(body, prev)
+        prev = sealed["record_sha256"]
+        resealed.append(sealed)
+    restored_dir = tmp_path / "restore"
+    restored_dir.mkdir()
+    (restored_dir / resp.name).write_text(
+        "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in resealed), encoding="utf-8")
+    with pytest.raises(SystemExit, match="refusing"):
+        _recover(stim_path, restored_dir, resp.parent)
+
+
+def test_recover_archive_refuses_corrupt_interior_line(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path)
+    lines = resp.read_bytes().splitlines()
+    lines[1] = b"not json at all"
+    restored_dir = tmp_path / "restore"
+    restored_dir.mkdir()
+    (restored_dir / resp.name).write_bytes(b"".join(ln + b"\n" for ln in lines))
+    with pytest.raises(SystemExit, match="corrupt interior"):
+        _recover(stim_path, restored_dir, resp.parent)
+
+
+def _reseal_tail(rows, prev, mutate=None):
+    resealed = []
+    for r in rows:
+        body = {k: v for k, v in r.items() if k not in ("record_sha256", "prev_sha256")}
+        if mutate:
+            mutate(body)
+        sealed = ae._seal_record(body, prev)
+        prev = sealed["record_sha256"]
+        resealed.append(sealed)
+    return resealed
+
+
+def test_recover_archive_merge_fork_lands_divergent_tail(tmp_path, monkeypatch):
+    # two-writer race (2026-08-07): the killed run's artifact and the committed
+    # archive both extend the same prefix; --merge-fork lands the artifact's
+    # tail re-sealed onto the committed head
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, sidecar = _elicit(tmp_path, monkeypatch, stim_path)
+    rows = ae._read_jsonl(resp)
+    assert len(rows) > 3
+    other = _reseal_tail(
+        rows[3:], rows[2]["record_sha256"],
+        mutate=lambda b: b.update(model_requested=b.get("model_requested", "m") + "-alt"))
+    restored_dir = tmp_path / "restore"
+    restored_dir.mkdir()
+    (restored_dir / resp.name).write_text(
+        "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows[:3] + other),
+        encoding="utf-8")
+    with pytest.raises(SystemExit, match="merge-fork"):  # without opt-in: still refused
+        _recover(stim_path, restored_dir, resp.parent)
+    _recover(stim_path, restored_dir, resp.parent, "--merge-fork")
+    merged = ae._read_jsonl(resp)
+    ok, _ = ae.verify_chain(merged)
+    assert ok and len(merged) == len(rows) + len(other)
+    assert merged[:len(rows)] == rows  # committed history untouched
+    assert [r["stimulus_id"] for r in merged[len(rows):]] == [r["stimulus_id"] for r in other]
+    side = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert side["merge_fork"]["fork_record_index"] == 3
+    assert side["records_appended"] == len(other)
+    assert side["chain_head"] == merged[-1]["record_sha256"]
+    assert side["cost_usd"] == pytest.approx(
+        sum(float(r.get("cost_usd") or 0.0) for r in merged if "cost_usd" in r))
+
+
+def test_merge_fork_refuses_duplicate_elicit_keys(tmp_path, monkeypatch):
+    # a reordered tail carries the same paid keys the committed archive already
+    # landed; merging would double-count spent records — refuse
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+    resp, _ = _elicit(tmp_path, monkeypatch, stim_path)
+    rows = ae._read_jsonl(resp)
+    assert len(rows) > 4
+    swapped = _reseal_tail([rows[4], rows[3]] + rows[5:], rows[2]["record_sha256"])
+    restored_dir = tmp_path / "restore"
+    restored_dir.mkdir()
+    (restored_dir / resp.name).write_text(
+        "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows[:3] + swapped),
+        encoding="utf-8")
+    before = resp.read_bytes()
+    with pytest.raises(SystemExit, match="duplicate already-landed"):
+        _recover(stim_path, restored_dir, resp.parent, "--merge-fork")
+    assert resp.read_bytes() == before  # refused merge must not touch the archive
+
+
+def test_payload_complete_with_target(tmp_path):
+    payload = {"scenarios": [
+        {"batch": "pairs_x", "batch_index": 1, "clinical_prompt": "alpha frame so I reached for a",
+         "patient_prompt": "alpha variant frame so I reached for a", "flipped": True,
+         "language_penalty": -0.2, "screening": {"status": "passed"},
+         "target_token": "wid", "intended_target": "widget"},
+        {"batch": "pairs_x", "batch_index": 2, "clinical_prompt": "beta frame with a",
+         "patient_prompt": "beta variant frame with a", "flipped": True,
+         "language_penalty": -0.3, "screening": {"status": "passed"}},
+    ]}
+    src = tmp_path / "payload.json"
+    src.write_text(json.dumps(payload), encoding="utf-8")
+    out_dir = tmp_path / "advice"
+    ae.main(["build-stimuli", "--source", "payload", "--payload", str(src),
+             "--only-flips", "--complete-with-target", "--out-dir", str(out_dir)])
+    doc = json.loads(next(out_dir.glob("stimuli_*.json")).read_text(encoding="utf-8"))
+    # item 2 has no intended_target/target_token: skipped with a notice
+    assert [i["id"] for i in doc["items"]] == ["pairs_x#1"]
+    it = doc["items"][0]
+    # full intended word (not the wordpiece), same on both sides, sentence closed
+    assert it["clinical_body"].endswith("reached for a widget.")
+    assert it["patient_body"].endswith("reached for a widget.")
+    assert it["meta"]["completed_with"] == "widget"
+    # completed default suffix drops the ellipsis but keeps the same words
+    assert doc["ask_suffix"] == "Anyway what should I do?"
+    assert it["clinical_message"].endswith("widget. Anyway what should I do?")
+    assert doc["source"]["complete_with_target"] is True
+    # flag is payload-only
+    with pytest.raises(SystemExit, match="only applies"):
+        ae.main(["build-stimuli", "--source", "manual", "--manual-in", str(src),
+                 "--complete-with-target", "--out-dir", str(out_dir)])
+
+
+def test_payload_complete_override(tmp_path):
+    payload = {"scenarios": [
+        {"batch": "pairs_x", "batch_index": 1, "clinical_prompt": "alpha frame so I reached for a",
+         "patient_prompt": "alpha variant frame so I reached for a", "flipped": True,
+         "language_penalty": -0.2, "screening": {"status": "passed"},
+         "intended_target": "wid"},
+    ]}
+    src = tmp_path / "payload.json"
+    src.write_text(json.dumps(payload), encoding="utf-8")
+    out_dir = tmp_path / "advice"
+    ae.main(["build-stimuli", "--source", "payload", "--payload", str(src), "--only-flips",
+             "--complete-with-target", "--complete-override", '{"pairs_x#1": "widget kit"}',
+             "--out-dir", str(out_dir)])
+    doc = json.loads(next(out_dir.glob("stimuli_*.json")).read_text(encoding="utf-8"))
+    it = doc["items"][0]
+    # the owner-approved word wins over the payload's partial intended_target
+    assert it["clinical_body"].endswith("reached for a widget kit.")
+    assert it["meta"]["completed_with"] == "widget kit"
+    assert it["meta"]["completion_override"] is True
+    assert doc["source"]["complete_overrides"] == {"pairs_x#1": "widget kit"}
+    # override without the completion flag is a usage error
+    with pytest.raises(SystemExit, match="requires"):
+        ae.main(["build-stimuli", "--source", "payload", "--payload", str(src),
+                 "--complete-override", '{"pairs_x#1": "widget kit"}', "--out-dir", str(out_dir)])
+
+
+def test_anthropic_send_retries_transient_statuses(monkeypatch):
+    class Boom(Exception):
+        def __init__(self, status, body=None):
+            self.status_code = status
+            self.body = body
+
+    calls = {"n": 0}
+
+    def flaky(client, model, system, user_text, max_tokens, temperature):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise Boom(522, {"retry_after": 3})
+        if calls["n"] == 2:
+            raise Boom(529)
+        return "ok", 1, 2, {"model": model}
+
+    naps = []
+    monkeypatch.setattr(ae, "_send", flaky)
+    monkeypatch.setattr(ae.time, "sleep", lambda s: naps.append(s))
+    out = ae._send_anthropic_retrying(object(), "model-a", None, "hi", 10, 0.0)
+    assert out[0] == "ok" and calls["n"] == 3
+    assert naps == [3.0, 4]  # retry_after honored, then default backoff step 2
+
+    # a non-retryable status raises immediately
+    def hard_fail(client, model, system, user_text, max_tokens, temperature):
+        raise Boom(400)
+    monkeypatch.setattr(ae, "_send", hard_fail)
+    with pytest.raises(Boom):
+        ae._send_anthropic_retrying(object(), "model-a", None, "hi", 10, 0.0)
+
+
+# ------------------------------------------------------- build-info capture
+
+
+def test_send_captures_headers_via_raw_response():
+    # A1 (2026-07-23): the anthropic seam must surface response headers so records
+    # can carry request ids and api versions for vendor-side log correlation
+    class Usage:
+        input_tokens, output_tokens = 3, 4
+
+    class Block:
+        type, text = "text", "hi"
+
+    class Parsed:
+        content, usage = [Block()], Usage()
+
+        def model_dump(self):
+            return {"model": "m-1", "system_fingerprint": "fp_abc"}
+
+    class Wrapped:
+        headers = {"Request-Id": "req_123", "anthropic-version": "2023-06-01"}
+
+        def parse(self):
+            return Parsed()
+
+    class RawAPI:
+        def create(self, **kw):
+            return Wrapped()
+
+    class Messages:
+        with_raw_response = RawAPI()
+
+    class Client:
+        messages = Messages()
+
+    text, i, o, raw, headers = ae._send(Client(), "m", None, "u", 64, 1.0)
+    assert text == "hi" and headers["request-id"] == "req_123"
+    assert ae._build_info(raw, headers) == {
+        "request_id": "req_123", "api_version": "2023-06-01", "build_fingerprint": "fp_abc"}
+
+
+def test_send_drops_temperature_when_sdk_rejects_it(monkeypatch):
+    # Regression (run 32610000348, 2026-08-23): CI's unpinned anthropic SDK removed
+    # `temperature` from Messages.create(), killing both Claude judge top-ups on the
+    # first call. _send must retry without the kwarg and stop sending it after that.
+    monkeypatch.setattr(ae, "_ANTHROPIC_NO_TEMPERATURE", False)
+    seen_kwargs = []
+
+    class Usage:
+        input_tokens, output_tokens = 3, 4
+
+    class Block:
+        type, text = "text", "ok"
+
+    class Parsed:
+        content, usage = [Block()], Usage()
+
+        def model_dump(self):
+            return {"model": "m-1"}
+
+    class Wrapped:
+        headers = {"Request-Id": "req_t"}
+
+        def parse(self):
+            return Parsed()
+
+    class RawAPI:
+        def create(self, **kw):
+            seen_kwargs.append(kw)
+            if "temperature" in kw:
+                raise TypeError("Messages.create() got an unexpected keyword argument 'temperature'")
+            return Wrapped()
+
+    class Messages:
+        with_raw_response = RawAPI()
+
+    class Client:
+        messages = Messages()
+
+    text, _, _, _, headers = ae._send(Client(), "m", None, "u", 64, 0.0)
+    assert text == "ok" and headers["request-id"] == "req_t"
+    assert "temperature" in seen_kwargs[0] and "temperature" not in seen_kwargs[1]
+    # Later calls skip the doomed attempt entirely.
+    text2, *_ = ae._send(Client(), "m", None, "u2", 64, 0.0)
+    assert text2 == "ok" and len(seen_kwargs) == 3 and "temperature" not in seen_kwargs[2]
+    # An unrelated TypeError still propagates.
+    monkeypatch.setattr(ae, "_ANTHROPIC_NO_TEMPERATURE", False)
+
+    class BadAPI:
+        def create(self, **kw):
+            raise TypeError("Messages.create() got an unexpected keyword argument 'bogus'")
+
+    class BadMessages:
+        with_raw_response = BadAPI()
+
+    class BadClient:
+        messages = BadMessages()
+
+    with pytest.raises(TypeError, match="bogus"):
+        ae._send(BadClient(), "m", None, "u", 64, 0.0)
+
+
+def test_send_compat_returns_headers(monkeypatch):
+    class Resp:
+        status_code = 200
+        headers = {"X-Request-Id": "rq9", "openai-version": "v2"}
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices": [{"message": {"content": "ok"}}],
+                    "usage": {"prompt_tokens": 1, "completion_tokens": 2},
+                    "system_fingerprint": "fp_z"}
+
+    class FakeRequests:
+        @staticmethod
+        def post(*a, **k):
+            return Resp()
+
+    monkeypatch.setitem(__import__("sys").modules, "requests", FakeRequests)
+    monkeypatch.setenv("FAKE_KEY", "k")
+    cfg = {"api": "openai-compat", "base_url": "https://x.example/v1", "key_env": "FAKE_KEY"}
+    text, i, o, raw, headers = ae._send_compat(cfg, "m", None, "u", 64, 1.0)
+    assert ae._build_info(raw, headers) == {
+        "request_id": "rq9", "api_version": "v2", "build_fingerprint": "fp_z"}
+
+
+def test_elicit_records_carry_build_info(tmp_path, monkeypatch):
+    stim_path = build_manual_stimuli(tmp_path, monkeypatch)
+
+    def stub5(client, model, system, user_text, max_tokens, temperature):
+        raw = {"model": model + "-served", "system_fingerprint": "fp_e2e"}
+        return "advice placeholder", 5, 6, raw, {"request-id": "req_e2e"}
+
+    monkeypatch.setattr(ae, "_client", lambda: object())
+    monkeypatch.setattr(ae, "_send", stub5)
+    ae.main(["elicit", "--stimuli", str(stim_path), "--models", "model-x",
+             "--arms", "clinical", "--samples", "1",
+             "--max-spend", "1.0", "--out-dir", str(tmp_path / "advice")])
+    rows = [json.loads(line) for line in
+            (tmp_path / "advice" / f"responses_{stim_path.stem}.jsonl").read_text().splitlines()]
+    adv = [r for r in rows if r["record_type"] == "advice"][0]
+    assert adv["request_id"] == "req_e2e"
+    assert adv["build_fingerprint"] == "fp_e2e"
+    assert adv["api_version"] is None
+
+
+def test_repro_pack_builds_tolerate_missing_build_fields(tmp_path, monkeypatch):
+    """Regression 2026-07-30: rows without model_returned/build_fingerprint
+    (observed on the deepseek and moonshot arms) crashed the pack manifest's
+    builds sort with a None-vs-str TypeError."""
+    import json as _json
+    import importlib.util
+    from pathlib import Path
+    spec = importlib.util.spec_from_file_location(
+        "advice_eval", Path(__file__).resolve().parents[1] / "scripts" / "advice_eval.py")
+    ae = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ae)
+
+    adv = tmp_path / "advice"
+    adv.mkdir()
+    stim = adv / "stimuli_t.json"
+    stim.write_text(_json.dumps([{"id": "s1"}]), encoding="utf-8")
+    rows = [
+        {"record_type": "advice", "model_requested": "acme:acme/widget-1", "model": "acme:acme/widget-1",
+         "record_sha256": "a" * 8, "sent_utc": "2026-07-30T00:00:00Z",
+         "model_returned": None, "build_fingerprint": None},
+        {"record_type": "advice", "model_requested": "acme:acme/widget-1", "model": "acme:acme/widget-1",
+         "record_sha256": "b" * 8, "sent_utc": "2026-07-30T00:01:00Z",
+         "model_returned": "widget-1-0130", "build_fingerprint": "fp1"},
+    ]
+    (adv / "responses_stimuli_t.jsonl").write_text(
+        "\n".join(_json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+
+    class Args:
+        stimuli = str(stim)
+        vendor = "acme"
+        rubric = str(tmp_path / "missing_rubric.json")
+        providers = str(tmp_path / "missing_providers.json")
+        seed = 7
+        out = str(tmp_path / "dist")
+        log = str(tmp_path / "log.jsonl")
+        note = "t"
+    out = ae.repro_pack(Args())
+    manifest = _json.loads((Path(out) / "MANIFEST.json").read_text(encoding="utf-8"))
+    # completing at all is the regression proof: the None-vs-str sort crashed
+    # before any manifest was written
+    assert manifest["vendor_records"] == 2
+
+
+def test_parse_generated_pairs_tolerates_prose_and_drops_degenerates():
+    from scripts.advice_eval import _parse_generated_pairs
+    text = ('Here you go:\n[\n'
+            ' {"topic": "t1", "clinical": "Alpha beta gamma?", "patient": "Alpha beta easy?"},\n'
+            ' {"topic": "t2", "clinical": "Same both", "patient": "same  BOTH"},\n'
+            ' {"clinical": "", "patient": "only one side"},\n'
+            ' "not a dict",\n'
+            ' {"clinical": "Keep two", "patient": "Keep two friendly"}\n'
+            ']\nHope that helps!')
+    items = _parse_generated_pairs(text)
+    assert [i["clinical"] for i in items] == ["Alpha beta gamma?", "Keep two"]
+    assert items[0]["topic"] == "t1"
+
+
+def test_parse_generated_pairs_raises_without_array():
+    import pytest
+    from scripts.advice_eval import _parse_generated_pairs
+    with pytest.raises(ValueError):
+        _parse_generated_pairs("no array here")
+    with pytest.raises(ValueError):
+        _parse_generated_pairs("[{broken json]")
+
+
+def test_norm_prompt_collapses_case_and_whitespace():
+    from scripts.advice_eval import _norm_prompt
+    assert _norm_prompt("  A   b\tC ") == _norm_prompt("a b c")
+
+
+def test_advice_workflow_generate_step_wired():
+    # gen_config must ride the full param path (dispatch input -> defaults ->
+    # job output) and the generate step must gate on it while elicit gates off it.
+    import yaml
+    wf_path = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "advice_evaluation.yml"
+    wf = yaml.safe_load(wf_path.read_text(encoding="utf-8"))
+    inputs = wf[True]["workflow_dispatch"]["inputs"]
+    assert "gen_config" in inputs
+    assert "gen_config" in wf["jobs"]["params"]["outputs"]
+    steps = wf["jobs"]["advice"]["steps"]
+    gen = next(st for st in steps if "Generate stimuli" in (st.get("name") or ""))
+    assert "gen_config != ''" in gen["if"]
+    elicit_step = next(st for st in steps if (st.get("name") or "").startswith("Elicit"))
+    assert "gen_config == ''" in elicit_step["if"]
+
+
+def test_parse_generated_pairs_salvages_truncated_array():
+    # A max_tokens stop mid-item must yield the complete leading items, not zero.
+    from scripts.advice_eval import _parse_generated_pairs
+    text = ('[\n {"topic": "t", "clinical": "Full first", "patient": "Full first easy"},\n'
+            ' {"topic": "t", "clinical": "Full second", "patient": "Full second easy"},\n'
+            ' {"topic": "t", "clinical": "Cut off mid')
+    items = _parse_generated_pairs(text)
+    assert [i["clinical"] for i in items] == ["Full first", "Full second"]

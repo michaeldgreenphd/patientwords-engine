@@ -1,0 +1,82 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-08</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .new{border-left:3px solid #b4483d}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-08</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · red rule = new today</p>
+
+<div class="card new" data-id="D1-MEDFRAMING">
+  <h2>D1 · A medical fine-tune crossed significance. Which sentence replaces "the null cases"?</h2>
+  <p>apertus-8b-meditronfo's mean penalty CI now <b>excludes zero</b> (n 73&nbsp;&rarr;&nbsp;104 after the 8B backfill legs you unblocked). Its sign test is still 3 down v 2 up, p_BH&nbsp;=&nbsp;1.00. meditron3-8b is 0.0004 from crossing too. The standing "the two medical fine-tunes are the study's null cases" line is about to be wrong, and the tempting replacement ("the medical models show it too") would over-claim off the CI alone.</p>
+  <p class="num">apertus −0.0338 [−0.0657, −0.0032] · 3v2 p_BH 1.00 · meditron3 −0.0249 [−0.0498, +0.0004] · 5v1 p_BH 0.263</p>
+  <p>Drafted: <i>"Both medical fine-tunes show a negative mean penalty, and apertus's interval now excludes zero; their flip-direction tests remain underpowered (5 flips each) and neither supports a claim about downgrade behavior."</i></p>
+  <div class="chips"><button class="chip" data-v="use-draft">use the draft</button><button class="chip" data-v="rewrite">I'll rewrite it</button><button class="chip" data-v="wait-meditron">wait until meditron crosses</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D2-OPENROUTER-CEILING">
+  <h2>D2 · The $2/day guard cannot see the OpenRouter lane</h2>
+  <p>Today booked <b>$18.24</b> against the $2 ceiling — $0.35 Anthropic, <b>$17.89 OpenRouter</b>. The alert compares the all-channel total; the guard that actually refuses fires counts the Anthropic lane only. So the alarm was loud and nothing was ever blocked. The OpenRouter lane has no mechanical ceiling at all. Separately the figure overstates the day: the advice sidecar reports cumulative cost, so its whole two-day, six-model campaign total landed on one date — today's leg was $6.09 against its own $6.50 cap.</p>
+  <p class="num">responses_stimuli_20260807T153329Z · cost_usd 17.8875 (cumulative_from_records) · run_cost_usd 6.0936 · max_spend 6.50</p>
+  <div class="chips"><button class="chip" data-v="ceiling-both">set an OpenRouter ceiling + fix the accounting</button><button class="chip" data-v="accounting-only">fix the accounting only</button><button class="chip" data-v="no-ceiling">no ceiling, I approve these per-run</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D3-JLENS-PINS">
+  <h2>D3 · First complete full-batch lens set — add it to the depth figure?</h2>
+  <p>pairs_20260707T171223Z finished lens+save_raw at 119/119 today, the first complete batch outside the census. It is not among the six pinned blocks of the depth exporter, so it reaches no published figure. Pins change only on your word, so this cycle regenerated with the six unchanged.</p>
+  <div class="chips"><button class="chip" data-v="add-block">add it as a block</button><button class="chip" data-v="keep-six">keep the current six</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D4-OPS-CADENCE">
+  <h2>D4 · Ops cadence — the diagnosis has inverted</h2>
+  <p>Carried since 08-02, but the facts changed. The <i>measurement</i> lanes are running: six unattended fires in the last fifteen hours across three lanes. What stalls is the <i>reporting</i> layer — no brief for 08-07, dashboard was 34h stale at cycle start, critic floor lapsed since 08-03. The standing prompt still says the accelerator "has never fired" and demands exactly this evidence before it may be revised.</p>
+  <div class="chips"><button class="chip" data-v="rewrite-4a">rewrite §4a to match reality</button><button class="chip" data-v="fresh-routine">approve the fresh-session Routine in-client</button><button class="chip" data-v="accept-pace">accept the pace, restate "daily"</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D5-AUDIT-ACTS">
+  <h2>D5 · Your one remaining audit act</h2>
+  <p>Carried. Two of the three are done (prereg signed 07-28; the 25 judge-agreement items coded). One remains: choose a pooled-33% caveat sentence from the drafted candidates. It gates the advice n=100 expansion; no daily ops work blocks on it.</p>
+  <div class="chips"><button class="chip" data-v="this-week">will do this week</button><button class="chip" data-v="send-candidates">re-send me the candidates</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D6-DIALECT-DATE">
+  <h2>D6 · Dialect dateline — believed resolved, confirm to close</h2>
+  <p>Carried from 07-30 and recorded as resolved in substance: the dateline is now runtime-filled from data/dialects.json, so it can never drift again, and the static manifest guard was retired. The entry is still open in the dashboard.</p>
+  <div class="chips"><button class="chip" data-v="close">close it</button><button class="chip" data-v="keep-open">keep it open</button></div>
+</div>
+
+<button id="copy">Copy decision summary</button>
+<div id="out"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(c){
+  c.querySelectorAll('.chip').forEach(function(ch){
+    ch.addEventListener('click',function(){
+      c.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on')});
+      ch.classList.add('on');
+    });
+  });
+});
+document.getElementById('copy').addEventListener('click',function(){
+  var lines=['DECISIONS 2026-08-08'];
+  document.querySelectorAll('.card').forEach(function(c){
+    var on=c.querySelector('.chip.on');
+    lines.push(c.dataset.id+' :: '+(on?on.dataset.v:'(no selection)'));
+  });
+  var t=lines.join('\n');
+  var o=document.getElementById('out');o.textContent=t;o.style.display='block';
+  if(navigator.clipboard)navigator.clipboard.writeText(t);
+});
+</script>

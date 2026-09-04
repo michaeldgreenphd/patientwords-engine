@@ -1,0 +1,7784 @@
+{
+  "mode": "depth_probe",
+  "backend": "interp-engine-eager",
+  "lens": "logit_lens",
+  "graph_model": "qwen3-4b",
+  "source_set": null,
+  "start_index": 1,
+  "pairs_requested": 13,
+  "completed": true,
+  "instrument": {
+    "tiers_file": "data/urgency_tiers.draft.json",
+    "tiers_status": "owner-reviewed v1 \u00b7 domain review pending",
+    "min_coverage": 0.3,
+    "topk": 200,
+    "divergence_threshold": 0.25,
+    "note": "logit lens, not the registered Jacobian lens; publish separately"
+  },
+  "inference": {
+    "method": "logit_lens",
+    "hf_id": "Qwen/Qwen3-4B",
+    "dtype": "bfloat16",
+    "device": "cpu",
+    "revision": null,
+    "environment": {
+      "python": "3.11.16",
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+      "engine_sha": "4eb221605c52",
+      "runner_image": "20260823.283.1",
+      "torch": "2.13.0+cpu",
+      "transformers": "5.14.1",
+      "interp_engine": "1.5.1"
+    }
+  },
+  "results": [
+    {
+      "index": 1,
+      "prompts": {
+        "clinical": "I just can't seem to fall asleep due to insomnia, so my doctor started me on a",
+        "patient": "I just can't seem to nod off no matter what, so my doctor started me on a"
+      },
+      "curves": {
+        "clinical": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u9928"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "__;"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "__;"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "__;"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "ImageContext"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0316,
+            "top": "iken"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0415,
+            "top": "least"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.1274,
+            "top": "diet"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0053,
+            "top": "\u4f55\u79cd"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0252,
+            "top": "illo"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.031,
+            "top": "atori"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0329,
+            "top": "yll"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0212,
+            "top": "/an"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0056,
+            "top": "/an"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.025,
+            "top": "/an"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.035,
+            "top": "/an"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0732,
+            "top": "/an"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0723,
+            "top": "/an"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0578,
+            "top": "chemical"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0692,
+            "top": "temporary"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0497,
+            "top": "temporary"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.1541,
+            "top": "small"
+          },
+          {
+            "layer": 24,
+            "expected_tier": 1.4285,
+            "coverage": 0.5291,
+            "top": "medication"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.2162,
+            "top": "small"
+          },
+          {
+            "layer": 26,
+            "expected_tier": 1.6727,
+            "coverage": 0.3284,
+            "top": "medication"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 1.1128,
+            "coverage": 0.9647,
+            "top": "medication"
+          },
+          {
+            "layer": 28,
+            "expected_tier": 1.025,
+            "coverage": 0.9816,
+            "top": "medication"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 1.2757,
+            "coverage": 0.9744,
+            "top": "medication"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 1.0981,
+            "coverage": 0.9829,
+            "top": "medication"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 1.0525,
+            "coverage": 0.9761,
+            "top": "medication"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 1.6658,
+            "coverage": 0.8969,
+            "top": "prescription"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 1.3281,
+            "coverage": 0.6465,
+            "top": "medication"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 1.1361,
+            "coverage": 0.3678,
+            "top": "new"
+          },
+          {
+            "layer": 35,
+            "expected_tier": 1.1078,
+            "coverage": 0.3729,
+            "top": "new"
+          }
+        ],
+        "patient": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u9928"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "__;"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "__;"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u30e9\u30f3\u30b9"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "__;"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0153,
+            "top": "lius"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0348,
+            "top": "few"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0174,
+            "top": "uated"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0065,
+            "top": "\u591a\u79cd"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0108,
+            "top": "iba"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0949,
+            "top": "daily"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0614,
+            "top": "daily"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.1174,
+            "top": "daily"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0345,
+            "top": "\u00e9sz"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0825,
+            "top": "\u7720"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0771,
+            "top": "/an"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0808,
+            "top": "variety"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0377,
+            "top": "very"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0516,
+            "top": "time"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.1135,
+            "top": "very"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0233,
+            "top": "bunch"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0398,
+            "top": "new"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.2993,
+            "top": "medication"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.0825,
+            "top": "different"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.0986,
+            "top": "new"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 1.0919,
+            "coverage": 0.8573,
+            "top": "medication"
+          },
+          {
+            "layer": 28,
+            "expected_tier": 1.0388,
+            "coverage": 0.6742,
+            "top": "medication"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 1.328,
+            "coverage": 0.8211,
+            "top": "medication"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 1.1665,
+            "coverage": 0.8945,
+            "top": "medication"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 1.163,
+            "coverage": 0.7807,
+            "top": "medication"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 1.5414,
+            "coverage": 0.5713,
+            "top": "new"
+          },
+          {
+            "layer": 33,
+            "expected_tier": null,
+            "coverage": 0.2484,
+            "top": "new"
+          },
+          {
+            "layer": 34,
+            "expected_tier": null,
+            "coverage": 0.2266,
+            "top": "new"
+          },
+          {
+            "layer": 35,
+            "expected_tier": null,
+            "coverage": 0.1969,
+            "top": "new"
+          }
+        ]
+      },
+      "gap": [
+        {
+          "layer": 0,
+          "gap": null
+        },
+        {
+          "layer": 1,
+          "gap": null
+        },
+        {
+          "layer": 2,
+          "gap": null
+        },
+        {
+          "layer": 3,
+          "gap": null
+        },
+        {
+          "layer": 4,
+          "gap": null
+        },
+        {
+          "layer": 5,
+          "gap": null
+        },
+        {
+          "layer": 6,
+          "gap": null
+        },
+        {
+          "layer": 7,
+          "gap": null
+        },
+        {
+          "layer": 8,
+          "gap": null
+        },
+        {
+          "layer": 9,
+          "gap": null
+        },
+        {
+          "layer": 10,
+          "gap": null
+        },
+        {
+          "layer": 11,
+          "gap": null
+        },
+        {
+          "layer": 12,
+          "gap": null
+        },
+        {
+          "layer": 13,
+          "gap": null
+        },
+        {
+          "layer": 14,
+          "gap": null
+        },
+        {
+          "layer": 15,
+          "gap": null
+        },
+        {
+          "layer": 16,
+          "gap": null
+        },
+        {
+          "layer": 17,
+          "gap": null
+        },
+        {
+          "layer": 18,
+          "gap": null
+        },
+        {
+          "layer": 19,
+          "gap": null
+        },
+        {
+          "layer": 20,
+          "gap": null
+        },
+        {
+          "layer": 21,
+          "gap": null
+        },
+        {
+          "layer": 22,
+          "gap": null
+        },
+        {
+          "layer": 23,
+          "gap": null
+        },
+        {
+          "layer": 24,
+          "gap": null
+        },
+        {
+          "layer": 25,
+          "gap": null
+        },
+        {
+          "layer": 26,
+          "gap": null
+        },
+        {
+          "layer": 27,
+          "gap": -0.0209
+        },
+        {
+          "layer": 28,
+          "gap": 0.0138
+        },
+        {
+          "layer": 29,
+          "gap": 0.0523
+        },
+        {
+          "layer": 30,
+          "gap": 0.0684
+        },
+        {
+          "layer": 31,
+          "gap": 0.1105
+        },
+        {
+          "layer": 32,
+          "gap": -0.1244
+        },
+        {
+          "layer": 33,
+          "gap": null
+        },
+        {
+          "layer": 34,
+          "gap": null
+        },
+        {
+          "layer": 35,
+          "gap": null
+        }
+      ],
+      "first_divergence_layer": null,
+      "final_gap": null,
+      "max_abs_gap": 0.1244,
+      "layers_informative": 6,
+      "layers_measured": 36
+    },
+    {
+      "index": 2,
+      "prompts": {
+        "clinical": "That awful migraine is back, so I dug through my bag for a",
+        "patient": "That awful pounding behind my eye is back, so I dug through my bag for a"
+      },
+      "curves": {
+        "clinical": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "ilyn"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "()['"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "Matchers"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u30e9\u30f3\u30b9"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u30e9\u30f3\u30b9"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0027,
+            "top": "\u30e9\u30f3\u30b9"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0014,
+            "top": "Mate"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u0648\u0627"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0024,
+            "top": "ifen"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0025,
+            "top": "Mate"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "quick"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "quick"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0092,
+            "top": "quick"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0206,
+            "top": "\ufffd"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.061,
+            "top": "iano"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.063,
+            "top": "quick"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0253,
+            "top": "quick"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0068,
+            "top": "quickly"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0045,
+            "top": "quick"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0083,
+            "top": "quick"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0047,
+            "top": "quick"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.012,
+            "top": "quick"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.0222,
+            "top": "quick"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.0404,
+            "top": "quick"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.2117,
+            "top": "suitable"
+          },
+          {
+            "layer": 27,
+            "expected_tier": null,
+            "coverage": 0.2043,
+            "top": "suitable"
+          },
+          {
+            "layer": 28,
+            "expected_tier": null,
+            "coverage": 0.1204,
+            "top": "suitable"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 0.9992,
+            "coverage": 0.3634,
+            "top": "pain"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 1.0458,
+            "coverage": 0.8919,
+            "top": "medication"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 1.0059,
+            "coverage": 0.8784,
+            "top": "pain"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 1.0257,
+            "coverage": 0.8024,
+            "top": "pain"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 0.9851,
+            "coverage": 0.7986,
+            "top": "pain"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 0.9822,
+            "coverage": 0.7152,
+            "top": "pain"
+          },
+          {
+            "layer": 35,
+            "expected_tier": 0.9273,
+            "coverage": 0.685,
+            "top": "pain"
+          }
+        ],
+        "patient": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "ilyn"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0038,
+            "top": "emie"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "()['"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "Matchers"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0021,
+            "top": "\u5f39"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0046,
+            "top": "piece"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0032,
+            "top": "andscape"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0013,
+            "top": "piece"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "ero"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0014,
+            "top": "ifen"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0025,
+            "top": "ifen"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0047,
+            "top": "training"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "training"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0071,
+            "top": "\u4e00\u689d"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0052,
+            "top": "knots"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0298,
+            "top": "\u94bf"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0381,
+            "top": "fix"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0191,
+            "top": "time"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0101,
+            "top": "few"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0193,
+            "top": "few"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0377,
+            "top": "quick"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0195,
+            "top": "quick"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.012,
+            "top": "quick"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.1113,
+            "top": "quick"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.1472,
+            "top": "medical"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.269,
+            "top": "medical"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 1.0389,
+            "coverage": 0.7696,
+            "top": "medication"
+          },
+          {
+            "layer": 28,
+            "expected_tier": null,
+            "coverage": 0.1752,
+            "top": "few"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 1.0461,
+            "coverage": 0.5308,
+            "top": "medication"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 1.2379,
+            "coverage": 0.8265,
+            "top": "medication"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 1.0545,
+            "coverage": 0.8756,
+            "top": "pain"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 1.1352,
+            "coverage": 0.5502,
+            "top": "pain"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 1.0171,
+            "coverage": 0.4251,
+            "top": "pain"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 0.9847,
+            "coverage": 0.3563,
+            "top": "pain"
+          },
+          {
+            "layer": 35,
+            "expected_tier": 0.9218,
+            "coverage": 0.4542,
+            "top": "pain"
+          }
+        ]
+      },
+      "gap": [
+        {
+          "layer": 0,
+          "gap": null
+        },
+        {
+          "layer": 1,
+          "gap": null
+        },
+        {
+          "layer": 2,
+          "gap": null
+        },
+        {
+          "layer": 3,
+          "gap": null
+        },
+        {
+          "layer": 4,
+          "gap": null
+        },
+        {
+          "layer": 5,
+          "gap": null
+        },
+        {
+          "layer": 6,
+          "gap": null
+        },
+        {
+          "layer": 7,
+          "gap": null
+        },
+        {
+          "layer": 8,
+          "gap": null
+        },
+        {
+          "layer": 9,
+          "gap": null
+        },
+        {
+          "layer": 10,
+          "gap": null
+        },
+        {
+          "layer": 11,
+          "gap": null
+        },
+        {
+          "layer": 12,
+          "gap": null
+        },
+        {
+          "layer": 13,
+          "gap": null
+        },
+        {
+          "layer": 14,
+          "gap": null
+        },
+        {
+          "layer": 15,
+          "gap": null
+        },
+        {
+          "layer": 16,
+          "gap": null
+        },
+        {
+          "layer": 17,
+          "gap": null
+        },
+        {
+          "layer": 18,
+          "gap": null
+        },
+        {
+          "layer": 19,
+          "gap": null
+        },
+        {
+          "layer": 20,
+          "gap": null
+        },
+        {
+          "layer": 21,
+          "gap": null
+        },
+        {
+          "layer": 22,
+          "gap": null
+        },
+        {
+          "layer": 23,
+          "gap": null
+        },
+        {
+          "layer": 24,
+          "gap": null
+        },
+        {
+          "layer": 25,
+          "gap": null
+        },
+        {
+          "layer": 26,
+          "gap": null
+        },
+        {
+          "layer": 27,
+          "gap": null
+        },
+        {
+          "layer": 28,
+          "gap": null
+        },
+        {
+          "layer": 29,
+          "gap": 0.0469
+        },
+        {
+          "layer": 30,
+          "gap": 0.1921
+        },
+        {
+          "layer": 31,
+          "gap": 0.0486
+        },
+        {
+          "layer": 32,
+          "gap": 0.1095
+        },
+        {
+          "layer": 33,
+          "gap": 0.032
+        },
+        {
+          "layer": 34,
+          "gap": 0.0025
+        },
+        {
+          "layer": 35,
+          "gap": -0.0055
+        }
+      ],
+      "first_divergence_layer": null,
+      "final_gap": -0.0055,
+      "max_abs_gap": 0.1921,
+      "layers_informative": 7,
+      "layers_measured": 36
+    },
+    {
+      "index": 3,
+      "prompts": {
+        "clinical": "He's been up half the night with gastroesophageal reflux every evening, so tonight he swallowed an",
+        "patient": "He's been up half the night with heartburn every evening, so tonight he swallowed an"
+      },
+      "curves": {
+        "clinical": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "an"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "correlates"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0052,
+            "top": "<>(\""
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0021,
+            "top": "<>(\""
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "urally"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "lers"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.002,
+            "top": "lers"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "agram"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0037,
+            "top": "uations"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0068,
+            "top": "agram"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0155,
+            "top": "figcaption"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0022,
+            "top": "illo"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "uated"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0018,
+            "top": "pecially"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "ulated"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0021,
+            "top": "\u63a5\u8457"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0544,
+            "top": "atee"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0231,
+            "top": "themselves"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.018,
+            "top": "themselves"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0161,
+            "top": "\u3127"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0416,
+            "top": "very"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0202,
+            "top": "\u3127"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0262,
+            "top": "bare"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0053,
+            "top": "few"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.0117,
+            "top": "few"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.0201,
+            "top": "entire"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.02,
+            "top": "entire"
+          },
+          {
+            "layer": 27,
+            "expected_tier": null,
+            "coverage": 0.0096,
+            "top": "entire"
+          },
+          {
+            "layer": 28,
+            "expected_tier": null,
+            "coverage": 0.0156,
+            "top": "entire"
+          },
+          {
+            "layer": 29,
+            "expected_tier": null,
+            "coverage": 0.0205,
+            "top": "entire"
+          },
+          {
+            "layer": 30,
+            "expected_tier": null,
+            "coverage": 0.0052,
+            "top": "entire"
+          },
+          {
+            "layer": 31,
+            "expected_tier": null,
+            "coverage": 0.0124,
+            "top": "entire"
+          },
+          {
+            "layer": 32,
+            "expected_tier": null,
+            "coverage": 0.0698,
+            "top": "entire"
+          },
+          {
+            "layer": 33,
+            "expected_tier": null,
+            "coverage": 0.2829,
+            "top": "entire"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 1.0272,
+            "coverage": 0.4167,
+            "top": "ant"
+          },
+          {
+            "layer": 35,
+            "expected_tier": 1.0113,
+            "coverage": 0.5001,
+            "top": "ant"
+          }
+        ],
+        "patient": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "an"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0015,
+            "top": "correlates"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0067,
+            "top": "<>(\""
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0017,
+            "top": "<>(\""
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "urally"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "lers"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0017,
+            "top": "lers"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "agram"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0028,
+            "top": "uations"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.015,
+            "top": "omething"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0099,
+            "top": "figcaption"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0021,
+            "top": "illo"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0053,
+            "top": "Away"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.004,
+            "top": "pecially"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0093,
+            "top": "pecially"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0078,
+            "top": "\u5686"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.1053,
+            "top": "\u5242\u91cf"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0818,
+            "top": "\u5686"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0456,
+            "top": "\u53ef\u662f"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0514,
+            "top": "\u53ef\u662f"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.104,
+            "top": "/an"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.063,
+            "top": "\u3127"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.1289,
+            "top": "dose"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0341,
+            "top": "entire"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.0622,
+            "top": "few"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.0502,
+            "top": "entire"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.0402,
+            "top": "entire"
+          },
+          {
+            "layer": 27,
+            "expected_tier": null,
+            "coverage": 0.0204,
+            "top": "entire"
+          },
+          {
+            "layer": 28,
+            "expected_tier": null,
+            "coverage": 0.0266,
+            "top": "entire"
+          },
+          {
+            "layer": 29,
+            "expected_tier": null,
+            "coverage": 0.0413,
+            "top": "entire"
+          },
+          {
+            "layer": 30,
+            "expected_tier": null,
+            "coverage": 0.0191,
+            "top": "entire"
+          },
+          {
+            "layer": 31,
+            "expected_tier": null,
+            "coverage": 0.0265,
+            "top": "entire"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 1.0187,
+            "coverage": 0.3508,
+            "top": "entire"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 1.0013,
+            "coverage": 0.8971,
+            "top": "ant"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 1.0007,
+            "coverage": 0.8728,
+            "top": "ant"
+          },
+          {
+            "layer": 35,
+            "expected_tier": 1.0002,
+            "coverage": 0.8808,
+            "top": "ant"
+          }
+        ]
+      },
+      "gap": [
+        {
+          "layer": 0,
+          "gap": null
+        },
+        {
+          "layer": 1,
+          "gap": null
+        },
+        {
+          "layer": 2,
+          "gap": null
+        },
+        {
+          "layer": 3,
+          "gap": null
+        },
+        {
+          "layer": 4,
+          "gap": null
+        },
+        {
+          "layer": 5,
+          "gap": null
+        },
+        {
+          "layer": 6,
+          "gap": null
+        },
+        {
+          "layer": 7,
+          "gap": null
+        },
+        {
+          "layer": 8,
+          "gap": null
+        },
+        {
+          "layer": 9,
+          "gap": null
+        },
+        {
+          "layer": 10,
+          "gap": null
+        },
+        {
+          "layer": 11,
+          "gap": null
+        },
+        {
+          "layer": 12,
+          "gap": null
+        },
+        {
+          "layer": 13,
+          "gap": null
+        },
+        {
+          "layer": 14,
+          "gap": null
+        },
+        {
+          "layer": 15,
+          "gap": null
+        },
+        {
+          "layer": 16,
+          "gap": null
+        },
+        {
+          "layer": 17,
+          "gap": null
+        },
+        {
+          "layer": 18,
+          "gap": null
+        },
+        {
+          "layer": 19,
+          "gap": null
+        },
+        {
+          "layer": 20,
+          "gap": null
+        },
+        {
+          "layer": 21,
+          "gap": null
+        },
+        {
+          "layer": 22,
+          "gap": null
+        },
+        {
+          "layer": 23,
+          "gap": null
+        },
+        {
+          "layer": 24,
+          "gap": null
+        },
+        {
+          "layer": 25,
+          "gap": null
+        },
+        {
+          "layer": 26,
+          "gap": null
+        },
+        {
+          "layer": 27,
+          "gap": null
+        },
+        {
+          "layer": 28,
+          "gap": null
+        },
+        {
+          "layer": 29,
+          "gap": null
+        },
+        {
+          "layer": 30,
+          "gap": null
+        },
+        {
+          "layer": 31,
+          "gap": null
+        },
+        {
+          "layer": 32,
+          "gap": null
+        },
+        {
+          "layer": 33,
+          "gap": null
+        },
+        {
+          "layer": 34,
+          "gap": -0.0265
+        },
+        {
+          "layer": 35,
+          "gap": -0.0111
+        }
+      ],
+      "first_divergence_layer": null,
+      "final_gap": -0.0111,
+      "max_abs_gap": 0.0265,
+      "layers_informative": 2,
+      "layers_measured": 36
+    },
+    {
+      "index": 4,
+      "prompts": {
+        "clinical": "She's been suffering from chronic insomnia every night, so the doctor prescribed a",
+        "patient": "She's been staring at the ceiling for hours every night, so the doctor prescribed a"
+      },
+      "curves": {
+        "clinical": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u9928"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0028,
+            "top": "LOCATION"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0019,
+            "top": "LOCATION"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "aten"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0084,
+            "top": "UIT"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0026,
+            "top": "<<"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "quia"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0029,
+            "top": "ventus"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0034,
+            "top": "\u4ea2"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0919,
+            "top": "pill"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0079,
+            "top": "variety"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.1094,
+            "top": "\u7720"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.036,
+            "top": "\u5931\u7720"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0318,
+            "top": "\u7720"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0348,
+            "top": "\u7720"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0143,
+            "top": "\u7720"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0441,
+            "top": "\u7720"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0415,
+            "top": "\u7720"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0522,
+            "top": "zure"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.1483,
+            "top": "couple"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.1681,
+            "top": "special"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.1187,
+            "top": "special"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.1044,
+            "top": "certain"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0925,
+            "top": "certain"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.1707,
+            "top": "certain"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.1003,
+            "top": "certain"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.2601,
+            "top": "suitable"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 1.1024,
+            "coverage": 0.6022,
+            "top": "medication"
+          },
+          {
+            "layer": 28,
+            "expected_tier": 1.0198,
+            "coverage": 0.8626,
+            "top": "medication"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 1.0197,
+            "coverage": 0.8893,
+            "top": "medication"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 1.0096,
+            "coverage": 0.8965,
+            "top": "medication"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 1.0025,
+            "coverage": 0.9653,
+            "top": "medication"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 1.0857,
+            "coverage": 0.9603,
+            "top": "medication"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 1.0466,
+            "coverage": 0.796,
+            "top": "medication"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 1.0473,
+            "coverage": 0.6703,
+            "top": "sed"
+          },
+          {
+            "layer": 35,
+            "expected_tier": 1.0801,
+            "coverage": 0.5478,
+            "top": "new"
+          }
+        ],
+        "patient": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0016,
+            "top": "\u9928"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0036,
+            "top": "LOCATION"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0025,
+            "top": "LOCATION"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "aten"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0072,
+            "top": "\u5bf9\u5b66\u751f"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "<<"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0022,
+            "top": "\ufffd\ufffd"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0125,
+            "top": "esthetic"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.004,
+            "top": "cup"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0211,
+            "top": "\u2014a"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0022,
+            "top": "variety"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0343,
+            "top": "\u7720"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0514,
+            "top": "\u9547"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0226,
+            "top": "atori"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0169,
+            "top": "iba"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0248,
+            "top": "tear"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0518,
+            "top": "tear"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0344,
+            "top": "mild"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0287,
+            "top": "short"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0487,
+            "top": "variety"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0304,
+            "top": "variety"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0339,
+            "top": "variety"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0442,
+            "top": "/an"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0764,
+            "top": "simple"
+          },
+          {
+            "layer": 24,
+            "expected_tier": 2.4719,
+            "coverage": 0.5265,
+            "top": "therapy"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.0658,
+            "top": "______"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.0517,
+            "top": "______"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 1.0346,
+            "coverage": 0.7945,
+            "top": "medication"
+          },
+          {
+            "layer": 28,
+            "expected_tier": 1.0129,
+            "coverage": 0.9553,
+            "top": "medication"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 1.0056,
+            "coverage": 0.9746,
+            "top": "medication"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 1.0019,
+            "coverage": 0.9774,
+            "top": "medication"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 1.0009,
+            "coverage": 0.9905,
+            "top": "medication"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 1.052,
+            "coverage": 0.9854,
+            "top": "medication"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 1.0398,
+            "coverage": 0.7912,
+            "top": "sed"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 1.0747,
+            "coverage": 0.7062,
+            "top": "sed"
+          },
+          {
+            "layer": 35,
+            "expected_tier": 1.1825,
+            "coverage": 0.6281,
+            "top": "new"
+          }
+        ]
+      },
+      "gap": [
+        {
+          "layer": 0,
+          "gap": null
+        },
+        {
+          "layer": 1,
+          "gap": null
+        },
+        {
+          "layer": 2,
+          "gap": null
+        },
+        {
+          "layer": 3,
+          "gap": null
+        },
+        {
+          "layer": 4,
+          "gap": null
+        },
+        {
+          "layer": 5,
+          "gap": null
+        },
+        {
+          "layer": 6,
+          "gap": null
+        },
+        {
+          "layer": 7,
+          "gap": null
+        },
+        {
+          "layer": 8,
+          "gap": null
+        },
+        {
+          "layer": 9,
+          "gap": null
+        },
+        {
+          "layer": 10,
+          "gap": null
+        },
+        {
+          "layer": 11,
+          "gap": null
+        },
+        {
+          "layer": 12,
+          "gap": null
+        },
+        {
+          "layer": 13,
+          "gap": null
+        },
+        {
+          "layer": 14,
+          "gap": null
+        },
+        {
+          "layer": 15,
+          "gap": null
+        },
+        {
+          "layer": 16,
+          "gap": null
+        },
+        {
+          "layer": 17,
+          "gap": null
+        },
+        {
+          "layer": 18,
+          "gap": null
+        },
+        {
+          "layer": 19,
+          "gap": null
+        },
+        {
+          "layer": 20,
+          "gap": null
+        },
+        {
+          "layer": 21,
+          "gap": null
+        },
+        {
+          "layer": 22,
+          "gap": null
+        },
+        {
+          "layer": 23,
+          "gap": null
+        },
+        {
+          "layer": 24,
+          "gap": null
+        },
+        {
+          "layer": 25,
+          "gap": null
+        },
+        {
+          "layer": 26,
+          "gap": null
+        },
+        {
+          "layer": 27,
+          "gap": -0.0678
+        },
+        {
+          "layer": 28,
+          "gap": -0.0069
+        },
+        {
+          "layer": 29,
+          "gap": -0.0141
+        },
+        {
+          "layer": 30,
+          "gap": -0.0077
+        },
+        {
+          "layer": 31,
+          "gap": -0.0016
+        },
+        {
+          "layer": 32,
+          "gap": -0.0337
+        },
+        {
+          "layer": 33,
+          "gap": -0.0068
+        },
+        {
+          "layer": 34,
+          "gap": 0.0274
+        },
+        {
+          "layer": 35,
+          "gap": 0.1024
+        }
+      ],
+      "first_divergence_layer": null,
+      "final_gap": 0.1024,
+      "max_abs_gap": 0.1024,
+      "layers_informative": 9,
+      "layers_measured": 36
+    },
+    {
+      "index": 5,
+      "prompts": {
+        "clinical": "My allergic conjunctivitis flares up every spring, so this year my doctor put me on a",
+        "patient": "My eyes are itchy and watering like crazy every spring, so this year my doctor put me on a"
+      },
+      "curves": {
+        "clinical": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u9928"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0036,
+            "top": "\u7d0b"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u0444\u043e\u0440"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u0444\u043e\u0440"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "__;"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "cors"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0229,
+            "top": "\u0e40\u0e15"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.085,
+            "top": "\u8ba9\u4ed6\u4eec"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0173,
+            "top": "egis"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0065,
+            "top": "quate"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.003,
+            "top": "\u524b"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "yll"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0176,
+            "top": "/an"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0045,
+            "top": "/an"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0071,
+            "top": "/an"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0199,
+            "top": "/an"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0321,
+            "top": "/an"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0249,
+            "top": "/an"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0201,
+            "top": "/an"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0193,
+            "top": "whole"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0333,
+            "top": "whole"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0714,
+            "top": "whole"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0537,
+            "top": "weekly"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.2405,
+            "top": "small"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.1159,
+            "top": "small"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.167,
+            "top": "small"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 1.2031,
+            "coverage": 0.8777,
+            "top": "medication"
+          },
+          {
+            "layer": 28,
+            "expected_tier": 1.3371,
+            "coverage": 0.8279,
+            "top": "medication"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 1.9114,
+            "coverage": 0.9372,
+            "top": "prescription"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 1.9567,
+            "coverage": 0.9405,
+            "top": "prescription"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 1.7681,
+            "coverage": 0.8554,
+            "top": "prescription"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 1.5564,
+            "coverage": 0.7442,
+            "top": "prescription"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 1.7148,
+            "coverage": 0.4288,
+            "top": "prescription"
+          },
+          {
+            "layer": 34,
+            "expected_tier": null,
+            "coverage": 0.0895,
+            "top": "course"
+          },
+          {
+            "layer": 35,
+            "expected_tier": null,
+            "coverage": 0.083,
+            "top": "new"
+          }
+        ],
+        "patient": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u9928"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0032,
+            "top": "\u9928"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u0444\u043e\u0440"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u0444\u043e\u0440"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "__;"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0019,
+            "top": "__;"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0138,
+            "top": "\u0e40\u0e15"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0934,
+            "top": "regimen"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0217,
+            "top": "[vi"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0109,
+            "top": "idian"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u524b"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0027,
+            "top": "daily"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0145,
+            "top": "daily"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0118,
+            "top": "daily"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0241,
+            "top": "daily"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0216,
+            "top": "certain"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0194,
+            "top": "daily"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0189,
+            "top": "daily"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0178,
+            "top": "/an"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0161,
+            "top": "whole"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0236,
+            "top": "whole"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0202,
+            "top": "home"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0417,
+            "top": "small"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.2933,
+            "top": "prescribed"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.1669,
+            "top": "small"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.2393,
+            "top": "small"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 1.1136,
+            "coverage": 0.9487,
+            "top": "medication"
+          },
+          {
+            "layer": 28,
+            "expected_tier": 1.2248,
+            "coverage": 0.9192,
+            "top": "medication"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 1.9632,
+            "coverage": 0.975,
+            "top": "prescription"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 1.9898,
+            "coverage": 0.9656,
+            "top": "prescription"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 1.9816,
+            "coverage": 0.947,
+            "top": "prescription"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 1.9667,
+            "coverage": 0.8415,
+            "top": "prescription"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 1.9137,
+            "coverage": 0.696,
+            "top": "prescription"
+          },
+          {
+            "layer": 34,
+            "expected_tier": null,
+            "coverage": 0.1394,
+            "top": "course"
+          },
+          {
+            "layer": 35,
+            "expected_tier": null,
+            "coverage": 0.1812,
+            "top": "new"
+          }
+        ]
+      },
+      "gap": [
+        {
+          "layer": 0,
+          "gap": null
+        },
+        {
+          "layer": 1,
+          "gap": null
+        },
+        {
+          "layer": 2,
+          "gap": null
+        },
+        {
+          "layer": 3,
+          "gap": null
+        },
+        {
+          "layer": 4,
+          "gap": null
+        },
+        {
+          "layer": 5,
+          "gap": null
+        },
+        {
+          "layer": 6,
+          "gap": null
+        },
+        {
+          "layer": 7,
+          "gap": null
+        },
+        {
+          "layer": 8,
+          "gap": null
+        },
+        {
+          "layer": 9,
+          "gap": null
+        },
+        {
+          "layer": 10,
+          "gap": null
+        },
+        {
+          "layer": 11,
+          "gap": null
+        },
+        {
+          "layer": 12,
+          "gap": null
+        },
+        {
+          "layer": 13,
+          "gap": null
+        },
+        {
+          "layer": 14,
+          "gap": null
+        },
+        {
+          "layer": 15,
+          "gap": null
+        },
+        {
+          "layer": 16,
+          "gap": null
+        },
+        {
+          "layer": 17,
+          "gap": null
+        },
+        {
+          "layer": 18,
+          "gap": null
+        },
+        {
+          "layer": 19,
+          "gap": null
+        },
+        {
+          "layer": 20,
+          "gap": null
+        },
+        {
+          "layer": 21,
+          "gap": null
+        },
+        {
+          "layer": 22,
+          "gap": null
+        },
+        {
+          "layer": 23,
+          "gap": null
+        },
+        {
+          "layer": 24,
+          "gap": null
+        },
+        {
+          "layer": 25,
+          "gap": null
+        },
+        {
+          "layer": 26,
+          "gap": null
+        },
+        {
+          "layer": 27,
+          "gap": -0.0895
+        },
+        {
+          "layer": 28,
+          "gap": -0.1123
+        },
+        {
+          "layer": 29,
+          "gap": 0.0518
+        },
+        {
+          "layer": 30,
+          "gap": 0.0331
+        },
+        {
+          "layer": 31,
+          "gap": 0.2135
+        },
+        {
+          "layer": 32,
+          "gap": 0.4103
+        },
+        {
+          "layer": 33,
+          "gap": 0.1989
+        },
+        {
+          "layer": 34,
+          "gap": null
+        },
+        {
+          "layer": 35,
+          "gap": null
+        }
+      ],
+      "first_divergence_layer": 32,
+      "final_gap": null,
+      "max_abs_gap": 0.4103,
+      "layers_informative": 7,
+      "layers_measured": 36
+    },
+    {
+      "index": 6,
+      "prompts": {
+        "clinical": "I've been up all night with heartburn again, so first thing this morning I chewed a",
+        "patient": "I've been up all night with my gut on fire again, so first thing this morning I chewed a"
+      },
+      "curves": {
+        "clinical": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u9928"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0019,
+            "top": "\u9928"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.002,
+            "top": "\u9928"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0014,
+            "top": "aten"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.003,
+            "top": "\u7684\u6709\u6548"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "+="
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u0431\u043e\u043b"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "ifen"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0084,
+            "top": "-piece"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0019,
+            "top": "ument"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0143,
+            "top": "illo"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0258,
+            "top": "illo"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.022,
+            "top": "uated"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.005,
+            "top": "bare"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0132,
+            "top": "whole"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.009,
+            "top": "\uff31"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0265,
+            "top": "dos"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0164,
+            "top": "whole"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0404,
+            "top": "whole"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0268,
+            "top": "whole"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0418,
+            "top": "whole"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0718,
+            "top": "bunch"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0777,
+            "top": "bunch"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0527,
+            "top": "few"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.0294,
+            "top": "few"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.0089,
+            "top": "few"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.028,
+            "top": "whole"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 1.0015,
+            "coverage": 0.4878,
+            "top": "pills"
+          },
+          {
+            "layer": 28,
+            "expected_tier": null,
+            "coverage": 0.0813,
+            "top": "few"
+          },
+          {
+            "layer": 29,
+            "expected_tier": null,
+            "coverage": 0.2651,
+            "top": "tablet"
+          },
+          {
+            "layer": 30,
+            "expected_tier": null,
+            "coverage": 0.1412,
+            "top": "whole"
+          },
+          {
+            "layer": 31,
+            "expected_tier": null,
+            "coverage": 0.123,
+            "top": "whole"
+          },
+          {
+            "layer": 32,
+            "expected_tier": null,
+            "coverage": 0.0786,
+            "top": "whole"
+          },
+          {
+            "layer": 33,
+            "expected_tier": null,
+            "coverage": 0.1462,
+            "top": "piece"
+          },
+          {
+            "layer": 34,
+            "expected_tier": null,
+            "coverage": 0.0377,
+            "top": "couple"
+          },
+          {
+            "layer": 35,
+            "expected_tier": null,
+            "coverage": 0.0735,
+            "top": "T"
+          }
+        ],
+        "patient": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u9928"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0025,
+            "top": "\u9928"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u9928"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "aten"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0025,
+            "top": "\u7684\u6709\u6548"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "+="
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "lessly"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "ifen"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0023,
+            "top": "-piece"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "-piece"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0037,
+            "top": "\u9999"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0056,
+            "top": "illo"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0139,
+            "top": "APA"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0039,
+            "top": "bare"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0097,
+            "top": "whole"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0049,
+            "top": "whole"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0187,
+            "top": "whole"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0117,
+            "top": "whole"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0367,
+            "top": "whole"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0358,
+            "top": "fresh"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0712,
+            "top": "whole"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.1055,
+            "top": "bunch"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0525,
+            "top": "fresh"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0277,
+            "top": "few"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.0135,
+            "top": "few"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.0021,
+            "top": "few"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.0092,
+            "top": "few"
+          },
+          {
+            "layer": 27,
+            "expected_tier": null,
+            "coverage": 0.042,
+            "top": "whole"
+          },
+          {
+            "layer": 28,
+            "expected_tier": null,
+            "coverage": 0.0105,
+            "top": "few"
+          },
+          {
+            "layer": 29,
+            "expected_tier": null,
+            "coverage": 0.0191,
+            "top": "piece"
+          },
+          {
+            "layer": 30,
+            "expected_tier": null,
+            "coverage": 0.0133,
+            "top": "whole"
+          },
+          {
+            "layer": 31,
+            "expected_tier": null,
+            "coverage": 0.006,
+            "top": "piece"
+          },
+          {
+            "layer": 32,
+            "expected_tier": null,
+            "coverage": 0.0015,
+            "top": "piece"
+          },
+          {
+            "layer": 33,
+            "expected_tier": null,
+            "coverage": 0.0025,
+            "top": "piece"
+          },
+          {
+            "layer": 34,
+            "expected_tier": null,
+            "coverage": 0.0101,
+            "top": "piece"
+          },
+          {
+            "layer": 35,
+            "expected_tier": null,
+            "coverage": 0.0939,
+            "top": "whole"
+          }
+        ]
+      },
+      "gap": [
+        {
+          "layer": 0,
+          "gap": null
+        },
+        {
+          "layer": 1,
+          "gap": null
+        },
+        {
+          "layer": 2,
+          "gap": null
+        },
+        {
+          "layer": 3,
+          "gap": null
+        },
+        {
+          "layer": 4,
+          "gap": null
+        },
+        {
+          "layer": 5,
+          "gap": null
+        },
+        {
+          "layer": 6,
+          "gap": null
+        },
+        {
+          "layer": 7,
+          "gap": null
+        },
+        {
+          "layer": 8,
+          "gap": null
+        },
+        {
+          "layer": 9,
+          "gap": null
+        },
+        {
+          "layer": 10,
+          "gap": null
+        },
+        {
+          "layer": 11,
+          "gap": null
+        },
+        {
+          "layer": 12,
+          "gap": null
+        },
+        {
+          "layer": 13,
+          "gap": null
+        },
+        {
+          "layer": 14,
+          "gap": null
+        },
+        {
+          "layer": 15,
+          "gap": null
+        },
+        {
+          "layer": 16,
+          "gap": null
+        },
+        {
+          "layer": 17,
+          "gap": null
+        },
+        {
+          "layer": 18,
+          "gap": null
+        },
+        {
+          "layer": 19,
+          "gap": null
+        },
+        {
+          "layer": 20,
+          "gap": null
+        },
+        {
+          "layer": 21,
+          "gap": null
+        },
+        {
+          "layer": 22,
+          "gap": null
+        },
+        {
+          "layer": 23,
+          "gap": null
+        },
+        {
+          "layer": 24,
+          "gap": null
+        },
+        {
+          "layer": 25,
+          "gap": null
+        },
+        {
+          "layer": 26,
+          "gap": null
+        },
+        {
+          "layer": 27,
+          "gap": null
+        },
+        {
+          "layer": 28,
+          "gap": null
+        },
+        {
+          "layer": 29,
+          "gap": null
+        },
+        {
+          "layer": 30,
+          "gap": null
+        },
+        {
+          "layer": 31,
+          "gap": null
+        },
+        {
+          "layer": 32,
+          "gap": null
+        },
+        {
+          "layer": 33,
+          "gap": null
+        },
+        {
+          "layer": 34,
+          "gap": null
+        },
+        {
+          "layer": 35,
+          "gap": null
+        }
+      ],
+      "first_divergence_layer": null,
+      "final_gap": null,
+      "max_abs_gap": null,
+      "layers_informative": 0,
+      "layers_measured": 36
+    },
+    {
+      "index": 7,
+      "prompts": {
+        "clinical": "My migraine hit me at the office, so I dimmed the screen and swallowed a",
+        "patient": "That thumping behind my eyes hit me at the office, so I dimmed the screen and swallowed a"
+      },
+      "curves": {
+        "clinical": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u9928"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "<>(\""
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "iken"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0023,
+            "top": "\u5bf9\u5b66\u751f"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0045,
+            "top": "lers"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0024,
+            "top": "\u541e"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u6bd2"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0252,
+            "top": "piece"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0042,
+            "top": "piece"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0065,
+            "top": "\u5e76\u5728"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0501,
+            "top": "\u5e76\u5728"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0255,
+            "top": "\u4e00\u628a"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0393,
+            "top": "reatment"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.041,
+            "top": "\u5099"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.1568,
+            "top": "brand"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0365,
+            "top": "\u0e35\u0e22\u0e21"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0702,
+            "top": "prepared"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0283,
+            "top": "quickly"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0807,
+            "top": "quickly"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0606,
+            "top": "quickly"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.1332,
+            "top": "quick"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.2852,
+            "top": "medication"
+          },
+          {
+            "layer": 24,
+            "expected_tier": 1.0952,
+            "coverage": 0.553,
+            "top": "medication"
+          },
+          {
+            "layer": 25,
+            "expected_tier": 1.309,
+            "coverage": 0.3554,
+            "top": "few"
+          },
+          {
+            "layer": 26,
+            "expected_tier": 1.0401,
+            "coverage": 0.7793,
+            "top": "medication"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 1.0003,
+            "coverage": 0.9873,
+            "top": "medication"
+          },
+          {
+            "layer": 28,
+            "expected_tier": 1.0017,
+            "coverage": 0.901,
+            "top": "medication"
+          },
+          {
+            "layer": 29,
+            "expected_tier": null,
+            "coverage": 0.0966,
+            "top": "headache"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 1.0934,
+            "coverage": 0.5839,
+            "top": "medication"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 1.0824,
+            "coverage": 0.6763,
+            "top": "medication"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 1.1283,
+            "coverage": 0.4294,
+            "top": "headache"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 1.0299,
+            "coverage": 0.3368,
+            "top": "few"
+          },
+          {
+            "layer": 34,
+            "expected_tier": null,
+            "coverage": 0.1512,
+            "top": "couple"
+          },
+          {
+            "layer": 35,
+            "expected_tier": null,
+            "coverage": 0.2782,
+            "top": "couple"
+          }
+        ],
+        "patient": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u043f\u043e\u0442\u043e\u043c"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0024,
+            "top": "<>(\""
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "iken"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0026,
+            "top": "qua"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "lers"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u541e"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u5321"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0126,
+            "top": "uated"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "piece"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "truth"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0402,
+            "top": "powerful"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0293,
+            "top": "powerful"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0184,
+            "top": "\u7eaa"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0356,
+            "top": "powerful"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0368,
+            "top": "r\u00e1n"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0351,
+            "top": "modest"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0786,
+            "top": "quickly"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0423,
+            "top": "quick"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0573,
+            "top": "quick"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0484,
+            "top": "quick"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0678,
+            "top": "quick"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0944,
+            "top": "fresh"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.1928,
+            "top": "few"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.0911,
+            "top": "few"
+          },
+          {
+            "layer": 26,
+            "expected_tier": 0.8019,
+            "coverage": 0.3374,
+            "top": "few"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 0.999,
+            "coverage": 0.922,
+            "top": "medication"
+          },
+          {
+            "layer": 28,
+            "expected_tier": 0.9969,
+            "coverage": 0.7344,
+            "top": "pills"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 0.9996,
+            "coverage": 0.4613,
+            "top": "headache"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 1.0198,
+            "coverage": 0.9527,
+            "top": "medication"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 1.0292,
+            "coverage": 0.8711,
+            "top": "pill"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 1.0306,
+            "coverage": 0.8099,
+            "top": "pill"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 1.007,
+            "coverage": 0.7174,
+            "top": "pill"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 0.9978,
+            "coverage": 0.3553,
+            "top": "couple"
+          },
+          {
+            "layer": 35,
+            "expected_tier": 0.9977,
+            "coverage": 0.6587,
+            "top": "pill"
+          }
+        ]
+      },
+      "gap": [
+        {
+          "layer": 0,
+          "gap": null
+        },
+        {
+          "layer": 1,
+          "gap": null
+        },
+        {
+          "layer": 2,
+          "gap": null
+        },
+        {
+          "layer": 3,
+          "gap": null
+        },
+        {
+          "layer": 4,
+          "gap": null
+        },
+        {
+          "layer": 5,
+          "gap": null
+        },
+        {
+          "layer": 6,
+          "gap": null
+        },
+        {
+          "layer": 7,
+          "gap": null
+        },
+        {
+          "layer": 8,
+          "gap": null
+        },
+        {
+          "layer": 9,
+          "gap": null
+        },
+        {
+          "layer": 10,
+          "gap": null
+        },
+        {
+          "layer": 11,
+          "gap": null
+        },
+        {
+          "layer": 12,
+          "gap": null
+        },
+        {
+          "layer": 13,
+          "gap": null
+        },
+        {
+          "layer": 14,
+          "gap": null
+        },
+        {
+          "layer": 15,
+          "gap": null
+        },
+        {
+          "layer": 16,
+          "gap": null
+        },
+        {
+          "layer": 17,
+          "gap": null
+        },
+        {
+          "layer": 18,
+          "gap": null
+        },
+        {
+          "layer": 19,
+          "gap": null
+        },
+        {
+          "layer": 20,
+          "gap": null
+        },
+        {
+          "layer": 21,
+          "gap": null
+        },
+        {
+          "layer": 22,
+          "gap": null
+        },
+        {
+          "layer": 23,
+          "gap": null
+        },
+        {
+          "layer": 24,
+          "gap": null
+        },
+        {
+          "layer": 25,
+          "gap": null
+        },
+        {
+          "layer": 26,
+          "gap": -0.2382
+        },
+        {
+          "layer": 27,
+          "gap": -0.0013
+        },
+        {
+          "layer": 28,
+          "gap": -0.0048
+        },
+        {
+          "layer": 29,
+          "gap": null
+        },
+        {
+          "layer": 30,
+          "gap": -0.0736
+        },
+        {
+          "layer": 31,
+          "gap": -0.0532
+        },
+        {
+          "layer": 32,
+          "gap": -0.0977
+        },
+        {
+          "layer": 33,
+          "gap": -0.0229
+        },
+        {
+          "layer": 34,
+          "gap": null
+        },
+        {
+          "layer": 35,
+          "gap": null
+        }
+      ],
+      "first_divergence_layer": null,
+      "final_gap": null,
+      "max_abs_gap": 0.2382,
+      "layers_informative": 7,
+      "layers_measured": 36
+    },
+    {
+      "index": 8,
+      "prompts": {
+        "clinical": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+        "patient": "She just can't switch her brain off at bedtime lately, so before turning in she takes a"
+      },
+      "curves": {
+        "clinical": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0033,
+            "top": "\u043f\u043e\u0442\u043e\u043c"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0015,
+            "top": "emie"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0049,
+            "top": "Additionally"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0061,
+            "top": "\u8b77"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0018,
+            "top": "\u8f14"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0018,
+            "top": "\u5bf9\u5b66\u751f"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0206,
+            "top": "-taking"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0544,
+            "top": "\u4f11\u606f"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0384,
+            "top": "\u5026"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0311,
+            "top": "\u7720"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.06,
+            "top": "\u7720"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.013,
+            "top": "bedtime"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0056,
+            "top": "\u1ed4"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0292,
+            "top": "antes"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.022,
+            "top": "slowly"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0258,
+            "top": "slowly"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0269,
+            "top": "prepar"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0342,
+            "top": "slowly"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0384,
+            "top": "either"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0378,
+            "top": "certain"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.061,
+            "top": "modest"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.1786,
+            "top": "certain"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.1245,
+            "top": "small"
+          },
+          {
+            "layer": 25,
+            "expected_tier": 0.9983,
+            "coverage": 0.4318,
+            "top": "sleep"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.0835,
+            "top": "relaxing"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 1.1247,
+            "coverage": 0.4956,
+            "top": "dose"
+          },
+          {
+            "layer": 28,
+            "expected_tier": 1.0162,
+            "coverage": 0.4285,
+            "top": "dose"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 1.0,
+            "coverage": 0.9791,
+            "top": "dose"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 1.0033,
+            "coverage": 0.9491,
+            "top": "dose"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 0.9984,
+            "coverage": 0.9307,
+            "top": "dose"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 0.9979,
+            "coverage": 0.789,
+            "top": "dose"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 0.9967,
+            "coverage": 0.3476,
+            "top": "warm"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 0.9383,
+            "coverage": 0.3579,
+            "top": "dose"
+          },
+          {
+            "layer": 35,
+            "expected_tier": null,
+            "coverage": 0.2256,
+            "top": null
+          }
+        ],
+        "patient": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0032,
+            "top": "\u043f\u043e\u0442\u043e\u043c"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0019,
+            "top": "emie"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u044e\u0442"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0026,
+            "top": "Additionally"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0074,
+            "top": "\u8b77"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0021,
+            "top": "\u8f14"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0025,
+            "top": "\u5bf9\u5b66\u751f"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0231,
+            "top": "-taking"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0443,
+            "top": "\u4f11\u606f"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0492,
+            "top": "\u5026"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0869,
+            "top": "\u7720"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.1073,
+            "top": "bedtime"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.003,
+            "top": "Before"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0023,
+            "top": "\u1ee7"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0087,
+            "top": "isha"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0153,
+            "top": "relaxation"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0102,
+            "top": "relaxation"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0065,
+            "top": "slowly"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0051,
+            "top": "slowly"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0109,
+            "top": "\u0e40\u0e15"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0087,
+            "top": "deliberate"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.017,
+            "top": "deliberate"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0085,
+            "top": "small"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.0037,
+            "top": "small"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.0011,
+            "top": "small"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.0088,
+            "top": "small"
+          },
+          {
+            "layer": 27,
+            "expected_tier": null,
+            "coverage": 0.0271,
+            "top": "small"
+          },
+          {
+            "layer": 28,
+            "expected_tier": null,
+            "coverage": 0.0453,
+            "top": "small"
+          },
+          {
+            "layer": 29,
+            "expected_tier": null,
+            "coverage": 0.1422,
+            "top": "small"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 0.1311,
+            "coverage": 0.4163,
+            "top": "walk"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 0.1461,
+            "coverage": 0.363,
+            "top": "walk"
+          },
+          {
+            "layer": 32,
+            "expected_tier": null,
+            "coverage": 0.0438,
+            "top": "few"
+          },
+          {
+            "layer": 33,
+            "expected_tier": null,
+            "coverage": 0.0875,
+            "top": "few"
+          },
+          {
+            "layer": 34,
+            "expected_tier": null,
+            "coverage": 0.2173,
+            "top": "few"
+          },
+          {
+            "layer": 35,
+            "expected_tier": null,
+            "coverage": 0.1033,
+            "top": "few"
+          }
+        ]
+      },
+      "gap": [
+        {
+          "layer": 0,
+          "gap": null
+        },
+        {
+          "layer": 1,
+          "gap": null
+        },
+        {
+          "layer": 2,
+          "gap": null
+        },
+        {
+          "layer": 3,
+          "gap": null
+        },
+        {
+          "layer": 4,
+          "gap": null
+        },
+        {
+          "layer": 5,
+          "gap": null
+        },
+        {
+          "layer": 6,
+          "gap": null
+        },
+        {
+          "layer": 7,
+          "gap": null
+        },
+        {
+          "layer": 8,
+          "gap": null
+        },
+        {
+          "layer": 9,
+          "gap": null
+        },
+        {
+          "layer": 10,
+          "gap": null
+        },
+        {
+          "layer": 11,
+          "gap": null
+        },
+        {
+          "layer": 12,
+          "gap": null
+        },
+        {
+          "layer": 13,
+          "gap": null
+        },
+        {
+          "layer": 14,
+          "gap": null
+        },
+        {
+          "layer": 15,
+          "gap": null
+        },
+        {
+          "layer": 16,
+          "gap": null
+        },
+        {
+          "layer": 17,
+          "gap": null
+        },
+        {
+          "layer": 18,
+          "gap": null
+        },
+        {
+          "layer": 19,
+          "gap": null
+        },
+        {
+          "layer": 20,
+          "gap": null
+        },
+        {
+          "layer": 21,
+          "gap": null
+        },
+        {
+          "layer": 22,
+          "gap": null
+        },
+        {
+          "layer": 23,
+          "gap": null
+        },
+        {
+          "layer": 24,
+          "gap": null
+        },
+        {
+          "layer": 25,
+          "gap": null
+        },
+        {
+          "layer": 26,
+          "gap": null
+        },
+        {
+          "layer": 27,
+          "gap": null
+        },
+        {
+          "layer": 28,
+          "gap": null
+        },
+        {
+          "layer": 29,
+          "gap": null
+        },
+        {
+          "layer": 30,
+          "gap": -0.8722
+        },
+        {
+          "layer": 31,
+          "gap": -0.8523
+        },
+        {
+          "layer": 32,
+          "gap": null
+        },
+        {
+          "layer": 33,
+          "gap": null
+        },
+        {
+          "layer": 34,
+          "gap": null
+        },
+        {
+          "layer": 35,
+          "gap": null
+        }
+      ],
+      "first_divergence_layer": 30,
+      "final_gap": null,
+      "max_abs_gap": 0.8722,
+      "layers_informative": 2,
+      "layers_measured": 36
+    },
+    {
+      "index": 9,
+      "prompts": {
+        "clinical": "He gets allergic rhinitis every time the grass gets cut, so before mowing he sprays some",
+        "patient": "He's been sniffly and congested every time the grass gets cut, so before mowing he sprays some"
+      },
+      "curves": {
+        "clinical": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0001,
+            "top": "Some"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u4e9b"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0016,
+            "top": "aines"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0042,
+            "top": "aines"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u7ba1\u7406\u548c"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "how"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "how"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0048,
+            "top": "how"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0012,
+            "top": "how"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "etchup"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0008,
+            "top": "\u9322"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.004,
+            "top": "etchup"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0016,
+            "top": "\u9322"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0025,
+            "top": "onto"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0058,
+            "top": "\u0441\u0435\u0431\u0435"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0027,
+            "top": "extra"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0069,
+            "top": "extra"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0023,
+            "top": "extra"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0099,
+            "top": "extra"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0514,
+            "top": "amount"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0452,
+            "top": "additional"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0302,
+            "top": "extra"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.1084,
+            "top": "place"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0278,
+            "top": "place"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.1222,
+            "top": "place"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.1695,
+            "top": "place"
+          },
+          {
+            "layer": 26,
+            "expected_tier": 0.9797,
+            "coverage": 0.5917,
+            "top": "spray"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 0.93,
+            "coverage": 0.3516,
+            "top": "spray"
+          },
+          {
+            "layer": 28,
+            "expected_tier": 1.8071,
+            "coverage": 0.3191,
+            "top": "chemicals"
+          },
+          {
+            "layer": 29,
+            "expected_tier": null,
+            "coverage": 0.1464,
+            "top": "chemicals"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 0.9972,
+            "coverage": 0.4607,
+            "top": "spray"
+          },
+          {
+            "layer": 31,
+            "expected_tier": null,
+            "coverage": 0.1315,
+            "top": "insect"
+          },
+          {
+            "layer": 32,
+            "expected_tier": null,
+            "coverage": 0.0329,
+            "top": "insect"
+          },
+          {
+            "layer": 33,
+            "expected_tier": null,
+            "coverage": 0.012,
+            "top": "insect"
+          },
+          {
+            "layer": 34,
+            "expected_tier": null,
+            "coverage": 0.0784,
+            "top": "insect"
+          },
+          {
+            "layer": 35,
+            "expected_tier": null,
+            "coverage": 0.0473,
+            "top": "insect"
+          }
+        ],
+        "patient": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "Some"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u4e9b"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0011,
+            "top": "aines"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0015,
+            "top": "aines"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u7ba1\u7406\u548c"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0084,
+            "top": "ones"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0075,
+            "top": "how"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0217,
+            "top": "how"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "how"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0021,
+            "top": "etchup"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0013,
+            "top": "\u9322"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "etchup"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0061,
+            "top": "\u9322"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0026,
+            "top": "\ufffd"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0045,
+            "top": "beforehand"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0034,
+            "top": "extra"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0165,
+            "top": "ago"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0088,
+            "top": "extra"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0107,
+            "top": "extra"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0204,
+            "top": "protective"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0255,
+            "top": "extra"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0222,
+            "top": "extra"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0117,
+            "top": "protective"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0153,
+            "top": "protective"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.0783,
+            "top": "protective"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.145,
+            "top": "place"
+          },
+          {
+            "layer": 26,
+            "expected_tier": 0.9802,
+            "coverage": 0.6221,
+            "top": "spray"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 0.9196,
+            "coverage": 0.5573,
+            "top": "spray"
+          },
+          {
+            "layer": 28,
+            "expected_tier": null,
+            "coverage": 0.2749,
+            "top": "air"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 0.9958,
+            "coverage": 0.5856,
+            "top": "spray"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 0.9982,
+            "coverage": 0.8345,
+            "top": "spray"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 0.9966,
+            "coverage": 0.5373,
+            "top": "spray"
+          },
+          {
+            "layer": 32,
+            "expected_tier": null,
+            "coverage": 0.0829,
+            "top": "insect"
+          },
+          {
+            "layer": 33,
+            "expected_tier": null,
+            "coverage": 0.2667,
+            "top": "insect"
+          },
+          {
+            "layer": 34,
+            "expected_tier": null,
+            "coverage": 0.2708,
+            "top": "ant"
+          },
+          {
+            "layer": 35,
+            "expected_tier": null,
+            "coverage": 0.1782,
+            "top": "of"
+          }
+        ]
+      },
+      "gap": [
+        {
+          "layer": 0,
+          "gap": null
+        },
+        {
+          "layer": 1,
+          "gap": null
+        },
+        {
+          "layer": 2,
+          "gap": null
+        },
+        {
+          "layer": 3,
+          "gap": null
+        },
+        {
+          "layer": 4,
+          "gap": null
+        },
+        {
+          "layer": 5,
+          "gap": null
+        },
+        {
+          "layer": 6,
+          "gap": null
+        },
+        {
+          "layer": 7,
+          "gap": null
+        },
+        {
+          "layer": 8,
+          "gap": null
+        },
+        {
+          "layer": 9,
+          "gap": null
+        },
+        {
+          "layer": 10,
+          "gap": null
+        },
+        {
+          "layer": 11,
+          "gap": null
+        },
+        {
+          "layer": 12,
+          "gap": null
+        },
+        {
+          "layer": 13,
+          "gap": null
+        },
+        {
+          "layer": 14,
+          "gap": null
+        },
+        {
+          "layer": 15,
+          "gap": null
+        },
+        {
+          "layer": 16,
+          "gap": null
+        },
+        {
+          "layer": 17,
+          "gap": null
+        },
+        {
+          "layer": 18,
+          "gap": null
+        },
+        {
+          "layer": 19,
+          "gap": null
+        },
+        {
+          "layer": 20,
+          "gap": null
+        },
+        {
+          "layer": 21,
+          "gap": null
+        },
+        {
+          "layer": 22,
+          "gap": null
+        },
+        {
+          "layer": 23,
+          "gap": null
+        },
+        {
+          "layer": 24,
+          "gap": null
+        },
+        {
+          "layer": 25,
+          "gap": null
+        },
+        {
+          "layer": 26,
+          "gap": 0.0005
+        },
+        {
+          "layer": 27,
+          "gap": -0.0104
+        },
+        {
+          "layer": 28,
+          "gap": null
+        },
+        {
+          "layer": 29,
+          "gap": null
+        },
+        {
+          "layer": 30,
+          "gap": 0.001
+        },
+        {
+          "layer": 31,
+          "gap": null
+        },
+        {
+          "layer": 32,
+          "gap": null
+        },
+        {
+          "layer": 33,
+          "gap": null
+        },
+        {
+          "layer": 34,
+          "gap": null
+        },
+        {
+          "layer": 35,
+          "gap": null
+        }
+      ],
+      "first_divergence_layer": null,
+      "final_gap": null,
+      "max_abs_gap": 0.0104,
+      "layers_informative": 3,
+      "layers_measured": 36
+    },
+    {
+      "index": 10,
+      "prompts": {
+        "clinical": "I had severe insomnia before the flight, so at the airport shop I bought a",
+        "patient": "I couldn't get a wink of sleep before the flight, so at the airport shop I bought a"
+      },
+      "curves": {
+        "clinical": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u9928"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u9928"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0032,
+            "top": "LOCATION"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u0442\u043e\u043c"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0137,
+            "top": "\u5bf9\u5b66\u751f"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "cors"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0026,
+            "top": "\u5728\u8fd9\u4e2a"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0026,
+            "top": "\u8ba9\u5b66\u751f"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0042,
+            "top": "DW"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0046,
+            "top": "v\u00e9"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0109,
+            "top": "\u25c0"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.119,
+            "top": "sleeping"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.162,
+            "top": "sleeping"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0195,
+            "top": "atori"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0433,
+            "top": "lift"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0227,
+            "top": "lift"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0124,
+            "top": "ibilidad"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0242,
+            "top": "\u4e86\u4e00\u4efd"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0124,
+            "top": "\u4e86\u4e00\u4efd"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0092,
+            "top": "temporary"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0412,
+            "top": "temporary"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0319,
+            "top": "temporary"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0527,
+            "top": "temporary"
+          },
+          {
+            "layer": 23,
+            "expected_tier": 1.0422,
+            "coverage": 0.3777,
+            "top": "sleeping"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.1634,
+            "top": "temporary"
+          },
+          {
+            "layer": 25,
+            "expected_tier": 1.0031,
+            "coverage": 0.8382,
+            "top": "sleeping"
+          },
+          {
+            "layer": 26,
+            "expected_tier": 1.017,
+            "coverage": 0.6264,
+            "top": "sleep"
+          },
+          {
+            "layer": 27,
+            "expected_tier": null,
+            "coverage": 0.2371,
+            "top": "small"
+          },
+          {
+            "layer": 28,
+            "expected_tier": 1.0848,
+            "coverage": 0.5346,
+            "top": "sleep"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 0.9821,
+            "coverage": 0.8672,
+            "top": "sleep"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 0.9992,
+            "coverage": 0.9506,
+            "top": "drug"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 0.9595,
+            "coverage": 0.9585,
+            "top": "drug"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 0.9624,
+            "coverage": 0.9083,
+            "top": "pill"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 0.9771,
+            "coverage": 0.7024,
+            "top": "sleep"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 0.98,
+            "coverage": 0.6891,
+            "top": "sleep"
+          },
+          {
+            "layer": 35,
+            "expected_tier": 0.9205,
+            "coverage": 0.5645,
+            "top": "sleep"
+          }
+        ],
+        "patient": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u043f\u043e\u0442\u043e\u043c"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u9928"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "LOCATION"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u0442\u043e\u043c"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.005,
+            "top": "\u5bf9\u5b66\u751f"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\ufffd\ufffd"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u5728\u8fd9\u4e2a"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u2014a"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u590f"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0019,
+            "top": "v\u00e9"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0106,
+            "top": "v\u00e9"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0152,
+            "top": "jos"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0355,
+            "top": "rels"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0072,
+            "top": "another"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0059,
+            "top": "new"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0091,
+            "top": "cup"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0137,
+            "top": "steen"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0106,
+            "top": "\u2014a"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.063,
+            "top": "warm"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0319,
+            "top": "quickly"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0884,
+            "top": "two"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0211,
+            "top": "quickly"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0261,
+            "top": "quick"
+          },
+          {
+            "layer": 23,
+            "expected_tier": 0.9906,
+            "coverage": 0.5379,
+            "top": "sleeping"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.1471,
+            "top": "small"
+          },
+          {
+            "layer": 25,
+            "expected_tier": 1.0006,
+            "coverage": 0.8664,
+            "top": "sleeping"
+          },
+          {
+            "layer": 26,
+            "expected_tier": 1.0034,
+            "coverage": 0.4311,
+            "top": "sleep"
+          },
+          {
+            "layer": 27,
+            "expected_tier": null,
+            "coverage": 0.1121,
+            "top": "small"
+          },
+          {
+            "layer": 28,
+            "expected_tier": null,
+            "coverage": 0.1247,
+            "top": "small"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 0.3376,
+            "coverage": 0.3188,
+            "top": "small"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 0.3215,
+            "coverage": 0.715,
+            "top": "drink"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 0.0086,
+            "coverage": 0.8859,
+            "top": "bottle"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 0.0295,
+            "coverage": 0.8112,
+            "top": "drink"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 0.0832,
+            "coverage": 0.4447,
+            "top": "book"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 0.2006,
+            "coverage": 0.3218,
+            "top": "book"
+          },
+          {
+            "layer": 35,
+            "expected_tier": 0.1389,
+            "coverage": 0.3569,
+            "top": "cup"
+          }
+        ]
+      },
+      "gap": [
+        {
+          "layer": 0,
+          "gap": null
+        },
+        {
+          "layer": 1,
+          "gap": null
+        },
+        {
+          "layer": 2,
+          "gap": null
+        },
+        {
+          "layer": 3,
+          "gap": null
+        },
+        {
+          "layer": 4,
+          "gap": null
+        },
+        {
+          "layer": 5,
+          "gap": null
+        },
+        {
+          "layer": 6,
+          "gap": null
+        },
+        {
+          "layer": 7,
+          "gap": null
+        },
+        {
+          "layer": 8,
+          "gap": null
+        },
+        {
+          "layer": 9,
+          "gap": null
+        },
+        {
+          "layer": 10,
+          "gap": null
+        },
+        {
+          "layer": 11,
+          "gap": null
+        },
+        {
+          "layer": 12,
+          "gap": null
+        },
+        {
+          "layer": 13,
+          "gap": null
+        },
+        {
+          "layer": 14,
+          "gap": null
+        },
+        {
+          "layer": 15,
+          "gap": null
+        },
+        {
+          "layer": 16,
+          "gap": null
+        },
+        {
+          "layer": 17,
+          "gap": null
+        },
+        {
+          "layer": 18,
+          "gap": null
+        },
+        {
+          "layer": 19,
+          "gap": null
+        },
+        {
+          "layer": 20,
+          "gap": null
+        },
+        {
+          "layer": 21,
+          "gap": null
+        },
+        {
+          "layer": 22,
+          "gap": null
+        },
+        {
+          "layer": 23,
+          "gap": -0.0516
+        },
+        {
+          "layer": 24,
+          "gap": null
+        },
+        {
+          "layer": 25,
+          "gap": -0.0025
+        },
+        {
+          "layer": 26,
+          "gap": -0.0136
+        },
+        {
+          "layer": 27,
+          "gap": null
+        },
+        {
+          "layer": 28,
+          "gap": null
+        },
+        {
+          "layer": 29,
+          "gap": -0.6445
+        },
+        {
+          "layer": 30,
+          "gap": -0.6777
+        },
+        {
+          "layer": 31,
+          "gap": -0.9509
+        },
+        {
+          "layer": 32,
+          "gap": -0.9329
+        },
+        {
+          "layer": 33,
+          "gap": -0.8939
+        },
+        {
+          "layer": 34,
+          "gap": -0.7794
+        },
+        {
+          "layer": 35,
+          "gap": -0.7816
+        }
+      ],
+      "first_divergence_layer": 29,
+      "final_gap": -0.7816,
+      "max_abs_gap": 0.9509,
+      "layers_informative": 10,
+      "layers_measured": 36
+    },
+    {
+      "index": 11,
+      "prompts": {
+        "clinical": "After that greasy takeaway my acid reflux flared again, so I rummaged in the cupboard for an",
+        "patient": "After that greasy takeaway my gut was burning again, so I rummaged in the cupboard for an"
+      },
+      "curves": {
+        "clinical": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "an"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "<>(\""
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "<>(\""
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "()['"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "));"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "));"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "'E"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "'E"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0015,
+            "top": "duk"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "traditional"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0047,
+            "top": "encore"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.005,
+            "top": "f\u0131rsat"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0022,
+            "top": "alternatives"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0083,
+            "top": "quick"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0086,
+            "top": "quick"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0046,
+            "top": "encore"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0039,
+            "top": "zept"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0069,
+            "top": "quick"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0086,
+            "top": "quick"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0046,
+            "top": "quick"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0156,
+            "top": "quick"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0075,
+            "top": "quick"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0224,
+            "top": "quick"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0106,
+            "top": "quick"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.0488,
+            "top": "home"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.0758,
+            "top": "alternative"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.1719,
+            "top": "alternative"
+          },
+          {
+            "layer": 27,
+            "expected_tier": null,
+            "coverage": 0.096,
+            "top": "acid"
+          },
+          {
+            "layer": 28,
+            "expected_tier": null,
+            "coverage": 0.0125,
+            "top": "alternative"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 1.0408,
+            "coverage": 0.4482,
+            "top": "alkal"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 1.0204,
+            "coverage": 0.6018,
+            "top": "ant"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 1.0056,
+            "coverage": 0.7084,
+            "top": "ant"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 1.001,
+            "coverage": 0.9568,
+            "top": "ant"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 1.0003,
+            "coverage": 0.983,
+            "top": "over"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 1.0017,
+            "coverage": 0.9247,
+            "top": "ant"
+          },
+          {
+            "layer": 35,
+            "expected_tier": 1.0012,
+            "coverage": 0.9793,
+            "top": "over"
+          }
+        ],
+        "patient": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "an"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "<>(\""
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "<>(\""
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "<Texture"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "Matchers"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u6a35"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "'E"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u590f"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.003,
+            "top": "\u2014an"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "traditional"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "iated"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "f\u0131rsat"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0077,
+            "top": "teenth"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0113,
+            "top": "quick"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0091,
+            "top": "quick"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.013,
+            "top": "\u9eb9"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0069,
+            "top": "quick"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0058,
+            "top": "quick"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0052,
+            "top": "quick"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0039,
+            "top": "quick"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0053,
+            "top": "quick"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0016,
+            "top": "quick"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0037,
+            "top": "quick"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0053,
+            "top": "quick"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.0434,
+            "top": "fresh"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.1218,
+            "top": "suitable"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.0937,
+            "top": "quick"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 1.9486,
+            "coverage": 0.3322,
+            "top": "appropriate"
+          },
+          {
+            "layer": 28,
+            "expected_tier": null,
+            "coverage": 0.0727,
+            "top": "alternative"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 1.2375,
+            "coverage": 0.3407,
+            "top": "anti"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 1.182,
+            "coverage": 0.4815,
+            "top": "easy"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 1.075,
+            "coverage": 0.5978,
+            "top": "anti"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 1.0487,
+            "coverage": 0.7042,
+            "top": "ant"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 1.0537,
+            "coverage": 0.7848,
+            "top": "over"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 1.0824,
+            "coverage": 0.6979,
+            "top": "anti"
+          },
+          {
+            "layer": 35,
+            "expected_tier": 1.0242,
+            "coverage": 0.8913,
+            "top": "over"
+          }
+        ]
+      },
+      "gap": [
+        {
+          "layer": 0,
+          "gap": null
+        },
+        {
+          "layer": 1,
+          "gap": null
+        },
+        {
+          "layer": 2,
+          "gap": null
+        },
+        {
+          "layer": 3,
+          "gap": null
+        },
+        {
+          "layer": 4,
+          "gap": null
+        },
+        {
+          "layer": 5,
+          "gap": null
+        },
+        {
+          "layer": 6,
+          "gap": null
+        },
+        {
+          "layer": 7,
+          "gap": null
+        },
+        {
+          "layer": 8,
+          "gap": null
+        },
+        {
+          "layer": 9,
+          "gap": null
+        },
+        {
+          "layer": 10,
+          "gap": null
+        },
+        {
+          "layer": 11,
+          "gap": null
+        },
+        {
+          "layer": 12,
+          "gap": null
+        },
+        {
+          "layer": 13,
+          "gap": null
+        },
+        {
+          "layer": 14,
+          "gap": null
+        },
+        {
+          "layer": 15,
+          "gap": null
+        },
+        {
+          "layer": 16,
+          "gap": null
+        },
+        {
+          "layer": 17,
+          "gap": null
+        },
+        {
+          "layer": 18,
+          "gap": null
+        },
+        {
+          "layer": 19,
+          "gap": null
+        },
+        {
+          "layer": 20,
+          "gap": null
+        },
+        {
+          "layer": 21,
+          "gap": null
+        },
+        {
+          "layer": 22,
+          "gap": null
+        },
+        {
+          "layer": 23,
+          "gap": null
+        },
+        {
+          "layer": 24,
+          "gap": null
+        },
+        {
+          "layer": 25,
+          "gap": null
+        },
+        {
+          "layer": 26,
+          "gap": null
+        },
+        {
+          "layer": 27,
+          "gap": null
+        },
+        {
+          "layer": 28,
+          "gap": null
+        },
+        {
+          "layer": 29,
+          "gap": 0.1967
+        },
+        {
+          "layer": 30,
+          "gap": 0.1616
+        },
+        {
+          "layer": 31,
+          "gap": 0.0694
+        },
+        {
+          "layer": 32,
+          "gap": 0.0477
+        },
+        {
+          "layer": 33,
+          "gap": 0.0534
+        },
+        {
+          "layer": 34,
+          "gap": 0.0807
+        },
+        {
+          "layer": 35,
+          "gap": 0.023
+        }
+      ],
+      "first_divergence_layer": null,
+      "final_gap": 0.023,
+      "max_abs_gap": 0.1967,
+      "layers_informative": 7,
+      "layers_measured": 36
+    },
+    {
+      "index": 12,
+      "prompts": {
+        "clinical": "That migraine came on right before the presentation, so I quickly took a",
+        "patient": "That splitting headache came on right before the presentation, so I quickly took a"
+      },
+      "curves": {
+        "clinical": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0036,
+            "top": "ilyn"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u9986"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u7d0b"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0031,
+            "top": "iken"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0021,
+            "top": "perature"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "'=>['"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u5bf9\u5b66\u751f"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.002,
+            "top": "qa"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0021,
+            "top": "ride"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0085,
+            "top": "\u7247\u523b"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u0441\u0442\u0432"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0073,
+            "top": "\u0441\u0442\u0432"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.01,
+            "top": "/color"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0023,
+            "top": "quick"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0026,
+            "top": "quickly"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0063,
+            "top": "*)__"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0127,
+            "top": "re"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.015,
+            "top": "breath"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0286,
+            "top": "breath"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0239,
+            "top": "breath"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0298,
+            "top": "breath"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0351,
+            "top": "quickly"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.1391,
+            "top": "brief"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.2408,
+            "top": "rest"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.2545,
+            "top": "rest"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.2016,
+            "top": "quiet"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 0.8985,
+            "coverage": 0.5025,
+            "top": "medication"
+          },
+          {
+            "layer": 28,
+            "expected_tier": 0.0027,
+            "coverage": 0.7868,
+            "top": "rest"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 0.248,
+            "coverage": 0.5116,
+            "top": "rest"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 0.8711,
+            "coverage": 0.8458,
+            "top": "medication"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 0.1147,
+            "coverage": 0.8439,
+            "top": "break"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 0.1229,
+            "coverage": 0.5164,
+            "top": "break"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 0.0329,
+            "coverage": 0.6463,
+            "top": "break"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 0.1087,
+            "coverage": 0.4297,
+            "top": "break"
+          },
+          {
+            "layer": 35,
+            "expected_tier": 0.1024,
+            "coverage": 0.5922,
+            "top": "break"
+          }
+        ],
+        "patient": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0034,
+            "top": "ilyn"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "emie"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u9986"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\"text"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0032,
+            "top": "iken"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "perature"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u7684\u65b9\u5f0f\u6765"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "atz"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.004,
+            "top": "qa"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0029,
+            "top": "ride"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0096,
+            "top": "prise"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0034,
+            "top": "\u7247\u523b"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0015,
+            "top": "shade"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0025,
+            "top": "zes"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "zes"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "quickly"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0034,
+            "top": "zes"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0046,
+            "top": "re"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0044,
+            "top": "breath"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0104,
+            "top": "breath"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0191,
+            "top": "breath"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0096,
+            "top": "quick"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0119,
+            "top": "quick"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.0552,
+            "top": "brief"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.1842,
+            "top": "rest"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.188,
+            "top": "small"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.147,
+            "top": "few"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 0.7799,
+            "coverage": 0.388,
+            "top": "medication"
+          },
+          {
+            "layer": 28,
+            "expected_tier": 0.0895,
+            "coverage": 0.5619,
+            "top": "rest"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 0.6769,
+            "coverage": 0.3728,
+            "top": "medication"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 0.9357,
+            "coverage": 0.8628,
+            "top": "medication"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 0.4452,
+            "coverage": 0.6396,
+            "top": "sip"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 0.3301,
+            "coverage": 0.5601,
+            "top": "sip"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 0.1843,
+            "coverage": 0.5506,
+            "top": "seat"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 0.2707,
+            "coverage": 0.434,
+            "top": "seat"
+          },
+          {
+            "layer": 35,
+            "expected_tier": 0.2902,
+            "coverage": 0.5497,
+            "top": "seat"
+          }
+        ]
+      },
+      "gap": [
+        {
+          "layer": 0,
+          "gap": null
+        },
+        {
+          "layer": 1,
+          "gap": null
+        },
+        {
+          "layer": 2,
+          "gap": null
+        },
+        {
+          "layer": 3,
+          "gap": null
+        },
+        {
+          "layer": 4,
+          "gap": null
+        },
+        {
+          "layer": 5,
+          "gap": null
+        },
+        {
+          "layer": 6,
+          "gap": null
+        },
+        {
+          "layer": 7,
+          "gap": null
+        },
+        {
+          "layer": 8,
+          "gap": null
+        },
+        {
+          "layer": 9,
+          "gap": null
+        },
+        {
+          "layer": 10,
+          "gap": null
+        },
+        {
+          "layer": 11,
+          "gap": null
+        },
+        {
+          "layer": 12,
+          "gap": null
+        },
+        {
+          "layer": 13,
+          "gap": null
+        },
+        {
+          "layer": 14,
+          "gap": null
+        },
+        {
+          "layer": 15,
+          "gap": null
+        },
+        {
+          "layer": 16,
+          "gap": null
+        },
+        {
+          "layer": 17,
+          "gap": null
+        },
+        {
+          "layer": 18,
+          "gap": null
+        },
+        {
+          "layer": 19,
+          "gap": null
+        },
+        {
+          "layer": 20,
+          "gap": null
+        },
+        {
+          "layer": 21,
+          "gap": null
+        },
+        {
+          "layer": 22,
+          "gap": null
+        },
+        {
+          "layer": 23,
+          "gap": null
+        },
+        {
+          "layer": 24,
+          "gap": null
+        },
+        {
+          "layer": 25,
+          "gap": null
+        },
+        {
+          "layer": 26,
+          "gap": null
+        },
+        {
+          "layer": 27,
+          "gap": -0.1186
+        },
+        {
+          "layer": 28,
+          "gap": 0.0868
+        },
+        {
+          "layer": 29,
+          "gap": 0.4289
+        },
+        {
+          "layer": 30,
+          "gap": 0.0646
+        },
+        {
+          "layer": 31,
+          "gap": 0.3305
+        },
+        {
+          "layer": 32,
+          "gap": 0.2072
+        },
+        {
+          "layer": 33,
+          "gap": 0.1514
+        },
+        {
+          "layer": 34,
+          "gap": 0.162
+        },
+        {
+          "layer": 35,
+          "gap": 0.1878
+        }
+      ],
+      "first_divergence_layer": 29,
+      "final_gap": 0.1878,
+      "max_abs_gap": 0.4289,
+      "layers_informative": 9,
+      "layers_measured": 36
+    },
+    {
+      "index": 13,
+      "prompts": {
+        "clinical": "Every spring my seasonal allergies act up at the picnic, so I always pack some",
+        "patient": "Every spring my nose runs and my eyes water at the picnic, so I always pack some"
+      },
+      "curves": {
+        "clinical": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0005,
+            "top": "Some"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0032,
+            "top": "\u4e9b"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.0029,
+            "top": "\u7ba1\u7406\u548c"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0026,
+            "top": "\u7ba1\u7406\u548c"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u7ba1\u7406\u548c"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "rowth"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u8a31"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0013,
+            "top": "ones"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0075,
+            "top": "itra"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0059,
+            "top": "ones"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0022,
+            "top": "\u8bb8"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u0648\u064a\u0629"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0113,
+            "top": "AMPLE"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0219,
+            "top": "additional"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0085,
+            "top": "spare"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0345,
+            "top": "spare"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0164,
+            "top": "\u5099"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0137,
+            "top": "extra"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.035,
+            "top": "eki"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.099,
+            "top": "dedicated"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.1406,
+            "top": "medication"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.0731,
+            "top": "dedicated"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0724,
+            "top": "protective"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.1323,
+            "top": "relief"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.1538,
+            "top": "extra"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.1153,
+            "top": "extra"
+          },
+          {
+            "layer": 26,
+            "expected_tier": 1.0085,
+            "coverage": 0.5328,
+            "top": "medication"
+          },
+          {
+            "layer": 27,
+            "expected_tier": 1.0001,
+            "coverage": 0.9896,
+            "top": "medication"
+          },
+          {
+            "layer": 28,
+            "expected_tier": 1.0007,
+            "coverage": 0.9798,
+            "top": "medication"
+          },
+          {
+            "layer": 29,
+            "expected_tier": 1.0034,
+            "coverage": 0.8491,
+            "top": "medication"
+          },
+          {
+            "layer": 30,
+            "expected_tier": 1.004,
+            "coverage": 0.9925,
+            "top": "medication"
+          },
+          {
+            "layer": 31,
+            "expected_tier": 1.001,
+            "coverage": 0.9898,
+            "top": "medication"
+          },
+          {
+            "layer": 32,
+            "expected_tier": 1.0002,
+            "coverage": 0.9963,
+            "top": "ant"
+          },
+          {
+            "layer": 33,
+            "expected_tier": 1.0002,
+            "coverage": 0.9864,
+            "top": "ant"
+          },
+          {
+            "layer": 34,
+            "expected_tier": 1.0006,
+            "coverage": 0.9538,
+            "top": "ant"
+          },
+          {
+            "layer": 35,
+            "expected_tier": 1.0018,
+            "coverage": 0.8101,
+            "top": "ant"
+          }
+        ],
+        "patient": [
+          {
+            "layer": 0,
+            "expected_tier": null,
+            "coverage": 0.0003,
+            "top": "Some"
+          },
+          {
+            "layer": 1,
+            "expected_tier": null,
+            "coverage": 0.0031,
+            "top": "\u4e9b"
+          },
+          {
+            "layer": 2,
+            "expected_tier": null,
+            "coverage": 0.002,
+            "top": "\u7ba1\u7406\u548c"
+          },
+          {
+            "layer": 3,
+            "expected_tier": null,
+            "coverage": 0.0025,
+            "top": "\u7ba1\u7406\u548c"
+          },
+          {
+            "layer": 4,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "\u7ba1\u7406\u548c"
+          },
+          {
+            "layer": 5,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "ones"
+          },
+          {
+            "layer": 6,
+            "expected_tier": null,
+            "coverage": 0.0022,
+            "top": "ones"
+          },
+          {
+            "layer": 7,
+            "expected_tier": null,
+            "coverage": 0.0009,
+            "top": "ones"
+          },
+          {
+            "layer": 8,
+            "expected_tier": null,
+            "coverage": 0.0062,
+            "top": "ones"
+          },
+          {
+            "layer": 9,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "ones"
+          },
+          {
+            "layer": 10,
+            "expected_tier": null,
+            "coverage": 0.0014,
+            "top": "\u30eb\u30fc"
+          },
+          {
+            "layer": 11,
+            "expected_tier": null,
+            "coverage": 0.0,
+            "top": "extra"
+          },
+          {
+            "layer": 12,
+            "expected_tier": null,
+            "coverage": 0.0131,
+            "top": "spare"
+          },
+          {
+            "layer": 13,
+            "expected_tier": null,
+            "coverage": 0.0357,
+            "top": "chas"
+          },
+          {
+            "layer": 14,
+            "expected_tier": null,
+            "coverage": 0.0033,
+            "top": "spare"
+          },
+          {
+            "layer": 15,
+            "expected_tier": null,
+            "coverage": 0.0062,
+            "top": "\u5099"
+          },
+          {
+            "layer": 16,
+            "expected_tier": null,
+            "coverage": 0.0138,
+            "top": "\u5099"
+          },
+          {
+            "layer": 17,
+            "expected_tier": null,
+            "coverage": 0.0098,
+            "top": "\u5907\u7528"
+          },
+          {
+            "layer": 18,
+            "expected_tier": null,
+            "coverage": 0.0089,
+            "top": "\u5907\u7528"
+          },
+          {
+            "layer": 19,
+            "expected_tier": null,
+            "coverage": 0.0388,
+            "top": "spare"
+          },
+          {
+            "layer": 20,
+            "expected_tier": null,
+            "coverage": 0.0351,
+            "top": "spare"
+          },
+          {
+            "layer": 21,
+            "expected_tier": null,
+            "coverage": 0.012,
+            "top": "eral"
+          },
+          {
+            "layer": 22,
+            "expected_tier": null,
+            "coverage": 0.0345,
+            "top": "handy"
+          },
+          {
+            "layer": 23,
+            "expected_tier": null,
+            "coverage": 0.067,
+            "top": "protective"
+          },
+          {
+            "layer": 24,
+            "expected_tier": null,
+            "coverage": 0.035,
+            "top": "extra"
+          },
+          {
+            "layer": 25,
+            "expected_tier": null,
+            "coverage": 0.042,
+            "top": "extra"
+          },
+          {
+            "layer": 26,
+            "expected_tier": null,
+            "coverage": 0.0265,
+            "top": "dry"
+          },
+          {
+            "layer": 27,
+            "expected_tier": null,
+            "coverage": 0.0412,
+            "top": "dry"
+          },
+          {
+            "layer": 28,
+            "expected_tier": null,
+            "coverage": 0.0362,
+            "top": "extra"
+          },
+          {
+            "layer": 29,
+            "expected_tier": null,
+            "coverage": 0.1045,
+            "top": "extra"
+          },
+          {
+            "layer": 30,
+            "expected_tier": null,
+            "coverage": 0.0002,
+            "top": "wipes"
+          },
+          {
+            "layer": 31,
+            "expected_tier": null,
+            "coverage": 0.0022,
+            "top": "tissues"
+          },
+          {
+            "layer": 32,
+            "expected_tier": null,
+            "coverage": 0.0019,
+            "top": "tissues"
+          },
+          {
+            "layer": 33,
+            "expected_tier": null,
+            "coverage": 0.0002,
+            "top": "tissues"
+          },
+          {
+            "layer": 34,
+            "expected_tier": null,
+            "coverage": 0.0103,
+            "top": "tissues"
+          },
+          {
+            "layer": 35,
+            "expected_tier": null,
+            "coverage": 0.0266,
+            "top": "tissues"
+          }
+        ]
+      },
+      "gap": [
+        {
+          "layer": 0,
+          "gap": null
+        },
+        {
+          "layer": 1,
+          "gap": null
+        },
+        {
+          "layer": 2,
+          "gap": null
+        },
+        {
+          "layer": 3,
+          "gap": null
+        },
+        {
+          "layer": 4,
+          "gap": null
+        },
+        {
+          "layer": 5,
+          "gap": null
+        },
+        {
+          "layer": 6,
+          "gap": null
+        },
+        {
+          "layer": 7,
+          "gap": null
+        },
+        {
+          "layer": 8,
+          "gap": null
+        },
+        {
+          "layer": 9,
+          "gap": null
+        },
+        {
+          "layer": 10,
+          "gap": null
+        },
+        {
+          "layer": 11,
+          "gap": null
+        },
+        {
+          "layer": 12,
+          "gap": null
+        },
+        {
+          "layer": 13,
+          "gap": null
+        },
+        {
+          "layer": 14,
+          "gap": null
+        },
+        {
+          "layer": 15,
+          "gap": null
+        },
+        {
+          "layer": 16,
+          "gap": null
+        },
+        {
+          "layer": 17,
+          "gap": null
+        },
+        {
+          "layer": 18,
+          "gap": null
+        },
+        {
+          "layer": 19,
+          "gap": null
+        },
+        {
+          "layer": 20,
+          "gap": null
+        },
+        {
+          "layer": 21,
+          "gap": null
+        },
+        {
+          "layer": 22,
+          "gap": null
+        },
+        {
+          "layer": 23,
+          "gap": null
+        },
+        {
+          "layer": 24,
+          "gap": null
+        },
+        {
+          "layer": 25,
+          "gap": null
+        },
+        {
+          "layer": 26,
+          "gap": null
+        },
+        {
+          "layer": 27,
+          "gap": null
+        },
+        {
+          "layer": 28,
+          "gap": null
+        },
+        {
+          "layer": 29,
+          "gap": null
+        },
+        {
+          "layer": 30,
+          "gap": null
+        },
+        {
+          "layer": 31,
+          "gap": null
+        },
+        {
+          "layer": 32,
+          "gap": null
+        },
+        {
+          "layer": 33,
+          "gap": null
+        },
+        {
+          "layer": 34,
+          "gap": null
+        },
+        {
+          "layer": 35,
+          "gap": null
+        }
+      ],
+      "first_divergence_layer": null,
+      "final_gap": null,
+      "max_abs_gap": null,
+      "layers_informative": 0,
+      "layers_measured": 36
+    }
+  ]
+}

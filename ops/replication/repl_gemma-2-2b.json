@@ -1,0 +1,25 @@
+{
+ "model": "gemma-2-2b",
+ "n_phrases": 811,
+ "mean_penalty_pp": -3.5,
+ "downgrades": 55,
+ "upgrades": 13,
+ "choices": [
+  "Population = all 1083 rows with model=='gemma-2-2b' in /home/user/patientwords-engine/urgency_shift.json:rows, every batch included (repeatability_r1-3, translation re-runs txopus/txplacebo/txhaiku, boostgrid_*, *_steer, ci_pairs_2panel) because the written methodology states no batch exclusions and phrase-dedup collapses re-traces; sensitivity: dropping boostgrid/steer/ci batches gives 810 phrases, -3.5 pp, 54 downgrades, 13 upgrades.",
+  "No join was needed for clinical_prompt: the collector row file already carries the full clinical_prompt text per row; (batch,index) was used only to locate original trace outputs for the sample check.",
+  "Holdout rule implemented exactly as: exclude phrase if any of its rows is Tier B (carries the tierb_split field) AND int(hashlib.sha1(clinical_prompt.encode('utf-8')).hexdigest(), 16) % 10 == 0; this reproduces the committed tierb_split field on all 2037 rows that carry it (0 disagreements); 53 phrases excluded. Per preregistration Amendment 1 the hash assigns splits to Tier B pairs only, so Tier A phrases were not subjected to it (applying the hash to all phrases would give 775 phrases, -3.4 pp, 52/12).",
+  "Dedup key = exact clinical_prompt string per model; a holdout phrase is dropped entirely, including its rows in split-less re-run batches (5 such phrases; excluding holdout rows only instead gives 816 phrases with identical -3.5 pp, 55/13).",
+  "Penalty = the row field language_penalty, verified against trace outputs to equal probabilities.patient - probabilities.clinical of the clinical target token (matching the written definition 'prob of clinical next word under patient wording minus under clinical wording'); it is NOT p_top_patient - p_top_clinical, which are top-1 probabilities of each side's own top token used for flip/tier classification.",
+  "Probabilities collapse across re-traces by the stated mean-of-duplicates: per-phrase mean of non-null language_penalty. 128 of the 811 phrases have language_penalty null in all rows (clinical target token unmeasurable under patient wording; trace probabilities.patient = null) \u2014 they count in n_phrases and flip classification but cannot contribute to the penalty mean, which averages the 683 phrases with a measurable penalty.",
+  "Mean penalty = unweighted mean of phrase-level means x100, 1 decimal (-3.5 pp); pooled row-level mean would be -4.9 pp.",
+  "Flip direction used the per-row flip_class field as instructed (present iff flipped==true; values downgrade/upgrade/lateral/uninformative); majority vote across each phrase's duplicate rows with non-flipped rows voting 'noflip'; strict plurality required, tie -> no class assigned. Exactly 2 ties occurred (noflip vs uninformative; noflip vs lateral), neither affecting downgrade/upgrade counts.",
+  "Downgrades/upgrades = number of deduped, holdout-excluded phrases whose majority class is downgrade (55) / upgrade (13); remaining phrases: 479 noflip, 224 uninformative, 38 lateral, 2 tie.",
+  "Sample check sampling: random.Random(42).sample(sorted(kept_phrases), 15); all rows of each sampled phrase were verified (15 rows total, all singletons).",
+  "Sample-check matching: a row matches if its p_top_clinical/p_top_patient equal (tolerance 5e-4; rows store 3-decimal rounding) the top-1 predictive_spread probabilities of the same (batch, results[i].index) in at least one original gemma-2-2b trace source: trace_out/<batch>/ (hosted base, no suffix), trace_out/<batch>__gemma-2-2b/ (CPU logits re-run of the same batch), or non-model variant dirs the collector folds under the same batch name (e.g. urgency_downgrades_20260707T1__context, which holds indices 21-40 absent from the unsuffixed dir); several batches were measured more than once with slightly different probabilities, so each row was required to match the specific run it was collected from rather than an averaged value."
+ ],
+ "sample_check": {
+  "n_sampled": 15,
+  "n_matched": 15,
+  "mismatches": []
+ }
+}

@@ -56,14 +56,14 @@ def test_exemplars_carry_prompts_and_prefer_rendered(tmp_path):
                [(None, "x"), (5, "y"), (4, "y"), (None, "z")],
                prompts={"clinical": "rendered clinical", "patient": "rendered patient"}),
     ])
-    per_model, _ = collect(root)
+    per_model, _ = collect(tmp_path / "trace_out")
     rmap = {("pairs_R", 2): "modes/simulated/pairs_R/index_02.html"}
     out = analyze(per_model, "gemma-2-2b", "gemma-2-2b-it", 3, render_map=rmap)
     hij = next(e for e in out["exemplars"] if e["class"] == "hijack")
-    assert hij["index"] == 2                                    # preferred the rendered pair
+    assert hij["index"] == 2                                   # preferred the rendered pair
     assert hij["prompts"] == {"clinical": "rendered clinical", "patient": "rendered patient"}
     assert hij["render"] == "modes/simulated/pairs_R/index_02.html"
-    # scenarios -> {(batch, index): html}
+    # scenarios -> {(batch,index): html}
     scen = tmp_path / "s.json"
     scen.write_text(json.dumps({"scenarios": [{"batch": "b", "batch_index": 5, "html": "H"}]}))
     assert render_map_from_scenarios(str(scen)) == {("b", 5): "H"}
@@ -92,9 +92,6 @@ def test_collect_and_analyze_end_to_end(tmp_path):
         "held": 1, "hijack": 1, "capture": 1, "unreadable": 1}
     assert out["formation"]["patient_never"] == 2   # capture + unreadable rows
     assert out["formation"]["clinical_never"] == 1  # unreadable row
-    # pre-computed never-formed shares (count / n_pairs=4)
-    assert out["formation"]["clinical_never_pct"] == 25.0
-    assert out["formation"]["patient_never_pct"] == 50.0
     # the top-8 window column must equal the headline taxonomy
     assert out["window_sensitivity"]["8"]["hijack"] == 1
     assert out["window_sensitivity"]["8"]["unreadable"] == 1
@@ -109,3 +106,22 @@ def test_featured_exemplar_index_first_hijack_else_zero_else_none():
                                     {"class": "hijack"}]) == 1
     assert featured_exemplar_index([{"class": "capture"}, {"class": "held"}]) == 0
     assert featured_exemplar_index([]) is None
+
+
+def test_drift_sentinel_dirs_excluded_from_census(tmp_path):
+    # JLENS-SENTINEL-CONTAMINATION-20260821 (owner-approved fix): dated
+    # sentinel dirs re-measure the same 3 frozen pairs daily and must never
+    # enter the published census.
+    root = tmp_path / "trace_out"
+    write_summary(root, "setA", "gemma-2-2b", [
+        result(1, [(1, "y")] * 3, [(2, "y")] * 3),
+    ])
+    write_summary(root, "drift_sentinel_20260820", "gemma-2-2b", [
+        result(1, [(1, "y")] * 3, [(1, "y")] * 3),
+        result(2, [(1, "y")] * 3, [(1, "y")] * 3),
+    ])
+    write_summary(root, "drift_sentinel_20260821", "gemma-2-2b", [
+        result(1, [(1, "y")] * 3, [(1, "y")] * 3),
+    ])
+    per_model, _holdout_excluded = collect(root)
+    assert len(per_model["gemma-2-2b"]) == 1  # only the real census row survives

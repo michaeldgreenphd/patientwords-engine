@@ -12,7 +12,12 @@ dashboard write, so a failed append aborts the run without committing
 entries_seen - bullets are never lost.
 
 Strictly idempotent: a sidecar filename already in spend.entries_seen is never
-counted twice, and a run that finds nothing new rewrites nothing at all. Every
+counted twice, and a run that finds nothing new rewrites nothing at all.
+CUMULATIVE sidecars (the advice archive rewrites responses_*.report.json in
+place as its append-only archive grows) fold their cost GROWTH as a delta:
+spend.entries_folded tracks how much of each filename's cost_usd has been
+booked, bootstrapped from the file's own ledger bullets, and any positive
+difference lands as a "delta" bullet in the same totals. Every
 writing run refreshes spend.today and stamps updated_utc (updated_by is set to
 "session" only when absent). The dashboard is read-modify-write - fields this
 script does not understand are preserved untouched. Ceiling breaches are
@@ -28,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -43,6 +49,11 @@ def parse_args(argv=None):
     parser.add_argument("--advice-dir", default="data/advice",
                         help="advice-arm archive; its responses_*/judgments_* "
                              ".report.json sidecars fold into the same totals")
+    parser.add_argument("--trace-dir", default="trace_out",
+                        help="trace output root scanned for mitigation cost sidecars")
+    parser.add_argument("--pab-dir", default="data/pab",
+                        help="PatientAgentBench probe sidecars (exploratory arm); "
+                             "their cost_usd folds into the same spend totals")
     parser.add_argument("--dashboard", default="ops/dashboard.json")
     parser.add_argument("--ledger", default=None,
                         help="ledger markdown file (default: lexicographically newest docs/*ledger*.md, "
@@ -88,10 +99,25 @@ def resolve_ledger(arg):
     return matches[-1] if matches else DEFAULT_LEDGER
 
 
-def scan_new_sidecars(sim_dir: Path, seen: set):
-    """(path, parsed sidecar) for every unseen *.report.json, sorted by filename."""
-    for path in sorted(sim_dir.glob("*.report.json"), key=lambda p: p.name):
-        if path.name in seen:
+def sidecar_key(path: Path) -> str:
+    """Ledger identity for a sidecar.
+
+    Flat dirs (data/simulated, data/advice) key on the bare filename — the
+    historical convention, and entries_seen is full of those. Mitigation
+    sidecars are nested one directory per batch and their basenames repeat
+    (mitigation.part_01.report.json exists under every stem), so they take
+    their batch directory as a prefix. Depth-independent: the key is the same
+    whether the scan ran on a relative or absolute path.
+    """
+    if path.name.startswith("mitigation") and path.parent.name:
+        return f"{path.parent.name}/{path.name}"
+    return path.name
+
+
+def scan_new_sidecars(sim_dir: Path, seen: set, pattern: str = "*.report.json"):
+    """(path, parsed sidecar) for every unseen matching sidecar, sorted by key."""
+    for path in sorted(sim_dir.glob(pattern), key=lambda p: str(p)):
+        if sidecar_key(path) in seen or path.name in seen:
             continue
         try:
             report = json.loads(path.read_text(encoding="utf-8"))
@@ -112,6 +138,61 @@ def batch_file_name(sidecar_name):
     if sidecar_name.endswith(suffix):
         return sidecar_name[: -len(suffix)] + ".json"
     return sidecar_name
+
+
+def _walk_model_names(value):
+    """Every model-name string inside a str / list / dict, at any depth.
+
+    Derivation ported from the PAB branch's lane logic (2026-08-04
+    reconciliation): stringifying a nested structure instead of walking it
+    makes the sidecar look unrecognisable and silently routes it to the
+    default channel — observed there booking $1.76 of OpenRouter spend to
+    the Anthropic account.
+    """
+    if isinstance(value, str):
+        return {value} if value else set()
+    if isinstance(value, dict):
+        out = set()
+        for k, v in value.items():
+            # keys carry model names too (usage.per_model maps model -> stats)
+            out |= _walk_model_names(k)
+            out |= _walk_model_names(v)
+        return out
+    if isinstance(value, (list, tuple)):
+        out = set()
+        for v in value:
+            out |= _walk_model_names(v)
+        return out
+    return set()
+
+
+def billing_channel(report, is_pab_dir=False):
+    """Billing channel for a cost sidecar (owner decision 2026-08-04
+    CHANNEL-SPLIT; derivation reconciled with the PAB branch's lanes).
+
+    Explicit ``billing_channel`` field wins; otherwise the channel is DERIVED
+    from the model names anywhere in the sidecar — any ``openrouter:`` prefix
+    means the OpenRouter account. Everything else is Anthropic, the channel
+    the $2/day operational guard exists to bound. (``is_pab_dir`` is accepted
+    for call-site stability; derivation no longer depends on it.)
+    """
+    explicit = report.get("billing_channel")
+    if explicit in ("anthropic", "openrouter"):
+        return explicit
+    for name in _walk_model_names(report):
+        if name.startswith("openrouter:"):
+            return "openrouter"
+    return "anthropic"
+
+
+def today_record(date, by_day, by_day_by_channel):
+    """The spend.today block: pooled figure plus one ``<channel>_usd`` key per
+    channel the ledger has booked. Old dashboards without channel data keep the
+    old two-key shape exactly."""
+    rec = {"date": date, "spent_usd": float(by_day.get(date) or 0.0)}
+    for channel, days in (by_day_by_channel or {}).items():
+        rec[f"{channel}_usd"] = float(days.get(date) or 0.0)
+    return rec
 
 
 def attribute_tierb(dashboard, spend, report, filename, cost):
@@ -156,6 +237,22 @@ def ledger_bullet(filename, cost, report):
             f" · {report.get('run_timestamp') or '—'}")
 
 
+def folded_from_ledger(ledger_path: Path, filename: str):
+    """Total already booked for a filename, summed from its own ledger bullets
+    (each fold — first or delta — leaves one '- <name> · $X ·' line). None when
+    the ledger has no bullet for it."""
+    if not ledger_path.exists():
+        return None
+    total, found = 0.0, False
+    for line in ledger_path.read_text(encoding="utf-8").splitlines():
+        if line.startswith(f"- {filename} · $"):
+            m = re.match(r"- .+? · \$([0-9.]+) ·", line)
+            if m:
+                total += float(m.group(1))
+                found = True
+    return round(total, 6) if found else None
+
+
 def check_ceilings(spend):
     """Append stable, deduplicated alert sentences; True when the list changed.
 
@@ -172,6 +269,26 @@ def check_ceilings(spend):
     today_spent = today.get("spent_usd")
     if daily is not None and today_spent is not None and float(today_spent) > float(daily):
         sentences.append(f"Daily spend on {today.get('date', '?')} has exceeded the ${money(daily)} daily ceiling.")
+    # Per-lane reporting (owner decision 2026-08-08 OPENROUTER-LANE-UNCEILINGED):
+    # the pooled alert above cannot say WHICH prepaid account is over, and the
+    # OpenRouter lane previously had no reported ceiling at all. Each channel
+    # checks against its own ceiling: anthropic against daily_ceiling_usd,
+    # openrouter against openrouter_daily_ceiling_usd (default $10/day,
+    # matching fire_trigger's blocking guard).
+    lane_ceilings = {
+        "anthropic": daily,
+        "openrouter": spend.get("openrouter_daily_ceiling_usd", 10.0),
+    }
+    for channel in sorted(k[:-4] for k in today if k.endswith("_usd") and k != "spent_usd"):
+        lane_spent = today.get(f"{channel}_usd")
+        lane_ceiling = lane_ceilings.get(channel)
+        if lane_ceiling is None or lane_spent is None:
+            continue
+        if float(lane_spent) > float(lane_ceiling):
+            # no spent amount in the sentence: alerts dedup on exact text, and
+            # a growing figure would re-append on every further breach
+            sentences.append(f"{channel} lane spend on {today.get('date', '?')} "
+                             f"has exceeded its ${money(lane_ceiling)} daily ceiling.")
     changed = False
     for sentence in sentences:
         print(f"WARNING: {sentence}")
@@ -205,6 +322,10 @@ def main(argv=None):
 
     dashboard = load_dashboard(dashboard_path)
     spend = dashboard.setdefault("spend", {})
+    # Explicit OpenRouter lane ceiling (owner decision 2026-08-08, $10/day):
+    # fire_trigger already defaults to this value; writing it makes the
+    # ceiling owner-visible in the dashboard rather than a code constant.
+    spend.setdefault("openrouter_daily_ceiling_usd", 10.0)
     entries_seen = spend.setdefault("entries_seen", [])
     by_day = spend.setdefault("by_day", {})
 
@@ -214,22 +335,110 @@ def main(argv=None):
     # this the $2/day guard never sees landed advice spend once the fire
     # resolves (advice handoff rev 2 accounting gap, closed 2026-07-21).
     # attribute_tierb's task/model gate keeps them out of Tier B rows.
-    for scan_dir in (Path(args.simulated_dir), Path(args.advice_dir)):
-        for path, report in scan_new_sidecars(scan_dir, set(entries_seen)):
+    # Trace-run mitigation sidecars (trace_out/<stem>/mitigation.part_NN.report.json)
+    # join the same fold. The translation panel is the only paid call in a
+    # circuit-trace run and its cost was booked as $0 for the study's whole
+    # history: no sidecar was written before 2026-07-31, and the workflow's
+    # commit list would not have carried one anyway (owner decision D2).
+    # PatientAgentBench probe sidecars (data/pab/*.report.json) join the same
+    # fold. That spend is billed by OpenRouter/Anthropic rather than fired
+    # through a CI trigger, so without this glob the $2/day guard would never
+    # see it at all -- the same accounting gap the advice arm hit in July.
+    # attribute_tierb's task gate ("pairs") keeps them out of Tier B rows.
+    scan_specs = [(Path(args.simulated_dir), "*.report.json"),
+                  (Path(args.advice_dir), "*.report.json"),
+                  (Path(args.pab_dir), "*.report.json"),
+                  (Path(args.trace_dir), "*/mitigation*.report.json")]
+    pab_dir = Path(args.pab_dir)
+    by_day_ch = spend.setdefault("by_day_by_channel", {})
+    for scan_dir, pattern in scan_specs:
+        is_pab = scan_dir == pab_dir
+        for path, report in scan_new_sidecars(scan_dir, set(entries_seen), pattern):
             cost = float(report.get("cost_usd") or 0.0)
-            run_ts = parse_ts(report.get("run_timestamp"))
+            # Cumulative sidecars (owner decision 2026-08-08
+            # OPENROUTER-LANE-UNCEILINGED): a first-sight cost_usd with
+            # cost_basis='cumulative_from_records' is the whole archive's
+            # campaign total, not one day's spend — the 2026-08-08 fold booked
+            # a $17.89 six-model campaign to a single day this way. Book the
+            # run's own delta (run_cost_usd) to its day; the prior-runs
+            # balance keeps lifetime true but joins NO day bucket, because it
+            # has no single day and charging it anywhere would poison the
+            # daily guards. entries_folded still records the full cumulative
+            # so the growth pass's deltas stay exact.
+            day_cost = cost
+            prior_balance = 0.0
+            if report.get("cost_basis") == "cumulative_from_records":
+                try:
+                    run_cost = float(report.get("run_cost_usd"))
+                except (TypeError, ValueError):
+                    run_cost = None
+                if run_cost is not None and 0.0 <= run_cost <= cost:
+                    day_cost = run_cost
+                    prior_balance = round(cost - run_cost, 4)
+            run_ts = parse_ts(report.get("run_timestamp") or report.get("run_utc"))
             # Bucket by the actual UTC day: offset timestamps book to the day
             # they land in UTC, and an unparseable stamp falls back to --date
             # instead of minting a garbage key.
             day = run_ts.astimezone(timezone.utc).date().isoformat() if run_ts else date
             spend["lifetime_generation_usd"] = round(float(spend.get("lifetime_generation_usd") or 0.0) + cost, 4)
-            by_day[day] = round(float(by_day.get(day) or 0.0) + cost, 4)
-            entries_seen.append(path.name)
+            by_day[day] = round(float(by_day.get(day) or 0.0) + day_cost, 4)
+            chan = by_day_ch.setdefault(billing_channel(report, is_pab), {})
+            chan[day] = round(float(chan.get(day) or 0.0) + day_cost, 4)
+            key = sidecar_key(path)
+            entries_seen.append(key)
+            spend.setdefault("entries_folded", {})[key] = cost
             attribute_tierb(dashboard, spend, report, path.name, cost)
-            bullets.append(ledger_bullet(path.name, cost, report))
+            bullets.append(ledger_bullet(key, cost, report))
+            if prior_balance:
+                bullets.append(f"- {key} · booked ${day_cost:.4f} to {day} (run_cost_usd); "
+                               f"${prior_balance:.4f} prior-runs balance folded to lifetime only "
+                               f"(cost_basis=cumulative_from_records)")
+
+    # Growth pass (critic HIGH closed 2026-07-29): a cumulative sidecar already
+    # in entries_seen is rewritten in place as its archive grows, so the
+    # filename gate above never re-folds it — the 25-stop advice run added
+    # $0.79 to a seen sidecar and the daily guard would have missed it. Fold
+    # the positive delta, bootstrapping each file's previously-booked total
+    # from its own ledger bullets (the durable record of every fold). Tier B
+    # batch sidecars are append-once and never grow; deltas skip tierb
+    # attribution by construction.
+    entries_folded = spend.setdefault("entries_folded", {})
+    seen_set = set(entries_seen)
+    for scan_dir, pattern in scan_specs:
+        if not Path(scan_dir).is_dir():
+            continue
+        for path in sorted(Path(scan_dir).glob(pattern)):
+            key = sidecar_key(path)
+            if key not in seen_set and path.name not in seen_set:
+                continue
+            # a pre-nesting entry may still be keyed on the bare filename
+            key = key if key in entries_folded or key in seen_set else path.name
+            try:
+                report = json.loads(path.read_text(encoding="utf-8"))
+            except ValueError:
+                continue
+            current = float(report.get("cost_usd") or 0.0)
+            if key not in entries_folded:
+                prior = folded_from_ledger(ledger_path, key)
+                entries_folded[key] = prior if prior is not None else current
+            delta = round(current - float(entries_folded[key]), 6)
+            if delta > 0.0005:
+                # book to the sidecar's own run day: a bootstrap can surface
+                # WEEKS-old underbooking, and charging that to today would
+                # poison the daily guard (first live run found $8.06 of July
+                # spend the filename gate had hidden)
+                run_ts = parse_ts(report.get("run_utc") or report.get("run_timestamp"))
+                day = run_ts.astimezone(timezone.utc).date().isoformat() if run_ts else date
+                spend["lifetime_generation_usd"] = round(
+                    float(spend.get("lifetime_generation_usd") or 0.0) + delta, 4)
+                by_day[day] = round(float(by_day.get(day) or 0.0) + delta, 4)
+                chan = by_day_ch.setdefault(billing_channel(report, scan_dir == pab_dir), {})
+                chan[day] = round(float(chan.get(day) or 0.0) + delta, 4)
+                entries_folded[key] = current
+                bullets.append(f"- {key} · ${delta:.4f} · delta (cumulative ${current:.4f}, day {day})")
 
     if bullets:
-        spend["today"] = {"date": date, "spent_usd": float(by_day.get(date) or 0.0)}
+        spend["today"] = today_record(date, by_day, by_day_ch)
         spend["last_scan_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     alerts_changed = check_ceilings(spend)
 
@@ -246,7 +455,7 @@ def main(argv=None):
         if bullets:
             append_ledger(ledger_path, bullets)
         if dashboard_dirty:
-            spend["today"] = {"date": date, "spent_usd": float(by_day.get(date) or 0.0)}
+            spend["today"] = today_record(date, by_day, by_day_ch)
             dashboard["updated_utc"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             dashboard.setdefault("updated_by", "session")  # preserve e.g. "routine" when present
             write_dashboard(dashboard_path, dashboard)

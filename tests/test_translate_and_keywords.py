@@ -56,3 +56,29 @@ def test_translate_llm_records_default_model(monkeypatch):
     result = translate_to_clinical("some patient phrasing", use_llm=True)
     assert result["method"] == "llm"
     assert result["model"] == DEFAULT_MODEL
+
+
+def test_translate_placebo_records_distinct_method(monkeypatch):
+    monkeypatch.setattr("medlang_circuits.translate.translate_with_llm",
+                        lambda text, model=None: "everyday rewrite")
+    monkeypatch.setenv("MEDLANG_TRANSLATION_PLACEBO", "1")
+    result = translate_to_clinical("some patient phrasing", use_llm=True, model="claude-haiku-4-5")
+    assert result["method"] == "llm_placebo"
+    assert result["text"] == "everyday rewrite"
+
+
+def test_translate_placebo_env_off_keeps_llm_method(monkeypatch):
+    monkeypatch.setattr("medlang_circuits.translate.translate_with_llm",
+                        lambda text, model=None: "clinical rewrite")
+    monkeypatch.setenv("MEDLANG_TRANSLATION_PLACEBO", "0")
+    result = translate_to_clinical("some patient phrasing", use_llm=True)
+    assert result["method"] == "llm"
+
+
+def test_placebo_system_prompt_selection(monkeypatch):
+    from medlang_circuits import llm_client
+
+    monkeypatch.setenv("MEDLANG_TRANSLATION_PLACEBO", "1")
+    assert llm_client._translate_system() == llm_client._PLACEBO_SYSTEM
+    monkeypatch.delenv("MEDLANG_TRANSLATION_PLACEBO")
+    assert llm_client._translate_system() == llm_client._TRANSLATE_SYSTEM

@@ -1,9 +1,15 @@
 # What we found: patient words make small language models worse at medicine
 
-**Status: released for external readers by owner sign-off (2026-07-09), with
-one gate: the gemma-3-4b-it row is provisional (n = 56) until its re-fired
-fourth batch lands, and is released only when final. Every number traces to a
-committed artifact.**
+**Status: released for external readers by owner sign-off (2026-07-09). The
+gemma-3-4b-it column completed on 2026-07-10 (its largest batch's run had
+exceeded a CI timeout; re-run in chunks and landed): with the full set
+(n = 240 phrases, deduped) both its mean penalty AND its downgrade asymmetry
+are significant — the asymmetry was not established at the earlier n = 133,
+and this update is reported as such below. Downgrade counts here are
+phrase-deduped per the pre-registration (`paired_stats_rigor.py`); pooled
+tallies that count re-traced phrases run several-fold higher and are
+pseudoreplicated — do not cite them. Every number traces to a committed
+artifact.**
 
 One-line summary: when the same medical situation is phrased the way patients
 actually talk instead of in clinical terms, small open models become measurably
@@ -24,12 +30,17 @@ wording costs probability on the same target token:
 | gemma-2-2b | −0.070 | [−0.098, −0.043] | 132 |
 | qwen3-4b | −0.099 | [−0.149, −0.049] | 132 |
 | qwen3-1.7b | −0.089 | [−0.133, −0.047] | 132 |
-| gemma-3-4b-it | −0.076 | [−0.152, −0.000] | 56 (provisional) |
+| gemma-3-4b-it | −0.044 | [−0.073, −0.016] | 240 (deduped) |
 
-The gemma-3-4b-it row is a newer, instruction-tuned model measured on the
-subset of pairs landed so far; its CI touches zero and tightens when the
-remaining batch lands this morning. Its per-pair penalties track gemma-2's
-at r = 0.60 (64% sign agreement).
+With every gemma-3-4b-it batch landed (all four pair batches + the downgrade
+set, completed 2026-07-10), its penalty CI excludes zero (n = 240 phrases,
+deduped); the point estimate came down from −0.071 at n = 133 as the largest
+batch was added, and the conclusion is unchanged. Its per-pair penalties
+track gemma-2's at r = 0.60 (64% sign agreement, computed on the earlier
+n = 133 subset). That row uses the full landed set with the pre-registered
+phrase-dedupe; the other three rows are the unified 132-pair cross-model set. Per-model phrase-deduped statistics for all four models —
+mean penalty (cluster bootstrap), downgrade rate (Clopper–Pearson exact),
+and BH-corrected sign tests — are in `paired_stats_rigor.json`.
 
 No CI crosses zero. The models also agree pair by pair, not just on average:
 gemma's per-pair penalty correlates with qwen3-4b's at r = 0.62 and with
@@ -44,15 +55,20 @@ Often the model keeps its top answer and just loses confidence. The dangerous
 case is when the top continuation changes — and when it changes, it goes down
 the care ladder far more often than up:
 
-- gemma-2-2b: 67 downgrades vs 4 upgrades (sign test p ≈ 0)
-- gemma-3-4b-it: 8 vs 1 (p = 0.039) — a newer, instruction-tuned model,
-  same asymmetry
-- qwen3-4b: 16 vs 2 (p = 0.001)
-- qwen3-1.7b: 18 vs 5 (p = 0.011)
+- gemma-2-2b: 27 downgrades vs 5 upgrades (sign test p = 0.00011, BH q = 0.0004)
+- gemma-3-4b-it: 22 vs 5 (p = 0.0015, BH q = 0.002) — at n = 133 this did not
+  reach significance (11 vs 4, p = 0.12); with its largest batch landed
+  (2026-07-10, n = 240) the newer instruction-tuned model shows the same
+  asymmetry as the others
+- qwen3-4b: 16 vs 2 (p = 0.0013, BH q = 0.002)
+- qwen3-1.7b: 18 vs 5 (p = 0.011, BH q = 0.011)
 
-These counts use the tier vocabulary the study owner reviewed and approved
-item-by-item (v1, 2026-07-09); the review unblocked previously unclassifiable
-flips, which is why they exceed the draft-era counts.
+These are phrase-deduped counts (each clinical phrase once, per the
+pre-registration's dedupe rule; `paired_stats_rigor.py`) on the tier
+vocabulary the study owner reviewed item-by-item (owner-reviewed v1,
+2026-07-09; clinician equivalence review still pending). Pooled tallies that
+count re-traced phrases run several-fold higher and are pseudoreplicated — do
+not cite them.
 
 Concrete cases from live traces: "urinary tract … blocked up" calls a
 urologist at 0.20; "her water was blocked up" calls a **plumber** at 0.68.
@@ -149,8 +165,10 @@ cure. (Source: `data/provenance.json:translation_cases`.)
 ## 7. What it is not
 
 - **Not sentence length**: |r| ≤ 0.07 between length difference and penalty.
-- **Not tokenization**: target first-piece length vs penalty r = 0.09
-  (n = 290). The tokenizer isn't creating the effect.
+- **Not tokenization**: target first-piece length vs penalty r = −0.002
+  (n = 1,272; recomputed 2026-07-28 over the full traced corpus via
+  `scripts/interp_analyses.py`; the earlier figure was r = 0.09 at n = 290).
+  The tokenizer isn't creating the effect.
 - **Not measurement noise**: hand-measured penalties from real patient
   language correlate with the pipeline's traced penalties at r = 0.687
   (n = 14 matched; 8 further pairs are censored bounds that point the same
@@ -161,6 +179,16 @@ cure. (Source: `data/provenance.json:translation_cases`.)
   pair is evidence; the penalty is a paired aggregate over 132 pairs, where
   bidirectional paraphrase noise contributes only ~0.009 to the standard
   error. Featured examples are illustrations of a distribution, not proofs.
+- **Human-validated, with a caveat located**: a blind owner review of 20
+  pairs (10 flips / 10 non, unlabeled) rated 15 sound, 2 unsure, 3 flawed.
+  All 3 flawed pairs fell in the flip half — the failure mode is
+  condition-equivalence drift on the patient side ("didn't feel like
+  clinical equivalents"), not register. But those 3 are low-signal flips
+  (penalties −0.02, −0.09, and one unmeasured target; none are confident
+  downgrades at p ≥ 0.2), so the load-bearing downgrade claim — which rests
+  on the confident tier — is largely insulated. The honest reading: a
+  minority of raw flips are stimulus artifacts, concentrated where the
+  measurement is weakest. (Source: `docs/stimulus_qc_v1.json`.)
 - The intentional misspellings in the stress set are stimuli, not errors.
 
 ## 8. Limits, plainly

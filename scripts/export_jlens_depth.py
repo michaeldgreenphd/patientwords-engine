@@ -69,14 +69,24 @@ INTEGRITY_NOTE = ("The gemma-2-2b-it model id returns lens readouts identical to
 
 
 def load_summary(stem, model="gemma-2-2b"):
-    path = Path("trace_out") / f"{stem}__jlens_{model}" / "jlens_summary.part_01.json"
-    summary = json.loads(path.read_text(encoding="utf-8"))
+    # Chunked runs write one part per fired offset (part_NN = 1-based start
+    # index) and no part ever overlaps another; every part joins the block.
+    # Reading only part_01 silently truncated the first multi-part lens set
+    # (pairs_20260707T171223Z, 119 pairs in 5 parts) to its first 25 pairs.
+    root = Path("trace_out") / f"{stem}__jlens_{model}"
+    parts = sorted(root.glob("jlens_summary.part_*.json"),
+                   key=lambda p: int(p.stem.rsplit("_", 1)[1]))
+    if not parts:
+        raise FileNotFoundError(str(root / "jlens_summary.part_01.json"))
+    summary = json.loads(parts[0].read_text(encoding="utf-8"))
+    for extra in parts[1:]:
+        summary["results"].extend(json.loads(extra.read_text(encoding="utf-8"))["results"])
     # Amendment 1/3: sealed holdout pairs never enter blocks, counts, examples,
     # or the translation class join (this reader feeds all of them).
     if is_tierb_batch(stem, _TIERB_START):
         summary["results"] = [r for r in summary["results"]
                               if not _sealed(stem, r.get("index"))]
-    return summary, str(path)
+    return summary, str(root / parts[0].name if len(parts) == 1 else root)
 
 
 def contrast_labels(clinical, patient, width=34):
@@ -139,22 +149,6 @@ def units_annotation(results, index):
             "text": f"“{tail} {target}” becomes “{tail} {winner}”"}
 
 
-def translated_for(stem, index):
-    """The verbatim clinical-translation prompt the causal-check patch injects, read
-    from the pair's 2panel --show-mitigation summary (prompts.translated). None when
-    absent - the page then falls back to the clinical wording for the 'translated:'
-    label, so this is a safe, exactness-only addition."""
-    for path in sorted((Path("trace_out") / stem).glob("batch_summary*.json")):
-        try:
-            results = json.loads(path.read_text(encoding="utf-8")).get("results", [])
-        except (OSError, ValueError):
-            continue
-        for r in results:
-            if r.get("index") == index:
-                return (r.get("prompts") or {}).get("translated") or None
-    return None
-
-
 def build_block(stem, label, annotate_index=None):
     """One unit-rows block for a lens-measured set."""
     summary, path = load_summary(stem)
@@ -164,12 +158,8 @@ def build_block(stem, label, annotate_index=None):
     counts = {}
     for u in pairs:
         counts[u["class"]] = counts.get(u["class"], 0) + 1
-    # per-class share of the block (count / group total), pre-computed so the page
-    # need not divide at render time; frontend prefers pct, falls back to counts.
-    total = len(pairs)
-    pct = {c: round(100 * n / total, 1) for c, n in counts.items()} if total else {}
     return {
-        "id": stem, "label": label, "counts": counts, "pct": pct, "pairs": pairs,
+        "id": stem, "label": label, "counts": counts, "pairs": pairs,
         "annotation": (units_annotation(summary["results"], annotate_index)
                        if annotate_index else None),
         "source": path,
@@ -384,9 +374,6 @@ def build_payload(blocks_spec, exemplar_stem, exemplar_index, annotate=None):
             "index": exemplar_index,
             "target": (ex["target_token"] or "").strip(),
             "prompts": ex["prompts"],
-            # verbatim clinical translation the patch injects ('translated: …' label
-            # above the patch track); None -> page falls back to the clinical wording
-            "translated_sentence": translated_for(exemplar_stem, exemplar_index),
             "labels": {"clinical": label_c, "patient": label_p},
             "clin_ranks": rank_map(ex["depth"]["clinical"]),
             "pat_ranks": rank_map(ex["depth"]["patient"]),
@@ -428,6 +415,20 @@ def main(argv=None):
     except ValueError as exc:
         print(f"refused: {exc}")
         return 3
+    # Owner decision D1 (2026-08-21, LENS-HOST-SEPARATION-20260731): the two
+    # served host ids stopped returning identical readouts on 2026-07-31 and
+    # stepped again on 2026-08-14 with byte-identical request parameters, so
+    # committed lens readouts span up to three host-side instrument eras.
+    # scripts/lens_sentinel_check.py tracks the eras going forward.
+    payload["host_state_provenance"] = {
+        "note": ("hosted lens readouts span up to three host-side instrument eras; "
+                 "era boundaries 2026-07-31 and 2026-08-14 (request parameters "
+                 "byte-identical throughout). Census batch re-measured under the "
+                 "current host state 2026-08-21; non-census lens dirs may mix eras."),
+        "era_boundaries": ["2026-07-31", "2026-08-14"],
+        "census_remeasured_utc": "2026-08-21",
+        "detail": "engine docs/critic/critic_20260821.md Finding 1; scripts/lens_sentinel_check.py",
+    }
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")

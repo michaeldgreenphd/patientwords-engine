@@ -1,0 +1,112 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-22</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .chip:focus-visible{outline:2px solid #15803d;outline-offset:2px}
+  .new{border-left:3px solid #b4483d}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-22</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · all eight carried unchanged from 2026-08-21 — nothing new opened today</p>
+
+<div class="card" data-id="D1-LENS-HOST-SEPARATION-20260731">
+  <h2>D1 · The two Neuronpedia host ids stopped agreeing three weeks ago and nothing noticed</h2>
+  <p>Open since 2026-08-21, and still the most consequential thing in this deck. The standing prompt records a "known alias": <code>gemma-2-2b</code> and <code>gemma-2-2b-it</code> return byte-identical j-lens readouts, and the day they diverge is the day Neuronpedia separates the hosts. <b>They diverged on 2026-07-31</b> and have differed on 19 of the 29 measured days since (re-verified this cycle by scripts/lens_sentinel_check.py). The daily sentinel captured it faithfully; nothing ever computed the comparison.</p>
+  <p>Why it hid: every cycle compared each host id <b>only to the previous measured day</b>. A step that lands once and then holds is invisible from the following day onward — so 21 consecutive "no internals drift" verdicts were each individually true and collectively blind. Request parameters are byte-identical across the whole 28-day series, so the change is host-side, not ours.</p>
+  <p>I wrote the check that would have caught it (<code>scripts/lens_sentinel_check.py</code>, 5 passing tests) and it now reports the history rather than only the last hop. What I did <b>not</b> do is touch any lens payload or any page: the committed lens corpus straddles the change, and how to describe that is yours.</p>
+  <p class="num">steps: gemma-2-2b @07-31 (target-rank hits 71→51) and @08-14 (51→50) · gemma-2-2b-it @08-14 (71→76) · lens part files by era: 45 pre-07-31, 61 in 07-31..08-13, 2 post-08-14</p>
+  <div class="chips"><button class="chip" data-v="annotate-era">annotate the lens payloads with the host-state era and say so in the methods repeatability note</button><button class="chip" data-v="repull-census">re-pull the census batch under the current host so one era carries the flagship figure</button><button class="chip" data-v="ask-neuronpedia">ask Neuronpedia what changed on 07-31 before deciding</button><button class="chip" data-v="accept-mixture">accept the mixture, document nothing further</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D2-JLENS-SENTINEL-CONTAMINATION">
+  <h2>D2 · The published tuning comparison is 72 % daily-sentinel replicates, and the page prose is now false</h2>
+  <p>Open since 2026-08-21, found while checking whether D1 had reached any published number. It had. <code>jlens_insights.py:82</code> excludes <code>txcorpus_*</code>, <code>*_txopus</code>, <code>*_txplacebo</code> and <code>*__context</code> from the lens census — but not <code>drift_sentinel_*</code>. So the 3 frozen sentinel pairs are swept in <b>once per sentinel day</b>, for both host ids.</p>
+  <p>The published block says <code>n_paired: 75</code>. There are <b>25 distinct tuples over 23 distinct phrases</b>: 21 real census-batch phrases plus 2 sentinel phrases repeated 27 times each. And <b>26 of the 75 rows are not identical</b> across the two ids. The technical page asserts, three times, that the readouts are "identical on every pair" — including in a figure's <code>aria-label</code> — and interpolates the inflated 75 into the sentence a reader sees.</p>
+  <p>The same un-excluded rows put 81 of 2,214 rows (3.7 %) into the base formation census, growing by 3 every day the sentinel fires. The code fix is one line in the exclusion list; the prose is yours, and I changed neither.</p>
+  <p class="num">n_paired 75 → 23 distinct phrases · non-identical rows 26/75 across indices 2, 32, 35, 45 · technical/index.html L523, L1354, L1356 · census 81/2214 replicate rows</p>
+  <div class="chips"><button class="chip" data-v="exclude-and-republish">add the sentinel exclusion, republish, then rewrite the prose to match</button><button class="chip" data-v="exclude-only">add the exclusion now; leave the prose until you can phrase it</button><button class="chip" data-v="prose-first">rewrite the prose first and leave the payload alone for now</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D3-DRIFT-SECOND-BREACH">
+  <h2>D3 · The output-drift series has two threshold breaches, not one — and the second matches a lens step exactly</h2>
+  <p>Open since 2026-08-21. The series has <b>two</b> steps over the 0.01 threshold: the familiar 2026-07-14 → 07-15 step of 0.027, and <b>2026-08-13 → 08-14 of 0.023</b>. The dashboard has said for a week that the 07-15 step is "the series' only movement". It is not, and has not been since 08-14.</p>
+  <p>Same shape as D1, different script: <code>drift_sentinel.py</code> prints only the single <i>worst</i> breach in the whole series. The second one is computed, stored in the payload, and never printed — so every cycle since 08-14 read a familiar headline and wrote "only movement".</p>
+  <p>What makes this worth your attention rather than just a logging nit: <b>2026-08-14 is also the day the lens sentinel stepped on both host ids</b> (D1). Two independent instruments, the same three frozen pairs, byte-identical request parameters, the same date. That is much stronger evidence of a real host-side change than either sentinel gives alone. Today itself is quiet — 08-21 vs 08-20 is max |dp| 0.0, the sixth flat day running.</p>
+  <p class="num">breaches: 20260714→15 max |dp| 0.027 · 20260813→14 max |dp| 0.023 · lens steps same day 08-14: gemma-2-2b 51→50, gemma-2-2b-it 71→76 · 30 days measured, 29 deltas</p>
+  <div class="chips"><button class="chip" data-v="print-all-breaches">make the sentinel print every breach, not just the worst</button><button class="chip" data-v="investigate-0814">treat 08-14 as a confirmed instrument change and annotate both series</button><button class="chip" data-v="ask-neuronpedia">ask Neuronpedia about 07-31 and 08-14 together</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D4-CLAIM-MANIFEST-PROPERTY-GAP">
+  <h2>D4 · <code>claim_check</code> passed today while a page sentence contradicted its own payload</h2>
+  <p>Open since 2026-08-21, and the reason D2 could stand for weeks. The gate is green and correct: none of the numbers in D1, D2 or D3 has an entry in <code>data/claims_manifest.json</code>. The manifest guards <i>values</i> a page hardcodes; it has no way to guard a <i>property</i> a page asserts about a payload ("identical on every pair").</p>
+  <p>I drafted the two entries that would close it but did not land them — adding a manifest entry that fails on day one would put the gate red for a defect you have not yet ruled on, which is the gate crying wolf rather than working.</p>
+  <p class="num">proposed: (1) assert zero rows where base ≠ it; (2) assert the interpolated n_paired equals the distinct-index count · both in docs/critic/critic_20260821.md §3</p>
+  <div class="chips"><button class="chip" data-v="land-after-d2">land both entries right after D2's fix, so they go green immediately</button><button class="chip" data-v="land-now-red">land them now and accept a red gate until D2 is fixed</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D5-MISSED-CYCLE-20260819">
+  <h2>D5 · The 08-19 cycle never ran, and that day is permanently missing from both series</h2>
+  <p>Carried from yesterday, unchanged and still unanswered. There is no trace of a 2026-08-19 cycle: no journal entry, no dated alias, no trace output, no brief. 08-19 is a third permanent hole in the output-drift and lens-drift series after 08-08 and 08-12; re-tracing a stale alias today would measure today's model under yesterday's label, so it is not recoverable.</p>
+  <p>Today's cycle ran normally and on time. The watchdog's dashboard limb passed (24h, inside the 26h threshold); its critic limb had failed — the newest pass was 08-16 — and this cycle's inline pass closes that.</p>
+  <p class="num">trig_01H9YrMSHEDkyXWT4bxttihq · holes 08-08 (lane full) / 08-12 (no alias) / 08-19 (no cycle) · list_triggers is unapprovable inside the container</p>
+  <div class="chips"><button class="chip" data-v="check-routine">check the Routine in the claude.ai UI for a failed or skipped 08-19 firing</button><button class="chip" data-v="annotate-methods">annotate the three series holes on the methods page</button><button class="chip" data-v="babysitter-creates-alias">have the babysitter create the dated alias when the cycle misses, so the day stays recoverable</button><button class="chip" data-v="accept">accept occasional holes</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D6-TIMELINE-CHAIN-GAP">
+  <h2>D6 · A payload documented as "regenerated nightly" had gone five weeks without regeneration</h2>
+  <p>Carried from yesterday. <code>data/timeline.json</code> was stamped 2026-07-14 while both the page comment and the site <code>CLAUDE.md</code> called it nightly; <code>study_timeline.py</code> is in neither the standing prompt §5 chain nor the publish skill. Yesterday's cycle regenerated and deployed it, all gates stayed green, and nothing rendered changed — the strip that read it was cut on 2026-07-30. Bookkeeping, not correctness.</p>
+  <p class="num">69 batches · 66 generation batches · $20.909 lifetime generation · 820 trace summary parts · no page consumer since 2026-07-30</p>
+  <div class="chips"><button class="chip" data-v="add-to-chain">add study_timeline.py to §5 and the publish skill</button><button class="chip" data-v="declare-retired">declare it retired and drop the "nightly" claim from both docs</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D7-HOLDOUT-GUARD-DISAGREEMENT">
+  <h2>D7 · The two holdout guards still disagree by one phrase</h2>
+  <p>Carried from the 08-17 critic pass, unchanged. <code>seal_check</code> seals <b>173</b> phrases — verified clean twice again today, before and after the publish — while the statistics script's Amendment-1 filter excludes across <b>174</b>. The extra one is an orphan collector row with a null <code>batch_index</code> matching no archive on either phrasing side, so it cannot be a Tier B holdout phrase.</p>
+  <p>The seal is not weakened and no published number is affected. The costs are that the analysis over-excludes by one phrase and the logs print "174", a number a future session could misread as the seal having grown.</p>
+  <p class="num">173 sealed vs 174 excluded · orphan row batch pairs_20260713T050939Z, model gemma-2-2b · test drafted in docs/critic/critic_20260817.md §5</p>
+  <div class="chips"><button class="chip" data-v="drop-orphans-then-test">drop orphan rows, then land the guard-agreement test</button><button class="chip" data-v="test-first-red">land the test now, accept a red suite until fixed</button><button class="chip" data-v="test-only-no-fix">just log the count difference</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D8-STAMPS-NORMALISATION">
+  <h2>D8 · An exporter documents a normalization it does not perform</h2>
+  <p>Open since 2026-08-21, low severity, hit live again this cycle. <code>export_frontend_simulated.py:111-116</code> comments that <code>--stamps</code> accepts either the bare stamp or the <code>pairs_&lt;stamp&gt;</code> stem "and normalise[s] to the bare stamp", citing a past incident where the mismatch published a batch wrongly. Line 110 does no normalization — only the <code>--steered-stamps</code> path (line 116) strips the prefix.</p>
+  <p>Passing the documented spelling crashes with <code>FileNotFoundError: data/simulated/pairs_pairs_&lt;stamp&gt;.json</code>. It fails loudly and before writing anything, so nothing is at risk; it is just a documented-but-false claim of exactly the class the handoff warns about. One line to fix.</p>
+  <p class="num">scripts/export_frontend_simulated.py:110 · fix = apply the same .replace("pairs_", "", 1) used at line 116</p>
+  <div class="chips"><button class="chip" data-v="fix-code">make the code match the comment</button><button class="chip" data-v="fix-comment">make the comment match the code</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<button id="copy">copy decisions</button>
+<div id="out"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(card){
+  card.querySelectorAll('.chip').forEach(function(chip){
+    chip.setAttribute('aria-pressed','false');
+    chip.addEventListener('click', function(){
+      card.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('on'); c.setAttribute('aria-pressed','false'); });
+      chip.classList.add('on'); chip.setAttribute('aria-pressed','true');
+    });
+  });
+});
+document.getElementById('copy').addEventListener('click', function(){
+  var lines = ['DECISIONS 2026-08-22'];
+  document.querySelectorAll('.card').forEach(function(card){
+    var on = card.querySelector('.chip.on');
+    lines.push(card.dataset.id + ': ' + (on ? on.dataset.v : '(no choice)'));
+  });
+  var text = lines.join('\n');
+  var out = document.getElementById('out');
+  out.textContent = text; out.style.display = 'block';
+  if (navigator.clipboard) { navigator.clipboard.writeText(text).catch(function(){}); }
+});
+</script>

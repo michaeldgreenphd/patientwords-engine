@@ -1,0 +1,96 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-13</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .new{border-left:3px solid #b4483d}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-13</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · red rule = new or moved today</p>
+
+<div class="card new" data-id="D1-SENTINEL-ALIAS-DISCIPLINE">
+  <h2>D1 · The drift series lost a second day, and the cause is one missing $0 file</h2>
+  <p>There is no <code>drift_sentinel_20260812.json</code>. Yesterday's cycle held the circuit-trace lane empty on purpose (the 429 stall), and because the dated alias is created in the same step as the fire, skipping the fire also skipped the alias. That day can never be measured now — re-tracing a stale alias would measure today's model under yesterday's label.</p>
+  <p>The alias itself costs nothing and touches no trigger file. If it is always created and committed, a busy lane costs a delayed point instead of a permanent hole. This is the second hole (08-08 was the first, by a different mechanism).</p>
+  <p class="num">series holds 22 points, ending 2026-08-11 · holes at 08-08 and 08-12 · today's 08-13 alias was created and both sentinels fired</p>
+  <div class="chips"><button class="chip" data-v="always-create-alias">always create the alias, fire when free</button><button class="chip" data-v="backfill-next-cycle">let the next cycle fire yesterday's alias, labelled late</button><button class="chip" data-v="accept-holes">accept occasional holes</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D2-TRACE-429-STARVATION">
+  <h2>D2 · The 429 stall on the trace lane is untested, not cleared (from 08-12)</h2>
+  <p>The lane was found completely free today, so the daily sentinel went in as the first circuit-trace fire since the hold. At cycle end that run was still going, so whether Neuronpedia is still rate-limiting us is genuinely unknown — the next cycle finds out first thing.</p>
+  <p>Nothing about the underlying fix changed: the retry ladder still tops out at 60s, and the three hosted lanes still fire within seconds of each other.</p>
+  <p class="num">run 31705617080 in_progress at cycle end · 5 of the previous 7 trace runs died on HTTP 429 · each failure burns ~85 min of runner time</p>
+  <div class="chips"><button class="chip" data-v="longer-backoff">lengthen the retry ladder</button><button class="chip" data-v="smaller-chunks">cut trace chunk size</button><button class="chip" data-v="stagger-fires">stagger the concurrent hosted fires</button><button class="chip" data-v="ask-neuronpedia">ask Neuronpedia about the quota</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D3-TRANSPORT-LOGLENS-DOCS">
+  <h2>D3 · Two cycles have now read the same instruction opposite ways, with identical results</h2>
+  <p>The standing prompt says the transport and loglens exporters are wired into the cycle and gives the commands; two skill files say never to run them. The 08-09 cycle skipped both. Today's cycle ran both, on the grounds that the standing prompt calls itself the authority.</p>
+  <p>The useful part: it made no difference. Both regenerated their published files byte-identically apart from the timestamp. The conflict is real but currently zero-stakes — which makes it cheap to settle now, before a cycle where it would matter.</p>
+  <p class="num">transport census 44 pairs, patient-never 16 · loglens 23 paired, class agree 17, formation agree 18 · identical to the committed copies</p>
+  <div class="chips"><button class="chip" data-v="keep-wired">keep them wired, delete the stale "never" bullets</button><button class="chip" data-v="unwire">unwire them, correct the standing prompt</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D4-STEERED-BATCH-PUBLICATION">
+  <h2>D4 · Two fully measured batches are still waiting at the gate (from 08-11)</h2>
+  <p>Both steered batches stayed out of the exporter again today, so the public payload held at 25 stamps and 1,647 scenarios. No cycle should change what the public corpus is a sample of on its own.</p>
+  <p>Their rows are still counted by the urgency collector, which is why the contract's orphan-row warning keeps climbing without anything being wrong.</p>
+  <p class="num">orphan rows 1,185/9,363 → 1,359/9,579 → 1,665/9,885 over three cycles · payload unchanged throughout</p>
+  <div class="chips"><button class="chip" data-v="publish-labelled">publish both, labelled as steered</button><button class="chip" data-v="publish-plain">publish both, no special label</button><button class="chip" data-v="keep-internal">keep non-campaign batches internal</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D5-MEDICAL-FRAMING">
+  <h2>D5 · The medical fine-tune sentence is still unchosen (from 08-08)</h2>
+  <p>Unchanged today — this cycle did not recompute the cross-model statistics, so the published 08-08 numbers and the internal ones sit exactly where they did yesterday. Nothing public over-claims.</p>
+  <p class="num">internal: meditron3-8b n 333, CI95 [-0.0493,-0.0211], sign 23v3 q=1.76e-04 · published: n 132, CI95 [-0.0498,+0.0004]</p>
+  <div class="chips"><button class="chip" data-v="per-model-sentence">write a per-model sentence, then publish</button><button class="chip" data-v="publish-first">publish the numbers now, sentence after</button><button class="chip" data-v="send-me-draft">draft three options and send them</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D6-DIRTY-PROVENANCE">
+  <h2>D6 · Today's payloads carry a dirty provenance stamp too (from 08-10)</h2>
+  <p>Every payload published today is stamped <code>fd9567b841d6+dirty</code>. The stamp is honest — the tree genuinely carries uncommitted exporter output while the chain runs — but it means no published number is reproducible from a single commit, and nothing rejects it.</p>
+  <p class="num">9 site payloads refreshed today, all +dirty · same pattern as the three claim-grade files flagged on 08-10</p>
+  <div class="chips"><button class="chip" data-v="add-assertion">make the contract gate reject +dirty on claim-grade files</button><button class="chip" data-v="commit-then-stamp">commit before stamping in the chain</button><button class="chip" data-v="accept">accept it, it is only provenance</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D7-OPS-CADENCE">
+  <h2>D7 · The daily cycle is still the only thing that reliably drives the lanes (from 08-02)</h2>
+  <p>Today the cycle ran alongside a live in-session babysitter that fired the lens lane twice while this session worked. The queue guard arbitrated correctly and no group ever held three — but that babysitter dies with its container, and then nothing retries until the next daily firing.</p>
+  <p class="num">three $0 fires this cycle · $0 spent today · Tier B generation closed at $2.7678 of $8</p>
+  <div class="chips"><button class="chip" data-v="approve-accelerator">approve a standalone accelerator Routine</button><button class="chip" data-v="accept-pace">accept the daily pace, restate it in the briefs</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<button id="copy">Copy decision summary</button>
+<div id="out"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(c){
+  c.querySelectorAll('.chip').forEach(function(ch){
+    ch.addEventListener('click',function(){
+      c.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on')});
+      ch.classList.add('on');
+    });
+  });
+});
+document.getElementById('copy').addEventListener('click',function(){
+  var lines=['DECISIONS 2026-08-13'];
+  document.querySelectorAll('.card').forEach(function(c){
+    var on=c.querySelector('.chip.on');
+    lines.push(c.dataset.id+' :: '+(on?on.dataset.v:'(no selection)'));
+  });
+  var t=lines.join('\n');
+  var o=document.getElementById('out');o.textContent=t;o.style.display='block';
+  if(navigator.clipboard)navigator.clipboard.writeText(t);
+});
+</script>

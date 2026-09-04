@@ -1,0 +1,135 @@
+{
+ "generated_utc": "2026-09-03T19:06:05Z",
+ "reference": {
+  "dir": "trace_out/pairs_20260710T011743Z",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+   "max_n_logits": 10,
+   "desired_logit_prob": 0.95,
+   "node_threshold": 0.8,
+   "edge_threshold": 0.98,
+   "max_feature_nodes": 5000
+  },
+  "parts": 10,
+  "n_results": 50
+ },
+ "candidate": {
+  "dir": "trace_out/pairs_20260710T011743Z__gemma-2-2b",
+  "backend": "logits",
+  "graph_model": "gemma-2-2b",
+  "source_set": null,
+  "generation_params": {},
+  "parts": 1,
+  "n_results": 50
+ },
+ "joined_pairs": 50,
+ "prompt_mismatched_indices": [],
+ "thresholds": {
+  "near": 0.01,
+  "far": 0.02
+ },
+ "probability": {
+  "n": 71,
+  "mean": 0.006215,
+  "median": 0.0037,
+  "max": 0.0315,
+  "over_near": 11,
+  "over_far": 6
+ },
+ "penalty": {
+  "n": 29,
+  "mean": 0.00961,
+  "median": 0.0064,
+  "max": 0.0286,
+  "over_near": 10,
+  "over_far": 4,
+  "mean_reference": -0.064793,
+  "mean_candidate": -0.0653
+ },
+ "censoring": {
+  "clinical": {
+   "reference_null_candidate_measured": 8,
+   "candidate_measured": 50,
+   "rate": 0.16
+  },
+  "patient": {
+   "reference_null_candidate_measured": 21,
+   "candidate_measured": 50,
+   "rate": 0.42
+  }
+ },
+ "worst": [
+  {
+   "index": 32,
+   "side": "clinical",
+   "reference": 0.531,
+   "candidate": 0.5625,
+   "abs_delta": 0.0315
+  },
+  {
+   "index": 46,
+   "side": "clinical",
+   "reference": 0.503,
+   "candidate": 0.5305,
+   "abs_delta": 0.0275
+  },
+  {
+   "index": 20,
+   "side": "patient",
+   "reference": 0.068,
+   "candidate": 0.0406,
+   "abs_delta": 0.0274
+  },
+  {
+   "index": 2,
+   "side": "patient",
+   "reference": 0.738,
+   "candidate": 0.7123,
+   "abs_delta": 0.0257
+  },
+  {
+   "index": 4,
+   "side": "patient",
+   "reference": 0.398,
+   "candidate": 0.4193,
+   "abs_delta": 0.0213
+  },
+  {
+   "index": 27,
+   "side": "clinical",
+   "reference": 0.289,
+   "candidate": 0.2679,
+   "abs_delta": 0.0211
+  },
+  {
+   "index": 40,
+   "side": "clinical",
+   "reference": 0.307,
+   "candidate": 0.2881,
+   "abs_delta": 0.0189
+  },
+  {
+   "index": 22,
+   "side": "clinical",
+   "reference": 0.363,
+   "candidate": 0.3444,
+   "abs_delta": 0.0186
+  },
+  {
+   "index": 12,
+   "side": "clinical",
+   "reference": 0.386,
+   "candidate": 0.3708,
+   "abs_delta": 0.0152
+  },
+  {
+   "index": 17,
+   "side": "patient",
+   "reference": 0.774,
+   "candidate": 0.7599,
+   "abs_delta": 0.0141
+  }
+ ]
+}

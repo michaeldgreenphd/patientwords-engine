@@ -1,0 +1,98 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-09</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .new{border-left:3px solid #b4483d}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-09</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · red rule = new today</p>
+
+<div class="card new" data-id="D1-TRANSPORT-LOGLENS-DOCS">
+  <h2>D1 · Three docs disagree on whether two exporters run. Which is right?</h2>
+  <p>The standing prompt §5 says <b>export_jlens_transport.py</b> and <b>export_jlens_loglens.py</b> are wired (2026-07-23, your "option 1") and gives exact commands. The publish-site-data skill lists them in step&nbsp;3 — then its own <i>Never</i> list says never run them in the cycle, and the daily-ops-cycle skill says they are "not wired". A cycle can read the rules and land either way.</p>
+  <p>This cycle <b>skipped both</b>, the conservative reading. Nothing was lost: their census batch pairs_20260711T051145Z got no new data today, so a regen would have moved only <code>generated_utc</code>. But the ambiguity will keep flipping between sessions until it is settled.</p>
+  <div class="chips"><button class="chip" data-v="run-them">run them every cycle (fix the skills)</button><button class="chip" data-v="skip-them">never in the cycle (fix §5)</button><button class="chip" data-v="on-new-census">run only when census data changes</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D2-SENTINEL-GAP">
+  <h2>D2 · The drift sentinel has a permanent one-day hole at 08-08</h2>
+  <p>The 08-08 alias was created but never traced — the circuit-trace lane held two active entries all cycle, so §3b could not fire. The output-drift series has no 08-08 point and <b>cannot get one</b>: re-tracing that alias today would measure today's model and mislabel it. The <i>lens</i> sentinel for 08-08 did run. Today's 08-09 sentinel fired normally.</p>
+  <p>Root cause is the gap-marker convention: a journal entry left active to mark a trace gap is indistinguishable from a forgotten resolve, so the lane never reopens. That is what starved the sentinel.</p>
+  <p class="num">last circuit sentinel before today: 2026-08-07 · lens sentinel 08-08 present (both model ids)</p>
+  <div class="chips"><button class="chip" data-v="reserve-lane">reserve a lane slot for the daily sentinel</button><button class="chip" data-v="marker-expiry">give gap markers an expiry</button><button class="chip" data-v="accept-holes">accept occasional holes</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D3-MEDFRAMING">
+  <h2>D3 · A medical fine-tune crossed significance. Which sentence replaces "the null cases"?</h2>
+  <p>Carried from 08-08. apertus-8b-meditronfo's mean penalty CI <b>excludes zero</b> at n=104; meditron3-8b's upper bound is +0.0004 and one more backfill leg likely pushes it below. Both sign tests stay far from significant (3v2, 5v1). The hazard is a future session writing "the medical models show it too" off the CI alone.</p>
+  <p class="num">apertus −0.0338 [−0.0657, −0.0032] · 3v2 p_BH 1.00 · meditron3 −0.0249 [−0.0498, +0.0004] · 5v1 p_BH 0.263</p>
+  <p>Drafted: <i>"Both medical fine-tunes show a negative mean penalty, and apertus's interval now excludes zero; their flip-direction tests remain underpowered and neither supports a claim about downgrade behavior."</i></p>
+  <div class="chips"><button class="chip" data-v="use-draft">use the draft</button><button class="chip" data-v="rewrite">I'll rewrite it</button><button class="chip" data-v="wait-meditron">wait until meditron crosses</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D4-OPENROUTER-CEILING">
+  <h2>D4 · The $2/day guard still cannot see the OpenRouter lane</h2>
+  <p>Carried from 08-08, unchanged. <code>ledger_update</code> alerts on the all-channel total; <code>fire_trigger</code>'s blocking guard counts the Anthropic lane only. So 08-08 booked <b>$18.24</b> against a $2 ceiling, the alarm fired, and nothing was ever blocked. The OpenRouter lane has no mechanical ceiling. Today's ledger repeated both warnings for 08-08.</p>
+  <p>The booked figure also overstates that day: the advice sidecar reports cumulative cost, so a whole six-model campaign landed on one date (that day's own leg was $6.09 against a $6.50 cap).</p>
+  <p class="num">2026-08-08 · anthropic $0.3480 · openrouter $17.8875 · today 2026-08-09 $0/$2</p>
+  <div class="chips"><button class="chip" data-v="ceiling-both">set an OpenRouter ceiling + fix accounting</button><button class="chip" data-v="accounting-only">fix the accounting only</button><button class="chip" data-v="no-ceiling">no ceiling, I approve per-run</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D5-JLENS-PINS">
+  <h2>D5 · Complete full-batch lens sets that reach no figure</h2>
+  <p>Carried from 08-08. pairs_20260707T171223Z finished lens at 119/119 and is not among the pinned depth blocks. Today <b>pairs_20260710T011743Z</b> also completed (50/50) and is likewise unpinned. Pins change only on your word, so this cycle regenerated with the committed pins unchanged — verified byte-identical apart from <code>generated_utc</code>.</p>
+  <div class="chips"><button class="chip" data-v="add-both">add both as blocks</button><button class="chip" data-v="add-171223">add 171223Z only</button><button class="chip" data-v="keep-pins">keep the current pins</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D6-OPS-CADENCE">
+  <h2>D6 · Ops cadence — and a container that fights every fresh session</h2>
+  <p>Carried. New evidence today: the fired container again cloned only <code>main</code> onto a throwaway branch instead of the ops branch — the same failure logged for the 08-08 cycle. The dashboard on <code>main</code> is the stale 07-09 seed, so a cycle run from it would fire against a month-old journal. Recovery took ~40 minutes of this cycle (blobless fetch + sparse checkout); a full checkout times out outright.</p>
+  <div class="chips"><button class="chip" data-v="fix-env">fix the environment's clone config</button><button class="chip" data-v="bootstrap-doc">fold the sparse recipe into the bootstrap doc</button><button class="chip" data-v="accept-pace">accept the pace</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D7-AUDIT-ACTS">
+  <h2>D7 · Your one remaining audit act</h2>
+  <p>Carried. Two of three are done (prereg signed 07-28; the 25 judge-agreement items coded). One remains: choose a pooled-33% caveat sentence from the drafted candidates. It gates the advice n=100 expansion; no daily ops work blocks on it.</p>
+  <div class="chips"><button class="chip" data-v="this-week">will do this week</button><button class="chip" data-v="send-candidates">re-send me the candidates</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D8-DIALECT-DATE">
+  <h2>D8 · Dialect dateline — believed resolved, confirm to close</h2>
+  <p>Carried from 07-30 and recorded as resolved in substance: the dateline is runtime-filled from data/dialects.json, so it cannot drift again, and the static manifest guard was retired. The entry is still open in the dashboard.</p>
+  <div class="chips"><button class="chip" data-v="close">close it</button><button class="chip" data-v="keep-open">keep it open</button></div>
+</div>
+
+<button id="copy">Copy decision summary</button>
+<div id="out"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(c){
+  c.querySelectorAll('.chip').forEach(function(ch){
+    ch.addEventListener('click',function(){
+      c.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on')});
+      ch.classList.add('on');
+    });
+  });
+});
+document.getElementById('copy').addEventListener('click',function(){
+  var lines=['DECISIONS 2026-08-09'];
+  document.querySelectorAll('.card').forEach(function(c){
+    var on=c.querySelector('.chip.on');
+    lines.push(c.dataset.id+' :: '+(on?on.dataset.v:'(no selection)'));
+  });
+  var t=lines.join('\n');
+  var o=document.getElementById('out');o.textContent=t;o.style.display='block';
+  if(navigator.clipboard)navigator.clipboard.writeText(t);
+});
+</script>

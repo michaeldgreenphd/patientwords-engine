@@ -415,3 +415,350 @@ full classification at the 13:45 harvest.
 - urgency_downgrades_20260707T1__context.report.json · $0.0000 · alias · accepted — · —
 - urgency_downgrades_20260707T1_steer.report.json · $0.0000 · alias · accepted — · —
 - urgency_downgrades_boostgrid.report.json · $0.0000 · alias · accepted — · —
+
+## 13:5x UTC — harvest: haiku-translator verdict (run 64)
+Run 64 complete (15/20 pairs landed; pairs 4,5,15,19,20 lost to hosted-tracer
+chunk truncation — server flake, translations themselves all method=llm).
+Method-identical comparison via urgency_shift on the same phrases/tiers:
+PAIRED (n=12 both classifiable): haiku restored-top-tier 8/12 vs opus 10/12
+(haiku loses idx 2,9,11; WINS idx 14 where opus worsened prescription→topical);
+paired urgency_recovery haiku +0.119 vs opus +0.150, mean diff -0.031
+(sd 0.205, |t|≈0.5) — WITHIN NOISE. Owner condition 1 (recovery within noise
+of opus) = MET on landed data. Fired filler re-trace of the 5 missing pairs
+via scripts/fire_trigger.py (first production use; offsets 3,4,14,18,19).
+Condition 2 (equivalence n holding) awaits run 65, landing this afternoon.
+Go/no-go executes tonight; rationale will be logged here.
+
+## 14:2x UTC — owner's text trim applied site-wide
+Owner returned the trimmed outline (66 of 203 blocks changed, no deletions).
+Applied block-by-block with markup preserved (links, em, spans, fold-meta/
+flip-cap JS hooks); verified by re-extraction: 192/203 byte-identical, the
+11 exceptions being flagged typo fixes reported to the owner. Added the
+reviewed-v1 tier-vocabulary note to methods.b025 and (owner's own edit)
+sim-scenarios.b011. All 10 pages browser-checked clean; deployed to main.
+ops/site_text_outline.Rmd regenerated to match the live site.
+
+## 14:4x UTC — tier table + plain-language references (owner request)
+Publisher now emits tier_examples (measured example words per tier, base
+model only, vocabulary-note fragment filter, top 3); homepage safety view
+renders a tier table (tier · meaning · measured examples) from the fetched
+data. All reader-visible file paths replaced with plain language across the
+10 pages; JS fetches untouched. Browser-verified, deployed to main.
+FLAG for tonight's unified recompute: republished urgency data now pools
+the alias re-traces (txhaiku etc.) into per-model measurement counts —
+gemma-2 downgrades read 78 (was 67) at measurement level. Prereg analysis
+rule "dedupe by phrase before any pooled count" must land in the collector
+with the gemma-3 recompute; site cards say "measurements" so they are
+accurate as labeled, but phrase-level counts are the claim-grade numbers.
+
+## 15:0x UTC — nav reorder + percentage display (owner request)
+Masthead order on all 11 pages: Start Here · Methods · Overview (Home
+renamed) · rest unchanged. Dialect + translation pages now display all
+probabilities as % (deltas as signed percentage points; attribution mass
+left decimal). Browser-verified incl. dynamic caption paths; deployed to
+main. Outline regenerated.
+
+## 14:5x UTC — owner away-deck answers; session switched to Opus 4.8
+AWAY 2026-07-09: Q1 switching to Opus now (done — session is Opus 4.8);
+Q2 fire Tier B tonight IF haiku equivalence clean (standing, reconfirmed);
+Q3 daily digest 9am EDT = 13:00 UTC; Q4 (Friday 7am) SUPERSEDED by owner
+note -> run the handoff Friday 4am EDT = 08:00 UTC (early flight); Q5 idle
+filler approved (sociolect r2 trace when slack, $0); Q6 blind QC pending
+(owner will paste during travel). Note also: recreate the QC as a phone app
+(done — republished, offline-capable). Standing prompt gained: start_utc
+bootstrap rule (item 1) + sociolect filler (item 4). Scheduled: tonight
+01:00 UTC go/no-go + Routine creation; Friday 08:00 UTC handoff. Both
+this-session durable wakes. Fresh-session Routine created tonight after
+Tier B start so start_utc is clean (matches Thursday-create plan).
+
+## 15:2x UTC — blind stimulus QC returned (Q6)
+Owner tapped the 20-pair blind QC: 15 sound / 2 unsure / 3 flawed (75% sound).
+Note: "flawed ones didn't really feel like clinical equivalents." Crosstab
+vs flip status: ALL 3 flawed are flips (0/10 non-flips flawed) — failure mode
+is condition-equivalence drift on the patient side, concentrated in the flip
+half. BUT the 3 flawed flips are low-signal (pen -0.022, -0.088, one
+unmeasured target; none are confident downgrades p>=0.2), so the load-bearing
+confident-downgrade claim is largely insulated. Recorded docs/stimulus_qc_v1.json;
+added a located-caveat bullet to synthesis §7. Q6 cleared. Soft flag for
+tonight's go/no-go: consider a condition-equivalence screen for Tier B at
+scale — owner-decision, not an autonomous design change. Does NOT change the
+fire-if-clean verdict (that gate is behavioral equivalence of the haiku
+generator, independent of this stimulus-design finding).
+
+## 19:0x UTC — Checkpoint 1 (async) + run-65 eviction recovery
+Infra all green: 191 tests, ruff clean; dashboard/guard/ledger/brief done +
+hardened + live-seeded; Rmd regenerated (204 blocks, engine ops/, verified
+verbatim x3, none in site repo); secret scan clean (public repo). gemma-3
+all 4 stems have summaries. ROOT-CAUSE: run 65 (equivalence-n batch)
+concluded "failure" = EVICTION not data — params job cancelled, trace
+skipped, because the filler (run 66) was a third-push into circuit-trace
+while run 64 was still finishing; the guard allowed it because run 64's
+journal entry was resolved (partial landing) before GitHub finished it.
+Journal-vs-GitHub divergence = documented seam. Fix: resolve only on FULL
+landing + settle; one trace/cycle; never a third fire (added to standing
+prompt). Recovery: resolved stale entries, re-fired batch-2 clean into the
+free queue ~19:00 UTC; expected to land before 01:00 go/no-go. Go/no-go
+readiness: (a) translation recovery within noise = MET; (b) doubled-n
+equivalence = pending the re-fire (batch-1 equivalence holds regardless).
+Standing instruction unchanged: fire if clean, HOLD + flag if the re-fire
+truly fails.
+
+## 19:3x UTC — vacation autonomy batch 1 launched (Fable usage, owner-approved)
+Owner (Fable reset) approved 3 autonomous streams: Functionality & scale,
+Skeptic's read, Analysis depth (NOT Clarity/message — owner owns voice).
+Launched background workflow wf_8eff2840-10a: 2 read-only auditors
+(skeptic claim/number audit of site+synthesis → report+caveats; a11y/
+functionality static audit of 10 pages → fix-list) + 3 sequential builders
+on disjoint files (scripts/paired_stats_rigor.py stats rigor; fire_trigger.py
+SETTLE-window guard hardening vs the run-65 eviction; activation_patch.py +
+design doc). Agents do NOT commit/fire; I integrate + verify (full suite,
+browser before/after) + commit only if green, then fold audits into an
+owner report. Safety: reports/drafts for anything touching voice; objective
+functionality fixed live with verification; scale-sharding to be done with
+graceful fallback so it can't break existing pages. Pipeline/go-no-go
+untouched. Weekly cadence: Routine runs the stats scripts on new Tier B data;
+digest surfaces progress; further batches chain.
+
+## 20:xx UTC — autonomy batch 1 integrated
+Workflow wf_8eff2840-10a done (5 agents). Code: paired_stats_rigor.py +
+settle-window guard + patching skeleton, 216 tests green, committed. Skeptic
++ a11y audits found real issues. FIXED LIVE: dialect page/homepage false
+prose (8/6/48 + fake depression→therapist example vs real 5/8/40 25%-flip
+data); synthesis overstatement (gemma-3 "8v1 p=.039 significant" -> real
+11v4 p=.12 NOT significant; gemma-2 downgrades 25 deduped not 67 pooled) via
+the rigor script; tier status -> "owner-reviewed v1 · domain review pending";
+scenario.html masthead regression. REPORTED for owner (docs/skeptic_read_
+20260709.md): single-case framing caveats, word-diff example mismatch,
+model-eval softening, QC caveat on site, translation 45/41, Pair 15/16.
+QUEUED next batch: site pseudoreplication (collector dedupe -> lowers
+headline downgrade counts, owner should see it land), a11y micro-fixes.
+Pipeline untouched; go/no-go still armed.
+
+## 20:5x UTC — FABLE PLAN received; batch 2 launched (Fable agents)
+Owner paste: A1 nightly critic / A2 verify-before-commit / A3 weekly
+synthesis draft / A4 ops stays light / B1-B4 all approved / C: add
+llama-3.2-3b, olmo-2-1b, biomistral-7b (skip phi). Note: Fable through
+Tuesday 2026-07-14 then downshift batches to Opus 4.8 (owner wrote "llama"
+— interpreted as the non-Fable fallback = Opus; flagged for correction).
+Armed: nightly critic 05:00 UTC (self-chaining), Monday synthesis draft
+06:00 UTC, Tuesday downshift 03:30 UTC Wed. Plan doc:
+docs/fable_week_plan.md (incl. HF gate/cost truth: acceptance + downloads
+free, no card, free public-repo CI; probe-first protocol so owner only gets
+pinged for models that actually 401). Batch 2 (wf_92c08dc9-407, Fable):
+site pseudoreplication dedupe (per_model_deduped + cards), 4 a11y fixes,
+HF_IDS expansion (5 models), activation-patching CI (workflow + trigger +
+KNOWN_KEYS + real transformer-lens patch_and_measure w/ offline-mocked
+tests), B4 experiment designs — then 2 adversarial verifiers (A2 policy).
+Integration at completion notification; site changes browser-verified
+before deploy.
+
+## 21:xx UTC — batch 2 integrated + deployed
+7 Fable agents, 0 errors, verify stage caught 5 real items, all fixed
+before integration: urgency_shift seen-marking now requires a landed row
+(patching outputs can't shadow real summaries); site deduped headline only
+sums when every model has a record; absent deduped fields render em-dash;
+dialect accordion semantics moved to a real <button> (row semantics
+restored); patching yml normalizes layers lists. Synthesis reconciled to
+the committed rigor record: gemma-2 downgrades = 26 v 4 (p 6e-5, BH 2.4e-4).
+SITE now shows phrase-deduped per-model counts everywhere (gemma-2 26v4,
+gemma-3 11v4, qwen1.7 18v5, qwen4 16v2) — the pseudoreplicated 78/124
+tallies are gone from public view. Engine: 9-model logits registry +
+docs/model_matrix.md (HF gate/click-paths), activation-patching CI live
+(real transformer-lens implementation), B4 designs pre-registered
+(docs/feature_experiments_design.md). Suite 228 green. Fired the $0
+1-pair patching smoke via fire_trigger (new group, running slot).
+Owner also enabled promptless artifacts (user settings allow-list) and
+received the headroom deck (H1-H6, pending).
+
+## 22:xx UTC — HEADROOM approved (H1-H5); model supply-chain hardened (W5)
+Owner approved H1-H5 (H6 held); queue in fable_week_plan.md, critic executes.
+Gaps closed on "anything missing": W3 prereg Amendment 1 (10% confirmatory
+holdout by sha1 hash + seed provenance, committed BEFORE tierb.start_utc was
+set — verified null at commit); W1 Routine watchdog on the orchestrator's
+wake chain; W4 STOP protocol in the digest footer; W2 deployed-site health
+folded into H1. Owner also asked for protection against compromised HF
+models → W5: use_safetensors=True + trust_remote_code=False enforced in
+logits_eval with a source-level tripwire test (suite 229 green); vetting
+policy in model_matrix.md (official orgs only, ephemeral CI execution,
+revision pinning after first probe). Owner's rhythm: ONE morning check-in
+— all new ideas go into the 9am EDT digest, no extra pings.
+
+## 2026-07-10 01:1x UTC — TIER B GO/NO-GO: **GO** (rationale)
+Standing approval condition (owner, 2026-07-09): fire Tier B batch 1 tonight
+ONLY IF the haiku translation verdict is clean (recovery within the noise of
+opus AND equivalence n holding); any ambiguity or structural failure = HOLD.
+
+**Condition (a) — translator recovery, FINALIZED with the filler landed
+(all 20 txhaiku records, translation_model=claude-haiku-4-5):**
+paired n=17 (both arms classifiable): haiku restored-top-tier 11/17 vs opus
+12/17 (haiku-only restores idx 14,16; opus-only idx 2,9,11 — same
+win/loss pattern as the 13:5x interim read, plus new haiku win at 16).
+Paired urgency_recovery haiku +0.127 vs opus +0.209, mean diff −0.082
+(sd 0.219, |t|≈1.55, n.s. at n=17). Verdict: WITHIN NOISE — near-parity on
+tier restoration; haiku recovers somewhat less probability mass on average
+but the difference is not statistically distinguishable. Condition MET.
+
+**Condition (b) — haiku equivalence on doubled n (run 67 harvest,
+pairs_20260707T025842Z, 40/50 traced — indices 6–10 & 26–30 lost to a
+~45-min CI step timeout on two matrix jobs, mechanical missingness only):**
+- validator yield: batch-2 50/66 = 75.8% — IDENTICAL to batch-1 75.8%
+  (opus comparator 60.2%). Stopping rule (<50% twice) nowhere near tripped.
+- measurable-pair rate: batch-2 22/40 = 55.0% vs batch-1 27/49 = 55.1%
+  (opus 48%). (Screening-passed rate: 75% vs 71% vs opus 64%.)
+- penalty, screened-in pairs, pair bootstrap seed 7×5000:
+  batch-2 alone −0.039 CI[−0.100,+0.014] n=22 (wide at this n, crosses zero);
+  haiku POOLED −0.043 CI[−0.077,−0.012] n=49 — excludes zero and overlaps
+  opus −0.036 CI[−0.080,+0.007] n=24. Condition MET; no structural failure
+  (rejection reasons same category as batch 1; screening normal).
+
+**VERDICT: GO.** tierb.start_utc stamped; batch 1 fired via fire_trigger
+(haiku, num=50, max_spend=$0.25). The 10 untraced batch-2 indices get a $0
+gap-fill trace (offsets 5,25 × sample 5) — chunked smaller because the two
+lost jobs were ~45-min step timeouts at sample_size 10.
+
+**Also found at harvest (queued fixes, $0):** (1) logits run 14
+(gemma-3-4b-it on 119-pair stem 171223Z) hit the 4h workflow timeout with
+no partial output — logits_eval.py needs offset support to chunk big
+batches; until it lands, the released synthesis header's "all four
+measurement batches landed" for gemma-3 is WRONG (its n=133 rests on
+201750Z/154345Z/215921Z + downgrade set; the committed numbers themselves
+are correct as computed) — header corrected this session. (2) activation-
+patching smoke run 1 = failure; diagnosis below after log pull.
+- pairs_20260710T011743Z.report.json · $0.0816 · claude-haiku-4-5 · accepted 50 · 2026-07-10T01:19:25.620281+00:00
+- pairs_20260710T050657Z.report.json · $0.0718 · claude-haiku-4-5 · accepted 50 · 2026-07-10T05:08:26.072914+00:00
+- pairs_20260710T092635Z.report.json · $0.0988 · claude-haiku-4-5 · accepted 50 · 2026-07-10T09:28:43.980736+00:00
+- pairs_20260710T133708Z.report.json · $0.0671 · claude-haiku-4-5 · accepted 50 · 2026-07-10T13:38:46.352639+00:00
+- pairs_20260710T163230Z.report.json · $0.0870 · claude-haiku-4-5 · accepted 50 · 2026-07-10T16:34:18.454866+00:00
+- pairs_20260711T051145Z.report.json · $0.0713 · claude-haiku-4-5 · accepted 50 · 2026-07-11T05:13:15.738664+00:00
+- pairs_20260711T051145Z.mitigation.report.json · $0.0200 · claude-haiku-4-5 · accepted — · 2026-07-12T05:30:00+00:00
+- pairs_20260711T131752Z.report.json · $0.0711 · claude-haiku-4-5 · accepted 50 · 2026-07-11T13:19:16.321760+00:00
+- pairs_20260712T051903Z.report.json · $0.0653 · claude-haiku-4-5 · accepted 50 · 2026-07-12T05:20:22.926599+00:00
+- drift_sentinel.report.json · $0.0000 · alias · accepted — · 2026-07-12T17:30:00+00:00
+- pairs_20260711T051145Z_txopus.mitigation.report.json · $0.0750 · claude-opus-4-8 · accepted — · 2026-07-13T02:00:00+00:00
+- pairs_20260711T051145Z_txopus.report.json · $0.0000 · alias · accepted — · 2026-07-12T17:00:00+00:00
+- pairs_20260711T051145Z_txplacebo.mitigation.report.json · $0.0310 · claude-haiku-4-5 · accepted — · 2026-07-13T02:00:00+00:00
+- pairs_20260711T051145Z_txplacebo.report.json · $0.0000 · alias · accepted — · 2026-07-12T17:45:00+00:00
+- pairs_20260712T163501Z.report.json · $0.1750 · claude-haiku-4-5 · accepted 100 · 2026-07-12T16:38:19.647329+00:00
+- pairs_20260713T031252Z.report.json · $0.2612 · claude-sonnet-5 · accepted 2 · 2026-07-13T03:15:34.597742+00:00
+- pairs_20260713T050937Z.report.json · $0.3969 · claude-sonnet-5 · accepted 7 · 2026-07-13T05:13:29+00:00
+- pairs_20260713T050939Z.report.json · $0.1728 · claude-haiku-4-5 · accepted 100 · 2026-07-13T05:12:57.766407+00:00
+- pairs_20260713T135755Z.report.json · $0.3966 · claude-sonnet-5 · accepted 5 · 2026-07-13T14:02:09.029909+00:00
+- txcorpus_20260714T224455Z.report.json · $0.1970 · claude-haiku-4-5 · accepted — · 2026-07-14T22:58:54Z
+- pairs_20260714T135150Z.report.json · $0.2102 · claude-haiku-4-5 · accepted 100 · 2026-07-14T13:56:15.801806+00:00
+- quadrants_20260715T142413Z.report.json · $0.0627 · claude-opus-4-8 · accepted 10 · 2026-07-15T14:24:47.203606+00:00
+- pairs_20260715T132350Z.report.json · $0.1810 · claude-haiku-4-5 · accepted 100 · 2026-07-15T13:27:42.588359+00:00
+- pairs_20260716T133552Z.report.json · $0.4994 · claude-sonnet-5 · accepted 8 · 2026-07-16T13:41:22.596044+00:00
+- pairs_20260717T132235Z.report.json · $0.2406 · claude-haiku-4-5 · accepted 100 · 2026-07-17T13:27:19.405134+00:00
+- pairs_20260718T133020Z.report.json · $0.1836 · claude-haiku-4-5 · accepted 100 · 2026-07-18T13:33:55.127194+00:00
+- quadrants_20260719T191948Z.report.json · $0.1015 · claude-opus-4-8 · accepted 14 · 2026-07-19T19:20:37.521407+00:00
+- pairs_20260719T132706Z.report.json · $0.1434 · claude-haiku-4-5 · accepted 100 · 2026-07-19T13:29:52.144664+00:00
+- responses_stimuli_20260721T235403Z.report.json · $0.9646 · alias · accepted — · —
+- dialects_20260723T001434Z.report.json · $0.0937 · claude-haiku-4-5 · accepted 250 · 2026-07-23T00:16:22.335959+00:00
+- judgments_stimuli_20260721T235403Z.report.json · $0.1691 · alias · accepted — · —
+- judgments_stimuli_20260722T112140Z.report.json · $0.2726 · alias · accepted — · —
+- responses_stimuli_20260722T003502Z.report.json · $0.2290 · alias · accepted — · —
+- responses_stimuli_20260722T112140Z.report.json · $0.4657 · alias · accepted — · —
+- judgments_stimuli_20260722T003502Z.report.json · $0.3484 · alias · accepted — · —
+- advnat_20260728T144020Z.report.json · $0.6624 · claude-opus-4-8 · accepted 75 · 2026-07-28T14:44:37.924368+00:00
+- responses_stimuli_20260728T194624Z.report.json · $7.2000 · alias · accepted — · —
+- responses_stimuli_20260721T235403Z.report.json · $7.3391 · delta (cumulative $8.3037, day 2026-07-23)
+- responses_stimuli_20260722T003502Z.report.json · $0.7223 · delta (cumulative $0.9513, day 2026-07-23)
+- responses_stimuli_20260728T194624Z.report.json · $0.7930 · delta (cumulative $7.9930, day 2026-07-29)
+- judgments_stimuli_20260728T194624Z.report.json · $0.9987 · alias · accepted — · —
+- judgments_stimuli_20260728T194624Z.report.json · $1.0943 · alias · accepted — · —
+- quadrants_20260729T151007Z.report.json · $0.0555 · claude-haiku-4-5 · accepted 46 · 2026-07-29T15:11:29.390802+00:00
+- featured_sim85_r3.report.json · $0.0000 · alias · accepted — · —
+- downgrades_txhaiku/mitigation.part_01.report.json · $0.0006 · alias · accepted — · —
+- downgrades_txhaiku/mitigation.part_04.report.json · $0.0002 · alias · accepted — · —
+- downgrades_txhaiku/mitigation.part_05.report.json · $0.0002 · alias · accepted — · —
+- downgrades_txhaiku/mitigation.part_06.report.json · $0.0009 · alias · accepted — · —
+- downgrades_txhaiku/mitigation.part_11.report.json · $0.0008 · alias · accepted — · —
+- downgrades_txhaiku/mitigation.part_15.report.json · $0.0002 · alias · accepted — · —
+- downgrades_txhaiku/mitigation.part_16.report.json · $0.0006 · alias · accepted — · —
+- downgrades_txhaiku/mitigation.part_19.report.json · $0.0002 · alias · accepted — · —
+- downgrades_txhaiku/mitigation.part_20.report.json · $0.0002 · alias · accepted — · —
+- imported_pairs/mitigation.part_01.report.json · $0.0018 · alias · accepted — · —
+- imported_pairs/mitigation.part_15.report.json · $0.0019 · alias · accepted — · —
+- pairs_20260711T051145Z/mitigation.part_01.report.json · $0.0005 · alias · accepted — · —
+- pairs_20260711T051145Z/mitigation.part_06.report.json · $0.0003 · alias · accepted — · —
+- pairs_20260711T051145Z/mitigation.part_11.report.json · $0.0010 · alias · accepted — · —
+- pairs_20260711T051145Z/mitigation.part_16.report.json · $0.0002 · alias · accepted — · —
+- pairs_20260711T051145Z/mitigation.part_21.report.json · $0.0006 · alias · accepted — · —
+- pairs_20260711T051145Z/mitigation.part_26.report.json · $0.0006 · alias · accepted — · —
+- pairs_20260711T051145Z/mitigation.part_31.report.json · $0.0006 · alias · accepted — · —
+- pairs_20260711T051145Z/mitigation.part_36.report.json · $0.0006 · alias · accepted — · —
+- pairs_20260711T051145Z/mitigation.part_41.report.json · $0.0004 · alias · accepted — · —
+- pairs_20260711T051145Z/mitigation.part_46.report.json · $0.0004 · alias · accepted — · —
+- pairs_20260711T051145Z_txopus/mitigation.part_01.report.json · $0.0024 · alias · accepted — · —
+- pairs_20260711T051145Z_txopus/mitigation.part_06.report.json · $0.0025 · alias · accepted — · —
+- pairs_20260711T051145Z_txopus/mitigation.part_11.report.json · $0.0028 · alias · accepted — · —
+- pairs_20260711T051145Z_txopus/mitigation.part_16.report.json · $0.0009 · alias · accepted — · —
+- pairs_20260711T051145Z_txopus/mitigation.part_21.report.json · $0.0032 · alias · accepted — · —
+- pairs_20260711T051145Z_txopus/mitigation.part_26.report.json · $0.0043 · alias · accepted — · —
+- pairs_20260711T051145Z_txopus/mitigation.part_31.report.json · $0.0038 · alias · accepted — · —
+- pairs_20260711T051145Z_txopus/mitigation.part_36.report.json · $0.0032 · alias · accepted — · —
+- pairs_20260711T051145Z_txopus/mitigation.part_41.report.json · $0.0019 · alias · accepted — · —
+- pairs_20260711T051145Z_txopus/mitigation.part_46.report.json · $0.0040 · alias · accepted — · —
+- pairs_20260711T051145Z_txplacebo/mitigation.part_01.report.json · $0.0005 · alias · accepted — · —
+- pairs_20260711T051145Z_txplacebo/mitigation.part_06.report.json · $0.0005 · alias · accepted — · —
+- pairs_20260711T051145Z_txplacebo/mitigation.part_11.report.json · $0.0008 · alias · accepted — · —
+- pairs_20260711T051145Z_txplacebo/mitigation.part_16.report.json · $0.0002 · alias · accepted — · —
+- pairs_20260711T051145Z_txplacebo/mitigation.part_21.report.json · $0.0006 · alias · accepted — · —
+- pairs_20260711T051145Z_txplacebo/mitigation.part_26.report.json · $0.0009 · alias · accepted — · —
+- pairs_20260711T051145Z_txplacebo/mitigation.part_31.report.json · $0.0008 · alias · accepted — · —
+- pairs_20260711T051145Z_txplacebo/mitigation.part_36.report.json · $0.0006 · alias · accepted — · —
+- pairs_20260711T051145Z_txplacebo/mitigation.part_41.report.json · $0.0004 · alias · accepted — · —
+- pairs_20260711T051145Z_txplacebo/mitigation.part_46.report.json · $0.0008 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_01.report.json · $0.0010 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_07.report.json · $0.0063 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_100.report.json · $0.0009 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_11.report.json · $0.0013 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_18.report.json · $0.0061 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_21.report.json · $0.0007 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_25.report.json · $0.0063 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_31.report.json · $0.0014 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_38.report.json · $0.0064 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_41.report.json · $0.0015 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_49.report.json · $0.0066 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_51.report.json · $0.0019 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_61.report.json · $0.0019 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_71.report.json · $0.0017 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_80.report.json · $0.0070 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_81.report.json · $0.0020 · alias · accepted — · —
+- pairs_20260719T132706Z/mitigation.part_91.report.json · $0.0019 · alias · accepted — · —
+- urgency_downgrades_20260707T1/mitigation.part_01.report.json · $0.0086 · alias · accepted — · —
+- urgency_downgrades_20260707T1/mitigation.part_11.report.json · $0.0105 · alias · accepted — · —
+- pairs_20260731T211704Z.report.json · $0.1794 · claude-haiku-4-5 · accepted 100 · 2026-07-31T21:20:32.486688+00:00
+- toolcall_smoke_20260804T025400Z.reconciled.report.json · $0.0045 · openrouter:openai/gpt-5.4-mini · accepted — · 2026-08-04T02:54:00Z
+- toolcall_smoke_20260804T042921Z.report.json · $0.0353 · openrouter:openai/gpt-5.4-mini · accepted — · 2026-08-04T04:29:53.712968Z
+- pab_generate_30879016218.reconciled.report.json · $2.2300 · alias · accepted — · 2026-08-04T05:08:05Z
+- pab_generate_30880027373.reconciled.report.json · $1.7556 · alias · accepted — · 2026-08-04T05:25:42Z
+- dialects_20260804T120912Z.report.json · $0.0462 · claude-haiku-4-5 · accepted 155 · 2026-08-04T12:10:08.360662+00:00
+- dialects_20260804T121703Z.report.json · $0.0457 · claude-haiku-4-5 · accepted 157 · 2026-08-04T12:17:58.318687+00:00
+- modeleval_20260804T121303Z.report.json · $0.0679 · claude-opus-4-8 claude-sonnet-5 claude-haiku-4-5 · accepted — · 2026-08-04T12:09:11.381554+00:00
+- modeleval_20260804T122241Z.report.json · $0.0680 · claude-opus-4-8 claude-sonnet-5 claude-haiku-4-5 · accepted — · 2026-08-04T12:18:46.263149+00:00
+- pairs_20260803T132340Z.report.json · $0.1503 · claude-haiku-4-5 · accepted 100 · 2026-08-03T13:26:47.328019+00:00
+- pab_evaluate_30928336615.report.json · $2.0371 · alias · accepted — · 2026-08-04T16:23:07.469877Z
+- pab_generate_30910138394.report.json · $5.6981 · alias · accepted — · 2026-08-04T16:13:07.166268Z
+- pairs_20260804T190615Z.report.json · $0.1772 · claude-haiku-4-5 · accepted 100 · 2026-08-04T19:09:42.123225+00:00
+- pairs_20260804T192506Z.report.json · $0.5207 · claude-sonnet-5 · accepted 0 · 2026-08-04T19:30:52.433367+00:00
+- pairs_20260805T002044Z.report.json · $0.3885 · claude-sonnet-5 · accepted 0 · 2026-08-05T00:24:56.503106+00:00
+- pairs_20260805T140130Z.report.json · $0.1723 · claude-haiku-4-5 · accepted 100 · 2026-08-05T14:05:02.363862+00:00
+- pairs_20260806T135728Z.report.json · $0.1680 · claude-haiku-4-5 · accepted 100 · 2026-08-06T14:00:54.201397+00:00
+- advmc_20260807T135420Z.report.json · $0.5007 · claude-opus-4-8 · accepted 40 · 2026-08-07T13:58:11.101638+00:00
+- advnat_20260807T150843Z.report.json · $0.4213 · claude-opus-4-8 · accepted 40 · 2026-08-07T15:11:14.253776+00:00
+- judgments_stimuli_20260807T153329Z.report.json · $0.3480 · alias · accepted — · —
+- responses_stimuli_20260807T153329Z.report.json · $17.8875 · alias · accepted — · —
+- pairs_20260809T172338Z.report.json · $1.8720 · claude-opus-4-8 · accepted 69 · 2026-08-09T17:29:26.705401+00:00
+- pairs_20260811T190638Z.report.json · $1.7939 · claude-opus-4-8 · accepted 68 · 2026-08-11T19:12:33.194917+00:00
+- genpilot_oxalpha_20260821T203312Z.report.json · $0.0000 · openrouter:stealth/ox-alpha · accepted — · —
+- genpilot_oxalpha_20260821T225739Z.report.json · $0.0000 · openrouter:stealth/ox-alpha · accepted — · —
+- genpilot_oxalpha_mc_20260822T011924Z.report.json · $0.0000 · openrouter:stealth/ox-alpha · accepted — · —
+- responses_stimuli_20260807T153329Z.report.json · $0.4812 · delta (cumulative $18.3687, day 2026-08-21)
+- genpilot_oxalpha_term_20260823T003442Z.report.json · $0.0000 · openrouter:stealth/ox-alpha · accepted — · —
+- judgments_stimuli_20260807T153329Z.report.json · $0.0086 · delta (cumulative $0.3566, day 2026-08-23)
+- responses_stimuli_20260728T194624Z.report.json · $0.0254 · delta (cumulative $8.0184, day 2026-08-23)
+- gen_oxalpha_term_20260823T181425Z.report.json · $0.0000 · openrouter:stealth/ox-alpha · accepted — · —
+- judgments_stimuli_20260827T141036Z.report.json · $0.1206 · alias · accepted — · —
+- responses_stimuli_20260827T141036Z.report.json · $0.1839 · alias · accepted — · —
+- responses_stimuli_20260827T141036Z.report.json · booked $0.0000 to 2026-08-27 (run_cost_usd); $0.1839 prior-runs balance folded to lifetime only (cost_basis=cumulative_from_records)

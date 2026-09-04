@@ -1,0 +1,409 @@
+name: PatientAgentBench Probe (exploratory)
+
+# STAGED, NOT LIVE. This file is a candidate for .github/workflows/pab_probe.yml.
+# It is parked under ops/pab_ci/ on purpose: copying it into .github/ is what
+# makes it real, and pushing a trigger file is what makes it spend. Both are
+# owner decisions. See ops/pab_ci/README.md.
+#
+# Runs the PatientWords literacy sweep through PatientAgentBench. The benchmark
+# and the adapter live in the FORK (PatientAgentBench-patientwords, CC-BY-NC-4.0);
+# this repo is MIT and never imports them. The workflow clones the fork into a
+# scratch directory, runs there, and brings back only the cost sidecar -- numbers,
+# no case content -- so nothing CC-BY-NC lands in this repository. Transcripts go
+# out as a build artifact and stay out of git until the licence boundary for
+# derived artifacts is decided (docs/patientagentbench_integration_design.md).
+#
+# PAID: the patient, assistant and sandbox legs bill the prepaid OpenRouter key;
+# the jury leg (evaluate stage only) bills ANTHROPIC_API_KEY. Every run requires
+# max_spend and writes a cost sidecar to data/pab/, which ledger_update.py folds
+# into spend.by_day and the $2/day guard.
+#
+# Start from the Actions tab (workflow_dispatch) or by pushing a params file to
+# .github/trigger/pab-probe.json via scripts/fire_trigger.py ONLY, e.g.
+#   {"stage":"smoke","assistant":"openrouter:openai/gpt-5.4-mini","max_spend":"0.10"}
+# NOTE: the trigger file is created by the first sanctioned fire — never by hand
+# (a hand-committed trigger file fires this paid workflow on push, incl. merges).
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "catalog ($0 slug/price lookup) | smoke (tool-calling check) | generate (conversations only) | evaluate (score an existing run) | analyze ($0, re-read a finished run's transcripts)"
+        type: string
+        default: "smoke"
+      fork_ref:
+        description: "Branch of the fork to run"
+        type: string
+        default: "claude/pab-integration-layers-ufl8dg"
+      cases_file:
+        description: "Sweep file, relative to the fork root"
+        type: string
+        default: "pw_pilot/sweep_health_literacy_n8.json"
+      config_file:
+        description: "Run config, relative to the fork root"
+        type: string
+        default: "pw_pilot/config_pilot.json"
+      assistant:
+        description: "Assistant registry key (smoke stage only)"
+        type: string
+        default: "openrouter:openai/gpt-5.4-mini"
+      turns:
+        description: "Conversation turns (smoke stage only; the config carries max_turns otherwise)"
+        type: string
+        default: "2"
+      run_dir:
+        description: "Existing run directory to resume/score (evaluate stage)"
+        type: string
+        default: ""
+      max_spend:
+        description: "HARD spend ceiling in USD (required, counted by the fire guard)"
+        type: string
+        default: "0.10"
+      commit_sidecar:
+        description: "Commit the cost sidecar to data/pab/ so the ledger sees the spend"
+        type: boolean
+        default: true
+      catalog_search:
+        description: "Space-separated substrings to look up in OpenRouter's catalogue (catalog stage)"
+        type: string
+        default: ""
+      catalog_require:
+        description: "Space-separated slugs that must exist and be priced before any spend"
+        type: string
+        default: ""
+      generate_timeout_minutes:
+        description: "Stop generation after this many minutes so the transcripts still get uploaded (GitHub cancels the whole job at 360)"
+        type: string
+        default: "300"
+      artifact_run_id:
+        description: "GitHub run id whose pab-run-<id> artifact holds the transcripts to score (evaluate stage; the run directory is ephemeral, so a later job must fetch it back)"
+        type: string
+        default: ""
+      artifact_run_id_2:
+        description: "A second run id to pool into the same analysis (analyze stage). Each generate run uploads only its own models, so a sweep split across two runs needs both to be read together."
+        type: string
+        default: ""
+
+  push:
+    paths:
+      - ".github/trigger/pab-probe.json"
+
+concurrency:
+  # Its own group: a probe can never evict a pending trace, logits or lens run.
+  group: pab-probe-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  params:
+    runs-on: ubuntu-latest
+    outputs:
+      stage: ${{ steps.params.outputs.stage }}
+      fork_ref: ${{ steps.params.outputs.fork_ref }}
+      cases_file: ${{ steps.params.outputs.cases_file }}
+      config_file: ${{ steps.params.outputs.config_file }}
+      assistant: ${{ steps.params.outputs.assistant }}
+      turns: ${{ steps.params.outputs.turns }}
+      run_dir: ${{ steps.params.outputs.run_dir }}
+      max_spend: ${{ steps.params.outputs.max_spend }}
+      commit_sidecar: ${{ steps.params.outputs.commit_sidecar }}
+      catalog_search: ${{ steps.params.outputs.catalog_search }}
+      catalog_require: ${{ steps.params.outputs.catalog_require }}
+      artifact_run_id: ${{ steps.params.outputs.artifact_run_id }}
+      generate_timeout_minutes: ${{ steps.params.outputs.generate_timeout_minutes }}
+      artifact_run_id_2: ${{ steps.params.outputs.artifact_run_id_2 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            ops
+      - name: Resolve parameters
+        id: params
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IN_STAGE: ${{ inputs.stage }}
+          IN_FORK_REF: ${{ inputs.fork_ref }}
+          IN_CASES_FILE: ${{ inputs.cases_file }}
+          IN_CONFIG_FILE: ${{ inputs.config_file }}
+          IN_ASSISTANT: ${{ inputs.assistant }}
+          IN_TURNS: ${{ inputs.turns }}
+          IN_RUN_DIR: ${{ inputs.run_dir }}
+          IN_MAX_SPEND: ${{ inputs.max_spend }}
+          IN_COMMIT_SIDECAR: ${{ inputs.commit_sidecar }}
+          IN_CATALOG_SEARCH: ${{ inputs.catalog_search }}
+          IN_CATALOG_REQUIRE: ${{ inputs.catalog_require }}
+          IN_ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
+          IN_GENERATE_TIMEOUT_MINUTES: ${{ inputs.generate_timeout_minutes }}
+          IN_ARTIFACT_RUN_ID_2: ${{ inputs.artifact_run_id_2 }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          # The push-path defaults dict MUST contain every trigger key (unknown
+          # keys in the trigger file are silently ignored by design; the fire
+          # guard's KNOWN_KEYS mirrors this set).
+          defaults = {"stage": "smoke",
+                      "fork_ref": "claude/pab-integration-layers-ufl8dg",
+                      "cases_file": "pw_pilot/sweep_health_literacy_n8.json",
+                      "config_file": "pw_pilot/config_pilot.json",
+                      "assistant": "openrouter:openai/gpt-5.4-mini",
+                      "turns": "2",
+                      "run_dir": "",
+                      "max_spend": "0.10",
+                      "commit_sidecar": "true",
+                      "catalog_search": "",
+                      "catalog_require": "",
+                      "artifact_run_id": "",
+                      "generate_timeout_minutes": "300",
+                      "artifact_run_id_2": ""}
+          p = dict(defaults)
+          if os.environ["EVENT_NAME"] == "push":
+              with open(".github/trigger/pab-probe.json", encoding="utf-8") as f:
+                  cfg = json.load(f)
+              p.update({k: (str(v).lower() if isinstance(v, bool) else str(v))
+                        for k, v in cfg.items() if k in defaults})
+          else:
+              for key in defaults:
+                  value = os.environ.get("IN_" + key.upper(), "")
+                  if value != "":
+                      p[key] = value
+          if p["stage"] not in ("catalog", "smoke", "generate", "evaluate", "analyze"):
+              raise SystemExit(f"unknown stage {p['stage']!r}")
+          if float(p["max_spend"]) <= 0:
+              raise SystemExit("max_spend must be > 0")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              for key, value in p.items():
+                  out.write(f"{key}={value}\n")
+          print(json.dumps(p, indent=2))
+          EOF
+
+  probe:
+    needs: params
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            scripts
+            data
+            medlang_circuits
+
+      - name: Check out the fork (CC-BY-NC-4.0, kept out of this repo's tree)
+        uses: actions/checkout@v4
+        with:
+          repository: michaeldgreenphd/PatientAgentBench-patientwords
+          ref: ${{ needs.params.outputs.fork_ref }}
+          path: .pab-fork
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the benchmark and the adapter
+        working-directory: .pab-fork
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          python -c "import patientwords_pab as p; print('adapter ok:', p.FreeTraitUserAgent.NAME)"
+
+      - name: OpenRouter catalogue ($0, no model call)
+        if: needs.params.outputs.catalog_search != '' || needs.params.outputs.catalog_require != ''
+        working-directory: .pab-fork
+        run: |
+          args=""
+          for term in ${{ needs.params.outputs.catalog_search }}; do
+            args="$args --search $term"
+          done
+          for slug in ${{ needs.params.outputs.catalog_require }}; do
+            args="$args --require $slug"
+          done
+          mkdir -p ../data/pab
+          # Printed for the log AND committed: a dated record of the real prices
+          # is the only way this repo can hold verified OpenRouter numbers, since
+          # the development sandbox cannot reach the host.
+          python -m patientwords_pab.openrouter_catalog $args --compare-specs
+          python -m patientwords_pab.openrouter_catalog $args --compare-specs --json \
+            > "../data/pab/openrouter_catalogue_$(date -u +%Y%m%dT%H%M%SZ).json"
+
+      - name: Tool-calling smoke test
+        if: needs.params.outputs.stage == 'smoke'
+        working-directory: .pab-fork
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          mkdir -p ../data/pab
+          python -m patientwords_pab.toolcall_smoke \
+            --assistant "${{ needs.params.outputs.assistant }}" \
+            --turns "${{ needs.params.outputs.turns }}" \
+            --max-spend "${{ needs.params.outputs.max_spend }}" \
+            --report "../data/pab/toolcall_smoke_$(date -u +%Y%m%dT%H%M%SZ).report.json"
+
+      - name: Generate conversations (no jury)
+        if: needs.params.outputs.stage == 'generate'
+        working-directory: .pab-fork
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # The ceiling is ENFORCED, not just declared. budget_guard meters
+          # every call through upstream's single model factory and aborts the
+          # run when the cumulative cost crosses this number; without it the
+          # only real limit is the prepaid balance. The report is written in a
+          # finally, so a crashed or aborted run still leaves a sidecar for the
+          # ledger -- an unrecorded spend is how spend goes missing.
+          PW_MAX_SPEND_USD: ${{ needs.params.outputs.max_spend }}
+          PW_SPEND_REPORT: ../data/pab/pab_generate_${{ github.run_id }}.report.json
+        run: |
+          mkdir -p ../data/pab
+          # --max-parallel stays at upstream's default of 1. Sequential is what
+          # makes the config's most-expensive-first ordering a safety property:
+          # a ceiling trip then loses a known tail of cheap models, not a
+          # scattered subset of every model at once.
+          #
+          # `timeout --signal=INT` is load-bearing, not belt-and-braces. A run
+          # that hits GitHub's 6h JOB limit is cancelled outright: the remaining
+          # steps do not run, so the transcripts are never uploaded and the cost
+          # sidecar is never written -- money spent, nothing to show, nothing in
+          # the ledger. Ending the STEP early instead leaves the job alive, and
+          # SIGINT reaches Python as KeyboardInterrupt, which the run wrapper's
+          # `finally` turns into a written report. Conversations already
+          # finished are on disk, `if: always()` uploads them, and
+          # `generate --run-dir` resumes from there.
+          timeout --signal=INT --kill-after=2m \
+            "${{ needs.params.outputs.generate_timeout_minutes }}m" \
+            python -m patientwords_pab.run generate \
+            --cases "${{ needs.params.outputs.cases_file }}" \
+            --config "${{ needs.params.outputs.config_file }}" \
+            ${{ needs.params.outputs.run_dir != '' && format('--run-dir "{0}"', needs.params.outputs.run_dir) || '' }} \
+            || { code=$?; case $code in
+                   124|130) echo "::warning::generation stopped early (exit $code); "\
+                                 "partial transcripts are uploaded and resumable "\
+                                 "with --run-dir" ;;
+                   *) exit $code ;;
+                 esac; }
+
+      - name: Fetch the transcripts to score (the run directory is ephemeral)
+        if: (needs.params.outputs.stage == 'evaluate' || needs.params.outputs.stage == 'analyze') && needs.params.outputs.artifact_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          # Generation and scoring are separate runs on separate billing
+          # accounts, and .pab-fork/output/ does not survive between them. The
+          # transcripts come back from the generating run's artifact; without
+          # this the evaluate stage finds an empty directory and scores nothing.
+          name: pab-run-${{ needs.params.outputs.artifact_run_id }}
+          path: .pab-fork/output/
+          run-id: ${{ needs.params.outputs.artifact_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch a second run to pool into the analysis
+        if: needs.params.outputs.stage == 'analyze' && needs.params.outputs.artifact_run_id_2 != ''
+        uses: actions/download-artifact@v4
+        with:
+          # Its own directory: each generate run names its experiments 0_0, 1_0,
+          # ... independently, so unpacking both into one tree would have the
+          # second run's experiments overwrite the first's.
+          name: pab-run-${{ needs.params.outputs.artifact_run_id_2 }}
+          path: .pab-fork/output-2/
+          run-id: ${{ needs.params.outputs.artifact_run_id_2 }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Score an existing run (jury bills Anthropic)
+        if: needs.params.outputs.stage == 'evaluate'
+        working-directory: .pab-fork
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # A DIFFERENT account from the generate stage. The jury bills the
+          # direct Anthropic key, so this ceiling is drawn against the Anthropic
+          # budget and must not be added to the OpenRouter one.
+          PW_MAX_SPEND_USD: ${{ needs.params.outputs.max_spend }}
+          PW_SPEND_REPORT: ../data/pab/pab_evaluate_${{ github.run_id }}.report.json
+        run: |
+          mkdir -p ../data/pab
+          python -m patientwords_pab.run evaluate \
+            --config "${{ needs.params.outputs.config_file }}" \
+            --run-dir "${{ needs.params.outputs.run_dir }}"
+
+      - name: Analyse the literacy shift ($0, transcripts only)
+        if: needs.params.outputs.stage == 'analyze'
+        run: |
+          # $0: reads the transcripts as data, makes no model call. Only the
+          # analysis output is committed -- measures and counts, no case text --
+          # so nothing CC-BY-NC-4.0 lands in this MIT repository.
+          mkdir -p data/pab
+          stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+          args=""
+          for run in .pab-fork/output/*/ .pab-fork/output-2/*/; do
+            [ -d "$run" ] || continue
+            echo "== $run"
+            args="$args --run $run"
+            python scripts/validate_pab_contract.py --run "$run" --json \
+              > "data/pab/pab_contract_${stamp}_$(basename "$run").json" || true
+          done
+          # One analysis over every run directory: --run is repeatable, and the
+          # models are keyed by their registry name, so a sweep split across two
+          # runs pools into a single table.
+          python scripts/pab_literacy_shift.py $args \
+            --csv "data/pab/pab_rows_${stamp}.csv"
+          python scripts/pab_literacy_shift.py $args --json \
+            > "data/pab/pab_literacy_shift_${stamp}.json"
+          python scripts/pab_literacy_shift.py $args | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate the transcripts against the Layer-2 contract
+        if: needs.params.outputs.stage == 'generate' || needs.params.outputs.stage == 'evaluate'
+        run: |
+          for run in .pab-fork/output/*/; do
+            echo "== $run"
+            python scripts/validate_pab_contract.py --run "$run" || true
+          done
+
+      - name: Upload transcripts as an artifact (not committed)
+        if: always() && (needs.params.outputs.stage == 'generate' || needs.params.outputs.stage == 'evaluate')
+        uses: actions/upload-artifact@v4
+        with:
+          name: pab-run-${{ github.run_id }}
+          path: .pab-fork/output/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Commit the cost sidecar only
+        # always(): a run that trips the ceiling exits non-zero, and without
+        # this the commit is skipped exactly when the sidecar matters most --
+        # the guard writes it, the runner is torn down, and the spend never
+        # reaches the ledger. That happened on run 30880027373.
+        if: always() && needs.params.outputs.commit_sidecar == 'true'
+        run: |
+          # Numbers only. Transcripts stay in the artifact: they are derived from
+          # CC-BY-NC-4.0 cases and this repository is MIT.
+          if [ -z "$(git status --porcelain data/pab)" ]; then
+            echo "nothing written to data/pab"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/pab
+          git commit -m "PAB probe (${{ needs.params.outputs.stage }}): data/pab record"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Report
+        if: always()
+        run: |
+          echo "### PatientAgentBench probe" >> "$GITHUB_STEP_SUMMARY"
+          echo "stage: ${{ needs.params.outputs.stage }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "ceiling: \$${{ needs.params.outputs.max_spend }}" >> "$GITHUB_STEP_SUMMARY"
+          for f in data/pab/*.report.json; do
+            [ -e "$f" ] || continue
+            python - "$f" >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          import json, sys
+          d = json.load(open(sys.argv[1]))
+          cost = d.get("cost_usd")
+          print(f"- `{sys.argv[1]}` cost "
+                f"{'N/A' if cost is None else f'${cost:.6f}'} "
+                f"of ${d.get('max_spend_usd')} "
+                f"| tool trace ok: {(d.get('tool_trace') or {}).get('ok')}")
+          EOF
+          done

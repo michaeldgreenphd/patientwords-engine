@@ -1,0 +1,401 @@
+---
+title: "PatientWords — evidence-power audit 2026-07-28 — owner decision copy"
+date: "2026-07-28"
+output: html_document
+---
+
+**Instructions.**
+Working document for owner annotation — never site content (same discipline as
+`ops/site_text_outline.Rmd`). This is a faithful mirror of
+`docs/audits/evidence_power_audit_20260728.md`: audit findings are reproduced
+verbatim, not reworded. One section per ranked weakest-evidence item (1–12);
+fill in the `DECISION` / `TARGET N` / `NOTES` fields under each. The claim
+inventory and power tables are included verbatim below the ranked sections for
+reference, followed by the audit's lead findings, hypothesis verification, and
+corrections. The audit contains no phrase text; pairs are referenced only as
+`<batch>#<index>`.
+
+---
+
+# Ranked weakest-evidence items (importance × weakness)
+
+## Item 1 — Advice-arm cross-vendor numbers (C15)
+
+> **n:** 25, PROV
+> **What the skeptical lab reviewer says:** "Draft-header prereg, draft rubric,
+> machine-coded, no human agreement, uncorrected 5/0 splits — this is a pilot
+> being displayed as a result."
+> **Cheapest fix:** Sign prereg; run registered n=25 human coding; annotate
+> llm/ page as pilot; then n→100
+> **Cost:** owner time + ~$15
+
+*(Cross-reference: lead finding L2; claim inventory C15; power table row C15.)*
+
+DECISION: approve
+
+TARGET N: 100 (recommended default - owner named no figure)
+
+NOTES: owner decision by chat reply, 2026-07-28 (pasted decision block); transcribed verbatim by the session.
+
+## Item 2 — n=3 model columns on public surfaces (C3)
+
+> **n:** 3
+> **What the skeptical lab reviewer says:** "Your largest displayed effect is a
+> 3-phrase cell."
+> **Cheapest fix:** n≥30 render gate now; $0 logits extension after
+> **Cost:** $0
+
+*(Cross-reference: lead finding L1; claim inventory C3; power table row C3.)*
+
+DECISION: approve
+
+TARGET N: 75 (recommended default - owner named no figure)
+
+NOTES: owner decision by chat reply, 2026-07-28 (pasted decision block); transcribed verbatim by the session.
+
+## Item 3 — Causal narrative (C8+C9)
+
+> **n:** 1/5/9
+> **What the skeptical lab reviewer says:** "One ablation and one patched pair
+> is an anecdote pipeline."
+> **Cheapest fix:** Fire approved steering-100; unblock patch workflow → 50
+> **Cost:** $0
+
+*(Cross-reference: lead finding L3; claim inventory C8, C9; power table rows
+C8, C9.)*
+
+DECISION: approve
+
+TARGET N: 100 steering / 50 patch (recommended default - owner named no figure)
+
+NOTES: owner decision by chat reply, 2026-07-28 (pasted decision block); transcribed verbatim by the session.
+
+## Item 4 — Frame-collapse story (C21)
+
+> **n:** 8 tail
+> **What the skeptical lab reviewer says:** "Tail-selected exemplars with no
+> denominator; two share a target token; a third of the subset isn't even
+> classified."
+> **Cheapest fix:** 17T lens chunk; classify all flips; report subset vs census
+> **Cost:** $0
+
+*(Cross-reference: lead finding L3; claim inventory C21; power table row C21;
+hypothesis verification item 1.)*
+
+DECISION: approve
+
+TARGET N: 549 (all gemma flips) (recommended default - owner named no figure)
+
+NOTES: owner decision by chat reply, 2026-07-28 (pasted decision block); transcribed verbatim by the session.
+
+## Item 5 — Published paraphrase floor (C7)
+
+> **n:** 9
+> **What the skeptical lab reviewer says:** "Your site-wide noise benchmark is
+> nine sentences — while a 260-variant floor sits untraced into the payload."
+> **Cheapest fix:** Export the 50-item floor to provenance.json
+> **Cost:** $0
+
+*(Cross-reference: claim inventory C7; power table row C7; hypothesis
+verification item 6.)*
+
+DECISION: approve
+
+TARGET N: n/a
+
+NOTES: owner decision by chat reply, 2026-07-28 (pasted decision block); transcribed verbatim by the session.
+
+## Item 6 — Translation-mitigation coherence (C12+C16 + advice translated arm)
+
+> **n:** 2 / 37
+> **What the skeptical lab reviewer says:** "The router class you build the
+> mitigation story on has n=2, the circuit-model column n=37, and at the advice
+> layer translation didn't recover."
+> **Cheapest fix:** Fire item 4; jlens router chunks; reconcile the three
+> layers in one write-up
+> **Cost:** ~$0.13 + $0
+
+*(Cross-reference: claim inventory C12, C16; power table rows C12, C16.)*
+
+DECISION: approve
+
+TARGET N: 100 (recommended default - owner named no figure)
+
+NOTES: owner decision by chat reply, 2026-07-28 (pasted decision block); transcribed verbatim by the session.
+
+## Item 7 — Every "downgrade" number (C2, advice tiers)
+
+> **n:** vocab, not n
+> **What the skeptical lab reviewer says:** "All of it inherits an unreviewed
+> tier vocabulary — in both arms."
+> **Cheapest fix:** Complete the clinician review
+> (`docs/tier_review_checklist.md`); until then keep the draft label
+> load-bearing
+> **Cost:** owner/clinician time
+
+*(Cross-reference: claim inventory C2; hypothesis verification item 9.)*
+
+DECISION: defer
+
+TARGET N: n/a
+
+NOTES: owner decision by chat reply, 2026-07-28 (pasted decision block); transcribed verbatim by the session.
+
+## Item 8 — Dialect matrix + quadrant syntax evidence (C6)
+
+> **n:** 1/cell; ~4 quadrants
+> **What the skeptical lab reviewer says:** "Single traces at cell level;
+> retrace spread is the same order as cell deltas."
+> **Cheapest fix:** Approved K=3 re-traces + quadrants 4→50
+> **Cost:** $0 + ~$0.28
+
+*(Cross-reference: claim inventory C6; power table row C6.)*
+
+DECISION: approve
+
+TARGET N: K=3 / 50 quadrants (recommended default - owner named no figure)
+
+NOTES: owner decision by chat reply, 2026-07-28 (pasted decision block); transcribed verbatim by the session.
+
+## Item 9 — Validity anchor (C20)
+
+> **n:** 14
+> **What the skeptical lab reviewer says:** "The instrument-validity
+> correlation has a CI from 0.24 to 0.89."
+> **Cheapest fix:** More hand-measured matches, or keep it engine-internal (it
+> is not on the site today)
+> **Cost:** owner time
+
+*(Cross-reference: claim inventory C20; power table row C20.)*
+
+DECISION: approve
+
+TARGET N: n/a
+
+NOTES: owner decision by chat reply, 2026-07-28 (pasted decision block); transcribed verbatim by the session.
+
+## Item 10 — Pooled homepage flip share (C5)
+
+> **n:** pooled
+> **What the skeptical lab reviewer says:** "33% pooled over deliberately
+> topic-steered batches reads as a population rate."
+> **Cheapest fix:** One sentence at the strip noting batch composition;
+> per-batch range is 0–60%
+> **Cost:** owner prose
+
+*(Cross-reference: claim inventory C5; hypothesis verification item 7.)*
+
+DECISION: approve
+
+TARGET N: n/a
+
+NOTES: owner decision by chat reply, 2026-07-28 (pasted decision block); transcribed verbatim by the session.
+
+## Item 11 — Transport/loglens/exemplar cells (C13, C14)
+
+> **n:** 23/5/1
+> **What the skeptical lab reviewer says:** "Census sentences from 23 pairs."
+> **Cheapest fix:** More $0 lens chunks
+> **Cost:** $0
+
+*(Cross-reference: claim inventory C13, C14; power table rows C13, C14.)*
+
+DECISION: approve
+
+TARGET N: n/a
+
+NOTES: owner decision by chat reply, 2026-07-28 (pasted decision block); transcribed verbatim by the session.
+
+## Item 12 — Seal residual
+
+> **n:** —
+> **What the skeptical lab reviewer says:** "Sealed phrases remain reachable in
+> pre-07-21 public history."
+> **Cheapest fix:** Documented owner decision
+> (`docs/audits/seal_incident_20260721.md`); disclose in any external methods
+> note
+> **Cost:** prose
+
+*(Cross-reference: ranked list row 12.)*
+
+DECISION: approve
+
+TARGET N: n/a
+
+NOTES: owner decision by chat reply, 2026-07-28 (pasted decision block); transcribed verbatim by the session.
+
+---
+
+# Pass 1 — claim inventory with n (verbatim)
+
+Provenance classes: PRE = pre-registered · EXP = exploratory · PROV =
+provisional (draft rubric / pending review) · ILL = illustrative (labeled).
+
+| # | Claim (surface) | n | unit | class | source |
+|---|---|---|---|---|---|
+| C1 | Per-model mean wording gap, CIs, BH sign tests (technical Part 4) | 693–1,046 | phrases | PRE (4 models) / EXP (4) | site `data/model_stats.json` per_model |
+| C2 | Downgrade rates 0.090–0.141 with CIs (urgency surfaces) | 283–583 flips | flips | EXP + **PROV (draft tier vocab)** | `paired_stats_rigor.json` flips; `urgency_shift.json` (vocab: "owner-reviewed v1 · domain review pending") |
+| C3 | meditron3-8b / apertus-8b rows+bands (urgency table, convergence fold) | **3** | phrases | EXP | `paired_stats_rigor.json`; `convergence.json`; `urgency_shift.json` |
+| C4 | Convergence "bands narrow/end below zero" (8 main models) | 19–28 pts, final n≈700–1,050 | batches/phrases | EXP | `data/convergence.json` |
+| C5 | Homepage strip: 736 scored, 244 flips (33%) pooled | 736 | scenarios (gemma) | EXP; pooled over topic-steered batches (per-batch range 0–60%, computed this audit) | `data/simulated_scenarios.json` |
+| C6 | Dialect matrix cells + flips (dialect page, homepage specimen) | **1 per cell** (20×8) | traced sentence | ILL (page legend states n=1) | `data/dialects.json` |
+| C7 | Paraphrase noise floor ±6.4 pp (quoted on several pages) | **9** | baselines | EXP | `data/provenance.json` paraphrase_robustness (n_baselines_measured 9). A 50-item / 260-variant floor batch is fully traced (`trace_out/dialects_20260723T001434Z/`, 11 parts) but NOT exported to the site floor stat |
+| C8 | Steering causal narrative (translation page, README) | **20 / 5 / 1** | phrases / boosts / ablation | EXP | `data/provenance.json` steering |
+| C9 | Patch-layer figure, ~61% single-patch recovery (methods) | **9 grid / 1 shown** | pairs | EXP/ILL (labeled) | `data/patch_profile.json`; `docs/experiments/lens_frame_collapse.md` caveats |
+| C10 | Lens taxonomy (capture 56 / hijack 32 / held 394 / unreadable 149) | 631 | pairs | EXP | `data/jlens_insights.json` |
+| C11 | Depth census 103 retained / 61 absent / 14 suppressed (technical) | 178 | pairs | EXP | `data/jlens_depth.json` blocks |
+| C12 | Translation router by class (technical) | **14 / 10 / 2** | pairs per class | EXP | `jlens_depth.json` translation.by_class (page holds back n<3 — the suppressed cell is at the display floor) |
+| C13 | Transport census + pinned exemplars (technical) | **23/side; 5** | pairs; exemplars | EXP | `data/jlens_transport.json` |
+| C14 | Logit-lens robustness companion | 1 batch | batch | EXP | `data/jlens_loglens.json` |
+| C15 | Advice arm: all cross-vendor advice numbers (llm/ page) | **25** × 8 × 3 × K=3 | scenarios | **PROV** (rubric 1.1-draft; Amendment 2 quarantine; human gate unreported) | `data/advice_scenarios.json`; `docs/preregistration_advice.md` |
+| C16 | Translation at scale (translation page) | gemma **37** vs 350 / 350 | phrases | EXP | `data/translation_scale.json` |
+| C17 | Specialty fold (technical, labeled exploratory) | 23–42 per model-cell | phrases | EXP | `data/specialty_breakdown.json` (min_n 10 gate) |
+| C18 | Repeatability (72 re-traced, max spread 0.027) + drift sentinel | 72; 9 days × 3 | pairs | EXP | `retrace_consistency.json`, `drift_series.json` |
+| C19 | Hand-measured anchor set (phrase-dataset page) | 27 | pairs | EXP | `data/stress_pairs.json` |
+| C20 | Validity correlation r=0.687 / ρ=0.665 | **14** | matched pairs | EXP (engine docs only; not found on site pages) | `docs/overnight_ledger_20260708.md` |
+| C21 | Frame-collapse exemplar table + replication claim | **8** (6 now classifiable) | exemplars | EXP (doc carries tail-selection caveat; QUEUED experiment) | `docs/experiments/lens_frame_collapse.md`; landed `trace_out/pairs_2026071{4,8}T*__jlens_gemma-2-2b/` |
+| C22 | Batch redirect rates 44–55% | 3 batches | batches | EXP (doc-internal; explicitly "batch-specific, not population") | same doc; derivation UNVERIFIED (this audit reproduces gemma flip rates 34/37/35% for those stems — different denominator suspected) |
+| C23 | Tokenization null: first-piece length vs gap r = 0.09 | 290 | pairs | EXP | `docs/findings_synthesis.md` (n now stale vs corpus 1,331 rows — recompute cheaply) |
+| C24 | Tier B holdout, confirmatory once-only | 117 withheld | pairs | PRE | `simulated_scenarios.json` holdout_withheld; prereg + amendments |
+
+Verified backfill completeness (prompt's list): all 8 stems complete —
+`pairs_20260714T135150Z` 100/100, `…15T` 100/100, `…16T` 8/8, `…17T` 100/100,
+`…18T` 100/100, `…19T` 100/100, `pairs_20260707T221438Z` 60/60,
+`dialects_20260723T001434Z` 50/50 items (260 variant rows), by union of
+`results[i]["index"]` over `batch_summary*.json`.
+
+# Pass 2 — power audit (verbatim)
+
+Flagged **<30** (bold) and <100. "Obtainable" = existing $0 lanes unless noted.
+
+| Claim | n now | n needed (basis) | Obtainable? |
+|---|---|---|---|
+| C3 new medical models | **3** | ~20 to exclude 0 at observed effect; ~75 for ±0.05 CI (SD≈0.22 implied by CI) | YES — $0 logits lane, 1–2 runs; or gate rendering until then |
+| C8 steering ablation / boost | **1 / 5 of 20** | ≥30/arm to separate 25% vs placebo at 80% power; approved plan is 100 | YES — $0, expansion item 2 APPROVED, unfired |
+| C9 patching | **9** (1 shown) | 50 (approved target); ≥30 for a stable recovery distribution | BLOCKED — `activation_patching.yml` not on main (item 6) |
+| C21 frame-collapse subset | **6–8** | denominator first: classify all 549 gemma flips, then ≥30 in-pattern cases for a class-share vs census test | YES — $0 (17T lens chunk + systematic pass over landed lens rows) |
+| C12 router "suppressed" class | **2** | ≥20/class for class-conditional recovery claims | YES — $0 jlens chunks |
+| C13 transport census / exemplars | **23 / 5** | ≥100 census for ±9%→±5% share CIs | YES — $0 lens chunks |
+| C7 paraphrase floor (published) | **9** | 50-item floor already traced; publish it | YES — $0 analysis/export only |
+| C20 validity correlation | **14** | r=0.687 at n=14 → CI ≈ [0.24, 0.89]; n≈50 for usable precision | PARTIAL — owner hand-measurement time |
+| C15 advice arm | **25** | 100 scenarios for downgrade-rate CI ±8%→±4%; human gate n=25 is registered and unrun | Paid ~$15 + owner/clinician time (rubric review, gold tiers) |
+| C16 translation gemma column | 37 | 100+ (approved item 4) | YES — approved, unfired (haiku ~$0.13) |
+| C6 dialect cells | **1**/cell | K=3 re-traces (approved item 5a) to separate cell effects from the 0.027 retrace spread | YES — $0, approved |
+| C22 batch redirect rates | 3 batches | population estimate requires unenriched sampling frame — design change, not n | Design change |
+| C14 loglens | 1 batch | 3+ batches | YES — $0 |
+| C24 holdout confirmatory | 117 | CP halfwidth ±8–9% on a flip-rate endpoint — adequate only for large effects; check against registered effect sizes before unsealing | Fixed by design (one-shot) |
+| C23 tokenization null | 290 (stale) | recompute at current 1,331 rows | YES — $0 analysis |
+| C1, C2, C4, C10, C11, C18 | 178–1,046 | adequately powered for their stated uses | — |
+
+---
+
+# Appendix A — Lead findings (verbatim)
+
+**L1 — Two n=3 model columns are live on the public technical page, showing the
+largest effects on the page.** `meditron3-8b` and `apertus-8b-meditronfo` have
+**n_phrases = 3 each** (`paired_stats_rigor.json` per_model.n_rows = 3), mean
+wording gap −0.149 / −0.157 — three to four times the headline models' effects —
+with CIs spanning zero ([−0.447, +0.045] / [−0.467, +0.035]). Both are present
+in the public payloads `data/convergence.json` (6 points each; the technical
+accumulation fold renders every model in the file) and
+`data/urgency_shift.json` `summary.per_model_deduped` (flips 2, downgrades 1 —
+rendered by the urgency-by-model table). The site's `model_stats.json`
+correctly *excludes* them from the Part 4 forest, but the other two surfaces
+leak them. A reviewer will screenshot a −0.15 medical-model band next to
+n≈700–1,000 columns and ask why a 3-phrase cell is on a public page. *Fix
+(cheapest first): render-gate both surfaces at n≥30 (site change, owner's
+lane), and/or extend the $0 logits lane to ≥30–75 phrases for both models
+(power: at the observed spread, n≈20 excludes zero; n≈73 gives ±0.05 CI
+halfwidth).*
+
+**L2 — Every advice-arm number is provisional by the study's own registration,
+and the registration itself is unsigned.** `docs/preregistration_advice.md`
+line 1 still reads "DRAFT, pending owner sign-off" although the 1,238-call
+pilot it governs has run and its outputs are on the public `llm/` page
+(`data/advice_scenarios.json`: 25 scenarios × 8 models × 3 arms × K=3, rubric
+`1.1-draft`). Amendment 2 correctly quarantines machine codings — "provisional
+codings are EXCLUDED from every registered endpoint and any claim-grade use" —
+and the registered human-validation gate (blinded n=25, agreement per arm) has
+**no reported result anywhere in the tree**. Per-model directional splits
+(e.g. 5 downgrades / 0 upgrades at n=25 ≈ p≈0.03 one-sided, uncorrected across
+6+ models) do not survive correction. *Fix: owner signs the prereg (or
+re-registers as observed-pilot + confirmatory-rerun); run the registered
+human-coded sample and report agreement; hold every vendor-facing or public
+cross-model advice statement until both are done; scale n=25→100 (~$15) only
+after.*
+
+**L3 — The causal/mechanistic leg rests on 1 ablation, 5 boosts, 1 patched
+pair, and 8 tail-selected exemplars.** Published steering evidence is
+unchanged since 07-09: `provenance.json` steering = {n_phrases 20,
+boost_recoveries 5, ablation_recoveries 1} (Clopper-Pearson: 1/20 →
+[0.1%, 24.9%]; 5/20 → [8.7%, 49.1%]). Activation patching:
+`patch_profile.json` pairs_used = 9 (2 screened out as inverted), and the
+methods figure's ~61% recovery is one pair. The frame-collapse/euphemism story
+(`docs/experiments/lens_frame_collapse.md`) is 8 exemplars hand-ranked from
+the extreme tail of a flip-enriched pool; its depth classification is now
+partially answerable from the 07-28 lens landings (6/8 classified: 4
+retained-class, 2 absent; `pairs_20260717T132235Z` lens rows have NOT landed,
+so 2 exemplars remain unclassifiable). All the fixes are $0 and mostly
+already approved: steering 20→100 (expansion item 2), patching 9→50 (item 6,
+BLOCKED on restoring `activation_patching.yml` to main), 17T lens chunk, and
+a *systematic* frame-collapse denominator (classify all 549 gemma flips, not
+a hand-picked tail). *Until they land, external write-ups should not use the
+word "causal" and should not name the euphemism-literalization pattern as a
+finding.*
+
+# Appendix B — Hypothesis verification (verbatim)
+
+1. **Frame-collapse n** — CONFIRMED small: 8 exemplars, 6 now classifiable
+   (4 retained / 2 absent), 17T lens not landed. **18T #19 vs #42: partially
+   benign.** Distinct stimuli (different prompt hashes in
+   `data/simulated/pairs_20260718T133020Z.json`), distinct raw readouts
+   (per-layer top-1 sequences differ) — but identical clinical-side
+   *rank* trajectories, plausibly because both share the same target token.
+   Not an instrumentation error; also not two independent exemplars.
+2. **Advice arm** — n=25/draft-rubric/no-ground-truth CONFIRMED (rank 1).
+   The gemini/coverage discrepancy is **largely fixed on the branch**: all 8
+   models now 75/75/75 texted samples at K=1..3 (kimi 73/74/75); residue: a
+   dead `openrouter:google/gemini-3.5-flash` row in run.models with zero
+   responses.
+3. **"r≈0.1, n=16 wording-gap null"** — NOT FOUND as stated. Nearest
+   artifacts: tokenization null r=0.09 at n=290 (`findings_synthesis.md`) and
+   validity r=0.687 at n=14 (`overnight_ledger_20260708.md`). Neither appears
+   on a site surface. Marked UNVERIFIED as originally phrased.
+4. **Single patch ~61%** — CONFIRMED (C9): 9-pair grid, 1-pair figure, below
+   the 0.95 recovery bar; labeled.
+5. **Depth-census "suppressed"** — 14/178 census-level (adequate for a share);
+   the weak cell is the *translation router* suppressed class at **n=2** (C12).
+6. **Paraphrase-floor instrumentation gap** — CONFIRMED: the floor batch's
+   variant rows do not persist per-variant `predictive_spread` (checked
+   `trace_out/dialects_20260723T001434Z/batch_summary*`), so the
+   specificity control (does plain rewording ever leave medicine?) remains
+   indirect, exactly as `lens_frame_collapse.md` states. Additionally the
+   *published* floor is still the 9-baseline version (C7).
+7. **Redirect rates on enriched batches** — the 44–55% figures live only in
+   the engine doc with an explicit batch-specific caveat; no public surface
+   states them. This audit could not reproduce their denominators (gemma
+   flip rates for those stems compute to 34–37%) — UNVERIFIED derivation.
+   The public pooled 33% (C5) does silently include enriched batches.
+8. **Uneven per-model coverage** — CONFIRMED (gemma 736 / gemma-3 843 /
+   qwen3-4b 755 / qwen3-1.7b 843 measured scenarios; per-model phrase sets
+   693–1,046 differ). Cross-model comparisons do NOT hold the phrase set
+   constant; mitigations that exist: registration split, simultaneous CIs,
+   batch/topic-clustered sensitivity intervals (`paired_stats_rigor.json`).
+   The Part 4 sentence is interval-aware. Residual: model *ordering* claims
+   remain unsupported — none found asserted on-site.
+9. **Draft tier vocabulary** — CONFIRMED load-bearing in both arms (C2, C15);
+   the draft labels are present on every checked surface.
+
+# Appendix C — Corrections to the tasking's summary (verbatim)
+
+- "~1,206 scenarios / 959 measured": 1,206 scenarios; 736 measured on the
+  gemma top level (959 is the any-model union). Homepage strip counts 736.
+- `paired_stats_rigor.json` includes the two n=3 models under
+  `post_registration_exploratory`; the site `model_stats.json` per_model does
+  not include them — the leak paths are convergence.json and
+  urgency_shift.json only.
+
+*Source: `docs/audits/evidence_power_audit_20260728.md` (engine branch, landed
+2026-07-28). Audit method note from that file: sparse blobless worktrees at the
+audited tips; all counts by direct JSON/glob computation; seal_check run before
+commit; no phrase text read into any output of this audit.*
