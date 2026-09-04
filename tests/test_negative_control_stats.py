@@ -40,7 +40,8 @@ def test_same_seed_regenerates_identical_numbers():
     rows = {i: row(i, 0.5, 0.5 - 0.01 * i) for i in range(1, 21)}
     a = ncs.arm_stats(rows, random.Random(7), 500)
     b = ncs.arm_stats(rows, random.Random(7), 500)
-    a.pop("penalties_by_index"); b.pop("penalties_by_index")
+    a.pop("penalties_by_index")
+    b.pop("penalties_by_index")
     assert a == b
 
 
