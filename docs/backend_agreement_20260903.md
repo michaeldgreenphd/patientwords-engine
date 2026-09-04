@@ -130,17 +130,30 @@ Run it (per `docs/operators_handbook.md` §3 and the `fire-trigger-safe` skill �
 this lane's fire discipline is unchanged):
 
 ```json
-{"models":"gemma-2-2b","pairs_file":"data/simulated/pairs_20260706T201750Z.json",
+{"models":"gemma-2-2b","pairs_file":"data/simulated/pairs_20260710T011743Z.json",
  "limit":"50","offset":"0","mode":"verify","dtype":"float32","commit_outputs":"true"}
 ```
 
-Then compare, reference first:
+**The batch stem must be `pairs_20260710T011743Z`** — the one the hosted-vs-local
+report above measured. It is not the lane's default stem, and a run against any
+other batch produces numbers that cannot be joined to this report at all. (Fired
+against the wrong stem once, 2026-09-04: the lane's 13-pair default ran clean and
+was useless.)
+
+Then compare — verify against each of the two backends already measured:
 
 ```bash
+# vs the local bfloat16 path
 python scripts/backend_agreement.py \
-  --reference trace_out/pairs_20260706T201750Z__gemma-2-2b \
-  --candidate trace_out/verify_pairs_20260706T201750Z__gemma-2-2b \
-  --out ops/backend_agreement_interp_<STAMP>.json
+  --reference trace_out/pairs_20260710T011743Z__gemma-2-2b \
+  --candidate trace_out/verify_pairs_20260710T011743Z__gemma-2-2b \
+  --out ops/backend_agreement_interp_vs_local_<STAMP>.json
+
+# vs the hosted path
+python scripts/backend_agreement.py \
+  --reference trace_out/pairs_20260710T011743Z \
+  --candidate trace_out/verify_pairs_20260710T011743Z__gemma-2-2b \
+  --out ops/backend_agreement_interp_vs_hosted_<STAMP>.json
 ```
 
 `load_run` infers which summary family a directory holds, so no extra flag is
