@@ -199,3 +199,83 @@ know them will pass a change that is destructive in this repo's terms:
 * **Single-writer invariants:** `ops/dashboard.json` is written only by the daily
   Routine session; `scripts/ledger_update.py` is the only writer of spend numbers.
   A second writer is a data-loss bug even when each write looks correct.
+
+## Coding constraints
+
+* **Statistical work must be reproducible from its own output.** Set the random
+  seed explicitly, pass it rather than relying on a global, and **record it in
+  the artifact the run writes** — a seed that only exists in the invocation is
+  not reproducible by whoever reads the JSON later. `scripts/paired_stats_rigor.py`
+  is the reference: `--seed` with a default, `random.Random(seed)`, and `seed` in
+  the emitted bundle. Document the methodology, transformations, and assumptions
+  inline; these numbers get published, so a reader must be able to reconstruct
+  what was computed without reading the caller.
+* **No silent failures in extraction or parsing.** Missing data, an absent field,
+  or an unexpected format is recorded as such (a null, a named refusal, a
+  reported count) — never defaulted to zero, silently skipped, or averaged over.
+  A measurement that quietly drops rows produces a plausible wrong number, which
+  is worse than a crash. `expected_tier`'s coverage floor and `verify_probs.py`'s
+  `token_parity` are the pattern: measure it, report it, refuse rather than guess.
+* **Type hints on new modules and new public functions.** Not a retrofit rule:
+  the existing scripts carry essentially none (0 of ~95 functions across the six
+  main ones as of 2026-09-04), so requiring them everywhere would make every pull
+  request a typing project and train everyone to dismiss the reviewer. New files
+  and new entry points, yes; matching the surrounding style in an old file is not
+  a finding.
+* **Analysis is decoupled from presentation.** This repo computes and emits data;
+  `../patientwords` renders it. A script that writes HTML meant for a page, or a
+  page-layout concern appearing in an exporter, belongs on the other side of that
+  line. The two repos are the enforcement mechanism — keep it that way.
+
+## Responding to code review
+
+Every pull request here is reviewed by Codex and Copilot. Their findings are
+**hypotheses, not defects**, and the disposition is yours to establish:
+
+1. **Verify against the actual file before changing anything.** Read the lines
+   the finding names. A finding that misreads the file is common enough to plan
+   for: on the first reviewed pull request (`patientwords#4`, 2026-09-04) three
+   findings arrived, two were real, and one — a claim that a one-line pointer
+   file had a stray blank line — was a misreading of how a trailing newline
+   renders in a diff.
+2. **Give every finding a disposition on its own thread**: fixed, naming the
+   commit; declined, naming the reason and the evidence; or not applicable, and
+   why. Silence is not a disposition.
+3. **Resolve only threads you actually fixed.** Resolving one you dismissed makes
+   the pull request look handled when it is not.
+4. **Never apply a finding you have not checked.** Both directions cost: applying
+   a wrong finding puts a defect in the file the reviewers grade against, and
+   dismissing a right one ships the defect the review existed to catch. Both
+   happened on that first pull request.
+
+The reviewers are graded by the **Code Review Rules** above; this section is the
+other half of that loop. Keep the rules in one place — restating them in a skill
+or in `CLAUDE.md` recreates the drift this file exists to prevent.
+
+## Known measurement limitations
+
+Live facts about the study's own numbers. A session that adds a model, touches a
+measurement path, or quotes a per-pair value needs these; they are recorded here
+rather than only in a doc because nobody thinks to go looking.
+
+* **The logits lane runs bfloat16, and that is the dominant per-pair error term.**
+  Measured 2026-09-04 (`docs/backend_agreement_20260903.md`): interp-engine
+  float32 agrees with the hosted service to **0.0005** — the rounding floor of
+  hosted's three-decimal numbers — while both disagree with our local bfloat16
+  path by ~0.004 mean and up to **0.031** per pair, roughly half the study's mean
+  language penalty. `scripts/logits_eval.py` and `scripts/depth_probe.py` both
+  hardcode bfloat16. Only gemma-2-2b has a second implementation to check
+  against; for the other nine models the error is present but unmeasured.
+  `mode: verify` on the logits lane measures it for any model in `HF_IDS` at $0.
+* **The hosted path misread one target token.** Index 20 of
+  `pairs_20260710T011743Z`, patient side: target `" ant"`, hosted recorded 0.068,
+  which is the probability of `" anti"` in hosted's own spread; the correct 0.041
+  sits one row below it. One row in 71, hosted only — both CPU paths agree with
+  their own spreads on every row — but the mechanism fires whenever a target
+  token is a proper prefix of a higher-probability neighbour, which wordpiece
+  vocabularies make routine. Not yet fixed; the hosted extraction path is what to
+  inspect.
+* **Consequence for both.** Neither changes a published number as of 2026-09-04,
+  and neither should be "cleaned up" quietly: `logits_eval.py` and the hosted
+  path have already published values, so changing either re-runs and re-publishes
+  pairs that are live on the site. That is a decision, not a fix.
