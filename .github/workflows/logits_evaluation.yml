@@ -67,6 +67,10 @@ concurrency:
 
 jobs:
   params:
+    # A push that creates a ref carries created:true, and on a new ref every
+    # trigger file counts as changed (2026-09-04: a merge branch fired all eight
+    # lanes at once). Skip on creation; fires are pushes to existing branches.
+    if: ${{ !github.event.created }}
     runs-on: ubuntu-latest
     outputs:
       models: ${{ steps.params.outputs.models }}
@@ -145,6 +149,7 @@ jobs:
           EOF
 
   eval:
+    if: ${{ !github.event.created }}
     needs: params
     runs-on: ubuntu-latest
     # CPU inference on a 4B model runs ~1 min/pair; a 120-pair batch needs

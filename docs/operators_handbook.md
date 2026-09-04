@@ -133,6 +133,13 @@ say in any record which evidence was used.
 - **2026-08-29 park rollout:** parking is 8 cheap fires; the batch stops at
   the first guard refusal by design — finish lanes individually after
   fixing the cause.
+- **2026-09-04 new-ref fan-out:** pushing a merge branch created from `main`
+  fired all eight lanes at once — a ref creation has no `before` commit, so
+  every trigger file on it counts as changed, whatever the parent. The five
+  live runs were cancelled in time ($0); the cancelled logits run's `always()`
+  commit step still pushed a 1-result partial over a complete summary
+  (reverted by hand). Fix: every push-to-run job now skips on
+  `github.event.created`. Still open: the partial-over-complete overwrite.
 
 ## 6 · Money, seals, and boundaries (absolute)
 
