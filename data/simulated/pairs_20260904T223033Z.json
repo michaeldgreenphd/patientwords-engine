@@ -1,0 +1,25 @@
+[
+  {
+    "top_prompt": "I have gastroenteritis, so I need to take my",
+    "bottom_prompt": "My stomach's been acting up, so I need to take my",
+    "target_clinical_token": " medication",
+    "generation": {
+      "patient_term": "stomach's been acting up",
+      "clinical_term": "gastroenteritis",
+      "expected_clinical_continuations": [
+        "medication"
+      ],
+      "rationale": "The colloquial phrasing 'stomach's been acting up' is vague and everyday (could refer to minor discomfort), whereas 'gastroenteritis' is a specific clinical diagnosis that signals the need for medical intervention. The frame 'so I need to take my' naturally probes for a medical intervention (medication) in the clinical case, versus a more casual remedy in the patient case.",
+      "topic": "general",
+      "swap_spans": {
+        "patient_span": "My stomach's been acting up,",
+        "clinical_span": "I have gastroenteritis,"
+      },
+      "model": "claude-haiku-4-5",
+      "topics": [
+        "general",
+        "wellness"
+      ]
+    }
+  }
+]
