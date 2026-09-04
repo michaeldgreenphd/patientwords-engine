@@ -61,6 +61,10 @@ concurrency:
 
 jobs:
   params:
+    # A push that creates a ref carries created:true, and on a new ref every
+    # trigger file counts as changed (2026-09-04: a merge branch fired all eight
+    # lanes at once). Skip on creation; fires are pushes to existing branches.
+    if: ${{ !github.event.created }}
     runs-on: ubuntu-latest
     outputs:
       pairs_file: ${{ steps.params.outputs.pairs_file }}
@@ -117,6 +121,7 @@ jobs:
           EOF
 
   patch:
+    if: ${{ !github.event.created }}
     needs: params
     runs-on: ubuntu-latest
     # The grid is layers x shared-suffix positions forward passes per pair
