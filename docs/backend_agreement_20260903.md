@@ -193,3 +193,86 @@ The output lands in its own directory under a `verify_summary.part_NN.json`
 name, with `backend: "interp-engine"`. Nothing downstream globs that prefix, so
 a verification run cannot be collected as a second published measurement of
 prompts the study has already measured once.
+
+---
+
+# Results (run 2026-09-04)
+
+`trace_out/verify_pairs_20260710T011743Z__gemma-2-2b`, interp-engine 1.5.1 eager
+CPU float32, torch 2.13.0, all 50 pairs measured, `completed: true`.
+Tokenization parity held on all 100 prompts, so every row below compares the same
+token sequence. Reports: `ops/backend_agreement_interp_vs_local_20260904.json`,
+`ops/backend_agreement_interp_vs_hosted_20260904.json`.
+
+## The residual disagreement is our dtype
+
+| comparison | n | mean abs delta | median | max |
+|---|---|---|---|---|
+| interp fp32 vs **hosted** | 71 | **0.00062** | 0.0002 | 0.0273 \* |
+| interp fp32 vs **local bf16** | 100 | 0.00431 | 0.0020 | 0.0311 |
+| hosted vs local bf16 (2026-09-03) | 71 | 0.00622 | 0.0037 | 0.0315 |
+
+\* driven entirely by one row; see below. **Excluding it, the worst
+interp-fp32-vs-hosted disagreement across the remaining 70 measurements is
+0.0005** — exactly the rounding floor of the hosted path's three-decimal numbers.
+The two agree as closely as the hosted numbers can express.
+
+This resolves the question the 2026-09-03 report left open, in the direction the
+pre-registration called "points at our dtype":
+
+- interp-engine float32 and the hosted service agree to hosted's rounding limit;
+- both disagree with our local **bfloat16** path by the same magnitude
+  (0.0043 and 0.0062 mean; 0.031 and 0.032 max).
+
+So the per-pair disagreement documented on 2026-09-03 is **bfloat16 rounding in
+`scripts/logits_eval.py`**, not a difference in the hosted service. Two
+independent implementations at higher precision agree; the low-precision one is
+the outlier.
+
+**What this licenses.** A methods sentence that the per-pair spread between our
+published backends is dominated by the local lane's bfloat16 arithmetic, bounded
+at 0.031 on this batch, and that a float32 implementation reproduces the hosted
+numbers to their stated precision. It remains one batch, one model. As
+pre-registered, no published number changes on this result.
+
+**What it argues for next.** `scripts/logits_eval.py` runs bfloat16 on CPU. On
+this evidence float32 would remove a ~0.004 mean / 0.031 max per-pair error term
+at no accuracy cost, for some runtime. That is a change to a measurement path
+that has already published numbers, so it needs its own decision, not a quiet
+switch: re-running a batch at float32 produces different published values for
+pairs already exported.
+
+## One hosted row reads the wrong token
+
+Index 20, patient side. The target is `" ant"`. The hosted path recorded
+**0.068**; both CPU paths say **0.0407** / 0.0406. The hosted spread for that
+prompt is:
+
+```
+" extra" 0.448 | " hour" 0.147 | " anti" 0.068 | " ant" 0.041 | " aspirin" 0.026
+```
+
+The recorded 0.068 is the probability of `" anti"` — a different token that the
+target is a proper prefix of. The correct value, 0.041, is present in the hosted
+path's own spread one row lower. So this is not a precision difference: the
+hosted measurement read the wrong entry.
+
+Checked across every row where the target appears in the run's own spread:
+
+| path | cases checked | recorded value disagrees with its own spread |
+|---|---|---|
+| hosted | 71 | **1** |
+| local bf16 | 78 | 0 |
+| interp fp32 | 79 | 0 |
+
+One row in 71 is rare, but the mechanism is systematic rather than random — it
+fires whenever a target token is a proper prefix of a higher-probability
+neighbour in the same spread, which wordpiece vocabularies make routine. It
+inflates the patient-side probability here, which *shrinks* that pair's language
+penalty, so this instance biases against the study's own finding rather than
+toward it.
+
+This was found only because a third implementation measured the same prompts;
+neither of the two prior backends could have revealed it alone. Nothing is
+changed on this finding yet — the affected pair is identified, and the hosted
+extraction path is the thing to inspect.
