@@ -1,22 +1,18 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-02T23:41:40Z",
-  "updated_by": "session",
+  "updated_utc": "2026-09-04T14:47:00Z",
+  "updated_by": "routine",
   "queue": {
     "circuit-trace": {
       "running": {
-        "fired_utc": "2026-09-02T12:51:50Z",
+        "fired_utc": "2026-09-04T14:43:12Z",
         "commit": "",
-        "note": "PARK (resting-state rule): cheapest no-op default committed so branch operations that touch this trigger file re-run a $0/negligible stage instead of the last expensive fire; commit_outputs false where the workflow supports it. Owner-approved maintenance hardening, 2026-08-27."
+        "note": "PARK (resting-state rule) fired after the sentinel was GitHub-confirmed terminal. STILL RUNNING at cycle close (run 33885370863) - entry deliberately left unresolved."
       },
       "pending": null
     },
     "logits-eval": {
-      "running": {
-        "fired_utc": "2026-09-02T23:41:40Z",
-        "commit": "",
-        "note": "PARK (resting-state rule): cheapest no-op default committed so branch operations that touch this trigger file re-run a $0/negligible stage instead of the last expensive fire; commit_outputs false where the workflow supports it. Owner-approved maintenance hardening, 2026-08-27."
-      },
+      "running": null,
       "pending": null
     },
     "activation-patching": {
@@ -24,47 +20,41 @@
       "pending": null
     },
     "jlens-readout": {
-      "running": {
-        "fired_utc": "2026-08-29T20:00:45Z",
-        "commit": "",
-        "note": "PARK (resting-state rule): cheapest no-op default committed so branch operations that touch this trigger file re-run a $0/negligible stage instead of the last expensive fire; commit_outputs false where the workflow supports it. Owner-approved maintenance hardening, 2026-08-27."
-      },
+      "running": null,
       "pending": null
     },
     "scenario-generation": {
-      "running": {
-        "fired_utc": "2026-08-29T20:00:50Z",
-        "commit": "",
-        "note": "PARK (resting-state rule): cheapest no-op default committed so branch operations that touch this trigger file re-run a $0/negligible stage instead of the last expensive fire; commit_outputs false where the workflow supports it. Owner-approved maintenance hardening, 2026-08-27."
-      },
+      "running": null,
       "pending": null
     },
     "model-evaluation": {
-      "running": {
-        "fired_utc": "2026-08-29T20:00:48Z",
-        "commit": "",
-        "note": "PARK (resting-state rule): cheapest no-op default committed so branch operations that touch this trigger file re-run a $0/negligible stage instead of the last expensive fire; commit_outputs false where the workflow supports it. Owner-approved maintenance hardening, 2026-08-27."
-      },
+      "running": null,
       "pending": null
     },
     "archive-renders": {
-      "running": {
-        "fired_utc": "2026-08-29T20:00:42Z",
-        "commit": "",
-        "note": "PARK (resting-state rule): cheapest no-op default committed so branch operations that touch this trigger file re-run a $0/negligible stage instead of the last expensive fire; commit_outputs false where the workflow supports it. Owner-approved maintenance hardening, 2026-08-27."
-      },
+      "running": null,
       "pending": null
     },
     "advice-eval": {
-      "running": {
-        "fired_utc": "2026-08-29T20:00:40Z",
-        "commit": "",
-        "note": "PARK (resting-state rule): cheapest no-op default committed so branch operations that touch this trigger file re-run a $0/negligible stage instead of the last expensive fire; commit_outputs false where the workflow supports it. Owner-approved maintenance hardening, 2026-08-27."
-      },
+      "running": null,
       "pending": null
     }
   },
   "runs_recent": [
+    {
+      "workflow": "circuit_trace_evaluation",
+      "run_id": 33883844106,
+      "fired_utc": "2026-09-04T14:27:34Z",
+      "status": "success",
+      "note": "Daily drift sentinel 2026-09-04 - the only measurement fire this cycle, and it landed well inside item 3b's 35-minute window. GitHub-confirmed completed/success 14:27:34Z -> 14:41:53Z (14m19s, against 20m14s on 09-01, 38m38s on 08-29, 13m59s on 08-28). Outputs verified on the branch before resolving: trace_out/drift_sentinel_20260904/batch_summary.part_01.json, backend 'hosted', source_set gemmascope-transcoder-16k, 3 rows, idx 1..3, language_penalty present on all three (0.045, 0.369, -0.046) - byte-identical to the 09-01 readings. Entry resolved and the verdict run in-cycle. SIXTH consecutive healthy sentinel for Neuronpedia /api/graph/generate since the 08-22..08-25 outage. drift_series.json 35 -> 36 measured days, now ending 20260904."
+    },
+    {
+      "workflow": "circuit_trace_evaluation",
+      "run_id": 33885370863,
+      "fired_utc": "2026-09-04T14:43:20Z",
+      "status": "in_progress",
+      "note": "Item 3c re-park of the circuit-trace lane, fired 14:43:12Z only after the sentinel run 33883844106 was GitHub-confirmed terminal (that confirmation is the stated basis for --ignore-settle, which the standing prompt itself prescribes for this re-park). $0, commit_outputs false, so nothing lands and nothing needs harvesting. NOT TERMINAL AT CYCLE CLOSE: GitHub read status 'in_progress' with no conclusion at 14:46:51Z, 3m31s in - well short of the 12m15s/12m18s the 08-29 and 09-02 parks took, so this is an ordinary in-flight run, NOT a stall. Per the resolve-only-when-terminal rule the journal entry was left UNRESOLVED rather than assumed good; see blocker PARK-UNRESOLVED-20260904 for the next cycle's opening harvest. The trigger file itself is already parked on disk and pushed, so the resting-state guarantee holds regardless of how the run finishes."
+    },
     {
       "workflow": "circuit_trace_evaluation",
       "run_id": 33514886802,
@@ -176,20 +166,6 @@
       "fired_utc": "2026-08-27T13:01:59Z",
       "status": "success",
       "note": "backfill PREDICTIONS pairs_20260706T172135Z 1-2/2 x gemma-2-2b-it - planner item 4a top pick. completed/success 13:06:23Z; part_01 verified idx 1..2, 2/2 penalties. Resolved."
-    },
-    {
-      "workflow": "logits_evaluation",
-      "run_id": 33074760382,
-      "fired_utc": "2026-08-27T13:02:06Z",
-      "status": "success",
-      "note": "backfill PREDICTIONS pairs_20260706T175614Z 1-10/10 x gemma-2-2b-it - chained pending. completed/success 13:08:32Z; part_01 verified idx 1..10, 10/10 penalties. Resolved."
-    },
-    {
-      "workflow": "logits_evaluation",
-      "run_id": 33075421802,
-      "fired_utc": "2026-08-27T13:10:04Z",
-      "status": "success",
-      "note": "backfill PREDICTIONS pairs_20260706T201750Z 1-13/13 x gemma-2-2b-it - second round, planner top pick after the first two closed. completed/success 13:12:15Z; part_01 verified idx 1..13, 13/13 penalties. Resolved. Settle bypass on GitHub-confirmed terminal predecessors, never to rush a live run."
     }
   ],
   "spend": {
@@ -737,8 +713,8 @@
     "generation_status": "COMPLETE 2026-08-06: 1,600/1,600 accepted across the 20 cadence batches. The validator-yield stopping rule never tripped. Generation spend closed at $2.7678 of the $8 pre-registered ceiling (35%). No further scenario-generation fire is warranted - priority-1 of the standing prompt is retired for this campaign."
   },
   "verdicts": [
-    "INSTRUMENT HEALTHY, fifth consecutive measured day. The 2026-09-01 drift sentinel succeeded (circuit-trace run 33514886802, GitHub-confirmed completed/success at 14:01:31Z, 20m14s - well inside the 35-minute item 3b bound that the 08-29 run overran). data/drift_series.json now holds 35 measured days ending 20260901. Today vs 20260829 reads max |dp| 0.0 at pair 1 clinical with top words unchanged: NO NEW BREACH. Over the full span 2026-07-13..2026-09-01 the series has 35 measured days and exactly TWO breaches over the 0.01 threshold - 20260714->20260715 max |dp| 0.027 and 20260813->20260814 max |dp| 0.023, both at pair 2 patient, both with top words unchanged. Note the comparison spans a 3-day gap (20260829 -> 20260901): the cron downshifted to every 3 days on 08-29, so 08-30 and 08-31 are SCHEDULED gaps, not holes in the instrument.",
-    "PUBLISHED DATA IS HONEST, checked against the committed site copies. validate_frontend_contract.py --site ../patientwords: 0 errors, 1 warning (the standing urgency_shift orphan-row warning, 1728/13652 rows joining no published scenario - unchanged). claim_check.py: all claims verified against their sources. seal_check.py --site ../patientwords --extra docs,ops: CLEAN, 173 sealed phrases, no hits across 3 roots. The six advice-arm STALE lines (anthropic, deepseek, google, moonshotai, openai, xai) carry byte-identical deltas to 08-28 and 08-29 - responses_count 1825 -> 1834, judgments_count 1800 -> 2652 - so nothing moved there this cycle; they remain explained by ADVICE-PAYLOAD-UNPUBLISHED-20260828 and are informational, not errors.",
+    "INSTRUMENT HEALTHY, sixth consecutive measured sentinel since the 08-22..08-25 outage. The 2026-09-04 drift sentinel succeeded (circuit-trace run 33883844106, GitHub-confirmed completed/success 14:27:34Z -> 14:41:53Z, 14m19s - the fastest of the six, and comfortably inside the 35-minute item 3b bound that the 08-29 run overran at 38m38s). Outputs verified before the verdict: batch_summary.part_01.json, backend 'hosted', source_set gemmascope-transcoder-16k, 3 rows, idx 1..3, language_penalty present on all three (0.045, 0.369, -0.046) - byte-identical to the 09-01 readings. data/drift_series.json now holds 36 measured days ending 20260904. Today vs 20260901 reads max |dp| 0.0 at pair 1 clinical with top words unchanged: NO NEW BREACH. Over the full span 2026-07-13..2026-09-04 the series has 36 measured days and exactly TWO breaches over the 0.01 threshold - 20260714->20260715 max |dp| 0.027 and 20260813->20260814 max |dp| 0.023, both at pair 2 patient, both with top words unchanged. Note the comparison spans a 3-day gap (20260901 -> 20260904): the cron downshifted to every 3 days on 08-29, so 09-02 and 09-03 are SCHEDULED gaps, not holes in the instrument.",
+    "PUBLISHED DATA IS HONEST, checked against the committed site copies both before and after this cycle's publish. validate_frontend_contract.py --site ../patientwords: 0 errors, 1 warning (the standing urgency_shift orphan-row warning, 1728/13652 rows joining no published scenario - unchanged). claim_check.py: all claims verified against their sources. seal_check.py --site ../patientwords --extra docs,ops: CLEAN, 173 sealed phrases, no hits across 3 roots - a populated sealed set, so not the exit-2 empty-config case. The six advice-arm STALE lines (anthropic, deepseek, google, moonshotai, openai, xai) carry deltas byte-identical to 08-28, 08-29 and 09-01 - responses_count 1825 -> 1834, judgments_count 1800 -> 2652 - so nothing moved there this cycle; they remain explained by ADVICE-PAYLOAD-UNPUBLISHED-20260828 and are informational, not errors. ONE CAVEAT ON REACH, new this cycle: these gates read the OPS BRANCH copies, and the live GitHub Pages site (patientwords main) is two sentinel publishes behind at 34 measured days ending 20260828. Nothing on the live site is wrong, only older - see blocker and decision SITE-MAIN-LAG-20260904.",
     "Cross-model asymmetry holds at scale (source: patientwords/data/model_stats.json, last refreshed 2026-08-29 by paired_stats_rigor.py; 186 confirmatory-holdout pairs withheld from the payload, holdout phrases and rows excluded under Amendment 1, outcome-selected supplementary rows excluded from the confirmatory population under POPULATION-DEF B). Ten models measured; every mean language penalty is negative and 10 of 10 have a 95% CI excluding zero. Range -0.0293 (apertus-8b-meditronfo) to -0.0507 (gemma-3-4b-it). NOT recomputed this cycle - no new cross-model measurement landed, and maintenance mode does not republish unchanged data."
   ],
   "findings_delta": [
@@ -805,9 +781,18 @@
     {
       "date": "2026-09-01",
       "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 33514886802, 20m14s, GitHub-confirmed) - fifth healthy Neuronpedia day since the 08-22..25 outage, and back inside item 3b's 35-minute bound after 08-29's 38m38s. Series 34 -> 35 measured days ending 20260901; today vs 20260829 max |dp| 0.0, top words unchanged. The 08-30 and 08-31 gaps are the new 3-day cadence, not holes. Two breaches total, both historical (20260715 0.027, 20260814 0.023). Gates: contract 0 errors, claim_check clean, seal CLEAN 173. 2 runs, both success, both $0."
+    },
+    {
+      "date": "2026-09-04",
+      "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 33883844106, 14m19s, GitHub-confirmed) - sixth healthy Neuronpedia day since the 08-22..25 outage and the fastest of the six. Series 35 -> 36 measured days ending 20260904; today vs 20260901 max |dp| 0.0, top words unchanged. The 09-02 and 09-03 gaps are the 3-day cadence, not holes. Two breaches total, both historical (20260715 0.027, 20260814 0.023). Gates: contract 0 errors, claim_check clean, seal CLEAN 173. NEW: live site main is 2 publishes behind the branch (34 days vs 36) - SITE-MAIN-LAG-20260904. 2 runs, both success, both $0."
     }
   ],
   "decisions_pending": [
+    {
+      "id": "SITE-MAIN-LAG-20260904",
+      "recorded_utc": "2026-09-04T15:00:00Z",
+      "what": "Does maintenance mode intend the live site to stop receiving sentinel updates, or is the branch -> main merge simply missing from the maintenance standing prompt? The active-study prompt ended section 5 with 'push the branch, then branch:main'; the 2026-08-29 maintenance rewrite dropped that clause, and two cycles (09-01, 09-04) have since published drift_series.json to the ops branch only. Live main therefore shows 34 measured days ending 20260828; the branch shows 36 ending 20260904. Both readings are internally honest - no number is wrong, the live one is just older - so nothing is currently misleading a reader, but the gap widens by one point every cycle. TWO CLEAN OPTIONS: (a) restore the merge step to docs/routine_standing_prompt.md section 5 and let the cycle fast-forward main each time, or (b) state explicitly in section 5 that maintenance-mode publishes are branch-only and main advances on owner instruction, so future cycles stop treating the lag as an anomaly. Either is a one-line edit to the standing prompt. The cycle will not merge to a live public site on its own authority."
+    },
     {
       "id": "SENTINEL-WAIT-BOUND-20260829",
       "recorded_utc": "2026-08-29T13:15:00Z",
@@ -943,12 +928,12 @@
     {
       "id": "JLENS-TRANSPORT-LOGLENS-DOC-CONFLICT-20260809",
       "recorded_utc": "2026-08-09T14:13:07Z",
-      "what": "The three governing docs disagree on whether export_jlens_transport.py and export_jlens_loglens.py run in the daily cycle. docs/routine_standing_prompt.md \u00a75 says they are WIRED (2026-07-23, owner option 1) and gives exact commands; .claude/skills/publish-site-data step 3 lists them; but that SAME skill's 'Never' list says 'Never run the transport/loglens exporters as part of the cycle (snapshot files)', and .claude/skills/daily-ops-cycle says 'Do NOT run the transport/loglens exporters (not wired - \u00a75)'. This cycle SKIPPED both (the conservative reading). No content was lost: their census batch pairs_20260711T051145Z saw no new data this cycle, so a regen would have changed only generated_utc. Owner: please settle which doc is right so cycles stop diverging. || 2026-08-10: this cycle RAN both, following docs/routine_standing_prompt.md as the stated authority ('where a skill compresses, that file governs'). Unlike 08-09 it mattered: the census batch pairs_20260711T051145Z gained its 26-50 lens chunk, so transport moved 25 -> 44 census pairs and loglens re-derived (23 paired, agree 17/18). Skipping would have left both site payloads stale against their own inputs. Two consecutive cycles have now made opposite calls on the same day's rules - please settle it. || 2026-08-12 - THIRD CYCLE, THIRD TIME THE DOCS FORCED A JUDGEMENT CALL. Ran both again, agreeing with 08-10 and following docs/routine_standing_prompt.md as the stated authority. It did not matter to content this time: transport re-derived the same census (44 pairs, patient-never 16) and loglens the same agreement counts (23 paired, class 17, formation 18), so only generated_utc moved in the two published files. The contradiction is still live inside a single file - publish-site-data step 3 says run them, its own Never list says never - and it is now the longest-standing unforced ambiguity in the cycle docs. || 2026-08-13: this cycle took the OPPOSITE reading and RAN both, on the grounds that docs/routine_standing_prompt.md self-describes as 'the authority' and the daily-ops-cycle skill defers to it where they differ. Evidence for the owner's decision: both exporters reproduced their committed site files byte-identically except generated_utc (transport census 44 pairs / patient-never 16 / 2 exemplars; loglens 23 paired / class agree 17 / formation agree 18). So across two cycles, running them and skipping them produced the SAME published content - the conflict is real but currently zero-stakes, and it stays open only because the docs still contradict each other. Cheapest fix is to delete the two stale 'Never'/'Do NOT' bullets in the skills, since the standing prompt and the publish-site-data step 3 body already agree. || 2026-08-14 - FOURTH CYCLE, THIRD IDENTICAL JUDGEMENT CALL. Ran both again, following docs/routine_standing_prompt.md section 5 as the stated authority over the publish-site-data skill's own contradictory 'Never' line and daily-ops-cycle's 'not wired'. No content impact today (both reproduced byte-identically except generated_utc; census 44 pairs, loglens 23 paired / agree 17 / 18). Every cycle since 08-10 has decided it the same way, so the risk is no longer divergence between cycles - it is that two of the three governing documents remain positively wrong, and a session that follows either one would silently stop refreshing two published payloads with both gates green."
+      "what": "The three governing docs disagree on whether export_jlens_transport.py and export_jlens_loglens.py run in the daily cycle. docs/routine_standing_prompt.md §5 says they are WIRED (2026-07-23, owner option 1) and gives exact commands; .claude/skills/publish-site-data step 3 lists them; but that SAME skill's 'Never' list says 'Never run the transport/loglens exporters as part of the cycle (snapshot files)', and .claude/skills/daily-ops-cycle says 'Do NOT run the transport/loglens exporters (not wired - §5)'. This cycle SKIPPED both (the conservative reading). No content was lost: their census batch pairs_20260711T051145Z saw no new data this cycle, so a regen would have changed only generated_utc. Owner: please settle which doc is right so cycles stop diverging. || 2026-08-10: this cycle RAN both, following docs/routine_standing_prompt.md as the stated authority ('where a skill compresses, that file governs'). Unlike 08-09 it mattered: the census batch pairs_20260711T051145Z gained its 26-50 lens chunk, so transport moved 25 -> 44 census pairs and loglens re-derived (23 paired, agree 17/18). Skipping would have left both site payloads stale against their own inputs. Two consecutive cycles have now made opposite calls on the same day's rules - please settle it. || 2026-08-12 - THIRD CYCLE, THIRD TIME THE DOCS FORCED A JUDGEMENT CALL. Ran both again, agreeing with 08-10 and following docs/routine_standing_prompt.md as the stated authority. It did not matter to content this time: transport re-derived the same census (44 pairs, patient-never 16) and loglens the same agreement counts (23 paired, class 17, formation 18), so only generated_utc moved in the two published files. The contradiction is still live inside a single file - publish-site-data step 3 says run them, its own Never list says never - and it is now the longest-standing unforced ambiguity in the cycle docs. || 2026-08-13: this cycle took the OPPOSITE reading and RAN both, on the grounds that docs/routine_standing_prompt.md self-describes as 'the authority' and the daily-ops-cycle skill defers to it where they differ. Evidence for the owner's decision: both exporters reproduced their committed site files byte-identically except generated_utc (transport census 44 pairs / patient-never 16 / 2 exemplars; loglens 23 paired / class agree 17 / formation agree 18). So across two cycles, running them and skipping them produced the SAME published content - the conflict is real but currently zero-stakes, and it stays open only because the docs still contradict each other. Cheapest fix is to delete the two stale 'Never'/'Do NOT' bullets in the skills, since the standing prompt and the publish-site-data step 3 body already agree. || 2026-08-14 - FOURTH CYCLE, THIRD IDENTICAL JUDGEMENT CALL. Ran both again, following docs/routine_standing_prompt.md section 5 as the stated authority over the publish-site-data skill's own contradictory 'Never' line and daily-ops-cycle's 'not wired'. No content impact today (both reproduced byte-identically except generated_utc; census 44 pairs, loglens 23 paired / agree 17 / 18). Every cycle since 08-10 has decided it the same way, so the risk is no longer divergence between cycles - it is that two of the three governing documents remain positively wrong, and a session that follows either one would silently stop refreshing two published payloads with both gates green."
     },
     {
       "id": "MODEL-STATS-PUBLISH-POLICY-20260810",
       "recorded_utc": "2026-08-10T13:50:00Z",
-      "what": "data/model_stats.json is not in the standing prompt's \u00a75 publish chain, so the daily cycle refreshes every payload EXCEPT the per-model statistics - while firing, every cycle, the backfill legs that move them. Result: the site's cross-model numbers are from 2026-08-08 and today's recomputation differs materially (see MEDICAL-FINETUNE-FRAMING). It is also the only major payload with no generated_utc, so no automated check can see the staleness. Owner: (a) add 'paired_stats_rigor.py --site ../patientwords' to \u00a75 and accept that it can trip claim_check (which is the designed behaviour), or (b) keep it manual and say so explicitly in the standing prompt. Today it is manual by omission, not by choice. Cheap prerequisite either way: stamp generated_utc in the bundle, then have validate_frontend_contract warn when it lags urgency_shift.json. || 2026-08-12 - SCOPE IS WIDER THAN THIS ENTRY AND ONE PREMISE IS WRONG. (a) It is not just model_stats: convergence.json is also stamped 2026-08-08T13:53:09Z, and timeline.json is stamped 2026-07-14T13:42:38Z - 29 days. (b) The premise 'it is the only major payload with no generated_utc' is incorrect: model_stats.json and convergence.json both carry _provenance.generated_utc (that is how these dates were read), so the proposed staleness check needs no new stamping work and can be written today; timeline.json is the one with no engine_sha. (c) The site CLAUDE.md:56-64 does not merely omit these files - it positively asserts all three are 'regenerated by the engine's nightly cycle', so the doc is wrong, not silent, and a session reading it would reasonably assume freshness. (d) NEW AND SEPARATE: all three carry _provenance.engine_sha '7f3b6777d552+dirty' - the study's claim-grade statistics were computed from an uncommitted working tree and are not reproducible from any commit. Nothing rejects a +dirty provenance stamp. Proposed checks in docs/critic/critic_20260812.md (freshness budget, +dirty rejection, documented-writer-vs-cycle parity). This cycle again did NOT regenerate, for the reason already on file. || 2026-08-14 - SIXTH DAY, STILL UNRESOLVED, AND THE GAP IS WIDENING. model_stats.json _provenance.generated_utc 2026-08-08T13:50:04Z, convergence.json 2026-08-08T13:53:09Z - both six days old while this cycle republished eight other payloads and fired another backfill leg that moves them. The 08-10 probe result (meditron3-8b n 132 -> 333, CI [-0.0498,+0.0004] -> [-0.0493,-0.0211] excluding zero, sign test 5v1 q=0.26 -> 23v3 q=1.76e-04) is now four days old and still not on the site, which continues to carry the pre-move numbers and the 'medical fine-tunes are the null cases' framing. Today's on-disk coverage over the 25 published stamps, against published n_rows: meditron3-8b 258 vs 132, apertus 233 vs 104, gemma-2-2b 3023 vs 1772 (upper bounds - pre-dedupe and including withheld holdout rows - so direction and scale only). This is the fourth consecutive cycle to record the same ask: (a) add paired_stats_rigor.py to the standing prompt's section 5 and accept it can trip claim_check, or (b) keep it manual and say so explicitly. It is still manual by omission, not by choice."
+      "what": "data/model_stats.json is not in the standing prompt's §5 publish chain, so the daily cycle refreshes every payload EXCEPT the per-model statistics - while firing, every cycle, the backfill legs that move them. Result: the site's cross-model numbers are from 2026-08-08 and today's recomputation differs materially (see MEDICAL-FINETUNE-FRAMING). It is also the only major payload with no generated_utc, so no automated check can see the staleness. Owner: (a) add 'paired_stats_rigor.py --site ../patientwords' to §5 and accept that it can trip claim_check (which is the designed behaviour), or (b) keep it manual and say so explicitly in the standing prompt. Today it is manual by omission, not by choice. Cheap prerequisite either way: stamp generated_utc in the bundle, then have validate_frontend_contract warn when it lags urgency_shift.json. || 2026-08-12 - SCOPE IS WIDER THAN THIS ENTRY AND ONE PREMISE IS WRONG. (a) It is not just model_stats: convergence.json is also stamped 2026-08-08T13:53:09Z, and timeline.json is stamped 2026-07-14T13:42:38Z - 29 days. (b) The premise 'it is the only major payload with no generated_utc' is incorrect: model_stats.json and convergence.json both carry _provenance.generated_utc (that is how these dates were read), so the proposed staleness check needs no new stamping work and can be written today; timeline.json is the one with no engine_sha. (c) The site CLAUDE.md:56-64 does not merely omit these files - it positively asserts all three are 'regenerated by the engine's nightly cycle', so the doc is wrong, not silent, and a session reading it would reasonably assume freshness. (d) NEW AND SEPARATE: all three carry _provenance.engine_sha '7f3b6777d552+dirty' - the study's claim-grade statistics were computed from an uncommitted working tree and are not reproducible from any commit. Nothing rejects a +dirty provenance stamp. Proposed checks in docs/critic/critic_20260812.md (freshness budget, +dirty rejection, documented-writer-vs-cycle parity). This cycle again did NOT regenerate, for the reason already on file. || 2026-08-14 - SIXTH DAY, STILL UNRESOLVED, AND THE GAP IS WIDENING. model_stats.json _provenance.generated_utc 2026-08-08T13:50:04Z, convergence.json 2026-08-08T13:53:09Z - both six days old while this cycle republished eight other payloads and fired another backfill leg that moves them. The 08-10 probe result (meditron3-8b n 132 -> 333, CI [-0.0498,+0.0004] -> [-0.0493,-0.0211] excluding zero, sign test 5v1 q=0.26 -> 23v3 q=1.76e-04) is now four days old and still not on the site, which continues to carry the pre-move numbers and the 'medical fine-tunes are the null cases' framing. Today's on-disk coverage over the 25 published stamps, against published n_rows: meditron3-8b 258 vs 132, apertus 233 vs 104, gemma-2-2b 3023 vs 1772 (upper bounds - pre-dedupe and including withheld holdout rows - so direction and scale only). This is the fourth consecutive cycle to record the same ask: (a) add paired_stats_rigor.py to the standing prompt's section 5 and accept it can trip claim_check, or (b) keep it manual and say so explicitly. It is still manual by omission, not by choice."
     },
     {
       "id": "PAB-PROBE-NO-CI-TARGET-20260810",
@@ -958,7 +943,7 @@
     {
       "id": "DOC-SWEEP-DRIFT-20260810",
       "recorded_utc": "2026-08-10T13:50:00Z",
-      "what": "Two documentation drifts from the Monday sweep (docs/audits/doc_accuracy_20260810.md), both needing an owner/orchestrator edit rather than a cycle fix. (1) The standing prompt \u00a72b tells the sweep to cross-check 'docs/preregistration_amendments.md' - that file does not exist on the ops branch (only on main; the branch split it into prereg_amendment2/3/4 + prereg_divergence_log). A session following \u00a72b literally gets a FileNotFoundError and could misread it as 'no amendments declared'. (2) extract_site_text.py's PAGES list misses two substantive live pages - simulated-scenarios/scenario.html (29.3 KB) and llm/code.html (14.6 KB) - so ~44 KB of published prose is invisible to every consumer of the extractor, including text review. The other seven unlisted files are correctly out of scope (five redirect stubs, 404, share card)."
+      "what": "Two documentation drifts from the Monday sweep (docs/audits/doc_accuracy_20260810.md), both needing an owner/orchestrator edit rather than a cycle fix. (1) The standing prompt §2b tells the sweep to cross-check 'docs/preregistration_amendments.md' - that file does not exist on the ops branch (only on main; the branch split it into prereg_amendment2/3/4 + prereg_divergence_log). A session following §2b literally gets a FileNotFoundError and could misread it as 'no amendments declared'. (2) extract_site_text.py's PAGES list misses two substantive live pages - simulated-scenarios/scenario.html (29.3 KB) and llm/code.html (14.6 KB) - so ~44 KB of published prose is invisible to every consumer of the extractor, including text review. The other seven unlisted files are correctly out of scope (five redirect stubs, 404, share card)."
     },
     {
       "id": "STEERED-BATCH-PUBLICATION-20260811",
@@ -983,6 +968,21 @@
     }
   ],
   "blockers": [
+    {
+      "id": "PARK-UNRESOLVED-20260904",
+      "recorded_utc": "2026-09-04T14:47:00Z",
+      "what": "The item 3c re-park of circuit-trace (fired 2026-09-04T14:43:12Z, run 33885370863) had not reached a terminal state when this cycle closed - GitHub read status 'in_progress', no conclusion, at 14:46:51Z, only 3m31s in. That is NOT a stall: the comparable parks took 12m15s (08-29) and 12m18s (09-02), and this cycle simply finished its other work first. The entry was left UNRESOLVED rather than resolved on assumption, per the resolve-only-when-truly-terminal rule. IMPACT: none on correctness. The park is $0 with commit_outputs false, so it commits nothing and there is nothing to harvest; .github/trigger/circuit-trace.json is already on its park nonce on the branch, so the resting-state guarantee holds however the run ends. The only cost is one open journal entry in the circuit-trace lane, which leaves that lane at 1 active until it is resolved. NEXT CYCLE, opening harvest: read run 33885370863's terminal state FIRST, then 'python scripts/fire_trigger.py resolve --trigger circuit-trace' before firing the next sentinel - otherwise the sentinel fire competes with a stale active entry. If the run failed, the park simply did not execute; re-park then, do not re-fire anything else."
+    },
+    {
+      "id": "SITE-MAIN-LAG-20260904",
+      "recorded_utc": "2026-09-04T15:00:00Z",
+      "what": "The LIVE public site (patientwords main, which GitHub Pages serves) is two sentinel publishes behind the ops branch. Site main tip is 16d03cb, 'drift_series: fold in the 2026-08-29 sentinel (33 -> 34 measured days)'. The 09-01 publish (e0e55f9, 35 days) and today's 09-04 publish (943e330, 36 days) both sit on claude/gemma-clinical-colloquial-interp-mavx04 and are NOT ancestors of main - verified with git merge-base --is-ancestor. So the live page reads 34 measured days ending 20260828 while the branch reads 36 ending 20260904. Cause is a spec gap, not an error: the ACTIVE-STUDY standing prompt said 'push the branch, then branch:main', and the MAINTENANCE-MODE rewrite of 2026-08-29 dropped that clause - its section 5 ends at 'before pushing data payloads only'. The 09-01 cycle also did not merge, so this is now the settled behaviour of two consecutive maintenance cycles. NOT ACTED ON: merging to main publishes to a live public site, the standing prompt no longer instructs it, and 'when ambiguous, do LESS'. Owner decision recorded as SITE-MAIN-LAG-20260904 in decisions_pending."
+    },
+    {
+      "id": "JOURNAL-EXPIRED-PARKS-20260902",
+      "recorded_utc": "2026-09-04T15:00:00Z",
+      "what": "Two journal entries carried resolved:false into this cycle - circuit-trace fired 2026-09-02T12:51:50Z and logits-eval fired 2026-09-02T23:41:40Z, both PARK fires left open when the 09-02 interactive session closed. Per-entry terminality was checked individually (no resolve --all): circuit-trace = run 33632353641, GitHub-confirmed completed/success 12:52:08Z -> 13:04:26Z; logits-eval = run 33696256845, GitHub-confirmed completed/success 23:41:44Z -> 23:43:30Z. Both are commit_outputs:false parks, so NOTHING landed and there was nothing to harvest. fire_trigger.py resolve declined both ('no active journal entries') because both are past the 8h expiry and the tool no longer counts them active - status reads 0 active on every lane, so they occupy no slot and blocked nothing this cycle. Recorded here as missed-harvest records rather than hand-edited in the journal (hand-editing the journal is an absolute boundary). NO ACTION NEEDED; this is the JOURNAL-EXPIRY-BLIND-SPOT-20260818 pattern recurring, and it is benign for parks specifically because a park commits no outputs."
+    },
     {
       "id": "sentinel-overran-window-20260829",
       "recorded_utc": "2026-08-29T13:05:00Z",
@@ -1015,7 +1015,10 @@
     }
   ],
   "notes": [
-    "2026-09-01 cycle: FIRST FIRING UNDER THE 3-DAY MAINTENANCE CADENCE, and the \u00a70 cadence gate correctly did NOT trip - newest brief was brief_20260829.md at 3 days old (gate wants <2d) and no journal-active entry was older than 8 hours, so the cycle ran in full. 2026-08-30 and 2026-08-31 have no alias and no sentinel: those are SCHEDULED gaps under the owner-approved 08-29 downshift, and must not be read as missed cycles or as holes in the drift series.",
+    "2026-09-04 cycle: the section 0 cadence gate did NOT trip - newest brief was brief_20260901.md at 3 days old (gate wants <2d) and no journal-active entry was older than 8 hours, so the cycle ran in full. 2026-09-02 and 2026-09-03 have no alias and no sentinel: SCHEDULED gaps under the owner-approved 08-29 three-day downshift, not missed cycles and not holes in the drift series.",
+    "2026-09-04 bootstrap: Variant B container again - both repos arrived clean but on main-based harness session branches (engine claude/compassionate-ritchie-ptfam5, site claude/nice-bardeen-ptfam5) with the ops branch never fetched, so ops/dashboard.json read as the month-stale main seed until repaired. docs/fresh_session_bootstrap.md Variant B applied verbatim: blobless fetch first (1.9s class; a plain fetch of ~20GB of history is unusable), then the sparse patterns INCLUDING the global '/trace_out/*/jlens_raw/*' line, then checkout. 930 batch_summary*.json materialised. The site sibling needed the same treatment (it was also on a session branch) and is non-sparse with modes/ present (464 render HTML), so the contract gate read true - 0 errors, no phantom 'render path missing on disk' FAILs. push --dry-run verified before any fire.",
+    "2026-09-04 coexistence: a separate owner-driven session is working PR #4 on branch claude/interp-engine-integration-2u1t49 and fired six logits-eval runs there on 09-03/09-04 (third-implementation verify, then negative controls on the qualified and identity arms, each followed by a park). Those runs are on a DIFFERENT branch, so their per-branch concurrency groups are disjoint from the ops branch's and they occupied none of this cycle's lanes; they are also absent from this branch's ops/trigger_journal.jsonl. Recorded so a future cycle reading GitHub's unfiltered run list does not mistake them for stray ops-branch fires needing harvest. NOTE for future cycles: the GitHub MCP actions_list tool IGNORES its branch and workflow_id filters in this session - it returned identical unfiltered results for every filter passed - so terminality had to be established by paging the global list and matching head_branch by eye.",
+    "2026-09-01 cycle: FIRST FIRING UNDER THE 3-DAY MAINTENANCE CADENCE, and the §0 cadence gate correctly did NOT trip - newest brief was brief_20260829.md at 3 days old (gate wants <2d) and no journal-active entry was older than 8 hours, so the cycle ran in full. 2026-08-30 and 2026-08-31 have no alias and no sentinel: those are SCHEDULED gaps under the owner-approved 08-29 downshift, and must not be read as missed cycles or as holes in the drift series.",
     "2026-09-01 bootstrap: Variant B container for the EIGHTEENTH consecutive fresh session - both repos arrived clean but on main-based harness session branches (engine claude/compassionate-ritchie-lm7emq, site claude/nice-bardeen-lm7emq) with the ops branch never fetched. docs/fresh_session_bootstrap.md Variant B applied verbatim in the engine: blobless fetch first (completed in seconds; a plain fetch is unusable against ~20GB of history), then the sparse patterns INCLUDING the global '/trace_out/*/jlens_raw/*' line, then checkout (3m20s). The site sibling was already present and non-sparse with modes/ materialised (464 render HTML files), so the contract gate read true - 0 errors, no phantom 'render path missing on disk' FAILs. Verified before acting: ops branch in both repos, sealed set populated at 173 (not the empty set a main checkout gives), push --dry-run clean in both, 929 batch summaries on disk. Nothing was pushed to the harness session branches.",
     "2026-09-01 queue discipline: TWO fires, both $0, both in the circuit-trace lane and strictly sequential - the drift sentinel, then the item 3c re-park after it was GitHub-confirmed terminal (--ignore-settle used on that basis, per the standing prompt's own instruction for the re-park). Never more than one running and one pending in any lane. All eight trigger files verified PARKED at cycle close; circuit-trace carries today's nonce, the other seven still carry their 2026-08-29 park nonces, so no lane was left hot by a stray fire. No paid trigger was touched: scenario-generation, model-evaluation and advice-eval stayed parked and unfired, which maintenance mode requires absent explicit owner words.",
     "2026-09-01 harvest: three journal entries remain formally unresolved but are BOOKKEEPING RESIDUE, not lost measurement, and all three were GitHub-confirmed terminal this cycle with their outputs verified present. (1) advice-eval 2026-08-22T01:59:22Z = second-judge chain 3/5, run 32544991834, completed/cancelled at the 300-min timeout with outputs landed - later runs' notes record the harvest. (2) advice-eval 2026-08-22T07:11:16Z = chain 4/5, run 32558932427, completed/cancelled with outputs landed, likewise harvested. (3) jlens-readout 2026-08-23T12:22:14Z = txcorpus priority2 lens chunk 9 (pairs 201-225), which landed COMPLETE: trace_out/txcorpus_priority2_20260714T224455Z__jlens_gemma-2-2b/jlens_summary.part_201.json holds 25 results at idx 201..225, and the corpus closed at 352/352 on 08-28. All three aged past fire_trigger's 8h liveness window, so `status` reads 0 active in every lane and `resolve` cannot reach them - the known JOURNAL-EXPIRY-BLIND-SPOT-20260818. Recorded here rather than dropped; no re-fire, and no lane is actually occupied by them.",
