@@ -190,10 +190,11 @@ KNOWN_KEYS = {
         "steer_strength", "steer_boost_strength", "steer_rank_offset", "translation_model",
         "translation_placebo",
     }),
-    # logits_evaluation.yml `defaults` dict (verified 2026-07-10): models, pairs_file,
-    # limit, offset, commit_outputs.
+    # logits_evaluation.yml `defaults` dict (re-verified 2026-09-04): models, pairs_file,
+    # limit, offset, commit_outputs, mode, layers, topk, dtype. `dtype` belongs to
+    # mode: verify (float32 vs bfloat16); the other two modes ignore it.
     "logits-eval": frozenset({"models", "pairs_file", "limit", "offset", "commit_outputs",
-                              "mode", "layers", "topk"}),
+                              "mode", "layers", "topk", "dtype"}),
     # activation_patching.yml `defaults` dict (verified 2026-07-09): pairs_file, limit,
     # layers, positions, model, offsets, commit_outputs.
     "activation-patching": frozenset({

@@ -172,14 +172,27 @@ def test_workflow_yaml_still_parses_and_exposes_the_new_outputs():
     assert "mode" in outputs and "layers" in outputs
 
 
-def test_push_path_defaults_dict_contains_every_trigger_key():
-    """CI silently ignores unknown keys, and a key missing from the heredoc
-    defaults dict is silently dropped on the push path."""
+def test_push_path_defaults_dict_and_known_keys_agree_exactly():
+    """The two key sets must match in both directions, and each direction fails
+    silently in its own way:
+
+    - a KNOWN_KEYS key missing from the workflow's heredoc `defaults` dict is
+      dropped on the push path, so the run silently uses a default;
+    - a workflow key missing from KNOWN_KEYS is rejected by fire_trigger.py, so
+      the parameter cannot be set at all through the only sanctioned path.
+
+    The second direction was unguarded until `dtype` hit it (2026-09-04).
+    """
+    import re
+
     fire = _load("fire_trigger")
     text = _workflow_text()
     params_run = text[text.index("defaults = {"):text.index("EOF\n\n  eval:")]
-    for key in fire.KNOWN_KEYS["logits-eval"]:
-        assert f'"{key}"' in params_run, f"workflow defaults dict is missing {key}"
+    defaults_literal = params_run[:params_run.index("}") + 1]
+    in_workflow = set(re.findall(r'"(\w+)":', defaults_literal))
+    assert in_workflow == fire.KNOWN_KEYS["logits-eval"], (
+        f"only in workflow: {in_workflow - fire.KNOWN_KEYS['logits-eval']}; "
+        f"only in KNOWN_KEYS: {fire.KNOWN_KEYS['logits-eval'] - in_workflow}")
 
 
 def test_depth_mode_writes_a_distinct_dir_and_filename():
