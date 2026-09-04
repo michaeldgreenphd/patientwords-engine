@@ -1,0 +1,22 @@
+{
+ "model": "gemma-2-2b-it",
+ "n_phrases": 122,
+ "mean_penalty_pp": -6.2,
+ "downgrades": 6,
+ "upgrades": 2,
+ "choices": [
+  "Population: rows[] entries in /home/user/patientwords-engine/urgency_shift.json with model=='gemma-2-2b-it' (122 rows: 119 from Tier A batch pairs_20260707T171223Z, 3 from Tier B batch pairs_20260710T011743Z).",
+  "Holdout rule implemented exactly as: exclude a phrase iff its row belongs to a Tier B batch (carries a tierb_split assignment; batches after the 2026-07-09 registration) AND int(sha1(clinical_prompt.encode('utf-8')).hexdigest(),16) % 10 == 0. Scoped to Tier B because preregistration_tierB.md Amendment 1 assigns splits only to Tier B pairs ('every Tier B pair is assigned to an analysis split'). Validation: this rule reproduces the file's tierb_split explore/holdout labels 2037/2037. Result: 0 of the 122 phrases excluded (the 3 Tier B rows hash nonzero). Ambiguity noted: 11 Tier A phrases also hash to 0 mod 10; I retained them since the sealed holdout does not apply to Tier A \u2014 an unscoped reading of the rule would instead give n=111.",
+  "Penalty: used the per-row language_penalty field, which I verified in trace outputs equals probabilities.patient \u2212 probabilities.clinical, i.e. P(clinical target continuation token | patient wording) \u2212 P(same token | clinical wording), matching the written definition. It is NOT p_top_patient \u2212 p_top_clinical (those are argmax-token probabilities). mean_penalty_pp = 100 \u00d7 mean over deduped phrases = -6.2251 \u2192 -6.2.",
+  "Dedup: one record per (model, clinical_prompt) by exact string match; all 122 prompts were unique for this model, so mean-of-duplicate probabilities and majority-vote flip collapse were no-ops.",
+  "Downgrade/upgrade: used the per-row flip_class classification field already present (downgrade/upgrade/lateral/uninformative; null when top prediction did not flip), majority-voted per phrase (trivial with no duplicates). Deduped counts: downgrade 6, upgrade 2 (also lateral 15, uninformative 18, no-flip 81).",
+  "Field-name mapping: the prompt's prob_clinical/prob_patient correspond to row fields p_top_clinical/p_top_patient (top-token probabilities under each wording); verified against predictive_spread[...][0][1] in the trace files.",
+  "Sample check procedure: random.Random(42).sample over the 122 deduped phrases in file (first-occurrence) order; joined to trace_out/<batch>__gemma-2-2b-it/batch_summary.part_01.json via results[i]['index']; compared clinical_prompt text, p_top_clinical, p_top_patient, language_penalty, and language_penalty vs probabilities.patient\u2212probabilities.clinical with tolerance 0.0005 (row values are rounded to 3\u20134 decimals).",
+  "gemma-2-2b-it is a logits-backend model (backend 'logits', source_set null); its trace dirs are suffixed __gemma-2-2b-it and each batch had a single batch_summary.part_01.json."
+ ],
+ "sample_check": {
+  "n_sampled": 15,
+  "n_matched": 15,
+  "mismatches": []
+ }
+}

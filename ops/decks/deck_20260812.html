@@ -1,0 +1,124 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-12</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .new{border-left:3px solid #b4483d}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-12</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · red rule = new or moved today</p>
+
+<div class="card new" data-id="D1-TRACE-429-STARVATION">
+  <h2>D1 · The circuit-trace lane is being rate-limited, and it is the axis the study is short on</h2>
+  <p>Five of the last seven hosted trace runs died the same way: HTTP 429 from Neuronpedia's graph endpoint, after all four retries. The batch then truncates wherever the 429 lands — today's LOST-LATE trace stopped at pair 21 of 22.</p>
+  <p>No data is lost (each pair checkpoints as it finishes), but every failure spends about 85 minutes of runner time to land a partial. Hosted-graph coverage is stuck at 1,580 of 1,600, so this is the lane where the stall costs most.</p>
+  <p class="num">runs 31541670027 · 31551617521 · 31560086215 · 31568524267 · 31591408761 failed · only 31579145275 (08:37) passed · retry ladder tops out at 60s · all three hosted lanes fire within ~20s of each other</p>
+  <div class="chips"><button class="chip" data-v="longer-backoff">lengthen the retry ladder</button><button class="chip" data-v="smaller-chunks">cut trace chunk size</button><button class="chip" data-v="stagger-fires">stagger the accelerator's fires</button><button class="chip" data-v="ask-neuronpedia">ask Neuronpedia about the quota</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D2-STEERED-BATCH-PUBLICATION">
+  <h2>D2 · A second fully measured batch is now waiting at the same gate (from 08-11)</h2>
+  <p><code>pairs_20260811T190638Z</code> has finished its round-2 trace (68/68) and its logits legs, so it now sits exactly where <code>pairs_20260809T172338Z</code> has been sitting: measured, and held out of the public payload.</p>
+  <p>Both were kept out of the exporter again today — adding them would change what the public corpus is a sample of, which no cycle should do on its own. Worth deciding the class rather than the batch: a third will exist before long.</p>
+  <p class="num">payload held at 25 stamps / 1,647 scenarios · their rows moved the contract orphan warning 1,185/9,363 → 1,359/9,579 (dead weight, not contamination)</p>
+  <div class="chips"><button class="chip" data-v="publish-labelled">publish both, labelled as steered</button><button class="chip" data-v="publish-plain">publish both, no special label</button><button class="chip" data-v="keep-internal">keep non-campaign batches internal</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D3-MEDICAL-FRAMING">
+  <h2>D3 · The medical fine-tune sentence is still unchosen (from 08-08, moved 08-10)</h2>
+  <p>Still nothing published over-claims — the site carries the 08-08 statistics. But the backfill legs that move those numbers ran again today, so the gap between the internal number and the published sentence keeps widening.</p>
+  <p class="num">internal: meditron3-8b n 333, CI95 [-0.0493,-0.0211], sign 23v3 q=1.76e-04 · published: n 132, CI95 [-0.0498,+0.0004]</p>
+  <div class="chips"><button class="chip" data-v="per-model-sentence">write a per-model sentence, then publish</button><button class="chip" data-v="publish-first">publish the numbers now, sentence after</button><button class="chip" data-v="send-me-draft">draft three options and send them</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D4-MODEL-STATS-POLICY">
+  <h2>D4 · The staleness is wider than we thought, and one thing we believed about it is wrong (from 08-10)</h2>
+  <p>It is not just <code>model_stats.json</code>: <code>convergence.json</code> is equally stale, and <code>timeline.json</code> has been frozen for 29 days. The site's own CLAUDE.md states all three are regenerated nightly — so the doc is wrong, not merely silent.</p>
+  <p>Correction to the 08-10 note: these files <em>do</em> carry a <code>generated_utc</code> (inside <code>_provenance</code>), so the staleness check we proposed needs no stamping work first and can be written today.</p>
+  <p class="num">model_stats + convergence 2026-08-08 · timeline 2026-07-14 · all three stamped engine_sha "7f3b6777d552+dirty"</p>
+  <div class="chips"><button class="chip" data-v="add-to-chain">add paired_stats to the cycle chain</button><button class="chip" data-v="keep-manual">keep it manual, say so in the prompt</button><button class="chip" data-v="label-snapshot">label the page table a dated snapshot</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D5-DIRTY-PROVENANCE">
+  <h2>D5 · The claim-grade numbers were computed from an uncommitted tree</h2>
+  <p>All three statistics payloads carry <code>engine_sha</code> ending in <code>+dirty</code>. The study's strongest cross-model evidence is therefore not reproducible from any commit, and nothing in the pipeline rejects a dirty provenance stamp.</p>
+  <p>Cheap to close: have the contract gate error on a <code>+dirty</code> stamp for claim-grade payloads. First run would fail on the three files that are stale today, which is the point.</p>
+  <div class="chips"><button class="chip" data-v="add-assertion">add the +dirty assertion</button><button class="chip" data-v="regen-clean">regenerate from a clean commit first</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D6-TRANSPORT-LOGLENS-DOCS">
+  <h2>D6 · Third cycle, third judgement call on the same contradiction (from 08-09)</h2>
+  <p>One file still says both things: <code>publish-site-data</code> step 3 says run the transport/loglens exporters, its own Never list says never. Today's cycle ran them, agreeing with 08-10; 08-09 skipped them. Content did not move this time, only timestamps.</p>
+  <p>This is one line's deletion away from being settled, and it is the longest-standing unforced ambiguity in the cycle docs.</p>
+  <div class="chips"><button class="chip" data-v="wired-strike-never">they are wired — strike the Never line</button><button class="chip" data-v="not-wired">they are snapshots — remove from step 3</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D7-PAB-PROBE-KEY">
+  <h2>D7 · PAB probe has no CI target (from 08-10)</h2>
+  <p>Carried unchanged. No cycle work blocks on it.</p>
+  <div class="chips"><button class="chip" data-v="point-it">point it at a target</button><button class="chip" data-v="retire">retire the lane</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D8-DOC-DRIFT">
+  <h2>D8 · Two documentation drifts from the Monday sweep (from 08-10)</h2>
+  <p>Carried unchanged: §2b points at an amendments file that does not exist on this branch, and the site-text extractor misses two live pages (~44 KB of published prose).</p>
+  <div class="chips"><button class="chip" data-v="fix-both">fix both</button><button class="chip" data-v="fix-amendments">fix the §2b path only</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D9-OPS-CADENCE">
+  <h2>D9 · Ops cadence rests on a single point (from 08-02)</h2>
+  <p>Carried. Today's cycle again arrived in a broken container state and had to repair itself before it could do anything — the bootstrap doc made that a 4-minute detour rather than a lost day.</p>
+  <div class="chips"><button class="chip" data-v="approve-routine">approve the fresh-session Routine</button><button class="chip" data-v="accept-pace">accept the pace, restate "daily"</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D10-OPENROUTER-CEILING">
+  <h2>D10 · The OpenRouter lane has no spend ceiling (from 08-08)</h2>
+  <p>Carried unchanged. The Anthropic $2/day and $8 Tier B ceilings are enforced in <code>fire_trigger</code>; the OpenRouter lane is not covered by either.</p>
+  <div class="chips"><button class="chip" data-v="set-ceiling">set a ceiling</button><button class="chip" data-v="no-spend-planned">no further spend planned</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D11-JLENS-DEPTH-PINS">
+  <h2>D11 · Depth-figure pins are hand-held (from 08-08)</h2>
+  <p>Carried. Today's cycle verified the pins by regenerating to scratch and diffing: byte-identical except the timestamp, so the published figure was left untouched.</p>
+  <div class="chips"><button class="chip" data-v="record-pins">record the pins in the payload</button><button class="chip" data-v="leave">leave as is</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D12-AUDIT-EXECUTION">
+  <h2>D12 · Owner acts still open from the audit (from 07-31)</h2>
+  <p>Carried: prereg signature, coding the 25 judge-agreement items, choosing the pooled-33% caveat sentence. No daily-ops work blocks on these.</p>
+  <div class="chips"><button class="chip" data-v="doing-this-week">doing these this week</button><button class="chip" data-v="send-reminder">remind me with the items</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<button id="copy">Copy decision summary</button>
+<div id="out"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(c){
+  c.querySelectorAll('.chip').forEach(function(ch){
+    ch.addEventListener('click',function(){
+      c.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on')});
+      ch.classList.add('on');
+    });
+  });
+});
+document.getElementById('copy').addEventListener('click',function(){
+  var lines=['DECISIONS 2026-08-12'];
+  document.querySelectorAll('.card').forEach(function(c){
+    var on=c.querySelector('.chip.on');
+    lines.push(c.dataset.id+' :: '+(on?on.dataset.v:'(no selection)'));
+  });
+  var t=lines.join('\n');
+  var o=document.getElementById('out');o.textContent=t;o.style.display='block';
+  if(navigator.clipboard)navigator.clipboard.writeText(t);
+});
+</script>

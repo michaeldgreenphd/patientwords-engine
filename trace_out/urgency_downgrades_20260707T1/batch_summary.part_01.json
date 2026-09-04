@@ -8,10 +8,17 @@
     "desired_logit_prob": 0.95,
     "node_threshold": 0.8,
     "edge_threshold": 0.98,
-    "max_feature_nodes": 2500
+    "max_feature_nodes": 5000
   },
   "start_index": 1,
+  "pairs_requested": 10,
+  "completed": true,
   "screen_targets": null,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "12f27ca04f0a",
+    "runner_image": "20260726.254.1"
+  },
   "results": [
     {
       "index": 1,
@@ -19,50 +26,51 @@
       "prompts": {
         "clinical": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
         "patient": "She just can't switch her brain off at bedtime lately, so before turning in she takes a",
-        "translated": "She experiences an inability to quiet her mind at bedtime lately, so before retiring she takes a"
+        "translated": "She experiences persistent cognitive hyperarousal at bedtime recently, so before retiring she takes a"
       },
       "target_token": "Output \" few\"",
       "probabilities": {
-        "clinical": 0.066,
-        "patient": 0.107,
-        "translated": 0.173
+        "clinical": 0.068,
+        "patient": 0.112,
+        "translated": null
       },
-      "language_penalty": 0.040999999999999995,
+      "language_penalty": 0.044,
       "clinical_mass": {
-        "clinical": 0.2591,
-        "patient": 0.103,
-        "translated": 0.1101
+        "clinical": 0.2349,
+        "patient": 0.1094,
+        "translated": 0.2808
       },
       "error_share": {
-        "clinical": 0.116,
-        "patient": 0.1158,
-        "translated": 0.1168
+        "clinical": 0.0976,
+        "patient": 0.0961,
+        "translated": 0.1034
       },
       "top_path": {
-        "clinical": "embedding \u2192 Output \" \" (p=0.054)",
-        "patient": "embedding \u2192 Output \" few\" (p=0.107)",
-        "translated": "embedding \u2192 [L20\u00b7S] the article \"a\" and words associated with taking act \u2192 [L21\u00b7S] the verb \"take\" commonly preceded by the article \"a\" \u2192 [L22\u00b7C] phrases involving breathing. | deep \u2192 Output \" deep\" (p=0.052)"
+        "clinical": "embedding \u2192 Output \" \" (p=0.053)",
+        "patient": "embedding \u2192 Output \" \" (p=0.036)",
+        "translated": "embedding \u2192 Output \" \" (p=0.121)"
       },
-      "mitigation_recovery": 0.06599999999999999,
+      "mitigation_recovery": null,
       "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
           [
             "Output \" few\"",
-            0.066
+            0.068
           ],
           [
             "Output \" melatonin\"",
-            0.063
+            0.06
           ],
           [
             "Output \" couple\"",
-            0.054
+            0.053
           ],
           [
             "Output \" \"",
-            0.054
+            0.053
           ],
           [
             "Output \" dose\"",
@@ -72,7 +80,7 @@
         "patient": [
           [
             "Output \" few\"",
-            0.107
+            0.112
           ],
           [
             "Output \" look\"",
@@ -80,44 +88,44 @@
           ],
           [
             "Output \" little\"",
-            0.054
+            0.053
           ],
           [
-            "Output \" walk\"",
-            0.039
+            "Output \" \"",
+            0.036
           ],
           [
             "Output \" quick\"",
-            0.039
+            0.036
           ]
         ],
         "translated": [
           [
-            "Output \" few\"",
-            0.173
+            "Output \" \"",
+            0.121
           ],
           [
-            "Output \" walk\"",
-            0.108
+            "Output \" small\"",
+            0.083
           ],
           [
-            "Output \" moment\"",
-            0.056
+            "Output \" dose\"",
+            0.05
           ],
           [
-            "Output \" deep\"",
-            0.052
-          ],
-          [
-            "Output \" bath\"",
+            "Output \" half\"",
             0.044
+          ],
+          [
+            "Output \" short\"",
+            0.034
           ]
         ]
       },
       "circuit_diff": {
-        "shared_features": 401,
-        "unique_to_a": 381,
-        "unique_to_b": 425
+        "shared_features": 720,
+        "unique_to_a": 653,
+        "unique_to_b": 728
       },
       "outputs": {
         "html": "trace_out/urgency_downgrades_20260707T1/index_01.html",
@@ -132,50 +140,51 @@
       "prompts": {
         "clinical": "Because I've had arrhythmia symptoms lately, I finally went to see a",
         "patient": "Because my ticker's been acting funny lately, I finally went to see a",
-        "translated": "Because my heart's been palpitating lately, I finally went to see a"
+        "translated": "Because my ticker's been acting funny lately, I finally went to see a"
       },
       "target_token": "Output \" doctor\"",
       "probabilities": {
-        "clinical": 0.13,
-        "patient": 0.498,
-        "translated": 0.342
+        "clinical": 0.124,
+        "patient": 0.471,
+        "translated": 0.471
       },
-      "language_penalty": 0.368,
+      "language_penalty": 0.347,
       "clinical_mass": {
-        "clinical": 0.5605,
-        "patient": 0.3862,
-        "translated": 0.4655
+        "clinical": 0.5143,
+        "patient": 0.3253,
+        "translated": 0.3254
       },
       "error_share": {
-        "clinical": 0.1118,
-        "patient": 0.125,
-        "translated": 0.117
+        "clinical": 0.0973,
+        "patient": 0.1087,
+        "translated": 0.1088
       },
       "top_path": {
-        "clinical": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.058)",
-        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.498)",
-        "translated": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.057)"
+        "clinical": "embedding \u2192 [L24\u00b7C] words related to emotional distress and physical hea \u2192 Output \" heart\" (p=0.066)",
+        "patient": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.471)",
+        "translated": "[L16\u00b7S]  \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.471)"
       },
-      "mitigation_recovery": -0.15599999999999997,
-      "translation_method": "llm",
+      "mitigation_recovery": 0.0,
+      "translation_method": "unchanged",
+      "translation_model": null,
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
           [
             "Output \" cardio\"",
-            0.634
+            0.629
           ],
           [
             "Output \" doctor\"",
-            0.13
+            0.124
           ],
           [
             "Output \" heart\"",
-            0.058
+            0.066
           ],
           [
             "Output \" Cardio\"",
-            0.032
+            0.035
           ],
           [
             "Output \" specialist\"",
@@ -185,19 +194,19 @@
         "patient": [
           [
             "Output \" doctor\"",
-            0.498
+            0.471
           ],
           [
             "Output \" cardio\"",
-            0.306
-          ],
-          [
-            "Output \" doc\"",
-            0.032
+            0.322
           ],
           [
             "Output \" heart\"",
-            0.029
+            0.034
+          ],
+          [
+            "Output \" doc\"",
+            0.034
           ],
           [
             "Output \" specialist\"",
@@ -206,31 +215,31 @@
         ],
         "translated": [
           [
-            "Output \" cardio\"",
-            0.448
+            "Output \" doctor\"",
+            0.471
           ],
           [
-            "Output \" doctor\"",
-            0.342
+            "Output \" cardio\"",
+            0.322
           ],
           [
             "Output \" heart\"",
-            0.057
+            0.034
+          ],
+          [
+            "Output \" doc\"",
+            0.034
           ],
           [
             "Output \" specialist\"",
-            0.03
-          ],
-          [
-            "Output \" Cardio\"",
-            0.018
+            0.014
           ]
         ]
       },
       "circuit_diff": {
-        "shared_features": 359,
-        "unique_to_a": 311,
-        "unique_to_b": 361
+        "shared_features": 611,
+        "unique_to_a": 552,
+        "unique_to_b": 598
       },
       "outputs": {
         "html": "trace_out/urgency_downgrades_20260707T1/index_02.html",
@@ -245,105 +254,106 @@
       "prompts": {
         "clinical": "Because I have somniloquy, my roommate says I should see a",
         "patient": "Because I keep talking in my sleep, my roommate says I should see a",
-        "translated": "Because I keep experiencing somniloquy, my roommate says I should see a"
+        "translated": "Because I have somniloquy, my roommate says I should see a"
       },
       "target_token": "Output \" doctor\"",
       "probabilities": {
-        "clinical": 0.332,
-        "patient": 0.269,
-        "translated": 0.462
+        "clinical": 0.316,
+        "patient": 0.252,
+        "translated": 0.316
       },
-      "language_penalty": -0.063,
+      "language_penalty": -0.064,
       "clinical_mass": {
-        "clinical": 0.3329,
-        "patient": 0.3145,
-        "translated": 0.3496
+        "clinical": 0.2921,
+        "patient": 0.257,
+        "translated": 0.2921
       },
       "error_share": {
-        "clinical": 0.1361,
-        "patient": 0.1196,
-        "translated": 0.137
+        "clinical": 0.1118,
+        "patient": 0.101,
+        "translated": 0.1118
       },
       "top_path": {
-        "clinical": "embedding \u2192 [L4\u00b7O] words and phrases related to sleep apnea and snoring \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.227)",
-        "patient": "embedding \u2192 Output \" sleep\" (p=0.383)",
-        "translated": "[L16\u00b7S]  \u2192 [L17\u00b7C] medical advice | information about methadone use, pa \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.462)"
+        "clinical": "embedding \u2192 [L4\u00b7O] words and phrases related to sleep apnea and snoring \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.218)",
+        "patient": "embedding \u2192 Output \" sleep\" (p=0.414)",
+        "translated": "embedding \u2192 [L4\u00b7O] words and phrases related to sleep apnea and snoring \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.218)"
       },
-      "mitigation_recovery": 0.193,
+      "mitigation_recovery": 0.064,
       "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
           [
             "Output \" doctor\"",
-            0.332
+            0.316
           ],
           [
             "Output \" sleep\"",
-            0.227
+            0.218
           ],
           [
             "Output \" psychiatrist\"",
-            0.109
-          ],
-          [
-            "Output \" therapist\"",
-            0.09
-          ],
-          [
-            "Output \" neuro\"",
-            0.059
-          ]
-        ],
-        "patient": [
-          [
-            "Output \" sleep\"",
-            0.383
-          ],
-          [
-            "Output \" doctor\"",
-            0.269
+            0.116
           ],
           [
             "Output \" therapist\"",
             0.103
           ],
           [
+            "Output \" neuro\"",
+            0.062
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" sleep\"",
+            0.414
+          ],
+          [
+            "Output \" doctor\"",
+            0.252
+          ],
+          [
+            "Output \" therapist\"",
+            0.104
+          ],
+          [
             "Output \" psychiatrist\"",
-            0.1
+            0.092
           ],
           [
             "Output \" psychologist\"",
-            0.033
+            0.03
           ]
         ],
         "translated": [
           [
             "Output \" doctor\"",
-            0.462
+            0.316
           ],
           [
             "Output \" sleep\"",
-            0.208
+            0.218
           ],
           [
             "Output \" psychiatrist\"",
-            0.09
+            0.116
+          ],
+          [
+            "Output \" therapist\"",
+            0.103
           ],
           [
             "Output \" neuro\"",
             0.062
-          ],
-          [
-            "Output \" therapist\"",
-            0.047
           ]
         ]
       },
       "circuit_diff": {
-        "shared_features": 328,
-        "unique_to_a": 473,
-        "unique_to_b": 387
+        "shared_features": 541,
+        "unique_to_a": 860,
+        "unique_to_b": 637
       },
       "outputs": {
         "html": "trace_out/urgency_downgrades_20260707T1/index_03.html",
@@ -362,90 +372,91 @@
       },
       "target_token": "Output \" sleep\"",
       "probabilities": {
-        "clinical": 0.144,
-        "patient": 0.068,
-        "translated": 0.148
+        "clinical": 0.149,
+        "patient": 0.063,
+        "translated": 0.16
       },
-      "language_penalty": -0.07599999999999998,
+      "language_penalty": -0.086,
       "clinical_mass": {
-        "clinical": 0.277,
-        "patient": 0.173,
-        "translated": 0.2884
+        "clinical": 0.2405,
+        "patient": 0.1483,
+        "translated": 0.2467
       },
       "error_share": {
-        "clinical": 0.112,
-        "patient": 0.1204,
-        "translated": 0.1102
+        "clinical": 0.0925,
+        "patient": 0.0985,
+        "translated": 0.0932
       },
       "top_path": {
-        "clinical": "embedding \u2192 Output \" sleep\" (p=0.144)",
-        "patient": "embedding \u2192 [L4\u00b7O] words and phrases related to sleep apnea and snoring \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.068)",
-        "translated": "embedding \u2192 Output \" sleep\" (p=0.148)"
+        "clinical": "embedding \u2192 Output \" sleep\" (p=0.149)",
+        "patient": "embedding \u2192 [L4\u00b7O] words and phrases related to sleep apnea and snoring \u2192 [L25\u00b7O] the word \"sleep\" and words associated with it, like  \u2192 Output \" sleep\" (p=0.063)",
+        "translated": "embedding \u2192 Output \" sleep\" (p=0.160)"
       },
-      "mitigation_recovery": 0.07999999999999999,
+      "mitigation_recovery": 0.097,
       "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
           [
             "Output \" doctor\"",
-            0.197
+            0.191
           ],
           [
             "Output \" sleep\"",
-            0.144
+            0.149
           ],
           [
             "Output \" visit\"",
-            0.134
+            0.132
           ],
           [
             "Output \" consultation\"",
-            0.037
+            0.038
           ],
           [
             "Output \" doctors\"",
-            0.037
+            0.033
           ]
         ],
         "patient": [
           [
+            "Output \" doctor\"",
+            0.063
+          ],
+          [
             "Output \" trip\"",
-            0.068
+            0.063
           ],
           [
             "Output \" sleep\"",
-            0.068
-          ],
-          [
-            "Output \" doctor\"",
-            0.065
+            0.063
           ],
           [
             "Output \" dentist\"",
-            0.061
+            0.056
           ],
           [
             "Output \" visit\"",
-            0.05
+            0.056
           ]
         ],
         "translated": [
           [
             "Output \" doctor\"",
-            0.178
+            0.181
           ],
           [
             "Output \" sleep\"",
-            0.148
+            0.16
           ],
           [
             "Output \" visit\"",
-            0.144
+            0.141
           ],
           [
             "Output \" consultation\"",
-            0.048
+            0.046
           ],
           [
             "Output \" medical\"",
@@ -454,9 +465,9 @@
         ]
       },
       "circuit_diff": {
-        "shared_features": 518,
-        "unique_to_a": 286,
-        "unique_to_b": 353
+        "shared_features": 926,
+        "unique_to_a": 468,
+        "unique_to_b": 566
       },
       "outputs": {
         "html": "trace_out/urgency_downgrades_20260707T1/index_04.html",
@@ -475,60 +486,61 @@
       },
       "target_token": "Output \" medication\"",
       "probabilities": {
-        "clinical": 0.142,
+        "clinical": 0.151,
         "patient": null,
-        "translated": 0.037
+        "translated": 0.035
       },
       "language_penalty": null,
       "clinical_mass": {
-        "clinical": 0.4714,
-        "patient": 0.3362,
-        "translated": 0.3666
+        "clinical": 0.4349,
+        "patient": 0.3319,
+        "translated": 0.3625
       },
       "error_share": {
-        "clinical": 0.1057,
-        "patient": 0.098,
-        "translated": 0.101
+        "clinical": 0.0896,
+        "patient": 0.0827,
+        "translated": 0.087
       },
       "top_path": {
-        "clinical": "embedding \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" medication\" (p=0.142)",
+        "clinical": "embedding \u2192 [L22\u00b7C] language related to medical research studies and the \u2192 [L25\u00b7C] words related to medicine, pharmacology, and scienti \u2192 Output \" medication\" (p=0.151)",
         "patient": "embedding \u2192 Output \" stomach\" (p=0.053)",
-        "translated": "embedding \u2192 Output \" time\" (p=0.049)"
+        "translated": "embedding \u2192 Output \" time\" (p=0.045)"
       },
       "mitigation_recovery": null,
       "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
       "forced_targets": [],
       "predictive_spread": {
         "clinical": [
           [
             "Output \" medication\"",
-            0.142
+            0.151
           ],
           [
             "Output \" medicine\"",
-            0.107
+            0.104
           ],
           [
             "Output \" meds\"",
-            0.062
+            0.056
           ],
           [
             "Output \" lax\"",
-            0.048
+            0.043
           ],
           [
             "Output \" daily\"",
-            0.041
+            0.038
           ]
         ],
         "patient": [
           [
             "Output \" dog\"",
-            0.11
+            0.111
           ],
           [
             "Output \" meds\"",
-            0.059
+            0.053
           ],
           [
             "Output \" stomach\"",
@@ -536,46 +548,612 @@
           ],
           [
             "Output \" medicine\"",
-            0.045
+            0.046
           ],
           [
             "Output \" blood\"",
-            0.045
+            0.041
           ]
         ],
         "translated": [
           [
             "Output \" dog\"",
-            0.06
+            0.058
           ],
           [
             "Output \" time\"",
-            0.049
-          ],
-          [
-            "Output \" medicine\"",
-            0.041
+            0.045
           ],
           [
             "Output \" blood\"",
             0.04
           ],
           [
+            "Output \" medicine\"",
+            0.04
+          ],
+          [
             "Output \" medication\"",
-            0.037
+            0.035
           ]
         ]
       },
       "circuit_diff": {
-        "shared_features": 466,
-        "unique_to_a": 312,
-        "unique_to_b": 371
+        "shared_features": 831,
+        "unique_to_a": 491,
+        "unique_to_b": 545
       },
       "outputs": {
         "html": "trace_out/urgency_downgrades_20260707T1/index_05.html",
         "png": "trace_out/urgency_downgrades_20260707T1/index_05.png",
         "diff_html": "trace_out/urgency_downgrades_20260707T1/index_05_diff.html",
         "diff_png": "trace_out/urgency_downgrades_20260707T1/index_05_diff.png"
+      }
+    },
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've got severe dermatitis all over my back, so I should probably see a",
+        "patient": "I've got this itchy rash all over my back, so I should probably see a",
+        "translated": "I've got this pruritic rash all over my back, so I should probably see a"
+      },
+      "target_token": "Output \" dermatologist\"",
+      "probabilities": {
+        "clinical": 0.527,
+        "patient": 0.241,
+        "translated": 0.402
+      },
+      "language_penalty": -0.28600000000000003,
+      "clinical_mass": {
+        "clinical": 0.429,
+        "patient": 0.4319,
+        "translated": 0.4469
+      },
+      "error_share": {
+        "clinical": 0.0924,
+        "patient": 0.0973,
+        "translated": 0.1024
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.318)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.656)",
+        "translated": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.402)"
+      },
+      "mitigation_recovery": 0.16100000000000003,
+      "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dermatologist\"",
+            0.527
+          ],
+          [
+            "Output \" doctor\"",
+            0.318
+          ],
+          [
+            "Output \" der\"",
+            0.055
+          ],
+          [
+            "Output \" specialist\"",
+            0.03
+          ],
+          [
+            "Output \" doc\"",
+            0.014
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.656
+          ],
+          [
+            "Output \" dermatologist\"",
+            0.241
+          ],
+          [
+            "Output \" doc\"",
+            0.029
+          ],
+          [
+            "Output \" der\"",
+            0.022
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" dermatologist\"",
+            0.402
+          ],
+          [
+            "Output \" doctor\"",
+            0.402
+          ],
+          [
+            "Output \" der\"",
+            0.09
+          ],
+          [
+            "Output \" doc\"",
+            0.048
+          ],
+          [
+            "Output \" Dr\"",
+            0.009
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 862,
+        "unique_to_a": 380,
+        "unique_to_b": 336
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1/index_06.html",
+        "png": "trace_out/urgency_downgrades_20260707T1/index_06.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1/index_06_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1/index_06_diff.png"
+      }
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My stomach has acid reflux after lunch, so I reached for an",
+        "patient": "My stomach's tied up in knots after lunch, so I reached for an",
+        "translated": "My abdomen is cramping after lunch, so I reached for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.383,
+        "patient": 0.069,
+        "translated": 0.073
+      },
+      "language_penalty": -0.314,
+      "clinical_mass": {
+        "clinical": 0.2763,
+        "patient": 0.1618,
+        "translated": 0.2627
+      },
+      "error_share": {
+        "clinical": 0.1037,
+        "patient": 0.0973,
+        "translated": 0.1012
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.097)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.114)",
+        "translated": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.105)"
+      },
+      "mitigation_recovery": 0.00399999999999999,
+      "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.383
+          ],
+          [
+            "Output \" apple\"",
+            0.097
+          ],
+          [
+            "Output \" over\"",
+            0.097
+          ],
+          [
+            "Output \" OTC\"",
+            0.046
+          ],
+          [
+            "Output \" anti\"",
+            0.046
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" apple\"",
+            0.129
+          ],
+          [
+            "Output \" ice\"",
+            0.114
+          ],
+          [
+            "Output \" old\"",
+            0.089
+          ],
+          [
+            "Output \" ant\"",
+            0.069
+          ],
+          [
+            "Output \" anti\"",
+            0.061
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" apple\"",
+            0.197
+          ],
+          [
+            "Output \" ice\"",
+            0.105
+          ],
+          [
+            "Output \" ant\"",
+            0.073
+          ],
+          [
+            "Output \" old\"",
+            0.057
+          ],
+          [
+            "Output \" anti\"",
+            0.044
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 844,
+        "unique_to_a": 424,
+        "unique_to_b": 525
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1/index_07.html",
+        "png": "trace_out/urgency_downgrades_20260707T1/index_07.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1/index_07_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1/index_07_diff.png"
+      }
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been having panic attacks lately, so before the meeting she took a",
+        "patient": "She's been feeling on edge lately, so before the meeting she took a",
+        "translated": "She's been feeling anxious lately, so before the meeting she took a"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.062,
+        "patient": null,
+        "translated": 0.057
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2457,
+        "patient": 0.1358,
+        "translated": 0.2061
+      },
+      "error_share": {
+        "clinical": 0.0946,
+        "patient": 0.09,
+        "translated": 0.0914
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7S] instances of the indefinite article 'a' or 'an' near \u2192 [L24\u00b7S] articles, prepositions, and other common short words \u2192 Output \" couple\" (p=0.079)",
+        "patient": "embedding \u2192 [L20\u00b7S] the article \"a\" and words associated with taking act \u2192 [L21\u00b7S] the verb \"take\" commonly preceded by the article \"a\" \u2192 [L22\u00b7C] phrases involving breathing. | deep \u2192 Output \" deep\" (p=0.105)",
+        "translated": "embedding \u2192 [L22\u00b7C] phrases involving breathing. | deep \u2192 Output \" deep\" (p=0.107)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" Xan\"",
+            0.131
+          ],
+          [
+            "Output \" few\"",
+            0.115
+          ],
+          [
+            "Output \" couple\"",
+            0.079
+          ],
+          [
+            "Output \" pill\"",
+            0.062
+          ],
+          [
+            "Output \" xan\"",
+            0.054
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" few\"",
+            0.119
+          ],
+          [
+            "Output \" deep\"",
+            0.105
+          ],
+          [
+            "Output \" couple\"",
+            0.056
+          ],
+          [
+            "Output \" nap\"",
+            0.039
+          ],
+          [
+            "Output \" little\"",
+            0.039
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" few\"",
+            0.138
+          ],
+          [
+            "Output \" deep\"",
+            0.107
+          ],
+          [
+            "Output \" Xan\"",
+            0.074
+          ],
+          [
+            "Output \" couple\"",
+            0.065
+          ],
+          [
+            "Output \" pill\"",
+            0.057
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 848,
+        "unique_to_a": 577,
+        "unique_to_b": 532
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1/index_08.html",
+        "png": "trace_out/urgency_downgrades_20260707T1/index_08.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1/index_08_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1/index_08_diff.png"
+      }
+    },
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After that greasy diner meal I have acid reflux, so I reached for an",
+        "patient": "After that greasy diner meal my stomach's on fire, so I reached for an",
+        "translated": "After that high-fat meal my epigastric region has a burning sensation, so I reached for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.494,
+        "patient": 0.083,
+        "translated": 0.5
+      },
+      "language_penalty": -0.411,
+      "clinical_mass": {
+        "clinical": 0.2587,
+        "patient": 0.1747,
+        "translated": 0.2708
+      },
+      "error_share": {
+        "clinical": 0.1094,
+        "patient": 0.1012,
+        "translated": 0.114
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.086)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.287)",
+        "translated": "embedding \u2192 Output \" over\" (p=0.068)"
+      },
+      "mitigation_recovery": 0.417,
+      "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.494
+          ],
+          [
+            "Output \" over\"",
+            0.086
+          ],
+          [
+            "Output \" anti\"",
+            0.052
+          ],
+          [
+            "Output \" apple\"",
+            0.046
+          ],
+          [
+            "Output \" Ant\"",
+            0.032
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ice\"",
+            0.287
+          ],
+          [
+            "Output \" apple\"",
+            0.093
+          ],
+          [
+            "Output \" ant\"",
+            0.083
+          ],
+          [
+            "Output \" aspirin\"",
+            0.057
+          ],
+          [
+            "Output \" old\"",
+            0.039
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" ant\"",
+            0.5
+          ],
+          [
+            "Output \" over\"",
+            0.068
+          ],
+          [
+            "Output \" apple\"",
+            0.053
+          ],
+          [
+            "Output \" ice\"",
+            0.036
+          ],
+          [
+            "Output \" anti\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 827,
+        "unique_to_a": 435,
+        "unique_to_b": 510
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1/index_09.html",
+        "png": "trace_out/urgency_downgrades_20260707T1/index_09.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1/index_09_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1/index_09_diff.png"
+      }
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "When the dust kicks up my asthma flares, so at work I keep a spare",
+        "patient": "When the dust kicks up my chest gets all tight, so at work I keep a spare",
+        "translated": "When exposed to particulate matter my chest becomes constricted, so at work I keep a spare"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.68,
+        "patient": null,
+        "translated": 0.4
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.2666,
+        "patient": 0.146,
+        "translated": 0.2594
+      },
+      "error_share": {
+        "clinical": 0.1119,
+        "patient": 0.1053,
+        "translated": 0.117
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.680)",
+        "patient": "embedding \u2192 [L21\u00b7O] words related to argumentation, sequences and newnes \u2192 Output \" one\" (p=0.057)",
+        "translated": "embedding \u2192 [L18\u00b7C] terminology and concepts in medical research about l \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" inhal\" (p=0.400)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": "llm",
+      "translation_model": "claude-opus-4-8",
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.68
+          ],
+          [
+            "Output \" mask\"",
+            0.056
+          ],
+          [
+            "Output \" set\"",
+            0.03
+          ],
+          [
+            "Output \" puffer\"",
+            0.03
+          ],
+          [
+            "Output \" pair\"",
+            0.018
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" shirt\"",
+            0.2
+          ],
+          [
+            "Output \" t\"",
+            0.065
+          ],
+          [
+            "Output \" pair\"",
+            0.057
+          ],
+          [
+            "Output \" one\"",
+            0.057
+          ],
+          [
+            "Output \" T\"",
+            0.04
+          ]
+        ],
+        "translated": [
+          [
+            "Output \" inhal\"",
+            0.4
+          ],
+          [
+            "Output \" mask\"",
+            0.189
+          ],
+          [
+            "Output \" set\"",
+            0.042
+          ],
+          [
+            "Output \" pair\"",
+            0.037
+          ],
+          [
+            "Output \" puffer\"",
+            0.026
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 906,
+        "unique_to_a": 404,
+        "unique_to_b": 561
+      },
+      "outputs": {
+        "html": "trace_out/urgency_downgrades_20260707T1/index_10.html",
+        "png": "trace_out/urgency_downgrades_20260707T1/index_10.png",
+        "diff_html": "trace_out/urgency_downgrades_20260707T1/index_10_diff.html",
+        "diff_png": "trace_out/urgency_downgrades_20260707T1/index_10_diff.png"
       }
     }
   ]

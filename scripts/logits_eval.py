@@ -64,6 +64,28 @@ HF_IDS = {
     "gemma-3-4b-it": "google/gemma-3-4b-it",
     "qwen3-4b": "Qwen/Qwen3-4B",
     "qwen3-1.7b": "Qwen/Qwen3-1.7B",
+    # Expanded matrix (owner-approved; see docs/model_matrix.md for gate
+    # status, roles, and the limit-3 probe protocol). All run the same
+    # bfloat16-CPU path; the 7B/9B entries are ~2-4x slower per pair, so CI
+    # fires for them must use smaller chunks than the 2-4B models.
+    "llama-3.2-3b": "meta-llama/Llama-3.2-3B",
+    "olmo-2-1b": "allenai/OLMo-2-0425-1B",
+    "biomistral-7b": "BioMistral/BioMistral-7B",  # DROPPED 2026-07-13: pickle-only upstream
+    "meditron-7b": "epfl-llm/meditron-7b",  # SUPERSEDED 2026-07-17: gated (403) and 2 years old; kept for the record
+    # Meditron successors (owner 2026-07-17): the same EPFL lineage, current.
+    # Meditron3-8B is Llama-3.1-8B based (owner signed the license
+    # acknowledgment 2026-07-17); Apertus-8B-MeditronFO is Apertus-8B based
+    # and carries no acknowledgment gate. 8B class: swap step required,
+    # small chunks only.
+    "meditron3-8b": "OpenMeditron/Meditron3-8B",
+    "apertus-8b-meditronfo": "EPFLiGHT/Apertus-8B-MeditronFO",
+    # Same base as gemma-3-4b-it with medical tuning - the paired contrast
+    # isolates what medical fine-tuning does to the register gap. Gated by
+    # HAI-DEF terms (owner accepted 2026-07-13).
+    "medgemma-4b-it": "google/medgemma-4b-it",
+
+    "gemma-2-2b-it": "google/gemma-2-2b-it",
+    "gemma-2-9b": "google/gemma-2-9b",
 }
 
 
@@ -145,17 +167,20 @@ def build_result(index, pair, tokenizer, measure_fn, topk):
     }
 
 
-def build_summary(model_id, hf_id, results):
+def build_summary(model_id, hf_id, results, start_index=1, revision=None):
     return {
         "mode": "2panel",
         "backend": "logits",          # not the hosted graph backend
         "graph_model": model_id,      # export keys models_meta off this
         "source_set": None,           # no transcoder -> features=False downstream
         "generation_params": {},
-        "start_index": 1,
+        "start_index": start_index,
+        "pairs_requested": len(results),
+        "completed": True,   # overwritten by main()'s flush: False until the loop finishes
         "screen_targets": None,
+        # revision = the resolved HF commit hash, for the W5 pin table
         "inference": {"method": "logits", "hf_id": hf_id, "dtype": "bfloat16",
-                      "environment": environment()},
+                      "revision": revision, "environment": environment()},
         "results": results,
     }
 
@@ -167,6 +192,10 @@ def main():
                         help="short model id (%s) or a Hugging Face repo id" % "/".join(HF_IDS))
     parser.add_argument("--out", required=True, help="output dir, e.g. trace_out/pairs_<STAMP>__<model>")
     parser.add_argument("--limit", type=int, default=0, help="measure only the first N pairs (0 = all)")
+    parser.add_argument("--offset", type=int, default=0,
+                        help="skip the first N pairs before applying --limit (chunking for models "
+                             "too slow to finish a big batch inside the CI timeout; result indices "
+                             "and the part filename stay global, matching the trace path)")
     parser.add_argument("--topk", type=int, default=10, help="spread size per phrasing")
     args = parser.parse_args()
 
@@ -176,31 +205,51 @@ def main():
     model_id = args.model
     hf_id = HF_IDS.get(model_id, model_id)
     pairs = json.loads(Path(args.pairs).read_text(encoding="utf-8"))
+    if args.offset:
+        pairs = pairs[args.offset:]
     if args.limit:
         pairs = pairs[:args.limit]
 
     print(f"Loading {hf_id} (cpu, bfloat16) ...", flush=True)
-    tokenizer = AutoTokenizer.from_pretrained(hf_id)
+    # Supply-chain posture: never execute repo code, never deserialize pickle
+    # weights. use_safetensors=True hard-fails on repos without safetensors
+    # (every registry model ships them) instead of falling back to .bin.
+    tokenizer = AutoTokenizer.from_pretrained(hf_id, trust_remote_code=False)
     # low_cpu_mem_usage keeps a 4B model within a 16 GB runner during load.
     model = AutoModelForCausalLM.from_pretrained(
-        hf_id, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True)
+        hf_id, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True,
+        trust_remote_code=False, use_safetensors=True)
     model.eval()
 
     def measure_fn(prompt, target_id, topk):
         return measure(model, tokenizer, prompt, target_id, topk)
 
+    start_index = args.offset + 1  # global 1-based join key, matching the trace path
     results = []
-    for i, pair in enumerate(pairs, start=1):
-        results.append(build_result(i, pair, tokenizer, measure_fn, args.topk))
-        r = results[-1]
-        print(f"  [{i}/{len(pairs)}] clin={r['probabilities']['clinical']} "
-              f"pat={r['probabilities']['patient']} pen={r['language_penalty']}", flush=True)
-
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    summary_path = out / "batch_summary.part_01.json"
-    summary_path.write_text(
-        json.dumps(build_summary(model_id, hf_id, results), indent=2) + "\n", encoding="utf-8")
+    summary_path = out / f"batch_summary.part_{start_index:02d}.json"
+
+    def flush(completed):
+        # Flushed after every pair so the workflow's always() commit step lands
+        # the measured prefix even when the job ceiling kills a slow (8B/CPU)
+        # run mid-batch - the third script to learn the 2026-07-28 lesson
+        # (jlens_readout d36f944, jlens_steer 2989d4c).
+        summary = build_summary(model_id, hf_id, results, start_index,
+                                revision=getattr(model.config, "_commit_hash", None))
+        summary["completed"] = completed
+        if not completed:
+            summary["_partial"] = "in-progress flush (crash/timeout protection)"
+        summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+
+    for i, pair in enumerate(pairs, start=start_index):
+        results.append(build_result(i, pair, tokenizer, measure_fn, args.topk))
+        flush(completed=False)
+        r = results[-1]
+        print(f"  [{i}/{args.offset + len(pairs)}] clin={r['probabilities']['clinical']} "
+              f"pat={r['probabilities']['patient']} pen={r['language_penalty']}", flush=True)
+
+    flush(completed=True)
     print(f"Wrote {len(results)} results -> {summary_path}")
 
 

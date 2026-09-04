@@ -34,7 +34,8 @@ Pass --ignore-settle once the prior run is confirmed terminal in GitHub.
 Exit codes: 0 fired/ok, 2 queue refusal, 3 bad params, 4 budget refusal,
 5 no-op fire (trigger file already holds the params), 6 settle refusal (a
 same-trigger run was resolved inside the settle window and may still hold the
-GitHub concurrency group), 1 git failure.
+GitHub concurrency group), 7 unwired trigger (no workflow on this branch reads
+that trigger file, so the fire would run nothing), 1 git failure.
 No medical vocabulary lives in this file.
 """
 from __future__ import annotations
@@ -58,13 +59,55 @@ TRIGGERS = (
     "model-evaluation",
     "archive-renders",
     "advice-eval",
+    "pab-probe",
 )
 # advice-eval: elicit AND judge spend Anthropic/provider tokens (2026-07-21)
-PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval"})
+# pab-probe: patient/assistant/sandbox legs bill the prepaid OpenRouter key and
+# the evaluate stage bills Anthropic (2026-08-04, exploratory arm).
+PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval", "pab-probe"})
 # A circuit-trace fire with show_mitigation=true makes Anthropic translation
 # calls (the only paid path outside PAID_TRIGGERS). Its cost has no max_spend
 # param, so the guard imputes a conservative flat commitment per fire.
 MITIGATION_IMPUTED_USD = 0.15
+
+# Resting-state parks: the cheapest legitimate stage per trigger, with
+# commit_outputs false wherever the workflow supports the key. A trigger file
+# at rest is a loaded default any branch operation can pull (merges, rebases,
+# and first-appearance pushes all fire the workflow), so its committed content
+# must never be the last expensive thing that ran. Parking goes through the
+# full fire path - journal, queue, settle, budget - and costs one cheap run
+# per park; after that, every accidental re-fire runs this no-op instead.
+# scenario-generation and model-evaluation have no commit flag (their archives
+# always land), so their parks are 1-item haiku runs (~$0.002/accident).
+PARK_TINY_PAIRS = "data/simulated/pairs_20260706T172135Z.json"  # 2-pair batch, known good
+PARK_DEFAULTS = {
+    "circuit-trace": {"mode": "2panel", "pairs_file": PARK_TINY_PAIRS, "sample_size": "1",
+                      "offsets": "0", "commit_outputs": "false"},
+    "logits-eval": {"models": "qwen3-1.7b", "pairs_file": PARK_TINY_PAIRS, "limit": "1",
+                    "offset": "0", "commit_outputs": "false"},
+    "activation-patching": {"pairs_file": PARK_TINY_PAIRS, "offsets": "0", "limit": "1",
+                            "commit_outputs": "false"},
+    "jlens-readout": {"models": "gemma-2-2b", "pairs_file": PARK_TINY_PAIRS, "limit": "1",
+                      "offset": "0", "topn": "1", "lens_type": "JACOBIAN_LENS",
+                      "save_raw": "false", "commit_outputs": "false"},
+    "scenario-generation": {"task": "pairs", "num": "1", "topics": "general wellness",
+                            "anthropic_model": "claude-haiku-4-5", "max_spend": "0.01"},
+    "model-evaluation": {"model_selection": "claude-haiku-4-5", "scenario": "two_step",
+                         "sample_size": "1", "pairs_file": PARK_TINY_PAIRS,
+                         "max_spend": "0.01"},
+    "archive-renders": {"tag": "park-noop", "runs": ["trace_out/pairs_20260706T172135Z"],
+                        "no_pngs": "true"},
+    # advice-eval: elicit over an archive whose (models x samples) cells are fully
+    # covered plans 0 calls; judge off. A true $0 no-op even when re-fired.
+    "advice-eval": {"stimuli_file": "data/advice/stimuli_20260827T141036Z.json",
+                    "models": "anthropic:claude-haiku-4-5", "samples": "1",
+                    "max_spend": "0.01", "judge": "false", "commit_outputs": "false"},
+    # pab-probe: not parked - its workflow lives on the PAB branch only.
+}
+PARK_NOTE = ("PARK (resting-state rule): cheapest no-op default committed so branch operations "
+             "that touch this trigger file re-run a $0/negligible stage instead of the last "
+             "expensive fire; commit_outputs false where the workflow supports it. "
+             "Owner-approved maintenance hardening, 2026-08-27.")
 
 
 def is_mitigation_fire(trigger, params):
@@ -72,8 +115,60 @@ def is_mitigation_fire(trigger, params):
 DEFAULT_EXPIRE_HOURS = 8.0
 DEFAULT_SETTLE_MINUTES = 15.0
 DEFAULT_DAILY_CEILING_USD = 2.0
+# The prepaid OpenRouter key's own daily ceiling (PAB-branch lanes model;
+# minimal port 2026-08-07 for advice-eval fires whose models are all
+# OpenRouter-routed - owner routing instruction, decisions Addendum 3).
+DEFAULT_OPENROUTER_DAILY_CEILING_USD = 10.0
+
+
+WORKFLOW_DIR_RELPATH = ".github/workflows"
+
+
+def workflow_reads_trigger(repo, trigger: str) -> bool:
+    """True when some workflow on this branch reads this trigger's file path.
+
+    CI fires on a push that changes .github/trigger/<trigger>.json, so a trigger
+    key is only live where a workflow names that path. Checked per branch: the
+    same key can be wired on one branch and absent on another."""
+    needle = f"{TRIGGER_DIR_RELPATH}/{trigger}.json"
+    wf_dir = repo / WORKFLOW_DIR_RELPATH
+    try:
+        entries = sorted(wf_dir.iterdir())
+    except OSError:
+        return False
+    for path in entries:
+        if path.suffix not in (".yml", ".yaml"):
+            continue
+        try:
+            if needle in path.read_text(encoding="utf-8"):
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def fire_lane(trigger: str, params: dict) -> str:
+    """Which prepaid account a fire bills: "anthropic" (default) or "openrouter".
+
+    Only an advice-eval fire whose models spec names NO Anthropic model bills
+    the OpenRouter key alone (registry: bare ids are Anthropic; provider specs
+    starting anthropic: are Anthropic; everything else routes via OpenRouter
+    or an OpenRouter-compatible endpoint). Mixed or ambiguous specs stay on
+    the anthropic lane - fail closed."""
+    if trigger != "advice-eval":
+        return "anthropic"
+    models = str(params.get("models") or "").strip()
+    if not models:
+        return "anthropic"  # workflow default is an Anthropic model
+    specs = [s for s in models.replace(",", " ").split() if s]
+    for spec in specs:
+        provider = spec.split(":", 1)[0] if ":" in spec else ""
+        if provider == "anthropic" or ":" not in spec:
+            return "anthropic"
+    return "openrouter"
 JOURNAL_RELPATH = Path("ops") / "trigger_journal.jsonl"
 DASHBOARD_RELPATH = Path("ops") / "dashboard.json"
+OVERRIDES_RELPATH = Path("ops") / "budget_overrides.json"
 TRIGGER_DIR_RELPATH = Path(".github") / "trigger"
 PUSH_BACKOFF_SECONDS = (2, 4, 8, 16)
 
@@ -95,9 +190,11 @@ KNOWN_KEYS = {
         "steer_strength", "steer_boost_strength", "steer_rank_offset", "translation_model",
         "translation_placebo",
     }),
-    # logits_evaluation.yml `defaults` dict (verified 2026-07-10): models, pairs_file,
-    # limit, offset, commit_outputs.
-    "logits-eval": frozenset({"models", "pairs_file", "limit", "offset", "commit_outputs"}),
+    # logits_evaluation.yml `defaults` dict (re-verified 2026-09-04): models, pairs_file,
+    # limit, offset, commit_outputs, mode, layers, topk, dtype. `dtype` belongs to
+    # mode: verify (float32 vs bfloat16); the other two modes ignore it.
+    "logits-eval": frozenset({"models", "pairs_file", "limit", "offset", "commit_outputs",
+                              "mode", "layers", "topk", "dtype"}),
     # activation_patching.yml `defaults` dict (verified 2026-07-09): pairs_file, limit,
     # layers, positions, model, offsets, commit_outputs.
     "activation-patching": frozenset({
@@ -124,14 +221,31 @@ KNOWN_KEYS = {
     # archive_renders.yml push path reads exactly cfg["tag"], cfg["runs"],
     # cfg.get("no_pngs"), cfg.get("prune") (verified 2026-07-09).
     "archive-renders": frozenset({"tag", "runs", "no_pngs", "prune"}),
-    # advice_evaluation.yml `defaults` dict (verified 2026-07-21): stimuli_file,
-    # models, arms, samples, temperature, max_tokens, translator_model,
-    # max_spend, judge, judge_model, judge_max_spend, rubric, offset, limit,
-    # commit_outputs.
+    # advice_evaluation.yml `defaults` dict (verified 2026-07-22; gen_config
+    # added 2026-08-21 with the generation mode): stimuli_file, models, arms,
+    # samples, temperature, max_tokens, translator_model, max_spend, judge,
+    # judge_model, judge_max_spend, rubric, offset, limit, commit_outputs,
+    # restore_artifact_run_id (recovery merge of a killed run's uploaded
+    # archive artifact before elicit resumes), restore_merge_fork, gen_config
+    # (generation-only run: author new paired stimuli, skip elicitation),
+    # judge_max_tokens (second-judge support 2026-08-21: per-call output cap
+    # for provider-registry judge models).
     "advice-eval": frozenset({
         "stimuli_file", "models", "arms", "samples", "temperature", "max_tokens",
         "translator_model", "max_spend", "judge", "judge_model", "judge_max_spend",
-        "rubric", "offset", "limit", "commit_outputs",
+        "judge_max_tokens", "rubric", "offset", "limit", "commit_outputs",
+        "restore_artifact_run_id", "restore_merge_fork", "gen_config",
+    }),
+    # pab_probe.yml `defaults` dict (verified 2026-08-04 against the params
+    # heredoc by tests/test_pab_ci_staged.py): stage, fork_ref, cases_file,
+    # config_file, assistant, turns, run_dir, max_spend, commit_sidecar,
+    # catalog_search, catalog_require, artifact_run_id,
+    # generate_timeout_minutes.
+    "pab-probe": frozenset({
+        "stage", "fork_ref", "cases_file", "config_file", "assistant", "turns",
+        "run_dir", "max_spend", "commit_sidecar", "catalog_search",
+        "catalog_require", "artifact_run_id", "generate_timeout_minutes",
+        "artifact_run_id_2",
     }),
 }
 
@@ -286,6 +400,16 @@ def validate_params(trigger, params):
             f"unknown {trigger} key(s) {unknown}: CI silently ignores unknown keys, so a typo "
             f"means a run with defaults; allowed keys: {sorted(KNOWN_KEYS[trigger])}"
         )
+    # commit_outputs must be stated explicitly wherever the workflow supports it:
+    # the push path defaults it to false, so omitting the key runs the whole
+    # measurement and then silently discards the results at the commit gate
+    # (seven meditron fires were lost this way before 2026-07-31).
+    if "commit_outputs" in KNOWN_KEYS[trigger] and "commit_outputs" not in keys:
+        raise ValueError(
+            f"{trigger} params must state commit_outputs explicitly (\"true\" or \"false\"): "
+            "the workflow's push-path default is false, which measures and then discards "
+            "every output when the runner is reclaimed"
+        )
 
 
 def parse_max_spend(value):
@@ -333,7 +457,7 @@ def fire_commitment(params):
     return max_spend, None
 
 
-def inflight_max_spend(entries, today, now, expire_hours):
+def inflight_max_spend(entries, today, now, expire_hours, lane="anthropic"):
     """Sum of max_spend across ACTIVE journal entries of BOTH paid triggers
     fired on `today` (YYYY-MM-DD UTC): spend already committed to CI but not
     yet landed on the dashboard."""
@@ -342,6 +466,8 @@ def inflight_max_spend(entries, today, now, expire_hours):
         # paid triggers always record max_spend; mitigation circuit-trace
         # entries record their imputed commitment the same way
         if entry.get("trigger") not in PAID_TRIGGERS and entry.get("max_spend") is None:
+            continue
+        if entry.get("lane", "anthropic") != lane:
             continue
         if not entry_is_active(entry, now, expire_hours):
             continue
@@ -354,7 +480,8 @@ def inflight_max_spend(entries, today, now, expire_hours):
     return total
 
 
-def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DEFAULT_EXPIRE_HOURS):
+def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DEFAULT_EXPIRE_HOURS,
+                 overrides=None, trigger=None):
     """(kind, reason) against the daily spend ceiling for a paid trigger.
 
     kind is "ok", "ceiling" (over the daily ceiling - the only refusal
@@ -372,30 +499,60 @@ def budget_check(params, dashboard, today, entries=(), now=None, expire_hours=DE
     spend = dashboard.get("spend") if isinstance(dashboard, dict) else None
     if not isinstance(spend, dict):
         spend = {}
-    try:
-        ceiling = float(spend.get("daily_ceiling_usd", DEFAULT_DAILY_CEILING_USD))
-    except (TypeError, ValueError):
-        ceiling = DEFAULT_DAILY_CEILING_USD
+    lane = fire_lane(trigger or "", params)
+    if lane == "openrouter":
+        # Lanes model (minimal port 2026-08-07, PAB-branch precedent): a fire
+        # that bills only the prepaid OpenRouter key counts against that key's
+        # own daily ceiling. Dated owner overrides apply to the Anthropic
+        # ceiling only ("for anthropic") and are ignored here.
+        try:
+            ceiling = float(spend.get("openrouter_daily_ceiling_usd",
+                                      DEFAULT_OPENROUTER_DAILY_CEILING_USD))
+        except (TypeError, ValueError):
+            ceiling = DEFAULT_OPENROUTER_DAILY_CEILING_USD
+        override_note = ""
+    else:
+        try:
+            ceiling = float(spend.get("daily_ceiling_usd", DEFAULT_DAILY_CEILING_USD))
+        except (TypeError, ValueError):
+            ceiling = DEFAULT_DAILY_CEILING_USD
+        override_note = ""
+        ov = (overrides or {}).get(today)
+        if isinstance(ov, dict):
+            try:
+                ceiling = float(ov["ceiling_usd"])
+                override_note = f" [owner ceiling override for {today}: {ov.get('reason', 'no reason recorded')}]"
+            except (KeyError, TypeError, ValueError):
+                pass  # malformed override: fail closed to the standing ceiling
     today_rec = spend.get("today")
     landed = 0.0
     if isinstance(today_rec, dict) and today_rec.get("date") == today:
+        # Channel-scoped guard (owner decision 2026-08-04 CHANNEL-SPLIT):
+        # each lane counts the channel where the ledger records it. Dashboards
+        # without the split fall back to the pooled figure — fail closed:
+        # the other lane's spend then still blocks the day.
+        if lane == "openrouter":
+            raw = today_rec.get("openrouter_usd", today_rec.get("spent_usd", 0.0))
+        else:
+            raw = today_rec.get("anthropic_usd", today_rec.get("spent_usd", 0.0))
         try:
-            landed = float(today_rec.get("spent_usd", 0.0))
+            landed = float(raw)
         except (TypeError, ValueError):
             landed = 0.0
     if now is None:
         now = utc_now()
-    inflight = inflight_max_spend(entries, today, now, expire_hours)
+    inflight = inflight_max_spend(entries, today, now, expire_hours, lane=lane)
     committed = landed + inflight
     if max_spend + committed > ceiling:
         return "ceiling", (
             f"max_spend {max_spend:.2f} + today's committed {committed:.2f} "
             f"(landed {landed:.2f} + in-flight {inflight:.2f}) "
-            f"would exceed the daily ceiling {ceiling:.2f} USD"
+            f"would exceed the daily ceiling {ceiling:.2f} USD [{lane} lane]{override_note}"
         )
     return "ok", (
         f"max_spend {max_spend:.2f} + today's committed {committed:.2f} "
-        f"(landed {landed:.2f} + in-flight {inflight:.2f}) within the daily ceiling {ceiling:.2f} USD"
+        f"(landed {landed:.2f} + in-flight {inflight:.2f}) within the daily ceiling {ceiling:.2f} USD "
+        f"[{lane} lane]{override_note}"
     )
 
 
@@ -418,6 +575,21 @@ def queue_view(entries, now, expire_hours):
 
 def load_dashboard(path):
     """Dashboard dict; {} when the file is missing or does not parse."""
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def load_budget_overrides(path):
+    """Owner-authorized dated ceiling raises: {"YYYY-MM-DD": {"ceiling_usd": N, "reason": "..."}}.
+
+    A committed, self-expiring alternative to --override-budget (which stays
+    forbidden in ops practice): the raise applies to exactly one UTC day and the
+    authorization travels with the file in git. Missing or malformed file means
+    no overrides - the guard fails closed to the standing ceiling.
+    """
     try:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -547,8 +719,10 @@ def cmd_fire(args):
         budget_params = params if args.trigger in PAID_TRIGGERS \
             else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
         dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
+        overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
         kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),
-                                    entries=entries, now=now, expire_hours=expire_hours)
+                                    entries=entries, now=now, expire_hours=expire_hours,
+                                    overrides=overrides, trigger=args.trigger)
         if kind == "ok":
             print(reason)
         elif kind == "ceiling" and args.override_budget:
@@ -560,10 +734,23 @@ def cmd_fire(args):
         # journal entry's in-flight figure matches what budget_check counted
         max_spend, _ = fire_commitment(budget_params)  # valid here: budget_check vetted it
 
-    # 5. Refuse a no-op fire: identical trigger-file content means the push would
-    # not change the file, so CI would NOT fire, yet a journal entry would hold a
-    # phantom queue slot. Hard error; nothing is written.
+    # 5. Refuse a fire no workflow on THIS branch can answer. A key in TRIGGERS
+    # with no workflow reading its trigger path is worse than an unknown key:
+    # unknown keys hard-error, but a known-but-unwired key validates, writes the
+    # file, journals the fire, pushes - and runs nothing, leaving a journal entry
+    # for a run that never existed (owner decision 2026-08-15, filed as "a control
+    # with nothing behind it"). The key itself is NOT dropped: pab-probe is wired
+    # on the PAB branch (.github/workflows/pab_probe.yml), so deleting it here
+    # would strand that branch's tooling. The branch-local check is the fix.
     trigger_path = repo / TRIGGER_DIR_RELPATH / f"{args.trigger}.json"
+    if not workflow_reads_trigger(repo, args.trigger):
+        print(
+            f"refused: no workflow on this branch reads {TRIGGER_DIR_RELPATH}/{args.trigger}.json - "
+            "the fire would push, journal, and run nothing. Wire a workflow, or fire from the "
+            "branch that has one.",
+            file=sys.stderr,
+        )
+        return 7
     content = json.dumps(params, separators=(",", ":")) + "\n"
     try:
         unchanged = trigger_path.read_text(encoding="utf-8") == content
@@ -588,6 +775,7 @@ def cmd_fire(args):
     }
     if max_spend is not None:
         entry["max_spend"] = max_spend  # in-flight commitment budget_check will count
+        entry["lane"] = fire_lane(args.trigger, params)  # which prepaid key the commitment holds
     if args.dry_run:
         print(f"[dry-run] would write {trigger_path}: {content.strip()}")
         if to_evict is not None:
@@ -615,6 +803,34 @@ def cmd_fire(args):
             return 1
     slot = "pending" if len(active_entries(entries, args.trigger, now, expire_hours)) > 1 else "running"
     print(f"fired {args.trigger} ({slot} slot); `resolve --trigger {args.trigger}` once the run lands")
+    return 0
+
+
+def cmd_park(args):
+    """Fire the resting-state park default for one trigger (or every parkable one).
+
+    Each park is a real fire: it runs the full guard chain and costs one cheap
+    run in that trigger's lane. With --all, triggers park sequentially and the
+    first refusal stops the batch so the operator can read the guard's reason."""
+    triggers = sorted(PARK_DEFAULTS) if args.all else [args.trigger]
+    if not args.all and args.trigger not in PARK_DEFAULTS:
+        print(f"refused: no park default for {args.trigger!r} (parkable: {sorted(PARK_DEFAULTS)})",
+              file=sys.stderr)
+        return 3
+    for trigger in triggers:
+        params = dict(PARK_DEFAULTS[trigger])
+        params["_parked"] = "true"
+        params["_nonce"] = iso_utc(utc_now())  # guarantee the file changes so the push fires
+        ns = argparse.Namespace(
+            repo=args.repo, trigger=trigger, params=json.dumps(params), params_file=None,
+            note=PARK_NOTE, force_evict=False, ignore_settle=args.ignore_settle,
+            dry_run=args.dry_run, no_git=args.no_git, override_budget=False,
+        )
+        print(f"-- parking {trigger}")
+        rc = cmd_fire(ns)
+        if rc != 0:
+            print(f"park stopped at {trigger} (exit {rc}); earlier parks stand", file=sys.stderr)
+            return rc
     return 0
 
 
@@ -659,6 +875,44 @@ def cmd_status(args):
     return 0
 
 
+def cmd_budget_gate(args):
+    """CI-side twin of cmd_fire's paid-path budget check (audit S2, owner-approved
+    2026-08-19). fire_trigger's ceiling is client-side only: a direct push of a
+    trigger file (merge, rebase, hand edit) runs the paid workflow without it.
+    This subcommand runs the SAME budget_check inside the workflow, against the
+    checked-out dashboard/journal/overrides, so the daily aggregate holds
+    server-side too. Exit 0 = clear (or a free fire); exit 6 = refuse the run.
+    """
+    repo = Path(args.repo).resolve()
+    if args.params_file:
+        params_path = Path(args.params_file)
+    else:
+        params_path = repo / TRIGGER_DIR_RELPATH / f"{args.trigger}.json"
+    try:
+        params = json.loads(params_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        print(f"budget-gate: cannot read params ({params_path}): {exc}", file=sys.stderr)
+        return 6
+    if args.trigger not in PAID_TRIGGERS and not is_mitigation_fire(args.trigger, params):
+        print(f"budget-gate: {args.trigger} is a free fire; clear")
+        return 0
+    budget_params = params if args.trigger in PAID_TRIGGERS \
+        else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
+    now = utc_now()
+    entries = load_journal(repo / JOURNAL_RELPATH)
+    dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
+    overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
+    kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),
+                                entries=entries, now=now,
+                                expire_hours=expire_hours_from_env(),
+                                overrides=overrides, trigger=args.trigger)
+    if kind == "ok":
+        print(f"budget-gate: clear - {reason}")
+        return 0
+    print(f"budget-gate: REFUSED - {reason}", file=sys.stderr)
+    return 6
+
+
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     common = argparse.ArgumentParser(add_help=False)
@@ -684,6 +938,20 @@ def build_parser():
                            "invalid max_spend is never overridable")
     fire.set_defaults(func=cmd_fire)
 
+    park = sub.add_parser("park", parents=[common],
+                          help="fire the resting-state no-op default for a trigger (or --all), "
+                               "so accidental re-fires run a cheap stage instead of the last "
+                               "expensive one")
+    park_t = park.add_mutually_exclusive_group(required=True)
+    park_t.add_argument("--trigger", choices=sorted(PARK_DEFAULTS))
+    park_t.add_argument("--all", action="store_true", help="park every parkable trigger, sequentially")
+    park.add_argument("--ignore-settle", action="store_true",
+                      help="park despite a same-trigger resolve inside the settle window, once "
+                           "the prior run is confirmed terminal in GitHub")
+    park.add_argument("--dry-run", action="store_true", help="print what would happen; write nothing")
+    park.add_argument("--no-git", action="store_true", help="write files but skip git add/commit/push")
+    park.set_defaults(func=cmd_park)
+
     resolve = sub.add_parser("resolve", parents=[common], help="mark the oldest active entry resolved")
     resolve.add_argument("--trigger", required=True, choices=TRIGGERS)
     resolve.add_argument("--all", action="store_true", help="resolve every active entry for the trigger")
@@ -691,6 +959,15 @@ def build_parser():
 
     status = sub.add_parser("status", parents=[common], help="per-trigger active counts and queue view")
     status.set_defaults(func=cmd_status)
+
+    gate = sub.add_parser("budget-gate", parents=[common],
+                          help="CI-side daily-ceiling check; exit 6 refuses the run")
+    gate.add_argument("--trigger", required=True, choices=TRIGGERS)
+    gate.add_argument("--params-file", default=None,
+                      help="params JSON path (default: this checkout's trigger file - "
+                           "correct for push-fired runs; workflow_dispatch should pass "
+                           "its resolved params explicitly)")
+    gate.set_defaults(func=cmd_budget_gate)
     return parser
 
 

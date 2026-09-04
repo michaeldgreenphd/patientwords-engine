@@ -1,0 +1,59 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-07-31</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-07-31</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session</p>
+
+<div class="card" data-id="D1-GEN">
+  <h2>D1 · Tier B generation: paused or resume?</h2>
+  <p>Idle at 1,100/1,600 accepted since 07-19. No stopping rule tripped ($1.92 of $8 spent, yield fine). The pause looks intentional (your audit-queue priorities) but is unrecorded — a reviewer reading the prereg expects progress or a recorded decision.</p>
+  <div class="chips"><button class="chip" data-v="confirm-pause">confirm pause (record it)</button><button class="chip" data-v="resume">resume generation</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D2-SIDECAR">
+  <h2>D2 · Mitigation-cost sidecars never commit</h2>
+  <p>The trace workflow's commit glob misses .mitigation.report.json, so haiku-translation costs from trace runs book as $0 (T1's ~$0.15 expired unbooked; yesterday's S7-B likewise). Fix is a one-line workflow glob change; optional backfill from run artifacts recovers exact numbers.</p>
+  <div class="chips"><button class="chip" data-v="fix">fix glob</button><button class="chip" data-v="fix+backfill">fix + backfill exact costs</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D3-OWNER-ACTS">
+  <h2>D3 · Your three standing acts (unchanged)</h2>
+  <p>From the decided audit queue: (a) prereg signature — gates advice n=100; (b) coding the 25 items; (c) choosing one pooled-33% caveat sentence from the drafted candidates. Nothing blocks daily ops; they gate the next advice expansion.</p>
+  <div class="chips"><button class="chip" data-v="acknowledged">acknowledged</button><button class="chip" data-v="this-week">will do this week</button></div>
+</div>
+
+<button id="copy">Copy decision summary</button>
+<div id="out"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(c){
+  c.querySelectorAll('.chip').forEach(function(ch){
+    ch.addEventListener('click',function(){
+      c.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on')});
+      ch.classList.add('on');
+    });
+  });
+});
+document.getElementById('copy').addEventListener('click',function(){
+  var lines=['DECISIONS 2026-07-31'];
+  document.querySelectorAll('.card').forEach(function(c){
+    var on=c.querySelector('.chip.on');
+    lines.push(c.dataset.id+' :: '+(on?on.dataset.v:'(no selection)'));
+  });
+  var t=lines.join('\n');
+  var o=document.getElementById('out');o.textContent=t;o.style.display='block';
+  if(navigator.clipboard)navigator.clipboard.writeText(t);
+});
+</script>

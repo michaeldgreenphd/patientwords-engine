@@ -1,0 +1,20 @@
+{
+ "model": "qwen3-1.7b",
+ "n_phrases": 677,
+ "mean_penalty_pp": -4.9,
+ "downgrades": 42,
+ "upgrades": 16,
+ "choices": [
+  "Population: the 742 rows with model=='qwen3-1.7b' in /home/user/patientwords-engine/urgency_shift.json (730 unique clinical phrases; backend 'logits' CPU measurement). clinical_prompt text is embedded in every row, so no batch-file join was needed; trace verification joined on (batch, index) via results[i]['index'].",
+  "Holdout rule implemented exactly: exclude a phrase when int(sha1(clinical_prompt.encode('utf-8')).hexdigest(), 16) % 10 == 0, scoped to Tier B pairs per Amendment 1 ('every Tier B pair is assigned... on acceptance') \u2014 i.e. batches from 2026-07-10 onward. Verified this hash rule reproduces the row file's tierb_split field on all 507 Tier B rows: 56 rows / 53 phrases excluded. 21 Tier A phrases (pre-registration batches, tierb_split absent) that also hash to 0 were RETAINED because the preregistration defines the holdout only for Tier B; sensitivity if all hash-0 phrases are excluded instead: n=656, mean -4.8pp, 39 downgrades, 16 upgrades.",
+  "Penalty = per-row 'language_penalty' field, verified in trace outputs to equal probabilities.patient - probabilities.clinical of the clinical target token, matching the written definition. Re-traced duplicates collapsed by arithmetic mean of language_penalty (linear in probabilities, so identical to penalty of mean probabilities); mean penalty is the unweighted mean over the 677 deduped phrases, x100, 1 decimal (-4.8723 -> -4.9).",
+  "Downgrade/upgrade used the existing per-row 'flip_class' field (downgrade/upgrade/lateral/uninformative; null = no flip), collapsed per phrase by strict majority vote; ties count as neither. Only 2 tied phrases existed (lateral-vs-uninformative and uninformative-vs-null), so tie handling cannot change the downgrade/upgrade counts.",
+  "Sample check sampling: deduped holdout-excluded phrase list sorted lexicographically, then random.Random(42).sample(list, 15); every underlying row of each sampled phrase was verified (16 rows, one phrase has 2 re-trace rows). prob_clinical/prob_patient taken as the top-1 probability of each panel's predictive_spread in trace_out/<batch>__qwen3-1.7b/batch_summary.part_*.json.",
+  "Precision: the collector row file stores probabilities rounded to 3 decimals while traces store 4; match criterion was row == round(trace, 3) (an exact-float comparison flags only these representational roundings, e.g. row 0.413 vs trace 0.4126). language_penalty matched traces exactly at stored precision."
+ ],
+ "sample_check": {
+  "n_sampled": 15,
+  "n_matched": 15,
+  "mismatches": []
+ }
+}

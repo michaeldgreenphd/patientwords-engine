@@ -92,3 +92,20 @@ def test_missing_pair_on_one_day_is_skipped(tmp_path):
     verdict, payload = run(tmp_path)
     assert payload["stable"] is True
     assert payload["deltas"][0]["max_abs_delta"] == 0.0
+
+
+def test_every_breach_prints_not_only_the_largest(tmp_path):
+    # DRIFT-SECOND-BREACH-20260814 (owner-approved 2026-08-21): a smaller,
+    # earlier breach used to be computed and stored but never printed.
+    root = tmp_path / "trace_out"
+    write_day(root, "20260712", {1: {"clinical": 0.50, "patient": 0.20}})
+    write_day(root, "20260713", {1: {"clinical": 0.48, "patient": 0.20}})  # 0.02 breach
+    write_day(root, "20260714", {1: {"clinical": 0.53, "patient": 0.20}})  # 0.05 breach (larger)
+    out = tmp_path / "drift_series.json"
+    cmd = [sys.executable, str(SCRIPT), "--trace-root", str(root), "--out", str(out)]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    drift_lines = [line for line in proc.stdout.splitlines()
+                   if line.startswith("drift sentinel: DRIFT max")]
+    assert len(drift_lines) == 2, proc.stdout
+    assert "20260713" in drift_lines[0] and "20260714" in drift_lines[1]  # chronological
+    assert "DRIFT on 2 days total" in proc.stdout

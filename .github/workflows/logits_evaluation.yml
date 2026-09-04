@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       models:
-        description: "Space/comma-separated models (qwen3-4b, qwen3-1.7b, gemma-3-4b-it)"
+        description: "Space/comma-separated model ids from scripts/logits_eval.py HF_IDS (gate status: docs/model_matrix.md)"
         type: string
         default: "qwen3-4b qwen3-1.7b"
       pairs_file:
@@ -30,10 +30,30 @@ on:
         description: "Measure only the first N pairs (0 = all)"
         type: string
         default: "0"
+      offset:
+        description: "Skip the first N pairs before limit (chunking; part number = offset+1)"
+        type: string
+        default: "0"
       commit_outputs:
         description: "Commit the per-model batch_summary back to the branch"
         type: boolean
         default: false
+      mode:
+        description: "logits = next-token behavior (default); depth = per-layer logit-lens tier curves; verify = re-measure the logits numbers through interp-engine"
+        type: string
+        default: "logits"
+      layers:
+        description: "depth mode only: 'all', 'every:N', or a comma list"
+        type: string
+        default: "all"
+      topk:
+        description: "depth/verify modes: spread size (tier coverage window; verify spread depth)"
+        type: string
+        default: "10"
+      dtype:
+        description: "verify mode only: float32 (default, removes dtype as a cause) or bfloat16 (matches logits mode)"
+        type: string
+        default: "float32"
   push:
     paths:
       - ".github/trigger/logits-eval.json"
@@ -52,9 +72,24 @@ jobs:
       models: ${{ steps.params.outputs.models }}
       pairs_file: ${{ steps.params.outputs.pairs_file }}
       limit: ${{ steps.params.outputs.limit }}
+      offset: ${{ steps.params.outputs.offset }}
       commit_outputs: ${{ steps.params.outputs.commit_outputs }}
+      mode: ${{ steps.params.outputs.mode }}
+      layers: ${{ steps.params.outputs.layers }}
+      topk: ${{ steps.params.outputs.topk }}
+      dtype: ${{ steps.params.outputs.dtype }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            medlang_circuits
+            docs
+            ops
+            tests
       - name: Resolve parameters
         id: params
         env:
@@ -62,13 +97,20 @@ jobs:
           IN_MODELS: ${{ inputs.models }}
           IN_PAIRS_FILE: ${{ inputs.pairs_file }}
           IN_LIMIT: ${{ inputs.limit }}
+          IN_OFFSET: ${{ inputs.offset }}
           IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
+          IN_MODE: ${{ inputs.mode }}
+          IN_LAYERS: ${{ inputs.layers }}
+          IN_TOPK: ${{ inputs.topk }}
+          IN_DTYPE: ${{ inputs.dtype }}
         run: |
           python - <<'EOF'
           import json, os
           defaults = {"models": "qwen3-4b qwen3-1.7b",
                       "pairs_file": "data/simulated/pairs_20260706T201750Z.json",
-                      "limit": "0", "commit_outputs": "false"}
+                      "limit": "0", "offset": "0", "commit_outputs": "false",
+                      "mode": "logits", "layers": "all", "topk": "10",
+                      "dtype": "float32"}
           p = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/logits-eval.json", encoding="utf-8") as f:
@@ -90,8 +132,16 @@ jobs:
               f.write("models=" + json.dumps(models) + "\n")
               f.write("pairs_file=" + p["pairs_file"] + "\n")
               f.write("limit=" + p["limit"] + "\n")
+              f.write("offset=" + p["offset"] + "\n")
               f.write("commit_outputs=" + p["commit_outputs"] + "\n")
-          print("models:", models, "| pairs:", p["pairs_file"], "| limit:", p["limit"])
+              f.write("mode=" + p["mode"] + "\n")
+              f.write("layers=" + p["layers"] + "\n")
+              f.write("topk=" + p["topk"] + "\n")
+              f.write("dtype=" + p["dtype"] + "\n")
+          if p["mode"] not in ("logits", "depth", "verify"):
+              raise SystemExit("mode must be 'logits', 'depth' or 'verify', got " + repr(p["mode"]))
+          print("models:", models, "| pairs:", p["pairs_file"], "| mode:", p["mode"],
+                "| limit:", p["limit"], "| offset:", p["offset"], "| layers:", p["layers"])
           EOF
 
   eval:
@@ -106,8 +156,18 @@ jobs:
       matrix:
         model: ${{ fromJson(needs.params.outputs.models) }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            medlang_circuits
+            docs
+            ops
+            tests
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.11"
 
@@ -116,23 +176,93 @@ jobs:
           pip install --quiet -c constraints.txt torch --index-url https://download.pytorch.org/whl/cpu
           pip install --quiet -c constraints.txt transformers accelerate
 
+      # Eager backend only. interp-engine keeps vLLM out of its base deps so the
+      # core installs without CUDA (docs/interp_engine_assessment.md section 1);
+      # asking for [vllm] here would pull GB of CUDA wheels onto a CPU runner.
+      - name: Install interp-engine (depth and verify modes)
+        if: ${{ needs.params.outputs.mode == 'depth' || needs.params.outputs.mode == 'verify' }}
+        run: |
+          pip install --quiet -c constraints.txt interp-engine
+          python -c "import interp_engine, torch; print('interp-engine', interp_engine.__version__, '| torch', torch.__version__, '| cuda', torch.cuda.is_available())"
+
+      # 7B/9B models exceed runner RAM during load (exit 137 on the 07-11
+      # probe); the same swap provision that fixed the patching workflow.
+      - name: Provision swap for large-model load
+        run: |
+          sudo fallocate -l 12G /mnt/logits-swapfile
+          sudo chmod 600 /mnt/logits-swapfile
+          sudo mkswap /mnt/logits-swapfile
+          sudo swapon /mnt/logits-swapfile
+          free -h
+
       - name: Resolve output dir
         env:
           MODEL: ${{ matrix.model }}
           PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
+          OFFSET: ${{ needs.params.outputs.offset }}
+          MODE: ${{ needs.params.outputs.mode }}
+          TOPK: ${{ needs.params.outputs.topk }}
         run: |
           STEM=$(basename "$PAIRS_FILE" .json)
-          echo "OUT_DIR=trace_out/${STEM}__${MODEL}" >> "$GITHUB_ENV"
+          PART=$(printf 'part_%02d' $((OFFSET + 1)))
+          echo "PART=$PART" >> "$GITHUB_ENV"
+          if [ "$MODE" = "depth" ]; then
+            # separate dir: a depth probe is a different instrument from the
+            # behavioral run and must not merge into the same batch_summary set
+            echo "OUT_DIR=trace_out/depth_k${TOPK}_${STEM}__${MODEL}" >> "$GITHUB_ENV"
+            echo "SUMMARY_FILE=depth_probe.$PART.json" >> "$GITHUB_ENV"
+          elif [ "$MODE" = "verify" ]; then
+            # separate dir AND a non-batch_summary filename: a verification run
+            # re-measures numbers the logits lane already published, and must
+            # never be collected as a second measurement of the same pairs
+            echo "OUT_DIR=trace_out/verify_${STEM}__${MODEL}" >> "$GITHUB_ENV"
+            echo "SUMMARY_FILE=verify_summary.$PART.json" >> "$GITHUB_ENV"
+          else
+            echo "OUT_DIR=trace_out/${STEM}__${MODEL}" >> "$GITHUB_ENV"
+            echo "SUMMARY_FILE=batch_summary.$PART.json" >> "$GITHUB_ENV"
+          fi
 
       - name: Measure next-token behavior
+        if: ${{ needs.params.outputs.mode == 'logits' }}
         env:
           MODEL: ${{ matrix.model }}
           PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
           LIMIT: ${{ needs.params.outputs.limit }}
+          OFFSET: ${{ needs.params.outputs.offset }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}   # only needed for gated models (gemma)
         run: |
           python scripts/logits_eval.py --pairs "$PAIRS_FILE" --model "$MODEL" \
-            --out "$OUT_DIR" --limit "$LIMIT"
+            --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET"
+
+      - name: Measure per-layer tier curves (depth mode)
+        if: ${{ needs.params.outputs.mode == 'depth' }}
+        env:
+          MODEL: ${{ matrix.model }}
+          PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
+          LIMIT: ${{ needs.params.outputs.limit }}
+          OFFSET: ${{ needs.params.outputs.offset }}
+          LAYERS: ${{ needs.params.outputs.layers }}
+          TOPK: ${{ needs.params.outputs.topk }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}   # only needed for gated models (gemma)
+        run: |
+          PYTHONPATH=scripts python scripts/depth_probe.py --pairs "$PAIRS_FILE" \
+            --model "$MODEL" --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET" \
+            --layers "$LAYERS" --topk "$TOPK" --tiers data/urgency_tiers.draft.json
+
+      - name: Re-measure the same prompts through interp-engine (verify mode)
+        if: ${{ needs.params.outputs.mode == 'verify' }}
+        env:
+          MODEL: ${{ matrix.model }}
+          PAIRS_FILE: ${{ needs.params.outputs.pairs_file }}
+          LIMIT: ${{ needs.params.outputs.limit }}
+          OFFSET: ${{ needs.params.outputs.offset }}
+          TOPK: ${{ needs.params.outputs.topk }}
+          DTYPE: ${{ needs.params.outputs.dtype }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}   # only needed for gated models (gemma)
+        run: |
+          PYTHONPATH=scripts python scripts/verify_probs.py --pairs "$PAIRS_FILE" \
+            --model "$MODEL" --out "$OUT_DIR" --limit "$LIMIT" --offset "$OFFSET" \
+            --topk "$TOPK" --dtype "$DTYPE"
 
       - name: Commit the per-model summary to the branch
         if: ${{ always() && needs.params.outputs.commit_outputs == 'true' }}
@@ -140,17 +270,22 @@ jobs:
           BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          if [ ! -f "$OUT_DIR/batch_summary.part_01.json" ]; then
+          if [ ! -f "$OUT_DIR/$SUMMARY_FILE" ]; then
             echo "No summary to commit"; exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f "$OUT_DIR/batch_summary.part_01.json"
-          git commit -m "Logits eval: $OUT_DIR (${{ matrix.model }}, next-token behavior)"
+          git add --sparse -f "$OUT_DIR/$SUMMARY_FILE"
+          git commit -m "Logits eval (${{ needs.params.outputs.mode }}): $OUT_DIR (${{ matrix.model }})"
           for i in 1 2 3 4 5; do
-            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+            # -X theirs: during rebase "theirs" is the run's own commit, so a
+            # shared status file resolves last-writer-wins instead of stranding
+            # the measured outputs on the runner (jlens chunk-3 loss, 2026-07-15).
+            # Part files have unique names and never conflict.
+            if git pull --rebase -X theirs origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
               exit 0
             fi
+            git rebase --abort 2>/dev/null || true
             sleep $((i * 2))
           done
           exit 1
@@ -158,17 +293,23 @@ jobs:
       - name: Job summary
         if: always()
         run: |
-          SUMMARY="$OUT_DIR/batch_summary.part_01.json"
+          SUMMARY="$OUT_DIR/$SUMMARY_FILE"
           if [ -f "$SUMMARY" ]; then
             {
-              echo "## Logits eval (${{ matrix.model }})"
+              echo "## ${{ needs.params.outputs.mode }} eval (${{ matrix.model }})"
               echo '```'
               python - "$SUMMARY" <<'EOF'
           import json, sys
           s = json.load(open(sys.argv[1]))
+          depth = s.get("mode") == "depth_probe"
           for r in s["results"]:
-              print(f"pair {r['index']:2d}  clin={r['probabilities']['clinical']}  "
-                    f"pat={r['probabilities']['patient']}  penalty={r['language_penalty']}")
+              if depth:
+                  print(f"pair {r['index']:2d}  first_divergence={r['first_divergence_layer']}  "
+                        f"final_gap={r['final_gap']}  max_abs_gap={r['max_abs_gap']}  "
+                        f"informative={r['layers_informative']}/{r['layers_measured']}")
+              else:
+                  print(f"pair {r['index']:2d}  clin={r['probabilities']['clinical']}  "
+                        f"pat={r['probabilities']['patient']}  penalty={r['language_penalty']}")
           EOF
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"

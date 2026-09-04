@@ -1,0 +1,11 @@
+{
+ "_": "Perturbation spec for scripts/tier_sensitivity.py, extracted mechanically from docs/tier_review_checklist.md (2026-07-09 review round). deciders = section-A tokens whose draft tier decides at least one flip call; blockers = section-B unclassified tokens that block flips. Scenarios bracket the vocabulary's decision space: exclude removes every flagged token from the vocabulary (its calls become uninformative); floor assigns them all tier 0 and ceiling tier 4, the two assignments most hostile to each direction of the asymmetry. Draft status mirrors data/urgency_tiers.draft.json.",
+ "source_checklist": "docs/tier_review_checklist.md",
+ "deciders": ["sleep", "trip", "session", "pain", "brace", "steroid", "cardiac", "monitor", "ct", "routine"],
+ "blockers": ["new", "blood", "few", "extra", "bottle", "old", "pair", "of", "small", "couple", "cup", "ss", "bit", "pac", "little"],
+ "advice_tier_collapses": {
+  "merge_urgent_emergency": [["urgent", "emergency"]],
+  "merge_selfcare_routine": [["self_care", "routine"]],
+  "merge_both_ends": [["urgent", "emergency"], ["self_care", "routine"]]
+ }
+}

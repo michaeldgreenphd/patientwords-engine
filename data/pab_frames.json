@@ -1,0 +1,47 @@
+{
+  "_": [
+    "Carrier-frame inventory for PAB harvested spans. Pure structural syntax only:",
+    "NO medical vocabulary appears in this file - the harvested spans carry all",
+    "medical content. Authored per docs/pab_frame_spec_20260805.md rule 2 (frames",
+    "are data, authored WITH the spec's rules before first use; no frame is",
+    "invented per-pair; identical frame for both arms of a pair). Frames come",
+    "from the study's standard '...so I need/might need...' next-token family",
+    "already used by the 2panel corpus.",
+    "Owner authorization 2026-08-07: docs/decisions_20260804_pab.md addendum 2",
+    "(PAB-LANE-PUSH - frame-building + gemma traces + j-lens on the study",
+    "branch's $0 lanes).",
+    "License boundary: this file itself is engine-authored syntax, but every",
+    "batch built from it embeds CC-BY-NC-4.0-derived harvested utterance text,",
+    "so derived pabharvest_* batches are ENGINE-SIDE ONLY - they live in",
+    "data/pab/, never data/simulated/, and nothing derived ships to the site",
+    "without a clean scripts/seal_check.py pass and an explicit owner decision."
+  ],
+  "family": "so-I-need",
+  "placeholder": "{span}",
+  "frames": [
+    {
+      "id": "take_a",
+      "template": "{span}, so I might need to take a",
+      "elicits": "treatment",
+      "note": "Continuation class: treatment - a thing to take. Hedged modal ('might need')."
+    },
+    {
+      "id": "go_to_the",
+      "template": "{span}, so I need to go to the",
+      "elicits": "place",
+      "note": "Continuation class: place - a care setting to go to."
+    },
+    {
+      "id": "talk_to_a",
+      "template": "{span}, so I need to talk to a",
+      "elicits": "person",
+      "note": "Continuation class: person - someone to talk to."
+    },
+    {
+      "id": "see_a",
+      "template": "{span}, so I might need to see a",
+      "elicits": "person",
+      "note": "Continuation class: person - someone to see. Hedged-modal variant of the person class (sensitivity check on frame modality vs. talk_to_a)."
+    }
+  ]
+}

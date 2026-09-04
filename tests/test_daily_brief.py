@@ -232,3 +232,17 @@ def test_render_brief_flattens_newlines_everywhere():
     assert not any(ln.startswith("## Injected") for ln in lines)
     assert "- fine ## Injected verdict" in lines  # newline collapsed to a space
     assert "- blocked ## Injected blocker" in lines
+
+
+def test_digest_surfaces_newest_findings_delta():
+    # Regression (2026-07-10): the dashboard appends findings_delta
+    # chronologically; the push line must carry the NEWEST entry, not [0].
+    dash = {"findings_delta": [
+        {"date": "2026-07-08", "text": "old news"},
+        {"date": "2026-07-10", "text": "fresh headline"},
+        {"date": "2026-07-10", "text": "freshest same-day headline"},
+        {"date": "2026-07-09", "text": "yesterday"},
+    ]}
+    line = daily_brief.digest(dash, "2026-07-10")
+    assert "freshest same-day headline" in line
+    assert "old news" not in line

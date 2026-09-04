@@ -22,7 +22,7 @@ Shared rendering core (every layout inherits these):
   prominently at the panel's top right
 - delta badges render centered in the gutters between panels
 
-Two isolated layout engines sit on top:
+Three isolated layout engines sit on top:
 
     render_panels_html/png    - vertical stack (2panel mode, and the
                                 translation chain, whose gap carries the LLM
@@ -30,6 +30,13 @@ Two isolated layout engines sit on top:
     render_quadrant_html/png  - 2x2 syntax-vs-terminology matrix (4quadrant
                                 mode) with vocabulary deltas in the column
                                 gutters and syntax deltas in the row gutter
+    render_multiples_html/png - 1xN side-by-side small multiples (dialect
+                                mode: baseline + selected framings; structural
+                                feature nodes are stripped and the surviving
+                                structural marks fully dimmed, so the
+                                clinical/off-target contrast is the only ink
+                                left standing; per-panel delta badges sit in a
+                                strip above the row)
 
 Outputs are standalone responsive HTML (minified inline CSS/JS, interactive
 hover tooltips with feature id, category, probability/attribution mass, and
@@ -76,6 +83,9 @@ ROW_HEIGHT = 34
 ELIDED_GAP_ROWS = 1.45  # vertical space for a run of >=1 empty layers
 MARGIN = {"left": 66, "right": 178, "top": 118, "bottom": 66}
 PANEL_GAP = 18
+# Right-side breathing room past the widest predictive-spread label when the
+# document viewBox is stretched to keep those labels from clipping.
+LABEL_VIEWBOX_PAD = 12
 BADGE_GAP = 64  # panel gap when a single-line badge renders in it
 BADGE_LINE_HEIGHT = 34
 DIMMED_NODE_OPACITY = 0.16  # shared-circuit context in pairwise diff views
@@ -84,6 +94,9 @@ STRUCTURAL_FILL_OPACITY = 0.55  # scaffolding recedes; clinical/off-target carry
 QUAD_GUTTER_X = 64
 QUAD_GUTTER_Y = 100  # row gutter hosts syntax deltas and the lower vocabulary delta
 QUAD_VOCAB_STRIP = 36  # header strip above the top row for the upper vocabulary delta
+
+MULT_GUTTER_X = 56  # horizontal gap between small-multiple mini-panels
+MULT_BADGE_STRIP = 44  # header strip above the row for per-panel delta badges
 
 # Vertical rim-to-rim spacing between stacked logit nodes (the predictive
 # spread). Labels sit beside each node, so the gap only needs to clear the
@@ -354,6 +367,17 @@ def _logit_label(node: dict[str, Any]) -> str:
     return f"\u201c{token[:20]}\u201d \u00b7 prob {prob:.2f}"
 
 
+def _text_px_width(text: str, font_size: float, mono: bool = True) -> float:
+    """Conservative rendered width of an SVG text run, for viewBox sizing.
+
+    Predictive-spread labels sit to the right of the terminal-column logit
+    nodes; the panel width is a layout constant, so the document viewBox is
+    widened to whatever those labels actually reach (never clipped). Average
+    glyph advance: monospace ~0.62em, proportional ~0.55em - deliberately a
+    slight over-estimate so a label never lands past the viewBox edge."""
+    return len(text) * font_size * (0.62 if mono else 0.55)
+
+
 def _node_tooltip_data(node: dict[str, Any], mass: float, mass_frac: float) -> dict[str, str]:
     """Pre-escaped strings for the JS tooltip.
 
@@ -412,6 +436,10 @@ def _panel_svg(
 
     positions, radius = prep["positions"], prep["radius"]
     max_weight, category_of = prep["max_weight"], prep["category_of"]
+    # Track the rightmost pixel any right-extending label reaches, so the caller
+    # can widen the document viewBox to include the predictive-spread readout
+    # (labels sit right of the terminal-column logit nodes and must never clip).
+    right_extent = float(MARGIN["left"])
 
     for label, y in prep["layer_ticks"]:
         parts.append(f'<text x="{MARGIN["left"] - 12}" y="{y + 3:.1f}" class="lk">{label}</text>')
@@ -474,10 +502,13 @@ def _panel_svg(
         if node.get("feature_type") == "logit" and node.get("clerp"):
             is_top = node_id == prep.get("top_logit_id")
             cls = "llt" if is_top else "ll"
+            label_text = _logit_label(node)
+            label_x = pos[0] + r + 8
             parts.append(
-                f'<text x="{pos[0] + r + 8:.1f}" y="{pos[1] + (5 if is_top else 4):.1f}" class="{cls}">'
-                f"{html.escape(_logit_label(node))}</text>"
+                f'<text x="{label_x:.1f}" y="{pos[1] + (5 if is_top else 4):.1f}" class="{cls}">'
+                f"{html.escape(label_text)}</text>"
             )
+            right_extent = max(right_extent, label_x + _text_px_width(label_text, 20.0 if is_top else 12.5))
             if is_top:
                 parts.append(
                     f'<circle cx="{pos[0]:.1f}" cy="{pos[1]:.1f}" r="{r + 3.5:.1f}" fill="none" '
@@ -492,10 +523,12 @@ def _panel_svg(
         pos = positions.get(node_id)
         if pos is None or node_id in dimmed_nodes:
             continue
+        cl_x = pos[0] + radius[node_id] + 5
         parts.append(
-            f'<text x="{pos[0] + radius[node_id] + 5:.1f}" y="{pos[1] + 4:.1f}" class="cl" '
+            f'<text x="{cl_x:.1f}" y="{pos[1] + 4:.1f}" class="cl" '
             f'fill="{CATEGORY_COLORS[category]}">{CATEGORY_LABELS[category]}</text>'
         )
+        right_extent = max(right_extent, cl_x + _text_px_width(CATEGORY_LABELS[category], 13.0, mono=False))
 
     # Token baseline: the compared word is the entire point of the figure, so
     # it gets weight, size, and an accent underline that reads even when the
@@ -517,10 +550,12 @@ def _panel_svg(
     for g in groups:
         x = sum(prep["x_of"](i) for i in g["idxs"]) / len(g["idxs"])
         word = g["text"]
+        tok_half = _text_px_width(word, 13.0) / 2  # .tk is 13px mono, centered
         if g["special"]:
             parts.append(f'<text x="{x:.1f}" y="{token_y}" class="tk" opacity="0.18">{html.escape(word)}</text>')
         elif any(i in emphasized_tokens for i in g["idxs"]):
             half = max(16.0, len(word) * 4.8)
+            tok_half = max(tok_half, half)  # the accent underline is the wider mark
             parts.append(
                 f'<text x="{x:.1f}" y="{token_y}" class="tk tke" '
                 f'style="fill:{emphasis_color}">{html.escape(word)}</text>'
@@ -531,6 +566,7 @@ def _panel_svg(
             )
         else:
             parts.append(f'<text x="{x:.1f}" y="{token_y}" class="tk">{html.escape(word)}</text>')
+        right_extent = max(right_extent, x + tok_half)
 
     if prep["dropped_edges"]:
         parts.append(
@@ -538,7 +574,7 @@ def _panel_svg(
             f'class="lk" text-anchor="end">{prep["dropped_edges"]} weakest edges omitted</text>'
         )
     parts.append("</g>")
-    return parts, tooltip_data
+    return parts, tooltip_data, x_offset + right_extent
 
 
 # Minified inline assets for the standalone export.
@@ -548,6 +584,9 @@ _CSS = (
     "main{max-width:1240px;margin:0 auto;padding:20px 16px}"
     "main.wide{max-width:2520px}"
     "h1{font-size:24px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}"
+    # integrated penalty subtitle, directly under the header (color set inline, data-driven)
+    ".pen-sub{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:18px;font-weight:700;"
+    "margin:0 0 10px;letter-spacing:-.005em}"
     ".lg{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#4b5563;"
     "margin:2px 0 16px;line-height:2}"
     ".lg .sw{display:inline-block;width:10px;height:10px;margin:0 6px 0 0;vertical-align:-1px}"
@@ -617,8 +656,12 @@ _LEGEND = (
 )
 
 
-def _document(svg_parts: list[str], data: list[list[dict]], width: int, height: int, wide: bool = False) -> str:
-    """Assemble the standalone HTML page around rendered SVG parts + tooltip payload."""
+def _document(svg_parts: list[str], data: list[list[dict]], width: int, height: int,
+              wide: bool = False, subtitle_html: str = "") -> str:
+    """Assemble the standalone HTML page around rendered SVG parts + tooltip payload.
+
+    subtitle_html, when given, is emitted directly under the <h1> as an integrated
+    subtitle (e.g. the Language Penalty line), before the legend/svg."""
     payload = json.dumps(data, separators=(",", ":")).replace("</", "<\\/")
     main_class = ' class="wide"' if wide else ""
     return (
@@ -627,6 +670,7 @@ def _document(svg_parts: list[str], data: list[list[dict]], width: int, height: 
         "<title>Attribution graph comparison</title>"
         f"<style>{_CSS}</style></head><body><main{main_class}>"
         "<h1>Attribution graph comparison</h1>"
+        f"{subtitle_html}"
         f"<div class=\"lg\">{_LEGEND}</div>"
         f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">'
         f"{''.join(svg_parts)}</svg></main>"
@@ -695,6 +739,59 @@ def _badge_lines(badge: Any) -> list[tuple[str, str]]:
     return [(str(badge), INK)]
 
 
+def strip_structural_features(graph: dict[str, Any]) -> dict[str, Any]:
+    """Shallow copy of ``graph`` without structural scaffolding nodes (small multiples).
+
+    Structural-tagged nodes are the error/bias marks and other non-feature
+    scaffolding (unmatched transcoder features default to off_target, so real
+    signal is never dropped here). Embeddings and logits survive the strip:
+    embeddings anchor the token columns (the caller fully dims them) and
+    logits are the prediction readout the panels exist to compare. Removing
+    the scaffolding outright - rather than fading it - keeps each mini-panel
+    legible at small-multiple scale, and the dynamic layer axis compresses the
+    vacated layers automatically. Edges touching a removed node are pruned
+    with it."""
+    keep = [n for n in graph.get("nodes", [])
+            if _category(n) != "structural" or n.get("feature_type") in ("logit", "embedding")]
+    kept_ids = {n["node_id"] for n in keep}
+    slim = dict(graph)
+    slim["nodes"] = keep
+    slim["links"] = [link for link in graph.get("links", [])
+                     if link.get("source") in kept_ids and link.get("target") in kept_ids]
+    return slim
+
+
+def build_multiples_panels(
+    graphs: list[dict[str, Any]],
+    labels: list[str | None] | None = None,
+    focus_tokens: list[str | None] | None = None,
+    headlines: list[str | None] | None = None,
+) -> list[dict[str, Any]]:
+    """Panel specs for the small-multiples row: panel 0 is the baseline.
+
+    Every graph is stripped of structural feature nodes; the surviving
+    structural marks (embeddings) are fully dimmed via each panel's ``dimmed``
+    set, so the clinical/off-target contrast carries the row on its own.
+    Accents/value labels/refs follow the dialect convention: clinical-green
+    baseline with value labels, ink variants diffed against panel 0."""
+    slim = [strip_structural_features(g) for g in graphs]
+    dimmed = [
+        {n["node_id"] for n in g["nodes"]
+         if _category(n) == "structural" and n.get("feature_type") != "logit"}
+        for g in slim
+    ]
+    return build_panels(
+        slim,
+        labels=labels,
+        focus_tokens=focus_tokens,
+        accents=[CATEGORY_COLORS["clinical"]] + [CATEGORY_COLORS["off_target"]] * (len(slim) - 1),
+        value_label_flags=[True] + [False] * (len(slim) - 1),
+        headlines=headlines,
+        refs=[1] + [0] * (len(slim) - 1),
+        dimmed=dimmed,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Engine 1: vertical stack (2panel mode + translation chain)
 # ---------------------------------------------------------------------------
@@ -705,21 +802,34 @@ def render_panels_html(
     out_path: str,
     badges: list[Any] | None = None,
     max_edges: int = DEFAULT_MAX_EDGES,
+    subtitle: Any = None,
 ) -> str:
     """Write a standalone, responsive vertically-stacked comparison page; returns out_path.
 
     ``badges`` holds one optional entry per gap between panels (len(panels)-1):
     a string, {"text", "color"}, or {"lines": [...]} for multi-line interstitials
-    (e.g. the translation-step strip), rendered centered in that gap."""
+    (e.g. the translation-step strip), rendered centered in that gap.
+
+    ``subtitle`` (a badge spec: str | {"text","color"}) is emitted as an integrated
+    line directly under the <h1> header — used for the Language Penalty, which reads
+    as a subtitle of the comparison rather than a mid-figure interstitial."""
     badges = badges or []
+    subtitle_html = ""
+    if subtitle:
+        text, color = _badge_lines(subtitle)[0]
+        subtitle_html = (
+            f'<p class="pen-sub" style="color:{html.escape(color)}">{html.escape(text)}</p>'
+        )
     svg_parts: list[str] = []
     data: list[list[dict]] = []
     y_offset = 0.0
+    max_right = 0.0  # widest label reach across panels; PANEL_WIDTH is the floor below
     for panel_index, panel in enumerate(panels):
         prep = _prepare(panel["graph"], max_edges)
-        parts, tooltip_data = _panel_svg(panel, prep, 0.0, y_offset, panel_index)
+        parts, tooltip_data, right = _panel_svg(panel, prep, 0.0, y_offset, panel_index)
         svg_parts.extend(parts)
         data.append(tooltip_data)
+        max_right = max(max_right, right)
         y_offset += prep["panel_height"]
         if panel_index < len(panels) - 1:
             badge = badges[panel_index] if panel_index < len(badges) else None
@@ -734,7 +844,8 @@ def render_panels_html(
             else:
                 y_offset += PANEL_GAP
 
-    document = _document(svg_parts, data, PANEL_WIDTH, int(y_offset))
+    doc_width = max(PANEL_WIDTH, int(math.ceil(max_right)) + LABEL_VIEWBOX_PAD)
+    document = _document(svg_parts, data, doc_width, int(y_offset), subtitle_html=subtitle_html)
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(document)
     logger.info("Wrote standalone comparison page to %s", out_path)
@@ -773,10 +884,12 @@ def render_quadrant_html(
     svg_parts: list[str] = []
     data: list[list[dict]] = []
     placements = [(col_x[0], row_y[0]), (col_x[1], row_y[0]), (col_x[0], row_y[1]), (col_x[1], row_y[1])]
+    max_right = 0.0  # widest label reach across cells; the 2-column width is the floor below
     for panel_index, (panel, prep, (x, y)) in enumerate(zip(panels, preps, placements)):
-        parts, tooltip_data = _panel_svg(panel, prep, x, y, panel_index)
+        parts, tooltip_data, right = _panel_svg(panel, prep, x, y, panel_index)
         svg_parts.extend(parts)
         data.append(tooltip_data)
+        max_right = max(max_right, right)
 
     # Horizontal vocabulary deltas, centered on the gutter between the compared boxes:
     # the top one in the header strip, the bottom one in the row gutter above C/D.
@@ -796,10 +909,53 @@ def render_quadrant_html(
                 f'<text x="{cx:.0f}" y="{gutter_cy:.0f}" class="bd" fill="{color}">{html.escape(text)}</text>'
             )
 
-    document = _document(svg_parts, data, width, height, wide=True)
+    doc_width = max(width, int(math.ceil(max_right)) + LABEL_VIEWBOX_PAD)
+    document = _document(svg_parts, data, doc_width, height, wide=True)
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(document)
     logger.info("Wrote 4-quadrant comparison page to %s", out_path)
+    return out_path
+
+
+# ---------------------------------------------------------------------------
+# Engine 3: 1xN small-multiples row (dialect mode)
+# ---------------------------------------------------------------------------
+
+
+def render_multiples_html(
+    panels: list[dict[str, Any]],
+    out_path: str,
+    badges: list[Any] | None = None,
+    max_edges: int = DEFAULT_MAX_EDGES,
+) -> str:
+    """Write a side-by-side small-multiples page (one mini-panel per spec).
+
+    ``badges`` is index-aligned with ``panels`` (the baseline slot is normally
+    None); each badge renders centered in the strip above its panel."""
+    badges = badges or []
+    preps = [_prepare(p["graph"], max_edges) for p in panels]
+    row_height = max(p["panel_height"] for p in preps)
+    svg_parts: list[str] = []
+    data: list[list[dict]] = []
+    max_right = 0.0
+    for panel_index, (panel, prep) in enumerate(zip(panels, preps)):
+        x = panel_index * (PANEL_WIDTH + MULT_GUTTER_X)
+        parts, tooltip_data, right = _panel_svg(panel, prep, x, float(MULT_BADGE_STRIP), panel_index)
+        svg_parts.extend(parts)
+        data.append(tooltip_data)
+        max_right = max(max_right, right)
+        if panel_index < len(badges) and badges[panel_index]:
+            text, color = _badge_lines(badges[panel_index])[0]
+            svg_parts.append(
+                f'<text x="{x + PANEL_WIDTH / 2:.0f}" y="{MULT_BADGE_STRIP - 14}" class="bd" '
+                f'fill="{color}">{html.escape(text)}</text>'
+            )
+    width = len(panels) * PANEL_WIDTH + (len(panels) - 1) * MULT_GUTTER_X
+    doc_width = max(width, int(math.ceil(max_right)) + LABEL_VIEWBOX_PAD)
+    document = _document(svg_parts, data, doc_width, MULT_BADGE_STRIP + row_height, wide=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(document)
+    logger.info("Wrote small-multiples page to %s", out_path)
     return out_path
 
 
@@ -934,8 +1090,12 @@ def render_panels_png(
     badges: list[Any] | None = None,
     max_edges: int = DEFAULT_MAX_EDGES,
     dpi: int = 160,
+    subtitle: Any = None,
 ) -> str:
-    """Write a static vertically-stacked comparison PNG; returns out_path."""
+    """Write a static vertically-stacked comparison PNG; returns out_path.
+
+    ``subtitle`` (a badge spec) is drawn as an integrated line at the top of the
+    figure — the static-export mirror of the HTML header subtitle (Language Penalty)."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -951,6 +1111,10 @@ def render_panels_png(
     )
     axes = axes[:, 0]
     _png_legend(fig)
+    if subtitle:
+        text, color = _badge_lines(subtitle)[0]
+        fig.text(0.5, 0.972, text, ha="center", va="top", fontsize=14,
+                 fontweight="bold", color=color, family="monospace")
 
     max_badge_lines = 1
     for panel_index, (ax, prep, panel) in enumerate(zip(axes, preps, panels)):
@@ -1019,6 +1183,40 @@ def render_quadrant_png(
     fig.savefig(out_path, dpi=dpi, facecolor="white")
     plt.close(fig)
     logger.info("Wrote 4-quadrant PNG to %s", out_path)
+    return out_path
+
+
+def render_multiples_png(
+    panels: list[dict[str, Any]],
+    out_path: str,
+    badges: list[Any] | None = None,
+    max_edges: int = DEFAULT_MAX_EDGES,
+    dpi: int = 160,
+) -> str:
+    """Write the 1xN small-multiples PNG; badges as in render_multiples_html."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    badges = badges or []
+    preps = [_prepare(p["graph"], max_edges) for p in panels]
+    row_height = max(p["panel_height"] for p in preps)
+    fig, axes = plt.subplots(
+        1, len(panels), figsize=(6.5 * len(panels), max(row_height / 90.0, 5.0)),
+        facecolor="white", squeeze=False,
+    )
+    _png_legend(fig)
+    for panel_index, (ax, prep, panel) in enumerate(zip(axes[0], preps, panels)):
+        _paint_panel_ax(ax, prep, panel)
+        if panel_index < len(badges) and badges[panel_index]:
+            text, color = _badge_lines(badges[panel_index])[0]
+            ax.text(0.5, 1.03, text, transform=ax.transAxes, ha="center",
+                    fontsize=13, fontweight="bold", color=color)
+    fig.tight_layout(w_pad=2.4, rect=(0, 0, 1, 0.955))
+    fig.savefig(out_path, dpi=dpi, facecolor="white")
+    plt.close(fig)
+    logger.info("Wrote small-multiples PNG to %s", out_path)
     return out_path
 
 

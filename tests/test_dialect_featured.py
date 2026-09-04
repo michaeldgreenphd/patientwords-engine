@@ -82,3 +82,38 @@ def test_function_word_classification_and_headline_counts(tmp_path):
 
 def test_function_word_set_missing_file_is_none(tmp_path):
     assert dm.function_word_set(str(tmp_path / "nope.json")) is None
+
+
+def test_main_dedupes_overlapping_parts_first_wins(tmp_path, monkeypatch):
+    """Overlapping gap-fill chunks: an index appearing in two summary parts is
+    exported once, from the lexically-first part (the urgency collector's
+    convention). Regression for the 2026-07-30 small-multiples gap-fills."""
+    import json
+    import sys
+    trace = tmp_path / "dialects_test"
+    trace.mkdir()
+
+    def result(index, prompt):
+        return {"index": index, "term": f"term{index}", "baseline_prompt": prompt,
+                "target_token": "alpha", "baseline_probability": 0.5,
+                "variants": [{"dialect": "d1", "prompt": prompt + " v",
+                              "probability": 0.4, "delta_vs_baseline": -0.1}],
+                "predictive_spread": {"variants": [[["alpha", 0.4]]]},
+                "outputs": {"html": f"index_{index:02d}.html"}}
+
+    (trace / "batch_summary.part_01.json").write_text(json.dumps({
+        "graph_model": "gemma-2-2b", "source_set": "s",
+        "results": [result(1, "first part one"), result(2, "first part two")]}), encoding="utf-8")
+    (trace / "batch_summary.part_02.json").write_text(json.dumps({
+        "graph_model": "gemma-2-2b", "source_set": "s",
+        "results": [result(2, "second part two"), result(3, "second part three")]}), encoding="utf-8")
+
+    out = tmp_path / "dialects.json"
+    monkeypatch.setattr(sys, "argv", ["export_dialect_matrix.py", str(trace),
+                                      "--out", str(out), "--updated", "2026-07-30"])
+    assert dm.main() == 0
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    items = payload["items"]
+    assert [it["index"] for it in items] == [1, 2, 3]
+    # index 2 comes from part_01 (first part wins), not part_02
+    assert items[1]["baseline_prompt"] == "first part two"

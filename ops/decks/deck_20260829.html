@@ -1,0 +1,91 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-29</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .chip:focus-visible{outline:2px solid #15803d;outline-offset:2px}
+  .new{border-left:3px solid #b4483d}
+  .good{border-left:3px solid #15803d}
+  table{border-collapse:collapse;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;margin:0 0 10px}
+  td,th{border-bottom:1px solid #c3c9d2;padding:3px 8px 3px 0;text-align:left}
+  th{color:#6d6c66;font-weight:normal}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #copy:focus-visible{outline:2px solid #15803d;outline-offset:2px}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-29</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · one near-miss worth a rule change (D0), one new and fixable (D1), one queue-policy call the cycle made conservatively (D2), one carried and unchanged (D3) · 32 open in all</p>
+
+<div class="card new" data-id="D0-SENTINEL-WAIT-BOUND-20260829">
+  <h2>D0 · NEAR MISS · The sentinel beat its own deadline by 3m41s, and a last-second check saved the day</h2>
+  <p>Today's drift sentinel took <b>38m38s</b> — the slowest run on record, against 34m42s, 16m05s and 13m59s for the three post-outage runs. The cycle is instructed to poll for it for <b>35 minutes</b> and then give up. I served that wait in full, polling every 45–60 seconds to 12:54:39Z, and it had not landed. The entry was duly recorded as unresolved and deferred to tomorrow.</p>
+  <p>A final GitHub status check before closing then found it <b>completed/success at 12:57:30Z</b>. So it was harvested in-cycle after all: outputs verified, entry resolved, verdict run. <b>Nothing was deferred and every lane closes empty.</b></p>
+  <p>The verdict itself is clean: <b>20260829 vs 20260828 reads max |dp| 0.0</b>, top words unchanged — no new breach. The series is at <b>34 measured days</b> ending 20260829, and still carries exactly two historical breaches (0.027 and 0.023). Fourth consecutive healthy Neuronpedia day.</p>
+  <p><b>What needs your call:</b> the 35-minute bound is now known to be tighter than this endpoint's worst case, and today only worked because of a check the rules do not require. Note this is a <i>successful</i> run overrunning the bound — different from the 08-22..08-25 dark days, which failed fast in ~6m41s.</p>
+  <p class="num">run 33252186725 · 12:18:52Z → 12:57:30Z = 38m38s · bound 12:53:49Z · overran by 3m41s · series 33 → 34 days ending 20260829 · max |dp| 0.0</p>
+  <div class="chips"><button class="chip" data-v="mandatory-check">make the terminal-state check mandatory before closing (recommended)</button><button class="chip" data-v="raise-45">raise the bound to 45 minutes</button><button class="chip" data-v="both">both</button><button class="chip" data-v="leave">leave it, the backstop is enough</button></div>
+</div>
+
+<div class="card new" data-id="D1-CONVERGENCE-NOT-IN-CHAIN-20260829">
+  <h2>D1 · NEW · A published figure had been frozen for nine days, and nothing could have caught it</h2>
+  <p><code>data/convergence.json</code> — the accumulation fold on the Technical page, Part 4 — carried a <code>generated_utc</code> of <b>2026-08-20T12:40:27Z</b>. Nine days. Meanwhile the cross-model legs that move it landed every single day.</p>
+  <p>I regenerated it this cycle and published the result. Three models jumped nine days at once: <b>gemma-2-2b-it, llama-3.2-3b and olmo-2-1b each went 24 → 33 accumulation points</b>; apertus-8b-meditronfo and meditron3-8b held at 33 points with refreshed values.</p>
+  <p><b>Why it went unseen:</b> <code>convergence_tracker.py</code> is not named in section 5 of the standing prompt, so no cycle was obliged to run it — and the publish skill omits it too. That omission is <i>already written down</i>: the HANDOFF correction register lists the skill as missing four scripts. Two of the four (<code>embed_scenario_joins</code>, <code>paired_stats_rigor</code>) have since been folded into section 5 by name. This one never was. No gate would have flagged it either — <code>claim_check</code> only guards numbers quoted in prose.</p>
+  <p><b>The fix is one line in two files:</b> add <code>python scripts/convergence_tracker.py --site ../patientwords</code> to standing prompt section 5 (after <code>paired_stats_rigor.py</code>, before the gates) and to the publish-site-data skill.</p>
+  <p class="num">generated_utc 2026-08-20T12:40:27Z → 2026-08-29T12:57:06Z · 3 models 24 → 33 points · 2 models 33 points, values refreshed</p>
+  <div class="chips"><button class="chip" data-v="add-to-chain">add it to section 5 and the skill</button><button class="chip" data-v="hand-driven">leave it hand-driven, add a note saying so</button></div>
+</div>
+
+<div class="card" data-id="D2-SETTLE-BYPASS-POLICY-20260829">
+  <h2>D2 · POLICY · I left one logits slot empty rather than bypass the settle window twice</h2>
+  <p>Three backfill legs landed today, all $0, all verified — one more than each of the last two cycles. After they closed I refilled the lane once, using <code>--ignore-settle</code> on the basis the rules require: both prior runs GitHub-confirmed <code>completed/success</code> with outputs committed and checked.</p>
+  <p>A fourth leg was then refused (exit 6) on the same settle window. <b>I did not bypass it a second time.</b> The lane closed the cycle with one leg running and its pending slot empty. That is the conservative reading of "never work around a refusal", and it costs exactly one 10-pair leg.</p>
+  <p>The tension is real and worth your call: section 3a2 says to fill <b>every</b> idle logits slot, and since the babysitter closed its loop on 08-26 this daily cycle is the lane's only driver. At two to four legs a cycle, the PREDICTIONS axis (<b>265 of 390</b> batch-legs, 125 to go) is roughly 31–62 cycles out.</p>
+  <p class="num">3 legs landed · 1 refused (exit 6) · backfill 262 → 265 of 390 · llama 18 → 20/39 · olmo 18 → 19/39</p>
+  <div class="chips"><button class="chip" data-v="stay-conservative">keep it conservative, one bypass a cycle</button><button class="chip" data-v="saturate">saturate the lane on confirmed-terminal runs</button></div>
+</div>
+
+<div class="card" data-id="D3-LENS-HOST-SEPARATION-20260731">
+  <h2>D3 · CARRIED · The two lens host ids diverged again — day 30</h2>
+  <p>Both served Neuronpedia ids diverged on all three sentinel pairs again today, in a pattern byte-identical to 08-27 and 08-28: depth trajectory on pairs 1/2/3, first_layer on 2/3, last_layer_rank on 3. That is <b>every measured day since 2026-07-31</b> — four weeks.</p>
+  <p>Standing prompt item 3d still calls the two ids a "known alias", and the site's <code>jlens_depth</code> integrity note repeats it. Both statements have been false for a month. This is a text and doc fix, and this cycle's mandate is data only, so nothing was edited.</p>
+  <p>One reassurance from today's readout: each id is <b>byte-identical to its own 08-28 result</b>, so there is no internals drift day-over-day — only the separation between the two hosts.</p>
+  <p class="num">divergent every measured day since 2026-07-31 · both ids byte-stable vs 08-28 · tracked LENS-HOST-SEPARATION-20260731</p>
+  <div class="chips"><button class="chip" data-v="fix-text">fix item 3d and the site integrity note</button><button class="chip" data-v="carry">carry it another week</button></div>
+</div>
+
+<button id="copy">Copy my answers</button>
+<div id="out"></div>
+<script>
+  document.querySelectorAll('.card').forEach(function (card) {
+    card.querySelectorAll('.chip').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        card.querySelectorAll('.chip').forEach(function (c) {
+          c.classList.remove('on'); c.setAttribute('aria-pressed', 'false');
+        });
+        chip.classList.add('on'); chip.setAttribute('aria-pressed', 'true');
+      });
+      chip.setAttribute('aria-pressed', 'false');
+    });
+  });
+  document.getElementById('copy').addEventListener('click', function () {
+    var lines = ['DECISIONS 2026-08-29'];
+    document.querySelectorAll('.card').forEach(function (card) {
+      var on = card.querySelector('.chip.on');
+      if (on) lines.push(card.dataset.id + ': ' + on.dataset.v);
+    });
+    var text = lines.join('\n');
+    var out = document.getElementById('out');
+    out.textContent = text; out.style.display = 'block';
+    if (navigator.clipboard) navigator.clipboard.writeText(text).catch(function () {});
+  });
+</script>

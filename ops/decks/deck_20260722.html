@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PatientWords decisions — 2026-07-22</title>
+<style>
+  body { font-family: Georgia, serif; background: #faf9f5; color: #111827; margin: 0; padding: 1rem; }
+  h1 { font-size: 1.15rem; border-bottom: 1px solid #c3c9d2; padding-bottom: .4rem; }
+  .card { border: 1px solid #c3c9d2; border-radius: 6px; padding: .8rem 1rem; margin: .8rem 0; background: #fff; }
+  .card h2 { font-size: 1rem; margin: .2rem 0 .4rem; }
+  .card p { font-size: .9rem; line-height: 1.45; margin: 0; color: #374151; }
+  .chip { display: inline-block; font-family: ui-monospace, monospace; font-size: .72rem; border: 1px solid #c3c9d2;
+          border-radius: 999px; padding: .1rem .55rem; color: #15803d; }
+  button { font: inherit; font-size: .85rem; margin-top: .6rem; padding: .45rem .9rem; border: 1px solid #15803d;
+           background: #fff; color: #15803d; border-radius: 6px; }
+  button:focus-visible { outline: 2px solid #15803d; outline-offset: 2px; }
+</style></head><body>
+<h1>Decisions pending — 2026-07-22 (3)</h1>
+  <section class="card">
+    <div class="chips"><span class="chip">SKEPTIC</span></div>
+    <h2>Skeptic audit - voice/framing items (owner&#x27;s lane, no rush)</h2>
+    <p></p>
+  </section>
+  <section class="card">
+    <div class="chips"><span class="chip">BACKFILL-ACCEL-BLOCKED</span></div>
+    <h2>Every-2h backfill accelerator can&#x27;t be auto-created (create-trigger approval fails on owner surface)</h2>
+    <p></p>
+  </section>
+  <section class="card">
+    <div class="chips"><span class="chip">TRANSPORT-LOGLENS-WIRING</span></div>
+    <h2>transport/loglens continuous wiring: inputs not on branch</h2>
+    <p></p>
+  </section>
+<button id="copy">Copy summary lines</button>
+<script>
+  document.getElementById('copy').addEventListener('click', function () {
+    navigator.clipboard.writeText("DECISIONS 2026-07-22 SKEPTIC: Skeptic audit - voice/framing items (owner's lane, no rush)\nDECISIONS 2026-07-22 BACKFILL-ACCEL-BLOCKED: Every-2h backfill accelerator can't be auto-created (create-trigger approval fai\nDECISIONS 2026-07-22 TRANSPORT-LOGLENS-WIRING: transport/loglens continuous wiring: inputs not on branch").then(() => {
+      this.textContent = 'Copied';
+    });
+  });
+</script>
+</body></html>

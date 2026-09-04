@@ -8,7 +8,7 @@ medlang_circuits.targets). Mode-specific fields:
 
 --mode 2panel (default) - direct lexical swap:
     {"top_prompt": "...", "bottom_prompt": "..."}
-    The polished two-panel stacked view with the Language Penalty badge.
+    The polished two-panel stacked view with the Wording gap badge.
     (--show-mitigation appends the legacy third translated panel.)
 
 --mode 4quadrant - the morphosyntax-vs-lexicon matrix:
@@ -43,7 +43,9 @@ medlang_circuits.targets). Mode-specific fields:
     (standard phrasing); one panel per variant carries its dialect label and
     a delta badge of target-token probability vs. the baseline panel. With
     no target_clinical_token the comparison falls back to the baseline's top
-    logit via the usual predictive-spread path.
+    logit via the usual predictive-spread path. Each item also writes a
+    small-multiples companion (multi_NN.html / multi_NN.png): baseline + the
+    most consequential framings side by side, structural features stripped.
 
 Every pair writes numbered outputs (index_01.html / index_01.png, ...), the
 per-panel tagged graph JSONs, and a batch_summary.json.
@@ -59,14 +61,17 @@ import platform
 import subprocess
 import sys
 from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-
 
 from medlang_circuits.compare_viz import (
     CATEGORY_COLORS,
     NEGATIVE_EDGE_COLOR,
+    build_multiples_panels,
     build_panels,
+    render_multiples_html,
+    render_multiples_png,
     render_panels_html,
     render_panels_png,
     render_quadrant_html,
@@ -80,6 +85,8 @@ from medlang_circuits.graph_client import (
     resolve_graph_model,
     slugify,
 )
+from medlang_circuits.evaluate_models import _price
+from medlang_circuits.llm_client import reset_translate_usage, translate_usage_snapshot
 from medlang_circuits.neuronpedia_features import FeatureFetcher, NullFetcher
 from medlang_circuits.schema_utils import is_feature_node, node_layer_and_index
 from medlang_circuits.steering import (
@@ -90,7 +97,6 @@ from medlang_circuits.steering import (
     top_offtarget_features,
     top_random_features,
 )
-
 from medlang_circuits.targets import (
     display_token,
     TOP_K_SPREAD_DEFAULT,
@@ -341,7 +347,7 @@ def shared_feature_dimming(
 
 
 def _delta_badge(kind: str, p_from: float | None, p_to: float | None) -> dict[str, str] | None:
-    """Badge spec for a probability delta, e.g. 'Language Penalty: -45% probability (0.86 -> 0.41)'."""
+    """Badge spec for a probability delta, e.g. 'Wording gap: -45% probability (0.86 -> 0.41)'."""
     if p_from is None or p_to is None:
         return None
     delta = p_to - p_from
@@ -588,15 +594,20 @@ def evaluate_pair(
         _probability_for(g, target_token) for g in graphs[1:]
     ]
 
-    badges: list[Any] = [_delta_badge("Language Penalty", probs[0], probs[1])]
+    # The wording gap summarizes the whole comparison, so it reads as a subtitle
+    # under the header (render_panels_html ``subtitle``) rather than floating in the gap
+    # between the clinical and patient panels. Mid-figure badges carry only per-gap
+    # interstitials — here just the translation step's Mitigation Recovery.
+    penalty = _delta_badge("Wording gap", probs[0], probs[1])
+    mid_badges: list[Any] = [None]
     if len(graphs) == 3:
-        badges.append(_delta_badge("Mitigation Recovery", probs[1], probs[2]))
+        mid_badges.append(_delta_badge("Mitigation Recovery", probs[1], probs[2]))
 
     panels = build_panels(graphs)
     html_path = out_dir / f"index_{index:02d}.html"
     png_path = out_dir / f"index_{index:02d}.png"
-    render_panels_html(panels, str(html_path), badges=badges)
-    render_panels_png(panels, str(png_path), badges=badges, dpi=dpi)
+    render_panels_html(panels, str(html_path), badges=mid_badges, subtitle=penalty)
+    render_panels_png(panels, str(png_path), badges=mid_badges, dpi=dpi, subtitle=penalty)
 
     # Circuit diff: the same shared-feature dimming the quadrant edge views
     # use. Features present in both prompts render as faint context, so the
@@ -611,15 +622,16 @@ def evaluate_pair(
         refs=[1, 0],
         dimmed=[dim_c, dim_p],
     )
-    diff_badge = {"lines": [
-        badges[0] or "Language Penalty: —",
+    # Penalty rides in the subtitle (as on the main figure); the gap badge carries
+    # only the shared-feature diff counts.
+    diff_badge = (
         f"circuit diff: shared features dimmed — {diff_counts['shared_features']} in both · "
-        f"{diff_counts['unique_to_a']} only clinical · {diff_counts['unique_to_b']} only patient",
-    ]}
+        f"{diff_counts['unique_to_a']} only clinical · {diff_counts['unique_to_b']} only patient"
+    )
     diff_html = out_dir / f"index_{index:02d}_diff.html"
     diff_png = out_dir / f"index_{index:02d}_diff.png"
-    render_panels_html(diff_panels, str(diff_html), badges=[diff_badge])
-    render_panels_png(diff_panels, str(diff_png), badges=[diff_badge], dpi=dpi)
+    render_panels_html(diff_panels, str(diff_html), badges=[diff_badge], subtitle=penalty)
+    render_panels_png(diff_panels, str(diff_png), badges=[diff_badge], dpi=dpi, subtitle=penalty)
 
     result_screening = {"screening": screening} if screening else {}
     return {
@@ -891,6 +903,39 @@ def evaluate_translation(
 # Mode 4: dialect (syntax/register variants around a fixed term)
 # ---------------------------------------------------------------------------
 
+MULTIPLES_MAX_VARIANTS = 3  # baseline + up to 3 framings = a 3-4 panel row
+
+
+def _select_multiples_variants(
+    variants: list[dict[str, Any]],
+    probs: list[float | None],
+    spreads: list[list[tuple[str, float]]],
+    target_token: str | None,
+    p_baseline: float | None,
+    max_variants: int = MULTIPLES_MAX_VARIANTS,
+) -> list[int]:
+    """Indices of the framings the small-multiples row shows, most salient first.
+
+    Salience mirrors the frontend's featured-specimen weighting: top-pick flips
+    that land on a different answer stem weigh 2, any flip 1, ties broken by
+    |delta vs. baseline| - so the row leads with the framing that changed the
+    model's answer, not merely its confidence."""
+    target_bare = bare_token(target_token or "")
+
+    def weight(j: int) -> tuple[int, float]:
+        spread = spreads[j]
+        top_bare = bare_token(spread[0][0]) if spread else ""
+        flip = bool(top_bare) and top_bare != target_bare
+        cross = flip and top_bare[:3] != target_bare[:3]
+        delta = (
+            abs(probs[j] - p_baseline)
+            if probs[j] is not None and p_baseline is not None else 0.0
+        )
+        return (2 if cross else 1 if flip else 0, delta)
+
+    order = sorted(range(len(variants)), key=lambda j: weight(j), reverse=True)
+    return order[:max_variants]
+
 
 def evaluate_dialect(
     pair: dict[str, Any],
@@ -950,6 +995,25 @@ def evaluate_dialect(
     render_panels_html(panels, str(html_path), badges=badges)
     render_panels_png(panels, str(png_path), badges=badges, dpi=dpi)
 
+    # Small-multiples companion: baseline + the most consequential framings
+    # side by side, structural scaffolding stripped so the clinical/off-target
+    # contrast carries the row (multi_NN.* lands beside index_NN.*).
+    spreads = [logit_spread(g) for g in variant_graphs]
+    selected = _select_multiples_variants(variants, probs, spreads, target_token, p_baseline)
+    multiples_panels = build_multiples_panels(
+        [baseline_graph] + [variant_graphs[j] for j in selected],
+        labels=[f"Baseline (standard phrasing): “{baseline_prompt}”"]
+        + [f"{variants[j]['dialect']}: “{variants[j]['prompt']}”" for j in selected],
+        headlines=[_headline(target_token, p) for p in [p_baseline] + [probs[j] for j in selected]],
+    )
+    multiples_badges = [None] + [
+        _delta_badge("Δ vs. baseline", p_baseline, probs[j]) for j in selected
+    ]
+    multi_html_path = out_dir / f"multi_{index:02d}.html"
+    multi_png_path = out_dir / f"multi_{index:02d}.png"
+    render_multiples_html(multiples_panels, str(multi_html_path), badges=multiples_badges)
+    render_multiples_png(multiples_panels, str(multi_png_path), badges=multiples_badges, dpi=dpi)
+
     return {
         "index": index,
         "mode": "dialect",
@@ -970,17 +1034,57 @@ def evaluate_dialect(
         "forced_targets": list(force_tokens),
         "predictive_spread": {
             "baseline": logit_spread(baseline_graph),
-            "variants": [logit_spread(g) for g in variant_graphs],
+            "variants": spreads,
         },
         "error_share": {"baseline": error_node_share(baseline_graph)},
         "top_path": {"baseline": path_text(top_attribution_path(baseline_graph))},
-        "outputs": {"html": str(html_path), "png": str(png_path)},
+        "multiples": {"variants": [variants[j]["dialect"] for j in selected]},
+        "outputs": {"html": str(html_path), "png": str(png_path),
+                    "multi_html": str(multi_html_path), "multi_png": str(multi_png_path)},
     }
 
 
 # ---------------------------------------------------------------------------
 # Dispatch
 # ---------------------------------------------------------------------------
+
+
+def write_mitigation_sidecar(out: Path, start_index: int = 1) -> Path | None:
+    """Write the run's translation-cost sidecar; returns its path (None if no paid calls).
+
+    Named ``mitigation.report.json`` so ledger_update's ``*.report.json`` scan
+    finds it and so the trace workflow's commit list can glob it. Costs come
+    from the API's own usage counts, never an estimate: ``imputed`` stays false
+    here, and the reconstruction script sets it true for historical runs whose
+    usage was never captured.
+    """
+    usage = translate_usage_snapshot()
+    if not usage.get("calls"):
+        return None
+    per_model = {}
+    total = 0.0
+    for model, u in usage["models"].items():
+        in_price, out_price = _price(model)
+        cost = u["input_tokens"] * in_price / 1e6 + u["output_tokens"] * out_price / 1e6
+        per_model[model] = {**u, "cost_usd": round(cost, 6)}
+        total += cost
+    path = out / "mitigation.report.json"
+    payload = {
+        "_": ("Mitigation (patient->clinical translation) cost for this trace chunk. "
+              "The only paid call in a circuit-trace run."),
+        "kind": "mitigation",
+        "run_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "start_index": start_index,
+        "imputed": False,
+        "calls": usage["calls"],
+        "input_tokens": usage["input_tokens"],
+        "output_tokens": usage["output_tokens"],
+        "per_model": per_model,
+        "cost_usd": round(total, 6),
+    }
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+    return path
 
 
 def run_batch(
@@ -1044,6 +1148,12 @@ def run_batch(
     out.mkdir(parents=True, exist_ok=True)
     results: list[dict[str, Any]] = []
     summary_path = out / "batch_summary.json"
+    # The mitigation translation is the only paid call in a trace run. Its cost
+    # was invisible until 2026-07-31 (no sidecar was ever written, so every
+    # --show-mitigation run booked $0). Reset the accumulator here and
+    # checkpoint the sidecar next to the summary: a run killed mid-batch still
+    # spent real money, so the cost record must survive truncation too.
+    reset_translate_usage()
     summary = {
         "mode": mode,
         "backend": backend,
@@ -1051,6 +1161,8 @@ def run_batch(
         "source_set": source_set or getattr(fetcher, "source_set", None),
         "generation_params": generation_params or {},
         "start_index": start_index,
+        "pairs_requested": len(pairs),
+        "completed": False,
         "screen_targets": screen_targets,
         "environment": _environment(),
         "results": results,
@@ -1084,7 +1196,14 @@ def run_batch(
         results.append(result)
         with open(summary_path, "w", encoding="utf-8") as f:  # checkpoint per pair
             json.dump(summary, f, indent=2)
+        write_mitigation_sidecar(out, start_index=start_index)
         logger.info("Checkpointed pair %d (%d done) to %s", i, len(results), summary_path)
+    # F-H06 (audit 1, 2026-07-17): a truncated checkpoint must be tellable from
+    # a complete smaller chunk; the final rewrite is what flips the flag.
+    summary["completed"] = True
+    with open(summary_path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+    write_mitigation_sidecar(out, start_index=start_index)
     logger.info("Batch complete: %d pairs (mode=%s), summary at %s", len(results), mode, summary_path)
     return results
 

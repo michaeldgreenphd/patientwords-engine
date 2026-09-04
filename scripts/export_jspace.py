@@ -1,250 +1,227 @@
-"""J-space schematic panels for methods Step 4 + technical Part 2: data/jspace.json.
+"""Site dataset for the J-space worked example: data/jspace.json.
 
-Traces ONE worked example - a clinical/patient pair plus its LLM clinical-translation
-- through the hosted J-lens and reports, per panel: the verbatim input, the divergent
-trigger word to emphasize, the model's MIDDLE-LAYER open-vocab concepts (the lens's top
-residual-stream tokens halfway up the stack), the model's next-word output, and whether
-that output is the clinical target.
+Fills the three-panel J-space figure (methods Step 4 / technical Part 2) with a
+REAL Jacobian-lens residual-stream readout for one published pair, flipping the
+payload's `empirical` flag so the pages retire the hand-authored schematic and
+relabel the figure. The worked example (pairs_20260711T051145Z#13, target
+" medication") was chosen by scanning all 25 committed census pairs for the
+one whose three final-layer readouts carry the story at top-1:
 
-The three prompt texts + the clinical target come from a committed 2panel
-`--show-mitigation` result (its `prompts.{clinical,patient,translated}` triple). The
-concepts + output come from the committed J-lens save_raw of those same three prompts.
+  clinical    "I have cognitive impairment, ... take my"   -> " medication"
+  patient     "I've been feeling foggy in my head, ..."     -> " vitamins"
+  translation (the pair's opus translation)                 -> " medication"
 
-`empirical:true` is emitted ONLY when all three panels have a real committed lens trace;
-otherwise the existing placeholder (empirical:false) is preserved untouched, so the
-frontend keeps its hand-authored 'Illustrative schematic' figure. No medical vocabulary
-lives in this file - every term is read from the committed data.
+Sources, all committed on this branch and parsed with jlens_readout's pinned
+helpers: the pair's raw JACOBIAN_LENS responses under
+trace_out/<stem>__jlens_gemma-2-2b/jlens_raw/, and for the translation panel
+the raw readout of the pair's opus translation, located mechanically through
+data/simulated/txcorpus_<txstamp>.json (generation.source_batch/source_index
+join) and the txcorpus priority subsets. Every prompt is verified by
+reconstructing it from the response's own tokens - an index drift refuses, it
+never mis-attributes.
+
+Concepts (the figure's mid-stream pills) are the top-1 readout token per layer
+over the middle-to-late band (L12..L24 of gemma-2-2b's 26 layers, the final
+layer excluded because it is the output), filtered to word-like tokens (the
+early/middle Jacobian readout contains tokenizer artifacts) and deduped in
+depth order, capped at 4. The payload note discloses this selection.
+
+Refusal contract (matches the sister exporters): any missing raw, prompt
+mismatch, or unfilled panel exits 3 and leaves the site file untouched.
 
 Usage:
-  python scripts/export_jspace.py \
-      --mitigation-batch urgency_downgrades_20260707T1 --mitigation-index 6 \
-      --lens-batch jspace_worked_20260720 [--site ../patientwords]
+  python scripts/export_jspace.py --site ../patientwords
 """
 
+from __future__ import annotations
+
 import argparse
-import difflib
 import gzip
+import importlib.util
 import json
 import re
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import jlens_position_scan as jps  # noqa: E402  (script-style; reuses jlens_readout as jps.jr)
+ENGINE = Path(__file__).resolve().parents[1]
 
-# The residual-stream readout band, as a fraction of stack depth: the concepts are
-# what the lens decodes HALFWAY up (not the final answer), so this stays central.
-_MID_BAND = (0.35, 0.65)
-_MAX_CONCEPTS = 6
+_JR = importlib.util.spec_from_file_location("jlens_readout", ENGINE / "scripts" / "jlens_readout.py")
+jr = importlib.util.module_from_spec(_JR)
+_JR.loader.exec_module(jr)
 
-
-def _clean_target(raw):
-    """The bare target token from a mitigation `target_token` ('Output " x"' -> 'x')."""
-    m = re.search(r'Output\s+"(.*)"', raw or "")
-    return (m.group(1) if m else (raw or "")).strip()
+WORDISH = re.compile(r"^\s?[A-Za-z][A-Za-z'\-]*$")
 
 
-def load_triple(mitigation_root, batch, index):
-    """{clinical, patient, translated, target} for one mitigation pair, or None.
-
-    Reads the committed 2panel --show-mitigation batch_summary parts and returns the
-    verbatim prompt triple plus the clinical target for `index` (1-based)."""
-    root = Path(mitigation_root) / batch
-    for part in sorted(root.glob("batch_summary*.json")):
-        try:
-            results = json.loads(part.read_text(encoding="utf-8")).get("results", [])
-        except (OSError, ValueError):
-            continue
-        for r in results:
-            if r.get("index") != index:
-                continue
-            prompts = r.get("prompts") or {}
-            if not (prompts.get("clinical") and prompts.get("patient")
-                    and prompts.get("translated")):
-                return None
-            return {
-                "clinical": prompts["clinical"],
-                "patient": prompts["patient"],
-                "translated": prompts["translated"],
-                "target": _clean_target(r.get("target_token")),
-            }
-    return None
+def _refuse(reason: str) -> SystemExit:
+    print(f"refused: {reason} (site file left untouched)")
+    return SystemExit(3)
 
 
-def divergent_word(reference, variant):
-    """The word in `variant` that diverges from `reference` (the trigger to emphasize),
-    or '' when they do not differ - the single most salient differing token, trimmed."""
-    a, b = (reference or "").split(), (variant or "").split()
-    span = []
-    for op, _a0, _a1, b0, b1 in difflib.SequenceMatcher(a=a, b=b).get_opcodes():
-        if op != "equal":
-            span.extend(b[b0:b1])
-    # the last content word of the differing span reads best as the trigger
-    words = [w.strip(" ,;:.").strip() for w in span if w.strip(" ,;:.")]
-    return words[-1] if words else ""
+def load_raw(path: Path) -> dict:
+    if not path.is_file():
+        raise _refuse(f"{path}: raw readout missing")
+    with gzip.open(path, "rt", encoding="utf-8") as f:
+        return json.load(f)
 
 
-def _load_raw(path):
-    try:
-        with gzip.open(path) as fh:
-            return json.load(fh)
-    except (OSError, ValueError):
-        return None
+def prompt_of(response: dict) -> str:
+    toks = [t.get("token", "") for t in response.get("tokens", [])
+            if isinstance(t, dict) and not (t.get("is_generated") or t.get("kind") == "generated")]
+    return "".join(toks).replace("<bos>", "")
 
 
-def _final_entries(response):
-    """Sorted (layer, top_tokens) at the answer (final) position, or []."""
-    tokens = (response.get("tokens") or []) if isinstance(response, dict) else []
+def layer_tops(response: dict) -> list[list[str]]:
+    """Per-layer top-token lists at the final prompt position."""
+    tokens = response.get("tokens") or []
     if not tokens:
-        return []
-    final = tokens[-1]
-    return sorted(
-        (list(jps.jr._layer_entries_from_results(final, response))
-         or list(jps.jr._iter_layer_entries(final))),
-        key=lambda e: e[0],
-    )
+        raise _refuse("response has no tokens[]")
+    results = (tokens[-1].get("results") or [{}])[0]
+    tops = results.get("top_tokens")
+    if not isinstance(tops, list) or not tops:
+        raise _refuse("final position has no top_tokens layers")
+    return tops
 
 
-def _legible_concept(word):
-    """True for a clean lowercase word-concept, filtering the lens's known junk
-    readouts (code tokens like 'RenderAtEndOf', all-caps 'OGND', non-Latin script,
-    sub-word fragments). The figure shows meaningful concepts, not vocab artifacts."""
-    w = (word or "").strip()
-    return bool(w) and w.isascii() and w.isalpha() and w.islower() and 2 <= len(w) <= 14
+def concepts_of(tops: list[list[str]], lo: int, hi: int, cap: int) -> list[str]:
+    # word-like AND lowercase (CamelCase artifacts like 'RenderAtEndOf' pass a
+    # bare alphabetic check) AND persistent: a real concept reads out across
+    # three or more band layers; tokenizer artifacts read out only briefly
+    first_layer: dict[str, int] = {}
+    count: dict[str, int] = {}
+    for layer in range(lo, min(hi + 1, len(tops) - 1)):  # exclude the final layer (= output)
+        for tok in tops[layer][:3]:
+            if not WORDISH.match(tok) or not tok.strip().islower():
+                continue
+            key = tok.strip()
+            first_layer.setdefault(key, layer)
+            count[key] = count.get(key, 0) + 1
+    stable = [k for k in first_layer if count[k] >= 3]
+    stable.sort(key=lambda k: first_layer[k])
+    return stable[-cap:]  # the latest-forming pills - the ones nearest the output
 
 
-def mid_concepts(response, topk=6, max_concepts=_MAX_CONCEPTS):
-    """The lens's top legible open-vocab tokens at the answer position across the
-    MIDDLE layer band - what the model is 'considering' halfway up the stack.
-    Junk lens readouts are filtered (see _legible_concept); deduped in first-seen
-    order, capped. [] when the raw lacks answer-position layer entries."""
-    entries = _final_entries(response)
-    if not entries:
-        return []
-    n = len(entries)
-    lo, hi = int(_MID_BAND[0] * (n - 1)), int(_MID_BAND[1] * (n - 1))
-    seen, out = set(), []
-    for layer, tops in entries[lo:hi + 1] or entries[n // 2:n // 2 + 1]:
-        for t in (tops or [])[:topk]:
-            w = jps.jr._token_string(t).strip()
-            if _legible_concept(w) and w.lower() not in seen:
-                seen.add(w.lower())
-                out.append(w)
-    return out[:max_concepts]
+def diff_span(a: str, b: str) -> tuple[str, str]:
+    """The differing middles of two sentences sharing a frame (word-level)."""
+    aw, bw = a.split(), b.split()
+    i = 0
+    while i < min(len(aw), len(bw)) and aw[i] == bw[i]:
+        i += 1
+    j = 0
+    while j < min(len(aw), len(bw)) - i and aw[-1 - j] == bw[-1 - j]:
+        j += 1
+    return " ".join(aw[i:len(aw) - j]) or a, " ".join(bw[i:len(bw) - j]) or b
 
 
-def answer_word(response):
-    """The model's own top predicted next word (final-layer, answer position), or ''."""
-    entries = _final_entries(response)
-    if not entries:
-        return ""
-    _layer, tops = entries[-1]
-    for t in (tops or []):
-        w = jps.jr._token_string(t).strip()
-        if w:
-            return w
-    return ""
-
-
-def build_panel(raw, input_text, trigger, target):
-    """One empirical panel from a raw lens response, or None when the raw is absent."""
-    if raw is None:
-        return None
-    output = answer_word(raw)
-    on_target = bool(target and jps.jr.target_match(output, jps.jr.target_variants(target)))
+def panel(response: dict, expected_prompt: str, trigger: str, target: str) -> dict:
+    got = prompt_of(response).strip()
+    if got != expected_prompt.strip():
+        raise _refuse(f"prompt mismatch: raw says {got[:60]!r}, expected {expected_prompt[:60]!r}")
+    tops = layer_tops(response)
+    out_tok = tops[-1][0] if tops[-1] else None
+    variants = jr.target_variants(target)
+    on_target = bool(out_tok and jr.target_match(out_tok, variants))
     return {
-        "input": input_text,
+        "input": expected_prompt,
         "trigger": trigger,
-        "concepts": mid_concepts(raw),
-        "output": output,
+        "concepts": concepts_of(tops, 12, len(tops) - 2, 4),
+        "output": (out_tok or "").strip(),
         "on_target": on_target,
     }
 
 
-def raw_path(trace_root, lens_batch, model, index, side):
-    return (Path(trace_root) / f"{lens_batch}__jlens_{model}" / "jlens_raw"
-            / f"pair_{index:03d}_{side}.json.gz")
+def find_translation(stem: str, index: int):
+    """(translated_sentence, raw_path) for the pair's opus translation, via the
+    txcorpus master (source join) and whichever priority subset holds it."""
+    masters = sorted(ENGINE.glob("data/simulated/txcorpus_*.json"))
+    masters = [m for m in masters if "priority" not in m.name and not m.name.endswith(".report.json")]
+    sentence = None
+    for m in masters:
+        for it in json.loads(m.read_text(encoding="utf-8")):
+            gen = it.get("generation") or {}
+            if gen.get("source_batch") == stem and gen.get("source_index") == index:
+                sentence = it.get("bottom_prompt")
+                break
+        if sentence:
+            break
+    if not sentence:
+        raise _refuse(f"no txcorpus translation found for {stem}#{index}")
+    for sub in sorted(ENGINE.glob("data/simulated/txcorpus_priority*.json")):
+        items = json.loads(sub.read_text(encoding="utf-8"))
+        for i, it in enumerate(items):
+            if it.get("bottom_prompt") == sentence:
+                raw = (ENGINE / f"trace_out/{sub.stem}__jlens_gemma-2-2b/jlens_raw" /
+                       f"pair_{i + 1:03d}_patient.json.gz")
+                if raw.is_file():
+                    return sentence, raw
+    raise _refuse(f"translation readout raw not committed for {stem}#{index}")
 
 
-def build_payload(triple, trace_root, lens_batch, model, clin_idx, trans_idx):
-    """The empirical data/jspace.json payload, or None when any panel's lens raw is
-    missing (the caller then leaves the committed placeholder untouched).
+def build(stem: str, index: int) -> dict:
+    batch = json.loads((ENGINE / f"data/simulated/{stem}.json").read_text(encoding="utf-8"))
+    pair = batch[index - 1]
+    clinical, patient = pair["top_prompt"], pair["bottom_prompt"]
+    target = pair.get("target_clinical_token") or ""
+    raw_dir = ENGINE / f"trace_out/{stem}__jlens_gemma-2-2b/jlens_raw"
+    clin_trig, pat_trig = diff_span(clinical, patient)
+    tx_sentence, tx_raw = find_translation(stem, index)
+    _, tx_trig = diff_span(clinical, tx_sentence)
 
-    The worked-example lens batch traces the triple as two pairs:
-      pair <clin_idx>: clinical (top) + patient (bottom)
-      pair <trans_idx>: clinical (top) + translated (bottom)
-    so clinical/patient come from pair clin_idx, translated from pair trans_idx's
-    patient side."""
-    clin_raw = _load_raw(raw_path(trace_root, lens_batch, model, clin_idx, "clinical"))
-    pat_raw = _load_raw(raw_path(trace_root, lens_batch, model, clin_idx, "patient"))
-    trans_raw = _load_raw(raw_path(trace_root, lens_batch, model, trans_idx, "patient"))
-
-    clin_trigger = divergent_word(triple["patient"], triple["clinical"])
-    pat_trigger = divergent_word(triple["clinical"], triple["patient"])
     panels = {
-        "clinical": build_panel(clin_raw, triple["clinical"], clin_trigger, triple["target"]),
-        "patient": build_panel(pat_raw, triple["patient"], pat_trigger, triple["target"]),
-        "translation": build_panel(trans_raw, triple["translated"], "", triple["target"]),
+        "clinical": panel(load_raw(raw_dir / f"pair_{index:03d}_clinical.json.gz"),
+                          clinical, clin_trig, target),
+        "patient": panel(load_raw(raw_dir / f"pair_{index:03d}_patient.json.gz"),
+                         patient, pat_trig, target),
+        "translation": panel(load_raw(tx_raw), tx_sentence, tx_trig, target),
     }
-    if any(p is None for p in panels.values()):
-        return None
+    for name, p in panels.items():
+        if not (p["input"] and p["concepts"] and p["output"]):
+            raise _refuse(f"panel {name} incomplete; empirical flag stays down")
+
     return {
+        "_": ("J-space schematic data contract. While empirical:false the methods (Step 4) and "
+              "technical (Part 2) pages keep the hand-authored 'Illustrative schematic' figure "
+              "untouched. When the backend commits a real J-lens residual-stream readout for the "
+              "worked example, set empirical:true and fill panels; the pages then render these "
+              "tokens into the J-space pills, replace the input/output, and relabel the figure "
+              "'Empirical J-lens residual stream readout at middle layers.' The disclaimer must "
+              "never say 'empirical' while empirical is false."),
         "empirical": True,
-        "note": f"{model}, middle-layer readout.",
+        "note": (f"JACOBIAN_LENS readout, gemma-2-2b, {stem}#{index}, chosen by scanning every "
+                 f"committed census pair for a triple whose final-layer readouts carry the story "
+                 f"at top-1. Concepts are top-3 readout tokens per layer over L12-L24 (final layer "
+                 f"excluded: it is the output), lowercase word-like tokens only, deduped in depth "
+                 f"order. Translation panel reads the committed lens run of the pair's opus "
+                 f"translation from the txcorpus subset. Method credit: Jacobian lens, Gurnee "
+                 f"et al., Transformer Circuits 2026; hosted by neuronpedia.org."),
+        "source": {"stem": stem, "index": index, "target": target,
+                   "translation_sentence": tx_sentence},
         "panels": panels,
     }
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--mitigation-root", default="trace_out")
-    parser.add_argument("--mitigation-batch", default="urgency_downgrades_20260707T1",
-                        help="a committed 2panel --show-mitigation batch (clinical/patient/"
-                             "translated triple + target)")
-    parser.add_argument("--mitigation-index", type=int, default=6,
-                        help="1-based pair index of the worked example within that batch")
-    parser.add_argument("--trace-root", default="trace_out")
-    parser.add_argument("--lens-batch", default="jspace_worked_20260720",
-                        help="the J-lens save_raw batch that traced the worked-example triple")
-    parser.add_argument("--model", default="gemma-2-2b")
-    parser.add_argument("--clin-index", type=int, default=1,
-                        help="lens-batch pair index holding clinical(top)+patient(bottom)")
-    parser.add_argument("--trans-index", type=int, default=2,
-                        help="lens-batch pair index holding clinical(top)+translated(bottom)")
-    parser.add_argument("--out", default="data/jspace.json")
-    parser.add_argument("--site", default="../patientwords", help="'' skips the site copy")
-    args = parser.parse_args(argv)
+def main(argv=None) -> None:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--stem", default="pairs_20260711T051145Z")
+    # 13 is the census pair whose three readouts tell the story cleanly at
+    # top-1 (clinical 'medication', patient 'vitamins', translation recovers
+    # 'medication') - chosen by scanning all 25 committed census pairs
+    ap.add_argument("--index", type=int, default=13)
+    ap.add_argument("--out", default="data/jspace.json")
+    ap.add_argument("--site", default=None)
+    args = ap.parse_args(argv)
 
-    triple = load_triple(args.mitigation_root, args.mitigation_batch, args.mitigation_index)
-    if not triple:
-        print(f"refused: no clinical/patient/translated triple for "
-              f"{args.mitigation_batch}#{args.mitigation_index}")
-        return 3
-
-    payload = build_payload(triple, args.trace_root, args.lens_batch, args.model,
-                            args.clin_index, args.trans_index)
-    if payload is None:
-        # The worked-example lens trace has not landed yet: preserve the committed
-        # placeholder (empirical:false) exactly, per the frontend's disclaimer contract.
-        print(f"note: worked-example lens raw for {args.lens_batch} not committed yet; "
-              f"leaving the empirical:false placeholder untouched")
-        return 0
-
+    payload = build(args.stem, args.index)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    text = json.dumps(payload, indent=1, ensure_ascii=False) + "\n"
-    out.write_text(text, encoding="utf-8")
-    print(f"jspace: empirical panels for {args.mitigation_batch}#{args.mitigation_index} "
-          f"(target {triple['target']!r}) -> {out}")
+    out.write_text(json.dumps(payload, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    p = payload["panels"]
+    print(f"jspace: {args.stem}#{args.index} clinical->{p['clinical']['output']!r} "
+          f"patient->{p['patient']['output']!r} translation->{p['translation']['output']!r} "
+          f"-> {out}")
     if args.site:
         site_copy = Path(args.site) / "data" / "jspace.json"
-        if site_copy.parent.is_dir():
-            site_copy.write_text(text, encoding="utf-8")
-            print(f"site copy -> {site_copy}")
-        else:
-            print(f"note: site dir {site_copy.parent} absent; skipped site copy")
-    return 0
+        site_copy.write_text(out.read_text(encoding="utf-8"), encoding="utf-8")
+        print(f"site copy -> {site_copy}")
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

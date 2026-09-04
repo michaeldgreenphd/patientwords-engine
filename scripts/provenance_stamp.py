@@ -1,11 +1,17 @@
 """Provenance stamp for published data payloads (audit 2026-07-21, E1).
 
-Every generator that writes a published data file attaches a top-level
-``_provenance`` block — generator script name, engine commit (with a
-``+dirty`` marker when the working tree has uncommitted changes), and a UTC
-timestamp — so any published number can be traced to the exact code that
-produced it. Frontend pages ignore unknown fields; the block is additive.
-No medical vocabulary lives in this file.
+A generator that calls into this module attaches a top-level ``_provenance``
+block — generator script name, engine commit (with a ``+dirty`` marker when the
+working tree has uncommitted changes), and a UTC timestamp — so the number it
+publishes can be traced to the exact code that produced it. Frontend pages
+ignore unknown fields; the block is additive. No medical vocabulary here.
+
+**Coverage is partial, not universal.** As of 2026-08-03 five of the thirty
+published payloads carry the block — `convergence.json`, `drift_series.json`,
+`jlens_swaps.json`, `model_stats.json`, `tag_mass.json`. The rest predate the
+audit that introduced it. Absence of ``_provenance`` therefore means "this
+exporter was never wired up", NOT "this file is unstamped by design", and no
+consumer may treat the block as a required field.
 """
 from __future__ import annotations
 

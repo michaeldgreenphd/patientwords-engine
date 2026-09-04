@@ -1,0 +1,379 @@
+{
+  "mode": "2panel",
+  "backend": "logits",
+  "graph_model": "apertus-8b-meditronfo",
+  "source_set": null,
+  "generation_params": {},
+  "start_index": 26,
+  "pairs_requested": 3,
+  "completed": true,
+  "screen_targets": null,
+  "inference": {
+    "method": "logits",
+    "hf_id": "EPFLiGHT/Apertus-8B-MeditronFO",
+    "dtype": "bfloat16",
+    "revision": "ef2b141da7ccc347c2a13b2518370ba6a8a2b745",
+    "environment": {
+      "python": "3.11.15",
+      "platform": "Linux-6.17.0-1020-azure-x86_64-with-glibc2.39",
+      "engine_sha": "93afba4c4836",
+      "runner_image": "20260720.247.2",
+      "torch": "2.13.0+cpu",
+      "transformers": "5.14.1",
+      "accelerate": "1.14.0"
+    }
+  },
+  "results": [
+    {
+      "index": 26,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've had sciatica for days now, so I finally went to see a",
+        "patient": "I've had shooting pains down my leg for days now, so I finally went to see a"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.2812,
+        "patient": 0.5325
+      },
+      "language_penalty": 0.2513,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.2812
+          ],
+          [
+            "Output \" physi\"",
+            0.1505
+          ],
+          [
+            "Output \" chi\"",
+            0.1034
+          ],
+          [
+            "Output \" physical\"",
+            0.0806
+          ],
+          [
+            "Output \" specialist\"",
+            0.0627
+          ],
+          [
+            "Output \" phys\"",
+            0.0554
+          ],
+          [
+            "Output \" neurolog\"",
+            0.0231
+          ],
+          [
+            "Output \" physician\"",
+            0.0231
+          ],
+          [
+            "Output \" GP\"",
+            0.0231
+          ],
+          [
+            "Output \" doc\"",
+            0.0204
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.5325
+          ],
+          [
+            "Output \" GP\"",
+            0.0817
+          ],
+          [
+            "Output \" physi\"",
+            0.0561
+          ],
+          [
+            "Output \" neurolog\"",
+            0.03
+          ],
+          [
+            "Output \" chi\"",
+            0.03
+          ],
+          [
+            "Output \" physician\"",
+            0.03
+          ],
+          [
+            "Output \" specialist\"",
+            0.03
+          ],
+          [
+            "Output \" phys\"",
+            0.0265
+          ],
+          [
+            "Output \" physical\"",
+            0.0206
+          ],
+          [
+            "Output \" primary\"",
+            0.0142
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. He",
+          "physi": "physiotherapist",
+          "chi": "chiropractor",
+          "physical": "physical therapist."
+        },
+        "patient": {
+          "doctor": "doctor. He",
+          "GP": "GP. He",
+          "physi": "physiotherapist",
+          "neurolog": "neurologist."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 27,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Since my seasonal allergies have flared up again this spring, I should take some",
+        "patient": "Since my eyes are watering and my nose won't stop running this spring, I should take some"
+      },
+      "target_token": "Output \" medicine\"",
+      "probabilities": {
+        "clinical": 0.0213,
+        "patient": 0.0216
+      },
+      "language_penalty": 0.0003,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" allergy\"",
+            0.1389
+          ],
+          [
+            "Output \" extra\"",
+            0.1081
+          ],
+          [
+            "Output \" antih\"",
+            0.0743
+          ],
+          [
+            "Output \" medication\"",
+            0.0656
+          ],
+          [
+            "Output \" time\"",
+            0.0398
+          ],
+          [
+            "Output \" anti\"",
+            0.0398
+          ],
+          [
+            "Output \" steps\"",
+            0.0351
+          ],
+          [
+            "Output \" Clar\"",
+            0.031
+          ],
+          [
+            "Output \" of\"",
+            0.0241
+          ],
+          [
+            "Output \" medicine\"",
+            0.0213
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" allergy\"",
+            0.1598
+          ],
+          [
+            "Output \" antih\"",
+            0.1244
+          ],
+          [
+            "Output \" medication\"",
+            0.0519
+          ],
+          [
+            "Output \" anti\"",
+            0.0357
+          ],
+          [
+            "Output \" Clar\"",
+            0.0315
+          ],
+          [
+            "Output \" time\"",
+            0.0278
+          ],
+          [
+            "Output \" over\"",
+            0.0278
+          ],
+          [
+            "Output \" sort\"",
+            0.0245
+          ],
+          [
+            "Output \" steps\"",
+            0.0216
+          ],
+          [
+            "Output \" medicine\"",
+            0.0216
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "allergy": "allergy medication<|assistant_end|>",
+          "extra": "extra precautions to",
+          "antih": "antihistamines",
+          "medication": "medication<|assistant_end|><|assistant_end|>"
+        },
+        "patient": {
+          "allergy": "allergy medicine<|assistant_end|>",
+          "antih": "antihistamine",
+          "medication": "medication<|assistant_end|><|assistant_end|>",
+          "anti": "anti-hist"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 28,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've had tachycardia all day at work, so I should call my",
+        "patient": "My heart's been racing all day at work, so I should call my"
+      },
+      "target_token": "Output \" doctor\"",
+      "probabilities": {
+        "clinical": 0.5998,
+        "patient": 0.3626
+      },
+      "language_penalty": -0.2372,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" doctor\"",
+            0.5998
+          ],
+          [
+            "Output \" cardi\"",
+            0.1718
+          ],
+          [
+            "Output \" GP\"",
+            0.0558
+          ],
+          [
+            "Output \" doc\"",
+            0.016
+          ],
+          [
+            "Output \" physician\"",
+            0.016
+          ],
+          [
+            "Output \" primary\"",
+            0.0141
+          ],
+          [
+            "Output \" nurse\"",
+            0.0076
+          ],
+          [
+            "Output \" heart\"",
+            0.0067
+          ],
+          [
+            "Output \" card\"",
+            0.0059
+          ],
+          [
+            "Output \" PC\"",
+            0.0046
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" doctor\"",
+            0.3626
+          ],
+          [
+            "Output \" cardi\"",
+            0.1177
+          ],
+          [
+            "Output \" therapist\"",
+            0.0809
+          ],
+          [
+            "Output \" mom\"",
+            0.063
+          ],
+          [
+            "Output \" GP\"",
+            0.0205
+          ],
+          [
+            "Output \" sister\"",
+            0.0181
+          ],
+          [
+            "Output \" doc\"",
+            0.0181
+          ],
+          [
+            "Output \" wife\"",
+            0.0159
+          ],
+          [
+            "Output \" friend\"",
+            0.0117
+          ],
+          [
+            "Output \" shrink\"",
+            0.0117
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "doctor": "doctor. I",
+          "cardi": "cardiologist.",
+          "GP": "GP. I",
+          "doc": "doc. I"
+        },
+        "patient": {
+          "doctor": "doctor<|assistant_end|><|assistant_end|>",
+          "cardi": "cardiologist<|assistant_end|>",
+          "therapist": "therapist. I",
+          "mom": "mom<|assistant_end|><|assistant_end|>"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    }
+  ]
+}

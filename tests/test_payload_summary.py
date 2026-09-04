@@ -44,7 +44,29 @@ def test_totals_screening_flips_and_public_denominator():
     out = ps.build_summary(rows, accepted=100, holdout_withheld=9, n_boot=50)
     t = out["totals"]
     assert t == {"accepted": 100, "accepted_public": 91, "holdout_withheld": 9,
-                 "measured": 2, "screened_out": 1, "flipped_base": 1}
+                 "measured": 2, "screened_out": 1, "flipped_base": 1,
+                 "steered_measured": 0, "steered_flipped_base": 0, "steered_batches": []}
+
+
+def test_steered_scenarios_are_counted_but_never_pooled():
+    """Steered batches publish, and stay out of every headline figure.
+
+    Owner decision 2026-08-15: they were generated at topics already known to
+    flip, so pooling them would let the selection inflate the site's share.
+    """
+    plain = [scen("b", 1, "p1", -0.2, flipped=True), scen("b", 2, "p2", -0.2)]
+    steered = [dict(scen("s", 1, "s1", -0.9, flipped=True), steered=True),
+               dict(scen("s", 2, "s2", -0.9, flipped=True), steered=True, batch="s")]
+    for row in steered:
+        row["batch"] = "s"
+    out = ps.build_summary(plain + steered, accepted=10, holdout_withheld=0, n_boot=50)
+    t = out["totals"]
+    assert t["measured"] == 2 and t["flipped_base"] == 1          # steered excluded
+    assert t["steered_measured"] == 2 and t["steered_flipped_base"] == 2
+    assert t["steered_batches"] == ["s"]
+    # the -0.9 steered penalties must not drag the published mean
+    assert out["penalty"]["n_scored_rows"] == 2
+    assert out["penalty"]["mean_rows_raw"] == round(-0.2, 4)
 
 
 def test_ci_deterministic_and_none_under_three_phrases():

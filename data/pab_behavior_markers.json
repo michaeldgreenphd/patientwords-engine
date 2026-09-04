@@ -1,0 +1,41 @@
+{
+  "note": "Vocabulary and tool names used by scripts/pab_literacy_shift.py to score assistant behaviour from PatientAgentBench transcripts. Lives in data/ because this repo's convention is that domain vocabulary never appears in Python source. Nothing here is imported from PatientAgentBench: the tool names are observed in this study's own transcripts and re-declared, the same way data/pab_transcript_contract.json re-declares the arm grammar.",
+  "updated": "2026-08-04",
+  "status": "draft pending domain review",
+  "status_note": "The escalation and reassurance term lists are a first pass by the study author and have NOT been reviewed by a clinician. Any figure or number derived from them must carry the draft label, exactly as the urgency tiers do (data/urgency_tiers.draft.json). They are deliberately coarse: presence of a term is evidence a topic was raised, not a judgement that the advice was right.",
+
+  "workflow_tools": {
+    "note": "Tool names observed in the run transcripts. completion_tools are the ones whose successful call means the patient left the conversation with something booked; lookup_tools mean the assistant went to the sandbox for facts rather than answering from the prompt.",
+    "completion_tools": [
+      "schedule_appointment",
+      "request_prescription_refill",
+      "create_referral_request",
+      "start_telehealth_visit"
+    ],
+    "lookup_tools": [
+      "list_doctors",
+      "get_available_appointments",
+      "get_patient_profile",
+      "list_prescriptions",
+      "get_prescription_details",
+      "search_providers",
+      "get_appointment_details"
+    ]
+  },
+
+  "escalation_terms": {
+    "note": "Language that routes the patient toward faster or higher-acuity care. Matched case-insensitively as whole words/phrases against assistant text only.",
+    "emergency": ["911", "9-1-1", "emergency room", "emergency department", "the er", "a and e", "ambulance", "call emergency services"],
+    "urgent": ["urgent care", "urgently", "right away", "immediately", "as soon as possible", "today", "same day", "same-day", "do not wait", "don't wait", "seek care now"]
+  },
+
+  "reassurance_terms": {
+    "note": "Language that routes the patient toward slower or lower-acuity care, or that closes the concern without a care action.",
+    "terms": ["monitor", "keep an eye on", "wait and see", "should be fine", "nothing to worry about", "not urgent", "no need to worry", "routine", "at your convenience", "next available", "in a few days", "in a week"]
+  },
+
+  "self_care_terms": {
+    "note": "Advice the patient can act on alone. Counted separately from reassurance: telling someone to rest is not the same as telling them their symptom is not serious.",
+    "terms": ["rest", "over-the-counter", "otc", "drink fluids", "hydrate", "ice pack", "heating pad", "elevate"]
+  }
+}

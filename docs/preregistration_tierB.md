@@ -83,3 +83,23 @@ zero at n≈1,600 on any model that showed the effect at n=132; or a
 generator main effect large enough that haiku-authored pairs do not
 independently show the Tier A effects — any of these gets reported as
 prominently as confirmations.
+
+## Amendment 1 — 2026-07-09, before any Tier B data collection
+
+Registered before batch 1 fired (verifiable: `tierb.start_utc` is still null
+in `ops/dashboard.json` at this commit). Two additions that only restrict
+the analysts, added on review of the week's autonomous-analysis plan:
+
+1. **Confirmatory holdout.** On acceptance, every Tier B pair is assigned to
+   an analysis split by deterministic hash: pairs where
+   `sha1(clinical_prompt)` mod 10 == 0 (~10%) form the **holdout**. Interim
+   analyses during the collection week (nightly critic runs, dashboard
+   deltas, synthesis drafts) use ONLY the ~90% exploration split. The
+   holdout is analyzed exactly once, after collection ends, against the
+   §Endpoints as written — a garden-of-forking-paths guard for a week of
+   automated interim looks.
+2. **Generator-seed provenance.** Each batch's report sidecar already
+   records the generator model; analyses must additionally record which
+   seed-pairs file the generator saw, and the primary endpoints exclude any
+   accepted pair that duplicates a seed pair verbatim (the existing dedupe
+   validator makes this a no-op in expectation; the rule makes it explicit).

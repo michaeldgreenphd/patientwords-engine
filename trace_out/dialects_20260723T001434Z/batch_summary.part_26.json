@@ -1,0 +1,952 @@
+{
+  "mode": "dialect",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 26,
+  "pairs_requested": 25,
+  "completed": false,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "9c714d540882",
+    "runner_image": "20260720.247.2"
+  },
+  "results": [
+    {
+      "index": 26,
+      "mode": "dialect",
+      "baseline_prompt": "When my migraine hits me at the office, I usually reach into my drawer for a",
+      "held_fixed": "clinical",
+      "term": "my migraine",
+      "target_token": "Output \" bottle\"",
+      "baseline_probability": 0.1,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording same register and meaning",
+          "prompt": "Whenever my migraine strikes while I'm at work, I typically open my desk drawer to grab a",
+          "probability": 0.162,
+          "delta_vs_baseline": 0.062
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording same register",
+          "prompt": "At the office, when my migraine comes on, I generally reach for something from my desk drawer, like a",
+          "probability": 0.137,
+          "delta_vs_baseline": 0.037000000000000005
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses keep every key word",
+          "prompt": "I usually reach into my drawer for a when my migraine hits me at the office, so I",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only same content",
+          "prompt": "Once my migraine hits me during office hours, I usually reach into my drawer for a",
+          "probability": 0.089,
+          "delta_vs_baseline": -0.01100000000000001
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording same register",
+          "prompt": "When my migraine hits me in the office, I usually reach into my drawer for a",
+          "probability": 0.105,
+          "delta_vs_baseline": 0.0049999999999999906
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" bottle\"",
+            0.1
+          ],
+          [
+            "Output \" little\"",
+            0.068
+          ],
+          [
+            "Output \" few\"",
+            0.061
+          ],
+          [
+            "Output \" small\"",
+            0.061
+          ],
+          [
+            "Output \" couple\"",
+            0.037
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" bottle\"",
+              0.162
+            ],
+            [
+              "Output \" few\"",
+              0.077
+            ],
+            [
+              "Output \" couple\"",
+              0.046
+            ],
+            [
+              "Output \" migraine\"",
+              0.036
+            ],
+            [
+              "Output \" handful\"",
+              0.036
+            ]
+          ],
+          [
+            [
+              "Output \" bottle\"",
+              0.137
+            ],
+            [
+              "Output \" bag\"",
+              0.044
+            ],
+            [
+              "Output \" box\"",
+              0.044
+            ],
+            [
+              "Output \" headache\"",
+              0.035
+            ],
+            [
+              "Output \" piece\"",
+              0.035
+            ]
+          ],
+          [
+            [
+              "Output \"\u2019\"",
+              0.129
+            ],
+            [
+              "Output \" was\"",
+              0.129
+            ],
+            [
+              "Output \" can\"",
+              0.114
+            ],
+            [
+              "Output \"'\"",
+              0.089
+            ],
+            [
+              "Output \" thought\"",
+              0.054
+            ]
+          ],
+          [
+            [
+              "Output \" bottle\"",
+              0.089
+            ],
+            [
+              "Output \" small\"",
+              0.062
+            ],
+            [
+              "Output \" little\"",
+              0.062
+            ],
+            [
+              "Output \" few\"",
+              0.054
+            ],
+            [
+              "Output \" couple\"",
+              0.037
+            ]
+          ],
+          [
+            [
+              "Output \" bottle\"",
+              0.105
+            ],
+            [
+              "Output \" small\"",
+              0.063
+            ],
+            [
+              "Output \" little\"",
+              0.063
+            ],
+            [
+              "Output \" few\"",
+              0.056
+            ],
+            [
+              "Output \" couple\"",
+              0.039
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.107
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 Output \" small\" (p=0.061)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260723T001434Z/index_26.html",
+        "png": "trace_out/dialects_20260723T001434Z/index_26.png"
+      }
+    },
+    {
+      "index": 27,
+      "mode": "dialect",
+      "baseline_prompt": "She's been battling chronic insomnia for weeks, so her GP finally wrote her a",
+      "held_fixed": "clinical",
+      "term": "battling chronic insomnia",
+      "target_token": "Output \" prescription\"",
+      "baseline_probability": 0.77,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording same register and meaning",
+          "prompt": "She's been dealing with battling chronic insomnia for several weeks, which is why her GP eventually decided to give her a",
+          "probability": 0.42,
+          "delta_vs_baseline": -0.35000000000000003
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording same register",
+          "prompt": "For weeks now she has been battling chronic insomnia, and her GP has therefore finally prescribed her a",
+          "probability": 0.037,
+          "delta_vs_baseline": -0.733
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses keep every key word",
+          "prompt": "Her GP finally wrote her a prescription because she's been battling chronic insomnia for weeks, and the medication is a",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only same content",
+          "prompt": "She's been battling chronic insomnia over weeks, so her GP finally wrote her a",
+          "probability": 0.75,
+          "delta_vs_baseline": -0.020000000000000018
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording same register",
+          "prompt": "She's been battling chronic insomnia these past weeks, so her GP finally wrote her a",
+          "probability": 0.734,
+          "delta_vs_baseline": -0.03600000000000003
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" prescription\"",
+            0.77
+          ],
+          [
+            "Output \" script\"",
+            0.134
+          ],
+          [
+            "Output \" sleeping\"",
+            0.049
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" prescription\"",
+              0.42
+            ],
+            [
+              "Output \" sleeping\"",
+              0.094
+            ],
+            [
+              "Output \" sleep\"",
+              0.064
+            ],
+            [
+              "Output \" referral\"",
+              0.044
+            ],
+            [
+              "Output \" sed\"",
+              0.034
+            ]
+          ],
+          [
+            [
+              "Output \" sleeping\"",
+              0.512
+            ],
+            [
+              "Output \" sed\"",
+              0.048
+            ],
+            [
+              "Output \" sleep\"",
+              0.048
+            ],
+            [
+              "Output \" prescription\"",
+              0.037
+            ],
+            [
+              "Output \" new\"",
+              0.026
+            ]
+          ],
+          [
+            [
+              "Output \" miracle\"",
+              0.12
+            ],
+            [
+              "Output \" game\"",
+              0.082
+            ],
+            [
+              "Output \" last\"",
+              0.039
+            ],
+            [
+              "Output \" sed\"",
+              0.03
+            ],
+            [
+              "Output \" bit\"",
+              0.03
+            ]
+          ],
+          [
+            [
+              "Output \" prescription\"",
+              0.75
+            ],
+            [
+              "Output \" script\"",
+              0.13
+            ],
+            [
+              "Output \" sleeping\"",
+              0.062
+            ],
+            [
+              "Output \" note\"",
+              0.011
+            ]
+          ],
+          [
+            [
+              "Output \" prescription\"",
+              0.734
+            ],
+            [
+              "Output \" script\"",
+              0.145
+            ],
+            [
+              "Output \" sleeping\"",
+              0.053
+            ],
+            [
+              "Output \" note\"",
+              0.01
+            ],
+            [
+              "Output \" sleep\"",
+              0.005
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.1033
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 Output \" sleeping\" (p=0.049)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260723T001434Z/index_27.html",
+        "png": "trace_out/dialects_20260723T001434Z/index_27.png"
+      }
+    },
+    {
+      "index": 28,
+      "mode": "dialect",
+      "baseline_prompt": "He woke up at 3am with gastroesophageal reflux, so he stumbled to the kitchen for an",
+      "held_fixed": "clinical",
+      "term": "gastroesophageal reflux",
+      "target_token": "Output \" ant\"",
+      "baseline_probability": 0.186,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording same register and meaning",
+          "prompt": "At 3am he woke up experiencing gastroesophageal reflux, which prompted him to make his way to the kitchen for an",
+          "probability": 0.206,
+          "delta_vs_baseline": 0.01999999999999999
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording same register",
+          "prompt": "He stirred awake at 3am due to gastroesophageal reflux and proceeded to the kitchen in search of an",
+          "probability": 0.169,
+          "delta_vs_baseline": -0.016999999999999987
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses keep every key word",
+          "prompt": "To the kitchen he stumbled at 3am after waking with gastroesophageal reflux, looking for an",
+          "probability": 0.268,
+          "delta_vs_baseline": 0.08200000000000002
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only same content",
+          "prompt": "He woke up during 3am with gastroesophageal reflux, then stumbled toward the kitchen for an",
+          "probability": 0.122,
+          "delta_vs_baseline": -0.064
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording same register",
+          "prompt": "He woke at 3am with gastroesophageal reflux, so he stumbled into the kitchen for an",
+          "probability": 0.099,
+          "delta_vs_baseline": -0.087
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" ant\"",
+            0.186
+          ],
+          [
+            "Output \" aspirin\"",
+            0.163
+          ],
+          [
+            "Output \" apple\"",
+            0.112
+          ],
+          [
+            "Output \" ice\"",
+            0.053
+          ],
+          [
+            "Output \" orange\"",
+            0.032
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" ant\"",
+              0.206
+            ],
+            [
+              "Output \" aspirin\"",
+              0.11
+            ],
+            [
+              "Output \" apple\"",
+              0.097
+            ],
+            [
+              "Output \" early\"",
+              0.067
+            ],
+            [
+              "Output \" ice\"",
+              0.046
+            ]
+          ],
+          [
+            [
+              "Output \" ant\"",
+              0.169
+            ],
+            [
+              "Output \" apple\"",
+              0.132
+            ],
+            [
+              "Output \" aspirin\"",
+              0.116
+            ],
+            [
+              "Output \" ice\"",
+              0.08
+            ],
+            [
+              "Output \" anti\"",
+              0.033
+            ]
+          ],
+          [
+            [
+              "Output \" ant\"",
+              0.268
+            ],
+            [
+              "Output \" aspirin\"",
+              0.087
+            ],
+            [
+              "Output \" anti\"",
+              0.077
+            ],
+            [
+              "Output \" over\"",
+              0.077
+            ],
+            [
+              "Output \" antidote\"",
+              0.053
+            ]
+          ],
+          [
+            [
+              "Output \" aspirin\"",
+              0.228
+            ],
+            [
+              "Output \" ant\"",
+              0.122
+            ],
+            [
+              "Output \" apple\"",
+              0.095
+            ],
+            [
+              "Output \" ice\"",
+              0.058
+            ],
+            [
+              "Output \" orange\"",
+              0.04
+            ]
+          ],
+          [
+            [
+              "Output \" aspirin\"",
+              0.185
+            ],
+            [
+              "Output \" apple\"",
+              0.112
+            ],
+            [
+              "Output \" ant\"",
+              0.099
+            ],
+            [
+              "Output \" early\"",
+              0.068
+            ],
+            [
+              "Output \" ice\"",
+              0.047
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.1069
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ice\" (p=0.053)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260723T001434Z/index_28.html",
+        "png": "trace_out/dialects_20260723T001434Z/index_28.png"
+      }
+    },
+    {
+      "index": 29,
+      "mode": "dialect",
+      "baseline_prompt": "My little girl's been suffering from allergic rhinitis in the garden all spring, so I booked her in to see the",
+      "held_fixed": "clinical",
+      "term": "suffering from allergic rhinitis",
+      "target_token": "Output \" ENT\"",
+      "baseline_probability": 0.115,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording same register and meaning",
+          "prompt": "My little girl has been suffering from allergic rhinitis in the garden all spring, so I booked her in to see the",
+          "probability": 0.13,
+          "delta_vs_baseline": 0.015
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording same register",
+          "prompt": "My young daughter's been suffering from allergic rhinitis out in the garden throughout spring, so I booked her in to see the",
+          "probability": 0.135,
+          "delta_vs_baseline": 0.020000000000000004
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses keep every key word",
+          "prompt": "Because my little girl's been suffering from allergic rhinitis in the garden all spring, I booked her in to see the",
+          "probability": 0.14,
+          "delta_vs_baseline": 0.02500000000000001
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only same content",
+          "prompt": "My little girl has been suffering from allergic rhinitis during the garden all spring, so I booked her in to see the",
+          "probability": 0.17,
+          "delta_vs_baseline": 0.05500000000000001
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording same register",
+          "prompt": "My little girl's been suffering from allergic rhinitis in the garden for the whole spring, so I booked her in to see the",
+          "probability": 0.146,
+          "delta_vs_baseline": 0.030999999999999986
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" ENT\"",
+            0.115
+          ],
+          [
+            "Output \" GP\"",
+            0.102
+          ],
+          [
+            "Output \" doctor\"",
+            0.102
+          ],
+          [
+            "Output \" allergy\"",
+            0.054
+          ],
+          [
+            "Output \" aller\"",
+            0.054
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" doctor\"",
+              0.167
+            ],
+            [
+              "Output \" ENT\"",
+              0.13
+            ],
+            [
+              "Output \" GP\"",
+              0.069
+            ],
+            [
+              "Output \" allergy\"",
+              0.048
+            ],
+            [
+              "Output \" aller\"",
+              0.048
+            ]
+          ],
+          [
+            [
+              "Output \" doctor\"",
+              0.152
+            ],
+            [
+              "Output \" ENT\"",
+              0.135
+            ],
+            [
+              "Output \" GP\"",
+              0.05
+            ],
+            [
+              "Output \" allergy\"",
+              0.05
+            ],
+            [
+              "Output \" aller\"",
+              0.039
+            ]
+          ],
+          [
+            [
+              "Output \" ENT\"",
+              0.14
+            ],
+            [
+              "Output \" doctor\"",
+              0.14
+            ],
+            [
+              "Output \" aller\"",
+              0.075
+            ],
+            [
+              "Output \" GP\"",
+              0.058
+            ],
+            [
+              "Output \" local\"",
+              0.051
+            ]
+          ],
+          [
+            [
+              "Output \" doctor\"",
+              0.192
+            ],
+            [
+              "Output \" ENT\"",
+              0.17
+            ],
+            [
+              "Output \" GP\"",
+              0.055
+            ],
+            [
+              "Output \" allergy\"",
+              0.049
+            ],
+            [
+              "Output \" aller\"",
+              0.049
+            ]
+          ],
+          [
+            [
+              "Output \" ENT\"",
+              0.146
+            ],
+            [
+              "Output \" doctor\"",
+              0.146
+            ],
+            [
+              "Output \" GP\"",
+              0.078
+            ],
+            [
+              "Output \" allergy\"",
+              0.054
+            ],
+            [
+              "Output \" aller\"",
+              0.047
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.1093
+      },
+      "top_path": {
+        "baseline": "[L15\u00b7S]  \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.102)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260723T001434Z/index_29.html",
+        "png": "trace_out/dialects_20260723T001434Z/index_29.png"
+      }
+    },
+    {
+      "index": 30,
+      "mode": "dialect",
+      "baseline_prompt": "Whenever my acid reflux creeps up after a big meal, I lean on my nightstand and grab my",
+      "held_fixed": "clinical",
+      "term": "my acid reflux",
+      "target_token": "Output \" trusty\"",
+      "baseline_probability": 0.228,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording same register and meaning",
+          "prompt": "After I have a large meal and my acid reflux starts acting up, I reach over to my nightstand and pick up my",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording same register",
+          "prompt": "When my acid reflux flares following a substantial meal, I turn to my nightstand to grab my",
+          "probability": 0.1,
+          "delta_vs_baseline": -0.128
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses keep every key word",
+          "prompt": "I lean on my nightstand and grab my medication whenever my acid reflux creeps up after a big meal, reaching for my",
+          "probability": 0.05,
+          "delta_vs_baseline": -0.178
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only same content",
+          "prompt": "Each time my acid reflux creeps up following a big meal, I lean against my nightstand while grabbing my",
+          "probability": 0.122,
+          "delta_vs_baseline": -0.10600000000000001
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording same register",
+          "prompt": "Whenever my acid reflux creeps up after having a big meal, I lean on my nightstand and reach for my",
+          "probability": 0.191,
+          "delta_vs_baseline": -0.037000000000000005
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" trusty\"",
+            0.228
+          ],
+          [
+            "Output \" bottle\"",
+            0.083
+          ],
+          [
+            "Output \" \"",
+            0.045
+          ],
+          [
+            "Output \" favorite\"",
+            0.035
+          ],
+          [
+            "Output \" phone\"",
+            0.035
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" bottle\"",
+              0.102
+            ],
+            [
+              "Output \" T\"",
+              0.07
+            ],
+            [
+              "Output \" \"",
+              0.062
+            ],
+            [
+              "Output \" Z\"",
+              0.062
+            ],
+            [
+              "Output \" ant\"",
+              0.062
+            ]
+          ],
+          [
+            [
+              "Output \" trusty\"",
+              0.1
+            ],
+            [
+              "Output \" Z\"",
+              0.088
+            ],
+            [
+              "Output \" prescription\"",
+              0.047
+            ],
+            [
+              "Output \" \"",
+              0.047
+            ],
+            [
+              "Output \" T\"",
+              0.042
+            ]
+          ],
+          [
+            [
+              "Output \" bottle\"",
+              0.121
+            ],
+            [
+              "Output \" trusty\"",
+              0.05
+            ],
+            [
+              "Output \" ant\"",
+              0.05
+            ],
+            [
+              "Output \" pill\"",
+              0.039
+            ],
+            [
+              "Output \" daily\"",
+              0.034
+            ]
+          ],
+          [
+            [
+              "Output \" trusty\"",
+              0.122
+            ],
+            [
+              "Output \" phone\"",
+              0.083
+            ],
+            [
+              "Output \" bottle\"",
+              0.057
+            ],
+            [
+              "Output \" glass\"",
+              0.035
+            ],
+            [
+              "Output \" T\"",
+              0.027
+            ]
+          ],
+          [
+            [
+              "Output \" trusty\"",
+              0.191
+            ],
+            [
+              "Output \" bottle\"",
+              0.09
+            ],
+            [
+              "Output \" \"",
+              0.043
+            ],
+            [
+              "Output \" favorite\"",
+              0.038
+            ],
+            [
+              "Output \" T\"",
+              0.038
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.1069
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 Output \" \" (p=0.045)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260723T001434Z/index_30.html",
+        "png": "trace_out/dialects_20260723T001434Z/index_30.png"
+      }
+    }
+  ]
+}

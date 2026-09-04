@@ -1,0 +1,180 @@
+{
+ "_": "Hardcoded numbers in site prose, each tied to its data source. scripts/claim_check.py verifies nightly: the snippet must still appear in the page, and the value recomputed from the source must match. A mismatch means the prose went stale and needs a hand rewrite.",
+ "claims": [
+  {
+   "page": "index.html",
+   "snippet": "'inhaler',0.692",
+   "source": "data/simulated_scenarios.json",
+   "expr": "round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_clinical'],3)",
+   "expected": 0.692,
+   "_": "retargeted to the try-it widget data 2026-07-14 (owner: lede numbers cut, widget is the one telling)"
+  },
+  {
+   "page": "index.html",
+   "snippet": "'inhaler (5th)',0.043",
+   "source": "data/simulated_scenarios.json",
+   "expr": "round(next(s for s in d['scenarios'] if s['batch']=='pairs_20260707T171223Z' and s['batch_index']==49)['prob_patient'],3)",
+   "expected": 0.043,
+   "_": "retargeted to the try-it widget data 2026-07-14"
+  },
+  {
+   "page": "translation/index.html",
+   "snippet": "restores the prediction in 8 of the 20 hardest cases",
+   "source": "data/provenance.json",
+   "expr": "[d['translation_cases']['summary']['recovered'], d['translation_cases']['summary']['n_downgrades'], d['translation_cases']['summary']['unrecovered']]",
+   "expected": [
+    8,
+    20,
+    7
+   ],
+   "_": "headline gained the measured rate 2026-07-14 (owner yes on referee item 6)"
+  },
+  {
+   "page": "translation/index.html",
+   "snippet": "mean +1.9 points of target probability against +0.5",
+   "source": "data/provenance.json",
+   "expr": "[round(d['translation_placebo']['mean_recovery_translation']*100,1), round(d['translation_placebo']['mean_recovery_placebo']*100,1), d['translation_placebo']['n_paired']]",
+   "expected": [
+    1.9,
+    0.5,
+    14
+   ],
+   "_": "paired translation-vs-placebo contrast computed from the landed batch-6 arms 2026-07-14 (referee item 6); the '14 pairs' in the sentence is guarded here too"
+  },
+  {
+   "page": "technical/index.html",
+   "snippet": "models, one measurement",
+   "source": "data/model_stats.json",
+   "expr": "len(d['per_model'])",
+   "expected": 10,
+   "_": "guards the Part 4 count (heading count word lives in the JS-filled #me-count-h span, so the snippet anchors on the literal tail); re-pointed 2026-07-22 after owner prose edits removed the body sentence",
+   "_updated": "2026-07-29 owner decision: model count 8->10 (apertus + meditron entered model_stats)"
+  },
+  {
+   "page": "methods.html",
+   "snippet": "gemma, qwen, llama, etc.",
+   "source": "data/model_stats.json",
+   "expr": "len(d['per_model'])",
+   "expected": 10,
+   "_updated": "2026-07-29 owner decision: model count 8->10 (apertus + meditron entered model_stats)"
+  },
+  {
+   "page": "translation/index.html",
+   "snippet": "(4/5, 5/5, 4/5) and falls off at 20",
+   "source": "data/provenance.json",
+   "expr": "[d['steering_titration']['strengths'][k]['recovered'] for k in ('2.5','5','10','20')]",
+   "expected": [
+    4,
+    5,
+    4,
+    1
+   ]
+  },
+  {
+   "page": "index.html",
+   "snippet": "domain review pending",
+   "source": "data/urgency_shift.json",
+   "expr": "'pending' in d['vocabulary_status']",
+   "expected": true
+  },
+  {
+   "page": "methods.html",
+   "snippet": "domain review from clinicians pending",
+   "source": "data/urgency_shift.json",
+   "expr": "'pending' in d['vocabulary_status']",
+   "expected": true,
+   "_": "snippet reworded by owner edit 2026-07-30 (outline block methods.b039); same disclosure, same source check"
+  },
+  {
+   "page": "technical/index.html",
+   "snippet": "domain review pending",
+   "source": "data/urgency_shift.json",
+   "expr": "'pending' in d['vocabulary_status']",
+   "expected": true,
+   "_": "moved with the answer-depth consolidation 2026-07-14"
+  },
+  {
+   "page": "simulated-scenarios/index.html",
+   "snippet": "domain review pending",
+   "source": "data/urgency_shift.json",
+   "expr": "'pending' in d['vocabulary_status']",
+   "expected": true
+  },
+  {
+   "page": "technical/index.html",
+   "snippet": "one tenth of Tier B phrases",
+   "source": "data/provenance.json",
+   "expr": "d['tierb_holdout']['fraction']",
+   "expected": 0.1,
+   "_": "holdout provenance added to site data 2026-07-14; sentence rescoped to withheld-from-site 2026-07-14"
+  },
+  {
+   "page": "technical/index.html",
+   "snippet": "withheld from this site's data files",
+   "source": "data/simulated_scenarios.json",
+   "expr": "d.get('holdout_withheld', 0) > 0",
+   "expected": true,
+   "_": "the withholding claim must stay true in the payload itself; exporter counts skipped holdout pairs"
+  },
+  {
+   "page": "translation/index.html",
+   "snippet": "41% on the July 9 re-trace",
+   "source": "data/provenance.json",
+   "expr": "round(d['translation_cases']['grandma_laxative']['retrace_20260709']['translated'][1]*100)",
+   "expected": 41
+  },
+  {
+   "page": "translation/index.html",
+   "snippet": "45% in the July 7 study trace",
+   "source": "data/provenance.json",
+   "expr": "round(d['translation_cases']['grandma_laxative']['translated'][1]*100)",
+   "expected": 45
+  },
+  {
+   "page": "index.html",
+   "snippet": "0.45 after translation (clinical baseline 0.26) \u00b7 July 7 trace",
+   "source": "data/provenance.json",
+   "expr": "round(d['translation_cases']['grandma_laxative']['translated'][1],2)",
+   "expected": 0.45
+  },
+  {
+   "page": "dialect-differences/index.html",
+   "snippet": "$0.413, 160 accepted / 5 rejected",
+   "source": "data/provenance.json",
+   "expr": "[round(d['dialects_round2']['cost_usd'],3), d['dialects_round2']['accepted'], d['dialects_round2']['rejected']]",
+   "expected": [
+    0.413,
+    160,
+    5
+   ],
+   "_": "round-2 sweep generation facts (owner decision 2026-07-17: publish round 2)"
+  },
+  {
+   "page": "dialect-differences/index.html",
+   "snippet": "180 (20 baselines + 160 framings",
+   "source": "data/dialects.json",
+   "expr": "[len(d['items']), sum(len(i['variants']) for i in d['items'])]",
+   "expected": [
+    20,
+    160
+   ],
+   "_": "graph counts recomputed from the published matrix payload (complete 20-term sweep, 2026-07-17)"
+  },
+  {
+   "page": "technical/index.html",
+   "snippet": "serve separate hosts since 2026-07-31",
+   "source": "data/jlens_insights.json",
+   "expr": "d['host_state_provenance']['era_boundaries'][0]",
+   "expected": "2026-07-31",
+   "_": "D4 entry 1 (owner-approved 2026-08-21, CLAIM-MANIFEST-PROPERTY-GAP): the tuning-comparison aria-label's host-separation date must match the payload's era record, so the page's provenance claim cannot outlive its data."
+  },
+  {
+   "page": "technical/index.html",
+   "snippet": "phrases read under both the gemma-2-2b and gemma-2-2b-it ids",
+   "source": "data/jlens_insights.json",
+   "expr": "d['instruction_tuning']['n_paired'] - len({p['index'] for p in d['instruction_tuning']['pairs']})",
+   "expected": 0,
+   "_": "D4 entry 2 (owner-approved 2026-08-21): n_paired must equal the count of distinct phrase indices, so replicated rows (e.g. daily-sentinel sweeps) can never inflate the public pair count again."
+  }
+ ]
+}

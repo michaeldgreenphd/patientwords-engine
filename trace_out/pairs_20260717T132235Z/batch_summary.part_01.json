@@ -1,0 +1,720 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 1,
+  "pairs_requested": 20,
+  "completed": false,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "842ae25307bd",
+    "runner_image": "20260720.247.2"
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She has dysuria, so her doctor prescribed a",
+        "patient": "She's been burning down there, so her doctor prescribed a"
+      },
+      "target_token": "Output \"cyclo\"",
+      "probabilities": {
+        "clinical": 0.098,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4833,
+        "patient": 0.218
+      },
+      "error_share": {
+        "clinical": 0.1002,
+        "patient": 0.0959
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" \" (p=0.086)",
+        "patient": "embedding \u2192 Output \" new\" (p=0.086)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \"cyclo\"",
+            0.098
+          ],
+          [
+            "Output \" \"",
+            0.086
+          ],
+          [
+            "Output \" course\"",
+            0.067
+          ],
+          [
+            "Output \" drug\"",
+            0.067
+          ],
+          [
+            "Output \" medication\"",
+            0.052
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" little\"",
+            0.086
+          ],
+          [
+            "Output \" new\"",
+            0.086
+          ],
+          [
+            "Output \" diet\"",
+            0.032
+          ],
+          [
+            "Output \" few\"",
+            0.032
+          ],
+          [
+            "Output \" course\"",
+            0.028
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 551,
+        "unique_to_a": 905,
+        "unique_to_b": 826
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_01.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_01.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_01_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_01_diff.png"
+      }
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have diabetes, so I need to see an",
+        "patient": "My sugar levels are all over the map, so I need to see an"
+      },
+      "target_token": "Output \" endoc\"",
+      "probabilities": {
+        "clinical": 0.656,
+        "patient": 0.703
+      },
+      "language_penalty": 0.04699999999999993,
+      "clinical_mass": {
+        "clinical": 0.3409,
+        "patient": 0.2872
+      },
+      "error_share": {
+        "clinical": 0.0838,
+        "patient": 0.0869
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" eye\" (p=0.114)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" expert\" (p=0.010)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" endoc\"",
+            0.656
+          ],
+          [
+            "Output \" eye\"",
+            0.114
+          ],
+          [
+            "Output \" Endoc\"",
+            0.089
+          ],
+          [
+            "Output \" ophthal\"",
+            0.061
+          ],
+          [
+            "Output \" endo\"",
+            0.011
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" endoc\"",
+            0.703
+          ],
+          [
+            "Output \" Endoc\"",
+            0.139
+          ],
+          [
+            "Output \" endo\"",
+            0.074
+          ],
+          [
+            "Output \" expert\"",
+            0.01
+          ],
+          [
+            "Output \" end\"",
+            0.01
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 523,
+        "unique_to_a": 466,
+        "unique_to_b": 621
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_02.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_02.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_02_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_02_diff.png"
+      }
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have kidney stones, so I've been drinking more",
+        "patient": "I think my pipes are clogged, so I've been drinking more"
+      },
+      "target_token": "Output \" water\"",
+      "probabilities": {
+        "clinical": 0.84,
+        "patient": 0.443
+      },
+      "language_penalty": -0.39699999999999996,
+      "clinical_mass": {
+        "clinical": 0.2545,
+        "patient": 0.1122
+      },
+      "error_share": {
+        "clinical": 0.0922,
+        "patient": 0.0919
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] instances of the word \"more\" followed by the word \"t \u2192 Output \" than\" (p=0.022)",
+        "patient": "embedding \u2192 [L18\u00b7O] instances of the word \"more\" followed by the word \"t \u2192 Output \" than\" (p=0.053)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" water\"",
+            0.84
+          ],
+          [
+            "Output \" fluids\"",
+            0.037
+          ],
+          [
+            "Output \" and\"",
+            0.033
+          ],
+          [
+            "Output \" than\"",
+            0.022
+          ],
+          [
+            "Output \" liquids\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" water\"",
+            0.443
+          ],
+          [
+            "Output \" tea\"",
+            0.099
+          ],
+          [
+            "Output \" coffee\"",
+            0.053
+          ],
+          [
+            "Output \" and\"",
+            0.053
+          ],
+          [
+            "Output \" than\"",
+            0.053
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 600,
+        "unique_to_a": 570,
+        "unique_to_b": 636
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_03.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_03.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_03_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_03_diff.png"
+      }
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have menorrhagia, so I should take some",
+        "patient": "My monthly visitor is way heavier than usual, so I should take some"
+      },
+      "target_token": "Output \" iron\"",
+      "probabilities": {
+        "clinical": 0.061,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.3161,
+        "patient": 0.0643
+      },
+      "error_share": {
+        "clinical": 0.1007,
+        "patient": 0.0853
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" of\" (p=0.069)",
+        "patient": "[L18\u00b7S]  \u2192 [L19\u00b7O] parenthetical annotations and descriptions of images \u2192 [L22\u00b7S] the first person singular pronoun, I, and associated \u2192 [L23\u00b7O] phrases that talk about taking photos or pictures |  \u2192 Output \" photos\" (p=0.129)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" kind\"",
+            0.088
+          ],
+          [
+            "Output \" time\"",
+            0.069
+          ],
+          [
+            "Output \" of\"",
+            0.069
+          ],
+          [
+            "Output \" iron\"",
+            0.061
+          ],
+          [
+            "Output \" sort\"",
+            0.047
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pictures\"",
+            0.212
+          ],
+          [
+            "Output \" photos\"",
+            0.129
+          ],
+          [
+            "Output \" time\"",
+            0.129
+          ],
+          [
+            "Output \" pics\"",
+            0.053
+          ],
+          [
+            "Output \" action\"",
+            0.053
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 375,
+        "unique_to_a": 931,
+        "unique_to_b": 847
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_04.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_04.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_04_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_04_diff.png"
+      }
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have amenorrhea, so my doctor wants me to take an",
+        "patient": "I've been missing my period, so my doctor wants me to take an"
+      },
+      "target_token": "Output \" ultrasound\"",
+      "probabilities": {
+        "clinical": 0.058,
+        "patient": null
+      },
+      "language_penalty": null,
+      "clinical_mass": {
+        "clinical": 0.4086,
+        "patient": 0.3369
+      },
+      "error_share": {
+        "clinical": 0.0998,
+        "patient": 0.0928
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" ultrasound\" (p=0.058)",
+        "patient": "embedding \u2192 Output \" at\" (p=0.154)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" oral\"",
+            0.201
+          ],
+          [
+            "Output \" estrogen\"",
+            0.178
+          ],
+          [
+            "Output \" ovulation\"",
+            0.065
+          ],
+          [
+            "Output \" ultrasound\"",
+            0.058
+          ],
+          [
+            "Output \" est\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" H\"",
+            0.224
+          ],
+          [
+            "Output \" early\"",
+            0.154
+          ],
+          [
+            "Output \" at\"",
+            0.154
+          ],
+          [
+            "Output \" h\"",
+            0.12
+          ],
+          [
+            "Output \" ovulation\"",
+            0.083
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 594,
+        "unique_to_a": 797,
+        "unique_to_b": 711
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_05.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_05.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_05_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_05_diff.png"
+      }
+    },
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have hyperglycemia, so I'm worried I might be",
+        "patient": "My blood sugar has been all crazy, so I'm worried I might be"
+      },
+      "target_token": "Output \" diabetic\"",
+      "probabilities": {
+        "clinical": 0.074,
+        "patient": 0.208
+      },
+      "language_penalty": 0.134,
+      "clinical_mass": {
+        "clinical": 0.2661,
+        "patient": 0.2883
+      },
+      "error_share": {
+        "clinical": 0.0971,
+        "patient": 0.1023
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L23\u00b7O] text discussing children at risk | at \u2192 Output \" at\" (p=0.083)",
+        "patient": "embedding \u2192 [L19\u00b7C] words and phrases related to diabetes and its treatm \u2192 Output \" diabetic\" (p=0.208)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" at\"",
+            0.083
+          ],
+          [
+            "Output \" diabetic\"",
+            0.074
+          ],
+          [
+            "Output \" developing\"",
+            0.065
+          ],
+          [
+            "Output \" getting\"",
+            0.058
+          ],
+          [
+            "Output \" having\"",
+            0.051
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pregnant\"",
+            0.208
+          ],
+          [
+            "Output \" diabetic\"",
+            0.208
+          ],
+          [
+            "Output \" pre\"",
+            0.144
+          ],
+          [
+            "Output \" going\"",
+            0.087
+          ],
+          [
+            "Output \" having\"",
+            0.046
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 660,
+        "unique_to_a": 696,
+        "unique_to_b": 694
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_06.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_06.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_06_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_06_diff.png"
+      }
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have menstrual irregularity, so my gynecologist ordered some",
+        "patient": "My monthly cycle has been really out of whack, so my gynecologist ordered some"
+      },
+      "target_token": "Output \" blood\"",
+      "probabilities": {
+        "clinical": 0.35,
+        "patient": 0.539
+      },
+      "language_penalty": 0.18900000000000006,
+      "clinical_mass": {
+        "clinical": 0.439,
+        "patient": 0.3644
+      },
+      "error_share": {
+        "clinical": 0.0977,
+        "patient": 0.1004
+      },
+      "top_path": {
+        "clinical": "[L14\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 [L19\u00b7C] words related to radiology and medical imaging | Med \u2192 [L21\u00b7O] words and phrases related to software testing and sc \u2192 [L22\u00b7O] the word 'test' in certain contexts | Code testing \u2192 Output \" tests\" (p=0.271)",
+        "patient": "[L14\u00b7S]  \u2192 [L17\u00b7C] terminology related to medical examinations and diag \u2192 [L19\u00b7C] words related to medical tests and procedures | labo \u2192 [L21\u00b7O] words and phrases related to software testing and sc \u2192 [L22\u00b7O] the word 'test' in certain contexts | Code testing \u2192 Output \" tests\" (p=0.175)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" blood\"",
+            0.35
+          ],
+          [
+            "Output \" tests\"",
+            0.271
+          ],
+          [
+            "Output \" hormone\"",
+            0.069
+          ],
+          [
+            "Output \" lab\"",
+            0.053
+          ],
+          [
+            "Output \" labs\"",
+            0.025
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.539
+          ],
+          [
+            "Output \" tests\"",
+            0.175
+          ],
+          [
+            "Output \" hormone\"",
+            0.057
+          ],
+          [
+            "Output \" lab\"",
+            0.039
+          ],
+          [
+            "Output \" labs\"",
+            0.03
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 699,
+        "unique_to_a": 555,
+        "unique_to_b": 568
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_07.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_07.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_07_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_07_diff.png"
+      }
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My husband and I have been diagnosed with infertility, so we decided to see a",
+        "patient": "My husband and I have been trying, but we're not getting anywhere, so we decided to see a"
+      },
+      "target_token": "Output \" specialist\"",
+      "probabilities": {
+        "clinical": 0.073,
+        "patient": 0.074
+      },
+      "language_penalty": 0.0010000000000000009,
+      "clinical_mass": {
+        "clinical": 0.3595,
+        "patient": 0.2451
+      },
+      "error_share": {
+        "clinical": 0.0965,
+        "patient": 0.0932
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" fertility\" (p=0.543)",
+        "patient": "embedding \u2192 [L17\u00b7C] information related to medical conditions and how to \u2192 [L18\u00b7C] language related to doctor's visits for some medical \u2192 [L20\u00b7C] language related to medical care, including doctors, \u2192 Output \" doctor\" (p=0.293)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" fertility\"",
+            0.543
+          ],
+          [
+            "Output \" doctor\"",
+            0.106
+          ],
+          [
+            "Output \" specialist\"",
+            0.073
+          ],
+          [
+            "Output \" Fertility\"",
+            0.031
+          ],
+          [
+            "Output \" reproductive\"",
+            0.031
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" fertility\"",
+            0.332
+          ],
+          [
+            "Output \" doctor\"",
+            0.293
+          ],
+          [
+            "Output \" specialist\"",
+            0.074
+          ],
+          [
+            "Output \" professional\"",
+            0.065
+          ],
+          [
+            "Output \" therapist\"",
+            0.027
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 673,
+        "unique_to_a": 509,
+        "unique_to_b": 584
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260717T132235Z/index_08.html",
+        "png": "trace_out/pairs_20260717T132235Z/index_08.png",
+        "diff_html": "trace_out/pairs_20260717T132235Z/index_08_diff.html",
+        "diff_png": "trace_out/pairs_20260717T132235Z/index_08_diff.png"
+      }
+    }
+  ]
+}

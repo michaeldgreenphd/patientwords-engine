@@ -1,0 +1,22 @@
+{
+  "_": [
+    "Per-frame anchor tokens for pabharvest_ batches (scripts/pab_build_frames.py",
+    "--anchors). One token per carrier frame's continuation class - NOT hand-picked",
+    "per-pair targets: the same anchor applies to every pair a frame carries, and",
+    "each is validated empirically by the 0.02 clinical-side screen exactly as",
+    "Tier B generator-proposed targets are (docs/pab_frame_spec_20260805.md rule 3).",
+    "Selection rationale (recomputed 2026-08-07 from landed data/simulated",
+    "batches): 'medication' (n=235) and 'doctor' (n=103) are the two most common",
+    "target_clinical_token values in the Tier B corpus, so the person- and",
+    "treatment-class frames anchor to the study's dominant existing targets.",
+    "Place-class targets are rare in Tier B (hospital n=4), so 'hospital' is the",
+    "class-faithful choice there; if it screens out heavily that is an informative",
+    "sensitivity result, and the batch can also be traced unscreened.",
+    "Medical vocabulary lives only in JSON data files, never in Python source",
+    "(repo hard convention)."
+  ],
+  "take_a": "medication",
+  "go_to_the": "hospital",
+  "talk_to_a": "doctor",
+  "see_a": "doctor"
+}

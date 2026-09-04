@@ -1,0 +1,23 @@
+jlens: gemma-2-2b and gemma-2-2b-it return identical readouts - one host behind both ids?
+
+Thanks for shipping the hosted Jacobian lens - we adopted it within the week for a
+clinical-vs-colloquial language study (https://michaeldgreenphd.github.io/patientwords/answer-depth/).
+
+**Observation.** `POST /api/lens/prompt` with `type: ["JACOBIAN_LENS"]`, `topN: 8`,
+`numCompletionTokens: 0`, `stream: false` returns identical `top_tokens` for
+`modelId: "gemma-2-2b"` and `modelId: "gemma-2-2b-it"` - byte-identical rankings at
+every layer and position across 100 prompts (50 sentence pairs x 2 phrasings),
+measured 2026-07-11. `meta.model` echoes the requested id in both cases.
+
+Base and instruct models should not agree to that precision, so we suspect both ids
+route to one lens/inference host. Committed artifacts (summaries + raw responses):
+https://github.com/michaeldgreenphd/patientwords-engine/tree/main/trace_out
+(`pairs_20260711T051145Z__jlens_gemma-2-2b` vs `__jlens_gemma-2-2b-it`).
+
+**Question.** Are separate lens hosts deployed for the two ids? If not, is the
+instruct lens planned? We currently report one model on our site pending this.
+
+Happy to provide exact request bodies or re-run against a staging host.
+
+PREFILL URL:
+https://github.com/hijohnnylin/neuronpedia/issues/new?title=jlens%3A%20gemma-2-2b%20and%20gemma-2-2b-it%20return%20identical%20readouts%20-%20one%20host%20behind%20both%20ids%3F&body=Thanks%20for%20shipping%20the%20hosted%20Jacobian%20lens%20-%20we%20adopted%20it%20within%20the%20week%20for%20a%0Aclinical-vs-colloquial%20language%20study%20%28https%3A//michaeldgreenphd.github.io/patientwords/answer-depth/%29.%0A%0A%2A%2AObservation.%2A%2A%20%60POST%20/api/lens/prompt%60%20with%20%60type%3A%20%5B%22JACOBIAN_LENS%22%5D%60%2C%20%60topN%3A%208%60%2C%0A%60numCompletionTokens%3A%200%60%2C%20%60stream%3A%20false%60%20returns%20identical%20%60top_tokens%60%20for%0A%60modelId%3A%20%22gemma-2-2b%22%60%20and%20%60modelId%3A%20%22gemma-2-2b-it%22%60%20-%20byte-identical%20rankings%20at%0Aevery%20layer%20and%20position%20across%20100%20prompts%20%2850%20sentence%20pairs%20x%202%20phrasings%29%2C%0Ameasured%202026-07-11.%20%60meta.model%60%20echoes%20the%20requested%20id%20in%20both%20cases.%0A%0ABase%20and%20instruct%20models%20should%20not%20agree%20to%20that%20precision%2C%20so%20we%20suspect%20both%20ids%0Aroute%20to%20one%20lens/inference%20host.%20Committed%20artifacts%20%28summaries%20%2B%20raw%20responses%29%3A%0Ahttps%3A//github.com/michaeldgreenphd/patientwords-engine/tree/main/trace_out%0A%28%60pairs_20260711T051145Z__jlens_gemma-2-2b%60%20vs%20%60__jlens_gemma-2-2b-it%60%29.%0A%0A%2A%2AQuestion.%2A%2A%20Are%20separate%20lens%20hosts%20deployed%20for%20the%20two%20ids%3F%20If%20not%2C%20is%20the%0Ainstruct%20lens%20planned%3F%20We%20currently%20report%20one%20model%20on%20our%20site%20pending%20this.%0A%0AHappy%20to%20provide%20exact%20request%20bodies%20or%20re-run%20against%20a%20staging%20host.

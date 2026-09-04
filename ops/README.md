@@ -39,15 +39,26 @@ Top-level fields, and which step of the Routine's cycle writes them:
 | `schema_version` | contract version, currently `1` | fixed |
 | `updated_utc` | UTC timestamp of the last write; the page shows a STALE chip when this is older than 26 h (the Routine has failed) | every Routine write, incl. every `ledger_update.py` dashboard write |
 | `updated_by` | `"routine"` or `"session"`; `ledger_update.py` sets `"session"` only when the field is absent and otherwise preserves the existing value | every Routine write |
-| `queue` | per-concurrency-group running/pending slots (`circuit-trace`, `logits-eval`, `scenario-generation`, `model-evaluation`, `archive-renders`), each `{fired_utc, commit, note}` or `null` | `scripts/fire_trigger.py` (fire/resolve), mirrored by the Routine |
+| `queue` | per-concurrency-group running/pending slots (`circuit-trace`, `logits-eval`, `activation-patching`, `jlens-readout`, `scenario-generation`, `model-evaluation`, `archive-renders`), each `{fired_utc, commit, note}` or `null` (the Routine's mirror may write a free-text summary string instead - both shapes are valid to readers) | `scripts/fire_trigger.py` (fire/resolve), mirrored by the Routine |
 | `runs_recent` | compact log of recent workflow runs `{workflow, fired_utc, status, note}` | the Routine's own edits |
-| `spend` | generation-run and daily ceilings vs. spend, lifetime total, per-day map, sidecar filenames already counted (`entries_seen`), `last_scan_utc`, ceiling `alerts` | `scripts/ledger_update.py` (idempotent sidecar scan) |
+| `spend` | generation-run and daily ceilings vs. spend, lifetime total, per-day map, per-channel map (`by_day_by_channel`, CHANNEL-SPLIT 2026-08-04: `today` also carries `anthropic_usd`/`openrouter_usd`; the $2/day guard counts the Anthropic channel only, falling back to the pooled figure on dashboards without the split), sidecar filenames already counted (`entries_seen`), `last_scan_utc`, ceiling `alerts` (alerts stay pooled) | `scripts/ledger_update.py` (idempotent sidecar scan) |
 | `tierb` | overnight campaign progress: `target_pairs`, `generator`, `start_utc`, `accepted_pairs`, `traced_pairs`, `screened_in_pairs`, `batches[]` | `scripts/ledger_update.py` (costs) + the Routine's own edits (counts, statuses) |
 | `verdicts` | current one-line scientific verdicts | the Routine's own edits |
 | `findings_delta` | dated list of what changed, newest first on the page | the Routine's own edits |
 | `decisions_pending` | `{id, title, context}` items awaiting the owner | the Routine's own edits |
 | `blockers` | plain strings describing what is stuck | the Routine's own edits |
 | `notes` | standing operational notes (footer) | the Routine's own edits |
+| `decisions_log` | resolved owner decisions, newest first — the audit trail behind `decisions_pending` | the Routine's own edits |
+| `queued_next` | the fire queue: what goes into each lane as it frees, in order | the Routine's own edits |
+| `endpoint_protocol` | the standing rule that Tier B holdout unsealing runs **only** on an explicit owner instruction, never on a schedule | owner decision, transcribed once; do not edit without one |
+| `critic` | `{last_pass, report}` pointer to the newest `docs/critic/critic_*.md` | the Routine's own edits, Mon/Wed/Fri |
+
+Two `tierb` counters have **no automated writer** and drift silently:
+`traced_pairs` and `screened_in_pairs`. Recount before quoting either
+(`traced_pairs` = distinct `(batch stem, results[].index)` across
+`trace_out/<Tier B stem>*/batch_summary*.json`; the method is recorded in
+`tierb.traced_pairs_method`). The value carried here read 2049 until the
+2026-08-03 recount put it at 1080.
 
 ## Spend accounting
 
@@ -74,13 +85,19 @@ in-flight hold once the run's real cost lands via the sidecar scan.
 
 ## Single-writer rule
 
-`ops/dashboard.json` is written **only by the daily Routine session**, through
-exactly three paths: `scripts/fire_trigger.py` (queue slots and the trigger
-journal), `scripts/ledger_update.py` (spend accounting from cost sidecars), and
-the Routine's own direct edits (verdicts, findings, decisions, blockers,
-notes, Tier B counts). Every other session and every consumer treats the file
+`ops/dashboard.json` is written **only by the daily Routine's session** (a
+fresh session per firing since the 2026-08-04 cutover,
+`trig_01H9YrMSHEDkyXWT4bxttihq` — see `docs/ops_routine_spec_20260804.md`;
+2026-07-10..08-03 it was the orchestrator session the old Routine fired
+into), through exactly three paths: `scripts/fire_trigger.py` (queue slots
+and the trigger journal), `scripts/ledger_update.py` (spend accounting from
+cost sidecars), and the Routine's own direct edits (verdicts, findings,
+decisions, blockers, notes, Tier B counts). Every other session and every consumer treats the file
 as read-only. This keeps a frequently-committed file free of merge conflicts
 and keeps `updated_utc` meaningful: staleness on the dashboard means the
 Routine failed, not that someone else forgot to touch a field. If an
 interactive session finds something worth recording, it hands the item to the
 Routine (or leaves it in a handoff doc) rather than editing the file itself.
+Owner-authorized interim (2026-08-04, INTERIM-CYCLE): when a fresh-session
+Routine firing fails, the takeover session may run that day's single cycle
+inline and holds the writer role for it, through the same three paths.

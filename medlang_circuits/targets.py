@@ -17,7 +17,7 @@ two points our pipeline controls:
    token instead of the article.
 
 ``target_probability()`` reads a named token's next-token probability from a
-graph's logit nodes - the input to the Language Penalty delta metric.
+graph's logit nodes - the input to the Wording gap delta metric.
 """
 
 from __future__ import annotations

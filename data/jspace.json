@@ -1,0 +1,46 @@
+{
+ "_": "J-space schematic data contract. While empirical:false the methods (Step 4) and technical (Part 2) pages keep the hand-authored 'Illustrative schematic' figure untouched. When the backend commits a real J-lens residual-stream readout for the worked example, set empirical:true and fill panels; the pages then render these tokens into the J-space pills, replace the input/output, and relabel the figure 'Empirical J-lens residual stream readout at middle layers.' The disclaimer must never say 'empirical' while empirical is false.",
+ "empirical": true,
+ "note": "JACOBIAN_LENS readout, gemma-2-2b, pairs_20260711T051145Z#13, chosen by scanning every committed census pair for a triple whose final-layer readouts carry the story at top-1. Concepts are top-3 readout tokens per layer over L12-L24 (final layer excluded: it is the output), lowercase word-like tokens only, deduped in depth order. Translation panel reads the committed lens run of the pair's opus translation from the txcorpus subset. Method credit: Jacobian lens, Gurnee et al., Transformer Circuits 2026; hosted by neuronpedia.org.",
+ "source": {
+  "stem": "pairs_20260711T051145Z",
+  "index": 13,
+  "target": " medication",
+  "translation_sentence": "I've been experiencing cognitive impairment, so I should probably take my"
+ },
+ "panels": {
+  "clinical": {
+   "input": "I have cognitive impairment, so I should probably take my",
+   "trigger": "I have cognitive impairment,",
+   "concepts": [
+    "meds",
+    "medication",
+    "medications"
+   ],
+   "output": "own",
+   "on_target": false
+  },
+  "patient": {
+   "input": "I've been feeling foggy in my head, so I should probably take my",
+   "trigger": "I've been feeling foggy in my head,",
+   "concepts": [
+    "meds",
+    "medication",
+    "pills"
+   ],
+   "output": "meds",
+   "on_target": false
+  },
+  "translation": {
+   "input": "I've been experiencing cognitive impairment, so I should probably take my",
+   "trigger": "I've been experiencing",
+   "concepts": [
+    "meds",
+    "medication",
+    "medications"
+   ],
+   "output": "medication",
+   "on_target": true
+  }
+ }
+}

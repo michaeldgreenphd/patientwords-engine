@@ -1,0 +1,1549 @@
+{
+  "mode": "2panel",
+  "backend": "logits",
+  "graph_model": "medgemma-4b-it",
+  "source_set": null,
+  "generation_params": {},
+  "start_index": 1,
+  "pairs_requested": 13,
+  "completed": true,
+  "screen_targets": null,
+  "inference": {
+    "method": "logits",
+    "hf_id": "google/medgemma-4b-it",
+    "dtype": "bfloat16",
+    "revision": "290cda5eeccbee130f987c4ad74a59ae6f196408",
+    "environment": {
+      "python": "3.11.15",
+      "platform": "Linux-6.17.0-1020-azure-x86_64-with-glibc2.39",
+      "engine_sha": "6284c1f59b27",
+      "runner_image": "20260714.240.1",
+      "torch": "2.13.0+cpu",
+      "transformers": "5.14.1",
+      "accelerate": "1.14.0"
+    }
+  },
+  "results": [
+    {
+      "index": 1,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I just can't seem to fall asleep due to insomnia, so my doctor started me on a",
+        "patient": "I just can't seem to nod off no matter what, so my doctor started me on a"
+      },
+      "target_token": "Output \" sleeping\"",
+      "probabilities": {
+        "clinical": 0.0707,
+        "patient": 0.0575
+      },
+      "language_penalty": -0.0132,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" low\"",
+            0.3168
+          ],
+          [
+            "Output \" medication\"",
+            0.1497
+          ],
+          [
+            "Output \" new\"",
+            0.1321
+          ],
+          [
+            "Output \" sleep\"",
+            0.0908
+          ],
+          [
+            "Output \" prescription\"",
+            0.0801
+          ],
+          [
+            "Output \" sleeping\"",
+            0.0707
+          ],
+          [
+            "Output \" small\"",
+            0.0139
+          ],
+          [
+            "Output \" mild\"",
+            0.0108
+          ],
+          [
+            "Output \" melatonin\"",
+            0.0096
+          ],
+          [
+            "Output \" medicine\"",
+            0.0096
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" low\"",
+            0.5458
+          ],
+          [
+            "Output \" sleep\"",
+            0.0652
+          ],
+          [
+            "Output \" new\"",
+            0.0575
+          ],
+          [
+            "Output \" sleeping\"",
+            0.0575
+          ],
+          [
+            "Output \" prescription\"",
+            0.0448
+          ],
+          [
+            "Output \" medication\"",
+            0.0395
+          ],
+          [
+            "Output \" small\"",
+            0.0308
+          ],
+          [
+            "Output \" mild\"",
+            0.0113
+          ],
+          [
+            "Output \" very\"",
+            0.0094
+          ],
+          [
+            "Output \" little\"",
+            0.0088
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "low": "low dose of",
+          "medication": "medication called \"",
+          "new": "new medication.",
+          "sleep": "sleep aid."
+        },
+        "patient": {
+          "low": "low dose of",
+          "sleep": "sleep aid.",
+          "new": "new medication.",
+          "sleeping": "sleeping pill."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 2,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "That awful migraine is back, so I dug through my bag for a",
+        "patient": "That awful pounding behind my eye is back, so I dug through my bag for a"
+      },
+      "target_token": "Output \" pain\"",
+      "probabilities": {
+        "clinical": 0.049,
+        "patient": 0.1287
+      },
+      "language_penalty": 0.0797,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" few\"",
+            0.2196
+          ],
+          [
+            "Output \" little\"",
+            0.0555
+          ],
+          [
+            "Output \" pain\"",
+            0.049
+          ],
+          [
+            "Output \" small\"",
+            0.049
+          ],
+          [
+            "Output \" bottle\"",
+            0.0432
+          ],
+          [
+            "Output \" migraine\"",
+            0.0382
+          ],
+          [
+            "Output \" couple\"",
+            0.0297
+          ],
+          [
+            "Output \" quick\"",
+            0.0262
+          ],
+          [
+            "Output \" headache\"",
+            0.0169
+          ],
+          [
+            "Output \" trusty\"",
+            0.0149
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" pair\"",
+            0.1652
+          ],
+          [
+            "Output \" pain\"",
+            0.1287
+          ],
+          [
+            "Output \" few\"",
+            0.0689
+          ],
+          [
+            "Output \" headache\"",
+            0.0325
+          ],
+          [
+            "Output \" bottle\"",
+            0.0306
+          ],
+          [
+            "Output \" couple\"",
+            0.0253
+          ],
+          [
+            "Output \" small\"",
+            0.0238
+          ],
+          [
+            "Output \" migraine\"",
+            0.0224
+          ],
+          [
+            "Output \" trusty\"",
+            0.0197
+          ],
+          [
+            "Output \" little\"",
+            0.0174
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "few": "few things I",
+          "little": "little something to",
+          "pain": "pain reliever.",
+          "small": "small bottle of"
+        },
+        "patient": {
+          "pair": "pair of my",
+          "pain": "pain reliever.",
+          "few": "few things to",
+          "headache": "headache remedy."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 3,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He's been up half the night with gastroesophageal reflux every evening, so tonight he swallowed an",
+        "patient": "He's been up half the night with heartburn every evening, so tonight he swallowed an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.0235,
+        "patient": 0.5965
+      },
+      "language_penalty": 0.573,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" entire\"",
+            0.6873
+          ],
+          [
+            "Output \" extra\"",
+            0.1353
+          ],
+          [
+            "Output \" ant\"",
+            0.0235
+          ],
+          [
+            "Output \" aspirin\"",
+            0.0162
+          ],
+          [
+            "Output \" excessive\"",
+            0.0111
+          ],
+          [
+            "Output \" enormous\"",
+            0.0059
+          ],
+          [
+            "Output \" almost\"",
+            0.0041
+          ],
+          [
+            "Output \" empty\"",
+            0.0036
+          ],
+          [
+            "Output \" ice\"",
+            0.0032
+          ],
+          [
+            "Output \" aspir\"",
+            0.0032
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" ant\"",
+            0.5965
+          ],
+          [
+            "Output \" entire\"",
+            0.1937
+          ],
+          [
+            "Output \" over\"",
+            0.0629
+          ],
+          [
+            "Output \" extra\"",
+            0.0629
+          ],
+          [
+            "Output \" aspirin\"",
+            0.0124
+          ],
+          [
+            "Output \" empty\"",
+            0.0075
+          ],
+          [
+            "Output \" anti\"",
+            0.0052
+          ],
+          [
+            "Output \" old\"",
+            0.0046
+          ],
+          [
+            "Output \" acid\"",
+            0.004
+          ],
+          [
+            "Output \" Alka\"",
+            0.0035
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "entire": "entire bottle of",
+          "extra": "extra dose of",
+          "ant": "antacid.",
+          "aspirin": "aspirin. He"
+        },
+        "patient": {
+          "ant": "antacid.",
+          "entire": "entire bottle of",
+          "over": "over-the",
+          "extra": "extra dose of"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 4,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been suffering from chronic insomnia every night, so the doctor prescribed a",
+        "patient": "She's been staring at the ceiling for hours every night, so the doctor prescribed a"
+      },
+      "target_token": "Output \" sleeping\"",
+      "probabilities": {
+        "clinical": 0.1896,
+        "patient": 0.1646
+      },
+      "language_penalty": -0.025,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleeping\"",
+            0.1896
+          ],
+          [
+            "Output \" new\"",
+            0.1896
+          ],
+          [
+            "Output \" medication\"",
+            0.1476
+          ],
+          [
+            "Output \" sleep\"",
+            0.1476
+          ],
+          [
+            "Output \" low\"",
+            0.0543
+          ],
+          [
+            "Output \" prescription\"",
+            0.0373
+          ],
+          [
+            "Output \" sedative\"",
+            0.0257
+          ],
+          [
+            "Output \" medicine\"",
+            0.02
+          ],
+          [
+            "Output \" drug\"",
+            0.0146
+          ],
+          [
+            "Output \" \"",
+            0.0078
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" new\"",
+            0.2394
+          ],
+          [
+            "Output \" sleeping\"",
+            0.1646
+          ],
+          [
+            "Output \" sleep\"",
+            0.1646
+          ],
+          [
+            "Output \" sedative\"",
+            0.0534
+          ],
+          [
+            "Output \" light\"",
+            0.0471
+          ],
+          [
+            "Output \" medication\"",
+            0.0416
+          ],
+          [
+            "Output \" mild\"",
+            0.0197
+          ],
+          [
+            "Output \" prescription\"",
+            0.0185
+          ],
+          [
+            "Output \" night\"",
+            0.0127
+          ],
+          [
+            "Output \" special\"",
+            0.0099
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "sleeping": "sleeping pill.",
+          "new": "new medication.",
+          "medication": "medication to help",
+          "sleep": "sleep aid."
+        },
+        "patient": {
+          "new": "new medication.",
+          "sleeping": "sleeping pill.",
+          "sleep": "sleep aid.",
+          "sedative": "sedative."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 5,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My allergic conjunctivitis flares up every spring, so this year my doctor put me on a",
+        "patient": "My eyes are itchy and watering like crazy every spring, so this year my doctor put me on a"
+      },
+      "target_token": "Output \" drop\"",
+      "probabilities": {
+        "clinical": 0.0034,
+        "patient": 0.0021
+      },
+      "language_penalty": -0.0013,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" prescription\"",
+            0.3429
+          ],
+          [
+            "Output \" daily\"",
+            0.2671
+          ],
+          [
+            "Output \" new\"",
+            0.0596
+          ],
+          [
+            "Output \" low\"",
+            0.0526
+          ],
+          [
+            "Output \" steroid\"",
+            0.0361
+          ],
+          [
+            "Output \" preventative\"",
+            0.0171
+          ],
+          [
+            "Output \" topical\"",
+            0.0117
+          ],
+          [
+            "Output \" combination\"",
+            0.0117
+          ],
+          [
+            "Output \" year\"",
+            0.0104
+          ],
+          [
+            "Output \" prescribed\"",
+            0.0091
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" prescription\"",
+            0.3978
+          ],
+          [
+            "Output \" daily\"",
+            0.1879
+          ],
+          [
+            "Output \" low\"",
+            0.0691
+          ],
+          [
+            "Output \" new\"",
+            0.061
+          ],
+          [
+            "Output \" year\"",
+            0.012
+          ],
+          [
+            "Output \" nasal\"",
+            0.012
+          ],
+          [
+            "Output \" steroid\"",
+            0.0113
+          ],
+          [
+            "Output \" non\"",
+            0.01
+          ],
+          [
+            "Output \" \"",
+            0.01
+          ],
+          [
+            "Output \" Z\"",
+            0.0094
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "prescription": "prescription eye drop",
+          "daily": "daily antihistamine",
+          "new": "new medication called",
+          "low": "low dose of"
+        },
+        "patient": {
+          "prescription": "prescription for allergy",
+          "daily": "daily antihistamine",
+          "low": "low dose of",
+          "new": "new allergy medication"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 6,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been up all night with heartburn again, so first thing this morning I chewed a",
+        "patient": "I've been up all night with my gut on fire again, so first thing this morning I chewed a"
+      },
+      "target_token": "Output \" tablet\"",
+      "probabilities": {
+        "clinical": 0.0008,
+        "patient": 0.001
+      },
+      "language_penalty": 0.0002,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" few\"",
+            0.3637
+          ],
+          [
+            "Output \" couple\"",
+            0.1516
+          ],
+          [
+            "Output \" whole\"",
+            0.1181
+          ],
+          [
+            "Output \" piece\"",
+            0.1042
+          ],
+          [
+            "Output \" small\"",
+            0.0232
+          ],
+          [
+            "Output \" teaspoon\"",
+            0.0205
+          ],
+          [
+            "Output \" tablespoon\"",
+            0.0181
+          ],
+          [
+            "Output \" spoonful\"",
+            0.016
+          ],
+          [
+            "Output \" little\"",
+            0.0124
+          ],
+          [
+            "Output \" bit\"",
+            0.0097
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" few\"",
+            0.2116
+          ],
+          [
+            "Output \" handful\"",
+            0.0882
+          ],
+          [
+            "Output \" piece\"",
+            0.0882
+          ],
+          [
+            "Output \" couple\"",
+            0.0778
+          ],
+          [
+            "Output \" whole\"",
+            0.0535
+          ],
+          [
+            "Output \" small\"",
+            0.0417
+          ],
+          [
+            "Output \" spoonful\"",
+            0.0286
+          ],
+          [
+            "Output \" ginger\"",
+            0.0253
+          ],
+          [
+            "Output \" clove\"",
+            0.0223
+          ],
+          [
+            "Output \" teaspoon\"",
+            0.0197
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "few": "few pieces of",
+          "couple": "couple of ant",
+          "whole": "whole bunch of",
+          "piece": "piece of ginger"
+        },
+        "patient": {
+          "few": "few pieces of",
+          "handful": "handful of ginger",
+          "piece": "piece of ginger",
+          "couple": "couple of ginger"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 7,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My migraine hit me at the office, so I dimmed the screen and swallowed a",
+        "patient": "That thumping behind my eyes hit me at the office, so I dimmed the screen and swallowed a"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.0992,
+        "patient": 0.0478
+      },
+      "language_penalty": -0.0514,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" pain\"",
+            0.3925
+          ],
+          [
+            "Output \" migraine\"",
+            0.1124
+          ],
+          [
+            "Output \" pill\"",
+            0.0992
+          ],
+          [
+            "Output \" medication\"",
+            0.0682
+          ],
+          [
+            "Output \" couple\"",
+            0.0284
+          ],
+          [
+            "Output \" T\"",
+            0.0221
+          ],
+          [
+            "Output \" dose\"",
+            0.0195
+          ],
+          [
+            "Output \" prescription\"",
+            0.0172
+          ],
+          [
+            "Output \" medicine\"",
+            0.0152
+          ],
+          [
+            "Output \" few\"",
+            0.0152
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" mouthful\"",
+            0.1669
+          ],
+          [
+            "Output \" gulp\"",
+            0.0696
+          ],
+          [
+            "Output \" handful\"",
+            0.0542
+          ],
+          [
+            "Output \" pill\"",
+            0.0478
+          ],
+          [
+            "Output \" hard\"",
+            0.029
+          ],
+          [
+            "Output \" sip\"",
+            0.0272
+          ],
+          [
+            "Output \" bit\"",
+            0.0226
+          ],
+          [
+            "Output \" few\"",
+            0.0226
+          ],
+          [
+            "Output \" cough\"",
+            0.0165
+          ],
+          [
+            "Output \" cup\"",
+            0.0155
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "pain": "pain reliever.",
+          "migraine": "migraine medication.",
+          "pill": "pill. I",
+          "medication": "medication. I"
+        },
+        "patient": {
+          "mouthful": "mouthful of lukewarm",
+          "gulp": "gulp of water",
+          "handful": "handful of almonds",
+          "pill": "pill."
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 8,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "She's been dealing with sleep-onset insomnia lately, so before turning in she takes a",
+        "patient": "She just can't switch her brain off at bedtime lately, so before turning in she takes a"
+      },
+      "target_token": "Output \" sedative\"",
+      "probabilities": {
+        "clinical": 0.0021,
+        "patient": 0.0011
+      },
+      "language_penalty": -0.001,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" warm\"",
+            0.1911
+          ],
+          [
+            "Output \" few\"",
+            0.0797
+          ],
+          [
+            "Output \" small\"",
+            0.0703
+          ],
+          [
+            "Output \" dose\"",
+            0.0454
+          ],
+          [
+            "Output \" bath\"",
+            0.0401
+          ],
+          [
+            "Output \" cup\"",
+            0.0376
+          ],
+          [
+            "Output \" \"",
+            0.0332
+          ],
+          [
+            "Output \" short\"",
+            0.0312
+          ],
+          [
+            "Output \" couple\"",
+            0.0293
+          ],
+          [
+            "Output \" hot\"",
+            0.0293
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" few\"",
+            0.2184
+          ],
+          [
+            "Output \" warm\"",
+            0.0709
+          ],
+          [
+            "Output \" cup\"",
+            0.0487
+          ],
+          [
+            "Output \" walk\"",
+            0.043
+          ],
+          [
+            "Output \" bath\"",
+            0.038
+          ],
+          [
+            "Output \" small\"",
+            0.038
+          ],
+          [
+            "Output \" couple\"",
+            0.0335
+          ],
+          [
+            "Output \" long\"",
+            0.0278
+          ],
+          [
+            "Output \" short\"",
+            0.0261
+          ],
+          [
+            "Output \" little\"",
+            0.0203
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "warm": "warm bath,",
+          "few": "few minutes to",
+          "small": "small dose of",
+          "dose": "dose of melatonin"
+        },
+        "patient": {
+          "few": "few minutes to",
+          "warm": "warm bath,",
+          "cup": "cup of chamomile",
+          "walk": "walk in the"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 9,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "He gets allergic rhinitis every time the grass gets cut, so before mowing he sprays some",
+        "patient": "He's been sniffly and congested every time the grass gets cut, so before mowing he sprays some"
+      },
+      "target_token": "Output \" nasal\"",
+      "probabilities": {
+        "clinical": 0.001,
+        "patient": 0.0001
+      },
+      "language_penalty": -0.0009,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" kind\"",
+            0.1132
+          ],
+          [
+            "Output \" antihist\"",
+            0.0828
+          ],
+          [
+            "Output \" of\"",
+            0.0731
+          ],
+          [
+            "Output \" stuff\"",
+            0.0324
+          ],
+          [
+            "Output \" on\"",
+            0.0286
+          ],
+          [
+            "Output \" sort\"",
+            0.0237
+          ],
+          [
+            "Output \" spray\"",
+            0.0174
+          ],
+          [
+            "Output \" lawn\"",
+            0.0174
+          ],
+          [
+            "Output \" type\"",
+            0.0163
+          ],
+          [
+            "Output \" allergy\"",
+            0.0163
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" of\"",
+            0.1266
+          ],
+          [
+            "Output \" on\"",
+            0.0768
+          ],
+          [
+            "Output \" kind\"",
+            0.0678
+          ],
+          [
+            "Output \" weed\"",
+            0.0386
+          ],
+          [
+            "Output \" stuff\"",
+            0.022
+          ],
+          [
+            "Output \" bug\"",
+            0.0207
+          ],
+          [
+            "Output \" spray\"",
+            0.0161
+          ],
+          [
+            "Output \" liquid\"",
+            0.0161
+          ],
+          [
+            "Output \" sort\"",
+            0.0161
+          ],
+          [
+            "Output \" lawn\"",
+            0.0161
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "kind": "kind of antihist",
+          "antihist": "antihistamine on",
+          "of": "of the grass",
+          "stuff": "stuff on the"
+        },
+        "patient": {
+          "of": "of the stuff",
+          "on": "on the lawn",
+          "kind": "kind of weed",
+          "weed": "weed killer on"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 10,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I had severe insomnia before the flight, so at the airport shop I bought a",
+        "patient": "I couldn't get a wink of sleep before the flight, so at the airport shop I bought a"
+      },
+      "target_token": "Output \" sleeping\"",
+      "probabilities": {
+        "clinical": 0.0237,
+        "patient": 0.0003
+      },
+      "language_penalty": -0.0234,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" sleep\"",
+            0.1061
+          ],
+          [
+            "Output \" travel\"",
+            0.0826
+          ],
+          [
+            "Output \" bottle\"",
+            0.0729
+          ],
+          [
+            "Output \" new\"",
+            0.0501
+          ],
+          [
+            "Output \" small\"",
+            0.039
+          ],
+          [
+            "Output \" few\"",
+            0.0344
+          ],
+          [
+            "Output \" book\"",
+            0.0324
+          ],
+          [
+            "Output \" melatonin\"",
+            0.0304
+          ],
+          [
+            "Output \" \"\"",
+            0.0286
+          ],
+          [
+            "Output \" sleeping\"",
+            0.0237
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" book\"",
+            0.2193
+          ],
+          [
+            "Output \" new\"",
+            0.133
+          ],
+          [
+            "Output \" few\"",
+            0.0381
+          ],
+          [
+            "Output \" small\"",
+            0.0336
+          ],
+          [
+            "Output \" bag\"",
+            0.0297
+          ],
+          [
+            "Output \" copy\"",
+            0.0262
+          ],
+          [
+            "Output \" couple\"",
+            0.0231
+          ],
+          [
+            "Output \" magazine\"",
+            0.0204
+          ],
+          [
+            "Output \" travel\"",
+            0.0204
+          ],
+          [
+            "Output \" bottle\"",
+            0.0132
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "sleep": "sleep mask and",
+          "travel": "travel pillow and",
+          "bottle": "bottle of melatonin",
+          "new": "new pillow and"
+        },
+        "patient": {
+          "book": "book. I",
+          "new": "new book.",
+          "few": "few things.",
+          "small": "small, travel"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 11,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "After that greasy takeaway my acid reflux flared again, so I rummaged in the cupboard for an",
+        "patient": "After that greasy takeaway my gut was burning again, so I rummaged in the cupboard for an"
+      },
+      "target_token": "Output \" ant\"",
+      "probabilities": {
+        "clinical": 0.7484,
+        "patient": 0.0102
+      },
+      "language_penalty": -0.7382,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" ant\"",
+            0.7484
+          ],
+          [
+            "Output \" old\"",
+            0.0542
+          ],
+          [
+            "Output \" over\"",
+            0.0478
+          ],
+          [
+            "Output \" anti\"",
+            0.0256
+          ],
+          [
+            "Output \" OTC\"",
+            0.0199
+          ],
+          [
+            "Output \" antidote\"",
+            0.0121
+          ],
+          [
+            "Output \" apple\"",
+            0.0083
+          ],
+          [
+            "Output \" easy\"",
+            0.0065
+          ],
+          [
+            "Output \" instant\"",
+            0.0057
+          ],
+          [
+            "Output \" emergency\"",
+            0.0057
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" alternative\"",
+            0.181
+          ],
+          [
+            "Output \" old\"",
+            0.1409
+          ],
+          [
+            "Output \" antidote\"",
+            0.0969
+          ],
+          [
+            "Output \" apple\"",
+            0.0969
+          ],
+          [
+            "Output \" emergency\"",
+            0.0855
+          ],
+          [
+            "Output \" instant\"",
+            0.0356
+          ],
+          [
+            "Output \" anti\"",
+            0.0356
+          ],
+          [
+            "Output \" answer\"",
+            0.0356
+          ],
+          [
+            "Output \" easy\"",
+            0.0314
+          ],
+          [
+            "Output \" ingredient\"",
+            0.0191
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "ant": "antacid.",
+          "old": "old remedy.",
+          "over": "over-the",
+          "anti": "anti-acid"
+        },
+        "patient": {
+          "alternative": "alternative. I",
+          "old": "old tin of",
+          "antidote": "antidote. I",
+          "apple": "apple. I"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 12,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "That migraine came on right before the presentation, so I quickly took a",
+        "patient": "That splitting headache came on right before the presentation, so I quickly took a"
+      },
+      "target_token": "Output \" pill\"",
+      "probabilities": {
+        "clinical": 0.0211,
+        "patient": 0.0135
+      },
+      "language_penalty": -0.0076,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" few\"",
+            0.227
+          ],
+          [
+            "Output \" break\"",
+            0.1072
+          ],
+          [
+            "Output \" couple\"",
+            0.0946
+          ],
+          [
+            "Output \" sip\"",
+            0.065
+          ],
+          [
+            "Output \" pain\"",
+            0.0574
+          ],
+          [
+            "Output \" quick\"",
+            0.0447
+          ],
+          [
+            "Output \" deep\"",
+            0.0211
+          ],
+          [
+            "Output \" pill\"",
+            0.0211
+          ],
+          [
+            "Output \" step\"",
+            0.0145
+          ],
+          [
+            "Output \" picture\"",
+            0.0145
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" few\"",
+            0.1977
+          ],
+          [
+            "Output \" pain\"",
+            0.154
+          ],
+          [
+            "Output \" couple\"",
+            0.1199
+          ],
+          [
+            "Output \" break\"",
+            0.0824
+          ],
+          [
+            "Output \" quick\"",
+            0.0389
+          ],
+          [
+            "Output \" dose\"",
+            0.0222
+          ],
+          [
+            "Output \" look\"",
+            0.0162
+          ],
+          [
+            "Output \" shot\"",
+            0.0143
+          ],
+          [
+            "Output \" sip\"",
+            0.0135
+          ],
+          [
+            "Output \" pill\"",
+            0.0135
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "few": "few notes and",
+          "break": "break and went",
+          "couple": "couple of pills",
+          "sip": "sip of water"
+        },
+        "patient": {
+          "few": "few deep breaths",
+          "pain": "pain reliever and",
+          "couple": "couple of ibuprofen",
+          "break": "break to get"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    },
+    {
+      "index": 13,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Every spring my seasonal allergies act up at the picnic, so I always pack some",
+        "patient": "Every spring my nose runs and my eyes water at the picnic, so I always pack some"
+      },
+      "target_token": "Output \" antihist\"",
+      "probabilities": {
+        "clinical": 0.0679,
+        "patient": 0.0301
+      },
+      "language_penalty": -0.0378,
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" allergy\"",
+            0.5017
+          ],
+          [
+            "Output \" antihist\"",
+            0.0679
+          ],
+          [
+            "Output \" extra\"",
+            0.0467
+          ],
+          [
+            "Output \" over\"",
+            0.0283
+          ],
+          [
+            "Output \" relief\"",
+            0.022
+          ],
+          [
+            "Output \" medicine\"",
+            0.022
+          ],
+          [
+            "Output \" kind\"",
+            0.0172
+          ],
+          [
+            "Output \" medication\"",
+            0.0152
+          ],
+          [
+            "Output \" tissues\"",
+            0.0152
+          ],
+          [
+            "Output \" remedies\"",
+            0.0152
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" tissues\"",
+            0.3661
+          ],
+          [
+            "Output \" allergy\"",
+            0.2516
+          ],
+          [
+            "Output \" antihist\"",
+            0.0301
+          ],
+          [
+            "Output \" eye\"",
+            0.0265
+          ],
+          [
+            "Output \" kind\"",
+            0.0207
+          ],
+          [
+            "Output \" extra\"",
+            0.0207
+          ],
+          [
+            "Output \" tissue\"",
+            0.0194
+          ],
+          [
+            "Output \" of\"",
+            0.0151
+          ],
+          [
+            "Output \" sort\"",
+            0.0133
+          ],
+          [
+            "Output \" wipes\"",
+            0.0125
+          ]
+        ]
+      },
+      "forced_targets": [],
+      "continuations": {
+        "clinical": {
+          "allergy": "allergy medicine.",
+          "antihist": "antihistamines.",
+          "extra": "extra medicine.",
+          "over": "over-the"
+        },
+        "patient": {
+          "tissues": "tissues.",
+          "allergy": "allergy medicine.",
+          "antihist": "antihistamines.",
+          "eye": "eye drops and"
+        }
+      },
+      "circuit_diff": null,
+      "screening": null
+    }
+  ]
+}

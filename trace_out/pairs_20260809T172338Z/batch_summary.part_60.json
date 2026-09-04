@@ -1,0 +1,882 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 60,
+  "pairs_requested": 10,
+  "completed": true,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "752f04c3cb20",
+    "runner_image": "20260720.247.2"
+  },
+  "results": [
+    {
+      "index": 60,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At brunch my mom had a heart attack, so my dad rushed her to the nearest",
+        "patient": "At brunch my mom's chest got crushing and her jaw ached, so my dad rushed her to the nearest"
+      },
+      "target_token": "Output \" hospital\"",
+      "probabilities": {
+        "clinical": 0.746,
+        "patient": 0.469
+      },
+      "language_penalty": -0.277,
+      "clinical_mass": {
+        "clinical": 0.3944,
+        "patient": 0.3886
+      },
+      "error_share": {
+        "clinical": 0.0931,
+        "patient": 0.1037
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.089)",
+        "patient": "embedding \u2192 [L25\u00b7O] words related to emergency response | emergency \u2192 Output \" emergency\" (p=0.152)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" hospital\"",
+            0.746
+          ],
+          [
+            "Output \" ER\"",
+            0.101
+          ],
+          [
+            "Output \" emergency\"",
+            0.089
+          ],
+          [
+            "Output \" urgent\"",
+            0.012
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" hospital\"",
+            0.469
+          ],
+          [
+            "Output \" ER\"",
+            0.173
+          ],
+          [
+            "Output \" emergency\"",
+            0.152
+          ],
+          [
+            "Output \" urgent\"",
+            0.082
+          ],
+          [
+            "Output \" doctor\"",
+            0.026
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 898,
+        "unique_to_a": 423,
+        "unique_to_b": 512
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260809T172338Z/index_60.html",
+        "png": "trace_out/pairs_20260809T172338Z/index_60.png",
+        "diff_html": "trace_out/pairs_20260809T172338Z/index_60_diff.html",
+        "diff_png": "trace_out/pairs_20260809T172338Z/index_60_diff.png"
+      }
+    },
+    {
+      "index": 61,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The pharmacist warned my sedative really knocks me out, so before my shift I skip my morning",
+        "patient": "The pharmacist warned my nerve-calmer really knocks me out, so before my shift I skip my morning"
+      },
+      "target_token": "Output \" dose\"",
+      "probabilities": {
+        "clinical": 0.241,
+        "patient": 0.447
+      },
+      "language_penalty": 0.20600000000000002,
+      "clinical_mass": {
+        "clinical": 0.2508,
+        "patient": 0.2685
+      },
+      "error_share": {
+        "clinical": 0.1175,
+        "patient": 0.1212
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] mentions of coffee, along with associated words like \u2192 [L25\u00b7O] words associated with dining at a cafe or restaurant \u2192 Output \" coffee\" (p=0.241)",
+        "patient": "embedding \u2192 [L22\u00b7O] food items and coffee, especially those related to F \u2192 Output \" cup\" (p=0.069)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dose\"",
+            0.241
+          ],
+          [
+            "Output \" coffee\"",
+            0.241
+          ],
+          [
+            "Output \" cup\"",
+            0.114
+          ],
+          [
+            "Output \" meds\"",
+            0.101
+          ],
+          [
+            "Output \" pill\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dose\"",
+            0.447
+          ],
+          [
+            "Output \" coffee\"",
+            0.1
+          ],
+          [
+            "Output \" cup\"",
+            0.069
+          ],
+          [
+            "Output \" meds\"",
+            0.061
+          ],
+          [
+            "Output \" pill\"",
+            0.061
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1093,
+        "unique_to_a": 352,
+        "unique_to_b": 404
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260809T172338Z/index_61.html",
+        "png": "trace_out/pairs_20260809T172338Z/index_61.png",
+        "diff_html": "trace_out/pairs_20260809T172338Z/index_61_diff.html",
+        "diff_png": "trace_out/pairs_20260809T172338Z/index_61_diff.png"
+      }
+    },
+    {
+      "index": 62,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Walking to the bus he had severe dyspnea, so his neighbor grabbed his rescue",
+        "patient": "Walking to the bus he kept gasping like a fish out of water, so his neighbor grabbed his rescue"
+      },
+      "target_token": "Output \" inhal\"",
+      "probabilities": {
+        "clinical": 0.73,
+        "patient": 0.328
+      },
+      "language_penalty": -0.40199999999999997,
+      "clinical_mass": {
+        "clinical": 0.299,
+        "patient": 0.1798
+      },
+      "error_share": {
+        "clinical": 0.1113,
+        "patient": 0.106
+      },
+      "top_path": {
+        "clinical": "[L17\u00b7S]  \u2192 [L21\u00b7C] medical procedures related to the arterial and respi \u2192 Output \" breathing\" (p=0.032)",
+        "patient": "[L23\u00b7S]  \u2192 Output \" inhal\" (p=0.328)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" inhal\"",
+            0.73
+          ],
+          [
+            "Output \" kit\"",
+            0.06
+          ],
+          [
+            "Output \" bag\"",
+            0.032
+          ],
+          [
+            "Output \" breathing\"",
+            0.032
+          ],
+          [
+            "Output \" mask\"",
+            0.02
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" inhal\"",
+            0.328
+          ],
+          [
+            "Output \" vest\"",
+            0.073
+          ],
+          [
+            "Output \" kit\"",
+            0.057
+          ],
+          [
+            "Output \" tube\"",
+            0.039
+          ],
+          [
+            "Output \" dog\"",
+            0.035
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 949,
+        "unique_to_a": 362,
+        "unique_to_b": 553
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260809T172338Z/index_62.html",
+        "png": "trace_out/pairs_20260809T172338Z/index_62.png",
+        "diff_html": "trace_out/pairs_20260809T172338Z/index_62_diff.html",
+        "diff_png": "trace_out/pairs_20260809T172338Z/index_62_diff.png"
+      }
+    },
+    {
+      "index": 63,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "In the meeting I had sudden vertigo, so I gripped the nearest",
+        "patient": "In the meeting the room started spinning and everything went fuzzy, so I gripped the nearest"
+      },
+      "target_token": "Output \" chair\"",
+      "probabilities": {
+        "clinical": 0.09,
+        "patient": 0.087
+      },
+      "language_penalty": -0.0030000000000000027,
+      "clinical_mass": {
+        "clinical": 0.1137,
+        "patient": 0.0973
+      },
+      "error_share": {
+        "clinical": 0.1031,
+        "patient": 0.1047
+      },
+      "top_path": {
+        "clinical": "[L19\u00b7S]  \u2192 [L21\u00b7S] code and programming syntax, specifically related to \u2192 Output \" object\" (p=0.116)",
+        "patient": "[L19\u00b7S]  \u2192 [L21\u00b7S] code and programming syntax, specifically related to \u2192 Output \" object\" (p=0.111)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" thing\"",
+            0.314
+          ],
+          [
+            "Output \" object\"",
+            0.116
+          ],
+          [
+            "Output \" chair\"",
+            0.09
+          ],
+          [
+            "Output \" table\"",
+            0.062
+          ],
+          [
+            "Output \" person\"",
+            0.048
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" thing\"",
+            0.344
+          ],
+          [
+            "Output \" object\"",
+            0.111
+          ],
+          [
+            "Output \" chair\"",
+            0.087
+          ],
+          [
+            "Output \" person\"",
+            0.067
+          ],
+          [
+            "Output \" table\"",
+            0.06
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 988,
+        "unique_to_a": 367,
+        "unique_to_b": 456
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260809T172338Z/index_63.html",
+        "png": "trace_out/pairs_20260809T172338Z/index_63.png",
+        "diff_html": "trace_out/pairs_20260809T172338Z/index_63_diff.html",
+        "diff_png": "trace_out/pairs_20260809T172338Z/index_63_diff.png"
+      }
+    },
+    {
+      "index": 64,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My grandma had a transient ischemic attack and her words came out all jumbled, so at the clinic they scanned her",
+        "patient": "My grandma had a mini-stroke and her words came out all jumbled, so at the clinic they scanned her"
+      },
+      "target_token": "Output \" brain\"",
+      "probabilities": {
+        "clinical": 0.633,
+        "patient": 0.652
+      },
+      "language_penalty": 0.019000000000000017,
+      "clinical_mass": {
+        "clinical": 0.3983,
+        "patient": 0.3625
+      },
+      "error_share": {
+        "clinical": 0.1072,
+        "patient": 0.101
+      },
+      "top_path": {
+        "clinical": "[L22\u00b7S]  \u2192 [L23\u00b7C] medical terminology related to the brain and nervous \u2192 [L24\u00b7C] words related to the study of biology and medicine,  \u2192 [L25\u00b7O] the word \"mind\" or the letter 't' following an apost \u2192 Output \" brain\" (p=0.633)",
+        "patient": "[L22\u00b7S]  \u2192 [L23\u00b7C] medical terminology related to the brain and nervous \u2192 [L24\u00b7C] words related to the study of biology and medicine,  \u2192 [L25\u00b7O] the word \"mind\" or the letter 't' following an apost \u2192 Output \" brain\" (p=0.652)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" brain\"",
+            0.633
+          ],
+          [
+            "Output \" head\"",
+            0.182
+          ],
+          [
+            "Output \" and\"",
+            0.076
+          ],
+          [
+            "Output \".\"",
+            0.028
+          ],
+          [
+            "Output \" for\"",
+            0.013
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" brain\"",
+            0.652
+          ],
+          [
+            "Output \" head\"",
+            0.188
+          ],
+          [
+            "Output \" and\"",
+            0.054
+          ],
+          [
+            "Output \" for\"",
+            0.012
+          ],
+          [
+            "Output \".\"",
+            0.011
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1002,
+        "unique_to_a": 359,
+        "unique_to_b": 387
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260809T172338Z/index_64.html",
+        "png": "trace_out/pairs_20260809T172338Z/index_64.png",
+        "diff_html": "trace_out/pairs_20260809T172338Z/index_64_diff.html",
+        "diff_png": "trace_out/pairs_20260809T172338Z/index_64_diff.png"
+      }
+    },
+    {
+      "index": 65,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "Ever since my breakup I keep having anxiety attacks and can't relax, so my doctor bumped up my",
+        "patient": "Ever since my breakup I keep feeling on edge and can't relax, so my doctor bumped up my"
+      },
+      "target_token": "Output \" dose\"",
+      "probabilities": {
+        "clinical": 0.084,
+        "patient": 0.096
+      },
+      "language_penalty": 0.011999999999999997,
+      "clinical_mass": {
+        "clinical": 0.4131,
+        "patient": 0.3734
+      },
+      "error_share": {
+        "clinical": 0.1031,
+        "patient": 0.1019
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" anxiety\" (p=0.084)",
+        "patient": "[L24\u00b7S]  \u2192 Output \" Xan\" (p=0.109)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" Xan\"",
+            0.139
+          ],
+          [
+            "Output \" anxiety\"",
+            0.084
+          ],
+          [
+            "Output \" dosage\"",
+            0.084
+          ],
+          [
+            "Output \" dose\"",
+            0.084
+          ],
+          [
+            "Output \" meds\"",
+            0.065
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" Xan\"",
+            0.109
+          ],
+          [
+            "Output \" dose\"",
+            0.096
+          ],
+          [
+            "Output \" anxiety\"",
+            0.075
+          ],
+          [
+            "Output \" dosage\"",
+            0.066
+          ],
+          [
+            "Output \" meds\"",
+            0.058
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1138,
+        "unique_to_a": 305,
+        "unique_to_b": 335
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260809T172338Z/index_65.html",
+        "png": "trace_out/pairs_20260809T172338Z/index_65.png",
+        "diff_html": "trace_out/pairs_20260809T172338Z/index_65_diff.html",
+        "diff_png": "trace_out/pairs_20260809T172338Z/index_65_diff.png"
+      }
+    },
+    {
+      "index": 66,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My uncle is in respiratory distress and his lips are turning blue, so the medics slapped on an oxygen",
+        "patient": "My uncle can't catch his breath and his lips are turning blue, so the medics slapped on an oxygen"
+      },
+      "target_token": "Output \" mask\"",
+      "probabilities": {
+        "clinical": 0.898,
+        "patient": 0.887
+      },
+      "language_penalty": -0.01100000000000001,
+      "clinical_mass": {
+        "clinical": 0.3556,
+        "patient": 0.3069
+      },
+      "error_share": {
+        "clinical": 0.1125,
+        "patient": 0.1069
+      },
+      "top_path": {
+        "clinical": "[L23\u00b7S]  \u2192 Output \" mask\" (p=0.898)",
+        "patient": "[L23\u00b7S]  \u2192 Output \" mask\" (p=0.887)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" mask\"",
+            0.898
+          ],
+          [
+            "Output \" tank\"",
+            0.027
+          ],
+          [
+            "Output \" tube\"",
+            0.013
+          ],
+          [
+            "Output \" cann\"",
+            0.01
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" mask\"",
+            0.887
+          ],
+          [
+            "Output \" tank\"",
+            0.044
+          ],
+          [
+            "Output \" tube\"",
+            0.016
+          ],
+          [
+            "Output \" tent\"",
+            0.01
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1010,
+        "unique_to_a": 337,
+        "unique_to_b": 366
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260809T172338Z/index_66.html",
+        "png": "trace_out/pairs_20260809T172338Z/index_66.png",
+        "diff_html": "trace_out/pairs_20260809T172338Z/index_66_diff.html",
+        "diff_png": "trace_out/pairs_20260809T172338Z/index_66_diff.png"
+      }
+    },
+    {
+      "index": 67,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "My teen has a circadian rhythm disorder and never sleeps deep, so the sleep clinic hooked her up to a brain",
+        "patient": "My teen keeps tossing and turning and never sleeps deep, so the sleep clinic hooked her up to a brain"
+      },
+      "target_token": "Output \" monitor\"",
+      "probabilities": {
+        "clinical": 0.229,
+        "patient": 0.239
+      },
+      "language_penalty": 0.009999999999999981,
+      "clinical_mass": {
+        "clinical": 0.3262,
+        "patient": 0.2927
+      },
+      "error_share": {
+        "clinical": 0.1074,
+        "patient": 0.1035
+      },
+      "top_path": {
+        "clinical": "[L22\u00b7S]  \u2192 Output \" wave\" (p=0.123)",
+        "patient": "[L22\u00b7S]  \u2192 Output \" wave\" (p=0.211)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" monitor\"",
+            0.229
+          ],
+          [
+            "Output \" wave\"",
+            0.123
+          ],
+          [
+            "Output \"wave\"",
+            0.096
+          ],
+          [
+            "Output \"-\"",
+            0.096
+          ],
+          [
+            "Output \" machine\"",
+            0.075
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" monitor\"",
+            0.239
+          ],
+          [
+            "Output \" wave\"",
+            0.211
+          ],
+          [
+            "Output \"wave\"",
+            0.113
+          ],
+          [
+            "Output \"-\"",
+            0.1
+          ],
+          [
+            "Output \" activity\"",
+            0.078
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1015,
+        "unique_to_a": 327,
+        "unique_to_b": 371
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260809T172338Z/index_67.html",
+        "png": "trace_out/pairs_20260809T172338Z/index_67.png",
+        "diff_html": "trace_out/pairs_20260809T172338Z/index_67_diff.html",
+        "diff_png": "trace_out/pairs_20260809T172338Z/index_67_diff.png"
+      }
+    },
+    {
+      "index": 68,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "The doctor said my new anticoagulant is really potent, so before my dental appointment I told the",
+        "patient": "The doctor said my new blood-thinner is really potent, so before my dental appointment I told the"
+      },
+      "target_token": "Output \" dentist\"",
+      "probabilities": {
+        "clinical": 0.254,
+        "patient": 0.225
+      },
+      "language_penalty": -0.028999999999999998,
+      "clinical_mass": {
+        "clinical": 0.4169,
+        "patient": 0.3677
+      },
+      "error_share": {
+        "clinical": 0.1082,
+        "patient": 0.1076
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" dental\" (p=0.136)",
+        "patient": "embedding \u2192 Output \" dental\" (p=0.106)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" dentist\"",
+            0.254
+          ],
+          [
+            "Output \" dental\"",
+            0.136
+          ],
+          [
+            "Output \" nurse\"",
+            0.094
+          ],
+          [
+            "Output \" receptionist\"",
+            0.094
+          ],
+          [
+            "Output \" hygien\"",
+            0.083
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" dentist\"",
+            0.225
+          ],
+          [
+            "Output \" receptionist\"",
+            0.121
+          ],
+          [
+            "Output \" nurse\"",
+            0.106
+          ],
+          [
+            "Output \" dental\"",
+            0.106
+          ],
+          [
+            "Output \" hygien\"",
+            0.083
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1037,
+        "unique_to_a": 269,
+        "unique_to_b": 407
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260809T172338Z/index_68.html",
+        "png": "trace_out/pairs_20260809T172338Z/index_68.png",
+        "diff_html": "trace_out/pairs_20260809T172338Z/index_68_diff.html",
+        "diff_png": "trace_out/pairs_20260809T172338Z/index_68_diff.png"
+      }
+    },
+    {
+      "index": 69,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "At the mall my dad had acute hemiparesis and his face slid sideways, so security grabbed a",
+        "patient": "At the mall my dad's arm went dead and his face slid sideways, so security grabbed a"
+      },
+      "target_token": "Output \" wheelchair\"",
+      "probabilities": {
+        "clinical": 0.154,
+        "patient": 0.058
+      },
+      "language_penalty": -0.096,
+      "clinical_mass": {
+        "clinical": 0.1827,
+        "patient": 0.1666
+      },
+      "error_share": {
+        "clinical": 0.1128,
+        "patient": 0.1049
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" shopping\" (p=0.044)",
+        "patient": "embedding \u2192 Output \" fire\" (p=0.058)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" wheelchair\"",
+            0.154
+          ],
+          [
+            "Output \" chair\"",
+            0.137
+          ],
+          [
+            "Output \" cart\"",
+            0.12
+          ],
+          [
+            "Output \" shopping\"",
+            0.044
+          ],
+          [
+            "Output \" cane\"",
+            0.034
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" cart\"",
+            0.108
+          ],
+          [
+            "Output \" wheelchair\"",
+            0.058
+          ],
+          [
+            "Output \" fire\"",
+            0.058
+          ],
+          [
+            "Output \" stretcher\"",
+            0.051
+          ],
+          [
+            "Output \" chair\"",
+            0.045
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 1037,
+        "unique_to_a": 472,
+        "unique_to_b": 476
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260809T172338Z/index_69.html",
+        "png": "trace_out/pairs_20260809T172338Z/index_69.png",
+        "diff_html": "trace_out/pairs_20260809T172338Z/index_69_diff.html",
+        "diff_png": "trace_out/pairs_20260809T172338Z/index_69_diff.png"
+      }
+    }
+  ]
+}

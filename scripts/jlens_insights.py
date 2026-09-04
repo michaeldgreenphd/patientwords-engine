@@ -81,7 +81,7 @@ def collect(trace_root: Path):
     holdout_excluded = 0
     for part in sorted(trace_root.glob("*__jlens_*/jlens_summary.part_*.json")):
         dataset = part.parent.name.split("__jlens_")[0]
-        if (dataset.startswith("txcorpus_")
+        if (dataset.startswith(("txcorpus_", "drift_sentinel_"))
                 or dataset.endswith(("_txopus", "_txplacebo", "__context"))):
             # translated/placebo/context-arm lens readouts are NOT patient
             # profiles: their "patient" side is a rewrite or a prefixed prompt.
@@ -89,6 +89,11 @@ def collect(trace_root: Path):
             # here would pollute the formation census (txcorpus guard
             # 2026-07-15; arm stems added 2026-07-16 before the first census
             # regen with txopus/txplacebo lens dirs on disk).
+            # drift_sentinel_ dirs are the daily instrument check: the same 3
+            # frozen pairs re-measured every day under a dated stem, so each
+            # sweep would enter the census once per sentinel day and inflate
+            # every replicate-sensitive count (owner-approved fix 2026-08-21,
+            # JLENS-SENTINEL-CONTAMINATION-20260821).
             continue
         try:
             summary = json.loads(part.read_text(encoding="utf-8"))
@@ -234,12 +239,6 @@ def analyze(per_model, base_model, it_model, exemplar_count, render_map=None):
             "patient": quantiles([r["pat_formed"] for r in rows]),
             "clinical_never": sum(1 for r in rows if r["clin_formed"] is None),
             "patient_never": sum(1 for r in rows if r["pat_formed"] is None),
-            # pre-computed never-formed shares (count / n_pairs) so the First Readings
-            # figure need not divide at render; frontend prefers these, falls back.
-            "clinical_never_pct": (round(100 * sum(1 for r in rows if r["clin_formed"] is None)
-                                         / len(rows), 1) if rows else None),
-            "patient_never_pct": (round(100 * sum(1 for r in rows if r["pat_formed"] is None)
-                                        / len(rows), 1) if rows else None),
             "lag": quantiles([r["pat_formed"] - r["clin_formed"] for r in rows
                               if r["pat_formed"] is not None and r["clin_formed"] is not None]),
             "n_layers": rows[0]["n_layers"] if rows else None,
@@ -265,10 +264,7 @@ def analyze(per_model, base_model, it_model, exemplar_count, render_map=None):
         out["taxonomy"][name] = entry
     out["window_sensitivity"] = window_sensitivity(rows)
 
-    # exemplar trajectories for the concept figure: one held, one hijack, one capture.
-    # Each carries its verbatim {clinical, patient} sentences (printed above the film
-    # strip with pivot words lit) and a committed render path for the '↗ trace' link;
-    # selection prefers a candidate that has both (owner 2026-07-20).
+    # exemplar trajectories for the concept figure: one held, one hijack, one capture
     exemplars = []
     rmap = render_map or {}
 
@@ -358,6 +354,20 @@ def main():
     rmap = render_map_from_scenarios(scenarios) if scenarios else {}
     payload = analyze(per_model, args.base_model, args.it_model, args.exemplars, render_map=rmap)
     payload["holdout_excluded"] = holdout_excluded  # Amendment 1/3 seal (sealed rows dropped)
+    # Owner decision D1 (2026-08-21, LENS-HOST-SEPARATION-20260731): the two
+    # served host ids stopped returning identical readouts on 2026-07-31 and
+    # stepped again on 2026-08-14 with byte-identical request parameters, so
+    # committed lens readouts span up to three host-side instrument eras.
+    # scripts/lens_sentinel_check.py tracks the eras going forward.
+    payload["host_state_provenance"] = {
+        "note": ("hosted lens readouts span up to three host-side instrument eras; "
+                 "era boundaries 2026-07-31 and 2026-08-14 (request parameters "
+                 "byte-identical throughout). Census batch re-measured under the "
+                 "current host state 2026-08-21; non-census lens dirs may mix eras."),
+        "era_boundaries": ["2026-07-31", "2026-08-14"],
+        "census_remeasured_utc": "2026-08-21",
+        "detail": "engine docs/critic/critic_20260821.md Finding 1; scripts/lens_sentinel_check.py",
+    }
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")

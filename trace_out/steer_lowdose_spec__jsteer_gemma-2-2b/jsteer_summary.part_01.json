@@ -1,0 +1,1221 @@
+{
+ "mode": "jsteer",
+ "backend": "jlens-hosted",
+ "graph_model": "gemma-2-2b",
+ "spec": "data/steer_lowdose_spec.json",
+ "layers": [
+  19,
+  21
+ ],
+ "strengths": [
+  0.05,
+  0.1,
+  0.15
+ ],
+ "top_n": 8,
+ "start_index": 1,
+ "endpoint": "/api/lens/prompt",
+ "_": "EXPLORATORY steering-swap pilot (docs/lens_steering_design.md). No confirmatory claim; fresh pre-registered endpoints required first.",
+ "method_credit": "Jacobian lens + steering: Gurnee et al., Transformer Circuits 2026; hosted by neuronpedia.org",
+ "results": [
+  {
+   "index": 1,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 12,
+   "class": "hijack",
+   "target_token": " medication",
+   "winner_token": " time",
+   "calls": {
+    "baseline": {
+     "first_layer": 20,
+     "final_rank": null,
+     "completion": " time",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": 19,
+     "final_rank": null,
+     "completion": " time",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 19,
+     "final_rank": 4,
+     "completion": " time",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " time",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": 20,
+     "final_rank": 5,
+     "completion": " time",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 20,
+     "final_rank": 2,
+     "completion": " time",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 20,
+     "final_rank": 2,
+     "completion": " time",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": 19,
+     "final_rank": 4,
+     "completion": " time",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 20,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 2,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 19,
+   "class": "hijack",
+   "target_token": " medication",
+   "winner_token": " break",
+   "calls": {
+    "baseline": {
+     "first_layer": 19,
+     "final_rank": null,
+     "completion": " break",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " break",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " break",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " break",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " break",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " break",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " break",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 3,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 32,
+   "class": "hijack",
+   "target_token": " psychiatrist",
+   "winner_token": " doctor",
+   "calls": {
+    "baseline": {
+     "first_layer": 8,
+     "final_rank": null,
+     "completion": " doctor",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": 8,
+     "final_rank": 8,
+     "completion": " doctor",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 8,
+     "final_rank": 4,
+     "completion": " doctor",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 8,
+     "final_rank": 3,
+     "completion": " doctor",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": 8,
+     "final_rank": 8,
+     "completion": " doctor",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 8,
+     "final_rank": 3,
+     "completion": " doctor",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 8,
+     "final_rank": 2,
+     "completion": " doctor",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": 8,
+     "final_rank": 1,
+     "completion": " psychiatrist",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 8,
+     "final_rank": 1,
+     "completion": " psychiatrist",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 4,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 37,
+   "class": "hijack",
+   "target_token": " medication",
+   "winner_token": " doctor",
+   "calls": {
+    "baseline": {
+     "first_layer": 19,
+     "final_rank": null,
+     "completion": " doctor",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " doctor",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " doctor",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 5,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 49,
+   "class": "hijack",
+   "target_token": " lungs",
+   "winner_token": " heart",
+   "calls": {
+    "baseline": {
+     "first_layer": 18,
+     "final_rank": null,
+     "completion": " heart",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": 18,
+     "final_rank": 8,
+     "completion": " heart",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 18,
+     "final_rank": 2,
+     "completion": " heart",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " heart",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": 18,
+     "final_rank": 6,
+     "completion": " heart",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 18,
+     "final_rank": 2,
+     "completion": " heart",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " lungs",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " lungs",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " lungs",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 6,
+   "dataset": "pairs_20260711T131752Z",
+   "spec_index": 8,
+   "class": "hijack",
+   "target_token": " medication",
+   "winner_token": " morning",
+   "calls": {
+    "baseline": {
+     "first_layer": 18,
+     "final_rank": null,
+     "completion": " morning",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 7,
+   "dataset": "pairs_20260711T131752Z",
+   "spec_index": 14,
+   "class": "hijack",
+   "target_token": " medication",
+   "winner_token": " digestive",
+   "calls": {
+    "baseline": {
+     "first_layer": 19,
+     "final_rank": null,
+     "completion": " digestive",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " digestive",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 8,
+   "dataset": "pairs_20260711T131752Z",
+   "spec_index": 19,
+   "class": "hijack",
+   "target_token": " medication",
+   "winner_token": " mind",
+   "calls": {
+    "baseline": {
+     "first_layer": 19,
+     "final_rank": null,
+     "completion": " mind",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": 19,
+     "final_rank": 4,
+     "completion": " mind",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 19,
+     "final_rank": 3,
+     "completion": " mind",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": 19,
+     "final_rank": 3,
+     "completion": " mind",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 9,
+   "dataset": "pairs_20260711T131752Z",
+   "spec_index": 29,
+   "class": "hijack",
+   "target_token": " antibiotics",
+   "winner_token": " throat",
+   "calls": {
+    "baseline": {
+     "first_layer": 19,
+     "final_rank": null,
+     "completion": " throat",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": 19,
+     "final_rank": null,
+     "completion": " throat",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 19,
+     "final_rank": null,
+     "completion": " throat",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 19,
+     "final_rank": 5,
+     "completion": " throat",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": 19,
+     "final_rank": null,
+     "completion": " throat",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 19,
+     "final_rank": 6,
+     "completion": " throat",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " throat",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": 19,
+     "final_rank": 6,
+     "completion": " rest",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 19,
+     "final_rank": 4,
+     "completion": " rest",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 10,
+   "dataset": "pairs_20260711T131752Z",
+   "spec_index": 38,
+   "class": "hijack",
+   "target_token": " medication",
+   "winner_token": " mind",
+   "calls": {
+    "baseline": {
+     "first_layer": 19,
+     "final_rank": null,
+     "completion": " mind",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": 19,
+     "final_rank": null,
+     "completion": " anxiety",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " anxiety",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": 19,
+     "final_rank": 3,
+     "completion": " mind",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 11,
+   "dataset": "pairs_20260712T051903Z",
+   "spec_index": 1,
+   "class": "hijack",
+   "target_token": " medication",
+   "winner_token": " mind",
+   "calls": {
+    "baseline": {
+     "first_layer": 19,
+     "final_rank": null,
+     "completion": " mind",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": 19,
+     "final_rank": 3,
+     "completion": " mind",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " mind",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " mind",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " mind",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 12,
+   "dataset": "urgency_downgrades_20260707T1",
+   "spec_index": 5,
+   "class": "hijack",
+   "target_token": " medication",
+   "winner_token": " health",
+   "calls": {
+    "baseline": {
+     "first_layer": 20,
+     "final_rank": null,
+     "completion": " health",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": 19,
+     "final_rank": 4,
+     "completion": " health",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " health",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": 20,
+     "final_rank": 3,
+     "completion": " health",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 20,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 20,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 20,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 13,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 2,
+   "class": "capture",
+   "target_token": " antivirals",
+   "winner_token": " rest",
+   "calls": {
+    "baseline": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " rest",
+     "parse_status": "ok"
+    }
+   },
+   "steer_unresolvable": true
+  },
+  {
+   "index": 14,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 3,
+   "class": "capture",
+   "target_token": " neurologist",
+   "winner_token": " doctor",
+   "calls": {
+    "baseline": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " doctor",
+     "parse_status": "ok"
+    }
+   },
+   "steer_unresolvable": true
+  },
+  {
+   "index": 15,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 7,
+   "class": "capture",
+   "target_token": " neurologist",
+   "winner_token": " doctor",
+   "calls": {
+    "baseline": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " doctor",
+     "parse_status": "ok"
+    }
+   },
+   "steer_unresolvable": true
+  },
+  {
+   "index": 16,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 23,
+   "class": "capture",
+   "target_token": " neurologist",
+   "winner_token": " doctor",
+   "calls": {
+    "baseline": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " doctor",
+     "parse_status": "ok"
+    }
+   },
+   "steer_unresolvable": true
+  },
+  {
+   "index": 17,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 25,
+   "class": "capture",
+   "target_token": " gastroenterologist",
+   "winner_token": " doctor",
+   "calls": {
+    "baseline": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " doctor",
+     "parse_status": "ok"
+    }
+   },
+   "steer_unresolvable": true
+  },
+  {
+   "index": 18,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 39,
+   "class": "capture",
+   "target_token": " cardiologist",
+   "winner_token": " doctor",
+   "calls": {
+    "baseline": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " doctor",
+     "parse_status": "ok"
+    }
+   },
+   "steer_unresolvable": true
+  },
+  {
+   "index": 19,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 40,
+   "class": "capture",
+   "target_token": " problem",
+   "winner_token": " reaction",
+   "calls": {
+    "baseline": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " reaction",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " reaction",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " problem",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " problem",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": 21,
+     "final_rank": 2,
+     "completion": " reaction",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 21,
+     "final_rank": 1,
+     "completion": " problem",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 21,
+     "final_rank": 1,
+     "completion": " problem",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " problem",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 21,
+     "final_rank": 1,
+     "completion": " problem",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 20,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 41,
+   "class": "capture",
+   "target_token": " medication",
+   "winner_token": " dog",
+   "calls": {
+    "baseline": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " dog",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": 19,
+     "final_rank": null,
+     "completion": " dog",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 19,
+     "final_rank": 3,
+     "completion": " dog",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 19,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": 21,
+     "final_rank": 4,
+     "completion": " dog",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 21,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 21,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": 19,
+     "final_rank": 3,
+     "completion": " mind",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 21,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 21,
+   "dataset": "pairs_20260711T131752Z",
+   "spec_index": 30,
+   "class": "capture",
+   "target_token": " gastroenterologist",
+   "winner_token": " doctor",
+   "calls": {
+    "baseline": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " doctor",
+     "parse_status": "ok"
+    }
+   },
+   "steer_unresolvable": true
+  },
+  {
+   "index": 22,
+   "dataset": "pairs_20260712T051903Z",
+   "spec_index": 35,
+   "class": "capture",
+   "target_token": " blood",
+   "winner_token": " mojo",
+   "calls": {
+    "baseline": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " mojo",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " energy",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 19,
+     "final_rank": 3,
+     "completion": " energy",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 19,
+     "final_rank": 2,
+     "completion": " energy",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " energy",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 21,
+     "final_rank": 2,
+     "completion": " energy",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 21,
+     "final_rank": 1,
+     "completion": " blood",
+     "parse_status": "ok"
+    },
+    "L19_swap": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " energy",
+     "parse_status": "ok"
+    },
+    "L21_swap": {
+     "first_layer": 23,
+     "final_rank": null,
+     "completion": " energy",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 23,
+   "dataset": "pairs_20260712T051903Z",
+   "spec_index": 41,
+   "class": "capture",
+   "target_token": " antidepressant",
+   "winner_token": " extended",
+   "calls": {
+    "baseline": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " extended",
+     "parse_status": "ok"
+    }
+   },
+   "steer_unresolvable": true
+  },
+  {
+   "index": 24,
+   "dataset": "pairs_20260712T051903Z",
+   "spec_index": 44,
+   "class": "capture",
+   "target_token": " neurologist",
+   "winner_token": " speech",
+   "calls": {
+    "baseline": {
+     "first_layer": null,
+     "final_rank": null,
+     "completion": " speech",
+     "parse_status": "ok"
+    }
+   },
+   "steer_unresolvable": true
+  },
+  {
+   "index": 25,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 1,
+   "class": "held",
+   "target_token": " medication",
+   "winner_token": " medication",
+   "calls": {
+    "baseline": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_s0.05": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_s0.1": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L19_s0.15": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.05": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.1": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    },
+    "L21_s0.15": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " medication",
+     "parse_status": "ok"
+    }
+   }
+  },
+  {
+   "index": 26,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 5,
+   "class": "held",
+   "target_token": " antihistamines",
+   "winner_token": " allergy",
+   "calls": {
+    "baseline": {
+     "first_layer": 24,
+     "final_rank": 2,
+     "completion": " allergy",
+     "parse_status": "ok"
+    }
+   },
+   "steer_unresolvable": true
+  },
+  {
+   "index": 27,
+   "dataset": "pairs_20260711T051145Z",
+   "spec_index": 6,
+   "class": "held",
+   "target_token": " blood pressure",
+   "winner_token": " blood",
+   "calls": {
+    "baseline": {
+     "first_layer": 18,
+     "final_rank": 1,
+     "completion": " blood",
+     "parse_status": "ok"
+    }
+   },
+   "steer_unresolvable": true
+  }
+ ]
+}

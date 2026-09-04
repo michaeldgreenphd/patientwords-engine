@@ -67,8 +67,12 @@ vendored here; the coupling is the HTTP contract only.
    next tokens (e.g. `[" therapist"]`) so attribution isn't read off a
    grammatical article: generation widens the salient-logit set (with a
    `force_target_tokens` passthrough for circuit-tracer forks that support
-   native forcing on the graph server), and `retarget_graph` prunes the
-   generated graph's logit set down to the named targets.
+   native forcing on the graph server). The live post-processing step is
+   `select_logits`, which *keeps* the top-k predictive spread alongside the
+   forced targets. `retarget_graph` — which prunes the logit set down to the
+   named targets and nothing else — is no longer on any run path; it survives
+   only in `targets.py` and its tests. Do not reason about a run's graphs as
+   if they had been pruned to the targets.
 5. **Batch evaluation harness** — `batch_eval.run_batch` consumes a JSON array
    of pair objects, traces/tags/retargets each sequentially, and writes
    numbered `index_01.html` / `index_01.png` outputs plus `batch_summary.json`.

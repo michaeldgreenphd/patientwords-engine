@@ -1,0 +1,285 @@
+{
+  "mode": "2panel",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 98,
+  "pairs_requested": 3,
+  "completed": true,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "50deb3500f7f",
+    "runner_image": "20260720.247.2"
+  },
+  "results": [
+    {
+      "index": 98,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been experiencing hot flushes with auricular erythema, so I might need to check my",
+        "patient": "I've been feeling really flushed and my ears keep getting hot, so I might need to check my"
+      },
+      "target_token": "Output \" thyroid\"",
+      "probabilities": {
+        "clinical": 0.303,
+        "patient": 0.163
+      },
+      "language_penalty": -0.13999999999999999,
+      "clinical_mass": {
+        "clinical": 0.3439,
+        "patient": 0.3022
+      },
+      "error_share": {
+        "clinical": 0.1154,
+        "patient": 0.0961
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 [L18\u00b7O] scientific text that discusses hormones | hormones/s \u2192 [L21\u00b7C] scientific or medical terminology, especially relate \u2192 [L25\u00b7C] content related to hormones and immunity | Scientifi \u2192 Output \" hormone\" (p=0.046)",
+        "patient": "embedding \u2192 Output \" ears\" (p=0.053)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" thyroid\"",
+            0.303
+          ],
+          [
+            "Output \" blood\"",
+            0.098
+          ],
+          [
+            "Output \" hormones\"",
+            0.052
+          ],
+          [
+            "Output \" estrogen\"",
+            0.052
+          ],
+          [
+            "Output \" hormone\"",
+            0.046
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" blood\"",
+            0.391
+          ],
+          [
+            "Output \" thyroid\"",
+            0.163
+          ],
+          [
+            "Output \" temperature\"",
+            0.06
+          ],
+          [
+            "Output \" ears\"",
+            0.053
+          ],
+          [
+            "Output \" heart\"",
+            0.041
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 731,
+        "unique_to_a": 704,
+        "unique_to_b": 737
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_98.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_98.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_98_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_98_diff.png"
+      }
+    },
+    {
+      "index": 99,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I've been passing turbid urine with dysuria, so I should probably take an",
+        "patient": "I've been passing cloudy water and it stings like anything, so I should probably take an"
+      },
+      "target_token": "Output \" antibiotic\"",
+      "probabilities": {
+        "clinical": 0.365,
+        "patient": 0.245
+      },
+      "language_penalty": -0.12,
+      "clinical_mass": {
+        "clinical": 0.3557,
+        "patient": 0.2163
+      },
+      "error_share": {
+        "clinical": 0.1052,
+        "patient": 0.0956
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" over\" (p=0.063)",
+        "patient": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" eye\" (p=0.048)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" antibiotic\"",
+            0.365
+          ],
+          [
+            "Output \" ur\"",
+            0.063
+          ],
+          [
+            "Output \" over\"",
+            0.063
+          ],
+          [
+            "Output \" anti\"",
+            0.049
+          ],
+          [
+            "Output \" exam\"",
+            0.043
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" antibiotic\"",
+            0.245
+          ],
+          [
+            "Output \" anti\"",
+            0.08
+          ],
+          [
+            "Output \" acid\"",
+            0.07
+          ],
+          [
+            "Output \" aspirin\"",
+            0.055
+          ],
+          [
+            "Output \" eye\"",
+            0.048
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 768,
+        "unique_to_a": 579,
+        "unique_to_b": 627
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_99.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_99.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_99_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_99_diff.png"
+      }
+    },
+    {
+      "index": 100,
+      "mode": "2panel",
+      "prompts": {
+        "clinical": "I have vulvovaginal pruritus and it's driving me crazy, so I need to pick up some",
+        "patient": "I've been getting a nasty itch down below and it's driving me crazy, so I need to pick up some"
+      },
+      "target_token": "Output \" cream\"",
+      "probabilities": {
+        "clinical": 0.107,
+        "patient": 0.085
+      },
+      "language_penalty": -0.021999999999999992,
+      "clinical_mass": {
+        "clinical": 0.3908,
+        "patient": 0.2665
+      },
+      "error_share": {
+        "clinical": 0.1229,
+        "patient": 0.1042
+      },
+      "top_path": {
+        "clinical": "embedding \u2192 Output \" new\" (p=0.040)",
+        "patient": "embedding \u2192 Output \" new\" (p=0.110)"
+      },
+      "mitigation_recovery": null,
+      "translation_method": null,
+      "translation_model": null,
+      "forced_targets": [],
+      "predictive_spread": {
+        "clinical": [
+          [
+            "Output \" cream\"",
+            0.107
+          ],
+          [
+            "Output \" itch\"",
+            0.057
+          ],
+          [
+            "Output \" hydro\"",
+            0.051
+          ],
+          [
+            "Output \" new\"",
+            0.04
+          ],
+          [
+            "Output \" treatment\"",
+            0.035
+          ]
+        ],
+        "patient": [
+          [
+            "Output \" new\"",
+            0.11
+          ],
+          [
+            "Output \" lotion\"",
+            0.097
+          ],
+          [
+            "Output \" cream\"",
+            0.085
+          ],
+          [
+            "Output \" lube\"",
+            0.036
+          ],
+          [
+            "Output \" anti\"",
+            0.036
+          ]
+        ]
+      },
+      "circuit_diff": {
+        "shared_features": 801,
+        "unique_to_a": 679,
+        "unique_to_b": 766
+      },
+      "outputs": {
+        "html": "trace_out/pairs_20260715T132350Z/index_100.html",
+        "png": "trace_out/pairs_20260715T132350Z/index_100.png",
+        "diff_html": "trace_out/pairs_20260715T132350Z/index_100_diff.html",
+        "diff_png": "trace_out/pairs_20260715T132350Z/index_100_diff.png"
+      }
+    }
+  ]
+}

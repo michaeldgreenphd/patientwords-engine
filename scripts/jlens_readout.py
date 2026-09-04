@@ -352,10 +352,28 @@ def main(argv=None):
     part = f"part_{args.offset + 1:02d}"
 
     results = []
+    errors = []
     aborted = None
+    outage = None
+    consecutive_failures = 0
+
+    def flush(partial_reason=None):
+        # Flushed after every pair so a job-timeout or crash still lands the
+        # measured prefix (the workflow's commit step runs on always()).
+        summary = build_summary(args.model, results, start_index=args.offset + 1,
+                                topn=args.topn, lens_type=args.lens_type)
+        if errors:
+            summary["errors"] = errors
+        if partial_reason:
+            summary["partial"] = True
+            summary["_partial"] = partial_reason
+        (out_dir / f"jlens_summary.{part}.json").write_text(
+            json.dumps(summary, indent=1) + "\n", encoding="utf-8")
+
     for i, pair in enumerate(chunk):
         index = args.offset + i + 1
         responses = {}
+        pair_error = None
         for side, prompt in (("clinical", pair["top_prompt"]),
                              ("patient", pair["bottom_prompt"])):
             body = lens_request_body(args.model, prompt, args.topn, args.lens_type)
@@ -365,10 +383,14 @@ def main(argv=None):
                 # Observed 2026-07-11: the endpoint answers persistent 500s for
                 # models it does not serve (same behavior as the graph endpoint,
                 # docs/cross-model.md). Before ANY successful measurement that is
-                # probe-negative evidence, not a batch failure; mid-batch it is a
-                # real failure and must abort loudly.
-                if results or responses:
-                    raise
+                # probe-negative evidence, not a batch failure. Mid-batch it is a
+                # per-pair failure: record it and keep going (two 17T runs on
+                # 2026-07-28 each lost 60 measured pairs to a bare raise on one
+                # poisoned prompt), unless failures run consecutively - then the
+                # endpoint itself is down and we stop, keeping what landed.
+                if results or responses or errors:
+                    pair_error = f"{side}: {err}"
+                    break
                 probe = {"model": args.model, "supported": False,
                          "detail": f"{err} (500-on-unserved pattern; could also be a "
                                    "transient outage - re-probe before concluding)",
@@ -378,7 +400,7 @@ def main(argv=None):
                 print(f"model {args.model}: {probe['detail']}")
                 return 0
             if unsupported:
-                if results or responses:
+                if results or responses or errors:
                     # F-H09 (audit 1, 2026-07-17): a mid-batch 4xx is an anomaly,
                     # not a capability verdict (same contract as jlens_steer.py).
                     # Keep the measured pairs, stop, leave the probe alone.
@@ -396,24 +418,38 @@ def main(argv=None):
                 save_raw(out_dir, index, side, response)
         if aborted:
             break
+        if pair_error:
+            errors.append({"index": index, "error": pair_error})
+            consecutive_failures += 1
+            print(f"pair {index}: ERROR {pair_error}")
+            if consecutive_failures >= 3:
+                outage = f"{consecutive_failures} consecutive pair failures - endpoint outage/throttle suspected"
+                break
+            flush(partial_reason="in-progress flush (crash/timeout protection)")
+            continue
+        consecutive_failures = 0
         results.append(build_result(index, pair, responses["clinical"],
                                     responses["patient"], args.topn, args.lens_type))
         print(f"pair {index}: clinical={results[-1]['parse_status']['clinical']} "
               f"patient={results[-1]['parse_status']['patient']} "
               f"class={results[-1]['patient_depth_class']}")
+        flush(partial_reason="in-progress flush (crash/timeout protection)")
 
-    summary = build_summary(args.model, results, start_index=args.offset + 1,
-                            topn=args.topn, lens_type=args.lens_type)
     if aborted:
-        summary["partial"] = True
-        summary["_partial"] = f"aborted mid-batch on an unsupported response: {aborted}"
-    (out_dir / f"jlens_summary.{part}.json").write_text(
-        json.dumps(summary, indent=1) + "\n", encoding="utf-8")
+        reason = f"aborted mid-batch on an unsupported response: {aborted}"
+    elif outage:
+        reason = f"aborted mid-batch: {outage}"
+    else:
+        reason = None
+    flush(partial_reason=reason)
     probe = {"model": args.model, "supported": True, "pairs_measured": len(results),
              "checked_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     (out_dir / "jlens_probe.json").write_text(json.dumps(probe, indent=1) + "\n", encoding="utf-8")
-    print(f"-> {out_dir / f'jlens_summary.{part}.json'} ({len(results)} pairs)")
-    return 0
+    print(f"-> {out_dir / f'jlens_summary.{part}.json'} ({len(results)} pairs, {len(errors)} errors)")
+    # Per-pair errors and outage stops are loud (red run in Actions) - but only
+    # after the data is on disk. The 4xx mid-batch stop keeps its F-H09
+    # exit-0 contract (partial summary + untouched probe).
+    return 1 if (errors or outage) else 0
 
 
 if __name__ == "__main__":

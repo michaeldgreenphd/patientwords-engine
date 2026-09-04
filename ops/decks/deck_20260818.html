@@ -1,0 +1,84 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-18</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .new{border-left:3px solid #b4483d}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-18</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · red rule = new or moved today</p>
+
+<div class="card new" data-id="D1-JOURNAL-EXPIRY-BLIND-SPOT">
+  <h2>D1 · Three finished runs went unresolved overnight, and the queue guard forgot them rather than flagging them</h2>
+  <p>New today. The interim babysitter's last two logits fires (08-17 20:39Z) and yesterday's drift sentinel were never resolved. All three are <b>GitHub-confirmed terminal</b> and their outputs are on the branch, so nothing was lost and no fire this cycle was unsafe.</p>
+  <p>The mechanism is what needs a decision: <code>fire_trigger.py</code> treats an entry older than its expiry window as inactive, so <code>resolve</code> answered <i>"no active journal entries; nothing to resolve"</i> and the three stay <code>resolved:false</code> in the journal permanently. The safety valve worked exactly as designed — but it is silent, so a stalled babysitter looks identical to a healthy one, and the journal's resolved flags now under-count what actually finished. Nothing ran between 21:40Z and this cycle: <b>~15.8h of idle across every lane</b>, which no alarm reported.</p>
+  <p class="num">runs 32034825688 / 32066947361 / 32066971123, all completed·success · outputs verified on branch (commits 6a48f18f, 0daa1146) · 3 entries now permanently resolved:false in ops/trigger_journal.jsonl</p>
+  <div class="chips"><button class="chip" data-v="expire-with-audit">let expiry stand but have `resolve` reconcile expired-terminal entries (stamp them resolved with an `expired:true` marker)</button><button class="chip" data-v="alarm-on-idle">leave the journal alone; add an idle-lane alarm to the digest instead</button><button class="chip" data-v="accept">accept both — expiry is a safety valve, the daily cycle is the reconciler</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D2-MEDICAL-NULL-FRAMING-DEAD">
+  <h2>D2 · Medical null-case framing: moved a third day running</h2>
+  <p>Open since 08-08. Today's backfill legs added <b>89 phrases to meditron3-8b and 68 to apertus-8b-meditronfo</b>. Both stay significant on both instruments. Note the direction is not uniform: meditron's mean moved <i>toward</i> zero (−0.0404 → −0.0367) while its interval tightened, and apertus's sign test strengthened.</p>
+  <p>Nothing on the site asserts the null-case framing — <code>claim_check</code> is green and no page names either model. This is an <b>internal-doc correction</b>: the stale framing sits in <code>ops/dashboard.json:verdicts</code> and <code>HANDOFF_20260804</code> §2, which every memoryless session reads at orientation step 6. I refreshed the dashboard verdict's numbers today but did not reword the framing — that is your call.</p>
+  <p class="num">meditron3-8b 626→715 phrases, −0.0367 [−0.0466, −0.0274], sign 41v10 p_BH 1.85e-05→2.95e-05 · apertus-8b-meditronfo 648→716, −0.0202 [−0.0307, −0.0098], 28v7 p_BH 1.32e-03→7.62e-04 · ten of ten CIs exclude zero, before and after · no significance verdict flipped</p>
+  <div class="chips"><button class="chip" data-v="drop-null-framing">drop the null-case framing — medical fine-tuning does not protect against it</button><button class="chip" data-v="you-draft">you draft the sentence; sessions publish nothing until it exists</button><button class="chip" data-v="correction-register">add the §6 correction-register entry and move on</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D3-VARIANT-B-SEVENTH">
+  <h2>D3 · Seventh consecutive container arrived on the wrong branch — and today the recorded shortcut was missed</h2>
+  <p>Every fresh Routine session since 08-11 has booted with both repos clean but on <b>main-based session branches</b>, ops branch never fetched, and the branch named in the scheduled prompt absent from the checkout. Today was the seventh.</p>
+  <p>New wrinkle worth your attention: the recipe's whole point is the <b>blobless</b> fetch (1.9s measured), and I ran a plain fetch first — it took about ten minutes of the cycle before the doc's Variant B section was read. The recipe is correct; the failure is that a session can spend real time before reaching it, because the symptom (clean tree, plausible-looking dashboard) reads as healthy. The seal check is the reliable detector, and only if run before acting.</p>
+  <p class="num">blocker container-materialization-20260809 · engine .git 15G after the plain fetch · docs/fresh_session_bootstrap.md Variant B · dashboard read as the 2026-07-09 main copy with tierb.start_utc null until repaired</p>
+  <div class="chips"><button class="chip" data-v="fix-env">fix the environment so it clones the ops branch</button><button class="chip" data-v="prompt-runs-recipe">make the Routine prompt run the Variant B check unconditionally, before anything else</button><button class="chip" data-v="accept-tax">accept the tax, no change</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D4-TRANSPORT-LOGLENS-DOC-CONFLICT">
+  <h2>D4 · The two governing docs still contradict each other on the j-lens exporters — I had to pick again today</h2>
+  <p>Open since 08-09, unchanged. <code>docs/routine_standing_prompt.md</code> §5 says the transport and loglens exporters are <b>WIRED</b> (owner option 1, 07-23) and the <code>publish-site-data</code> skill agrees; the <code>daily-ops-cycle</code> skill says <b>"do NOT run"</b> and cites the same §5.</p>
+  <p>Disclosing the call, same as yesterday: I <b>ran</b> both, on the grounds that the standing prompt is the declared authority and the more specific publish skill concurs. Both reproduced their committed values exactly (loglens 23 paired, class agree 17, formation agree 18), so the publish was a no-op in substance. A cycle should not have to adjudicate its own instructions two days running.</p>
+  <p class="num">data/jlens_transport.json census 44 pairs, 5 exemplars · data/jlens_loglens.json 23 paired · both byte-stable except generated_utc</p>
+  <div class="chips"><button class="chip" data-v="wired-fix-skill">confirm WIRED — correct the daily-ops-cycle skill</button><button class="chip" data-v="unwire-fix-prompt">confirm NOT wired — correct the standing prompt</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D5-HOLDOUT-GUARD-DISAGREEMENT">
+  <h2>D5 · The two holdout guards still disagree by one phrase</h2>
+  <p>Carried from the 08-17 critic pass, unchanged today: <code>seal_check</code> seals <b>173</b> phrases (verified clean again this cycle) while the statistics script's Amendment-1 filter excludes across <b>174</b>. The extra one is an orphan collector row with a null <code>batch_index</code> that matches no archive on either phrasing side, so it cannot be a Tier B holdout phrase.</p>
+  <p><b>The seal is not weakened and no published number is affected.</b> The costs are that the analysis over-excludes by one phrase and the logs print "174 holdout phrases" — a number a future session could read as the seal having grown. The guard-agreement test is drafted; landing it first turns the suite red on that row, which is not a cycle's call to make.</p>
+  <p class="num">173 sealed vs 174 excluded · orphan row batch pairs_20260713T050939Z, model gemma-2-2b · test drafted in docs/critic/critic_20260817.md §5 · phrase text never printed anywhere</p>
+  <div class="chips"><button class="chip" data-v="drop-orphans-then-test">drop orphan rows (null batch_index + no archive match), then land the test</button><button class="chip" data-v="test-first-red">land the test now and accept a red suite until the row is fixed</button><button class="chip" data-v="test-only-no-fix">just log the count difference, no code change</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<button id="copy">copy decisions</button>
+<div id="out"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(card){
+  card.querySelectorAll('.chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      card.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('on'); c.setAttribute('aria-pressed','false'); });
+      chip.classList.add('on'); chip.setAttribute('aria-pressed','true');
+    });
+  });
+});
+document.getElementById('copy').addEventListener('click', function(){
+  var lines = ['DECISIONS 2026-08-18'];
+  document.querySelectorAll('.card').forEach(function(card){
+    var on = card.querySelector('.chip.on');
+    lines.push(card.dataset.id + ': ' + (on ? on.dataset.v : '(no choice)'));
+  });
+  var text = lines.join('\n');
+  var out = document.getElementById('out');
+  out.textContent = text; out.style.display = 'block';
+  if (navigator.clipboard) { navigator.clipboard.writeText(text).catch(function(){}); }
+});
+</script>

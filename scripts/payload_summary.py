@@ -54,6 +54,13 @@ def build_summary(scenarios: list[dict], accepted: int, holdout_withheld: int,
     fields mirrored at the top level). Screened-out rows carry a null penalty
     and drop out of the penalty stats implicitly, matching the pages' filter.
     """
+    # Steered batches are published but never pooled into the headline figures
+    # (owner decision 2026-08-15): they were generated to hit flip-prone topics,
+    # so a share computed over them describes the selection, not the models.
+    # They stay in ``scenarios`` - the gallery shows them, labelled - and are
+    # counted separately under totals.steered_*.
+    steered_all = [s for s in scenarios if s.get("steered")]
+    scenarios = [s for s in scenarios if not s.get("steered")]
     scored = [s for s in scenarios
               if isinstance(s.get("language_penalty"), (int, float))
               and not isinstance(s.get("language_penalty"), bool)]
@@ -62,6 +69,8 @@ def build_summary(scenarios: list[dict], accepted: int, holdout_withheld: int,
                    if (s.get("screening") or {}).get("status") == "screened_out")
     measured = [s for s in scenarios
                 if (s.get("screening") or {}).get("status") != "screened_out"]
+    steered_measured = [s for s in steered_all
+                        if (s.get("screening") or {}).get("status") != "screened_out"]
     raw = [float(s["language_penalty"]) for s in scored]
     return {
         "_": ("payload-population summary: the scenarios published in THIS file, "
@@ -87,5 +96,9 @@ def build_summary(scenarios: list[dict], accepted: int, holdout_withheld: int,
             "measured": len(measured),
             "screened_out": screened,
             "flipped_base": sum(1 for s in measured if s.get("flipped")),
+            # Published, labelled, and deliberately outside every figure above.
+            "steered_measured": len(steered_measured),
+            "steered_flipped_base": sum(1 for s in steered_measured if s.get("flipped")),
+            "steered_batches": sorted({s.get("batch") for s in steered_all if s.get("batch")}),
         },
     }

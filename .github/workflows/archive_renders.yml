@@ -1,7 +1,7 @@
 name: Archive Renders to Release (medlang-circuits)
 
 # Packages the FULL render set for one or more trace runs into a zip and
-# attaches it to a GitHub Release on this (private) engine repo. The public
+# attaches it to a GitHub Release on this (public) engine repo. The public
 # site keeps only the capped demonstration set (see
 # export_frontend_simulated.py --max-renders); this is the durable back-end
 # copy of everything, kept off the site repo and - optionally - off the
@@ -54,9 +54,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.11"
 
@@ -87,6 +87,12 @@ jobs:
               prune = os.environ.get("IN_PRUNE", "") == "true"
           if not tag or not runs:
               raise SystemExit("archive-renders needs a tag and at least one run")
+          if no_pngs and prune:
+              # F-H01 (audit 1, 2026-07-17): pruning PNGs that the bundle
+              # excluded would leave them neither on the branch tip nor in the
+              # Release; refuse before any bundle or upload work happens.
+              raise SystemExit("prune=true with no_pngs=true would delete PNGs "
+                               "that are not in the Release; refuse")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               out.write(f"tag={tag}\n")
               out.write("runs=" + " ".join(runs) + "\n")
@@ -156,7 +162,7 @@ jobs:
             # working tree so fresh clones stay lean. Interactive HTML +
             # summaries stay in git.
             for run in $RUNS; do
-              git rm -q --ignore-unmatch "$run"/index_*.png || true
+              git rm -q --ignore-unmatch "$run"/index_*.png
             done
           fi
 

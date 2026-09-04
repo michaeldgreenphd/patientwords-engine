@@ -22,6 +22,10 @@ on:
         description: "Repo path of the stimuli JSON (from advice_eval.py build-stimuli)"
         type: string
         default: ""
+      gen_config:
+        description: "Repo path of a generation config JSON; when set, the run GENERATES new paired stimuli and skips elicitation"
+        type: string
+        default: ""
       models:
         description: "Space/comma-separated specs: 'provider' (registry consumer default), 'provider:model', or bare Anthropic id"
         type: string
@@ -62,10 +66,14 @@ on:
         description: "HARD judge spend ceiling in USD"
         type: string
         default: "0.50"
+      judge_max_tokens:
+        description: "Max output tokens per judge call (verbose non-Anthropic judges need headroom)"
+        type: string
+        default: "300"
       rubric:
         description: "Rubric path (domain-reviewed copy, not the .example)"
         type: string
-        default: "data/advice_rubric.json"
+        default: "data/advice_rubric.draft.json"
       offset:
         description: "Skip the first N stimuli (chunking)"
         type: string
@@ -77,6 +85,17 @@ on:
       commit_outputs:
         description: "Commit archive/sidecars/judgments back to the branch"
         type: boolean
+        # true since 2026-07-29: the false default stranded two paid overnight
+        # runs' archives as artifacts (recovered via restore_artifact_run_id);
+        # a paid append-only archive should land unless explicitly withheld
+        default: true
+      restore_artifact_run_id:
+        description: "Recovery: run id whose advice-eval-outputs artifact is merged (append-only) before elicit"
+        type: string
+        default: ""
+      restore_merge_fork:
+        description: "Recovery: land a two-writer fork's divergent tail (re-sealed onto the committed head) instead of refusing"
+        type: boolean
         default: false
   push:
     paths:
@@ -84,6 +103,7 @@ on:
 
 permissions:
   contents: write
+  actions: read  # cross-run artifact download for the recovery path
 
 concurrency:
   group: advice-eval-${{ github.ref }}
@@ -94,6 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       stimuli_file: ${{ steps.params.outputs.stimuli_file }}
+      gen_config: ${{ steps.params.outputs.gen_config }}
       models: ${{ steps.params.outputs.models }}
       arms: ${{ steps.params.outputs.arms }}
       samples: ${{ steps.params.outputs.samples }}
@@ -104,12 +125,25 @@ jobs:
       judge: ${{ steps.params.outputs.judge }}
       judge_model: ${{ steps.params.outputs.judge_model }}
       judge_max_spend: ${{ steps.params.outputs.judge_max_spend }}
+      judge_max_tokens: ${{ steps.params.outputs.judge_max_tokens }}
       rubric: ${{ steps.params.outputs.rubric }}
       offset: ${{ steps.params.outputs.offset }}
       limit: ${{ steps.params.outputs.limit }}
       commit_outputs: ${{ steps.params.outputs.commit_outputs }}
+      restore_artifact_run_id: ${{ steps.params.outputs.restore_artifact_run_id }}
+      restore_merge_fork: ${{ steps.params.outputs.restore_merge_fork }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            medlang_circuits
+            docs
+            ops
+            tests
       - name: Resolve parameters
         id: params
         env:
@@ -125,10 +159,13 @@ jobs:
           IN_JUDGE: ${{ inputs.judge }}
           IN_JUDGE_MODEL: ${{ inputs.judge_model }}
           IN_JUDGE_MAX_SPEND: ${{ inputs.judge_max_spend }}
+          IN_JUDGE_MAX_TOKENS: ${{ inputs.judge_max_tokens }}
           IN_RUBRIC: ${{ inputs.rubric }}
           IN_OFFSET: ${{ inputs.offset }}
           IN_LIMIT: ${{ inputs.limit }}
           IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
+          IN_RESTORE_ARTIFACT_RUN_ID: ${{ inputs.restore_artifact_run_id }}
+          IN_RESTORE_MERGE_FORK: ${{ inputs.restore_merge_fork }}
         run: |
           python - <<'EOF'
           import json, os
@@ -136,14 +173,18 @@ jobs:
           # keys in the trigger file are silently ignored by design; the fire
           # guard's KNOWN_KEYS mirrors this set).
           defaults = {"stimuli_file": "",
+                      "gen_config": "",
                       "models": "claude-haiku-4-5",
                       "arms": "clinical,patient",
                       "samples": "3", "temperature": "1.0", "max_tokens": "1024",
                       "translator_model": "claude-haiku-4-5",
                       "max_spend": "0.50",
                       "judge": "false", "judge_model": "claude-haiku-4-5",
-                      "judge_max_spend": "0.50", "rubric": "data/advice_rubric.json",
-                      "offset": "0", "limit": "0", "commit_outputs": "false"}
+                      "judge_max_spend": "0.50", "judge_max_tokens": "300",
+                      "rubric": "data/advice_rubric.draft.json",
+                      "offset": "0", "limit": "0", "commit_outputs": "true",
+                      "restore_artifact_run_id": "",
+                      "restore_merge_fork": "false"}
           p = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/advice-eval.json", encoding="utf-8") as f:
@@ -157,8 +198,9 @@ jobs:
                   v = os.environ.get("IN_" + k.upper(), "")
                   if v:
                       p[k] = v
-          if not p["stimuli_file"]:
-              raise SystemExit("stimuli_file is required (build stimuli first, commit, then fire)")
+          if not p["stimuli_file"] and not p["gen_config"]:
+              raise SystemExit("stimuli_file is required (build stimuli first, commit, then fire) "
+                               "unless gen_config is set (generation-only run)")
           float(p["max_spend"]); float(p["judge_max_spend"])  # fail fast on malformed ceilings
           out = os.environ["GITHUB_OUTPUT"]
           with open(out, "a", encoding="utf-8") as f:
@@ -167,20 +209,74 @@ jobs:
           print(" | ".join(f"{k}={p[k]}" for k in sorted(defaults)))
           EOF
 
+
+      - name: Daily-ceiling gate (server-side; audit S2, owner-approved 2026-08-19)
+        env:
+          GATE_PARAMS: ${{ toJSON(steps.params.outputs) }}
+        run: |
+          printf '%s' "$GATE_PARAMS" > "$RUNNER_TEMP/gate_params.json"
+          python3 scripts/fire_trigger.py budget-gate --trigger advice-eval --params-file "$RUNNER_TEMP/gate_params.json"
+
   advice:
     needs: params
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    # Frontier chat models at consumer settings average ~18 s/call; a full
+    # 3-model x 25-stimuli x 3-arm x K=3 pass needs ~3.5 h. The 2026-07-22
+    # pilot-2 run died at the old 120-minute ceiling mid-elicitation (the
+    # artifact + restore_artifact_run_id path below recovers such runs).
+    timeout-minutes: 300
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            medlang_circuits
+            docs
+            ops
+            tests
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.11"
 
       - name: Install package
         run: pip install --quiet -e ".[llm]" requests
 
+      - name: Generate stimuli pairs (config-driven; owner reviews before anything consumes them)
+        if: ${{ needs.params.outputs.gen_config != '' }}
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEN_CONFIG: ${{ needs.params.outputs.gen_config }}
+        run: |
+          python scripts/advice_eval.py generate --config "$GEN_CONFIG" --out-dir data/advice
+
+      - name: Download archive artifact (recovery after a killed run)
+        if: ${{ needs.params.outputs.restore_artifact_run_id != '' && needs.params.outputs.gen_config == '' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: advice-eval-outputs
+          run-id: ${{ needs.params.outputs.restore_artifact_run_id }}
+          github-token: ${{ github.token }}
+          path: /tmp/advice-restore
+
+      - name: Merge restored archive (append-only, chain-verified)
+        if: ${{ needs.params.outputs.restore_artifact_run_id != '' && needs.params.outputs.gen_config == '' }}
+        env:
+          STIMULI: ${{ needs.params.outputs.stimuli_file }}
+          RESTORE_RUN: ${{ needs.params.outputs.restore_artifact_run_id }}
+          MERGE_FORK: ${{ needs.params.outputs.restore_merge_fork }}
+        run: |
+          FLAG=""
+          if [ "$MERGE_FORK" = "true" ]; then FLAG="--merge-fork"; fi
+          python scripts/advice_eval.py recover-archive --restored-dir /tmp/advice-restore \
+            --stimuli "$STIMULI" --source-run-id "$RESTORE_RUN" $FLAG
+
       - name: Elicit (paid, ceiling-enforced, append-only archive)
+        if: ${{ needs.params.outputs.gen_config == '' }}
         env:
           # Provider keys per data/advice_providers.json key_env fields; secrets
           # that are not configured render empty and only fail the specific
@@ -213,15 +309,18 @@ jobs:
         if: ${{ needs.params.outputs.judge == 'true' }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           STIMULI: ${{ needs.params.outputs.stimuli_file }}
           JUDGE_MODEL: ${{ needs.params.outputs.judge_model }}
           JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
+          JUDGE_MAX_TOKENS: ${{ needs.params.outputs.judge_max_tokens }}
           RUBRIC: ${{ needs.params.outputs.rubric }}
         run: |
           STEM=$(basename "$STIMULI" .json)
           python scripts/advice_eval.py judge \
             --responses "data/advice/responses_${STEM}.jsonl" \
-            --rubric "$RUBRIC" --judge-model "$JUDGE_MODEL" --max-spend "$JUDGE_MAX_SPEND"
+            --rubric "$RUBRIC" --judge-model "$JUDGE_MODEL" --max-spend "$JUDGE_MAX_SPEND" \
+            --judge-max-tokens "$JUDGE_MAX_TOKENS"
           python scripts/advice_eval.py analyze \
             --judgments "data/advice/judgments_${STEM}.jsonl" --rubric "$RUBRIC"
 
@@ -247,7 +346,9 @@ jobs:
           if git diff --cached --quiet; then echo "No outputs to commit"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Advice eval: $(basename "${{ needs.params.outputs.stimuli_file }}" .json) (append-only archive + sidecars)"
+          STEM=$(basename "${{ needs.params.outputs.stimuli_file }}" .json)
+          [ -n "${{ needs.params.outputs.stimuli_file }}" ] || STEM="generated stimuli (pilot-unreviewed)"
+          git commit -m "Advice eval: $STEM (append-only archive + sidecars)"
           for i in 1 2 3 4 5; do
             if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
               exit 0
@@ -259,7 +360,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: advice-eval-outputs
           path: data/advice/

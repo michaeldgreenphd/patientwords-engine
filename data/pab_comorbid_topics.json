@@ -1,0 +1,52 @@
+{
+  "_": "Comorbid / polypharmacy topic seeds for supplementary stress-pair generation. Source: condition NAMES from PatientAgentBench's seed distribution (data/default_benchmark_seed.json, amazon-science, CC-BY-NC-4.0) - factual condition names only, no rubric or scenario text. Names normalized comma-free so the workflow's comma-separated topics param cannot split them. Owner decision 2026-08-04 COMORBID-SEED: approve (docs/decisions_20260804_pab.md). SUPPLEMENTARY convention: generate with claude-sonnet-5 (attribute_tierb's generator gate mechanically keeps it out of Tier B accounting), and add the landed stamp to _SUPPLEMENTARY_STAMPS in paired_stats_rigor.py + convergence_tracker.py BEFORE any measurement of it is collected.",
+  "fire_plan": {
+    "trigger": "scenario-generation",
+    "task": "pairs",
+    "num": "20",
+    "anthropic_model": "claude-sonnet-5",
+    "max_spend": "0.50",
+    "topics_from": "fire_topics",
+    "note": "comorbid seed batch, supplementary (owner 2026-08-04 COMORBID-SEED)"
+  },
+  "selection_rule": "fire_topics = one cluster per dominant organ system from the 25, keeping both medication-interaction cases (warfarin+NSAID, elderly polypharmacy)",
+  "fire_topics": [
+    "Type 2 diabetes with chronic kidney disease",
+    "COPD with heart failure",
+    "Depression with chronic pain and opioid use disorder",
+    "Asthma with GERD and anxiety",
+    "Liver cirrhosis with portal hypertension",
+    "Hypertension with type 2 diabetes + hyperlipidemia + GERD",
+    "HIV with hepatitis C co-infection",
+    "Atrial fibrillation on warfarin with new NSAID need",
+    "Parkinson's disease with dementia and orthostatic hypotension",
+    "Elderly polypharmacy with heart failure + COPD + diabetes + arthritis"
+  ],
+  "all_comorbid_topics": [
+    "Type 2 diabetes with chronic kidney disease",
+    "Hypertension with heart failure",
+    "COPD with heart failure",
+    "Rheumatoid arthritis with osteoporosis",
+    "Atrial fibrillation with hypertension and type 2 diabetes",
+    "Depression with chronic pain and opioid use disorder",
+    "Asthma with GERD and anxiety",
+    "Obesity with type 2 diabetes and obstructive sleep apnea",
+    "Chronic kidney disease with anemia and hypertension",
+    "Hypothyroidism with depression and fibromyalgia",
+    "Liver cirrhosis with portal hypertension",
+    "Coronary artery disease with type 2 diabetes and hyperlipidemia",
+    "Epilepsy with anxiety and migraine",
+    "Hypertension with type 2 diabetes + hyperlipidemia + GERD",
+    "Lupus (SLE) with nephritis and anemia",
+    "COPD with lung cancer",
+    "Pregnancy with gestational diabetes and preeclampsia",
+    "HIV with hepatitis C co-infection",
+    "Pregnancy with medication safety concerns",
+    "Substance use disorder with chronic pain",
+    "Atrial fibrillation on warfarin with new NSAID need",
+    "Parkinson's disease with dementia and orthostatic hypotension",
+    "Sickle cell disease with chronic pain and pulmonary hypertension",
+    "End-stage renal disease on dialysis with heart failure",
+    "Elderly polypharmacy with heart failure + COPD + diabetes + arthritis"
+  ]
+}

@@ -27,6 +27,10 @@ on:
         description: "Items per scenario (5-10 recommended)"
         type: string
         default: "8"
+      pairs_file:
+        description: "Repo path of a pairs JSON to evaluate (empty = packaged eval set)"
+        type: string
+        default: ""
       scenario:
         description: "Which pipeline step to evaluate (two_step = patient baseline -> clinician conversion -> re-evaluation; all = everything)"
         type: choice
@@ -41,14 +45,21 @@ on:
 permissions:
   contents: write
 
+# One running + one pending per branch, like every other workflow here -
+# these are the PAID workflows and were the only two missing the group
+# (audit 2026-07-13). fire_trigger.py enforces the same discipline client-side.
+concurrency:
+  group: model-evaluation-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   evaluate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.11"
 
@@ -63,11 +74,12 @@ jobs:
           IN_MAX_SPEND: ${{ inputs.max_spend }}
           IN_SAMPLE_SIZE: ${{ inputs.sample_size }}
           IN_SCENARIO: ${{ inputs.scenario }}
+          IN_PAIRS_FILE: ${{ inputs.pairs_file }}
         run: |
           python - <<'EOF'
           import json, os
           defaults = {"model_selection": "claude-haiku-4-5", "max_spend": "5",
-                      "sample_size": "8", "scenario": "all"}
+                      "sample_size": "8", "scenario": "all", "pairs_file": ""}
           params = dict(defaults)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/model-evaluation.json", encoding="utf-8") as f:
@@ -87,16 +99,86 @@ jobs:
           print(json.dumps(params, indent=2))
           EOF
 
+
+      - name: Daily-ceiling gate (server-side; audit S2, owner-approved 2026-08-19)
+        env:
+          GATE_PARAMS: ${{ toJSON(steps.params.outputs) }}
+        run: |
+          printf '%s' "$GATE_PARAMS" > "$RUNNER_TEMP/gate_params.json"
+          python3 scripts/fire_trigger.py budget-gate --trigger model-evaluation --params-file "$RUNNER_TEMP/gate_params.json"
+
       - name: Run evaluation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Params reach the shell as env vars only: the runner substitutes ${{ }}
+          # before bash parses, so direct interpolation in the script body would
+          # execute a param containing $( ) or a quote.
+          P_LIST: ${{ steps.params.outputs.list }}
+          P_SCENARIO: ${{ steps.params.outputs.scenario }}
+          P_SAMPLE_SIZE: ${{ steps.params.outputs.sample_size }}
+          P_MAX_SPEND: ${{ steps.params.outputs.max_spend }}
+          P_PAIRS_FILE: ${{ steps.params.outputs.pairs_file }}
         run: |
-          python -m medlang_circuits.evaluate_models \
-            --models ${{ steps.params.outputs.list }} \
-            --scenario "${{ steps.params.outputs.scenario }}" \
-            --sample-size "${{ steps.params.outputs.sample_size }}" \
-            --max-spend "${{ steps.params.outputs.max_spend }}" \
-            --out eval_out
+          read -r -a MODELS <<< "$P_LIST"
+          ARGS=(--models "${MODELS[@]}"
+            --scenario "$P_SCENARIO"
+            --sample-size "$P_SAMPLE_SIZE"
+            --max-spend "$P_MAX_SPEND"
+            --out eval_out)
+          if [ -n "$P_PAIRS_FILE" ]; then
+            ARGS+=(--pairs "$P_PAIRS_FILE")
+          fi
+          python -m medlang_circuits.evaluate_models "${ARGS[@]}"
+
+      - name: Ledger sidecar to main (spend accounting)
+        if: always()
+        env:
+          MAX_SPEND: ${{ steps.params.outputs.max_spend }}
+          MODEL_LIST: ${{ steps.params.outputs.list }}
+        run: |
+          set -euo pipefail
+          # F-H02/F-H03 (audit 1, 2026-07-17): model-evaluation was the only
+          # paid path without a data/simulated sidecar, so its spend never
+          # reached the ledger scan on main. When the run crashed before
+          # results.json, book max_spend as a conservative estimate.
+          python - <<'EOF'
+          import json, os, pathlib, time
+          stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+          side = {"task": "model-evaluation",
+                  "model": os.environ.get("MODEL_LIST", ""),
+                  "max_spend_usd": float(os.environ.get("MAX_SPEND") or 0)}
+          try:
+              r = json.load(open("eval_out/results.json", encoding="utf-8"))
+              side["run_timestamp"] = r.get("run_timestamp") or time.strftime(
+                  "%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+              side["cost_usd"] = round((r.get("usage") or {}).get("total_cost_usd", 0.0), 6)
+              side["usage"] = r.get("usage")
+          except (OSError, json.JSONDecodeError):
+              side["run_timestamp"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+              side["cost_usd"] = side["max_spend_usd"]
+              side["estimated"] = ("run crashed before results.json; booked at "
+                                   "max_spend as an upper bound")
+          out = pathlib.Path(f"data/simulated/modeleval_{stamp}.report.json")
+          out.write_text(json.dumps(side, indent=1) + "\n", encoding="utf-8")
+          print("sidecar ->", out)
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git worktree add ../main-ledger origin/main
+          mkdir -p ../main-ledger/data/simulated
+          cp data/simulated/modeleval_*.report.json ../main-ledger/data/simulated/
+          cd ../main-ledger
+          git add data/simulated/
+          git commit -m "Model-evaluation cost sidecar"
+          pushed=0
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then pushed=1; break; fi
+            git fetch origin main
+            git rebase origin/main
+            sleep "$attempt"
+          done
+          if [ "$pushed" != "1" ]; then echo "::error::sidecar push failed"; exit 1; fi
 
       - name: Export frontend table + commit to the dispatched branch
         if: always()
@@ -110,11 +192,20 @@ jobs:
           from datetime import date
           results = json.load(open("eval_out/results.json", encoding="utf-8"))
           per_model_cost = (results.get("usage") or {}).get("per_model") or {}
-          models = []
+          import pathlib
+          # F-H04 (audit 1, 2026-07-17): merge by model id instead of wholesale
+          # overwrite - a single-model run must not discard other models' rows.
+          # Retired ids therefore persist until removed by hand. Each row keeps
+          # its own updated stamp; stale rows never inherit today's date.
+          out_path = pathlib.Path("data/evaluations/model_evaluations_frontend.json")
+          merged = {}
+          if out_path.exists():
+              for m in json.loads(out_path.read_text(encoding="utf-8")).get("models", []):
+                  merged[m["id"]] = m
           for model, blocks in (results.get("by_model") or {}).items():
               ts = blocks.get("two_step") or {}
               flags = ts.get("flags") or {}
-              models.append({
+              merged[model] = {
                   "id": model,
                   "items": len(ts.get("items") or []) or None,
                   "patient_accuracy": ts.get("patient_accuracy"),
@@ -124,13 +215,13 @@ jobs:
                   "regressions": flags.get("regressions"),
                   "cost_usd": round((per_model_cost.get(model) or {}).get("cost", 0.0), 4) or None,
                   "status": "evaluated" if ts.get("patient_accuracy") is not None else "pending",
-              })
+                  "updated": str(date.today()),
+              }
           payload = {
               "updated": str(date.today()),
               "task": "clinical concept extraction, scored on the same expected terms before and after translation",
-              "models": models,
+              "models": list(merged.values()),
           }
-          import pathlib
           pathlib.Path("data/evaluations").mkdir(parents=True, exist_ok=True)
           pathlib.Path("data/evaluations/model_evaluations_frontend.json").write_text(
               json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -154,7 +245,7 @@ jobs:
 
       - name: Upload performance log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: model-evaluation-${{ github.run_number }}
           path: eval_out/

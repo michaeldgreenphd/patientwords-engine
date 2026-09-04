@@ -1,0 +1,111 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PatientWords decisions · 2026-08-10</title>
+<style>
+  body{font-family:-apple-system,Georgia,serif;background:#faf9f5;color:#111827;margin:0;padding:18px;line-height:1.5}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66;margin:0 0 18px}
+  .card{background:#fff;border:1px solid #c3c9d2;padding:14px 16px;margin:0 0 14px}
+  .card h2{font-size:15px;margin:0 0 6px}
+  .card p{font-size:13.5px;margin:0 0 10px;color:#374151}
+  .card p.num{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6d6c66}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid #111827;background:#fff;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
+  .chip.on{background:#15803d;border-color:#15803d;color:#fff}
+  .new{border-left:3px solid #b4483d}
+  #copy{width:100%;padding:12px;font-size:15px;background:#111827;color:#fff;border:0;margin-top:6px;cursor:pointer}
+  #out{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#fff;border:1px dashed #c3c9d2;padding:10px;margin-top:10px;white-space:pre-wrap;display:none}
+</style>
+<h1>Decisions · 2026-08-10</h1>
+<p class="sub">tap a chip per card · copy at the bottom · paste into the session · red rule = new today</p>
+
+<div class="card new" data-id="D1-MEDICAL-FRAMING">
+  <h2>D1 · The medical fine-tunes crossed zero. The framing sentence you were asked to pre-choose is now itself wrong.</h2>
+  <p>You filed this on 08-08 so the sentence would be picked <i>before</i> the number moved. It moved today.</p>
+  <p class="num">meditron3-8b · n 132 → 333 rows · penalty −0.0249 → −0.0350 · CI95 [−0.0498, <b>+0.0004</b>] → <b>[−0.0493, −0.0211]</b> · sign test 5v1 (q=0.26) → <b>23v3 (q=1.8e-04)</b><br>
+  apertus-8b-meditronfo · n 104 → 305 · CI [−0.0657, −0.0032] → [−0.0464, −0.0127] · sign test 3v2 (q=1.00) → 11v4 (q=0.118)</p>
+  <p>Your drafted candidate said "their flip-direction tests remain underpowered (5 and 5 flips)". That is no longer true of meditron3-8b — it has 136 flips, 23 down vs 3 up, and is significant on <i>both</i> the penalty and the sign test. apertus is positive on the penalty only. The honest split is now per-model, not per-family.</p>
+  <p><b>Nothing published moved.</b> The site still carries the 2026-08-08 numbers, so there is no live over-claim — the stale statements are internal (HANDOFF_20260804 line 94, dashboard verdicts). This cycle deliberately did not publish the refresh.</p>
+  <div class="chips"><button class="chip" data-v="per-model-sentence">write a per-model sentence, then publish</button><button class="chip" data-v="publish-first">publish the numbers now, sentence after</button><button class="chip" data-v="send-me-draft">draft three options and send them</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D2-MODEL-STATS-POLICY">
+  <h2>D2 · The cycle never recomputes the one file whose numbers gate D1</h2>
+  <p><code>data/model_stats.json</code> is not in the §5 publish chain. Every cycle refreshes the payload, urgency, all five j-lens files, tag-mass, jspace, translation scale and coverage — and leaves the per-model statistics wherever the last manual run left them (2026-08-08). Meanwhile the backfill legs that move those statistics fire every cycle.</p>
+  <p>So the loop meant to catch a moving number structurally cannot see it. D1 was only visible because today's critic pass ran the statistics by hand. It is also the only major payload with no <code>generated_utc</code>, so no automated check can even see that it is stale.</p>
+  <div class="chips"><button class="chip" data-v="add-to-chain">add it to the §5 chain</button><button class="chip" data-v="keep-manual">keep it manual, say so in §5</button><button class="chip" data-v="stamp-and-warn">stamp generated_utc + warn on lag first</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D3-PAB-PROBE-KEY">
+  <h2>D3 · A trigger key that would journal a fire and run nothing</h2>
+  <p><code>pab-probe</code> is a known key in <code>fire_trigger.TRIGGERS</code> but has no trigger file and no workflow reading one. Unknown keys hard-error precisely so a fire cannot silently no-op — a <i>known</i> key with no workflow does exactly that: it validates, writes the file, journals the fire, pushes, and runs nothing, leaving a journal entry for a run that never existed.</p>
+  <p>No session can fix it: both remedies are hand-edits under <code>.github/</code>, which the cycle is forbidden to make.</p>
+  <div class="chips"><button class="chip" data-v="wire-workflow">wire the workflow</button><button class="chip" data-v="drop-key">drop the key</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card new" data-id="D4-DOC-DRIFT">
+  <h2>D4 · Two documentation drifts from today's Monday sweep</h2>
+  <p><b>(a)</b> Standing prompt §2b tells the sweep to cross-check <code>docs/preregistration_amendments.md</code>. That file does not exist on the ops branch — only on main; the branch split it into <code>prereg_amendment2/3/4</code> + the divergence log. Following §2b literally raises a FileNotFoundError, which a session could misread as "no amendments declared".</p>
+  <p><b>(b)</b> <code>extract_site_text.py</code>'s PAGES list misses two substantive live pages — <code>simulated-scenarios/scenario.html</code> (29.3 KB) and <code>llm/code.html</code> (14.6 KB). About 44 KB of published prose is invisible to every consumer of the extractor, including text review. The other seven unlisted files are correctly out of scope (five redirect stubs, 404, share card).</p>
+  <div class="chips"><button class="chip" data-v="fix-both">fix both</button><button class="chip" data-v="fix-pages-only">fix the PAGES list only</button><button class="chip" data-v="fix-path-only">fix the §2b path only</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D5-TRANSPORT-LOGLENS-DOCS">
+  <h2>D5 · Still unsettled: three docs disagree on whether two exporters run</h2>
+  <p>Standing prompt §5 says <b>export_jlens_transport.py</b> and <b>export_jlens_loglens.py</b> are wired and gives exact commands; the publish-site-data skill lists them in step 3, then its own <i>Never</i> list forbids them; the daily-ops-cycle skill says "not wired".</p>
+  <p>Yesterday's cycle skipped both. <b>Today's cycle ran both</b>, following the standing prompt as the stated authority — and today it mattered: the census batch finished its lens pull, so transport moved 25 → 44 census pairs and loglens re-derived (23 paired, agree 17/18). Skipping would have left both site payloads stale against their own inputs. Two consecutive cycles have now made opposite calls under identical rules.</p>
+  <div class="chips"><button class="chip" data-v="run-them">run them every cycle (fix the skills)</button><button class="chip" data-v="skip-them">never in the cycle (fix §5)</button><button class="chip" data-v="on-new-census">run only when census data changes</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D6-OPS-CADENCE">
+  <h2>D6 · Ops pace still rests on a single point</h2>
+  <p>The "backfill accelerator" still does not exist. What kept all three lanes full today was your interim babysitter session firing at 06:34, 09:08 and 11:43 — 15 runs on the branch today, 13 success. If that session dies, the lanes idle until the next daily cycle.</p>
+  <div class="chips"><button class="chip" data-v="approve-routine">approve a scheduled accelerator</button><button class="chip" data-v="accept-pace">accept the pace, restate "daily"</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D7-OPENROUTER-CEILING">
+  <h2>D7 · OpenRouter lane still unceilinged (from 08-08)</h2>
+  <p>Unchanged since it was filed. No spend on it this cycle ($0/$2 today).</p>
+  <div class="chips"><button class="chip" data-v="ceiling-both">set a ceiling + fix accounting</button><button class="chip" data-v="accounting-only">fix the accounting only</button><button class="chip" data-v="no-ceiling">no ceiling, I approve per-run</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D8-JLENS-DEPTH-PINS">
+  <h2>D8 · Depth-figure block pins (from 08-08)</h2>
+  <p>Unchanged. This cycle reused the committed pins exactly — 7 blocks, exemplar pairs_20260711T051145Z#19 — and verified the exemplar reproduced identically; only the census batch's counts moved (23 → 44 pairs) because real data landed.</p>
+  <div class="chips"><button class="chip" data-v="add-both">add both as blocks</button><button class="chip" data-v="add-171223">add 171223Z only</button><button class="chip" data-v="keep-pins">keep the current pins</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D9-AUDIT-EXECUTION">
+  <h2>D9 · Owner acts still outstanding (from 07-31)</h2>
+  <p>Prereg signature; coding the 25 judge-agreement items; choosing one pooled-33% caveat sentence. No daily-ops work blocks on these.</p>
+  <div class="chips"><button class="chip" data-v="this-week">will do this week</button><button class="chip" data-v="send-candidates">re-send me the candidates</button><button class="chip" data-v="hold">decide later</button></div>
+</div>
+
+<div class="card" data-id="D10-DIALECT-DATE-CLOSED">
+  <h2>D10 · Dialect dateline drift — already resolved, close it?</h2>
+  <p>Resolved 07-30 (the dateline is runtime-filled from the data, so it can never drift again). It is still sitting in the pending list.</p>
+  <div class="chips"><button class="chip" data-v="close">close it</button><button class="chip" data-v="keep-open">keep it open</button></div>
+</div>
+
+<button id="copy">Copy decision summary</button>
+<div id="out"></div>
+<script>
+document.querySelectorAll('.card').forEach(function(c){
+  c.querySelectorAll('.chip').forEach(function(ch){
+    ch.addEventListener('click',function(){
+      c.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on')});
+      ch.classList.add('on');
+    });
+  });
+});
+document.getElementById('copy').addEventListener('click',function(){
+  var lines=['DECISIONS 2026-08-10'];
+  document.querySelectorAll('.card').forEach(function(c){
+    var on=c.querySelector('.chip.on');
+    lines.push(c.dataset.id+' :: '+(on?on.dataset.v:'(no selection)'));
+  });
+  var t=lines.join('\n');
+  var o=document.getElementById('out');o.textContent=t;o.style.display='block';
+  if(navigator.clipboard)navigator.clipboard.writeText(t);
+});
+</script>

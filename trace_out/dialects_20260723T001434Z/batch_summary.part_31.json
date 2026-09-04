@@ -1,0 +1,964 @@
+{
+  "mode": "dialect",
+  "backend": "hosted",
+  "graph_model": "gemma-2-2b",
+  "source_set": "gemmascope-transcoder-16k",
+  "generation_params": {
+    "max_n_logits": 10,
+    "desired_logit_prob": 0.95,
+    "node_threshold": 0.8,
+    "edge_threshold": 0.98,
+    "max_feature_nodes": 5000
+  },
+  "start_index": 31,
+  "pairs_requested": 20,
+  "completed": false,
+  "screen_targets": null,
+  "environment": {
+    "python": "3.11.15",
+    "engine_sha": "9c06ca714909",
+    "runner_image": "20260720.247.2"
+  },
+  "results": [
+    {
+      "index": 31,
+      "mode": "dialect",
+      "baseline_prompt": "I've been having insomnia all night, so tonight I'm taking an",
+      "held_fixed": "clinical",
+      "term": "having insomnia",
+      "target_token": "Output \" early\"",
+      "baseline_probability": 0.136,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording same register and meaning",
+          "prompt": "I've been having insomnia throughout the night, so this evening I'm taking an",
+          "probability": 0.112,
+          "delta_vs_baseline": -0.024000000000000007
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording same register",
+          "prompt": "I've been having insomnia for the whole night, and tonight I'm taking an",
+          "probability": 0.045,
+          "delta_vs_baseline": -0.09100000000000001
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses keep every key word",
+          "prompt": "Tonight I'm taking an because I've been having insomnia all night, so I'm",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only same content",
+          "prompt": "I've been having insomnia through the night, thus tonight I'm taking an",
+          "probability": 0.118,
+          "delta_vs_baseline": -0.018000000000000016
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording same register",
+          "prompt": "I've been having insomnia the whole night, so tonight I'm taking an",
+          "probability": 0.202,
+          "delta_vs_baseline": 0.066
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" early\"",
+            0.136
+          ],
+          [
+            "Output \" hour\"",
+            0.12
+          ],
+          [
+            "Output \" extra\"",
+            0.094
+          ],
+          [
+            "Output \" Amb\"",
+            0.064
+          ],
+          [
+            "Output \" anti\"",
+            0.064
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" hour\"",
+              0.163
+            ],
+            [
+              "Output \" early\"",
+              0.112
+            ],
+            [
+              "Output \" extra\"",
+              0.068
+            ],
+            [
+              "Output \" anti\"",
+              0.068
+            ],
+            [
+              "Output \" Amb\"",
+              0.06
+            ]
+          ],
+          [
+            [
+              "Output \" anti\"",
+              0.138
+            ],
+            [
+              "Output \" Amb\"",
+              0.084
+            ],
+            [
+              "Output \" extra\"",
+              0.065
+            ],
+            [
+              "Output \" hour\"",
+              0.058
+            ],
+            [
+              "Output \" early\"",
+              0.045
+            ]
+          ],
+          [
+            [
+              "Output \" going\"",
+              0.233
+            ],
+            [
+              "Output \" gonna\"",
+              0.097
+            ],
+            [
+              "Output \" just\"",
+              0.097
+            ],
+            [
+              "Output \" trying\"",
+              0.086
+            ],
+            [
+              "Output \" taking\"",
+              0.067
+            ]
+          ],
+          [
+            [
+              "Output \" early\"",
+              0.118
+            ],
+            [
+              "Output \" hour\"",
+              0.118
+            ],
+            [
+              "Output \" anti\"",
+              0.092
+            ],
+            [
+              "Output \" Amb\"",
+              0.082
+            ],
+            [
+              "Output \" extra\"",
+              0.082
+            ]
+          ],
+          [
+            [
+              "Output \" early\"",
+              0.202
+            ],
+            [
+              "Output \" hour\"",
+              0.108
+            ],
+            [
+              "Output \" extra\"",
+              0.095
+            ],
+            [
+              "Output \" opportunity\"",
+              0.058
+            ],
+            [
+              "Output \" anti\"",
+              0.045
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.0861
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 [L18\u00b7O] the word \"an\" followed by an adjective or noun. | an \u2192 [L21\u00b7S] occurrences of the article \"a\" and the prefix \"an\" f \u2192 [L24\u00b7O] the word \"an\" | an | an \u2192 Output \" hour\" (p=0.120)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260723T001434Z/index_31.html",
+        "png": "trace_out/dialects_20260723T001434Z/index_31.png"
+      }
+    },
+    {
+      "index": 32,
+      "mode": "dialect",
+      "baseline_prompt": "My acid reflux has been acting up after dinner, so I reached for an",
+      "held_fixed": "clinical",
+      "term": "acid reflux has",
+      "target_token": "Output \" ant\"",
+      "baseline_probability": 0.332,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording same register and meaning",
+          "prompt": "My acid reflux has been troubling me after meals, so I went for an",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording same register",
+          "prompt": "After dinner, my acid reflux has been getting worse, and I picked up an",
+          "probability": 0.291,
+          "delta_vs_baseline": -0.041000000000000036
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses keep every key word",
+          "prompt": "I reached for an antacid because my acid reflux has been acting up after dinner, so I needed an",
+          "probability": 0.512,
+          "delta_vs_baseline": 0.18
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only same content",
+          "prompt": "My acid reflux has been acting up post-dinner, thus I reached for an",
+          "probability": 0.203,
+          "delta_vs_baseline": -0.129
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording same register",
+          "prompt": "My acid reflux has been acting up following dinner, so I grabbed an",
+          "probability": 0.258,
+          "delta_vs_baseline": -0.07400000000000001
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" ant\"",
+            0.332
+          ],
+          [
+            "Output \" over\"",
+            0.123
+          ],
+          [
+            "Output \" old\"",
+            0.084
+          ],
+          [
+            "Output \" OTC\"",
+            0.084
+          ],
+          [
+            "Output \" apple\"",
+            0.045
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" endos\"",
+              0.467
+            ],
+            [
+              "Output \" appointment\"",
+              0.104
+            ],
+            [
+              "Output \" upper\"",
+              0.092
+            ],
+            [
+              "Output \" ultrasound\"",
+              0.081
+            ],
+            [
+              "Output \" acid\"",
+              0.021
+            ]
+          ],
+          [
+            [
+              "Output \" ant\"",
+              0.291
+            ],
+            [
+              "Output \" over\"",
+              0.138
+            ],
+            [
+              "Output \" OTC\"",
+              0.083
+            ],
+            [
+              "Output \" anti\"",
+              0.083
+            ],
+            [
+              "Output \" acid\"",
+              0.045
+            ]
+          ],
+          [
+            [
+              "Output \" ant\"",
+              0.512
+            ],
+            [
+              "Output \" extra\"",
+              0.114
+            ],
+            [
+              "Output \" anti\"",
+              0.069
+            ],
+            [
+              "Output \" immediate\"",
+              0.037
+            ],
+            [
+              "Output \" over\"",
+              0.026
+            ]
+          ],
+          [
+            [
+              "Output \" ant\"",
+              0.203
+            ],
+            [
+              "Output \" old\"",
+              0.123
+            ],
+            [
+              "Output \" apple\"",
+              0.075
+            ],
+            [
+              "Output \" over\"",
+              0.075
+            ],
+            [
+              "Output \" OTC\"",
+              0.058
+            ]
+          ],
+          [
+            [
+              "Output \" ant\"",
+              0.258
+            ],
+            [
+              "Output \" over\"",
+              0.083
+            ],
+            [
+              "Output \" OTC\"",
+              0.074
+            ],
+            [
+              "Output \" apple\"",
+              0.051
+            ],
+            [
+              "Output \" extra\"",
+              0.045
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.1034
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 [L21\u00b7O] mentions of age, especially numerical ages or phrase \u2192 Output \" old\" (p=0.084)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260723T001434Z/index_32.html",
+        "png": "trace_out/dialects_20260723T001434Z/index_32.png"
+      }
+    },
+    {
+      "index": 33,
+      "mode": "dialect",
+      "baseline_prompt": "My chronic low back pain has flared all week, so I finally saw a",
+      "held_fixed": "clinical",
+      "term": "chronic low back pain has flared",
+      "target_token": "Output \" chi\"",
+      "baseline_probability": 0.355,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording same register and meaning",
+          "prompt": "I've been dealing with chronic low back pain has flared throughout the week, which is why I decided to see a",
+          "probability": 0.664,
+          "delta_vs_baseline": 0.30900000000000005
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording same register",
+          "prompt": "My chronic low back pain has flared for the entire week, so I went ahead and made an appointment with a",
+          "probability": 0.354,
+          "delta_vs_baseline": -0.0010000000000000009
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses keep every key word",
+          "prompt": "Because chronic low back pain has flared all week, I finally scheduled an appointment with a",
+          "probability": 0.289,
+          "delta_vs_baseline": -0.066
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only same content",
+          "prompt": "My chronic low back pain has flared through the week, thus I eventually consulted a",
+          "probability": 0.164,
+          "delta_vs_baseline": -0.19099999999999998
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording same register",
+          "prompt": "My chronic low back pain has flared for a week straight, so I eventually saw a",
+          "probability": 0.379,
+          "delta_vs_baseline": 0.02400000000000002
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" chi\"",
+            0.355
+          ],
+          [
+            "Output \" doctor\"",
+            0.168
+          ],
+          [
+            "Output \" specialist\"",
+            0.09
+          ],
+          [
+            "Output \" new\"",
+            0.07
+          ],
+          [
+            "Output \" physical\"",
+            0.055
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" chi\"",
+              0.664
+            ],
+            [
+              "Output \" Chi\"",
+              0.062
+            ],
+            [
+              "Output \" doctor\"",
+              0.042
+            ],
+            [
+              "Output \" physical\"",
+              0.042
+            ],
+            [
+              "Output \" physio\"",
+              0.033
+            ]
+          ],
+          [
+            [
+              "Output \" chi\"",
+              0.354
+            ],
+            [
+              "Output \" physical\"",
+              0.102
+            ],
+            [
+              "Output \" pain\"",
+              0.089
+            ],
+            [
+              "Output \" specialist\"",
+              0.062
+            ],
+            [
+              "Output \" new\"",
+              0.062
+            ]
+          ],
+          [
+            [
+              "Output \" chi\"",
+              0.289
+            ],
+            [
+              "Output \" physical\"",
+              0.176
+            ],
+            [
+              "Output \" pain\"",
+              0.083
+            ],
+            [
+              "Output \" specialist\"",
+              0.064
+            ],
+            [
+              "Output \" doctor\"",
+              0.057
+            ]
+          ],
+          [
+            [
+              "Output \" doctor\"",
+              0.186
+            ],
+            [
+              "Output \" chi\"",
+              0.164
+            ],
+            [
+              "Output \" physio\"",
+              0.145
+            ],
+            [
+              "Output \" specialist\"",
+              0.042
+            ],
+            [
+              "Output \" medical\"",
+              0.032
+            ]
+          ],
+          [
+            [
+              "Output \" chi\"",
+              0.379
+            ],
+            [
+              "Output \" doctor\"",
+              0.179
+            ],
+            [
+              "Output \" specialist\"",
+              0.075
+            ],
+            [
+              "Output \" physical\"",
+              0.051
+            ],
+            [
+              "Output \" new\"",
+              0.045
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.0917
+      },
+      "top_path": {
+        "baseline": "[L21\u00b7S]  \u2192 [L24\u00b7C] words related to medical treatment or legal cases |  \u2192 Output \" physical\" (p=0.055)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260723T001434Z/index_33.html",
+        "png": "trace_out/dialects_20260723T001434Z/index_33.png"
+      }
+    },
+    {
+      "index": 34,
+      "mode": "dialect",
+      "baseline_prompt": "My allergic rhinitis is flaring today, so I popped an",
+      "held_fixed": "clinical",
+      "term": "My allergic rhinitis is flaring",
+      "target_token": "Output \" anti\"",
+      "baseline_probability": 0.338,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording same register and meaning",
+          "prompt": "Since My allergic rhinitis is flaring up today, I decided to take an",
+          "probability": 0.162,
+          "delta_vs_baseline": -0.17600000000000002
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording same register",
+          "prompt": "Today My allergic rhinitis is flaring, which is why I took an",
+          "probability": 0.342,
+          "delta_vs_baseline": 0.0040000000000000036
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses keep every key word",
+          "prompt": "I took an antihistamine because My allergic rhinitis is flaring",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only same content",
+          "prompt": "My allergic rhinitis is flaring at present, so I've popped an",
+          "probability": 0.35,
+          "delta_vs_baseline": 0.011999999999999955
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording same register",
+          "prompt": "My allergic rhinitis is flaring right now, so I took an",
+          "probability": 0.445,
+          "delta_vs_baseline": 0.10699999999999998
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" anti\"",
+            0.338
+          ],
+          [
+            "Output \" Alle\"",
+            0.085
+          ],
+          [
+            "Output \" allergy\"",
+            0.075
+          ],
+          [
+            "Output \" extra\"",
+            0.059
+          ],
+          [
+            "Output \" Ad\"",
+            0.052
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" allergy\"",
+              0.184
+            ],
+            [
+              "Output \" anti\"",
+              0.162
+            ],
+            [
+              "Output \" extra\"",
+              0.086
+            ],
+            [
+              "Output \" afternoon\"",
+              0.052
+            ],
+            [
+              "Output \" early\"",
+              0.052
+            ]
+          ],
+          [
+            [
+              "Output \" anti\"",
+              0.342
+            ],
+            [
+              "Output \" allergy\"",
+              0.143
+            ],
+            [
+              "Output \" extra\"",
+              0.143
+            ],
+            [
+              "Output \" hour\"",
+              0.041
+            ],
+            [
+              "Output \" over\"",
+              0.036
+            ]
+          ],
+          [
+            [
+              "Output \" up\"",
+              0.637
+            ],
+            [
+              "Output \".\"",
+              0.098
+            ],
+            [
+              "Output \" and\"",
+              0.059
+            ],
+            [
+              "Output \",\"",
+              0.028
+            ],
+            [
+              "Output \" again\"",
+              0.025
+            ]
+          ],
+          [
+            [
+              "Output \" anti\"",
+              0.35
+            ],
+            [
+              "Output \" extra\"",
+              0.129
+            ],
+            [
+              "Output \" Al\"",
+              0.032
+            ],
+            [
+              "Output \" allergy\"",
+              0.029
+            ],
+            [
+              "Output \" Ad\"",
+              0.029
+            ]
+          ],
+          [
+            [
+              "Output \" anti\"",
+              0.445
+            ],
+            [
+              "Output \" allergy\"",
+              0.186
+            ],
+            [
+              "Output \" extra\"",
+              0.068
+            ],
+            [
+              "Output \" over\"",
+              0.06
+            ],
+            [
+              "Output \" OTC\"",
+              0.025
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.0974
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 Output \" allergy\" (p=0.075)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260723T001434Z/index_34.html",
+        "png": "trace_out/dialects_20260723T001434Z/index_34.png"
+      }
+    },
+    {
+      "index": 35,
+      "mode": "dialect",
+      "baseline_prompt": "I keep having sleep apnea episodes at night, so my wife says I need a",
+      "held_fixed": "clinical",
+      "term": "having sleep apnea episodes",
+      "target_token": "Output \" CP\"",
+      "baseline_probability": 0.574,
+      "variants": [
+        {
+          "dialect": "paraphrase 1 - innocuous rewording same register and meaning",
+          "prompt": "I continue to experience having sleep apnea episodes at night, which is why my wife thinks I should get a",
+          "probability": 0.531,
+          "delta_vs_baseline": -0.04299999999999993
+        },
+        {
+          "dialect": "paraphrase 2 - another innocuous rewording same register",
+          "prompt": "My wife believes I need a because I'm regularly having sleep apnea episodes during the night, and I",
+          "probability": null,
+          "delta_vs_baseline": null
+        },
+        {
+          "dialect": "paraphrase 3 - reorder the clauses keep every key word",
+          "prompt": "Because I keep having sleep apnea episodes at night, my wife says that I need a",
+          "probability": 0.408,
+          "delta_vs_baseline": -0.16599999999999998
+        },
+        {
+          "dialect": "paraphrase 4 - swap function words only same content",
+          "prompt": "I keep having sleep apnea episodes throughout the night, so my wife says I need a",
+          "probability": 0.59,
+          "delta_vs_baseline": 0.016000000000000014
+        },
+        {
+          "dialect": "paraphrase 5 - minimal rewording same register",
+          "prompt": "I keep having sleep apnea episodes at night, and my wife says I need a",
+          "probability": 0.535,
+          "delta_vs_baseline": -0.038999999999999924
+        }
+      ],
+      "forced_targets": [],
+      "predictive_spread": {
+        "baseline": [
+          [
+            "Output \" CP\"",
+            0.574
+          ],
+          [
+            "Output \" new\"",
+            0.1
+          ],
+          [
+            "Output \" sleep\"",
+            0.088
+          ],
+          [
+            "Output \" machine\"",
+            0.025
+          ],
+          [
+            "Output \" c\"",
+            0.022
+          ]
+        ],
+        "variants": [
+          [
+            [
+              "Output \" CP\"",
+              0.531
+            ],
+            [
+              "Output \" sleep\"",
+              0.196
+            ],
+            [
+              "Output \" new\"",
+              0.044
+            ],
+            [
+              "Output \" C\"",
+              0.03
+            ],
+            [
+              "Output \" c\"",
+              0.018
+            ]
+          ],
+          [
+            [
+              "Output \"'\"",
+              0.301
+            ],
+            [
+              "Output \" have\"",
+              0.098
+            ],
+            [
+              "Output \" need\"",
+              0.046
+            ],
+            [
+              "Output \" don\"",
+              0.036
+            ],
+            [
+              "Output \" wake\"",
+              0.036
+            ]
+          ],
+          [
+            [
+              "Output \" CP\"",
+              0.408
+            ],
+            [
+              "Output \" sleep\"",
+              0.117
+            ],
+            [
+              "Output \" new\"",
+              0.117
+            ],
+            [
+              "Output \" better\"",
+              0.026
+            ],
+            [
+              "Output \" good\"",
+              0.02
+            ]
+          ],
+          [
+            [
+              "Output \" CP\"",
+              0.59
+            ],
+            [
+              "Output \" new\"",
+              0.103
+            ],
+            [
+              "Output \" sleep\"",
+              0.071
+            ],
+            [
+              "Output \" C\"",
+              0.029
+            ],
+            [
+              "Output \" machine\"",
+              0.029
+            ]
+          ],
+          [
+            [
+              "Output \" CP\"",
+              0.535
+            ],
+            [
+              "Output \" sleep\"",
+              0.093
+            ],
+            [
+              "Output \" new\"",
+              0.064
+            ],
+            [
+              "Output \" machine\"",
+              0.044
+            ],
+            [
+              "Output \" c\"",
+              0.039
+            ]
+          ]
+        ]
+      },
+      "error_share": {
+        "baseline": 0.102
+      },
+      "top_path": {
+        "baseline": "embedding \u2192 [L19\u00b7C] words associated with sleep apnea and medical papers \u2192 Output \" sleep\" (p=0.088)"
+      },
+      "outputs": {
+        "html": "trace_out/dialects_20260723T001434Z/index_35.html",
+        "png": "trace_out/dialects_20260723T001434Z/index_35.png"
+      }
+    }
+  ]
+}
