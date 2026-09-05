@@ -37,41 +37,44 @@ git reset -q                                    # rebuild the index from HEAD
 git restore --source=HEAD --worktree -- . ':(exclude)trace_out' ':(exclude)render_archives'
 git ls-tree -r HEAD --name-only trace_out | grep -E 'batch_summary[^/]*\.json$' \
   | xargs -d '\n' git restore --source=HEAD --worktree --
-git checkout -B claude/gemma-clinical-colloquial-interp-mavx04 \
-  origin/claude/gemma-clinical-colloquial-interp-mavx04 2>/dev/null || true
-git pull --rebase origin claude/gemma-clinical-colloquial-interp-mavx04
+git checkout -B main origin/main 2>/dev/null || true
+git pull --rebase origin main
 ```
 
-## Variant B — clean checkouts, WRONG branch (observed 2026-08-11)
+## Variant B — clean checkout, WRONG or STALE ref (observed 2026-08-11; rewritten 2026-09-04)
 
 A fresh container can also arrive with both repos present, `git status` clean,
-and **no staged deletions at all** — but sitting on a main-based branch
-(e.g. `claude/nice-tesla-vemyql`) with the ops branch never fetched locally.
-The Variant A repair above does not apply and its symptom check passes, so the
-trap is silent: `ops/dashboard.json` reads as a **month-stale main copy**
-(`updated_utc` 2026-07-09, `tierb.start_utc: null`, `accepted_pairs: 0`), and
-`seal_check.py` would exit 2 on an empty sealed set because the holdout window
-derives from that null stamp. Orient from a main checkout and every number is
-wrong.
+and **no staged deletions at all** — but sitting on a session branch (e.g.
+`claude/nice-tesla-vemyql`) or on a `main` that predates the last cycle. The
+Variant A repair above does not apply and its symptom check passes, so the
+trap is silent: `ops/dashboard.json` reads stale, and `seal_check.py` would
+exit 2 on an empty sealed set if `tierb.start_utc` is null. Orient from a stale
+checkout and every number is wrong. (Until 2026-09-04 the live state lived on
+the ops branch `claude/gemma-clinical-colloquial-interp-mavx04` and a `main`
+checkout was the wrong branch by definition; engine PR #6 merged that branch
+into `main` and retired it, so `main` is now the only working branch in both
+repos.)
 
 **Detect it before acting:**
 
 ```bash
-git rev-parse --abbrev-ref HEAD                       # is this the ops branch?
-git ls-remote --heads origin | grep gemma-clinical    # the ops branch does exist
+git rev-parse --abbrev-ref HEAD                       # must be main
+git fetch --filter=blob:none --no-tags origin main
+git diff --quiet origin/main -- ops/dashboard.json && echo current || echo STALE
 python -c "import json;d=json.load(open('ops/dashboard.json'));print(d['updated_utc'],d['tierb']['start_utc'])"
 ```
 
-A `start_utc` of `None` means you are on main, not the ops branch. Stop.
+A `start_utc` of `None`, or a dashboard that differs from `origin/main`, means
+you are not on current `main`. Stop and repair.
 
 **Repair — blobless fetch FIRST, then sparse patterns, then checkout.** A plain
-`git fetch` of the ops branch is not slow, it is unusable: measured again on
+`git fetch` of the working branch is not slow, it is unusable: measured on
 2026-08-11 at 2 min and 9.5 min, both killed with the server still compressing
 (49% of 12,145 objects). The blobless fetch completed in **1.9 seconds**.
 
 ```bash
 cd /home/user/patientwords-engine
-git fetch --filter=blob:none --no-tags origin claude/gemma-clinical-colloquial-interp-mavx04
+git fetch --filter=blob:none --no-tags origin main
 git sparse-checkout set --no-cone \
   '/*' '!/trace_out/*' '!/render_archives/*' \
   '/trace_out/*/*.json' '/trace_out/*/*.html' \
@@ -81,8 +84,7 @@ git sparse-checkout set --no-cone \
   '/trace_out/pairs_20260711T051145Z_txopus*/*' \
   '/trace_out/pairs_20260711T051145Z_txplacebo*/*' \
   '/trace_out/txcorpus_priority*__jlens_gemma-2-2b/*'
-git checkout -B claude/gemma-clinical-colloquial-interp-mavx04 \
-  origin/claude/gemma-clinical-colloquial-interp-mavx04     # ~2m45s
+git checkout -B main origin/main                         # ~2m45s on 2026-08-11
 ```
 
 The census-batch `jlens_raw/` patterns on the last five lines are **not
@@ -103,14 +105,12 @@ reason). With the global pattern the planner reports `lens+save_raw 39/39` and
 across 92 dirs, materialized in well under a minute; `trace_out` goes 3.3G -> 6.6G.
 Verified on the 2026-08-16 cycle, which avoided a third wasted fire because of it.
 
-The site sibling needs no such care — it is small, and on 2026-08-11 its ops
-branch was byte-identical to `main`.
+The site sibling needs no such care — it is small, and its working branch is
+`main`.
 
-Note that `docs/routine_standing_prompt.md` on **main** is a stale 172-line
-snapshot; the ops branch carries the authoritative version (412 lines as of
-2026-08-16) with the
-sub-items (3a2, 3b, 3c, 3c2, 3d, 4a, 4b) the cycle depends on. Re-read it from
-the branch after checkout, not before.
+`docs/routine_standing_prompt.md` on `main` is the authoritative copy (since
+2026-09-04; before that `main` carried a stale snapshot and the ops branch the
+live one). Re-read it after checkout, not before.
 
 ## Site repo (when `../patientwords` is missing)
 
@@ -123,7 +123,7 @@ git clone --filter=blob:none --no-checkout \
   "$(git -C patientwords-engine remote get-url origin | sed 's|/patientwords-engine|/patientwords|')" patientwords
 cd patientwords
 git sparse-checkout set --no-cone '/*' '!/modes/'
-git checkout claude/gemma-clinical-colloquial-interp-mavx04
+git checkout main
 ```
 
 **But re-materialize `modes/` before running the contract gate** (2026-08-16).

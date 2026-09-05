@@ -11,8 +11,9 @@ trust reality, then fix the book.
 
 Two public repos: `patientwords-engine` (measurement + ops) and
 `patientwords` (presentation-only site), sibling checkouts, both worked on
-branch `claude/gemma-clinical-colloquial-interp-mavx04` (the ops branch;
-site `main` is the live GitHub Pages). Nothing paid or networked runs
+`main` since 2026-09-04 — engine PR #6 merged and retired the former ops
+branch `claude/gemma-clinical-colloquial-interp-mavx04`; site `main` is the
+live GitHub Pages, so a data push there is a publish. Nothing paid or networked runs
 locally — every job goes through push-to-run CI: changing a file under
 `.github/trigger/` on any pushed branch fires its workflow. All firing goes
 through `scripts/fire_trigger.py`, which journals to

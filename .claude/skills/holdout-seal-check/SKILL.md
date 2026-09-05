@@ -25,21 +25,21 @@ LLM being helpful. That includes you — see the Never list before doing anythin
   (`is_holdout`, `holdout_phrases`, `stamp_rows`). Never reimplement the hash,
   never hand-classify a row.
 
-## Step 1 — Precondition: run from the working branch
+## Step 1 — Precondition: run from current `main`
 
 The sealed set derives from `tierb.start_utc` in `ops/dashboard.json`. Live ops
-state lives on the **working branch** (currently
-`claude/gemma-clinical-colloquial-interp-mavx04`; see the state note in
-`ops/routines.md`), NOT main. A main checkout has a null `tierb.start_utc`, so
-the sealed set computes **EMPTY** and the check is meaningless (audit
-drift-register 1). From the engine repo root:
+state lives on `main` since 2026-09-04 (engine PR #6 merged and retired the
+former working branch; see the state note in `ops/routines.md`). A stale or
+wrong checkout has a null `tierb.start_utc`, so the sealed set computes
+**EMPTY** and the check is meaningless (audit drift-register 1). From the
+engine repo root:
 
 ```bash
-git rev-parse --abbrev-ref HEAD   # must be the ops-truth working branch, not main
+git rev-parse --abbrev-ref HEAD   # must be main, current with origin/main
 python -c "from scripts.tierb_split import tierb_start_stamp; s=tierb_start_stamp(); print(s or 'NULL start_utc - wrong branch'); raise SystemExit(0 if s else 1)"
 ```
 
-If that exits 1, check out the working branch (or pass
+If that exits 1, fetch and check out current `main` (or pass
 `--dashboard <path-to-working-branch-dashboard>`) before proceeding.
 
 ## Step 2 — Run the sweep

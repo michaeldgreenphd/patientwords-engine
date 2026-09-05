@@ -5,34 +5,37 @@ Registry of every scheduled automation that touches these repos (audit
 schedule or a standing prompt updates this file **in the same commit**,
 including recomputed hashes.
 
-State note (drift-register 1): live ops **state** (`ops/dashboard.json`,
-`ops/trigger_journal.jsonl`) is maintained on the working branch
-(`claude/gemma-clinical-colloquial-interp-mavx04`), not main, until the
-branch consolidation (audit E10) lands. This registry documents the
-routines themselves and lives on main.
+State note (drift-register 1, closed 2026-09-04): live ops **state**
+(`ops/dashboard.json`, `ops/trigger_journal.jsonl`) is maintained on `main`.
+Until 2026-09-04 it lived on the working branch
+`claude/gemma-clinical-colloquial-interp-mavx04`; the branch consolidation
+(audit E10) landed as engine PR #6 and that branch is retired. This registry
+documents the routines themselves.
 
 ---
 
 ## 1 · Daily ops cycle ("daily Routine")
 
-- **Schedule:** 13:00 UTC daily (= 09:00 America/New_York in DST). Observed
-  fires land 13:00–13:15 UTC. Fires **into the main orchestrator session**
-  (owner request 2026-07-10 — the earlier fresh-session Routine deep-linked
-  its push notification to an empty session).
-- **What it does:** exactly one ops cycle per `docs/routine_standing_prompt.md`
-  sections 1–7 (orient → harvest → account → advance Tier B → publish site
-  data only → update dashboard → brief), then delivers the owner digest as a
-  push notification plus a chat message ending "Reply STOP here to freeze all
-  automation." Exactly one cycle per firing; the cron re-fires itself daily.
-- **Standing prompt of record:** `docs/routine_standing_prompt.md` on the
-  **working branch** governs the cycle until E10 consolidates branches.
-  - working-branch copy (operative), sha256:
-    `cef1cfa92deaa332da8b5e29b86863fbf9698be1111fbf579f8c5d4e5c39b8c2`
-  - main copy (jlens-wired; its transport/loglens publish lines are
-    aspirational until those inputs land on the working branch — see
-    dashboard `decisions_pending: TRANSPORT-LOGLENS-WIRING`), sha256:
-    `6799ee34502ed10c39dd918c270d4976488afdc0c7a414bf671816aadb477a26`
-- **Single-writer rule:** the daily Routine session is the only writer of
+- **Schedule:** Tuesdays and Fridays 12:00 UTC (cron `0 12 * * 2,5`;
+  fires land ~12:07 UTC), a **fresh session per firing** — the owner-approved
+  maintenance downshift of 2026-08-29. During the active study it fired
+  13:00 UTC daily into the main orchestrator session (owner request
+  2026-07-10 — the earlier fresh-session Routine deep-linked its push
+  notification to an empty session).
+- **What it does:** exactly one maintenance cycle per
+  `docs/routine_standing_prompt.md` sections 0–7 (cadence gate → orient →
+  harvest → drift sentinel with a bounded wait → re-park → publish site data
+  only when new measurement landed → dashboard → brief), then delivers the
+  owner digest as a push notification. Exactly one cycle per firing.
+  Measured wall-clock: 75 min (2026-08-29) to 2h21m (2026-09-04); the
+  Neuronpedia sentinel itself is 14–39 min of that, the rest is bootstrap,
+  orientation, gates and the brief.
+- **Standing prompt of record:** `docs/routine_standing_prompt.md` on
+  `main`, sha256 `fd27e2bf9212f075a74f6a477b6b7c126086ed8706ecb7cca6e5913668c66456` (recompute with `sha256sum` after any edit and
+  update this line in the same commit).
+- **Wrapper prompt:** lives in the claude.ai Routines UI (created there, so
+  the API cannot edit it); it names `main` in both repos and points here.
+ the daily Routine session is the only writer of
   `ops/dashboard.json`. Any other session that fires a trigger reverts the
   dashboard side effect and commits the journal entry only.
 - **Cron history (reconciliation of the 11:30-vs-13:00 discrepancy):** the
@@ -40,7 +43,7 @@ routines themselves and lives on main.
   07:30 EDT" and confirmed the owner timezone America/New_York. The schedule
   was subsequently moved to 13:00 UTC (= 09:00 EDT); the ledger line is
   historical record (append-only), not the current spec. **Current spec:
-  13:00 UTC.**
+  Tuesdays and Fridays 12:00 UTC, since 2026-08-29.**
 
 ## 2 · Backfill accelerator (2-hourly, session-local)
 

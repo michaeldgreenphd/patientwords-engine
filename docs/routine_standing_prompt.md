@@ -1,10 +1,13 @@
 # Ops Routine — standing prompt (MAINTENANCE MODE, 2026-08-29)
 
 This file is the authority for the scheduled ops Routine (fresh session per
-firing; every 3 days at 12:00 UTC since 2026-08-29, owner-approved
-maintenance downshift — daily during the active study). The Routine's
-baked-in prompt is short and points here, so each firing re-reads this file
-from the branch; changes committed here take effect at the next firing.
+firing; Tuesdays and Fridays at 12:00 UTC — cron `0 12 * * 2,5` — since the
+owner-approved maintenance downshift of 2026-08-29; daily during the active
+study). The Routine's baked-in prompt is short and points here, so each
+firing re-reads this file from `main`; changes committed here take effect at
+the next firing. Since 2026-09-04 `main` is the only working branch in both
+repos: engine PR #6 merged and retired the former ops branch
+`claude/gemma-clinical-colloquial-interp-mavx04`.
 The previous ACTIVE-STUDY version of this prompt (Tier B generation,
 tracing priorities, watchdog, critic) is preserved in git history at tag
 `pre-maintenance` context — see `git log -- docs/routine_standing_prompt.md`.
@@ -22,16 +25,15 @@ You are a fresh Claude session in `patientwords-engine` (**public** repo —
 never write secrets; the site is the sibling checkout `../patientwords`,
 also public). Run exactly ONE maintenance cycle. The repos are your memory.
 
-## 0 · Cadence gate (self-throttle while the cron is still daily)
+## 0 · Cadence gate (guard against an extra same-day firing)
 
-The schedule is owner-controlled and may still fire daily. Immediately after
-bootstrap, check the newest `docs/briefs/brief_*.md` date and the journal:
-if the newest brief is **less than 2 days old** AND no journal-active entry
-is older than 8 hours, END the session now with the one-line digest
+The schedule is owner-controlled. Immediately after bootstrap, check the
+newest `docs/briefs/brief_*.md` date and the journal: if the newest brief is
+**less than 2 days old** AND no journal-active entry is older than 8 hours,
+END the session now with the one-line digest
 `maintenance gate: cycle skipped (last brief <2d, queue quiet)` — run
-nothing else. This holds the effective cadence at ~every 3 days until the
-owner edits the schedule in the claude.ai Routines UI (at which point this
-gate simply never trips).
+nothing else. On the Tue/Fri cron the gaps are 3–4 days and this never
+trips; it exists for a manual re-fire on the same day as a completed cycle.
 
 ## 1 · Orient
 
@@ -40,7 +42,7 @@ gate simply never trips).
    case law. Follow its drills verbatim when git or the queue misbehaves.
 3. `ops/dashboard.json` — operational state. 4. `ops/trigger_journal.jsonl`.
 
-`git pull --rebase` the ops branch first; `git fetch origin main`. Journal
+`git pull --rebase origin main` first, in both repos. Journal
 conflicts merge as an ORDERED UNION (both sides, dedupe on
 (fired_utc, trigger) preferring remote, sort by fired_utc, verify every line
 parses, then RECHECK for revived-but-terminal entries). Dashboard conflicts
@@ -50,7 +52,7 @@ keep this Routine's own side — you are its single writer.
 
 Check every journal-active entry against what landed. Resolve an entry ONLY
 after a per-entry terminality check — GitHub run status/conclusion via the
-GitHub tools, or committed outputs on the branch (say which in the brief).
+GitHub tools, or committed outputs on `main` (say which in the brief).
 NEVER `resolve --all` without checking each active entry individually:
 another session may have fired since the journal was last read (the
 2026-08-26 mis-resolve, handbook §incidents). An entry past the 8h expiry
@@ -94,7 +96,11 @@ and the site's data-contract table, then
 be 0 errors) and `python scripts/seal_check.py --site ../patientwords
 --extra docs,ops` (must be CLEAN) before pushing data payloads only. Never
 edit page HTML, text, figures, or labels. When nothing landed, skip this
-section entirely — do not republish unchanged data.
+section entirely — do not republish unchanged data. The site checkout is
+`main`, which GitHub Pages serves: a data-payload push there is a live
+publish, so the two gates above are the last check before the public sees
+it. (This closes SITE-MAIN-LAG-20260904 by construction — there is no longer
+a separate site branch to merge.)
 
 ## 6 · Dashboard
 
