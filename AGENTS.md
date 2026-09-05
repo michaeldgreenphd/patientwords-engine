@@ -1,10 +1,11 @@
 # AGENTS.md
 
 Guidance for coding agents working in this repository. This is the canonical
-instruction file: Codex reads `AGENTS.md` directly, and the root `CLAUDE.md` is a
-one-line pointer to it so Claude Code reads the same rules. Put every agent rule
-here — a rule written only in `CLAUDE.md` reaches one tool and is invisible to the
-agents reviewing the pull request.
+instruction file: Codex reads `AGENTS.md` directly, and the root `CLAUDE.md`
+imports it so Claude Code reads the same rules. `CLAUDE.md` carries only
+Claude-Code-specific mechanics (which harness tools to call), never a rule. Put
+every agent rule here — a rule written only in `CLAUDE.md` reaches one tool and is
+invisible to the agents reviewing the pull request.
 
 ## What this is
 
@@ -187,6 +188,36 @@ concern, make behavior changes testable and tested, and include migration or
 compatibility notes whenever a change alters an API, a data file's shape, a
 configuration key, or anything another repository or a published page reads.
 
+## Pull request workflow — required
+
+1. Branch from `main` and open a pull request against `main`. Never push to
+   `main` directly unless the owner explicitly says to.
+2. Immediately after opening the PR, post a comment containing exactly
+   "@codex review". Do this for every PR, without being asked, and again
+   after any push that changes the diff so the new head is reviewed.
+3. Address every Codex finding before the PR is considered done: verify it
+   against the diff, push a fix for anything real, and reply on the thread
+   saying what changed. Resolve the threads you addressed.
+4. Ask before disputing. When a finding is unclear or looks wrong, do not
+   argue with it or ignore it — post a comment addressed to @codex with the
+   specific question, then act on the answer: fix, or reply with the reason
+   it should not be taken. Codex answers direct questions; it does not
+   respond to ordinary thread replies.
+5. One editor per branch. Never use "@codex address that feedback", or
+   otherwise ask Codex to push commits, while an agent or session is working
+   on the branch. Asking Codex questions is fine at any time.
+6. Keep the PR title and description accurate as the branch changes.
+7. Agents do not merge; the owner merges.
+
+Item 1 has one standing exception the owner has already granted, and it is
+narrow: the **operational commits** described under *Execution model* go to
+`main` directly — `scripts/fire_trigger.py`'s trigger-file and journal
+commits, the daily Routine's dashboard, brief and site-data publishes, and
+CI's own output commits. Everything else — code, tests, workflow YAML, docs,
+skills, data-file shapes — goes through a pull request. Creating the branch
+fires nothing (see the `github.event.created` guard above), so there is no
+cost to branching.
+
 ## Code Review Rules
 
 Codex applies these requirements during each review:
@@ -266,7 +297,9 @@ Every pull request here is reviewed by Codex and Copilot. Their findings are
    both error rates.
 2. **Give every finding a disposition on its own thread**: fixed, naming the
    commit; declined, naming the reason and the evidence; or not applicable, and
-   why. Silence is not a disposition.
+   why. Silence is not a disposition. A decline goes through the ask-first
+   step first (**Pull request workflow — required**, item 4): put the specific
+   question to @codex, and decline only on its answer.
 3. **Resolve only threads you actually fixed.** Resolving one you dismissed makes
    the pull request look handled when it is not.
 4. **Never apply a finding you have not checked.** Both directions cost: applying
