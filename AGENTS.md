@@ -186,8 +186,14 @@ palette, and every mark must survive gallery-thumbnail scale. When in doubt, rem
 
 ## Tests
 
-Offline and fast (`tests/`, `conftest.py` provides fixtures; no network, no keys). Every
-bug fix gets a regression test. CI-side behavior (workflow YAML, hosted API quirks) can't
+Offline and fast (`tests/`, `conftest.py` provides fixtures; no network, no keys), and the
+suite stays green: `pip install -e ".[llm]"` installs everything it needs — `matplotlib` and
+`networkx` are declared dependencies, not extras, so a container that skipped the install
+shows 12 `ModuleNotFoundError` failures that are the environment's, not the code's. One
+known failure as of 2026-09-06: `tests/test_specialty_map.py::test_covers_live_payload_topics`
+— `data/specialty_map.draft.json` (290 topics) trails the live payload (419 topics; 145
+unmapped against a ceiling of 20). That is an owner-review data task, not a threshold to
+relax; anything else red is the change's. Every bug fix gets a regression test. CI-side behavior (workflow YAML, hosted API quirks) can't
 be tested here — validate YAML with `yaml.safe_load` and verify wiring by reading the
 params heredoc, which has its own pitfalls (push-path `defaults` dict must contain every
 trigger key; JSON lists must be normalized to CSV before `str()`).
