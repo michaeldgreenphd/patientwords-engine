@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Layer 2 of the guard (installed as core.hooksPath by the SessionStart hook; on a
+# fresh clone run `git config core.hooksPath .githooks`). Runs inside git for any
+# caller. Refuses ref deletions, and pushes that change .github/trigger/ unless
+# they come from scripts/fire_trigger.py, which proves it with a one-shot token:
+# the file <git-dir>/pw_fire_token exists only for the duration of its own push
+# and PW_FIRE_TOKEN in the push's environment must match it.
+set -euo pipefail
+zero=0000000000000000000000000000000000000000
+tokfile="$(git rev-parse --git-dir)/pw_fire_token"
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$local_sha" = "$zero" ]; then
+    echo "pre-push: refusing to delete $remote_ref - branch deletion is the owner's, in the GitHub UI." >&2
+    exit 1
+  fi
+  # A push that creates the remote ref fires nothing (github.event.created guard); skip it.
+  [ "$remote_sha" = "$zero" ] && continue
+  if git diff --name-only "$remote_sha" "$local_sha" -- .github/trigger/ | grep -q .; then
+    if [ -n "${PW_FIRE_TOKEN:-}" ] && [ -f "$tokfile" ] && [ "$(cat "$tokfile")" = "$PW_FIRE_TOKEN" ]; then
+      continue
+    fi
+    echo "pre-push: this push changes .github/trigger/ (it fires CI). Only scripts/fire_trigger.py may push a trigger change." >&2
+    exit 1
+  fi
+done
+exit 0

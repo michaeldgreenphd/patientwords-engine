@@ -73,7 +73,8 @@ def repo(tmp_path):
 
 def test_third_fire_refused_with_exit_2(repo, capsys):
     assert fire(repo, params={"mode": "2panel", "_nonce": "1"}, note="first") == 0
-    assert fire(repo, params={"mode": "2panel", "_nonce": "2"}, note="second") == 0
+    assert fire(repo, params={"mode": "2panel", "_nonce": "2"}, note="second",
+                extra=("--keep-dashboard",)) == 0
     assert fire(repo, params={"mode": "2panel", "_nonce": "3"}, note="third") == 2
     assert "one running + one pending" in capsys.readouterr().err
     entries = ft.load_journal(journal_path(repo))
@@ -441,7 +442,7 @@ def test_save_journal_atomic_write_via_replace(tmp_path, monkeypatch):
 
 def test_identical_params_hard_error_exit_5_no_phantom_slot(repo, capsys):
     params = {"mode": "2panel", "_nonce": "same"}
-    assert fire(repo, params=params, note="first") == 0
+    assert fire(repo, params=params, note="first", extra=("--keep-dashboard",)) == 0
     capsys.readouterr()
     assert fire(repo, params=params, note="rerun") == 5
     err = capsys.readouterr().err
@@ -860,3 +861,60 @@ def test_park_all_succeeds_with_budget(repo):
     assert rc == 0
     for t in ft.PARK_DEFAULTS:
         assert json.loads(trigger_path(repo, t).read_text())["_parked"] == "true"
+
+
+# --- dashboard single-writer: the script never commits the dashboard and restores
+# --- its side effect unless --keep-dashboard (AGENTS.md, Single-writer; 2026-09-06)
+
+def test_fire_restores_dashboard_unless_keep(repo):
+    write_dashboard(repo, 0.0)
+    before = (repo / "ops" / "dashboard.json").read_bytes()
+    assert fire(repo) == 0
+    assert (repo / "ops" / "dashboard.json").read_bytes() == before, "side effect leaked"
+    assert fire(repo, params={"graph_model": "gemma-2-2b", "mode": "2panel", "_nonce": "k1"},
+                extra=("--keep-dashboard",)) == 0
+    after = json.loads((repo / "ops" / "dashboard.json").read_text(encoding="utf-8"))
+    assert after["updated_by"] == "session" and "circuit-trace" in after["queue"]
+
+
+def test_fire_without_dashboard_creates_none(repo):
+    assert not (repo / "ops" / "dashboard.json").exists()
+    assert fire(repo) == 0
+    assert not (repo / "ops" / "dashboard.json").exists()
+
+
+def test_resolve_restores_dashboard_unless_keep(repo):
+    write_dashboard(repo, 0.0)
+    assert fire(repo) == 0
+    before = (repo / "ops" / "dashboard.json").read_bytes()
+    assert ft.main(["resolve", "--repo", str(repo), "--trigger", "circuit-trace"]) == 0
+    assert (repo / "ops" / "dashboard.json").read_bytes() == before
+    assert fire(repo, params={"graph_model": "gemma-2-2b", "mode": "2panel", "_nonce": "k2"},
+                extra=("--keep-dashboard", "--ignore-settle")) == 0  # resolved seconds ago; run is terminal here
+    assert ft.main(["resolve", "--repo", str(repo), "--trigger", "circuit-trace", "--keep-dashboard"]) == 0
+    after = json.loads((repo / "ops" / "dashboard.json").read_text(encoding="utf-8"))
+    assert after["queue"]["circuit-trace"]["running"] is None
+
+
+def test_git_publish_never_stages_the_dashboard(repo, monkeypatch):
+    staged = []
+
+    def fake_git(repo_, *argv, env=None):
+        class P:
+            returncode = 0
+            stdout = "main\n"
+            stderr = ""
+        if argv and argv[0] == "add":
+            staged.extend(argv[2:])
+        return P()
+
+    monkeypatch.setattr(ft, "_git", fake_git)
+    monkeypatch.setattr(ft, "_push_with_token", lambda repo_, branch: fake_git(repo_, "push"))
+    write_dashboard(repo, 0.0)
+    (repo / "ops" / "trigger_journal.jsonl").write_text("", encoding="utf-8")
+    argv = ["fire", "--repo", str(repo), "--trigger", "circuit-trace",
+            "--params", json.dumps({"commit_outputs": "true", "graph_model": "gemma-2-2b", "mode": "2panel"}),
+            "--note", "publish path"]
+    assert ft.main(argv) == 0
+    assert staged, "git add was not called"
+    assert not any(s.endswith("dashboard.json") for s in staged), staged
