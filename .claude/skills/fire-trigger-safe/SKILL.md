@@ -1,6 +1,6 @@
 ---
 name: fire-trigger-safe
-description: Use whenever a push-to-run CI trigger must be fired, chained, or resolved in patientwords-engine (circuit-trace, logits-eval, jlens-readout, scenario-generation, model-evaluation, archive-renders, activation-patching) — enforces the queue, settle-window, budget, and dashboard single-writer rules before any fire.
+description: Use whenever a push-to-run CI trigger must be fired, chained, or resolved in patientwords-engine (any of the eight lanes in `.github/trigger/`) — enforces the queue, settle-window, budget, and dashboard single-writer rules before any fire.
 ---
 
 # Fire a push-to-run CI trigger safely
@@ -16,23 +16,15 @@ ceiling. Follow these steps in order; every failure mode here is silent.
 
 1. `python scripts/fire_trigger.py status` — read the active entries for your trigger.
    Two active entries means the lane is full: STOP. Do not fire; do not force.
-2. Confirm the trigger's workflow file exists on the current branch
-   (`ls .github/workflows/`). Hard-stop on `activation-patching` where its workflow is
-   absent (it is on the script's TRIGGERS list but has no workflow on main): the fire
-   would be a silent no-op plus a phantom journal entry blocking the queue slot for 8h.
-   Warn before a first-ever fire of a trigger on a branch — creating a previously-absent
-   trigger file fires the workflow, and merging that file later RE-fires it.
-3. **Measurement fires (circuit-trace, logits-eval, jlens-readout, activation-patching)
-   need the batch's pairs file on the working branch first.** Generation archives land on
-   main; measurement workflows check out the dispatched branch. If the file is missing:
-   `git checkout origin/main -- data/simulated/<batch>.json data/simulated/<batch>.report.json`
-   and include it in the fire's push. (All three batch-7 measurement runs failed on this,
-   2026-07-12.)
-4. Compose params only from the trigger's allowed keys (the `KNOWN_KEYS` set in
+2. Confirm the trigger's workflow file exists on `main` (`ls .github/workflows/`; all
+   eight do since 2026-09-04). A push that *creates* a ref fires nothing (the
+   `github.event.created` guard); a trigger file that changes on an existing ref fires,
+   and a merge that carries that change re-fires it.
+3. Compose params only from the trigger's allowed keys (the `KNOWN_KEYS` set in
    `scripts/fire_trigger.py`, each verified against its workflow's params heredoc).
    Underscore-prefixed keys (`_nonce`, `_note`) are pass-through metadata. Never rename a
    rejected key to an underscore form to bypass validation — fix the key.
-5. Rehearse with `--dry-run` first; fire only when the dry-run output is exactly what you
+4. Rehearse with `--dry-run` first; fire only when the dry-run output is exactly what you
    intend.
 
 ## 2 · Fire
@@ -77,8 +69,10 @@ lane, and advance by chaining — resolve the landed run, then fire the next.
 
 ## 5 · Budget (paid fires)
 
-- Paid triggers: `scenario-generation` and `model-evaluation`. Their params MUST include
-  `max_spend` (finite number > 0); a missing/invalid `max_spend` is never overridable.
+- Paid triggers: `scenario-generation`, `model-evaluation`, `advice-eval`, and
+  `circuit-trace` with `show_mitigation: true`; `PAID_TRIGGERS` in the script is the
+  source of truth. Their params MUST include `max_spend` (finite number > 0); a
+  missing/invalid `max_spend` is never overridable.
 - Daily operational ceiling: $2 (from `ops/dashboard.json` `spend.daily_ceiling_usd`,
   default 2.0). The guard counts committed spend = landed today + in-flight `max_spend`
   of active paid entries fired today.
@@ -88,26 +82,19 @@ lane, and advance by chaining — resolve the landed run, then fire the next.
 
 ## 6 · Dashboard single-writer + git hygiene
 
-The daily Routine session is the ONLY writer of `ops/dashboard.json`. The fire command
-rewrites the dashboard's queue section as a side effect, so:
+`fire_trigger.py` writes the trigger file and the journal, commits and pushes exactly
+those two, and restores `ops/dashboard.json` afterwards — its queue-block update is a
+side effect that only the daily Routine keeps (`--keep-dashboard`, which the Routine's
+prompt passes; the Routine commits the dashboard itself in its step 6, and the guard
+hooks refuse that commit outside the Routine's environment). No other session commits
+the dashboard, and none needs to revert it any more.
 
-- **In the daily Routine session:** the default fire (script does add/commit/push) is fine.
-- **In ANY other session:** fire with `--no-git`, then revert the dashboard side effect
-  and commit only the trigger file and the journal:
-
-```
-python scripts/fire_trigger.py fire --trigger <name> --params '...' --note '...' --no-git
-git checkout -- ops/dashboard.json
-git add .github/trigger/<name>.json ops/trigger_journal.jsonl
-git commit -m "Fire <name>: <note>"
-git pull --rebase && git push
-```
-
-- **ONE FIRE PER PUSH.** Never run a second `--no-git` fire before the first is pushed:
-  the second write replaces the trigger-file content, the eventual push carries only the
-  last version, CI fires once — the first fire is silently dropped while its journal
-  entry occupies a queue slot for 8h. (Learned 2026-07-21.) Sequence is always: fire →
-  revert dashboard → commit → push → only then the next fire.
+`--no-git` writes the files without committing; it is for inspection. A hand `git push`
+that carries a trigger-file change is refused by the guard hooks and by
+`.githooks/pre-push`, so a real fire is always `fire` in its default git mode, then
+`resolve` once the run lands. One fire per invocation; never a second `fire` before the
+first has pushed (a second write replaces the trigger content, CI fires once, and the
+first fire's journal entry occupies a slot for 8h — 2026-07-21).
 
 ## Never
 
@@ -120,11 +107,7 @@ git pull --rebase && git push
 - Never resolve a journal entry on partial landing; never hand-edit
   `ops/trigger_journal.jsonl` (sole exception: repairing a corrupt line the script
   hard-stops on, by hand, as its error message instructs).
-- Never write `ops/dashboard.json` from a non-Routine session — always revert the side
-  effect before committing.
-- Never run two `--no-git` fires before one push.
+- Never pass `--keep-dashboard` outside the daily Routine session.
 - Never let a merge or revert change a trigger file — restore the target branch's
   trigger files before committing the merge, or you re-fire runs and double-spend.
-- Never write secrets, keys, or tokens into params, notes, or any file — both repos are
-  public.
 

@@ -94,7 +94,8 @@ Precedent: the first live run (2026-07-21) caught 8 sealed phrases in the
   path + `batch#index` + count only. The report must not become the leak.
 - Never treat exit 2 (empty sealed set) as clean.
 - Never reimplement or approximate the split — `scripts/tierb_split.py` only.
-- Never run the check against a main checkout's dashboard.
+- Never run the check against a stale checkout's dashboard — Step 1's `origin/main`
+  comparison must pass first.
 - Never analyze holdout rows while checking the seal: no `paired_stats` on
   holdout rows, no endpoint results, no lifting a withholding gate. Unsealing
   happens only on an explicit owner instruction ("unseal"), never on a date.

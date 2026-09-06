@@ -44,6 +44,8 @@ import argparse
 import json
 import math
 import os
+import contextlib
+import secrets
 import subprocess
 import sys
 import time
@@ -613,8 +615,46 @@ def update_dashboard_queue(dash_path, trigger, entries, now, expire_hours):
     dash_path.write_text(json.dumps(dashboard, indent=2) + "\n", encoding="utf-8")
 
 
-def _git(repo, *argv):
-    return subprocess.run(["git", "-C", str(repo), *argv], capture_output=True, text=True)
+def _git(repo, *argv, env=None):
+    merged = {**os.environ, **env} if env else None
+    return subprocess.run(["git", "-C", str(repo), *argv], capture_output=True, text=True, env=merged)
+
+
+@contextlib.contextmanager
+def dashboard_side_effect(repo, keep):
+    """Run a queue-block rewrite of ops/dashboard.json and, unless `keep`, put the
+    file back exactly as it was. The daily Routine session is the dashboard's only
+    committer (AGENTS.md, Single-writer); every other caller gets the journal update
+    with no dashboard change left in its working tree. Byte-restore, not git
+    checkout, so it also holds in a checkout that is not a git repo (the tests)."""
+    path = repo / DASHBOARD_RELPATH
+    before = path.read_bytes() if path.exists() else None
+    yield
+    if keep:
+        return
+    if before is None:
+        if path.exists():
+            path.unlink()
+    else:
+        path.write_bytes(before)
+
+
+def _push_with_token(repo, branch):
+    """Push with a one-shot token that .githooks/pre-push checks: the token file
+    exists only for this push, so a trigger-file change can pass the hook only
+    when this function pushes it."""
+    git_dir = _git(repo, "rev-parse", "--git-dir").stdout.strip() or ".git"
+    token_path = Path(git_dir) if Path(git_dir).is_absolute() else repo / git_dir
+    token_path = token_path / "pw_fire_token"
+    token = secrets.token_hex(16)
+    try:
+        token_path.write_text(token, encoding="utf-8")
+        return _git(repo, "push", "-u", "origin", branch, env={"PW_FIRE_TOKEN": token})
+    finally:
+        try:
+            token_path.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def git_publish(repo, paths, message, backoff=PUSH_BACKOFF_SECONDS):
@@ -638,7 +678,7 @@ def git_publish(repo, paths, message, backoff=PUSH_BACKOFF_SECONDS):
         if delay:
             print(f"push retry {attempt}/{len(backoff)} in {delay}s", file=sys.stderr)
             time.sleep(delay)
-        proc = _git(repo, "push", "-u", "origin", branch)
+        proc = _push_with_token(repo, branch)
         if proc.returncode == 0:
             return True
         print(f"git push failed: {proc.stderr.strip()}", file=sys.stderr)
@@ -793,11 +833,13 @@ def cmd_fire(args):
     trigger_path.parent.mkdir(parents=True, exist_ok=True)
     trigger_path.write_text(content, encoding="utf-8")
     save_journal(journal_path, entries)
-    update_dashboard_queue(repo / DASHBOARD_RELPATH, args.trigger, entries, now, expire_hours)
+    with dashboard_side_effect(repo, keep=args.keep_dashboard):
+        update_dashboard_queue(repo / DASHBOARD_RELPATH, args.trigger, entries, now, expire_hours)
 
-    # 7. Publish, unless --no-git.
+    # 7. Publish the trigger file and the journal, unless --no-git. The dashboard is
+    # never committed here: its single committer is the daily Routine session.
     if not args.no_git:
-        if not git_publish(repo, [trigger_path, journal_path, repo / DASHBOARD_RELPATH],
+        if not git_publish(repo, [trigger_path, journal_path],
                            f"Fire {args.trigger}: {args.note}"):
             print("fire written locally but git publish failed - resolve by hand", file=sys.stderr)
             return 1
@@ -824,7 +866,8 @@ def cmd_park(args):
         ns = argparse.Namespace(
             repo=args.repo, trigger=trigger, params=json.dumps(params), params_file=None,
             note=PARK_NOTE, force_evict=False, ignore_settle=args.ignore_settle,
-            dry_run=args.dry_run, no_git=args.no_git, override_budget=False,
+            dry_run=args.dry_run, no_git=args.no_git, keep_dashboard=args.keep_dashboard,
+            override_budget=False,
         )
         print(f"-- parking {trigger}")
         rc = cmd_fire(ns)
@@ -851,7 +894,8 @@ def cmd_resolve(args):
         print(f"resolved: fired {entry.get('fired_utc', '?')} note={entry.get('note', '')!r}")
     save_journal(journal_path, entries)
     if (repo / DASHBOARD_RELPATH).exists():
-        update_dashboard_queue(repo / DASHBOARD_RELPATH, args.trigger, entries, now, expire_hours)
+        with dashboard_side_effect(repo, keep=args.keep_dashboard):
+            update_dashboard_queue(repo / DASHBOARD_RELPATH, args.trigger, entries, now, expire_hours)
     return 0
 
 
@@ -933,6 +977,9 @@ def build_parser():
                            "the prior run is confirmed terminal in GitHub")
     fire.add_argument("--dry-run", action="store_true", help="print what would happen; write nothing")
     fire.add_argument("--no-git", action="store_true", help="write files but skip git add/commit/push")
+    fire.add_argument("--keep-dashboard", action="store_true",
+                    help="leave the ops/dashboard.json queue update in the working tree "
+                         "(daily Routine session only; every other caller gets it restored)")
     fire.add_argument("--override-budget", action="store_true",
                       help="proceed past a daily-ceiling refusal only; a missing or "
                            "invalid max_spend is never overridable")
@@ -950,11 +997,17 @@ def build_parser():
                            "the prior run is confirmed terminal in GitHub")
     park.add_argument("--dry-run", action="store_true", help="print what would happen; write nothing")
     park.add_argument("--no-git", action="store_true", help="write files but skip git add/commit/push")
+    park.add_argument("--keep-dashboard", action="store_true",
+                    help="leave the ops/dashboard.json queue update in the working tree "
+                         "(daily Routine session only; every other caller gets it restored)")
     park.set_defaults(func=cmd_park)
 
     resolve = sub.add_parser("resolve", parents=[common], help="mark the oldest active entry resolved")
     resolve.add_argument("--trigger", required=True, choices=TRIGGERS)
     resolve.add_argument("--all", action="store_true", help="resolve every active entry for the trigger")
+    resolve.add_argument("--keep-dashboard", action="store_true",
+                    help="leave the ops/dashboard.json queue update in the working tree "
+                         "(daily Routine session only; every other caller gets it restored)")
     resolve.set_defaults(func=cmd_resolve)
 
     status = sub.add_parser("status", parents=[common], help="per-trigger active counts and queue view")

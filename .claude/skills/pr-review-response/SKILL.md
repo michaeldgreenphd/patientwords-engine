@@ -7,8 +7,8 @@ description: Work the Codex and Copilot review threads on a pull request in eith
 
 Codex and Copilot both review every pull request in `patientwords` and
 `patientwords-engine`. Their findings are **hypotheses, not defects**. The first
-reviewed pull request (`patientwords#4`, 2026-09-04) produced three findings on a
-two-file documentation change: two were real, one was a misreading. Plan for that
+reviewed pull request (`patientwords#4`, 2026-09-04) produced five findings across
+two rounds on a two-file documentation change: four were real, one was a misreading. Plan for that
 rate. Both failure modes cost — applying a wrong finding puts a defect into the
 file the reviewers grade against; dismissing a right one ships the defect the
 review existed to catch.
@@ -53,7 +53,9 @@ pushing: `python -m pytest -q` and `ruff check .` in the engine; in the frontend
 serve the pages and drive them (`AGENTS.md`, **Verifying changes**) when page JS
 or data shape is touched.
 
-Wrong, or right-but-larger-than-this-pull-request → do not push it. Say so.
+Wrong, or right-but-larger-than-this-pull-request → do not push it. Before declining,
+post a comment addressed to @codex with the specific question (`AGENTS.md`, required
+workflow item 4) and act on its answer; then reply on the thread with the disposition.
 
 ## 4 · Reply on every thread, resolve only what you fixed
 
