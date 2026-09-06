@@ -14,8 +14,8 @@ with theirs.
 
 1. Run from the engine repo root. The site must exist as the sibling checkout
    `../patientwords`. If it is missing, stop — do not clone or improvise paths.
-2. `git pull --rebase` the working branch and `git fetch origin main` first
-   (generation archives land on main; trace outputs land on the branch — they interleave).
+2. `git pull --rebase origin main` in both repos first (everything lands on `main`
+   since 2026-09-04).
 3. Only run if new results actually landed (new `trace_out/*/batch_summary.part_*.json`,
    new lens parts, new txcorpus runs). No new results → no republish this cycle.
 
@@ -101,10 +101,11 @@ Exit 2 (empty sealed set): config error (wrong branch), never a pass.
 **9. Commit and push.**
 - Site: `git -C ../patientwords status` first. Only `data/*.json` and exporter-written
   `modes/simulated/` render files may have changed. Anything else changed → abort,
-  revert, investigate. Commit the data payloads, push the branch, then push
-  `branch:main` as sanctioned.
+  revert, investigate. Commit the data payloads and push `main`; GitHub Pages serves it,
+  so this push is the publish — the contract, claim and seal gates above are the last
+  check.
 - Engine: commit the chain's engine-side outputs (`ops/*.json`, `data/jlens_*.json`)
-  to the working branch; `git pull --rebase` before pushing.
+  to `main`; `git pull --rebase` before pushing.
 
 ## Never
 
@@ -113,9 +114,7 @@ Exit 2 (empty sealed set): config error (wrong branch), never a pass.
 - Never remove or soften "draft pending domain review" labels.
 - Never hand-edit an exported payload, invent a number, or patch past an exporter refusal.
 - Never change depth-exporter pins or render-cap/PNG defaults without owner instruction.
-- Never "correct" intentional misspellings in phrase data; never rewrite `data/simulated/`.
-- Never write secrets into either repo (both public) and never let holdout phrase text
-  reach any output or committed file.
+- Never let holdout phrase text reach any output or committed file.
 
 **Addendum (2026-07-29, owner directive):** step 3's exporter list gains two
 more, run after `export_pair_swaps.py`:

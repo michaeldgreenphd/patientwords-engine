@@ -414,3 +414,103 @@ proposal except the one-line `PW_ALLOW_TRIGGER` export in `fire_trigger.py`
    preferences for every project, and today they live in no file at all.
 3. On approval I open one PR with all of it (branch from `main`, `@codex review`
    posted — noting that Codex currently cannot set up a container on this repo).
+
+---
+
+## Revisions (2026-09-06, after owner review of sections 1–5)
+
+Decisions received: items 1, 5 and 6 approved as proposed; item 2 (Tests) held
+for a failure table; item 3 (hooks) approved in principle with the
+`PW_ALLOW_TRIGGER=1` bypass rejected; item 4 (Copilot pointer) conditional on
+evidence. This section records what each of 2–4 turned up and what changed.
+
+### R2 · The 13 test failures, classified
+
+Run on the audit branch in a fresh container, then again after
+`pip install matplotlib networkx pillow`.
+
+| # | Test | Error | Class | Disposition |
+|---|---|---|---|---|
+| 1–12 | `test_compare_viz.py` (2), `test_graph_client.py::test_batch_cli_flags_reach_generate_graph`, `test_scenario_gen.py` (2), `test_targets_and_batch.py` (7) | `ModuleNotFoundError: No module named 'matplotlib'` | **(a)** missing environment | `matplotlib` and `networkx` are declared main dependencies in `pyproject.toml` (lines 13–14); the container had the package installed without its dependencies. With the three packages installed all 12 pass (123 passed across the four files). Setup step, not skip marker: `pip install -e ".[llm]"` exactly as *Commands* already says — a skip marker would hide real rendering regressions. `docs/fresh_session_bootstrap.md` already names the three packages. |
+| 13 | `test_specialty_map.py::test_covers_live_payload_topics` | `assert 145 <= 20` — "unmapped topics growing" | **(b)** genuine | `data/specialty_map.draft.json` maps 290 topics; the live site payload carries 419; 145 are unmapped against a ceiling of `max(3, 419 // 20) = 20`. No script regenerates the map (`coverage_gaps.py`, `specialty_breakdown.py`, `validate_frontend_contract.py` only read it); the file is a hand-maintained draft marked "pending owner review", and it is medical vocabulary in JSON, so extending it is a domain-review data task. **Stopped and reported; not fixed.** The test is right and the threshold should not be relaxed. |
+
+After the install: **890 passed, 1 failed, 1 skipped**. The Tests rule rewrite
+(commit 3) states the install requirement and names the one known failure as an
+owner data task.
+
+### R3 · Hook bypass redesign
+
+Rejected: `PW_ALLOW_TRIGGER=1` as an environment-variable bypass for
+trigger-file pushes, because an interactive session can export it in Bash. Two
+facts changed the design.
+
+**Fact 1 — hook processes do not see a Bash command's environment.** Claude Code
+spawns hook commands from the CLI process, with the CLI's environment, and hands
+the tool call to them as JSON on stdin. `export PW_ROUTINE=1` or an inline
+`PW_ROUTINE=1 git commit` inside a Bash tool call sets the variable for that
+shell command only, not for the hook. Verified against the proposed
+`guard_git.py`: a command whose text contains `PW_ROUTINE=1` is refused as a
+bypass token; `PW_ROUTINE=1` in the hook's own environment is honoured. A
+one-line probe for your machine is in `.claude/hooks/README.md`.
+
+**Fact 2 — `fire_trigger.py`'s own push never passes through the Bash hook.** The
+Bash command is `python3 scripts/fire_trigger.py …`; the `git push` it runs is a
+child process the hook never sees. The sanctioned trigger-push path therefore
+needs no bypass at all.
+
+Mechanisms, and whether a prompt-level instruction could forge each:
+
+| Guard | Mechanism | Forgeable by a prompt? |
+|---|---|---|
+| Trigger-file push from Bash | Refused outright when `git diff <upstream>...HEAD -- .github/trigger/` is non-empty. No bypass exists; `--no-git` fires are retired (the file may be written for inspection, the push must come from `fire_trigger.py`). | Only by hiding git inside another interpreter (`python -c "…subprocess…git push"`), which a text-level hook cannot see. The next layer catches that. |
+| Trigger-file push, any caller | `.githooks/pre-push`, installed as `core.hooksPath` by the SessionStart hook, runs inside git for every caller. It admits a trigger change only when `PW_FIRE_TOKEN` in the push's environment equals a one-shot random token that `fire_trigger.py` writes to `<git-dir>/pw_fire_token` for the duration of its own push and deletes afterwards. | A python-wrapped push could write its own token file and set the variable — but the literals `PW_FIRE_TOKEN`, `core.hooksPath` and `--no-verify` are refused in any Bash command by the Bash hook. Obfuscating the string (`'PW_FIRE_'+'TOKEN'`) evades both. Residual accepted, because each paid lane's workflow runs `fire_trigger.py budget-gate` server-side before spending: a forged trigger push yields a $0 or ceiling-capped run, not an unbounded one. |
+| Dashboard commit | `PW_ROUTINE=1` read from the hook process's environment (Fact 1), set only in the Routine's environment configuration — a dedicated cloud environment for the Routine, so sessions in the default environment never carry it; locally, only a human launching `PW_ROUTINE=1 claude`. `fire_trigger.py` no longer commits the dashboard at all: it restores the file after updating the queue unless `--keep-dashboard`, and even with the flag the *commit* still goes through the hook. | Not via Bash (Fact 1, verified). Via editing `.claude/settings.json` to add an `env` entry — refused by the path hook, which reserves settings and hooks for the owner's hand. Via `--keep-dashboard` — leaves the file modified only; the commit is still refused. Residual: a prompt that talks the human into launching with the variable. |
+| Trigger-file edits (Edit/Write) | Refused outright; `fire_trigger.py` writes from Python, not through the Edit tool. | Via a Bash write (`echo > .github/trigger/…`) — refused by the Bash hook's write-hint check; via an obfuscated path — residual, caught at push time by the pre-push layer. |
+| Ref deletion, force push | Refused in Bash; deletion refused again in `pre-push`; both refused server-side by the "PR Review" ruleset (the admin bypass is yours, not the hooks' subjects'). | A python-wrapped push evades the Bash hook, not `pre-push`; `pre-push` is evaded only by `--no-verify` or `hooksPath`, which the Bash hook refuses by name. The ruleset is the unforgeable layer for deletions. |
+
+Net: no bypass that a Bash command can set remains. The two tokens that exist,
+`PW_ROUTINE` and `PW_FIRE_TOKEN`, are honoured only from the hook process's
+environment or from `fire_trigger.py`'s own child process, and their literals are
+refused in any Bash command. What stays forgeable is what any text-level guard
+leaves — an adversarial prompt that obfuscates — and the server-side layers
+(rulesets, per-lane ceiling gates) bound that residual.
+
+Operational consequences: the Routine needs an environment that carries
+`PW_ROUTINE=1` (a second claude.ai environment for the Routine, or the Routine's
+own environment variables if the UI exposes them), and its prompt passes
+`--keep-dashboard` on fires and resolves. The `fire-trigger-safe` procedure of
+`--no-git` plus hand-revert is gone; `AGENTS.md` and the skills describe the new
+behaviour. `docs/operators_handbook.md` §3 still describes the old one —
+follow-up, not in this PR.
+
+### R4 · `.github/copilot-instructions.md` — skipped
+
+Evidence sought: any mention of `copilot-instructions` in the tree outside this
+report — none; in the history of `.github/`, `AGENTS.md`, `CLAUDE.md`,
+`README.md` and `docs/` — the pickaxe search did not complete within 90 seconds
+on this history twice and was abandoned, so the history is unverified rather
+than clean. Behavioural evidence: no Copilot review has ever posted on an engine
+pull request (#4–#10) despite the ruleset's auto-request, so nothing shows what
+Copilot reads here. The only evidence that Copilot reads that file is GitHub's
+documentation and the sibling `interp-engine` repo's convention, neither of
+which is evidence in this repo. Skipped, per the decision rule.
+
+### R6 · Account-synced skills
+
+Roughly 1,100 tokens of skill descriptions (`docx`, `pdf`, `xlsx`, `pptx`,
+`skill-creator`, `morning`, `import-memory`, `aact-baseline-extraction`,
+`tracked-docx-manuscript-editing`) load into every session from the claude.ai
+account's synced skills, not from this repository. They are outside this audit's
+scope and are managed in claude.ai.
+
+### Projected always-on cost after these changes
+
+| | before | after |
+|---|---|---|
+| `AGENTS.md` | ~5,870 | ~6,100 (hooks paragraph, local-inference sentence) |
+| `CLAUDE.md` | ~190 | ~440 (shared conventions, hooks note) |
+| project skill descriptions | ~440 | ~420 |
+| **project total** | **~6,500** | **~6,960** |
+
+Up, not down: the shared-conventions section and the enforcement paragraph are
+additions you asked for. The audit's gains are correctness and enforcement.

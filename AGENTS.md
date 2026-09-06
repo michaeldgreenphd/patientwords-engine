@@ -3,7 +3,8 @@
 Guidance for coding agents working in this repository. This is the canonical
 instruction file: Codex reads `AGENTS.md` directly, and the root `CLAUDE.md`
 imports it so Claude Code reads the same rules. `CLAUDE.md` carries only
-Claude-Code-specific mechanics (which harness tools to call), never a rule. Put
+Claude-Code-specific mechanics (which harness tools to call) and the owner's
+cross-repo writing conventions, never a repository rule. Put
 every agent rule here — a rule written only in `CLAUDE.md` reaches one tool and is
 invisible to the agents reviewing the pull request.
 
@@ -48,7 +49,9 @@ API keys (`ANTHROPIC_API_KEY`, `NEURONPEDIA_API_KEY`, optional `HF_TOKEN`) exist
 GitHub Actions secrets** — dev containers have none, and the sandbox egress proxy blocks
 huggingface.co and most model hosts. All generation, tracing, and CPU inference therefore
 runs through **push-to-run CI**: each workflow fires when its file under `.github/trigger/`
-changes on any pushed branch.
+changes on any pushed branch. A machine that *can* run inference locally (yours, with a
+GPU) still commits no locally produced measurement: every committed summary records
+`inference.environment`, and only CI-produced summaries are measurements.
 
 | Trigger file | Workflow | What it does |
 |---|---|---|
@@ -61,7 +64,7 @@ changes on any pushed branch.
 | `jlens-readout.json` | `jlens_readout.yml` | hosted Jacobian-lens depth readouts ($0) |
 | `advice-eval.json` | `advice_evaluation.yml` | deployed-assistant advice elicitation + judging (paid) |
 
-Eight lanes on this branch. `scripts/fire_trigger.py` also knows `pab-probe`, whose
+Eight lanes. `scripts/fire_trigger.py` also knows `pab-probe`, whose
 workflow exists only on the PAB branch. The fact-check of 2026-09-04 found this table
 one lane behind and `.github/trigger/README.md` six behind; nothing tests either
 against `TRIGGERS`/`PARK_DEFAULTS`, so recount when a lane is added.
@@ -109,9 +112,18 @@ counting landed **and in-flight** `max_spend`. `scripts/ledger_update.py` is the
 writer of spend numbers (`ops/dashboard.json` + the ledger); `scripts/daily_brief.py`
 renders the 3-section brief and the push digest. `ops/dashboard.json` is **committed**
 only by the daily Routine session (`ops/README.md`, `docs/routine_standing_prompt.md`);
-`fire_trigger.py` rewrites its `queue` block as a side effect of every fire, and any
-other session must `git checkout -- ops/dashboard.json` before committing. Both
-repos are public: never write secrets anywhere.
+`fire_trigger.py` rewrites its `queue` block as a side effect of every fire and resolve,
+then puts the file back unless `--keep-dashboard` is passed — which only the Routine
+passes; it never commits the dashboard itself. Both repos are public: never write
+secrets anywhere.
+
+**Enforced, not only stated.** `.claude/settings.json` installs PreToolUse hooks
+(`.claude/hooks/`) that refuse, from any Claude Code session: hand edits under
+`.github/trigger/`; a commit of `ops/dashboard.json` outside the Routine environment;
+ref deletions and force pushes; and a `git push` from Bash that carries a trigger-file
+change. `.githooks/pre-push` (installed by the SessionStart hook) repeats the deletion
+and trigger checks inside git itself, for any caller. Paid lanes are additionally
+ceiling-gated server-side in their own workflows (`fire_trigger.py budget-gate`).
 
 ## Architecture
 
@@ -143,9 +155,9 @@ everything downstream merges unchanged (`backend: "logits"`, `source_set: null`,
 models get `trace_out/<stem>__<model>/`. CI renames each chunk's summary to
 `batch_summary.part_NN.json` (NN = 1-based start offset) so chunks never clobber — all
 consumers must glob `batch_summary*.json`, and `results[i]["index"]` is the global 1-based
-join key back into the batch file. Generation archives commit to **main**; trace outputs
-commit to **the dispatched branch** — expect the two to interleave, and `git pull --rebase`
-before pushing.
+join key back into the batch file. Since 2026-09-04 generation archives and trace outputs
+both commit to `main` (the dispatched branch is `main`); CI's commits interleave with
+yours, so `git pull --rebase` before every push.
 
 **Analysis chain.** `scripts/urgency_shift.py` is the collector (reads site payload +
 every `trace_out/*/batch_summary.part_*`, scores care-urgency tiers from the reviewed
@@ -180,15 +192,13 @@ be tested here — validate YAML with `yaml.safe_load` and verify wiring by read
 params heredoc, which has its own pitfalls (push-path `defaults` dict must contain every
 trigger key; JSON lists must be normalized to CSV before `str()`).
 
-## Pull request workflow
+## Pull request workflow — required
 
 Every pull request in this repository is independently reviewed by Codex agents.
 Write changes to be reviewable by one: keep each pull request focused on a single
 concern, make behavior changes testable and tested, and include migration or
 compatibility notes whenever a change alters an API, a data file's shape, a
 configuration key, or anything another repository or a published page reads.
-
-## Pull request workflow — required
 
 1. Branch from `main` and open a pull request against `main`. Never push to
    `main` directly unless the owner explicitly says to.

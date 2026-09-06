@@ -16,8 +16,7 @@ as a third run and silently supersede the still-pending run.
 ## Step 1 — Sync (outputs interleave by design)
 
 ```bash
-git pull --rebase        # working branch: trace outputs land here
-git fetch origin main    # generation archives land on main
+git pull --rebase origin main    # everything lands on main since 2026-09-04
 ```
 
 ## Step 2 — Enumerate active fires
@@ -44,26 +43,19 @@ model list, and every offset/chunk fired.
   `trace_out/<stem>__jlens_<model>/` for each fired offset/limit chunk. The
   part is written only at chunk end — a missing part means the whole chunk was
   lost; refire that chunk, do not hunt for partial output.
-- **scenario-generation / model-evaluation** (**main**; paid):
-  `data/simulated/<batch>.json` PLUS its `<batch>.report.json` cost sidecar —
-  both must exist. Check via `git diff --stat HEAD...origin/main -- data/simulated/`.
-  When measurement needs the batch on this branch:
-  `git checkout origin/main -- data/simulated/<batch>.json data/simulated/<batch>.report.json`.
+- **scenario-generation / model-evaluation** (paid): `data/simulated/<batch>.json`
+  PLUS its `<batch>.report.json` cost sidecar — both must exist on `main`.
 - **archive-renders**: the workflow commits
   `render_archives/<tag>.manifest.json` with the Release URL filled in, and the
   Release holds the zip. Manifest committed + Release present = landed.
-- **activation-patching**: branch-relative — check whether the DISPATCHED branch
-  carries `activation_patching.yml` (`git ls-tree --name-only <branch> .github/workflows/`).
-  Absent (e.g. main): the entry is a phantom that will never land — record a blocker.
-  Present (the working branch): harvest it like any other lane (part files under
-  `trace_out/`).
+- **activation-patching**: harvest like any other lane (part files under `trace_out/`).
 
 ## Step 4 — Verify terminality before resolving
 
 Landed-locally is not terminal. Confirm the GitHub run itself concluded, via:
 
-- the GitHub API — `gh run list --branch <branch> --limit 10` (or the GitHub
-  MCP actions tools): the run for this fire shows `completed`; or
+- the GitHub Actions API (the `actions_list` / `actions_get` MCP tools; `gh` is not
+  installed in remote sessions): the run for this fire shows `completed`; or
 - the landing commit — `git log origin/<branch> -- 'trace_out/<stem>*'` shows
   the CI commit containing the LAST expected part (the final offset).
 
@@ -85,9 +77,8 @@ python scripts/fire_trigger.py resolve --trigger <name>   # oldest active entry
   (exit 6). That refusal is correct — wait it out. `--ignore-settle` is
   legitimate ONLY after Step 4's GitHub-side confirmation; never to rush a
   still-running group.
-- Single-writer rule: `resolve` rewrites the queue group in
-  `ops/dashboard.json`. If this session is NOT the daily Routine session,
-  revert that dashboard side effect and commit the journal change only.
+- `resolve` updates the queue group in `ops/dashboard.json` and restores the file
+  unless `--keep-dashboard` (daily Routine only); commit the journal change.
 
 ## Step 6 — Missing outputs are blockers, never silence
 
@@ -106,13 +97,11 @@ resolving, and never read an expired entry as "it must have landed" — an expir
 unresolved entry means a harvest was missed. Verify its outputs now and record
 the result.
 
-## Exit codes (`fire_trigger.py`)
+## Exit codes, settle window, journal repair
 
-0 ok/fired · 1 git failure · 2 queue refusal (2 active — never add a third) ·
-3 bad params · 4 budget refusal · 5 no-op fire · 6 settle refusal. A hard stop naming a corrupt journal line: the ONLY permitted hand edit to
-`ops/trigger_journal.jsonl` is repairing that single named line, exactly as the
-error message instructs; record the repair in blockers/notes. (Identical policy in
-fire-trigger-safe.)
+Defined once, in fire-trigger-safe (§3–§4); apply them as written there. The only
+permitted hand edit to `ops/trigger_journal.jsonl` is repairing the single corrupt
+line the script names, exactly as its error message instructs; record the repair.
 
 ## Never
 
@@ -121,10 +110,4 @@ fire-trigger-safe.)
 - Never hand-edit `ops/trigger_journal.jsonl`, anything under
   `.github/trigger/`, or spend numbers (`fire_trigger.py` and
   `ledger_update.py` are the only writers).
-- Never use `--force-evict` or `--override-budget`; `--ignore-settle` only
-  after GitHub-confirmed terminality.
-- Never rewrite or delete anything under `data/simulated/` (append-only), and
-  never correct intentional misspellings in landed batches.
 - Never treat a silent queue or an expired entry as success.
-- Never write secrets, keys, or holdout phrases into any file — both repos are
-  public.
