@@ -212,8 +212,9 @@ def test_shrink_check_refuses_fewer_pngs_than_the_branch_manifest_records(served
     _zip, _mpath, shrunk = ar.build_bundle(sorted((repo / "trace_out").iterdir()), "renders-test",
                                           tmp_path / "dist2", include_pngs=True)
     problems = ra.shrink_check(shrunk, manifest)
-    assert problems == ["pairs_A: 0 png in the new bundle, 6 in the Release",
-                        "pairs_B: 0 png in the new bundle, 5 in the Release"]
+    assert [p.split(":")[0] for p in problems] == ["pairs_A", "pairs_B"]
+    assert problems[0].startswith("pairs_A: 6 of 6 png in the Release absent from the new bundle: index_01.png")
+    assert "… (6 in all)" in problems[0] and problems[1].startswith("pairs_B: 5 of 5 png")
     assert ra.shrink_check(manifest, manifest) == []                 # same content: fine
     assert ra.shrink_check(shrunk, None) == []                       # no manifest: the workflow checks gh
     new_path = tmp_path / "dist2" / "renders-test.manifest.json"
@@ -234,9 +235,24 @@ def test_shrink_check_counts_a_legacy_release_from_its_zip_and_flags_omitted_run
         png.unlink()
     _zip, _mpath, partial = ar.build_bundle([keep], "renders-test", tmp_path / "dist3", include_pngs=True)
     problems = ra.shrink_check(partial, legacy, cache_dir=tmp_path / "c", source_factory=factory)
-    assert problems == ["pairs_A: 1 png in the new bundle, 6 in the Release",
+    assert problems == ["pairs_A: 5 of 6 png in the Release absent from the new bundle: index_01_diff.png, "
+                        "index_02.png, index_02_diff.png, index_03.png, index_03_diff.png",
                         "pairs_B: 5 png in the Release, run absent from the new bundle"]
     # the member list is read from the zip, never assumed: an unreadable Release is itself a refusal
     broken = dict(legacy, release_url="not-a-url")
     out = ra.shrink_check(partial, broken, cache_dir=tmp_path / "c2")
     assert len(out) == 1 and out[0].startswith("cannot read the Release's member list")
+
+
+def test_shrink_check_compares_png_names_not_counts(served_bundle, tmp_path):
+    repo, url, manifest, handler, dist = served_bundle
+    # same count, renumbered: index_01..03 become index_04..06
+    d = repo / "trace_out" / "pairs_A"
+    for i in (1, 2, 3):
+        (d / f"index_{i:02d}.png").rename(d / f"index_{i + 3:02d}.png")
+        (d / f"index_{i:02d}_diff.png").rename(d / f"index_{i + 3:02d}_diff.png")
+    _zip, _mpath, renumbered = ar.build_bundle([d], "renders-test", tmp_path / "dist4", include_pngs=True)
+    assert sum(1 for n in renumbered["runs"][0]["members"] if ra.is_png(n)) == 6
+    problems = ra.shrink_check(renumbered, manifest)
+    assert problems[0].startswith("pairs_A: 6 of 6 png in the Release absent from the new bundle")
+    assert problems[1] == "pairs_B: 5 png in the Release, run absent from the new bundle"

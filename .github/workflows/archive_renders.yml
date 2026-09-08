@@ -198,13 +198,32 @@ jobs:
           # asset is uploaded before the manifest is committed, so a failed
           # commit (run 34277465050 did exactly that) leaves a Release with no
           # manifest. An existing Release with no manifest is refused outright.
-          if [ ! -f "render_archives/${TAG}.manifest.json" ] && gh release view "$TAG" >/dev/null 2>&1; then
-            echo "refused: Release $TAG already exists but render_archives/${TAG}.manifest.json is not on this branch;" \
+          MANIFEST="render_archives/${TAG}.manifest.json"
+          if [ ! -f "$MANIFEST" ] && gh release view "$TAG" >/dev/null 2>&1; then
+            echo "refused: Release $TAG already exists but $MANIFEST is not on this branch;" \
                  "its contents cannot be compared. Pass allow_shrink to replace it on purpose." >&2
             exit 1
           fi
-          python scripts/render_archive.py shrink-check --new "dist/${TAG}.manifest.json" \
-            --old "render_archives/${TAG}.manifest.json"
+          if [ -f "$MANIFEST" ]; then
+            # The manifest on this branch may be older than the live asset (a
+            # same-tag fire queued before the previous run's commit landed, or
+            # an upload whose commit failed). Compare against the asset itself:
+            # download it and check its sha256 against what the manifest
+            # records; a mismatch means the manifest does not describe what
+            # --clobber would destroy, so refuse.
+            ZIPNAME=$(python -c "import json; print(json.load(open('$MANIFEST'))['zip_name'])")
+            EXPECTED=$(python -c "import json; print(json.load(open('$MANIFEST'))['zip_sha256'])")
+            mkdir -p live_asset
+            gh release download "$TAG" --pattern "$ZIPNAME" --dir live_asset --clobber
+            ACTUAL=$(sha256sum "live_asset/$ZIPNAME" | cut -d' ' -f1)
+            rm -rf live_asset
+            if [ "$ACTUAL" != "$EXPECTED" ]; then
+              echo "refused: the live asset of $TAG (sha256 $ACTUAL) is not the one $MANIFEST records ($EXPECTED);" \
+                   "the manifest is stale, so the shrink check cannot be trusted. Refresh the manifest first." >&2
+              exit 1
+            fi
+          fi
+          python scripts/render_archive.py shrink-check --new "dist/${TAG}.manifest.json" --old "$MANIFEST"
 
       - name: Upload bundle to a GitHub Release
         if: steps.params.outputs.prune_only != '1'

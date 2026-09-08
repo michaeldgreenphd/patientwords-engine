@@ -384,15 +384,19 @@ def shrink_check(new_manifest: dict, old_manifest: Optional[dict], **kw) -> List
         return [f"cannot read the Release's member list for {old_manifest.get('tag')!r}: {exc}"]
     new_runs = {r["run"]: r for r in new_manifest.get("runs", [])}
     for old_run, members in sorted(old_members.items()):
-        old_png = sum(1 for n in members if is_png(n))
+        old_pngs = {n for n in members if is_png(n)}
         new = new_runs.get(old_run)
         if new is None:
-            if old_png:
-                problems.append(f"{old_run}: {old_png} png in the Release, run absent from the new bundle")
+            if old_pngs:
+                problems.append(f"{old_run}: {len(old_pngs)} png in the Release, run absent from the new bundle")
             continue
-        new_png = sum(1 for n in new.get("members", []) if is_png(n))
-        if new_png < old_png:
-            problems.append(f"{old_run}: {new_png} png in the new bundle, {old_png} in the Release")
+        # Names, not counts: a rebuild that renumbers or swaps variants keeps
+        # the count while dropping members the Release may hold the only copy of.
+        missing = sorted(old_pngs - {n for n in new.get("members", []) if is_png(n)})
+        if missing:
+            shown = ", ".join(missing[:5]) + (f", … ({len(missing)} in all)" if len(missing) > 5 else "")
+            problems.append(f"{old_run}: {len(missing)} of {len(old_pngs)} png in the Release absent "
+                            f"from the new bundle: {shown}")
     return problems
 
 
