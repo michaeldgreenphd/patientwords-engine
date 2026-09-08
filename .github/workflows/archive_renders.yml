@@ -102,6 +102,18 @@ jobs:
         run: |
           python - <<'EOF'
           import json, os
+
+          def as_bool(value, key):
+              # Only a JSON boolean or the strings "true"/"false" (the park
+              # defaults use strings). bool("false") is True, which on the
+              # allow_shrink key would skip the destructive-upload guard
+              # (Codex, PR #15); anything else is a refusal, not a default.
+              if isinstance(value, bool):
+                  return value
+              if isinstance(value, str) and value.strip().lower() in ("true", "false"):
+                  return value.strip().lower() == "true"
+              raise SystemExit(f"{key} must be true or false (JSON boolean or string), got {value!r}")
+
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/archive-renders.json", encoding="utf-8") as f:
                   cfg = json.load(f)
@@ -109,10 +121,10 @@ jobs:
               runs = cfg["runs"]
               if isinstance(runs, str):
                   runs = runs.replace(",", " ").split()
-              no_pngs = bool(cfg.get("no_pngs", False))
-              prune = bool(cfg.get("prune", False))
-              prune_only = bool(cfg.get("prune_only", False))
-              allow_shrink = bool(cfg.get("allow_shrink", False))
+              no_pngs = as_bool(cfg.get("no_pngs", False), "no_pngs")
+              prune = as_bool(cfg.get("prune", False), "prune")
+              prune_only = as_bool(cfg.get("prune_only", False), "prune_only")
+              allow_shrink = as_bool(cfg.get("allow_shrink", False), "allow_shrink")
           else:
               tag = os.environ["IN_TAG"]
               runs = os.environ["IN_RUNS"].replace(",", " ").split()
@@ -175,12 +187,22 @@ jobs:
       - name: Refuse a bundle that would shrink what the Release holds
         if: steps.params.outputs.prune_only != '1' && steps.params.outputs.allow_shrink != '1'
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.params.outputs.tag }}
         run: |
           set -euo pipefail
           # 2026-09-08: a duplicate fire after the prune rebuilt an HTML-only
           # bundle and --clobber'd the asset that held the PNGs. Compare the
           # new manifest with the one on the branch before anything is uploaded.
+          # A missing branch manifest is not proof of a first upload: the
+          # asset is uploaded before the manifest is committed, so a failed
+          # commit (run 34277465050 did exactly that) leaves a Release with no
+          # manifest. An existing Release with no manifest is refused outright.
+          if [ ! -f "render_archives/${TAG}.manifest.json" ] && gh release view "$TAG" >/dev/null 2>&1; then
+            echo "refused: Release $TAG already exists but render_archives/${TAG}.manifest.json is not on this branch;" \
+                 "its contents cannot be compared. Pass allow_shrink to replace it on purpose." >&2
+            exit 1
+          fi
           python scripts/render_archive.py shrink-check --new "dist/${TAG}.manifest.json" \
             --old "render_archives/${TAG}.manifest.json"
 

@@ -215,10 +215,28 @@ def test_shrink_check_refuses_fewer_pngs_than_the_branch_manifest_records(served
     assert problems == ["pairs_A: 0 png in the new bundle, 6 in the Release",
                         "pairs_B: 0 png in the new bundle, 5 in the Release"]
     assert ra.shrink_check(manifest, manifest) == []                 # same content: fine
-    assert ra.shrink_check(shrunk, None) == []                       # first upload of a tag: fine
-    old_style = {"includes_pngs": True, "runs": [{"run": "pairs_A", "files": 10, "bytes": 1}]}
-    assert ra.shrink_check(shrunk, old_style) == ["pairs_A: 0 png in the new bundle, 1 in the Release"]
+    assert ra.shrink_check(shrunk, None) == []                       # no manifest: the workflow checks gh
     new_path = tmp_path / "dist2" / "renders-test.manifest.json"
     old_path = repo / "render_archives" / "renders-test.manifest.json"
     assert ra.main(["shrink-check", "--new", str(new_path), "--old", str(old_path)]) == 1
     assert ra.main(["shrink-check", "--new", str(new_path), "--old", str(tmp_path / "absent.json")]) == 0
+
+
+def test_shrink_check_counts_a_legacy_release_from_its_zip_and_flags_omitted_runs(served_bundle, tmp_path):
+    repo, url, manifest, handler, dist = served_bundle
+    factory = lambda u: ra.FileSource(dist / "renders-test.zip")  # noqa: E731
+    # a pre-2026-09-08 manifest: no member lists, only includes_pngs
+    legacy = {k: v for k, v in manifest.items()}
+    legacy["runs"] = [{"run": r["run"], "files": r["files"], "bytes": r["bytes"]} for r in manifest["runs"]]
+    # a rebuilt bundle for pairs_A alone, with one PNG left: pairs_A shrank from 6, pairs_B is omitted
+    keep = repo / "trace_out" / "pairs_A"
+    for png in sorted(keep.glob("*.png"))[1:]:
+        png.unlink()
+    _zip, _mpath, partial = ar.build_bundle([keep], "renders-test", tmp_path / "dist3", include_pngs=True)
+    problems = ra.shrink_check(partial, legacy, cache_dir=tmp_path / "c", source_factory=factory)
+    assert problems == ["pairs_A: 1 png in the new bundle, 6 in the Release",
+                        "pairs_B: 5 png in the Release, run absent from the new bundle"]
+    # the member list is read from the zip, never assumed: an unreadable Release is itself a refusal
+    broken = dict(legacy, release_url="not-a-url")
+    out = ra.shrink_check(partial, broken, cache_dir=tmp_path / "c2")
+    assert len(out) == 1 and out[0].startswith("cannot read the Release's member list")
