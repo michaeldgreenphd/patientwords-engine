@@ -201,3 +201,24 @@ def test_cli_fetch_by_path_in_place(served_bundle, monkeypatch):
     assert rc == 0
     assert (repo / "trace_out" / "pairs_A" / "index_01.png").read_bytes().startswith(b"\x89PNG\x01")
     assert sys.version_info >= (3, 10)
+
+
+def test_shrink_check_refuses_fewer_pngs_than_the_branch_manifest_records(served_bundle, tmp_path):
+    repo, url, manifest, handler, dist = served_bundle
+    # the same runs bundled after their PNGs were pruned: HTML and summaries only
+    for d in (repo / "trace_out").iterdir():
+        for png in d.glob("*.png"):
+            png.unlink()
+    _zip, _mpath, shrunk = ar.build_bundle(sorted((repo / "trace_out").iterdir()), "renders-test",
+                                          tmp_path / "dist2", include_pngs=True)
+    problems = ra.shrink_check(shrunk, manifest)
+    assert problems == ["pairs_A: 0 png in the new bundle, 6 in the Release",
+                        "pairs_B: 0 png in the new bundle, 5 in the Release"]
+    assert ra.shrink_check(manifest, manifest) == []                 # same content: fine
+    assert ra.shrink_check(shrunk, None) == []                       # first upload of a tag: fine
+    old_style = {"includes_pngs": True, "runs": [{"run": "pairs_A", "files": 10, "bytes": 1}]}
+    assert ra.shrink_check(shrunk, old_style) == ["pairs_A: 0 png in the new bundle, 1 in the Release"]
+    new_path = tmp_path / "dist2" / "renders-test.manifest.json"
+    old_path = repo / "render_archives" / "renders-test.manifest.json"
+    assert ra.main(["shrink-check", "--new", str(new_path), "--old", str(old_path)]) == 1
+    assert ra.main(["shrink-check", "--new", str(new_path), "--old", str(tmp_path / "absent.json")]) == 0

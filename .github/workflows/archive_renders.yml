@@ -53,6 +53,10 @@ on:
         description: "No bundle or upload: verify every PNG of the runs is already in a Release, then git-rm them"
         type: boolean
         default: false
+      allow_shrink:
+        description: "Let the upload replace an asset with a bundle holding fewer PNGs than the branch's manifest records (normally refused)"
+        type: boolean
+        default: false
   push:
     paths:
       - ".github/trigger/archive-renders.json"
@@ -94,6 +98,7 @@ jobs:
           IN_NO_PNGS: ${{ inputs.no_pngs }}
           IN_PRUNE: ${{ inputs.prune }}
           IN_PRUNE_ONLY: ${{ inputs.prune_only }}
+          IN_ALLOW_SHRINK: ${{ inputs.allow_shrink }}
         run: |
           python - <<'EOF'
           import json, os
@@ -107,12 +112,14 @@ jobs:
               no_pngs = bool(cfg.get("no_pngs", False))
               prune = bool(cfg.get("prune", False))
               prune_only = bool(cfg.get("prune_only", False))
+              allow_shrink = bool(cfg.get("allow_shrink", False))
           else:
               tag = os.environ["IN_TAG"]
               runs = os.environ["IN_RUNS"].replace(",", " ").split()
               no_pngs = os.environ.get("IN_NO_PNGS", "") == "true"
               prune = os.environ.get("IN_PRUNE", "") == "true"
               prune_only = os.environ.get("IN_PRUNE_ONLY", "") == "true"
+              allow_shrink = os.environ.get("IN_ALLOW_SHRINK", "") == "true"
           if not tag or not runs:
               raise SystemExit("archive-renders needs a tag and at least one run")
           if no_pngs and prune:
@@ -129,6 +136,7 @@ jobs:
               out.write(f"no_pngs={'1' if no_pngs else '0'}\n")
               out.write(f"prune={'1' if prune else '0'}\n")
               out.write(f"prune_only={'1' if prune_only else '0'}\n")
+              out.write(f"allow_shrink={'1' if allow_shrink else '0'}\n")
           print("tag:", tag)
           print("runs:", runs)
           print("no_pngs:", no_pngs, "prune:", prune, "prune_only:", prune_only)
@@ -163,6 +171,18 @@ jobs:
           ARGS=(--runs $RUNS --tag "$TAG" --out-dir dist)
           if [ "$NO_PNGS" = "1" ]; then ARGS+=(--no-pngs); fi
           python scripts/archive_run.py "${ARGS[@]}"
+
+      - name: Refuse a bundle that would shrink what the Release holds
+        if: steps.params.outputs.prune_only != '1' && steps.params.outputs.allow_shrink != '1'
+        env:
+          TAG: ${{ steps.params.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # 2026-09-08: a duplicate fire after the prune rebuilt an HTML-only
+          # bundle and --clobber'd the asset that held the PNGs. Compare the
+          # new manifest with the one on the branch before anything is uploaded.
+          python scripts/render_archive.py shrink-check --new "dist/${TAG}.manifest.json" \
+            --old "render_archives/${TAG}.manifest.json"
 
       - name: Upload bundle to a GitHub Release
         if: steps.params.outputs.prune_only != '1'

@@ -359,6 +359,37 @@ def coverage(repo: Path, runs: Optional[Sequence[str]] = None, **kw) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Shrink check: an upload must never replace PNGs a Release already holds
+# ---------------------------------------------------------------------------
+
+
+def shrink_check(new_manifest: dict, old_manifest: Optional[dict]) -> List[str]:
+    """Runs whose PNG member count in `new_manifest` is below what
+    `old_manifest` (the one committed on the branch for the same tag) records.
+    An archive fire re-uploads with --clobber, so a bundle built after the
+    PNGs were pruned would silently replace the asset that holds them
+    (2026-09-08: a duplicate p3 fire did exactly that, and the PNGs were in
+    neither the tree nor the Release until a recovery run). Old manifests
+    without member lists fall back to `includes_pngs`."""
+    if not old_manifest:
+        return []
+    problems: List[str] = []
+    old_runs = {r["run"]: r for r in old_manifest.get("runs", [])}
+    for run in new_manifest.get("runs", []):
+        old = old_runs.get(run["run"])
+        if old is None:
+            continue
+        new_png = sum(1 for n in run.get("members", []) if is_png(n))
+        if "members" in old:
+            old_png = sum(1 for n in old["members"] if is_png(n))
+        else:
+            old_png = 1 if old_manifest.get("includes_pngs") else 0
+        if new_png < old_png:
+            problems.append(f"{run['run']}: {new_png} png in the new bundle, {old_png} in the Release")
+    return problems
+
+
+# ---------------------------------------------------------------------------
 # Fetch
 # ---------------------------------------------------------------------------
 
@@ -453,6 +484,18 @@ def cmd_coverage(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_shrink_check(args: argparse.Namespace) -> int:
+    new = json.loads(Path(args.new).read_text(encoding="utf-8"))
+    old = json.loads(Path(args.old).read_text(encoding="utf-8")) if Path(args.old).exists() else None
+    problems = shrink_check(new, old)
+    if problems:
+        print("refused: uploading this bundle would replace PNGs the Release already holds:\n  "
+              + "\n  ".join(problems) + "\n(pass allow_shrink to override on purpose)", file=sys.stderr)
+        return 1
+    print("shrink check ok" if old else "shrink check ok (no manifest on the branch for this tag)")
+    return 0
+
+
 def cmd_index(args: argparse.Namespace) -> int:
     repo = Path(args.repo).resolve()
     for manifest in load_manifests(repo):
@@ -483,6 +526,10 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--json", action="store_true")
     c.add_argument("--require-archived", action="store_true", help="exit 1 if any PNG is in no Release")
     c.set_defaults(func=cmd_coverage)
+    sc = sub.add_parser("shrink-check", help="refuse a bundle with fewer PNGs than the branch's manifest records")
+    sc.add_argument("--new", required=True, help="the freshly built dist/<tag>.manifest.json")
+    sc.add_argument("--old", required=True, help="render_archives/<tag>.manifest.json (may not exist)")
+    sc.set_defaults(func=cmd_shrink_check)
     i = sub.add_parser("index", help="list an archive's members (reads the zip's central directory once)")
     i.add_argument("--tag")
     i.set_defaults(func=cmd_index)
