@@ -180,7 +180,11 @@ truth), and caps public interactive renders at the 200 most consequential (`--ma
 HTML-only by default since 2026-07-21 — `--with-pngs` restores rasters; flips first,
 then |language penalty|). Full render sets go to GitHub Releases via
 `scripts/archive_run.py` + the archive workflow (`docs/archiving.md`); pass the Release URL
-back with `--archive-url`.
+back with `--archive-url`. **PNG renders live in those Releases, not in git** (pruned
+from `main` from 2026-09-08; the tree carried ~15 GB of them and the repository had
+grown past what the cloud containers and Codex can clone): `scripts/render_archive.py
+fetch` brings any one back by HTTP Range without downloading its zip, and
+`coverage` says which PNGs are archived where.
 
 ## Figure style (standing preference)
 

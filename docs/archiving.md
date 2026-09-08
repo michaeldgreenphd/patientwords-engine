@@ -72,11 +72,63 @@ archive-renders` (journals the fire and guards the queue), which updates a
 ## `prune`: keeping git lean
 
 Set `"prune": true` in the trigger to have the workflow `git rm` the archived
-runs' `index_*.png` from the branch **after** a successful upload. The
-interactive HTML and summaries stay in git (the export and back-end browsing
-still work); the full-resolution PNGs live only in the Release. This shrinks
-fresh clones — it does not rewrite history, so existing blobs remain in the
-pack. Default is `false`.
+runs' `index_*.png` and `multi_*.png` from the branch **after** a successful
+upload. The interactive HTML and summaries stay in git (the export and
+back-end browsing still work); the full-resolution PNGs live only in the
+Release. This shrinks fresh clones — it does not rewrite history, so existing
+blobs remain in the pack. Default is `false`.
+
+## `prune_only`: removing PNGs a Release already holds
+
+Set `"prune_only": true` (with `tag` and `runs`, nothing else) and the workflow
+builds and uploads nothing. It first runs
+`python scripts/render_archive.py coverage --runs <runs> --require-archived`,
+which reads every listed run's PNG names from the tree and checks each one
+against the member lists of the PNG-bearing Releases (from the manifests'
+`members` field, or by reading a zip's central directory over HTTP once), and
+refuses the fire if any PNG is in no Release. Then it removes the PNGs from the
+index (`git rm --sparse --cached`, so nothing is materialized) and commits.
+Added 2026-09-08 for the prune of everything the July Releases already held:
+2,075 PNGs across 62 runs, with no re-upload.
+
+The tree is too big for a runner to check out whole (roughly 23 GB of renders
+at HEAD in 2026-09), so the workflow's checkout is blobless and sparse:
+`.github`, `scripts`, `render_archives`, plus the listed runs on the bundle
+path only.
+
+## Getting a PNG back on the spot
+
+The PNGs are not gone: `scripts/render_archive.py` reads one member out of a
+Release zip without downloading the zip, by HTTP Range requests against the
+asset. Standard library only, no token (the repository is public).
+
+```bash
+# one pair's render, into dist/renders/<run>/
+python scripts/render_archive.py fetch --run pairs_20260707T215921Z --index 7
+# a variant: diff, register_standard, register_nonstandard, variety_medical, variety_patient
+python scripts/render_archive.py fetch --run pairs_20260707T215921Z --index 7 --variant diff
+# by path, written beside its HTML under trace_out/ (git sees it as untracked)
+python scripts/render_archive.py fetch --path trace_out/pairs_20260707T215921Z/index_07.png --in-place
+# every PNG of a run
+python scripts/render_archive.py fetch --run pairs_20260707T215921Z --all
+# what is archived where, and what is not
+python scripts/render_archive.py coverage
+```
+
+Each fetch costs two small requests plus the PNG's own bytes; the first lookup
+into a July Release (whose manifest predates the `members` field) reads that
+zip's central directory once and caches it under
+`~/.cache/patientwords-engine/render_index/`. A PNG no Release holds is
+refused by name, never silently skipped; `coverage` says which fire would
+archive it.
+
+## The PNG sweep
+
+New trace runs still commit their PNGs (the drift sentinel adds a few small
+ones per cycle). The standing prompt's §3d sweep keeps the tree lean: when
+`coverage` reports unarchived runs and the archive lane is empty, fire
+`archive-renders` with `prune: true` for them, in batches whose bundle stays
+under the 2 GB asset cap.
 
 ## Why GitHub Releases (not Google Drive)
 
