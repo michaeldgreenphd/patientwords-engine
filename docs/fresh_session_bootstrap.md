@@ -92,6 +92,7 @@ git sparse-checkout set --no-cone \
   '/trace_out/pairs_20260711T051145Z_txplacebo*/*' \
   '/trace_out/txcorpus_priority*__jlens_gemma-2-2b/*'
 git checkout -B main origin/main                         # ~2m45s on 2026-08-11
+git config core.hooksPath .githooks                      # guard layer 2 (fire_trigger.py sets it too)
 ```
 
 The census-batch `jlens_raw/` patterns on the last five lines are **not
@@ -170,6 +171,7 @@ git sparse-checkout set --no-cone \
   '/trace_out/pairs_20260711T051145Z_txplacebo*/*' \
   '/trace_out/txcorpus_priority*__jlens_gemma-2-2b/*'
 git checkout -B main origin/main
+git config core.hooksPath .githooks                      # guard layer 2 (fire_trigger.py sets it too)
 ```
 
 The pattern list is Variant B's, verbatim, for the reasons given there (the
@@ -213,6 +215,7 @@ cd /home/user/patientwords-engine
 git status --porcelain | head -3        # must be empty (or a few ' D trace_out/…' renders only)
 find trace_out -name 'batch_summary*.json' | wc -l   # 933 on 2026-09-08; grows with landed runs
 test -f ../patientwords/data/model_stats.json && echo site OK
+git config --get core.hooksPath          # .githooks — the commit/push guards are installed
 ```
 
 Only then proceed with the daily cycle (`docs/routine_standing_prompt.md`).

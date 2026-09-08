@@ -62,9 +62,11 @@ becomes a missed-harvest record in the dashboard, not a silent drop.
 
 3a. Commit the dated 3-pair alias `data/simulated/drift_sentinel_<today>.json`
 (copy the standing sentinel pairs), push, then fire via
-`python scripts/fire_trigger.py fire --trigger circuit-trace` with the
-sentinel params used in the journal's prior sentinel fires ($0,
-`commit_outputs` `true`).
+`python scripts/fire_trigger.py fire --trigger circuit-trace --keep-dashboard`
+with the sentinel params used in the journal's prior sentinel fires ($0,
+`commit_outputs` `true`). `--keep-dashboard` on every fire, park and resolve
+in this cycle: you are the dashboard's writer, and without it the queue block
+the tool just computed is put back the way it was.
 
 3b. WAIT on it: 5-minute `git pull` polls, 35-minute bound. When outputs
 land, verify (3 pairs, penalties present), resolve the entry, and run the
@@ -75,7 +77,7 @@ retries (owner rule, 2026-08-23). If a prior day's stray sentinel is
 sitting unharvested, harvest it first.
 
 3c. **Re-park the lane:** after the sentinel resolves, run
-`python scripts/fire_trigger.py park --trigger circuit-trace --ignore-settle`
+`python scripts/fire_trigger.py park --trigger circuit-trace --ignore-settle --keep-dashboard`
 (terminality just confirmed). Parking keeps every trigger file's resting
 content a cheap no-op — the resting-state rule. If any OTHER trigger file
 was left un-parked by a stray fire, re-park that lane too once terminal.
