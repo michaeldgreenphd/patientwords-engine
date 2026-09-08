@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Layer 2 of the guard, commit side (pre-push is the push side). Runs inside git
+# for any caller once core.hooksPath is .githooks: scripts/fire_trigger.py sets
+# that on every invocation, the SessionStart hook sets it too, and the bootstrap
+# doc's clone recipes end with it. Refuses a commit that stages ops/dashboard.json
+# outside the Routine's environment (PW_ROUTINE=1 in git's environment), and one
+# that stages a .github/trigger/ file unless scripts/fire_trigger.py is the
+# committer, which it proves with the same one-shot token pre-push checks: the
+# file <git-dir>/pw_fire_token exists only for the duration of its own publish.
+set -euo pipefail
+staged="$(git diff --cached --name-only)"
+if printf '%s\n' "$staged" | grep -qx 'ops/dashboard.json' && [ "${PW_ROUTINE:-}" != "1" ]; then
+  echo "pre-commit: ops/dashboard.json is committed only by the daily Routine session (AGENTS.md, Single-writer). Unstage it: git restore --staged ops/dashboard.json" >&2
+  exit 1
+fi
+if printf '%s\n' "$staged" | grep -q '^\.github/trigger/'; then
+  tokfile="$(git rev-parse --git-dir)/pw_fire_token"
+  if [ -n "${PW_FIRE_TOKEN:-}" ] && [ -f "$tokfile" ] && [ "$(cat "$tokfile")" = "$PW_FIRE_TOKEN" ]; then
+    exit 0
+  fi
+  echo "pre-commit: this commit changes .github/trigger/ (pushing it fires CI). Only scripts/fire_trigger.py may commit a trigger change." >&2
+  exit 1
+fi
+exit 0

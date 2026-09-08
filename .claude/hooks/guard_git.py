@@ -14,6 +14,35 @@ BYPASS_TOKENS = ("--no-verify", "core.hooksPath", "hooksPath", "PW_FIRE_TOKEN", 
 GUARDED_WRITE_PATHS = (".github/trigger/", ".claude/hooks/", ".githooks/", ".claude/settings")
 WRITE_HINTS = (">", ">>", "tee ", "sed -i", "cp ", "mv ", "rm ", "truncate", "python -c", "python3 -c",
                "perl -", "install ")
+ENGINE_MARKER = os.path.join("scripts", "fire_trigger.py")
+ENGINE_DIRNAME = "patientwords-engine"
+
+
+def is_engine(path: str) -> bool:
+    return bool(path) and os.path.isfile(os.path.join(path, ENGINE_MARKER))
+
+
+def engine_root(cmd: str) -> str:
+    """The engine checkout the command acts on. In order: a `git -C <dir>` or
+    `cd <dir>` in the command whose target is an engine checkout; PW_ENGINE_ROOT
+    (set by the user-level install in containers whose project directory is a
+    parent folder holding several repos); CLAUDE_PROJECT_DIR or the cwd, or their
+    `patientwords-engine` child. Falls back to the project directory, where the
+    git checks return nothing and only the text checks apply."""
+    for m in re.finditer(r"(?:\bgit\s+-C\s+|\bcd\s+)([\"']?)([^\s;&|\"']+)\1", cmd):
+        cand = os.path.expanduser(m.group(2))
+        if is_engine(cand):
+            return os.path.abspath(cand)
+    for var in ("PW_ENGINE_ROOT", "CLAUDE_PROJECT_DIR"):
+        val = os.environ.get(var)
+        if val and is_engine(val):
+            return os.path.abspath(val)
+    for base in (os.environ.get("CLAUDE_PROJECT_DIR"), os.getcwd()):
+        if base:
+            for cand in (base, os.path.join(base, ENGINE_DIRNAME)):
+                if is_engine(cand):
+                    return os.path.abspath(cand)
+    return os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
 
 
 def refuse(msg: str) -> int:
@@ -37,7 +66,7 @@ def main() -> int:
     cmd = (call.get("tool_input") or {}).get("command") or ""
     if not cmd:
         return 0
-    root = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    root = engine_root(cmd)
     is_fire_trigger = re.search(r"\bpython3?\s+(\S*/)?scripts/fire_trigger\.py\b", cmd) is not None
 
     for tok in BYPASS_TOKENS:
