@@ -64,8 +64,13 @@ on:
 permissions:
   contents: write
 
+# Repository-wide, not per ref (2026-09-08, Codex on PR #15): two branches
+# firing the same tag at once could each pass the shrink check against the
+# same live asset, then the second --clobber would replace what the first had
+# just uploaded. One running + one pending for the whole lane; a third push
+# from any branch evicts the pending run, as in every other lane.
 concurrency:
-  group: archive-renders-${{ github.ref }}
+  group: archive-renders
   cancel-in-progress: false
 
 jobs:
@@ -199,10 +204,24 @@ jobs:
           # commit (run 34277465050 did exactly that) leaves a Release with no
           # manifest. An existing Release with no manifest is refused outright.
           MANIFEST="render_archives/${TAG}.manifest.json"
-          if [ ! -f "$MANIFEST" ] && gh release view "$TAG" >/dev/null 2>&1; then
-            echo "refused: Release $TAG already exists but $MANIFEST is not on this branch;" \
-                 "its contents cannot be compared. Pass allow_shrink to replace it on purpose." >&2
-            exit 1
+          if [ ! -f "$MANIFEST" ]; then
+            # Only a confirmed "release not found" means a first upload. gh exits
+            # 1 for any failure and 4 for auth, so an API or auth error must not
+            # read as "no Release" (Codex on PR #15): anything indeterminate aborts.
+            set +e
+            VIEW=$(gh release view "$TAG" 2>&1)
+            RC=$?
+            set -e
+            if [ "$RC" -eq 0 ]; then
+              echo "refused: Release $TAG already exists but $MANIFEST is not on this branch;" \
+                   "its contents cannot be compared. Pass allow_shrink to replace it on purpose." >&2
+              exit 1
+            elif printf '%s' "$VIEW" | grep -qi "release not found"; then
+              echo "no Release $TAG yet: first upload"
+            else
+              echo "refused: cannot tell whether Release $TAG exists (gh exit $RC): $VIEW" >&2
+              exit 1
+            fi
           fi
           if [ -f "$MANIFEST" ]; then
             # The manifest on this branch may be older than the live asset (a

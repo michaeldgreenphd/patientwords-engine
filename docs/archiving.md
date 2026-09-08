@@ -106,9 +106,13 @@ twice by mistake; the PNGs were recovered from the pre-prune commit on a
 throwaway branch). The workflow now runs
 `scripts/render_archive.py shrink-check` before the upload: a run whose PNG
 member count in the new bundle is below what `render_archives/<tag>.manifest.json`
-records fails the fire before anything is uploaded. `"allow_shrink": true` is
-the deliberate override, for a tag that is meant to lose PNGs. Never fire a
-tag that already has a manifest on the branch unless you mean to replace it.
+records fails the fire before anything is uploaded; so does a Release that
+exists with no manifest on the branch, a live asset whose sha256 differs from
+the manifest's, and a Release lookup that fails for any reason other than
+"not found". `"allow_shrink": true` is the deliberate override, for a tag that
+is meant to lose PNGs. The lane's concurrency group is repository-wide, not
+per branch, so two branches cannot race the same tag. Never fire a tag that
+already has a manifest on the branch unless you mean to replace it.
 
 ## Getting a PNG back on the spot
 
