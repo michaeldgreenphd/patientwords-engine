@@ -121,9 +121,15 @@ secrets anywhere.
 (`.claude/hooks/`) that refuse, from any Claude Code session: hand edits under
 `.github/trigger/`; a commit of `ops/dashboard.json` outside the Routine environment;
 ref deletions and force pushes; and a `git push` from Bash that carries a trigger-file
-change. `.githooks/pre-push` (installed by the SessionStart hook) repeats the deletion
-and trigger checks inside git itself, for any caller. Paid lanes are additionally
-ceiling-gated server-side in their own workflows (`fire_trigger.py budget-gate`).
+change. `.githooks/pre-commit` and `pre-push` repeat the dashboard, trigger and deletion
+checks inside git itself, for any caller; `fire_trigger.py` installs them as
+`core.hooksPath` on every invocation, and the SessionStart hook does too. The cloud
+containers that hold both repos start with the parent folder as the project directory,
+where project settings do not load (found 2026-09-08: the Routine committed the
+dashboard with no hook in the way), so the environment's setup script installs the
+same hooks user-level with `.claude/hooks/install_user_settings.py`
+(`.claude/hooks/README.md`). Paid lanes are additionally ceiling-gated server-side
+in their own workflows (`fire_trigger.py budget-gate`).
 
 ## Architecture
 

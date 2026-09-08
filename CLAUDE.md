@@ -14,8 +14,9 @@ the files cannot drift. The line above imports it into every Claude Code session
   `.claude/skills/`. Invoke the matching one rather than improvising its steps.
 - `.claude/settings.json` installs guard hooks (`.claude/hooks/README.md`). A
   refusal is the rule working: do not route around it, and never edit
-  `.claude/settings.json`, `.claude/hooks/`, or `.githooks/` from a session —
-  the owner edits those by hand.
+  `.claude/settings.json`, `.claude/hooks/`, `.githooks/`, or the user-level
+  `~/.claude/settings.json` the environment writes, from a session — the owner
+  edits those by hand.
 
 ## Shared conventions (identical across my repos; edit in all three)
 
