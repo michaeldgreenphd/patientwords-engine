@@ -15,9 +15,20 @@ name: Archive Renders to Release (medlang-circuits)
 #                "trace_out/pairs_20260706T201750Z"],
 #        "no_pngs": false, "prune": false}
 #
-# A ~1KB manifest is committed to render_archives/<tag>.manifest.json so the
-# repo keeps an index of what was archived and where to download it; the zip
-# itself is never committed.
+# A manifest is committed to render_archives/<tag>.manifest.json so the repo
+# keeps an index of what was archived and where to download it (with the
+# member list, so scripts/render_archive.py can fetch one PNG back without
+# reading the zip); the zip itself is never committed.
+#
+# prune_only (2026-09-08): no bundle, no upload. Every PNG of the listed runs
+# must already be in a Release (scripts/render_archive.py coverage
+# --require-archived checks by member name, reading the zips' central
+# directories over HTTP); then the PNGs are removed from the index and the
+# deletion committed. This is how the 2026-09 prune of PNGs that the July
+# Releases already held was done without re-uploading them. The checkout is
+# blobless and sparse, so a run's renders are fetched only when a bundle is
+# built: the full tree (roughly 23 GB of renders at HEAD in 2026-09) no
+# longer fits a runner.
 
 on:
   workflow_dispatch:
@@ -35,7 +46,11 @@ on:
         type: boolean
         default: false
       prune:
-        description: "After a successful upload, git-rm the archived runs' index_*.png from this branch (HTML stays; full-res PNGs live in the Release)"
+        description: "After a successful upload, git-rm the archived runs' index_*.png and multi_*.png from this branch (HTML stays; full-res PNGs live in the Release)"
+        type: boolean
+        default: false
+      prune_only:
+        description: "No bundle or upload: verify every PNG of the runs is already in a Release, then git-rm them"
         type: boolean
         default: false
   push:
@@ -59,6 +74,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            render_archives
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -72,6 +93,7 @@ jobs:
           IN_RUNS: ${{ inputs.runs }}
           IN_NO_PNGS: ${{ inputs.no_pngs }}
           IN_PRUNE: ${{ inputs.prune }}
+          IN_PRUNE_ONLY: ${{ inputs.prune_only }}
         run: |
           python - <<'EOF'
           import json, os
@@ -84,11 +106,13 @@ jobs:
                   runs = runs.replace(",", " ").split()
               no_pngs = bool(cfg.get("no_pngs", False))
               prune = bool(cfg.get("prune", False))
+              prune_only = bool(cfg.get("prune_only", False))
           else:
               tag = os.environ["IN_TAG"]
               runs = os.environ["IN_RUNS"].replace(",", " ").split()
               no_pngs = os.environ.get("IN_NO_PNGS", "") == "true"
               prune = os.environ.get("IN_PRUNE", "") == "true"
+              prune_only = os.environ.get("IN_PRUNE_ONLY", "") == "true"
           if not tag or not runs:
               raise SystemExit("archive-renders needs a tag and at least one run")
           if no_pngs and prune:
@@ -97,17 +121,39 @@ jobs:
               # Release; refuse before any bundle or upload work happens.
               raise SystemExit("prune=true with no_pngs=true would delete PNGs "
                                "that are not in the Release; refuse")
+          if prune_only and (prune or no_pngs):
+              raise SystemExit("prune_only stands alone: it neither bundles nor uploads")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               out.write(f"tag={tag}\n")
               out.write("runs=" + " ".join(runs) + "\n")
               out.write(f"no_pngs={'1' if no_pngs else '0'}\n")
               out.write(f"prune={'1' if prune else '0'}\n")
+              out.write(f"prune_only={'1' if prune_only else '0'}\n")
           print("tag:", tag)
           print("runs:", runs)
-          print("no_pngs:", no_pngs, "prune:", prune)
+          print("no_pngs:", no_pngs, "prune:", prune, "prune_only:", prune_only)
           EOF
 
+      - name: Verify every PNG of the runs is already in a Release (prune_only)
+        if: steps.params.outputs.prune_only == '1'
+        env:
+          RUNS: ${{ steps.params.outputs.runs }}
+        run: |
+          set -euo pipefail
+          python scripts/render_archive.py coverage --runs $RUNS --require-archived
+
+      - name: Materialize the runs' renders (bundle path only)
+        if: steps.params.outputs.prune_only != '1'
+        env:
+          RUNS: ${{ steps.params.outputs.runs }}
+        run: |
+          set -euo pipefail
+          # Blobless sparse checkout: only these runs' renders come down.
+          git sparse-checkout add $RUNS
+          git checkout -- .
+
       - name: Build render bundle
+        if: steps.params.outputs.prune_only != '1'
         env:
           TAG: ${{ steps.params.outputs.tag }}
           RUNS: ${{ steps.params.outputs.runs }}
@@ -119,6 +165,7 @@ jobs:
           python scripts/archive_run.py "${ARGS[@]}"
 
       - name: Upload bundle to a GitHub Release
+        if: steps.params.outputs.prune_only != '1'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.params.outputs.tag }}
@@ -140,12 +187,17 @@ jobs:
           TAG: ${{ steps.params.outputs.tag }}
           RUNS: ${{ steps.params.outputs.runs }}
           PRUNE: ${{ steps.params.outputs.prune }}
+          PRUNE_ONLY: ${{ steps.params.outputs.prune_only }}
           BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          mkdir -p render_archives
-          # Stamp the Release URL into the committed manifest.
-          python - <<'EOF'
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [ "$PRUNE_ONLY" != "1" ]; then
+            mkdir -p render_archives
+            # Stamp the Release URL into the committed manifest.
+            python - <<'EOF'
           import json, os
           tag = os.environ["TAG"]
           src = f"dist/{tag}.manifest.json"
@@ -156,17 +208,19 @@ jobs:
               f.write(json.dumps(m, indent=2) + "\n")
           print("manifest ->", f"render_archives/{tag}.manifest.json")
           EOF
+            git add "render_archives/${TAG}.manifest.json"
+          fi
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "render_archives/${TAG}.manifest.json"
-
-          if [ "$PRUNE" = "1" ]; then
-            # The full-res PNGs now live in the Release; drop them from the
-            # working tree so fresh clones stay lean. Interactive HTML +
-            # summaries stay in git.
+          if [ "$PRUNE" = "1" ] || [ "$PRUNE_ONLY" = "1" ]; then
+            # The full-res PNGs live in a Release (this fire's, or an earlier
+            # one that the verify step confirmed by member name); drop them
+            # from the index so fresh clones stay lean. Interactive HTML and
+            # summaries stay in git. --sparse --cached: the paths need not be
+            # materialized, which on the prune_only path they are not.
             for run in $RUNS; do
-              git rm -q --ignore-unmatch "$run"/index_*.png
+              git ls-tree -r --name-only HEAD -- "$run" \
+                | grep -E "/(index|multi)_[^/]*\.png$" \
+                | xargs -r -d '\n' git rm -q --sparse --cached --ignore-unmatch --
             done
           fi
 
@@ -174,8 +228,12 @@ jobs:
             echo "Nothing to commit"
             exit 0
           fi
-          MSG="Archive renders: $TAG -> Release"
-          if [ "$PRUNE" = "1" ]; then MSG="$MSG (PNGs pruned from branch)"; fi
+          if [ "$PRUNE_ONLY" = "1" ]; then
+            MSG="Prune renders: $TAG (PNGs already in Releases, removed from branch)"
+          else
+            MSG="Archive renders: $TAG -> Release"
+            if [ "$PRUNE" = "1" ]; then MSG="$MSG (PNGs pruned from branch)"; fi
+          fi
           git commit -m "$MSG"
           for i in 1 2 3 4 5; do
             if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then

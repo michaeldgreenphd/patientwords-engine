@@ -178,6 +178,8 @@ def test_exact_verified_key_sets_accepted(repo):
         "offset": "60", "commit_outputs": True, "_nonce": "k1"}) == 0
     assert fire(repo, "archive-renders", params={
         "tag": "t", "runs": "trace_out/x", "no_pngs": False, "prune": False, "_nonce": "k2"}) == 0
+    assert fire(repo, "archive-renders", params={
+        "tag": "prune-a", "runs": "trace_out/x", "prune_only": True, "_nonce": "k2b"}) == 0
     assert fire(repo, "model-evaluation", params={
         "model_selection": "claude-haiku-4-5", "scenario": "all",
         "sample_size": "8", "max_spend": "1", "pairs_file": "p.json",
