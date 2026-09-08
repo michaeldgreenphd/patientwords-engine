@@ -7,6 +7,7 @@ under tmp_path; nothing here touches git or the network.
 
 import importlib.util
 import json
+import subprocess
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -909,7 +910,7 @@ def test_git_publish_never_stages_the_dashboard(repo, monkeypatch):
         return P()
 
     monkeypatch.setattr(ft, "_git", fake_git)
-    monkeypatch.setattr(ft, "_push_with_token", lambda repo_, branch: fake_git(repo_, "push"))
+    monkeypatch.setattr(ft, "_push_with_token", lambda repo_, branch, env=None: fake_git(repo_, "push"))
     write_dashboard(repo, 0.0)
     (repo / "ops" / "trigger_journal.jsonl").write_text("", encoding="utf-8")
     argv = ["fire", "--repo", str(repo), "--trigger", "circuit-trace",
@@ -918,3 +919,41 @@ def test_git_publish_never_stages_the_dashboard(repo, monkeypatch):
     assert ft.main(argv) == 0
     assert staged, "git add was not called"
     assert not any(s.endswith("dashboard.json") for s in staged), staged
+
+
+def _git_init(path):
+    subprocess.run(["git", "init", "-q", "-b", "main", str(path)], check=True)
+    subprocess.run(["git", "-C", str(path), "config", "user.email", "t@example.com"], check=True)
+    subprocess.run(["git", "-C", str(path), "config", "user.name", "t"], check=True)
+
+
+def test_ensure_git_hooks_sets_hookspath_only_in_a_git_checkout(tmp_path):
+    plain = tmp_path / "plain"
+    (plain / ".githooks").mkdir(parents=True)
+    assert ft.ensure_git_hooks(plain) is False          # not a work tree: left alone
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git_init(repo)
+    assert ft.ensure_git_hooks(repo) is False           # no .githooks/ to point at
+    (repo / ".githooks").mkdir()
+    assert ft.ensure_git_hooks(repo) is True
+    got = subprocess.run(["git", "-C", str(repo), "config", "--get", "core.hooksPath"],
+                         capture_output=True, text=True).stdout.strip()
+    assert got == ".githooks"
+
+
+def test_git_publish_commits_and_pushes_under_one_fire_token(repo, monkeypatch):
+    seen = {}
+
+    def fake_git(repo_, *argv, env=None):
+        class P:
+            returncode = 0
+            stdout = "main\n"
+            stderr = ""
+        if argv and argv[0] in ("commit", "push"):
+            seen[argv[0]] = (env or {}).get("PW_FIRE_TOKEN")
+        return P()
+
+    monkeypatch.setattr(ft, "_git", fake_git)
+    assert ft.git_publish(repo, [repo / "ops" / "trigger_journal.jsonl"], "msg", backoff=()) is True
+    assert seen["commit"] and seen["commit"] == seen["push"], seen

@@ -172,6 +172,7 @@ JOURNAL_RELPATH = Path("ops") / "trigger_journal.jsonl"
 DASHBOARD_RELPATH = Path("ops") / "dashboard.json"
 OVERRIDES_RELPATH = Path("ops") / "budget_overrides.json"
 TRIGGER_DIR_RELPATH = Path(".github") / "trigger"
+GIT_HOOKS_RELPATH = Path(".githooks")
 PUSH_BACKOFF_SECONDS = (2, 4, 8, 16)
 
 # Exact key sets, each verified against its workflow's params-resolution heredoc
@@ -639,49 +640,83 @@ def dashboard_side_effect(repo, keep):
         path.write_bytes(before)
 
 
-def _push_with_token(repo, branch):
-    """Push with a one-shot token that .githooks/pre-push checks: the token file
-    exists only for this push, so a trigger-file change can pass the hook only
-    when this function pushes it."""
-    git_dir = _git(repo, "rev-parse", "--git-dir").stdout.strip() or ".git"
-    token_path = Path(git_dir) if Path(git_dir).is_absolute() else repo / git_dir
-    token_path = token_path / "pw_fire_token"
+def ensure_git_hooks(repo):
+    """Point core.hooksPath at .githooks so the pre-commit and pre-push guards run
+    inside git for every caller in this checkout. Every subcommand does this on
+    entry, so a fresh clone is guarded from the Routine's first `status` on; a
+    directory that is not a git work tree (the tests) is left alone. Returns True
+    when the setting was written."""
+    if not (repo / GIT_HOOKS_RELPATH).is_dir():
+        return False
+    proc = _git(repo, "rev-parse", "--is-inside-work-tree")
+    if proc.returncode != 0 or proc.stdout.strip() != "true":
+        return False
+    return _git(repo, "config", "core.hooksPath", GIT_HOOKS_RELPATH.as_posix()).returncode == 0
+
+
+@contextlib.contextmanager
+def fire_token(repo):
+    """One-shot proof for .githooks/pre-commit and pre-push that fire_trigger.py is
+    the committer: the token file <git-dir>/pw_fire_token exists only inside this
+    block and the same value travels in PW_FIRE_TOKEN in git's environment. Yields
+    the env mapping to pass to _git. A checkout with no git dir gets the env and
+    no file, which is harmless because no hook runs there."""
+    proc = _git(repo, "rev-parse", "--git-dir")
+    git_dir = proc.stdout.strip() if proc.returncode == 0 and proc.stdout.strip() else ".git"
+    token_dir = Path(git_dir) if Path(git_dir).is_absolute() else repo / git_dir
+    token_path = token_dir / "pw_fire_token"
     token = secrets.token_hex(16)
     try:
-        token_path.write_text(token, encoding="utf-8")
-        return _git(repo, "push", "-u", "origin", branch, env={"PW_FIRE_TOKEN": token})
+        try:
+            token_path.write_text(token, encoding="utf-8")
+        except OSError:
+            pass
+        yield {"PW_FIRE_TOKEN": token}
     finally:
         try:
             token_path.unlink()
-        except FileNotFoundError:
+        except (FileNotFoundError, OSError):
             pass
+
+
+def _push_with_token(repo, branch, env=None):
+    """Push under the one-shot token. `env` is the mapping fire_token yielded when
+    the caller already holds a token for the whole publish; without it this
+    function takes its own for the push alone."""
+    if env is not None:
+        return _git(repo, "push", "-u", "origin", branch, env=env)
+    with fire_token(repo) as own:
+        return _git(repo, "push", "-u", "origin", branch, env=own)
 
 
 def git_publish(repo, paths, message, backoff=PUSH_BACKOFF_SECONDS):
     """git add + commit + push -u origin <current branch>, retrying the push
     with backoff on nonzero exit. Returns True on success. The only function
-    that touches git - the --no-git path never reaches it."""
+    that touches git - the --no-git path never reaches it. The commit and the
+    push both run under one fire token, which is what lets a trigger-file change
+    through .githooks/pre-commit and pre-push."""
     proc = _git(repo, "add", "--", *[str(p) for p in paths])
     if proc.returncode != 0:
         print(f"git add failed: {proc.stderr.strip()}", file=sys.stderr)
         return False
-    proc = _git(repo, "commit", "-m", message)
-    if proc.returncode != 0:
-        print(f"git commit failed: {proc.stderr.strip() or proc.stdout.strip()}", file=sys.stderr)
-        return False
-    proc = _git(repo, "rev-parse", "--abbrev-ref", "HEAD")
-    if proc.returncode != 0:
-        print(f"git rev-parse failed: {proc.stderr.strip()}", file=sys.stderr)
-        return False
-    branch = proc.stdout.strip()
-    for attempt, delay in enumerate((0,) + tuple(backoff)):
-        if delay:
-            print(f"push retry {attempt}/{len(backoff)} in {delay}s", file=sys.stderr)
-            time.sleep(delay)
-        proc = _push_with_token(repo, branch)
-        if proc.returncode == 0:
-            return True
-        print(f"git push failed: {proc.stderr.strip()}", file=sys.stderr)
+    with fire_token(repo) as env:
+        proc = _git(repo, "commit", "-m", message, env=env)
+        if proc.returncode != 0:
+            print(f"git commit failed: {proc.stderr.strip() or proc.stdout.strip()}", file=sys.stderr)
+            return False
+        proc = _git(repo, "rev-parse", "--abbrev-ref", "HEAD")
+        if proc.returncode != 0:
+            print(f"git rev-parse failed: {proc.stderr.strip()}", file=sys.stderr)
+            return False
+        branch = proc.stdout.strip()
+        for attempt, delay in enumerate((0,) + tuple(backoff)):
+            if delay:
+                print(f"push retry {attempt}/{len(backoff)} in {delay}s", file=sys.stderr)
+                time.sleep(delay)
+            proc = _push_with_token(repo, branch, env)
+            if proc.returncode == 0:
+                return True
+            print(f"git push failed: {proc.stderr.strip()}", file=sys.stderr)
     return False
 
 
@@ -1026,6 +1061,7 @@ def build_parser():
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
+    ensure_git_hooks(Path(args.repo).resolve())
     return args.func(args)
 
 
