@@ -47,7 +47,13 @@ bypass tokens without objection.
 
 User-level settings (`~/.claude/settings.json`) load in every session whatever
 the project directory. The environment's setup script, which the owner controls
-and which runs before any session starts, is the place to write them. One line:
+and which runs before any session starts, is the place to write them.
+`ops/environment_setup.sh` is that script — paste its contents into the
+environment's setup script field and keep the two identical. Besides the
+installer it does the dev install from `AGENTS.md` (*Commands*), sets the git
+hooks path directly, and writes a one-line checkout diagnosis per repo to
+`/home/user/.pw_setup_report.txt` for the session's bootstrap. The installer
+alone is:
 
 ```bash
 python3 /home/user/patientwords-engine/.claude/hooks/install_user_settings.py
