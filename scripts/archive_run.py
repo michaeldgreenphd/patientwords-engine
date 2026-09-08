@@ -31,9 +31,12 @@ from pathlib import Path
 
 # Render artifacts worth archiving. PNGs are the heavy ones and can be dropped
 # with --no-pngs (the interactive HTML is the essential artifact); the summary
-# JSONs are tiny and always kept so the bundle is self-describing.
-INCLUDE_GLOBS = ("index_*.html", "index_*.png", "batch_summary*.json")
-PNG_GLOBS = ("index_*.png",)
+# JSONs are tiny and always kept so the bundle is self-describing. multi_*
+# (the small-multiples companion) joined the set on 2026-09-08; the archive
+# lane's prune removes exactly PNG_GLOBS, so the two lists must agree with
+# scripts/render_archive.py's PNG_GLOBS.
+INCLUDE_GLOBS = ("index_*.html", "index_*.png", "multi_*.html", "multi_*.png", "batch_summary*.json")
+PNG_GLOBS = ("index_*.png", "multi_*.png")
 
 
 def _matches(name, globs):
@@ -81,6 +84,9 @@ def build_bundle(runs, tag, out_dir, include_pngs):
                 "run": stem,
                 "files": len(files),
                 "bytes": run_bytes,
+                # The member list lets scripts/render_archive.py answer "which
+                # Release holds this PNG" without reading the zip (2026-09-08).
+                "members": [f.name for f in files],
             })
             print(f"  + {stem}: {len(files)} files, {run_bytes / 1e6:.1f} MB")
 
