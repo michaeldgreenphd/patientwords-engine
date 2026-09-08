@@ -78,7 +78,16 @@ sitting unharvested, harvest it first.
 
 3c. **Re-park the lane:** after the sentinel resolves, run
 `python scripts/fire_trigger.py park --trigger circuit-trace --ignore-settle --keep-dashboard`
-(terminality just confirmed). Parking keeps every trigger file's resting
+(terminality just confirmed).
+
+3d. **PNG sweep (added 2026-09-08; $0).** Run
+`python scripts/render_archive.py coverage`. If it reports unarchived runs
+and the `archive-renders` lane has 0 active entries, fire that lane once with
+`{"tag": "renders-<today>", "runs": [<the unarchived runs, oldest first, at
+most 20>], "prune": true}` plus `--keep-dashboard`; harvest and re-park it
+the next cycle, never in this one. The sentinel's own PNGs are in that list
+from the following cycle on. If the lane is busy or coverage is clean, skip
+and say so in the brief. Parking keeps every trigger file's resting
 content a cheap no-op — the resting-state rule. If any OTHER trigger file
 was left un-parked by a stray fire, re-park that lane too once terminal.
 
