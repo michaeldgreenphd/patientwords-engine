@@ -24,6 +24,9 @@ assume the same state until the environment itself is fixed.
   deletion of the entire repository. If a stop-hook complains about
   uncommitted changes, repair first; the "changes" are phantoms.
 - Never `git pull --rebase` before the index is repaired.
+- Never fetch, pull, or deepen a **shallow** clone of this repo (`.git/shallow`
+  present). At this disk allowance that is destructive, not slow — see
+  Variant C.
 - Do not restore all of `trace_out/` — ~12k render files through the blobless
   proxy wastes the session; analysis needs only the `batch_summary*.json`
   files.
@@ -70,7 +73,11 @@ you are not on current `main`. Stop and repair.
 **Repair — blobless fetch FIRST, then sparse patterns, then checkout.** A plain
 `git fetch` of the working branch is not slow, it is unusable: measured on
 2026-08-11 at 2 min and 9.5 min, both killed with the server still compressing
-(49% of 12,145 objects). The blobless fetch completed in **1.9 seconds**.
+(49% of 12,145 objects). The blobless fetch completed in **1.9 seconds**. That figure holds for a
+*blobless* clone. If the clone is *shallow* instead (`git rev-parse
+--is-shallow-repository` prints `true`), do not run this fetch at all — it is
+Variant C below, and deepening a shallow clone is worse than unusable here: on
+2026-09-08 it exhausted the session's disk.
 
 ```bash
 cd /home/user/patientwords-engine
@@ -112,6 +119,67 @@ The site sibling needs no such care — it is small, and its working branch is
 2026-09-04; before that `main` carried a stale snapshot and the ops branch the
 live one). Re-read it after checkout, not before.
 
+## Variant C — clean, on `main`, STALE, and a SHALLOW clone (observed 2026-09-08)
+
+A third arrival state, seen on the 2026-09-08 Routine cycle
+(`CONTAINER-DISK-EXHAUSTED-20260908` in `ops/dashboard.json`): `git status`
+clean, branch `main`, no staged deletions — and HEAD four days behind
+`origin/main`, in a **shallow** clone (`.git/shallow` present, one commit of
+history with full blobs, ~2.3G pack) rather than the blobless clone every other
+section of this document assumes. Variant B's detection catches the staleness;
+Variant B's repair does not apply, because its fetch assumes an intact blobless
+history.
+
+**Detect it before any fetch or pull:**
+
+```bash
+cd /home/user/patientwords-engine
+git rev-parse --is-shallow-repository       # true  → Variant C. Stop here.
+git rev-parse --abbrev-ref HEAD             # main, but stale:
+git log -1 --format='%h %cd' --date=short   # compare with the newest brief in docs/briefs/
+```
+
+**What deepening does here, measured.** `git pull --rebase origin main` in the
+shallow clone pulled an 11 GB pack; a second fetch pulled a duplicate 12 GB one;
+together they exhausted the session's ~37 GB allowance. The interrupted pull
+left the working tree at the new tree with HEAD at the old commit — 609
+untracked and 90 modified files, **five of them under `.github/trigger/`** — a
+state in which any commit fires lanes. Deleting the older pack to free space
+then broke the object store. A plain `git clone --depth 1` (full blobs, no
+filter) is not the answer either: 50 minutes, 11 GB, then
+`fetch-pack: unexpected disconnect while reading sideband packet`.
+
+**Repair — never deepen; re-clone blobless, then Variant B's patterns.** This is
+the doc's own recipe run as a clone. On 2026-09-08 the pack arrived in seconds,
+the checkout took about ten minutes, and the result was 8.0G on disk with a
+clean tree and 933 `batch_summary*.json` files.
+
+```bash
+cd /home/user
+mv patientwords-engine patientwords-engine.shallow      # keep until the new clone verifies
+git clone --filter=blob:none --depth 1 --no-checkout --branch main \
+  "$(git -C patientwords-engine.shallow remote get-url origin)" patientwords-engine
+cd patientwords-engine
+git sparse-checkout set --no-cone \
+  '/*' '!/trace_out/*' '!/render_archives/*' \
+  '/trace_out/*/*.json' '/trace_out/*/*.html' \
+  '/trace_out/*/jlens_raw/*' \
+  '/trace_out/pairs_20260711T051145Z__jlens_gemma-2-2b/*' \
+  '/trace_out/pairs_20260711T051145Z__loglens_gemma-2-2b/*' \
+  '/trace_out/pairs_20260711T051145Z_txopus*/*' \
+  '/trace_out/pairs_20260711T051145Z_txplacebo*/*' \
+  '/trace_out/txcorpus_priority*__jlens_gemma-2-2b/*'
+git checkout -B main origin/main
+```
+
+The pattern list is Variant B's, verbatim, for the reasons given there (the
+census-batch and global `jlens_raw/` lines are not optional). Run the *Verify*
+section below, then `rm -rf ../patientwords-engine.shallow`. The new clone is
+both shallow and blobless; the cycle's ordinary `git pull --rebase origin main`
+worked in it (the 2026-09-08 cycle pulled, fired, harvested and published from
+it), so the rule is specific: a shallow clone with **full** blobs must not be
+deepened, and the way out is a re-clone, not a fetch.
+
 ## Site repo (when `../patientwords` is missing)
 
 Clone through the same git proxy the engine remote uses, blobless, without the
@@ -143,7 +211,7 @@ single known orphan-row warning. Verify a suspected FAIL against
 ```bash
 cd /home/user/patientwords-engine
 git status --porcelain | head -3        # must be empty (or a few ' D trace_out/…' renders only)
-find trace_out -name 'batch_summary*.json' | wc -l   # ~580+
+find trace_out -name 'batch_summary*.json' | wc -l   # 933 on 2026-09-08; grows with landed runs
 test -f ../patientwords/data/model_stats.json && echo site OK
 ```
 
