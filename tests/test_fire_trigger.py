@@ -913,6 +913,8 @@ def test_git_publish_never_stages_the_dashboard(repo, monkeypatch):
             stderr = ""
         if argv and argv[0] == "add":
             staged.extend(argv[2:])
+        if argv and argv[0] == "diff-tree":                     # the commit's paths, as git_publish verifies them
+            P.stdout = "".join(os.path.relpath(s, repo_) + "\n" for s in staged)
         return P()
 
     monkeypatch.setattr(ft, "_git", fake_git)
@@ -958,6 +960,8 @@ def test_git_publish_commits_and_pushes_under_one_fire_token(repo, monkeypatch):
             stderr = ""
         if argv and argv[0] in ("commit", "push"):
             seen[argv[0]] = (env or {}).get("PW_FIRE_TOKEN")
+        if argv and argv[0] == "diff-tree":                     # the commit's paths, as git_publish verifies them
+            P.stdout = "ops/trigger_journal.jsonl\n"
         return P()
 
     monkeypatch.setattr(ft, "_git", fake_git)
@@ -1765,4 +1769,77 @@ def test_pinned_push_sets_the_upstream_of_a_new_branch(tmp_path):
                               capture_output=True, text=True)
     assert upstream.returncode == 0 and upstream.stdout.strip() == "origin/feature"
     assert subprocess.run(["git", "-C", str(clone), "pull", "--rebase"], capture_output=True).returncode == 0
+
+
+def test_git_publish_pushes_only_the_commit_it_made(tmp_path, capsys, monkeypatch):
+    """The branch tip read back after `git commit` is not trusted: it must sit on
+    the tip read before the commit and change exactly the paths added. A commit
+    another process makes just after ours (or just before it) fails that, and
+    nothing is pushed."""
+    origin, clone = _publish_fixture(tmp_path)
+    real_git = ft._git
+
+    def commit_then_intrude(repo_, *argv, env=None):
+        proc = real_git(repo_, *argv, env=env)
+        if argv and argv[0] == "commit" and "-m" in argv and argv[argv.index("-m") + 1] == "fire":
+            (clone / "secret.txt").write_text("landed right after the fire commit\n", encoding="utf-8")
+            _commit(clone, "another process")
+        return proc
+
+    monkeypatch.setattr(ft, "_git", commit_then_intrude)
+    (clone / ".github" / "trigger" / "circuit-trace.json").write_text(json.dumps(PUBLISH_PARAMS) + "\n",
+                                                                       encoding="utf-8")
+    _append_journal(clone / "ops" / "trigger_journal.jsonl", _journal_line("circuit-trace", ft.iso_utc(ft.utc_now())))
+    paths = [clone / ".github" / "trigger" / "circuit-trace.json", clone / "ops" / "trigger_journal.jsonl"]
+    assert ft.git_publish(clone, paths, "fire", backoff=()) is False
+    err = capsys.readouterr().err
+    assert "refusing to push" in err and "sits on" in err                 # the tip is the intruder's commit
+    files = _origin_main_files(origin, tmp_path)
+    assert "secret.txt" not in files and files[".github/trigger/circuit-trace.json"] == '{"a": 1}\n'
+
+    # the intruder stages a file between `git add` and `git commit`: our commit
+    # then carries it, with the right parent but the wrong paths
+    origin2, clone2 = _publish_fixture(tmp_path / "staged")
+
+    def stage_before_commit(repo_, *argv, env=None):
+        if argv and argv[0] == "commit" and "-m" in argv and argv[argv.index("-m") + 1] == "fire":
+            (clone2 / "secret.txt").write_text("staged before the fire commit\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(clone2), "add", "secret.txt"], check=True)
+        return real_git(repo_, *argv, env=env)
+
+    monkeypatch.setattr(ft, "_git", stage_before_commit)
+    (clone2 / ".github" / "trigger" / "circuit-trace.json").write_text(json.dumps(PUBLISH_PARAMS) + "\n",
+                                                                        encoding="utf-8")
+    _append_journal(clone2 / "ops" / "trigger_journal.jsonl", _journal_line("circuit-trace", ft.iso_utc(ft.utc_now())))
+    paths2 = [clone2 / ".github" / "trigger" / "circuit-trace.json", clone2 / "ops" / "trigger_journal.jsonl"]
+    assert ft.git_publish(clone2, paths2, "fire", backoff=()) is False
+    err2 = capsys.readouterr().err
+    assert "changes [" in err2 and "'secret.txt'" in err2 and "not exactly" in err2
+    assert "secret.txt" not in _origin_main_files(origin2, tmp_path / "staged")
+
+
+def test_publish_reads_the_budget_inputs_from_the_captured_commit(tmp_path, capsys, monkeypatch):
+    """A dashboard or override written to the working tree after the commit was
+    captured is not what CI or the next session reads; the budget guard uses the
+    blobs at that commit."""
+    origin, clone = _publish_fixture(tmp_path)
+    write_dashboard(clone, spent=1.5)                                   # 1.5 + 1.0 > the 2.0 ceiling
+    _commit(clone, "dashboard")
+    subprocess.run(["git", "-C", str(clone), "push", "-q", "origin", "main"], check=True)
+    _fire_locally(clone, "scenario-generation", {"task": "pairs", "num": "5", "max_spend": "1.0"})
+    real = ft.workflow_reads_trigger
+    today = ft.utc_now().strftime("%Y-%m-%d")
+
+    def rewrite_budget_inputs(repo_, trigger, ref=None):                # runs inside _revalidate_fire
+        write_dashboard(clone, spent=0.0)
+        (clone / "ops" / "budget_overrides.json").write_text(
+            json.dumps({today: {"ceiling_usd": 10.0, "reason": "not committed"}}), encoding="utf-8")
+        return real(repo_, trigger, ref=ref)
+
+    monkeypatch.setattr(ft, "workflow_reads_trigger", rewrite_budget_inputs)
+    assert ft.main(["publish", "--repo", str(clone)]) == 4
+    err = capsys.readouterr().err
+    assert "refused:" in err
+    assert json.loads((clone / "ops" / "dashboard.json").read_text())["spend"]["today"]["spent_usd"] == 0.0
+    assert ".github/trigger/scenario-generation.json" not in _origin_main_files(origin, tmp_path)
 

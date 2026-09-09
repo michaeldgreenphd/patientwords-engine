@@ -734,6 +734,43 @@ def _head_oid(repo):
     return proc.stdout.strip() if proc.returncode == 0 and proc.stdout.strip() else None
 
 
+def _commit_is_exactly(repo, parent, commit, paths) -> str | None:
+    """None when `commit` has `parent` as its parent (no parent when `parent` is
+    None) and changes exactly `paths` relative to the repo; else what differs."""
+    if commit is None:
+        return "git rev-parse HEAD failed"
+    got_parent = _git(repo, "rev-parse", "--verify", "--quiet", f"{commit}^")
+    actual_parent = got_parent.stdout.strip() if got_parent.returncode == 0 else None
+    if actual_parent != parent:
+        return (f"commit {commit[:12]} sits on {(actual_parent or 'no parent')[:12]}, not on "
+                f"{(parent or 'no parent')[:12]} as read before the commit")
+    touched = _git(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", commit)
+    if touched.returncode != 0:
+        return f"git diff-tree failed: {touched.stderr.strip()}"
+    root = Path(repo).resolve()
+    expected = set()
+    for path in paths:
+        path = Path(path)
+        expected.add((path.resolve().relative_to(root) if path.is_absolute() else path).as_posix())
+    actual = set(touched.stdout.split())
+    if actual != expected:
+        return f"commit {commit[:12]} changes {sorted(actual)}, not exactly {sorted(expected)}"
+    return None
+
+
+def _json_at(repo, ref: str, relpath: Path) -> dict:
+    """The JSON object committed at ref:relpath; {} when absent or not an
+    object, as load_dashboard and load_budget_overrides read a missing file."""
+    text = _git_show(repo, ref, relpath.as_posix())
+    if text is None:
+        return {}
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def git_publish(repo, paths, message, backoff=PUSH_BACKOFF_SECONDS):
     """git add + commit + push -u origin <current branch>, retrying the push
     with backoff on nonzero exit. Returns True on success. The only function
@@ -744,6 +781,7 @@ def git_publish(repo, paths, message, backoff=PUSH_BACKOFF_SECONDS):
     if proc.returncode != 0:
         print(f"git add failed: {proc.stderr.strip()}", file=sys.stderr)
         return False
+    before = _head_oid(repo)                    # None on an unborn branch
     with fire_token(repo) as env:
         proc = _git(repo, "commit", "-m", message, env=env)
         if proc.returncode != 0:
@@ -754,9 +792,15 @@ def git_publish(repo, paths, message, backoff=PUSH_BACKOFF_SECONDS):
             print(f"git rev-parse failed: {proc.stderr.strip()}", file=sys.stderr)
             return False
         branch = proc.stdout.strip()
-        head = _head_oid(repo)                  # the commit just made: push it, not the branch name
-        if head is None:
-            print("git rev-parse HEAD failed", file=sys.stderr)
+        # The commit to push is the one just made and nothing else: the branch
+        # tip read back must sit on the tip read before the commit and change
+        # exactly the paths added. A commit another process made in between,
+        # before or after ours, fails one of the two, and nothing is pushed.
+        head = _head_oid(repo)
+        problem = _commit_is_exactly(repo, before, head, paths)
+        if problem:
+            print(f"refusing to push: {problem}. The fire is committed locally; inspect the branch, drop what "
+                  "does not belong, then `publish`.", file=sys.stderr)
             return False
         for attempt, delay in enumerate((0,) + tuple(backoff)):
             if delay:
@@ -1439,8 +1483,11 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
     # 4. Budget guard, with the rebased dashboard and journal; the entry's own
     # max_spend is excluded from in-flight exactly as when cmd_fire approved it.
     if paid:
-        dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
-        overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
+        # Both from the commit to be pushed, like every other input above: a
+        # dashboard or override written to the working tree after `head` was
+        # captured is not in what CI and the next session will read.
+        dashboard = _json_at(repo, head, DASHBOARD_RELPATH)
+        overrides = _json_at(repo, head, OVERRIDES_RELPATH)
         kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),
                                     entries=others, now=now, expire_hours=expire_hours,
                                     overrides=overrides, trigger=trigger)
