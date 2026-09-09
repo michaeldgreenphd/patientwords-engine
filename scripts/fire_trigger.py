@@ -127,13 +127,27 @@ DEFAULT_OPENROUTER_DAILY_CEILING_USD = 10.0
 WORKFLOW_DIR_RELPATH = ".github/workflows"
 
 
-def workflow_reads_trigger(repo, trigger: str) -> bool:
+def workflow_reads_trigger(repo, trigger: str, ref: str | None = None) -> bool:
     """True when some workflow on this branch reads this trigger's file path.
 
     CI fires on a push that changes .github/trigger/<trigger>.json, so a trigger
     key is only live where a workflow names that path. Checked per branch: the
-    same key can be wired on one branch and absent on another."""
+    same key can be wired on one branch and absent on another. With `ref`, the
+    workflows are read from that commit rather than the working tree: CI runs
+    what the pushed commit holds, and an untracked or edited workflow file on
+    disk is not that. A git error reads as not wired."""
     needle = f"{TRIGGER_DIR_RELPATH}/{trigger}.json"
+    if ref is not None:
+        listing = _git(repo, "ls-tree", "--name-only", ref, "--", WORKFLOW_DIR_RELPATH + "/")
+        if listing.returncode != 0:
+            return False
+        for name in listing.stdout.split():
+            if Path(name).suffix not in (".yml", ".yaml"):
+                continue
+            text = _git_show(repo, ref, name)
+            if text is not None and needle in text:
+                return True
+        return False
     wf_dir = repo / WORKFLOW_DIR_RELPATH
     try:
         entries = sorted(wf_dir.iterdir())
@@ -351,8 +365,14 @@ def save_journal(path, entries):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text("".join(json.dumps(e) + "\n" for e in entries), encoding="utf-8")
+    tmp.write_text(journal_text(entries), encoding="utf-8")
     os.replace(tmp, path)
+
+
+def journal_text(entries) -> str:
+    """The journal file's exact content for these entries: what save_journal
+    writes, and what a commit of it must therefore contain."""
+    return "".join(json.dumps(e) + "\n" for e in entries)
 
 
 def entry_is_active(entry, now, expire_hours):
@@ -691,9 +711,21 @@ def _push_with_token(repo, branch, env=None, oid=None):
     during a retry's backoff), uninspected, to a public repository."""
     refspec = f"{oid}:refs/heads/{branch}" if oid else branch
     if env is not None:
-        return _git(repo, "push", "-u", "origin", refspec, env=env)
-    with fire_token(repo) as own:
-        return _git(repo, "push", "-u", "origin", refspec, env=own)
+        proc = _git(repo, "push", "-u", "origin", refspec, env=env)
+    else:
+        with fire_token(repo) as own:
+            proc = _git(repo, "push", "-u", "origin", refspec, env=own)
+    if proc.returncode == 0 and oid:
+        _ensure_upstream(repo, branch)
+    return proc
+
+
+def _ensure_upstream(repo, branch):
+    """`push -u` records an upstream only for a local-branch source; an object-id
+    refspec leaves a new branch untracked, and the `git pull --rebase` every
+    later push here needs would then have no default. Set it when unset."""
+    if _git(repo, "rev-parse", "--abbrev-ref", f"{branch}@{{upstream}}").returncode != 0:
+        _git(repo, "branch", f"--set-upstream-to=origin/{branch}", branch)
 
 
 def _head_oid(repo):
@@ -1263,9 +1295,10 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
     except (json.JSONDecodeError, ValueError) as exc:
         print(f"refused: {rel} at {head[:12]} does not hold a valid fire: {exc}", file=sys.stderr)
         return 3, head
-    if not workflow_reads_trigger(repo, trigger):
-        print(f"refused: no workflow on this branch reads {TRIGGER_DIR_RELPATH}/{trigger}.json - "
-              "the push would run nothing.", file=sys.stderr)
+    if not workflow_reads_trigger(repo, trigger, ref=head):
+        print(f"refused: no workflow at {head[:12]} reads {TRIGGER_DIR_RELPATH}/{trigger}.json - the push "
+              "would run nothing (workflows are read from the commit to be pushed, not the working tree).",
+              file=sys.stderr)
         return 7, head
     # The workflow's paths filter sees the push as a whole: a commit that restored
     # the trigger file after the fire leaves the final tree unchanged, so the push
@@ -1370,6 +1403,15 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
                   f"journal correction commit {(corrected or '?')[:12]} sits on a commit nothing here inspected. "
                   "Nothing is pushed. Inspect the branch, drop what does not belong, and `publish` again.",
                   file=sys.stderr)
+            return 3, head
+        # The committed journal must be exactly the entries validated above: a
+        # write by another process between save_journal and `git add` would
+        # otherwise be committed, and the guards below would run on `entries`
+        # while the push carried something else.
+        if _git_show(repo, corrected, JOURNAL_RELPATH.as_posix()) != journal_text(entries):
+            print(f"refused: the journal committed in {corrected[:12]} is not the corrected journal this run "
+                  "validated (another process wrote ops/trigger_journal.jsonl meanwhile). Nothing is pushed; "
+                  "inspect the branch and `publish` again.", file=sys.stderr)
             return 3, head
         print(f"corrected the {trigger} fire's journal record: " + "; ".join(corrections))
         head = corrected
