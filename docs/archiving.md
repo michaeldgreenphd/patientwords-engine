@@ -96,6 +96,24 @@ at HEAD in 2026-09), so the workflow's checkout is blobless and sparse:
 `.github`, `scripts`, `render_archives`, plus the listed runs on the bundle
 path only.
 
+## The shrink guard
+
+Every archive fire uploads with `--clobber`, so a second fire for a tag that
+already has a manifest would replace the asset. If the runs' PNGs have been
+pruned in between, the rebuilt bundle is HTML-only and the replacement
+destroys the only copy of the PNGs (2026-09-08, `renders-20260908-p3`, fired
+twice by mistake; the PNGs were recovered from the pre-prune commit on a
+throwaway branch). The workflow now runs
+`scripts/render_archive.py shrink-check` before the upload: a run whose PNG
+member count in the new bundle is below what `render_archives/<tag>.manifest.json`
+records fails the fire before anything is uploaded; so does a Release that
+exists with no manifest on the branch, a live asset whose sha256 differs from
+the manifest's, and a Release lookup that fails for any reason other than
+"not found". `"allow_shrink": true` is the deliberate override, for a tag that
+is meant to lose PNGs. The lane's concurrency group is repository-wide, not
+per branch, so two branches cannot race the same tag. Never fire a tag that
+already has a manifest on the branch unless you mean to replace it.
+
 ## Getting a PNG back on the spot
 
 The PNGs are not gone: `scripts/render_archive.py` reads one member out of a

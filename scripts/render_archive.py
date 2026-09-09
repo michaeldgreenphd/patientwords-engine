@@ -359,6 +359,48 @@ def coverage(repo: Path, runs: Optional[Sequence[str]] = None, **kw) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Shrink check: an upload must never replace PNGs a Release already holds
+# ---------------------------------------------------------------------------
+
+
+def shrink_check(new_manifest: dict, old_manifest: Optional[dict], **kw) -> List[str]:
+    """Everything an upload of `new_manifest`'s bundle would take away from
+    the Release that `old_manifest` (the one committed on the branch for the
+    same tag) describes: a run whose PNG count went down, and a run the old
+    bundle held that the new one omits. An archive fire re-uploads with
+    --clobber, so a bundle built after the PNGs were pruned would silently
+    replace the asset that holds them (2026-09-08: a duplicate p3 fire did
+    exactly that, and the PNGs were in neither the tree nor the Release until
+    a recovery run). The old bundle's member lists come from the manifest
+    when it has them and from the zip's central directory otherwise (the
+    pre-2026-09-08 manifests), so a legacy Release is counted, never assumed;
+    a Release whose members cannot be read is a problem in itself."""
+    if not old_manifest:
+        return []
+    problems: List[str] = []
+    try:
+        old_members = member_names(old_manifest, **kw) if old_manifest.get("includes_pngs") else {}
+    except Exception as exc:  # network, malformed zip, missing release_url: fail closed
+        return [f"cannot read the Release's member list for {old_manifest.get('tag')!r}: {exc}"]
+    new_runs = {r["run"]: r for r in new_manifest.get("runs", [])}
+    for old_run, members in sorted(old_members.items()):
+        old_pngs = {n for n in members if is_png(n)}
+        new = new_runs.get(old_run)
+        if new is None:
+            if old_pngs:
+                problems.append(f"{old_run}: {len(old_pngs)} png in the Release, run absent from the new bundle")
+            continue
+        # Names, not counts: a rebuild that renumbers or swaps variants keeps
+        # the count while dropping members the Release may hold the only copy of.
+        missing = sorted(old_pngs - {n for n in new.get("members", []) if is_png(n)})
+        if missing:
+            shown = ", ".join(missing[:5]) + (f", … ({len(missing)} in all)" if len(missing) > 5 else "")
+            problems.append(f"{old_run}: {len(missing)} of {len(old_pngs)} png in the Release absent "
+                            f"from the new bundle: {shown}")
+    return problems
+
+
+# ---------------------------------------------------------------------------
 # Fetch
 # ---------------------------------------------------------------------------
 
@@ -453,6 +495,18 @@ def cmd_coverage(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_shrink_check(args: argparse.Namespace) -> int:
+    new = json.loads(Path(args.new).read_text(encoding="utf-8"))
+    old = json.loads(Path(args.old).read_text(encoding="utf-8")) if Path(args.old).exists() else None
+    problems = shrink_check(new, old, cache_dir=Path(args.cache_dir) if args.cache_dir else CACHE_DIR)
+    if problems:
+        print("refused: uploading this bundle would replace PNGs the Release already holds:\n  "
+              + "\n  ".join(problems) + "\n(pass allow_shrink to override on purpose)", file=sys.stderr)
+        return 1
+    print("shrink check ok" if old else "shrink check ok (no manifest on the branch for this tag)")
+    return 0
+
+
 def cmd_index(args: argparse.Namespace) -> int:
     repo = Path(args.repo).resolve()
     for manifest in load_manifests(repo):
@@ -483,6 +537,11 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--json", action="store_true")
     c.add_argument("--require-archived", action="store_true", help="exit 1 if any PNG is in no Release")
     c.set_defaults(func=cmd_coverage)
+    sc = sub.add_parser("shrink-check", help="refuse a bundle with fewer PNGs than the branch's manifest records")
+    sc.add_argument("--new", required=True, help="the freshly built dist/<tag>.manifest.json")
+    sc.add_argument("--old", required=True, help="render_archives/<tag>.manifest.json (may not exist)")
+    sc.add_argument("--cache-dir", help="where a legacy Release's member list is cached (default ~/.cache)")
+    sc.set_defaults(func=cmd_shrink_check)
     i = sub.add_parser("index", help="list an archive's members (reads the zip's central directory once)")
     i.add_argument("--tag")
     i.set_defaults(func=cmd_index)

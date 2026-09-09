@@ -180,6 +180,10 @@ def test_exact_verified_key_sets_accepted(repo):
         "tag": "t", "runs": "trace_out/x", "no_pngs": False, "prune": False, "_nonce": "k2"}) == 0
     assert fire(repo, "archive-renders", params={
         "tag": "prune-a", "runs": "trace_out/x", "prune_only": True, "_nonce": "k2b"}) == 0
+    # a third archive fire would be a queue refusal (two active), so the newest
+    # key is checked at the validator
+    assert ft.validate_params("archive-renders", {"tag": "t2", "runs": "trace_out/x", "prune": True,
+                                                  "allow_shrink": True}) is None
     assert fire(repo, "model-evaluation", params={
         "model_selection": "claude-haiku-4-5", "scenario": "all",
         "sample_size": "8", "max_spend": "1", "pairs_file": "p.json",

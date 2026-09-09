@@ -222,9 +222,9 @@ KNOWN_KEYS = {
     # max_spend, sample_size, scenario, pairs_file.
     "model-evaluation": frozenset({"model_selection", "scenario", "sample_size", "max_spend", "pairs_file"}),
     # archive_renders.yml push path reads exactly cfg["tag"], cfg["runs"],
-    # cfg.get("no_pngs"), cfg.get("prune"), cfg.get("prune_only") (verified
-    # 2026-09-08; prune_only added then).
-    "archive-renders": frozenset({"tag", "runs", "no_pngs", "prune", "prune_only"}),
+    # cfg.get("no_pngs"), cfg.get("prune"), cfg.get("prune_only"),
+    # cfg.get("allow_shrink") (verified 2026-09-08; the last two added then).
+    "archive-renders": frozenset({"tag", "runs", "no_pngs", "prune", "prune_only", "allow_shrink"}),
     # advice_evaluation.yml `defaults` dict (verified 2026-07-22; gen_config
     # added 2026-08-21 with the generation mode): stimuli_file, models, arms,
     # samples, temperature, max_tokens, translator_model, max_spend, judge,
