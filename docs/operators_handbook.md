@@ -111,12 +111,14 @@ no merge commit at all, since git omits a merge's own diff from that
 inspection), and still requires the trigger file to differ between origin and
 the final tree, since a later commit that restored it would push nothing CI
 runs. Every one of those checks reads one commit id captured after the
-rebase, the trigger file, journal and workflow wiring included, and the push
-names that id rather than the branch, so a commit another process adds
-meanwhile is outside what was checked and outside the push; the one commit
-`publish` itself adds (the journal correction) must sit on that id, change
-only the journal, and hold exactly the journal that was validated, or nothing
-is pushed. Before the
+rebase, the trigger file, journal, workflow wiring, dashboard and budget
+overrides included, and the push names that id rather than the branch, so a
+commit another process adds meanwhile is outside what was checked and outside
+the push; the one commit `publish` itself adds (the journal correction) must
+sit on that id, change only the journal, and hold exactly the journal that was
+validated, or nothing is pushed. `fire`'s own push is pinned the same way: the
+commit it made must sit on the tip read before it and change exactly the
+trigger file and the journal, or the fire stays local for `publish`. Before the
 push it corrects the fire's own record in one journal-only commit: a fire
 published on a later UTC day, or more than an hour (or half the
 `MEDLANG_TRIGGER_EXPIRE_HOURS` window, whichever is shorter) after it was
