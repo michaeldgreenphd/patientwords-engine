@@ -67,8 +67,12 @@ GPU) still commits no locally produced measurement: every committed summary reco
 
 Eight lanes. `scripts/fire_trigger.py` also knows `pab-probe`, whose
 workflow exists only on the PAB branch. The fact-check of 2026-09-04 found this table
-one lane behind and `.github/trigger/README.md` six behind; nothing tests either
-against `TRIGGERS`/`PARK_DEFAULTS`, so recount when a lane is added.
+one lane behind and `.github/trigger/README.md` six behind. That README predates the
+ops system and cannot be edited from a session (the guard hooks refuse every write
+under `.github/trigger/`), so the lane reference with every lane's exact key set is
+`docs/triggers.md`, and since 2026-09-09 `tests/test_trigger_docs.py` checks it and
+this table against `TRIGGERS`, `PAID_TRIGGERS`, `PARK_DEFAULTS`, `KNOWN_KEYS` and
+the workflows on the branch, so adding a lane without updating both fails the suite.
 
 **Queue discipline (the sharpest tool in the repo):** every workflow has a per-branch
 concurrency group with `cancel-in-progress: false`, which means **one running + one
