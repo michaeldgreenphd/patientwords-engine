@@ -88,9 +88,28 @@ Still failing → verify remote state through the GitHub API instead and
 retry the pull next pass. Never stack retries in a loop.
 
 **"fire written locally but git publish failed" (exit 1):** the trigger
-file, journal entry, and commit already exist locally. NEVER re-fire —
-`git pull --rebase`, resolve any conflicts per the rules below, `git push`.
-The fire then publishes and the workflow runs once.
+file, journal entry, and commit already exist locally; main moved underneath
+(CI's output commits and other sessions interleave with every push) and the
+push was non-fast-forward. NEVER re-fire. Run
+`python scripts/fire_trigger.py publish`: it fetches, rebases the fire onto
+the remote branch, and pushes under the one-shot fire token. A hand
+`git push` will not do here — the commit carries a trigger-file change, which
+`.githooks/pre-push` and the Bash guard refuse from anything but the script
+(observed live 2026-09-09, batch p5 of the PNG prune campaign). `publish`
+publishes one journaled fire and nothing else (exactly one trigger file plus
+the journal, with an active entry for that trigger), refuses a dirty
+checkout, and re-runs the fire's guards against the rebased journal and
+dashboard: queue (other sessions may have filled the lane meanwhile), settle
+(`--ignore-settle` as for `fire`), budget for a paid fire (`--override-budget`
+as for `fire`), key validation and workflow wiring. It also checks that the
+rebased journal still holds every entry origin has (a hand-resolved conflict
+that took the local side is refused), inspects every unpushed commit rather
+than the final tree, and restamps a fire published more than an hour after it
+was made or on a later UTC day (`fired_utc` becomes the publication time,
+the original kept as `fired_utc_original`) so the run counts in that day's
+spend and does not expire early. A rebase conflict is aborted with the
+checkout left as it was: resolve it per the journal rule below, then run
+`publish` again. The fire then publishes and the workflow runs once.
 
 **Journal conflict** (`ops/trigger_journal.jsonl`): ORDERED UNION — take
 both sides (`git show :2:` / `:3:` during a rebase), dedupe on

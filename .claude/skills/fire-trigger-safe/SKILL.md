@@ -38,7 +38,7 @@ python scripts/fire_trigger.py fire --trigger <name> \
 ## 3 · Exit codes — handle every one
 
 - **0** fired (or dry-run ok). Note which slot ("running" or "pending") it reports.
-- **1** git publish failed after local writes — resolve the git state by hand; do NOT re-fire.
+- **1** git publish failed after local writes (main moved; the push was non-fast-forward) — run `python scripts/fire_trigger.py publish`, which rebases the fire and pushes it under the fire token; do NOT re-fire, and do not hand `git push` (the guards refuse a trigger change from anything but the script). It re-runs the queue, settle and budget guards against the rebased journal and dashboard before pushing, so it can refuse with 2, 4 or 6 like `fire`. A conflict is aborted for you; resolve it (journal: ORDERED UNION), then `publish` again.
 - **2** queue refusal: two active entries. Wait, harvest, `resolve` the landed run. Never `--force-evict`.
 - **3** bad params (invalid JSON or unknown key). Fix the params; never bypass.
 - **4** budget refusal. The attempt ENDS here: record why (dashboard `blockers`/notes). Never `--override-budget`.
@@ -99,7 +99,9 @@ the dashboard, and none needs to revert it any more.
 `--no-git` writes the files without committing; it is for inspection. A hand `git push`
 that carries a trigger-file change is refused by the guard hooks and by
 `.githooks/pre-push`, so a real fire is always `fire` in its default git mode, then
-`resolve` once the run lands. One fire per invocation; never a second `fire` before the
+`resolve` once the run lands; when `fire` exits 1 because the push was rejected,
+`publish` is the sanctioned re-push (rebase onto the moved branch, tokened push,
+refuses anything beyond the trigger file and the journal). One fire per invocation; never a second `fire` before the
 first has pushed (a second write replaces the trigger content, CI fires once, and the
 first fire's journal entry occupies a slot for 8h — 2026-07-21).
 
