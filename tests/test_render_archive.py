@@ -256,3 +256,35 @@ def test_shrink_check_compares_png_names_not_counts(served_bundle, tmp_path):
     problems = ra.shrink_check(renumbered, manifest)
     assert problems[0].startswith("pairs_A: 6 of 6 png in the Release absent from the new bundle")
     assert problems[1] == "pairs_B: 5 png in the Release, run absent from the new bundle"
+
+
+def test_coverage_reports_top_level_trace_out_pngs_as_unarchived(served_bundle, capsys):
+    """PNGs directly under trace_out/ belong to no run, so no Release can hold
+    them; coverage must list them, not skip them (2026-09-09: ten survived the
+    campaign unseen), and --require-archived must refuse on them."""
+    repo, url, manifest, handler, dist = served_bundle
+    (repo / "trace_out" / "index_01.png").write_bytes(b"\x89PNGtop" * 100)
+    (repo / "trace_out" / "index_02.png").write_bytes(b"\x89PNGtop" * 100)
+    (repo / "trace_out" / "notes.txt").write_text("not a png")
+    subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "-c", "user.email=t@x", "-c", "user.name=t", "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(repo), "-c", "user.email=t@x", "-c", "user.name=t", "commit", "-q", "-m", "x"],
+                   check=True)
+    factory = lambda u: ra.FileSource(dist / "renders-test.zip")  # noqa: E731
+    rep = ra.coverage(repo, cache_dir=repo / "cache", source_factory=factory)
+    assert rep["runs"][ra.TOP_LEVEL] == {"index_01.png": None, "index_02.png": None}
+    assert rep["unarchived"] == 2 and rep["unarchived_runs"] == [ra.TOP_LEVEL]
+    assert rep["runs"]["pairs_A"]["index_01.png"] == "renders-test"     # run directories unchanged
+    # a --runs filter naming run directories leaves the top level out; naming TOP_LEVEL includes it
+    assert ra.TOP_LEVEL not in ra.tree_pngs(repo, ["trace_out/pairs_A"])
+    assert set(ra.tree_pngs(repo, [ra.TOP_LEVEL])) == {ra.TOP_LEVEL}
+    monkey = {"asset_url": ra.asset_url, "CACHE_DIR": ra.CACHE_DIR}
+    try:
+        ra.asset_url = lambda m: url          # the CLI builds its own source from the manifest URL
+        ra.CACHE_DIR = repo / "cache"
+        rc = ra.main(["--repo", str(repo), "coverage", "--require-archived"])
+    finally:
+        ra.asset_url, ra.CACHE_DIR = monkey["asset_url"], monkey["CACHE_DIR"]
+    out, err = capsys.readouterr()
+    assert rc == 1 and ra.TOP_LEVEL in err
+    assert "no run directory" in out
