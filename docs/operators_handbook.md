@@ -101,7 +101,7 @@ the journal, with an active entry for that trigger), refuses a dirty
 checkout, and re-runs the fire's guards against the rebased journal and
 dashboard: queue (other sessions may have filled the lane meanwhile), settle
 (`--ignore-settle` as for `fire`), budget for a paid fire (`--override-budget`
-as for `fire`), key validation and workflow wiring. It also checks that the
+as for `fire`), the reused archive tag guard (`--reuse-tag` as for `fire`; the rebase may have brought in a manifest CI committed after the fire was cut), key validation and workflow wiring. It also checks that the
 rebased journal still holds every entry origin has (a hand-resolved conflict
 that took the local side is refused), inspects every unpushed commit rather
 than the final tree, and restamps a fire published more than an hour after it

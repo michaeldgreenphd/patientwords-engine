@@ -1237,6 +1237,12 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
         print(f"refused: no workflow on this branch reads {TRIGGER_DIR_RELPATH}/{trigger}.json - "
               "the push would run nothing.", file=sys.stderr)
         return 7
+    # The rebase just integrated the remote tip: a manifest CI committed for this
+    # tag after the fire was cut is at HEAD now, and the guard that ran before the
+    # first push could not have seen it.
+    rc = refuse_reused_archive_tag(repo, trigger, params, reuse_tag=getattr(args, "reuse_tag", False), parked=False)
+    if rc is not None:
+        return rc
     entries = load_journal(repo / JOURNAL_RELPATH)
     mine = [e for e in journal_entries_added(repo, branch)
             if e.get("trigger") == trigger and not e.get("resolved") and not e.get("evicted")]
@@ -1501,6 +1507,8 @@ def build_parser():
                          help="as for fire: the lane's recently resolved run is confirmed terminal in GitHub")
     publish.add_argument("--override-budget", action="store_true",
                          help="as for fire: proceed past a daily-ceiling refusal only")
+    publish.add_argument("--reuse-tag", action="store_true",
+                         help="as for fire: an archive-renders tag that already has a manifest is meant")
     publish.set_defaults(func=cmd_publish)
 
     status = sub.add_parser("status", parents=[common], help="per-trigger active counts and queue view")

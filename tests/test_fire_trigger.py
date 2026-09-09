@@ -1493,3 +1493,21 @@ def test_publish_inspects_every_unpublished_commit_not_only_the_final_tree(tmp_p
     assert "secret.txt" in capsys.readouterr().err
     assert ".github/trigger/circuit-trace.json" in _origin_main_files(origin, tmp_path)
     assert _origin_main_files(origin, tmp_path)[".github/trigger/circuit-trace.json"] == '{"a": 1}\n'
+
+
+def test_publish_reruns_the_reused_tag_guard_after_the_rebase(tmp_path, capsys):
+    """The race the pre-push guard cannot close: CI commits the tag's manifest
+    after the fire was cut and before its push, the push is rejected, and the
+    rebased retry now carries the manifest at HEAD. `publish` must see it."""
+    origin, clone = _publish_fixture(tmp_path)
+    _fire_locally(clone, "archive-renders", {"tag": "renders-20260908-p9", "runs": ["trace_out/pairs_x"],
+                                             "prune": "true"})
+    _advance_origin(origin, tmp_path, "ci", lambda r: (
+        (r / "render_archives").mkdir(),
+        (r / "render_archives" / "renders-20260908-p9.manifest.json").write_text("{}", encoding="utf-8")))
+    assert ft.main(["publish", "--repo", str(clone)]) == 8
+    err = capsys.readouterr().err
+    assert "renders-20260908-p9" in err and "already on this branch" in err
+    assert ".github/trigger/archive-renders.json" not in _origin_main_files(origin, tmp_path)
+    assert ft.main(["publish", "--repo", str(clone), "--reuse-tag"]) == 0          # the deliberate override
+    assert ".github/trigger/archive-renders.json" in _origin_main_files(origin, tmp_path)
