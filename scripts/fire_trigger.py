@@ -721,6 +721,20 @@ def git_publish(repo, paths, message, backoff=PUSH_BACKOFF_SECONDS):
     return False
 
 
+MANIFEST_DIR_RELPATH = Path("render_archives")
+
+
+def archive_tag_has_manifest(repo, tag):
+    """True when render_archives/<tag>.manifest.json exists at HEAD or in the
+    working tree. HEAD via git first: the cloud checkouts exclude render_archives/
+    from the sparse cone, so the file is tracked but absent on disk. A checkout
+    that is not a git work tree (the tests) falls back to the filesystem."""
+    rel = MANIFEST_DIR_RELPATH / f"{tag}.manifest.json"
+    if _git(repo, "cat-file", "-e", f"HEAD:{rel.as_posix()}").returncode == 0:
+        return True
+    return (repo / rel).exists()
+
+
 def cmd_fire(args):
     repo = Path(args.repo).resolve()
     expire_hours = expire_hours_from_env()
@@ -827,6 +841,29 @@ def cmd_fire(args):
             file=sys.stderr,
         )
         return 7
+
+    # 5b. archive-renders: a tag that already has a manifest on this branch names a
+    # Release whose asset the workflow uploads with --clobber. The duplicate p3
+    # fire of 2026-09-08 (a misread journal) rebuilt an HTML-only bundle over a
+    # 405 MB asset and left 157 PNGs in neither the tree nor the Release until a
+    # recovery run put them back. The CI shrink guard (#15) now refuses that
+    # upload, but only after a runner has spun up and the asset been downloaded;
+    # refusing here is earlier and free. --reuse-tag says the reuse is meant (a
+    # superset re-archive, or a deliberate override with allow_shrink in the
+    # params); the park's tag is exempt, since a park re-fires the same no-op
+    # tag by design and uploads no PNGs.
+    if args.trigger == "archive-renders" and not params.get("_parked") and not args.reuse_tag:
+        tag = str(params.get("tag", ""))
+        if tag and archive_tag_has_manifest(repo, tag):
+            print(
+                f"refused: {MANIFEST_DIR_RELPATH}/{tag}.manifest.json is already on this branch, so "
+                f"tag {tag!r} names a Release this fire would re-upload over with --clobber (the "
+                "2026-09-08 duplicate-fire incident). Pick a fresh tag for new runs. To re-archive "
+                "the same tag on purpose (a superset, or with allow_shrink in the params), pass "
+                "--reuse-tag; the CI shrink guard still checks the result.",
+                file=sys.stderr,
+            )
+            return 8
     content = json.dumps(params, separators=(",", ":")) + "\n"
     try:
         unchanged = trigger_path.read_text(encoding="utf-8") == content
@@ -902,6 +939,7 @@ def cmd_park(args):
         ns = argparse.Namespace(
             repo=args.repo, trigger=trigger, params=json.dumps(params), params_file=None,
             note=PARK_NOTE, force_evict=False, ignore_settle=args.ignore_settle,
+            reuse_tag=False,  # the park's tag is exempt from the reused-tag refusal via _parked
             dry_run=args.dry_run, no_git=args.no_git, keep_dashboard=args.keep_dashboard,
             override_budget=False,
         )
@@ -1008,6 +1046,9 @@ def build_parser():
     fire.add_argument("--note", default="", help="why this run fires (journal + commit message)")
     fire.add_argument("--force-evict", action="store_true",
                       help="deliberately replace the pending run when two entries are already active")
+    fire.add_argument("--reuse-tag", action="store_true",
+                      help="archive-renders only: fire a tag whose manifest is already on this branch "
+                           "(a deliberate re-archive); without it such a fire is refused (exit 8)")
     fire.add_argument("--ignore-settle", action="store_true",
                       help="fire despite a same-trigger resolve inside the settle window, once "
                            "the prior run is confirmed terminal in GitHub")

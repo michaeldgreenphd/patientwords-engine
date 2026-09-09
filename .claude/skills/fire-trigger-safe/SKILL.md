@@ -44,6 +44,10 @@ python scripts/fire_trigger.py fire --trigger <name> \
 - **4** budget refusal. The attempt ENDS here: record why (dashboard `blockers`/notes). Never `--override-budget`.
 - **5** no-op: the trigger file already holds exactly these params, so a push would not fire CI. Add/change `_nonce`.
 - **6** settle refusal (see §4). Wait out the window, or confirm terminal state first.
+- **7** no workflow on this branch reads the trigger; fire from the branch that has one.
+- **8** archive-renders only: the tag's manifest is already on this branch, so the fire would
+  re-upload over an existing Release with `--clobber` (the 2026-09-08 duplicate p3 fire). Use a
+  fresh tag; `--reuse-tag` only for a deliberate re-archive, and the CI shrink guard still checks it.
 
 ## 4 · Queue discipline: chain, never stack
 

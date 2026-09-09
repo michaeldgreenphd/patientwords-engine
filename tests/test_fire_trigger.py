@@ -963,3 +963,51 @@ def test_git_publish_commits_and_pushes_under_one_fire_token(repo, monkeypatch):
     monkeypatch.setattr(ft, "_git", fake_git)
     assert ft.git_publish(repo, [repo / "ops" / "trigger_journal.jsonl"], "msg", backoff=()) is True
     assert seen["commit"] and seen["commit"] == seen["push"], seen
+
+
+# ---------------------------------------------------------------------------
+# archive-renders: a tag whose manifest is already on the branch is refused
+# (the 2026-09-08 duplicate p3 fire), unless --reuse-tag says the reuse is meant
+# ---------------------------------------------------------------------------
+
+
+def _archive_params(tag, **extra):
+    return {"tag": tag, "runs": ["trace_out/pairs_x"], "prune": "true", **extra}
+
+
+def test_archive_fire_refuses_a_tag_whose_manifest_is_on_the_branch(repo, capsys):
+    (repo / "render_archives").mkdir()
+    (repo / "render_archives" / "renders-20260908-p3.manifest.json").write_text("{}", encoding="utf-8")
+    assert fire(repo, "archive-renders", _archive_params("renders-20260908-p3")) == 8
+    err = capsys.readouterr().err
+    assert "already on this branch" in err and "--reuse-tag" in err and "duplicate-fire" in err
+    assert not (repo / ".github" / "trigger" / "archive-renders.json").exists()   # nothing written
+    assert not (repo / "ops" / "trigger_journal.jsonl").exists()
+
+
+def test_archive_fire_with_a_fresh_tag_or_reuse_tag_proceeds(repo):
+    (repo / "render_archives").mkdir()
+    (repo / "render_archives" / "renders-20260908-p3.manifest.json").write_text("{}", encoding="utf-8")
+    assert fire(repo, "archive-renders", _archive_params("renders-20260908-p4")) == 0
+    assert fire(repo, "archive-renders", _archive_params("renders-20260908-p3", _nonce="again"),
+                extra=["--reuse-tag", "--ignore-settle"]) == 0
+
+
+def test_park_is_exempt_from_the_reused_tag_refusal(repo):
+    (repo / "render_archives").mkdir()
+    (repo / "render_archives" / "park-noop.manifest.json").write_text("{}", encoding="utf-8")
+    assert ft.main(["park", "--repo", str(repo), "--trigger", "archive-renders", "--no-git"]) == 0
+
+
+def test_archive_tag_has_manifest_reads_head_when_the_sparse_checkout_hides_the_file(tmp_path):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    _git_init(repo)
+    (repo / "render_archives").mkdir()
+    (repo / "render_archives" / "renders-x.manifest.json").write_text("{}", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "m"], check=True)
+    (repo / "render_archives" / "renders-x.manifest.json").unlink()   # as a sparse cone leaves it
+    assert ft.archive_tag_has_manifest(repo, "renders-x") is True
+    assert ft.archive_tag_has_manifest(repo, "renders-y") is False
+    assert ft.archive_tag_has_manifest(tmp_path / "not-a-repo", "renders-x") is False
