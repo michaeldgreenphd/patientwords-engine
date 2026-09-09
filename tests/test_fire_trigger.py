@@ -1294,3 +1294,82 @@ def test_publish_refuses_two_unpublished_fires_of_one_trigger(tmp_path, capsys):
     assert json.loads(files[".github/trigger/circuit-trace.json"])["_nonce"] == "second"
     entries = [json.loads(ln) for ln in files["ops/trigger_journal.jsonl"].splitlines() if ln.strip()]
     assert [e["evicted"] for e in entries if e["fired_utc"] == first] == [True]
+
+
+def _resolve_taking_local_side(clone):
+    """The mistake the preserve check exists for: the operator ends the journal
+    conflict by keeping only the local side (stage 3 during a rebase)."""
+    j = "ops/trigger_journal.jsonl"
+    theirs = subprocess.run(["git", "-C", str(clone), "show", f":3:{j}"], capture_output=True, text=True).stdout
+    (clone / j).write_text(theirs, encoding="utf-8")
+    subprocess.run(["git", "-C", str(clone), "add", j], check=True)
+    subprocess.run(["git", "-C", str(clone), "-c", "core.editor=true", "rebase", "--continue"], check=True)
+
+
+def test_publish_restamps_a_fire_published_long_after_it_was_made(tmp_path, capsys):
+    """Budget counts in-flight entries fired today and the queue expires entries
+    older than expire_hours, so a fire published a day late must carry the
+    publication time as its fired_utc, with the original kept alongside."""
+    origin, clone = _publish_fixture(tmp_path)
+    old = ft.iso_utc(ft.utc_now() - timedelta(hours=26))
+    _fire_locally(clone, fired_utc=old)
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    out = capsys.readouterr().out
+    assert "restamped the circuit-trace fire" in out and "published 2 commit" in out
+    entries = [json.loads(ln) for ln in _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"].splitlines()
+               if ln.strip()]
+    mine = [e for e in entries if e.get("fired_utc_original") == old]
+    assert len(mine) == 1
+    assert mine[0]["fired_utc"][:10] == ft.iso_utc(ft.utc_now())[:10] and mine[0]["published_utc"] == mine[0]["fired_utc"]
+    assert ft.active_entries(entries, "circuit-trace", ft.utc_now(), 8.0), "the published run must count as active"
+    # a fire published within the hour keeps its stamp
+    origin2, clone2 = _publish_fixture(tmp_path / "second")
+    recent = _fire_locally(clone2)
+    assert ft.main(["publish", "--repo", str(clone2)]) == 0
+    assert "restamped" not in capsys.readouterr().out
+    entries2 = [json.loads(ln) for ln in _origin_main_files(origin2, tmp_path / "second")["ops/trigger_journal.jsonl"]
+                .splitlines() if ln.strip()]
+    assert any(e["fired_utc"] == recent and "fired_utc_original" not in e for e in entries2)
+
+
+def test_publish_dry_run_reports_an_uncommitted_fire_without_committing_it(tmp_path, capsys):
+    origin, clone = _publish_fixture(tmp_path)
+    (clone / ".github" / "trigger" / "circuit-trace.json").write_text(json.dumps(PUBLISH_PARAMS) + "\n",
+                                                                       encoding="utf-8")
+    _append_journal(clone / "ops" / "trigger_journal.jsonl", _journal_line("circuit-trace", ft.iso_utc(ft.utc_now())))
+    head = _head(clone)
+    assert ft.main(["publish", "--repo", str(clone), "--dry-run"]) == 0
+    assert "would commit the uncommitted circuit-trace fire" in capsys.readouterr().out
+    assert _head(clone) == head                                                  # nothing committed
+    assert subprocess.run(["git", "-C", str(clone), "status", "--porcelain"], capture_output=True,
+                          text=True).stdout.strip()                             # still dirty, as found
+
+
+def test_publish_refuses_a_journal_that_dropped_a_remote_entry(tmp_path, capsys):
+    origin, clone = _publish_fixture(tmp_path)
+    _fire_locally(clone)
+    live = ft.iso_utc(ft.utc_now() - timedelta(minutes=30))
+    _advance_origin(origin, tmp_path, "other", lambda r: _append_journal(
+        r / "ops" / "trigger_journal.jsonl", _journal_line("circuit-trace", live)))
+    pulled = subprocess.run(["git", "-C", str(clone), "pull", "--rebase", "origin", "main"], capture_output=True, text=True)
+    assert pulled.returncode != 0
+    _resolve_taking_local_side(clone)                       # the remote's live run is now gone locally
+    assert ft.main(["publish", "--repo", str(clone)]) == 3
+    err = capsys.readouterr().err
+    assert "does not preserve" in err and f"missing remote entry circuit-trace fired {live}" in err
+    assert _origin_main_files(origin, tmp_path)[".github/trigger/circuit-trace.json"] == '{"a": 1}\n'
+
+
+def test_publish_inspects_every_unpublished_commit_not_only_the_final_tree(tmp_path, capsys):
+    """A foreign file added in one commit and deleted in a later one is absent
+    from the merge-base diff but would be pushed, and this repository is public."""
+    origin, clone = _publish_fixture(tmp_path)
+    (clone / "secret.txt").write_text("token\n", encoding="utf-8")
+    _commit(clone, "oops")
+    (clone / "secret.txt").unlink()
+    _commit(clone, "remove it")
+    _fire_locally(clone)
+    assert ft.main(["publish", "--repo", str(clone)]) == 3
+    assert "secret.txt" in capsys.readouterr().err
+    assert ".github/trigger/circuit-trace.json" in _origin_main_files(origin, tmp_path)
+    assert _origin_main_files(origin, tmp_path)[".github/trigger/circuit-trace.json"] == '{"a": 1}\n'

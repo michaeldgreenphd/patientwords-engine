@@ -896,10 +896,13 @@ def unpublished_commits(repo: Path, branch: str) -> tuple[int, list[str]]:
     count = _git(repo, "rev-list", "--count", f"origin/{branch}..HEAD")
     if count.returncode != 0:
         raise RuntimeError(count.stderr.strip() or "git rev-list failed")
-    changed = _git(repo, "diff", "--name-only", f"origin/{branch}...HEAD")
+    # Every path any of those commits touches, not the merge-base-to-HEAD diff: a
+    # file added in one commit and deleted in a later one is absent from that
+    # diff yet would be pushed, and this repository is public.
+    changed = _git(repo, "log", "--format=", "--name-only", f"origin/{branch}..HEAD")
     if changed.returncode != 0:
-        raise RuntimeError(changed.stderr.strip() or "git diff failed")
-    return int(count.stdout.strip() or 0), [line for line in changed.stdout.split("\n") if line.strip()]
+        raise RuntimeError(changed.stderr.strip() or "git log failed")
+    return int(count.stdout.strip() or 0), sorted({line.strip() for line in changed.stdout.split("\n") if line.strip()})
 
 
 def is_publishable(relpath: str) -> bool:
@@ -922,6 +925,44 @@ def journal_entries_added(repo: Path, branch: str) -> list[dict]:
                     continue
                 before.add((e.get("trigger"), e.get("fired_utc")))
     return [e for e in load_journal(repo / JOURNAL_RELPATH) if (e.get("trigger"), e.get("fired_utc")) not in before]
+
+
+JOURNAL_MONOTONIC_FIELDS = {"resolved", "evicted", "resolved_utc"}
+
+
+def journal_drops_remote_entries(repo: Path, branch: str) -> list[str]:
+    """Problems with the local journal relative to origin/<branch>'s: a remote
+    entry missing (keyed on (trigger, fired_utc)), or one whose fields changed
+    other than the monotonic resolve/evict updates (resolved and evicted may go
+    false to true, resolved_utc may appear). A hand-resolved rebase conflict that
+    took the local side would otherwise truncate the journal, and the queue and
+    budget guards would then approve a push that hides a live run."""
+    base = _git(repo, "show", f"origin/{branch}:{JOURNAL_RELPATH.as_posix()}")
+    if base.returncode != 0:
+        return []                                   # no remote journal yet: nothing to preserve
+    local = {(e.get("trigger"), e.get("fired_utc")): e for e in load_journal(repo / JOURNAL_RELPATH)}
+    problems = []
+    for line in base.stdout.splitlines():
+        if not line.strip():
+            continue
+        try:
+            remote = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        key = (remote.get("trigger"), remote.get("fired_utc"))
+        mine = local.get(key)
+        if mine is None:
+            problems.append(f"missing remote entry {key[0]} fired {key[1]}")
+            continue
+        for field, value in remote.items():
+            if field in JOURNAL_MONOTONIC_FIELDS:
+                if field in ("resolved", "evicted") and value and not mine.get(field):
+                    problems.append(f"{key[0]} fired {key[1]}: {field} went true -> false")
+                if field == "resolved_utc" and mine.get(field) != value:
+                    problems.append(f"{key[0]} fired {key[1]}: resolved_utc changed")
+            elif mine.get(field) != value:
+                problems.append(f"{key[0]} fired {key[1]}: {field} changed")
+    return problems
 
 
 def cmd_publish(args: argparse.Namespace) -> int:
@@ -962,7 +1003,7 @@ def cmd_publish(args: argparse.Namespace) -> int:
     # `git add` or `git commit`), leaving the fire's two files written and
     # uncommitted while `rev-list` sees nothing ahead. That fire is committed here
     # under the token, exactly as cmd_fire would have; any other dirt is refused.
-    rc = _commit_uncommitted_fire(repo, branch)
+    rc = _commit_uncommitted_fire(repo, branch, args.dry_run)
     if rc is not None:
         return rc
     try:
@@ -1005,6 +1046,11 @@ def cmd_publish(args: argparse.Namespace) -> int:
     rc = _revalidate_fire(repo, branch, trigger, args)
     if rc is not None:
         return rc
+    try:
+        count, changed = unpublished_commits(repo, branch)  # a late fire's restamp adds a journal commit
+    except RuntimeError as exc:
+        print(f"git failed before push: {exc}", file=sys.stderr)
+        return 1
     for attempt, delay in enumerate((0,) + tuple(PUSH_BACKOFF_SECONDS)):
         if delay:
             print(f"push retry {attempt}/{len(PUSH_BACKOFF_SECONDS)} in {delay}s", file=sys.stderr)
@@ -1019,7 +1065,7 @@ def cmd_publish(args: argparse.Namespace) -> int:
     return 1
 
 
-def _commit_uncommitted_fire(repo: Path, branch: str) -> int | None:
+def _commit_uncommitted_fire(repo: Path, branch: str, dry_run: bool = False) -> int | None:
     """None when the checkout is clean or held exactly one uncommitted fire that
     is now committed; else the refusal's exit code."""
     status = _git(repo, "status", "--porcelain", "--untracked-files=no").stdout
@@ -1037,6 +1083,10 @@ def _commit_uncommitted_fire(repo: Path, branch: str) -> int | None:
                   "journal entries, not one; repair the journal by hand before publishing.", file=sys.stderr)
             return 3
         note = mine[0].get("note", "")
+        if dry_run:
+            print(f"[dry-run] would commit the uncommitted {trigger} fire under the fire token ({note!r}), then "
+                  "rebase, re-run its guards and push; nothing written")
+            return 0
         proc = _git(repo, "add", "--", TRIGGER_DIR_RELPATH.as_posix() + f"/{trigger}.json", JOURNAL_RELPATH.as_posix())
         if proc.returncode != 0:
             print(f"git add failed: {proc.stderr.strip()}", file=sys.stderr)
@@ -1117,6 +1167,36 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
     fire = mine[0]
     key = (fire.get("trigger"), fire.get("fired_utc"))
     others = [e for e in entries if (e.get("trigger"), e.get("fired_utc")) != key]
+    dropped = journal_drops_remote_entries(repo, branch)
+    if dropped:
+        print(f"refused: the local journal does not preserve origin/{branch}'s entries (a hand-resolved conflict "
+              "that took the local side?); every remote entry must survive with only resolve/evict updates. "
+              "Restore them per the ORDERED UNION rule (docs/operators_handbook.md, section 4), commit, and "
+              "`publish` again:\n  " + "\n  ".join(dropped), file=sys.stderr)
+        return 3
+    # A fire published long after it was made would carry a stale stamp into the
+    # accounting: budget counts in-flight entries fired today, and the queue
+    # expires entries older than expire_hours. The run starts when this push
+    # lands, so a stale entry is restamped now (the original kept alongside) in a
+    # journal-only commit that publishes with the fire.
+    fired = parse_utc(fire.get("fired_utc"))
+    stale = fired is None or fired.date() != now.date() or (now - fired) >= timedelta(hours=1)
+    if stale:
+        for e in entries:
+            if (e.get("trigger"), e.get("fired_utc")) == key:
+                e["fired_utc_original"] = e.get("fired_utc")
+                e["fired_utc"] = iso_utc(now)
+                e["published_utc"] = iso_utc(now)
+        save_journal(repo / JOURNAL_RELPATH, entries)
+        proc = _git(repo, "add", "--", JOURNAL_RELPATH.as_posix())
+        if proc.returncode == 0:
+            proc = _git(repo, "commit", "-m",
+                        f"Journal: restamp the {trigger} fire published late (fired {key[1]}, published {iso_utc(now)})")
+        if proc.returncode != 0:
+            print(f"git failed while restamping the late fire: {proc.stderr.strip() or proc.stdout.strip()}",
+                  file=sys.stderr)
+            return 1
+        print(f"restamped the {trigger} fire: fired_utc {key[1]} -> {iso_utc(now)} (original kept as fired_utc_original)")
     # 3. Queue guard, as cmd_fire ran it before appending this entry: other
     # sessions may have filled the lane while this fire sat unpublished.
     actives = active_entries(others, trigger, now, expire_hours)
