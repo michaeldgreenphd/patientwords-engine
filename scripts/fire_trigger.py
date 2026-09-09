@@ -1006,29 +1006,31 @@ def cmd_fire(args):
 PUBLISHABLE_RELPATHS = (TRIGGER_DIR_RELPATH, JOURNAL_RELPATH)
 
 
-def unpublished_commits(repo: Path, branch: str) -> tuple[int, list[str]]:
-    """(count, changed paths) of commits on HEAD that origin/<branch> lacks. Both
-    from git; the caller has fetched, so origin/<branch> is current."""
-    count = _git(repo, "rev-list", "--count", f"origin/{branch}..HEAD")
+def unpublished_commits(repo: Path, branch: str, head: str = "HEAD") -> tuple[int, list[str]]:
+    """(count, changed paths) of commits on `head` that origin/<branch> lacks. Both
+    from git; the caller has fetched, so origin/<branch> is current. `head` is a
+    commit id once publish has chosen the commit it will push, so a commit
+    another process adds to the branch meanwhile is outside the range."""
+    count = _git(repo, "rev-list", "--count", f"origin/{branch}..{head}")
     if count.returncode != 0:
         raise RuntimeError(count.stderr.strip() or "git rev-list failed")
-    # Every path any of those commits touches, not the merge-base-to-HEAD diff: a
+    # Every path any of those commits touches, not the merge-base-to-head diff: a
     # file added in one commit and deleted in a later one is absent from that
     # diff yet would be pushed, and this repository is public.
-    changed = _git(repo, "log", "--format=", "--name-only", f"origin/{branch}..HEAD")
+    changed = _git(repo, "log", "--format=", "--name-only", f"origin/{branch}..{head}")
     if changed.returncode != 0:
         raise RuntimeError(changed.stderr.strip() or "git log failed")
     return int(count.stdout.strip() or 0), sorted({line.strip() for line in changed.stdout.split("\n") if line.strip()})
 
 
-def unpublished_merges(repo: Path, branch: str) -> list[str]:
+def unpublished_merges(repo: Path, branch: str, head: str = "HEAD") -> list[str]:
     """Merge commits among the commits origin/<branch> lacks. `git log --name-only`
     omits a merge commit's own diff (--diff-merges=off is its default), so a
     path that only the merge result introduced - a file added while resolving
     the merge - is invisible to unpublished_commits; and a rebase onto a branch
     that has not moved leaves the merge in place. A fire is a linear commit, so
     the range must hold no merge at all."""
-    proc = _git(repo, "rev-list", "--merges", f"origin/{branch}..HEAD")
+    proc = _git(repo, "rev-list", "--merges", f"origin/{branch}..{head}")
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr.strip() or "git rev-list --merges failed")
     return proc.stdout.split()
@@ -1056,62 +1058,86 @@ def is_publishable(relpath: str) -> bool:
     return path.parent == TRIGGER_DIR_RELPATH and path.suffix == ".json" and path.stem in TRIGGERS
 
 
-def remote_journal(repo: Path, branch: str) -> tuple[list[dict] | None, list[str]]:
-    """(entries, problems) of origin/<branch>'s journal. entries is None when the
-    remote has no journal yet. A line that is not JSON is a problem, never a
-    skipped line: the same fail-closed rule as load_journal, because a line this
-    check cannot read is one a rewrite would silently delete."""
-    base = _git(repo, "show", f"origin/{branch}:{JOURNAL_RELPATH.as_posix()}")
-    if base.returncode != 0:
+def _git_show(repo: Path, ref: str, relpath: str) -> str | None:
+    """The file's content at `ref`, or None when git has no such blob."""
+    proc = _git(repo, "show", f"{ref}:{relpath}")
+    return proc.stdout if proc.returncode == 0 else None
+
+
+def journal_at(repo: Path, ref: str) -> tuple[list[dict] | None, list[str]]:
+    """(entries, problems) of the journal committed at `ref` (a commit id, or
+    origin/<branch>). entries is None when `ref` has no journal. A line that is
+    not a JSON object is a problem, never a skipped line: the same fail-closed
+    rule as load_journal, because a line this check cannot read is one a rewrite
+    would silently delete."""
+    text = _git_show(repo, ref, JOURNAL_RELPATH.as_posix())
+    if text is None:
         return None, []
     entries, problems = [], []
-    for lineno, line in enumerate(base.stdout.splitlines(), start=1):
+    for lineno, line in enumerate(text.splitlines(), start=1):
         if not line.strip():
             continue
         try:
-            entries.append(json.loads(line))
+            entry = json.loads(line)
         except json.JSONDecodeError as exc:
-            problems.append(f"origin/{branch} journal line {lineno} is not JSON ({exc.msg}); repair it by hand "
-                            "before publishing")
+            problems.append(f"{ref} journal line {lineno} is not JSON ({exc.msg}); repair it by hand before "
+                            "publishing")
+            continue
+        if not isinstance(entry, dict):
+            problems.append(f"{ref} journal line {lineno} is not a JSON object ({line.strip()[:40]!r}); repair it "
+                            "by hand before publishing")
+            continue
+        entries.append(entry)
     return entries, problems
 
 
-def journal_entries_added(repo: Path, branch: str) -> list[dict]:
-    """Journal entries present at HEAD but not at origin/<branch>: the entries the
+def journal_entries_added(repo: Path, branch: str, ref: str | None = None) -> list[dict]:
+    """Journal entries present locally but not at origin/<branch>: the entries the
     unpushed commits appended. Keyed on (trigger, fired_utc), which is what the
-    ORDERED UNION rule dedupes on too."""
-    remote, _ = remote_journal(repo, branch)
+    ORDERED UNION rule dedupes on too. `ref` names the commit to read the local
+    journal from; None reads the working tree (the uncommitted-fire case)."""
+    remote, _ = journal_at(repo, f"origin/{branch}")
     before = {(e.get("trigger"), e.get("fired_utc")) for e in (remote or [])}
-    return [e for e in load_journal(repo / JOURNAL_RELPATH) if (e.get("trigger"), e.get("fired_utc")) not in before]
+    if ref is None:
+        local = load_journal(repo / JOURNAL_RELPATH)
+    else:
+        local = journal_at(repo, ref)[0] or []
+    return [e for e in local if (e.get("trigger"), e.get("fired_utc")) not in before]
 
 
 JOURNAL_MONOTONIC_FIELDS = {"resolved", "evicted", "resolved_utc"}
 
 
-def journal_drops_remote_entries(repo: Path, branch: str) -> list[str]:
-    """Problems with the local journal relative to origin/<branch>'s: a remote
-    line that cannot be parsed, a remote entry missing (keyed on (trigger,
+def journal_drops_remote_entries(repo: Path, branch: str, ref: str = "HEAD") -> list[str]:
+    """Problems with the journal at `ref` relative to origin/<branch>'s: a line on
+    either side that cannot be parsed, a remote entry missing (keyed on (trigger,
     fired_utc)), or one whose fields changed other than the monotonic
-    resolve/evict updates (resolved and evicted may go false to true, and a
-    resolve must carry a parseable resolved_utc, as cmd_resolve writes one:
-    without it the entry leaves the queue and the settle guard both). A
-    hand-resolved rebase conflict that took the local side would otherwise
-    truncate the journal, and the guards would then approve a push that hides a
-    live run."""
-    remote, problems = remote_journal(repo, branch)
+    resolve/evict updates (resolved and evicted stay JSON booleans and may go
+    false to true only - entry_is_active reads any non-empty string as true, so
+    the string "false" would hide a live run - and a resolve must carry a
+    parseable resolved_utc, as cmd_resolve writes one: without it the entry
+    leaves the queue and the settle guard both). A hand-resolved rebase conflict
+    that took the local side would otherwise truncate the journal, and the
+    guards would then approve a push that hides a live run."""
+    remote, problems = journal_at(repo, f"origin/{branch}")
     if remote is None:
         return []                                   # no remote journal yet: nothing to preserve
-    local = {(e.get("trigger"), e.get("fired_utc")): e for e in load_journal(repo / JOURNAL_RELPATH)}
+    local_entries, local_problems = journal_at(repo, ref)
+    problems.extend(local_problems)
+    local = {(e.get("trigger"), e.get("fired_utc")): e for e in (local_entries or [])}
     for entry in remote:
         key = (entry.get("trigger"), entry.get("fired_utc"))
         mine = local.get(key)
         if mine is None:
             problems.append(f"missing remote entry {key[0]} fired {key[1]}")
             continue
+        for field in ("resolved", "evicted"):
+            if field in mine and not isinstance(mine[field], bool):
+                problems.append(f"{key[0]} fired {key[1]}: {field} is {mine[field]!r}, not a JSON boolean")
         for field, value in entry.items():
             if field in JOURNAL_MONOTONIC_FIELDS:
-                if field in ("resolved", "evicted") and value and not mine.get(field):
-                    problems.append(f"{key[0]} fired {key[1]}: {field} went true -> false")
+                if field in ("resolved", "evicted") and value is True and mine.get(field) is not True:
+                    problems.append(f"{key[0]} fired {key[1]}: {field} went true -> {mine.get(field)!r}")
                 if field == "resolved_utc" and mine.get(field) != value:
                     problems.append(f"{key[0]} fired {key[1]}: resolved_utc changed")
             elif mine.get(field) != value:
@@ -1199,9 +1225,18 @@ def cmd_publish(args: argparse.Namespace) -> int:
         print("refused: the rebase left unmerged paths; resolve them by hand before publishing:\n" + unmerged,
               file=sys.stderr)
         return 1
+    # From here on every check reads one commit id, captured now, never the branch
+    # name: a commit another process adds to the branch while the checks run is
+    # outside the range they inspect and outside the push. The one commit
+    # `publish` itself may add (the journal correction) is verified to sit on
+    # exactly this commit and to change only the journal.
+    head = _head_oid(repo)
+    if head is None:
+        print("git rev-parse HEAD failed after rebase", file=sys.stderr)
+        return 1
     try:
-        count, changed = unpublished_commits(repo, branch)  # what the rebase left to push
-        merges = unpublished_merges(repo, branch)           # a rebase onto an unmoved branch keeps a merge
+        count, changed = unpublished_commits(repo, branch, head)  # what the rebase left to push
+        merges = unpublished_merges(repo, branch, head)           # a rebase onto an unmoved branch keeps a merge
     except RuntimeError as exc:
         print(f"git failed after rebase: {exc}", file=sys.stderr)
         return 1
@@ -1211,21 +1246,18 @@ def cmd_publish(args: argparse.Namespace) -> int:
     rc = _publishable_fire(count, changed)
     if rc is not None:
         return rc
-    rc = _revalidate_fire(repo, branch, trigger, args)
+    rc, head = _revalidate_fire(repo, branch, trigger, args, head)
     if rc is not None:
         return rc
     try:
-        count, changed = unpublished_commits(repo, branch)  # a late fire's restamp adds a journal commit
+        count, changed = unpublished_commits(repo, branch, head)  # a corrected record adds a journal commit
+        merges = unpublished_merges(repo, branch, head)
     except RuntimeError as exc:
         print(f"git failed before push: {exc}", file=sys.stderr)
         return 1
-    # Everything above validated this commit; push exactly it, so a commit another
-    # process adds to the branch from here on (or during a retry's backoff) is not
-    # published uninspected.
-    head = _head_oid(repo)
-    if head is None:
-        print("git rev-parse HEAD failed before push", file=sys.stderr)
-        return 1
+    rc = _refuse_merges(merges, branch) or _publishable_fire(count, changed)
+    if rc is not None:
+        return rc
     for attempt, delay in enumerate((0,) + tuple(PUSH_BACKOFF_SECONDS)):
         if delay:
             print(f"push retry {attempt}/{len(PUSH_BACKOFF_SECONDS)} in {delay}s", file=sys.stderr)
@@ -1311,51 +1343,61 @@ def _publishable_fire(count: int, changed: list[str]) -> int | None:
     return None
 
 
-def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Namespace) -> int | None:
-    """cmd_fire's guards, re-run against the rebased checkout for the fire the
-    unpushed commits carry. None when it may be pushed; else the refusal's exit
-    code, with the rebased commits left local for a later `publish`."""
+def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Namespace,
+                     head: str) -> tuple[int | None, str]:
+    """cmd_fire's guards, re-run against commit `head` (what the rebase produced)
+    for the fire its unpushed commits carry. Returns (None, commit to push) when
+    it may be pushed - the commit is `head`, or the journal-correction commit
+    made on top of it - else (the refusal's exit code, head), with the rebased
+    commits left local for a later `publish`. The trigger file and journal are
+    read from `head`, never from the working tree, so what is checked is what
+    is pushed."""
     now = utc_now()
     expire_hours = expire_hours_from_env()
-    trigger_path = repo / TRIGGER_DIR_RELPATH / f"{trigger}.json"
+    rel = (TRIGGER_DIR_RELPATH / f"{trigger}.json").as_posix()
     try:
-        params = json.loads(trigger_path.read_text(encoding="utf-8"))
+        text = _git_show(repo, head, rel)
+        if text is None:
+            raise ValueError(f"no {rel} at {head[:12]}")
+        params = json.loads(text)
         validate_params(trigger, params)
-    except (OSError, json.JSONDecodeError, ValueError) as exc:
-        print(f"refused: {trigger_path} does not hold a valid fire: {exc}", file=sys.stderr)
-        return 3
+    except (json.JSONDecodeError, ValueError) as exc:
+        print(f"refused: {rel} at {head[:12]} does not hold a valid fire: {exc}", file=sys.stderr)
+        return 3, head
     if not workflow_reads_trigger(repo, trigger):
         print(f"refused: no workflow on this branch reads {TRIGGER_DIR_RELPATH}/{trigger}.json - "
               "the push would run nothing.", file=sys.stderr)
-        return 7
+        return 7, head
     # The rebase just integrated the remote tip: a manifest CI committed for this
     # tag after the fire was cut is at HEAD now, and the guard that ran before the
     # first push could not have seen it.
     rc = refuse_reused_archive_tag(repo, trigger, params, reuse_tag=getattr(args, "reuse_tag", False),
                                    parked=is_park_params(trigger, params))
     if rc is not None:
-        return rc
+        return rc, head
     # The workflow's paths filter sees the push as a whole: a commit that restored
     # the trigger file after the fire leaves the final tree unchanged, so the push
     # would land, fire nothing, and leave a journal entry for a run that never
     # started.
-    rel = trigger_path.relative_to(repo).as_posix()
-    unchanged = _git(repo, "diff", "--quiet", f"origin/{branch}", "HEAD", "--", rel)
+    unchanged = _git(repo, "diff", "--quiet", f"origin/{branch}", head, "--", rel)
     if unchanged.returncode == 0:
-        print(f"refused: {rel} is identical at origin/{branch} and HEAD, so the push would change no trigger "
-              "file and CI would run nothing while the journal entry held a queue slot. If the fire was "
+        print(f"refused: {rel} is identical at origin/{branch} and {head[:12]}, so the push would change no "
+              "trigger file and CI would run nothing while the journal entry held a queue slot. If the fire was "
               "undone on purpose, mark its journal entry \"evicted\": true by hand and push the journal "
               "with a plain `git push`.", file=sys.stderr)
-        return 3
-    dropped = journal_drops_remote_entries(repo, branch)
+        return 3, head
+    dropped = journal_drops_remote_entries(repo, branch, head)
     if dropped:
         print(f"refused: the local journal does not preserve origin/{branch}'s entries (a hand-resolved conflict "
               "that took the local side?); every remote entry must survive with only resolve/evict updates. "
               "Restore them per the ORDERED UNION rule (docs/operators_handbook.md, section 4), commit, and "
               "`publish` again:\n  " + "\n  ".join(dropped), file=sys.stderr)
-        return 3
-    entries = load_journal(repo / JOURNAL_RELPATH)
-    added = {(e.get("trigger"), e.get("fired_utc")) for e in journal_entries_added(repo, branch)}
+        return 3, head
+    entries, problems = journal_at(repo, head)
+    if entries is None or problems:
+        print(f"refused: no readable journal at {head[:12]}:\n  " + "\n  ".join(problems), file=sys.stderr)
+        return 3, head
+    added = {(e.get("trigger"), e.get("fired_utc")) for e in journal_entries_added(repo, branch, head)}
     # Taken from `entries` (not from journal_entries_added's separate parse) so
     # the corrections below land in the list save_journal writes.
     mine = [e for e in entries
@@ -1364,7 +1406,7 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
     if not mine:
         print(f"refused: the unpushed journal lines add no active {trigger} entry, so the trigger change "
               "is not a journaled fire; nothing is published.", file=sys.stderr)
-        return 3
+        return 3, head
     if len(mine) > 1:
         print(f"refused: the unpushed commits carry {len(mine)} active {trigger} fires; one push runs the lane "
               "once, with the last trigger content, so the earlier fire would never run while its journal "
@@ -1373,7 +1415,7 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
               file=sys.stderr)
         for e in mine:
             print(f"  fired {e.get('fired_utc', '?')}  note={e.get('note', '')!r}", file=sys.stderr)
-        return 3
+        return 3, head
     fire = mine[0]
     key = (fire.get("trigger"), fire.get("fired_utc"))
     others = [e for e in entries if (e.get("trigger"), e.get("fired_utc")) != key]
@@ -1395,7 +1437,9 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
     fired = parse_utc(fire.get("fired_utc"))
     threshold = min(timedelta(hours=1), timedelta(hours=expire_hours) / 2)
     if fired is None or fired.date() != now.date() or (now - fired) >= threshold:
-        fire["fired_utc_original"] = fire.get("fired_utc")
+        # setdefault: a restamped fire whose push then failed is restamped again
+        # on the next publish, and the time it was actually made must survive
+        fire.setdefault("fired_utc_original", fire.get("fired_utc"))
         fire["fired_utc"] = iso_utc(now)
         fire["published_utc"] = iso_utc(now)
         corrections.append(f"fired_utc {key[1]} -> {iso_utc(now)} (original kept as fired_utc_original)")
@@ -1403,7 +1447,7 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
         expected_spend, error = fire_commitment(budget_params)
         if error:
             print(f"refused: {error}", file=sys.stderr)
-            return 4
+            return 4, head
         expected_lane = fire_lane(trigger, params)
         if fire.get("max_spend") != expected_spend or fire.get("lane") != expected_lane:
             corrections.append(f"max_spend {fire.get('max_spend')!r} -> {expected_spend!r}, "
@@ -1422,8 +1466,21 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
         if proc.returncode != 0:
             print(f"git failed while correcting the fire's record: {proc.stderr.strip() or proc.stdout.strip()}",
                   file=sys.stderr)
-            return 1
+            return 1, head
+        # The commit just made must sit on `head` and change only the journal;
+        # otherwise another process committed to the branch meanwhile and the
+        # correction now rides on a commit nothing here inspected.
+        corrected = _head_oid(repo)
+        parent = _git(repo, "rev-parse", "--verify", f"{corrected}^").stdout.strip() if corrected else ""
+        touched = _git(repo, "diff", "--name-only", head, corrected or head).stdout.split()
+        if corrected is None or parent != head or touched != [JOURNAL_RELPATH.as_posix()]:
+            print(f"refused: {branch} moved from {head[:12]} to {(parent or '?')[:12]} while publish ran, so the "
+                  f"journal correction commit {(corrected or '?')[:12]} sits on a commit nothing here inspected. "
+                  "Nothing is pushed. Inspect the branch, drop what does not belong, and `publish` again.",
+                  file=sys.stderr)
+            return 3, head
         print(f"corrected the {trigger} fire's journal record: " + "; ".join(corrections))
+        head = corrected
     # 3. Queue guard, as cmd_fire ran it before appending this entry: other
     # sessions may have filled the lane while this fire sat unpublished.
     actives = active_entries(others, trigger, now, expire_hours)
@@ -1434,7 +1491,7 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
               file=sys.stderr)
         for e in actives:
             print(f"  fired {e.get('fired_utc', '?')}  note={e.get('note', '')!r}", file=sys.stderr)
-        return 2
+        return 2, head
     # 3b. Settle guard.
     if not args.ignore_settle:
         settle_minutes = settle_minutes_from_env()
@@ -1444,7 +1501,7 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
             print(f"refused: a {trigger} entry was resolved at {newest.get('resolved_utc', '?')}, within the "
                   f"{settle_minutes:g}-minute settle window; pass --ignore-settle once that run is confirmed "
                   "terminal in GitHub, then `publish` again.", file=sys.stderr)
-            return 6
+            return 6, head
     # 4. Budget guard, with the rebased dashboard and journal; the entry's own
     # max_spend is excluded from in-flight exactly as when cmd_fire approved it.
     if paid:
@@ -1459,8 +1516,8 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
             print(f"warning: budget override in effect ({reason})", file=sys.stderr)
         else:
             print(f"refused: {reason}", file=sys.stderr)
-            return 4
-    return None
+            return 4, head
+    return None, head
 
 
 def cmd_park(args):
