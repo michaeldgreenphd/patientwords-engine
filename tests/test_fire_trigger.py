@@ -1843,3 +1843,128 @@ def test_publish_reads_the_budget_inputs_from_the_captured_commit(tmp_path, caps
     assert json.loads((clone / "ops" / "dashboard.json").read_text())["spend"]["today"]["spent_usd"] == 0.0
     assert ".github/trigger/scenario-generation.json" not in _origin_main_files(origin, tmp_path)
 
+
+def test_publish_sets_aside_the_scripts_own_dashboard_edit_and_restores_it(tmp_path, capsys):
+    """`fire --keep-dashboard` (the Routine) and `resolve` leave ops/dashboard.json
+    modified; that is never committed here, so publish parks the working copy,
+    publishes the fire, and puts it back."""
+    origin, clone = _publish_fixture(tmp_path)
+    write_dashboard(clone, spent=0.0)
+    _commit(clone, "dashboard")
+    subprocess.run(["git", "-C", str(clone), "push", "-q", "origin", "main"], check=True)
+    committed = (clone / "ops" / "dashboard.json").read_text(encoding="utf-8")
+    _fire_locally(clone)
+    write_dashboard(clone, spent=0.25)                                        # the queue side effect, uncommitted
+    edited = (clone / "ops" / "dashboard.json").read_text(encoding="utf-8")
+    assert edited != committed
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    out = capsys.readouterr().out
+    assert "set aside the modified ops/dashboard.json" in out and "published" in out
+    assert (clone / "ops" / "dashboard.json").read_text(encoding="utf-8") == edited      # restored
+    files = _origin_main_files(origin, tmp_path)
+    assert files["ops/dashboard.json"] == committed                                       # never pushed
+    assert json.loads(files[".github/trigger/circuit-trace.json"]) == PUBLISH_PARAMS
+
+
+def test_git_publish_pushes_the_first_commit_of_an_unborn_branch(tmp_path):
+    """`git diff-tree` prints nothing for a root commit unless asked with --root;
+    the fire commit on a branch with no history must still pass its own check."""
+    origin = tmp_path / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(origin)], check=True)
+    clone = tmp_path / "clone"
+    subprocess.run(["git", "clone", "-q", str(origin), str(clone)], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(clone), "config", "user.email", "t@example.com"], check=True)
+    subprocess.run(["git", "-C", str(clone), "config", "user.name", "t"], check=True)
+    subprocess.run(["git", "-C", str(clone), "checkout", "-q", "-b", "main"], check=True)
+    (clone / ".github" / "trigger").mkdir(parents=True)
+    (clone / "ops").mkdir()
+    trigger = clone / ".github" / "trigger" / "circuit-trace.json"
+    journal = clone / "ops" / "trigger_journal.jsonl"
+    trigger.write_text(json.dumps(PUBLISH_PARAMS) + "\n", encoding="utf-8")
+    journal.write_text(_journal_line("circuit-trace", ft.iso_utc(ft.utc_now())), encoding="utf-8")
+    assert ft._head_oid(clone) is None
+    assert ft.git_publish(clone, [trigger, journal], "fire", backoff=()) is True
+    files = _origin_main_files(origin, tmp_path)
+    assert set(files) == {".github/trigger/circuit-trace.json", "ops/trigger_journal.jsonl"}
+
+
+def test_publish_lists_a_renamed_foreign_file_by_its_source(tmp_path, capsys):
+    """With rename detection on, `git log --name-only` shows only the destination
+    of a rename; a foreign file renamed onto the journal path would have its
+    deletion pushed unlisted."""
+    origin, clone = _publish_fixture(tmp_path)
+    # git reports a rename only against a path the range adds: a trigger file the
+    # fixture does not have yet, with README.md's content carried over whole
+    subprocess.run(["git", "-C", str(clone), "mv", "README.md", ".github/trigger/archive-renders.json"], check=True)
+    _append_journal(clone / "ops" / "trigger_journal.jsonl", _journal_line("archive-renders", ft.iso_utc(ft.utc_now())))
+    _commit(clone, "botched recovery")
+    with_renames = subprocess.run(["git", "-C", str(clone), "log", "--format=", "--name-only", "origin/main..HEAD"],
+                                  capture_output=True, text=True).stdout
+    assert "README.md" not in with_renames, "the scenario: rename detection hides the source"
+    assert "README.md" in ft.unpublished_commits(clone, "main")[1]
+    assert ft.main(["publish", "--repo", str(clone)]) == 3
+    assert "README.md" in capsys.readouterr().err
+    assert "README.md" in _origin_main_files(origin, tmp_path)
+
+
+def test_publish_does_not_retry_a_non_fast_forward_rejection(tmp_path, capsys, monkeypatch):
+    """origin moves again between the rebase and the push: the pinned commit can
+    never land by retrying, so no backoff is spent and the message says to run
+    publish again."""
+    origin, clone = _publish_fixture(tmp_path)
+    _fire_locally(clone)
+    real = ft.workflow_reads_trigger
+
+    def move_origin(repo_, trigger, ref=None):                          # after the rebase, before the push
+        _advance_origin(origin, tmp_path, "mover", lambda r: (r / "README.md").write_text("moved\n", encoding="utf-8"))
+        return real(repo_, trigger, ref=ref)
+
+    monkeypatch.setattr(ft, "workflow_reads_trigger", move_origin)
+    sleeps = []
+    monkeypatch.setattr(ft.time, "sleep", lambda seconds: sleeps.append(seconds))
+    assert ft.main(["publish", "--repo", str(clone)]) == 1
+    err = capsys.readouterr().err
+    assert "moved again since the rebase" in err and "run `publish` again" in err
+    assert sleeps == [], "no backoff on a rejection that cannot succeed"
+    assert ".github/trigger/circuit-trace.json" in _origin_main_files(origin, tmp_path)
+    assert _origin_main_files(origin, tmp_path)[".github/trigger/circuit-trace.json"] == '{"a": 1}\n'
+    monkeypatch.setattr(ft, "workflow_reads_trigger", real)
+    assert ft.main(["publish", "--repo", str(clone)]) == 0                 # the second publish rebases and lands
+    assert json.loads(_origin_main_files(origin, tmp_path)[".github/trigger/circuit-trace.json"]) == PUBLISH_PARAMS
+
+
+def test_publish_restamp_day_test_uses_the_utc_date(tmp_path, capsys):
+    """inflight_max_spend counts by UTC date; a hand-repaired stamp with an offset
+    whose local date differs from the UTC date must be judged on the UTC date,
+    or a fresh fire is restamped (or a stale one is not)."""
+    origin, clone = _publish_fixture(tmp_path)
+    now = ft.utc_now()
+    offset = timezone(timedelta(hours=12)) if now.hour >= 12 else timezone(timedelta(hours=-12))
+    fresh_local = (now - timedelta(minutes=5)).astimezone(offset).isoformat(timespec="seconds")
+    assert datetime.fromisoformat(fresh_local).date() != now.date(), "the scenario: local date differs"
+    _fire_locally(clone, fired_utc=fresh_local)
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    assert "fired_utc_original" not in capsys.readouterr().out                # fresh: same UTC day, minutes old
+    entries = [json.loads(ln) for ln in _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"].splitlines()
+               if ln.strip()]
+    assert any(e["fired_utc"] == fresh_local and "fired_utc_original" not in e for e in entries)
+
+
+def test_publish_reports_a_fire_origin_already_carries(tmp_path, capsys):
+    """Two sessions publish the same fire: the rebase drops the local commit as
+    already applied, and publish says so instead of refusing a phantom range."""
+    origin, clone = _publish_fixture(tmp_path)
+    fired = _fire_locally(clone)
+
+    def same_fire(r):
+        (r / ".github" / "trigger" / "circuit-trace.json").write_text(json.dumps(PUBLISH_PARAMS) + "\n",
+                                                                     encoding="utf-8")
+        _append_journal(r / "ops" / "trigger_journal.jsonl", _journal_line("circuit-trace", fired))
+
+    _advance_origin(origin, tmp_path, "twin", same_fire)
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    out = capsys.readouterr().out
+    assert "nothing left to publish" in out and "already carries this fire" in out
+    assert _head(clone) == subprocess.run(["git", "-C", str(clone), "rev-parse", "origin/main"],
+                                          capture_output=True, text=True).stdout.strip()
+

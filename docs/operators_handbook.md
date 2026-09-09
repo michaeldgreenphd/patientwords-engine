@@ -118,7 +118,13 @@ the push; the one commit `publish` itself adds (the journal correction) must
 sit on that id, change only the journal, and hold exactly the journal that was
 validated, or nothing is pushed. `fire`'s own push is pinned the same way: the
 commit it made must sit on the tip read before it and change exactly the
-trigger file and the journal, or the fire stays local for `publish`. Before the
+trigger file and the journal, or the fire stays local for `publish`. A
+modified `ops/dashboard.json` (the queue side effect of `fire --keep-dashboard`
+and `resolve`) is set aside for the publish and restored after, never
+committed; any other dirt is refused with the recovery named (stash it; a
+plain `git push` is refused while an unpushed trigger change is on the
+branch). A push the remote rejects as non-fast-forward is not retried: origin
+moved again, and `publish` says to run it again. Before the
 push it corrects the fire's own record in one journal-only commit: a fire
 published on a later UTC day, or more than an hour (or half the
 `MEDLANG_TRIGGER_EXPIRE_HOURS` window, whichever is shorter) after it was
