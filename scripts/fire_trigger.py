@@ -720,6 +720,13 @@ def _push_with_token(repo, branch, env=None, oid=None):
     return proc
 
 
+def _push_rejected(proc) -> bool:
+    """True when git refused the push as non-fast-forward: the remote moved again,
+    which no retry of the same commit can cure; only another rebase can."""
+    text = (proc.stderr or "").lower()
+    return "non-fast-forward" in text or "fetch first" in text or "[rejected]" in text
+
+
 def _ensure_upstream(repo, branch):
     """`push -u` records an upstream only for a local-branch source; an object-id
     refspec leaves a new branch untracked, and the `git pull --rebase` every
@@ -744,7 +751,7 @@ def _commit_is_exactly(repo, parent, commit, paths) -> str | None:
     if actual_parent != parent:
         return (f"commit {commit[:12]} sits on {(actual_parent or 'no parent')[:12]}, not on "
                 f"{(parent or 'no parent')[:12]} as read before the commit")
-    touched = _git(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", commit)
+    touched = _git(repo, "diff-tree", "--root", "--no-commit-id", "--name-only", "-r", commit)
     if touched.returncode != 0:
         return f"git diff-tree failed: {touched.stderr.strip()}"
     root = Path(repo).resolve()
@@ -810,6 +817,11 @@ def git_publish(repo, paths, message, backoff=PUSH_BACKOFF_SECONDS):
             if proc.returncode == 0:
                 return True
             print(f"git push failed: {proc.stderr.strip()}", file=sys.stderr)
+            if _push_rejected(proc):
+                print(f"origin/{branch} moved since this checkout was rebased; retrying the same commit cannot "
+                      "succeed. The fire is committed locally: run `publish` to rebase it and push.",
+                      file=sys.stderr)
+                return False
     return False
 
 
@@ -1093,7 +1105,10 @@ def unpublished_commits(repo: Path, branch: str, head: str = "HEAD") -> tuple[in
     # Every path any of those commits touches, not the merge-base-to-head diff: a
     # file added in one commit and deleted in a later one is absent from that
     # diff yet would be pushed, and this repository is public.
-    changed = _git(repo, "log", "--format=", "--name-only", f"origin/{branch}..{head}")
+    # --no-renames: with detection on, a foreign file renamed onto a publishable
+    # path lists only the destination, and the source's deletion would be pushed
+    # unlisted.
+    changed = _git(repo, "log", "--format=", "--name-only", "--no-renames", f"origin/{branch}..{head}")
     if changed.returncode != 0:
         raise RuntimeError(changed.stderr.strip() or "git log failed")
     return int(count.stdout.strip() or 0), sorted({line.strip() for line in changed.stdout.split("\n") if line.strip()})
@@ -1256,6 +1271,48 @@ def cmd_publish(args: argparse.Namespace) -> int:
     if proc.returncode != 0:
         print(f"git fetch failed: {proc.stderr.strip()}", file=sys.stderr)
         return 1
+    # The dashboard is the script's own side effect: `fire --keep-dashboard` (the
+    # Routine) and `resolve` leave ops/dashboard.json modified, and it is never
+    # committed here (single writer: the Routine's own commit). Set the working
+    # copy aside for the publish and put it back afterwards, whatever happens.
+    dashboard_path = repo / DASHBOARD_RELPATH
+    set_aside = None
+    dash_status = _git(repo, "status", "--porcelain", "--", DASHBOARD_RELPATH.as_posix()).stdout.strip()
+    if dash_status and not dash_status.startswith("??"):
+        set_aside = dashboard_path.read_text(encoding="utf-8")
+        proc = _git(repo, "checkout", "--", DASHBOARD_RELPATH.as_posix())
+        if proc.returncode != 0:
+            print(f"git checkout of {DASHBOARD_RELPATH.as_posix()} failed: {proc.stderr.strip()}", file=sys.stderr)
+            return 1
+        print(f"set aside the modified {DASHBOARD_RELPATH.as_posix()} for the publish; it is restored after")
+    try:
+        return _publish_clean_checkout(repo, branch, args)
+    finally:
+        if set_aside is not None:
+            dashboard_path.write_text(set_aside, encoding="utf-8")
+
+
+def _check_unpushed_range(repo: Path, branch: str, head: str = "HEAD",
+                          stage: str = "") -> tuple[int | None, int, list[str]]:
+    """(exit code or None, count, changed paths) for origin/<branch>..head: the
+    commits must exist, hold no merge, and look like exactly one fire. A count of
+    zero returns None with no paths; the caller says what that means at its stage."""
+    try:
+        count, changed = unpublished_commits(repo, branch, head)
+        merges = unpublished_merges(repo, branch, head)
+    except RuntimeError as exc:
+        print(f"git failed{stage}: {exc}", file=sys.stderr)
+        return 1, 0, []
+    if count == 0:
+        return None, 0, []
+    rc = _refuse_merges(merges, branch)
+    if rc is None:
+        rc = _publishable_fire(count, changed)
+    return rc, count, changed
+
+
+def _publish_clean_checkout(repo: Path, branch: str, args: argparse.Namespace) -> int:
+    """cmd_publish after the fetch, with the dashboard set aside."""
     # A dirty checkout is never rebased over (git can finish a rebase with exit 0
     # and still leave an autostash's re-application conflicted). One dirty state
     # is the script's own: git_publish exits 1 before the commit too (a failed
@@ -1265,24 +1322,12 @@ def cmd_publish(args: argparse.Namespace) -> int:
     rc = _commit_uncommitted_fire(repo, branch, args.dry_run)
     if rc is not None:
         return rc
-    try:
-        count, changed = unpublished_commits(repo, branch)
-    except RuntimeError as exc:
-        print(f"git failed: {exc}", file=sys.stderr)
-        return 1
+    rc, count, changed = _check_unpushed_range(repo, branch)
+    if rc is not None:
+        return rc
     if count == 0:
         print(f"nothing to publish: origin/{branch} already has every local commit")
         return 0
-    try:
-        rc = _refuse_merges(unpublished_merges(repo, branch), branch)
-    except RuntimeError as exc:
-        print(f"git failed: {exc}", file=sys.stderr)
-        return 1
-    if rc is not None:
-        return rc
-    rc = _publishable_fire(count, changed)
-    if rc is not None:
-        return rc
     trigger = next(Path(c).stem for c in changed if Path(c).parent == TRIGGER_DIR_RELPATH)
     if args.dry_run:
         print(f"[dry-run] would rebase {count} commit(s) onto origin/{branch}, re-run the {trigger} fire's "
@@ -1310,28 +1355,19 @@ def cmd_publish(args: argparse.Namespace) -> int:
     if head is None:
         print("git rev-parse HEAD failed after rebase", file=sys.stderr)
         return 1
-    try:
-        count, changed = unpublished_commits(repo, branch, head)  # what the rebase left to push
-        merges = unpublished_merges(repo, branch, head)           # a rebase onto an unmoved branch keeps a merge
-    except RuntimeError as exc:
-        print(f"git failed after rebase: {exc}", file=sys.stderr)
-        return 1
-    rc = _refuse_merges(merges, branch)
+    # What the rebase left to push; a rebase onto an unmoved branch keeps a merge.
+    rc, count, changed = _check_unpushed_range(repo, branch, head, " after rebase")
     if rc is not None:
         return rc
-    rc = _publishable_fire(count, changed)
-    if rc is not None:
-        return rc
+    if count == 0:
+        print(f"nothing left to publish: the rebase found origin/{branch} already carries this fire's changes "
+              "(another session published the same fire?). Check the journal on origin; `resolve` as usual.")
+        return 0
     rc, head = _revalidate_fire(repo, branch, trigger, args, head)
     if rc is not None:
         return rc
-    try:
-        count, changed = unpublished_commits(repo, branch, head)  # a corrected record adds a journal commit
-        merges = unpublished_merges(repo, branch, head)
-    except RuntimeError as exc:
-        print(f"git failed before push: {exc}", file=sys.stderr)
-        return 1
-    rc = _refuse_merges(merges, branch) or _publishable_fire(count, changed)
+    # A corrected record adds a journal commit: re-check the range that is pushed.
+    rc, count, changed = _check_unpushed_range(repo, branch, head, " before push")
     if rc is not None:
         return rc
     for attempt, delay in enumerate((0,) + tuple(PUSH_BACKOFF_SECONDS)):
@@ -1348,6 +1384,11 @@ def cmd_publish(args: argparse.Namespace) -> int:
                       file=sys.stderr)
             return 0
         print(f"git push failed: {proc.stderr.strip()}", file=sys.stderr)
+        if _push_rejected(proc):
+            print(f"origin/{branch} moved again since the rebase; retrying the same commit cannot succeed and "
+                  "nothing was pushed. The local commits are intact: run `publish` again to rebase onto it.",
+                  file=sys.stderr)
+            return 1
     print("publish failed after retries; the local commits are intact, run `publish` again once the "
           "remote is reachable", file=sys.stderr)
     return 1
@@ -1387,8 +1428,10 @@ def _commit_uncommitted_fire(repo: Path, branch: str, dry_run: bool = False) -> 
         print(f"committed the uncommitted {trigger} fire (its earlier commit had failed): {note!r}")
         return None
     print("refused: the checkout has uncommitted changes to tracked files that are not one fire's trigger "
-          "file plus its journal entry; commit or stash them first (a `resolve` leaves the journal modified: "
-          "commit it, a journal-only commit publishes with the fire):\n" + "\n".join(dirty), file=sys.stderr)
+          "file plus its journal entry. Stash them (`git stash`), never commit them onto the fire, and do not "
+          "`git push`: the guards refuse any push while an unpushed trigger change is on the branch. A `resolve` "
+          "leaves the journal modified: commit that, a journal-only commit publishes with the fire.\n"
+          + "\n".join(dirty), file=sys.stderr)
     return 3
 
 
@@ -1399,8 +1442,9 @@ def _publishable_fire(count: int, changed: list[str]) -> int | None:
     if foreign:
         print(f"refused: the {count} unpushed commit(s) change files outside "
               f"{TRIGGER_DIR_RELPATH.as_posix()}/ and {JOURNAL_RELPATH.as_posix()}: "
-              + ", ".join(foreign) + ". `publish` re-publishes a fire and nothing else; "
-              "push other work with a plain `git push` from a commit that carries no trigger change.",
+              + ", ".join(foreign) + ". `publish` re-publishes a fire and nothing else. Move that work off "
+              "this branch (stash it, or carry its commits to another branch): a plain `git push` is refused "
+              "while an unpushed trigger change is on the branch, so it cannot go first.",
               file=sys.stderr)
         return 3
     triggers = [Path(c).stem for c in changed if Path(c).parent == TRIGGER_DIR_RELPATH]
@@ -1513,7 +1557,7 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
     corrections = []
     fired = parse_utc(fire.get("fired_utc"))
     threshold = min(timedelta(hours=1), timedelta(hours=expire_hours) / 2)
-    if fired is None or fired.date() != now.date() or (now - fired) >= threshold:
+    if fired is None or fired.astimezone(timezone.utc).date() != now.date() or (now - fired) >= threshold:
         # setdefault: a restamped fire whose push then failed is restamped again
         # on the next publish, and the time it was actually made must survive
         fire.setdefault("fired_utc_original", fire.get("fired_utc"))
