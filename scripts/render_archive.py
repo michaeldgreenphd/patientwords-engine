@@ -330,19 +330,33 @@ def build_index(manifests: Iterable[dict], **kw) -> Dict[str, Dict[str, str]]:
     return index
 
 
+# PNGs sitting directly under trace_out/ (no run directory) are reported under
+# this key. The archive lane bundles run directories only, so nothing can hold
+# them: they are always unarchived, and coverage must say so rather than skip
+# them (found 2026-09-09: ten such files survived the campaign that emptied
+# every run directory, invisible to this report).
+TOP_LEVEL = "(top-level trace_out/)"
+
+
 def tree_pngs(repo: Path, runs: Optional[Sequence[str]] = None) -> Dict[str, List[str]]:
     """{run: [png basenames]} tracked under trace_out/ at HEAD, from git so a
-    sparse checkout that excludes the PNGs still sees them."""
+    sparse checkout that excludes the PNGs still sees them. PNGs directly under
+    trace_out/ are keyed TOP_LEVEL; a `runs` filter drops them unless it names
+    TOP_LEVEL itself."""
     listing = _git(repo, "ls-tree", "-r", "--name-only", "HEAD", "--", "trace_out")
     out: Dict[str, List[str]] = {}
-    wanted = {Path(r).name for r in runs} if runs else None
+    wanted = {r if r == TOP_LEVEL else Path(r).name for r in runs} if runs else None
     for rel in listing.split():
         parts = rel.split("/")
-        if len(parts) != 3 or not is_png(parts[2]):
+        if len(parts) == 2 and is_png(parts[1]):
+            run, name = TOP_LEVEL, parts[1]
+        elif len(parts) == 3 and is_png(parts[2]):
+            run, name = parts[1], parts[2]
+        else:
             continue
-        if wanted is not None and parts[1] not in wanted:
+        if wanted is not None and run not in wanted:
             continue
-        out.setdefault(parts[1], []).append(parts[2])
+        out.setdefault(run, []).append(name)
     return out
 
 
@@ -485,6 +499,8 @@ def cmd_coverage(args: argparse.Namespace) -> int:
             tags = sorted({t for t in files.values() if t})
             n_un = sum(1 for t in files.values() if not t)
             state = f"UNARCHIVED {n_un}/{len(files)}" if n_un else f"archived in {', '.join(tags)}"
+            if run == TOP_LEVEL:
+                state += " (no run directory: the archive lane cannot bundle these; delete or move them)"
             print(f"{run}: {len(files)} png, {state}")
         print(f"\n{rep['archived']} archived, {rep['unarchived']} unarchived, "
               f"{len(rep['unarchived_runs'])} run(s) need an archive fire")
