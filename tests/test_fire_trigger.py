@@ -1010,4 +1010,75 @@ def test_archive_tag_has_manifest_reads_head_when_the_sparse_checkout_hides_the_
     (repo / "render_archives" / "renders-x.manifest.json").unlink()   # as a sparse cone leaves it
     assert ft.archive_tag_has_manifest(repo, "renders-x") is True
     assert ft.archive_tag_has_manifest(repo, "renders-y") is False
-    assert ft.archive_tag_has_manifest(tmp_path / "not-a-repo", "renders-x") is False
+    (tmp_path / "not-a-repo").mkdir()
+    assert ft.archive_tag_has_manifest(tmp_path / "not-a-repo", "renders-x") is False   # filesystem only
+
+
+def test_archive_tag_guard_fails_closed_on_a_git_error_inside_a_work_tree(tmp_path, monkeypatch, capsys):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    _git_init(repo)
+    (repo / "x").write_text("x", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "m"], check=True)
+    real = ft._git
+
+    def broken_git(repo_, *argv, env=None):
+        if argv and argv[0] == "ls-tree":
+            class P:
+                returncode = 128
+                stdout = ""
+                stderr = "fatal: unable to read tree"
+            return P()
+        return real(repo_, *argv, env=env)
+
+    monkeypatch.setattr(ft, "_git", broken_git)
+    assert ft.archive_tag_has_manifest(repo, "renders-x") is None
+    rc = ft.refuse_reused_archive_tag(repo, "archive-renders", _archive_params("renders-x"), reuse_tag=False, parked=False)
+    assert rc == 8 and "fails closed" in capsys.readouterr().err
+
+
+def test_archive_fire_prune_only_is_exempt_but_a_parked_param_is_not(repo, capsys):
+    (repo / "render_archives").mkdir()
+    (repo / "render_archives" / "renders-20260721-pt5.manifest.json").write_text("{}", encoding="utf-8")
+    # the _parked param is metadata: only the park command path is exempt
+    assert fire(repo, "archive-renders", _archive_params("renders-20260721-pt5", _parked="true")) == 8
+    assert "already on this branch" in capsys.readouterr().err
+    assert fire(repo, "archive-renders", _archive_params("renders-20260721-pt5", prune_only="false")) == 8
+    assert not (repo / "ops" / "trigger_journal.jsonl").exists()      # refusals journal nothing
+    # prune_only reuses the tag whose Release holds the PNGs by design and uploads nothing
+    assert fire(repo, "archive-renders", _archive_params("renders-20260721-pt5", prune_only="true")) == 0
+    assert fire(repo, "archive-renders", _archive_params("renders-20260721-pt5", prune_only=True, _nonce="2"),
+                extra=["--ignore-settle"]) == 0
+
+
+def test_archive_fire_checks_the_fetched_remote_tip_not_only_the_local_head(tmp_path, capsys):
+    """CI's manifest commit can land on the remote after the local HEAD was cut:
+    the tag is a duplicate even though HEAD and the sparse tree show nothing."""
+    origin = tmp_path / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(origin)], check=True)
+    clone = tmp_path / "clone"
+    subprocess.run(["git", "clone", "-q", str(origin), str(clone)], check=True)
+    _git_init(clone)
+    subprocess.run(["git", "-C", str(clone), "checkout", "-q", "-b", "main"], check=True)
+    (clone / ".github" / "trigger").mkdir(parents=True)
+    (clone / ".github" / "workflows").mkdir()
+    (clone / ".github" / "workflows" / "stub.yml").write_text(
+        'on:\n  push:\n    paths:\n      - ".github/trigger/archive-renders.json"\n', encoding="utf-8")
+    (clone / "ops").mkdir()
+    (clone / "README.md").write_text("base", encoding="utf-8")
+    subprocess.run(["git", "-C", str(clone), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(clone), "commit", "-q", "-m", "base"], check=True)
+    subprocess.run(["git", "-C", str(clone), "push", "-q", "-u", "origin", "main"], check=True)
+    other = tmp_path / "ci"
+    subprocess.run(["git", "clone", "-q", str(origin), str(other)], check=True)
+    _git_init(other)
+    (other / "render_archives").mkdir()
+    (other / "render_archives" / "renders-20260908-p9.manifest.json").write_text("{}", encoding="utf-8")
+    subprocess.run(["git", "-C", str(other), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(other), "commit", "-q", "-m", "Archive renders: p9"], check=True)
+    subprocess.run(["git", "-C", str(other), "push", "-q", "origin", "main"], check=True)
+    assert ft.archive_tag_has_manifest(clone, "renders-20260908-p9") is False       # HEAD alone cannot see it
+    assert fire(clone, "archive-renders", _archive_params("renders-20260908-p9")) == 8
+    assert "remote tip origin/main" in capsys.readouterr().err
+    assert fire(clone, "archive-renders", _archive_params("renders-20260908-p10")) == 0

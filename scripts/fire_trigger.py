@@ -724,15 +724,83 @@ def git_publish(repo, paths, message, backoff=PUSH_BACKOFF_SECONDS):
 MANIFEST_DIR_RELPATH = Path("render_archives")
 
 
-def archive_tag_has_manifest(repo, tag):
-    """True when render_archives/<tag>.manifest.json exists at HEAD or in the
-    working tree. HEAD via git first: the cloud checkouts exclude render_archives/
-    from the sparse cone, so the file is tracked but absent on disk. A checkout
-    that is not a git work tree (the tests) falls back to the filesystem."""
+def archive_tag_has_manifest(repo: Path, tag: str, remote_ref: str | None = None) -> bool | None:
+    """Whether render_archives/<tag>.manifest.json exists at HEAD, at `remote_ref`
+    (a fetched remote-tracking ref, when given), or in the working tree. Git first:
+    the cloud checkouts exclude render_archives/ from the sparse cone, so the file
+    is tracked but absent on disk. Returns None when git failed inside a work
+    tree (an error is never read as "no manifest"); a directory that is not a git
+    work tree (the tests) is answered from the filesystem alone."""
     rel = MANIFEST_DIR_RELPATH / f"{tag}.manifest.json"
-    if _git(repo, "cat-file", "-e", f"HEAD:{rel.as_posix()}").returncode == 0:
-        return True
+    inside = _git(repo, "rev-parse", "--is-inside-work-tree")
+    if inside.returncode != 0 or inside.stdout.strip() != "true":
+        return (repo / rel).exists()
+    for ref in ["HEAD"] + ([remote_ref] if remote_ref else []):
+        proc = _git(repo, "ls-tree", "--name-only", ref, "--", rel.as_posix())
+        if proc.returncode != 0:
+            return None
+        if proc.stdout.strip():
+            return True
     return (repo / rel).exists()
+
+
+def _param_is_true(value: object) -> bool:
+    """The two spellings archive_renders.yml's as_bool reads as true."""
+    return value is True or (isinstance(value, str) and value.strip().lower() == "true")
+
+
+def refuse_reused_archive_tag(repo: Path, trigger: str, params: dict, *, reuse_tag: bool, parked: bool) -> int | None:
+    """None when an archive-renders fire may proceed; else 8, with the refusal
+    printed. A tag that already has a manifest on this branch, or on the branch's
+    freshly fetched remote tip, names a Release whose asset the workflow uploads
+    with --clobber. The duplicate p3 fire of 2026-09-08 (a misread journal)
+    rebuilt an HTML-only bundle over a 405 MB asset and left 157 PNGs in neither
+    the tree nor the Release until a recovery run put them back. The CI shrink
+    guard (#15) now refuses that upload, but only after a runner has spun up and
+    the asset been downloaded; refusing here is earlier and free.
+
+    Exempt: `reuse_tag` (the operator means it: a superset re-archive, or a
+    deliberate override with allow_shrink in the params; the CI guard still
+    checks the result); `parked`, set only by the park command path, since a
+    park re-fires its own no-op tag by design and uploads no PNGs (the `_parked`
+    param is metadata and grants nothing); and prune_only fires, which upload
+    nothing and reuse the tag whose Release already holds the PNGs by design.
+    The remote tip is checked because CI's manifest commit can land after the
+    local HEAD was cut; the local fire then fails its push, and the rebased
+    retry must not carry a duplicate tag past this guard."""
+    if trigger != "archive-renders" or reuse_tag or parked or _param_is_true(params.get("prune_only")):
+        return None
+    tag = str(params.get("tag", ""))
+    if not tag:
+        return None
+    remote_ref = None
+    inside = _git(repo, "rev-parse", "--is-inside-work-tree")
+    if inside.returncode == 0 and inside.stdout.strip() == "true":
+        branch = _git(repo, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+        if branch and branch != "HEAD" and _git(repo, "remote", "get-url", "origin").returncode == 0:
+            fetched = _git(repo, "fetch", "origin", branch)
+            if fetched.returncode != 0:
+                print(f"refused: cannot fetch origin/{branch} to check whether tag {tag!r} already has a manifest "
+                      f"there ({fetched.stderr.strip()}); the reused-tag guard needs the branch tip.", file=sys.stderr)
+                return 8
+            remote_ref = f"origin/{branch}"
+    found = archive_tag_has_manifest(repo, tag, remote_ref)
+    if found is None:
+        print(f"refused: git could not tell whether {MANIFEST_DIR_RELPATH}/{tag}.manifest.json exists at HEAD"
+              + (f" or {remote_ref}" if remote_ref else "") + "; the reused-tag guard fails closed on a git "
+              "error. Repair the checkout (docs/fresh_session_bootstrap.md) and fire again.", file=sys.stderr)
+        return 8
+    if found:
+        print(
+            f"refused: {MANIFEST_DIR_RELPATH}/{tag}.manifest.json is already on this branch"
+            + (f" or its remote tip {remote_ref}" if remote_ref else "") + f", so tag {tag!r} names a Release "
+            "this fire would re-upload over with --clobber (the 2026-09-08 duplicate-fire incident). Pick a "
+            "fresh tag for new runs. To re-archive the same tag on purpose (a superset, or with allow_shrink "
+            "in the params), pass --reuse-tag; the CI shrink guard still checks the result.",
+            file=sys.stderr,
+        )
+        return 8
+    return None
 
 
 def cmd_fire(args):
@@ -842,28 +910,12 @@ def cmd_fire(args):
         )
         return 7
 
-    # 5b. archive-renders: a tag that already has a manifest on this branch names a
-    # Release whose asset the workflow uploads with --clobber. The duplicate p3
-    # fire of 2026-09-08 (a misread journal) rebuilt an HTML-only bundle over a
-    # 405 MB asset and left 157 PNGs in neither the tree nor the Release until a
-    # recovery run put them back. The CI shrink guard (#15) now refuses that
-    # upload, but only after a runner has spun up and the asset been downloaded;
-    # refusing here is earlier and free. --reuse-tag says the reuse is meant (a
-    # superset re-archive, or a deliberate override with allow_shrink in the
-    # params); the park's tag is exempt, since a park re-fires the same no-op
-    # tag by design and uploads no PNGs.
-    if args.trigger == "archive-renders" and not params.get("_parked") and not args.reuse_tag:
-        tag = str(params.get("tag", ""))
-        if tag and archive_tag_has_manifest(repo, tag):
-            print(
-                f"refused: {MANIFEST_DIR_RELPATH}/{tag}.manifest.json is already on this branch, so "
-                f"tag {tag!r} names a Release this fire would re-upload over with --clobber (the "
-                "2026-09-08 duplicate-fire incident). Pick a fresh tag for new runs. To re-archive "
-                "the same tag on purpose (a superset, or with allow_shrink in the params), pass "
-                "--reuse-tag; the CI shrink guard still checks the result.",
-                file=sys.stderr,
-            )
-            return 8
+    # 5b. archive-renders: refuse a tag whose Release already exists (see
+    # refuse_reused_archive_tag for the incident and the exemptions).
+    rc = refuse_reused_archive_tag(repo, args.trigger, params, reuse_tag=args.reuse_tag,
+                                   parked=getattr(args, "parked", False))
+    if rc is not None:
+        return rc
     content = json.dumps(params, separators=(",", ":")) + "\n"
     try:
         unchanged = trigger_path.read_text(encoding="utf-8") == content
@@ -939,7 +991,7 @@ def cmd_park(args):
         ns = argparse.Namespace(
             repo=args.repo, trigger=trigger, params=json.dumps(params), params_file=None,
             note=PARK_NOTE, force_evict=False, ignore_settle=args.ignore_settle,
-            reuse_tag=False,  # the park's tag is exempt from the reused-tag refusal via _parked
+            reuse_tag=False, parked=True,  # the park path alone exempts its tag from the reused-tag refusal
             dry_run=args.dry_run, no_git=args.no_git, keep_dashboard=args.keep_dashboard,
             override_budget=False,
         )
