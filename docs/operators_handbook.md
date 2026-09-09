@@ -103,13 +103,22 @@ dashboard: queue (other sessions may have filled the lane meanwhile), settle
 (`--ignore-settle` as for `fire`), budget for a paid fire (`--override-budget`
 as for `fire`), key validation and workflow wiring. It also checks that the
 rebased journal still holds every entry origin has (a hand-resolved conflict
-that took the local side is refused), inspects every unpushed commit rather
-than the final tree, and restamps a fire published more than an hour after it
-was made or on a later UTC day (`fired_utc` becomes the publication time,
-the original kept as `fired_utc_original`) so the run counts in that day's
-spend and does not expire early. A rebase conflict is aborted with the
-checkout left as it was: resolve it per the journal rule below, then run
-`publish` again. The fire then publishes and the workflow runs once.
+that took the local side is refused, and so is a remote line it cannot parse
+or a hand resolve that carries no `resolved_utc`), inspects every unpushed
+commit rather than the final tree (only the journal and one known trigger's
+JSON file directly under `.github/trigger/` may change; nothing nested), and
+still requires the trigger file to differ between origin and the final tree,
+since a later commit that restored it would push nothing CI runs. Before the
+push it corrects the fire's own record in one journal-only commit: a fire
+published on a later UTC day, or more than an hour (or half the
+`MEDLANG_TRIGGER_EXPIRE_HOURS` window, whichever is shorter) after it was
+made, is restamped (`fired_utc` becomes the publication time, the original
+kept as `fired_utc_original`) so the run counts in that day's spend and does
+not expire early; a paid fire's `max_spend` and `lane` are recomputed from the
+trigger file actually pushed, and an unpaid fire's stray ones are removed. A
+rebase conflict is aborted with the checkout left as it was: resolve it per
+the journal rule below, then run `publish` again. The fire then publishes and
+the workflow runs once.
 
 **Journal conflict** (`ops/trigger_journal.jsonl`): ORDERED UNION — take
 both sides (`git show :2:` / `:3:` during a rebase), dedupe on

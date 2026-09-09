@@ -94,7 +94,7 @@ that carries a trigger-file change is refused by the guard hooks and by
 `.githooks/pre-push`, so a real fire is always `fire` in its default git mode, then
 `resolve` once the run lands; when `fire` exits 1 because the push was rejected,
 `publish` is the sanctioned re-push (rebase onto the moved branch, tokened push,
-refuses anything beyond the trigger file and the journal). One fire per invocation; never a second `fire` before the
+refuses anything beyond one known trigger file and the journal, requires the trigger file to differ from origin in the final tree, and corrects the entry's stamp and paid commitment from the pushed params). One fire per invocation; never a second `fire` before the
 first has pushed (a second write replaces the trigger content, CI fires once, and the
 first fire's journal entry occupies a slot for 8h — 2026-07-21).
 
