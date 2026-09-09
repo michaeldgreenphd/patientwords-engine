@@ -916,7 +916,7 @@ def test_git_publish_never_stages_the_dashboard(repo, monkeypatch):
         return P()
 
     monkeypatch.setattr(ft, "_git", fake_git)
-    monkeypatch.setattr(ft, "_push_with_token", lambda repo_, branch, env=None: fake_git(repo_, "push"))
+    monkeypatch.setattr(ft, "_push_with_token", lambda repo_, branch, env=None, oid=None: fake_git(repo_, "push"))
     write_dashboard(repo, 0.0)
     (repo / "ops" / "trigger_journal.jsonl").write_text("", encoding="utf-8")
     argv = ["fire", "--repo", str(repo), "--trigger", "circuit-trace",
@@ -1520,4 +1520,70 @@ def test_publish_refuses_a_hand_resolve_that_carries_no_resolved_utc(tmp_path, c
     assert f"circuit-trace fired {live}: resolved without a parseable resolved_utc" in err
     remote = _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"]
     assert '"resolved": false' in remote and "circuit-trace fire" in remote     # nothing published
+
+
+def test_publish_refuses_a_merge_commit_in_the_unpublished_history(tmp_path, capsys):
+    """git log --name-only omits a merge commit's own diff, so a file that only
+    the merge result introduced is invisible to the path scan, and a rebase onto
+    a branch that has not moved keeps the merge. Refuse the merge itself."""
+    origin, clone = _publish_fixture(tmp_path)
+    _fire_locally(clone)
+    fire_sha = _head(clone)
+    # a side branch from origin's tip that touches only the journal (a publishable
+    # path), so nothing but the merge could be refused
+    subprocess.run(["git", "-C", str(clone), "checkout", "-q", "-b", "side", "origin/main"], check=True)
+    _append_journal(clone / "ops" / "trigger_journal.jsonl", "\n")
+    _commit(clone, "side: blank line")
+    subprocess.run(["git", "-C", str(clone), "checkout", "-q", "main"], check=True)
+    merge = subprocess.run(["git", "-C", str(clone), "merge", "--no-commit", "--no-ff", "side"],
+                           capture_output=True, text=True)
+    if merge.returncode != 0:                                                # journal conflict: keep ours
+        subprocess.run(["git", "-C", str(clone), "checkout", "--ours", "ops/trigger_journal.jsonl"], check=True)
+        subprocess.run(["git", "-C", str(clone), "add", "ops/trigger_journal.jsonl"], check=True)
+    (clone / "secret.txt").write_text("only the merge result holds this\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(clone), "add", "secret.txt"], check=True)
+    subprocess.run(["git", "-C", str(clone), "commit", "-q", "-m", "merge side"], check=True)
+    merge_sha = _head(clone)
+    names = subprocess.run(["git", "-C", str(clone), "log", "--format=", "--name-only", "origin/main..HEAD"],
+                           capture_output=True, text=True).stdout
+    assert "secret.txt" not in names, "the scenario: the merge-only file is invisible to the path scan"
+    assert ft.unpublished_merges(clone, "main") == [merge_sha]
+    assert ft.main(["publish", "--repo", str(clone)]) == 3
+    err = capsys.readouterr().err
+    assert "merge commit" in err and merge_sha[:12] in err and "--force-rebase" in err
+    files = _origin_main_files(origin, tmp_path)
+    assert "secret.txt" not in files and files[".github/trigger/circuit-trace.json"] == '{"a": 1}\n'
+    # the operator's recovery, having read `git show` and found nothing the merge
+    # was needed for: back to the fire commit, then publish
+    subprocess.run(["git", "-C", str(clone), "reset", "-q", "--hard", fire_sha], check=True)
+    assert ft.unpublished_merges(clone, "main") == []
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    files = _origin_main_files(origin, tmp_path)
+    assert "secret.txt" not in files and json.loads(files[".github/trigger/circuit-trace.json"]) == PUBLISH_PARAMS
+
+
+def test_publish_pushes_the_validated_commit_not_the_branch_tip(tmp_path, capsys, monkeypatch):
+    """A refspec source may be any object: pushing the branch name would carry a
+    commit another process adds between validation and the push. The push names
+    the validated commit id, and the later commit stays local."""
+    origin, clone = _publish_fixture(tmp_path)
+    _fire_locally(clone)
+    real_push = ft._push_with_token
+    seen = {}
+
+    def racing_push(repo_, branch, env=None, oid=None):
+        (clone / "secret.txt").write_text("landed on the branch during publish\n", encoding="utf-8")
+        _commit(clone, "another process")
+        seen["oid"] = oid
+        return real_push(repo_, branch, env, oid=oid)
+
+    monkeypatch.setattr(ft, "_push_with_token", racing_push)
+    validated = _head(clone)
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    out, err = capsys.readouterr()
+    assert seen["oid"] == validated and validated[:12] in out
+    assert "moved to" in err and "stay local and unpublished" in err
+    files = _origin_main_files(origin, tmp_path)
+    assert "secret.txt" not in files and json.loads(files[".github/trigger/circuit-trace.json"]) == PUBLISH_PARAMS
+    assert (clone / "secret.txt").exists() and _head(clone) != validated       # still local, still there
 
