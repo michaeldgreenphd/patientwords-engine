@@ -890,7 +890,7 @@ def cmd_fire(args):
 PUBLISHABLE_RELPATHS = (TRIGGER_DIR_RELPATH, JOURNAL_RELPATH)
 
 
-def unpublished_commits(repo, branch):
+def unpublished_commits(repo: Path, branch: str) -> tuple[int, list[str]]:
     """(count, changed paths) of commits on HEAD that origin/<branch> lacks. Both
     from git; the caller has fetched, so origin/<branch> is current."""
     count = _git(repo, "rev-list", "--count", f"origin/{branch}..HEAD")
@@ -902,12 +902,29 @@ def unpublished_commits(repo, branch):
     return int(count.stdout.strip() or 0), [line for line in changed.stdout.split("\n") if line.strip()]
 
 
-def is_publishable(relpath):
+def is_publishable(relpath: str) -> bool:
     path = Path(relpath)
     return any(path == p or p in path.parents for p in PUBLISHABLE_RELPATHS)
 
 
-def cmd_publish(args):
+def journal_entries_added(repo: Path, branch: str) -> list[dict]:
+    """Journal entries present at HEAD but not at origin/<branch>: the entries the
+    unpushed commits appended. Keyed on (trigger, fired_utc), which is what the
+    ORDERED UNION rule dedupes on too."""
+    base = _git(repo, "show", f"origin/{branch}:{JOURNAL_RELPATH.as_posix()}")
+    before = set()
+    if base.returncode == 0:
+        for line in base.stdout.splitlines():
+            if line.strip():
+                try:
+                    e = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                before.add((e.get("trigger"), e.get("fired_utc")))
+    return [e for e in load_journal(repo / JOURNAL_RELPATH) if (e.get("trigger"), e.get("fired_utc")) not in before]
+
+
+def cmd_publish(args: argparse.Namespace) -> int:
     """Re-publish a fire whose push was rejected (exit 1: "fire written locally but git
     publish failed"), the case docs/operators_handbook.md section 4 covers. The
     trigger file, journal entry and commit already exist locally; main moved
@@ -918,10 +935,16 @@ def cmd_publish(args):
     subcommand is that publish: fetch, rebase the local commits onto the remote
     branch, and push under the one-shot fire token.
 
-    Refuses (exit 3) when the unpushed commits touch anything outside
-    .github/trigger/ and ops/trigger_journal.jsonl, so it re-publishes a fire and
-    nothing else. Never re-fires: a fire that failed to publish is still one fire,
-    and CI runs it once when the push lands."""
+    It publishes a journaled fire and nothing else, and it re-runs the fire's
+    guards against the state the rebase produced, because that state can differ
+    from the one cmd_fire approved: the unpushed commits must change exactly one
+    trigger file plus the journal, the journal must gain an active entry for that
+    trigger (the fire), the trigger file must validate and be wired on this
+    branch, the lane must still have room (queue and settle guards, other
+    sessions may have fired meanwhile), and a paid fire must still fit under the
+    ceiling with the rebased dashboard and journal. Any of those failing refuses
+    with cmd_fire's exit code and leaves the rebased commits local. Never re-fires:
+    a fire that failed to publish is still one fire."""
     repo = Path(args.repo).resolve()
     proc = _git(repo, "rev-parse", "--abbrev-ref", "HEAD")
     branch = proc.stdout.strip() if proc.returncode == 0 else ""
@@ -933,6 +956,15 @@ def cmd_publish(args):
     if proc.returncode != 0:
         print(f"git fetch failed: {proc.stderr.strip()}", file=sys.stderr)
         return 1
+    # A dirty checkout is never rebased over (git can finish a rebase with exit 0
+    # and still leave an autostash's re-application conflicted). One dirty state
+    # is the script's own: git_publish exits 1 before the commit too (a failed
+    # `git add` or `git commit`), leaving the fire's two files written and
+    # uncommitted while `rev-list` sees nothing ahead. That fire is committed here
+    # under the token, exactly as cmd_fire would have; any other dirt is refused.
+    rc = _commit_uncommitted_fire(repo, branch)
+    if rc is not None:
+        return rc
     try:
         count, changed = unpublished_commits(repo, branch)
     except RuntimeError as exc:
@@ -941,19 +973,15 @@ def cmd_publish(args):
     if count == 0:
         print(f"nothing to publish: origin/{branch} already has every local commit")
         return 0
-    foreign = [c for c in changed if not is_publishable(c)]
-    if foreign:
-        print(f"refused: the {count} unpushed commit(s) change files outside "
-              f"{TRIGGER_DIR_RELPATH.as_posix()}/ and {JOURNAL_RELPATH.as_posix()}: "
-              + ", ".join(foreign) + ". `publish` re-publishes a fire and nothing else; "
-              "push other work with a plain `git push` from a commit that carries no trigger change.",
-              file=sys.stderr)
-        return 3
+    rc = _publishable_fire(count, changed)
+    if rc is not None:
+        return rc
+    trigger = next(Path(c).stem for c in changed if Path(c).parent == TRIGGER_DIR_RELPATH)
     if args.dry_run:
-        print(f"[dry-run] would rebase {count} commit(s) onto origin/{branch} and push under the fire token: "
-              + ", ".join(changed))
+        print(f"[dry-run] would rebase {count} commit(s) onto origin/{branch}, re-run the {trigger} fire's "
+              "guards, and push under the fire token: " + ", ".join(changed))
         return 0
-    proc = _git(repo, "rebase", "--autostash", f"origin/{branch}")
+    proc = _git(repo, "rebase", f"origin/{branch}")
     if proc.returncode != 0:
         _git(repo, "rebase", "--abort")
         print("rebase onto origin/" + branch + " failed and was aborted; the checkout is as it was before. "
@@ -961,15 +989,22 @@ def cmd_publish(args):
               "both sides as an ORDERED UNION (docs/operators_handbook.md, section 4), then run `publish` "
               "again. Never re-fire.\n" + (proc.stderr.strip() or proc.stdout.strip()), file=sys.stderr)
         return 1
+    unmerged = _git(repo, "diff", "--name-only", "--diff-filter=U").stdout.strip()
+    if unmerged:
+        print("refused: the rebase left unmerged paths; resolve them by hand before publishing:\n" + unmerged,
+              file=sys.stderr)
+        return 1
     try:
-        count, changed = unpublished_commits(repo, branch)  # re-check what the rebase left to push
+        count, changed = unpublished_commits(repo, branch)  # what the rebase left to push
     except RuntimeError as exc:
         print(f"git failed after rebase: {exc}", file=sys.stderr)
         return 1
-    if any(not is_publishable(c) for c in changed):
-        print("refused: after the rebase the unpushed commits touch files outside the fire's two paths; "
-              "publish nothing and inspect `git log origin/" + branch + "..HEAD`", file=sys.stderr)
-        return 3
+    rc = _publishable_fire(count, changed)
+    if rc is not None:
+        return rc
+    rc = _revalidate_fire(repo, branch, trigger, args)
+    if rc is not None:
+        return rc
     for attempt, delay in enumerate((0,) + tuple(PUSH_BACKOFF_SECONDS)):
         if delay:
             print(f"push retry {attempt}/{len(PUSH_BACKOFF_SECONDS)} in {delay}s", file=sys.stderr)
@@ -982,6 +1017,144 @@ def cmd_publish(args):
     print("publish failed after retries; the local commits are intact, run `publish` again once the "
           "remote is reachable", file=sys.stderr)
     return 1
+
+
+def _commit_uncommitted_fire(repo: Path, branch: str) -> int | None:
+    """None when the checkout is clean or held exactly one uncommitted fire that
+    is now committed; else the refusal's exit code."""
+    status = _git(repo, "status", "--porcelain", "--untracked-files=no").stdout
+    dirty = sorted({line[3:].strip() for line in status.splitlines() if line.strip()})
+    if not dirty:
+        return None
+    triggers = [Path(c).stem for c in dirty if Path(c).parent == TRIGGER_DIR_RELPATH]
+    journal = JOURNAL_RELPATH.as_posix() in dirty
+    if len(triggers) == 1 and journal and len(dirty) == 2 and triggers[0] in TRIGGERS:
+        trigger = triggers[0]
+        mine = [e for e in journal_entries_added(repo, branch)
+                if e.get("trigger") == trigger and not e.get("resolved") and not e.get("evicted")]
+        if len(mine) != 1:
+            print(f"refused: the uncommitted trigger change for {trigger} is accompanied by {len(mine)} new active "
+                  "journal entries, not one; repair the journal by hand before publishing.", file=sys.stderr)
+            return 3
+        note = mine[0].get("note", "")
+        proc = _git(repo, "add", "--", TRIGGER_DIR_RELPATH.as_posix() + f"/{trigger}.json", JOURNAL_RELPATH.as_posix())
+        if proc.returncode != 0:
+            print(f"git add failed: {proc.stderr.strip()}", file=sys.stderr)
+            return 1
+        with fire_token(repo) as env:
+            proc = _git(repo, "commit", "-m", f"Fire {trigger}: {note}", env=env)
+        if proc.returncode != 0:
+            print(f"git commit failed: {proc.stderr.strip() or proc.stdout.strip()}", file=sys.stderr)
+            return 1
+        print(f"committed the uncommitted {trigger} fire (its earlier commit had failed): {note!r}")
+        return None
+    print("refused: the checkout has uncommitted changes to tracked files that are not one fire's trigger "
+          "file plus its journal entry; commit or stash them first (a `resolve` leaves the journal modified: "
+          "commit it, a journal-only commit publishes with the fire):\n" + "\n".join(dirty), file=sys.stderr)
+    return 3
+
+
+def _publishable_fire(count: int, changed: list[str]) -> int | None:
+    """None when the unpushed commits look like one fire (exactly one trigger file
+    plus the journal, nothing else); otherwise print the refusal and return 3."""
+    foreign = [c for c in changed if not is_publishable(c)]
+    if foreign:
+        print(f"refused: the {count} unpushed commit(s) change files outside "
+              f"{TRIGGER_DIR_RELPATH.as_posix()}/ and {JOURNAL_RELPATH.as_posix()}: "
+              + ", ".join(foreign) + ". `publish` re-publishes a fire and nothing else; "
+              "push other work with a plain `git push` from a commit that carries no trigger change.",
+              file=sys.stderr)
+        return 3
+    triggers = [Path(c).stem for c in changed if Path(c).parent == TRIGGER_DIR_RELPATH]
+    if not triggers:
+        print("refused: no trigger file among the unpushed commits, so nothing here needs the fire token; "
+              "push with a plain `git push`.", file=sys.stderr)
+        return 3
+    if len(triggers) > 1 or triggers[0] not in TRIGGERS:
+        print("refused: a fire changes exactly one known trigger file; the unpushed commits change: "
+              + ", ".join(triggers), file=sys.stderr)
+        return 3
+    if JOURNAL_RELPATH.as_posix() not in changed:
+        print("refused: the trigger change carries no journal entry, so it is not a fire this script made; "
+              "a trigger change without a journal record is never published.", file=sys.stderr)
+        return 3
+    return None
+
+
+def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Namespace) -> int | None:
+    """cmd_fire's guards, re-run against the rebased checkout for the fire the
+    unpushed commits carry. None when it may be pushed; else the refusal's exit
+    code, with the rebased commits left local for a later `publish`."""
+    now = utc_now()
+    expire_hours = expire_hours_from_env()
+    trigger_path = repo / TRIGGER_DIR_RELPATH / f"{trigger}.json"
+    try:
+        params = json.loads(trigger_path.read_text(encoding="utf-8"))
+        validate_params(trigger, params)
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        print(f"refused: {trigger_path} does not hold a valid fire: {exc}", file=sys.stderr)
+        return 3
+    if not workflow_reads_trigger(repo, trigger):
+        print(f"refused: no workflow on this branch reads {TRIGGER_DIR_RELPATH}/{trigger}.json - "
+              "the push would run nothing.", file=sys.stderr)
+        return 7
+    entries = load_journal(repo / JOURNAL_RELPATH)
+    mine = [e for e in journal_entries_added(repo, branch)
+            if e.get("trigger") == trigger and not e.get("resolved") and not e.get("evicted")]
+    if not mine:
+        print(f"refused: the unpushed journal lines add no active {trigger} entry, so the trigger change "
+              "is not a journaled fire; nothing is published.", file=sys.stderr)
+        return 3
+    if len(mine) > 1:
+        print(f"refused: the unpushed commits carry {len(mine)} active {trigger} fires; one push runs the lane "
+              "once, with the last trigger content, so the earlier fire would never run while its journal "
+              "entry held a queue slot and, if paid, a spend commitment. Keep one: mark the superseded "
+              "entries \"evicted\": true in the journal by hand, commit, and `publish` again. Entries:",
+              file=sys.stderr)
+        for e in mine:
+            print(f"  fired {e.get('fired_utc', '?')}  note={e.get('note', '')!r}", file=sys.stderr)
+        return 3
+    fire = mine[0]
+    key = (fire.get("trigger"), fire.get("fired_utc"))
+    others = [e for e in entries if (e.get("trigger"), e.get("fired_utc")) != key]
+    # 3. Queue guard, as cmd_fire ran it before appending this entry: other
+    # sessions may have filled the lane while this fire sat unpublished.
+    actives = active_entries(others, trigger, now, expire_hours)
+    if len(actives) >= 2:
+        print(f"refused: {len(actives)} other {trigger} entries are active in the rebased journal; pushing "
+              "this fire now would enter the concurrency group as a third run and silently evict the "
+              "pending one. Wait, `resolve` the landed run, then `publish` again. Active entries:",
+              file=sys.stderr)
+        for e in actives:
+            print(f"  fired {e.get('fired_utc', '?')}  note={e.get('note', '')!r}", file=sys.stderr)
+        return 2
+    # 3b. Settle guard.
+    if not args.ignore_settle:
+        settle_minutes = settle_minutes_from_env()
+        recent = recently_resolved(others, trigger, now, settle_minutes)
+        if recent:
+            newest = recent[0]
+            print(f"refused: a {trigger} entry was resolved at {newest.get('resolved_utc', '?')}, within the "
+                  f"{settle_minutes:g}-minute settle window; pass --ignore-settle once that run is confirmed "
+                  "terminal in GitHub, then `publish` again.", file=sys.stderr)
+            return 6
+    # 4. Budget guard, with the rebased dashboard and journal; the entry's own
+    # max_spend is excluded from in-flight exactly as when cmd_fire approved it.
+    if trigger in PAID_TRIGGERS or is_mitigation_fire(trigger, params):
+        budget_params = params if trigger in PAID_TRIGGERS else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
+        dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
+        overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
+        kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),
+                                    entries=others, now=now, expire_hours=expire_hours,
+                                    overrides=overrides, trigger=trigger)
+        if kind == "ok":
+            print(reason)
+        elif kind == "ceiling" and args.override_budget:
+            print(f"warning: budget override in effect ({reason})", file=sys.stderr)
+        else:
+            print(f"refused: {reason}", file=sys.stderr)
+            return 4
+    return None
 
 
 def cmd_park(args):
@@ -1147,10 +1320,14 @@ def build_parser():
     resolve.set_defaults(func=cmd_resolve)
 
     publish = sub.add_parser("publish", parents=[common],
-                             help="re-push a fire whose push was rejected (exit 1): fetch, rebase, "
-                                  "push under the fire token; refuses unpushed commits outside the "
-                                  "trigger file and the journal; never re-fires")
+                             help="re-push a fire whose push was rejected (exit 1): fetch, rebase, re-run "
+                                  "the fire's guards against the rebased journal and dashboard, push under "
+                                  "the fire token; publishes one journaled fire and nothing else; never re-fires")
     publish.add_argument("--dry-run", action="store_true", help="report what would be pushed; write nothing")
+    publish.add_argument("--ignore-settle", action="store_true",
+                         help="as for fire: the lane's recently resolved run is confirmed terminal in GitHub")
+    publish.add_argument("--override-budget", action="store_true",
+                         help="as for fire: proceed past a daily-ceiling refusal only")
     publish.set_defaults(func=cmd_publish)
 
     status = sub.add_parser("status", parents=[common], help="per-trigger active counts and queue view")

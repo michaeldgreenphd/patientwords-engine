@@ -38,7 +38,7 @@ python scripts/fire_trigger.py fire --trigger <name> \
 ## 3 · Exit codes — handle every one
 
 - **0** fired (or dry-run ok). Note which slot ("running" or "pending") it reports.
-- **1** git publish failed after local writes (main moved; the push was non-fast-forward) — run `python scripts/fire_trigger.py publish`, which rebases the fire and pushes it under the fire token; do NOT re-fire, and do not hand `git push` (the guards refuse a trigger change from anything but the script). A conflict is aborted for you; resolve it, then `publish` again.
+- **1** git publish failed after local writes (main moved; the push was non-fast-forward) — run `python scripts/fire_trigger.py publish`, which rebases the fire and pushes it under the fire token; do NOT re-fire, and do not hand `git push` (the guards refuse a trigger change from anything but the script). It re-runs the queue, settle and budget guards against the rebased journal and dashboard before pushing, so it can refuse with 2, 4 or 6 like `fire`. A conflict is aborted for you; resolve it (journal: ORDERED UNION), then `publish` again.
 - **2** queue refusal: two active entries. Wait, harvest, `resolve` the landed run. Never `--force-evict`.
 - **3** bad params (invalid JSON or unknown key). Fix the params; never bypass.
 - **4** budget refusal. The attempt ENDS here: record why (dashboard `blockers`/notes). Never `--override-budget`.

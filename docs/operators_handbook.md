@@ -96,10 +96,15 @@ the remote branch, and pushes under the one-shot fire token. A hand
 `git push` will not do here — the commit carries a trigger-file change, which
 `.githooks/pre-push` and the Bash guard refuse from anything but the script
 (observed live 2026-09-09, batch p5 of the PNG prune campaign). `publish`
-refuses unpushed commits that touch anything beyond the trigger file and the
-journal, and a rebase conflict is aborted with the checkout left as it was:
-resolve it per the journal rule below, then run `publish` again. The fire
-then publishes and the workflow runs once.
+publishes one journaled fire and nothing else (exactly one trigger file plus
+the journal, with an active entry for that trigger), refuses a dirty
+checkout, and re-runs the fire's guards against the rebased journal and
+dashboard: queue (other sessions may have filled the lane meanwhile), settle
+(`--ignore-settle` as for `fire`), budget for a paid fire (`--override-budget`
+as for `fire`), key validation and workflow wiring. A rebase conflict is
+aborted with the checkout left as it was: resolve it per the journal rule
+below, then run `publish` again. The fire then publishes and the workflow
+runs once.
 
 **Journal conflict** (`ops/trigger_journal.jsonl`): ORDERED UNION — take
 both sides (`git show :2:` / `:3:` during a rebase), dedupe on
