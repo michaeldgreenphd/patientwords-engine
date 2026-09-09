@@ -34,7 +34,8 @@ that should be implemented.
 ## Commands
 
 ```bash
-pip install -e ".[llm]"                 # dev install (poetry-core backend; [llm] adds anthropic)
+pip install -e ".[llm]" pytest ruff pyyaml   # dev install (poetry-core backend; [llm] adds anthropic; the
+                                        # last three are the poetry dev group, which pip does not pull)
 python -m pytest                        # full suite (fast, offline; must stay green)
 python -m pytest tests/test_graph_client.py -k retries   # single file / test
 ruff check .                            # lint (line-length 120)
@@ -197,9 +198,11 @@ palette, and every mark must survive gallery-thumbnail scale. When in doubt, rem
 ## Tests
 
 Offline and fast (`tests/`, `conftest.py` provides fixtures; no network, no keys), and the
-suite stays green: `pip install -e ".[llm]"` installs everything it needs — `matplotlib` and
-`networkx` are declared dependencies, not extras, so a container that skipped the install
-shows 12 `ModuleNotFoundError` failures that are the environment's, not the code's. One
+suite stays green: `pip install -e ".[llm]" pytest ruff pyyaml` installs everything it needs —
+`matplotlib` and `networkx` are declared dependencies, not extras, and `pyyaml` (nine test
+files parse workflow YAML) is in the poetry dev group, which pip's extra syntax does not
+install, so it is named on the command line. A container that skipped the install shows
+`ModuleNotFoundError` failures that are the environment's, not the code's. One
 known failure as of 2026-09-06: `tests/test_specialty_map.py::test_covers_live_payload_topics`
 — `data/specialty_map.draft.json` (290 topics) trails the live payload (419 topics; 145
 unmapped against a ceiling of 20). That is an owner-review data task, not a threshold to

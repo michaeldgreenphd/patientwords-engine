@@ -19,10 +19,11 @@ log() { echo "[pw-setup] $*"; }
 
 {
 # 1. Python toolchain for the engine (AGENTS.md, Commands): the package with its
-#    declared dependencies (requests, matplotlib, networkx), the llm extra, the
-#    dev tools, and pyyaml, which tests/ imports but pyproject does not declare.
-#    Without this a fresh container shows 12 ModuleNotFoundError failures that
-#    are the environment's, not the code's (AGENTS.md, Tests).
+#    declared dependencies (requests, matplotlib, networkx), the llm extra, and
+#    the dev group (pytest, ruff, pyyaml) named explicitly, because pip's extra
+#    syntax installs the package's dependencies and extras but not poetry's
+#    dev group. Without this a fresh container shows ModuleNotFoundError
+#    failures that are the environment's, not the code's (AGENTS.md, Tests).
 if [ -f "$ENGINE/pyproject.toml" ]; then
   if python3 -m pip install -q -e "$ENGINE[llm]" pytest ruff pillow pyyaml; then
     log "engine installed: $(python3 -m pip show medlang-circuits 2>/dev/null | awk '/^Version/{print $2}' || echo '?')"
