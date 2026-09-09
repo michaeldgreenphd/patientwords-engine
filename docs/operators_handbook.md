@@ -106,9 +106,12 @@ rebased journal still holds every entry origin has (a hand-resolved conflict
 that took the local side is refused, and so is a remote line it cannot parse
 or a hand resolve that carries no `resolved_utc`), inspects every unpushed
 commit rather than the final tree (only the journal and one known trigger's
-JSON file directly under `.github/trigger/` may change; nothing nested), and
-still requires the trigger file to differ between origin and the final tree,
-since a later commit that restored it would push nothing CI runs. Before the
+JSON file directly under `.github/trigger/` may change; nothing nested; and
+no merge commit at all, since git omits a merge's own diff from that
+inspection), and still requires the trigger file to differ between origin and
+the final tree, since a later commit that restored it would push nothing CI
+runs. The push names the validated commit id, not the branch, so a commit
+another process adds meanwhile stays local rather than riding along. Before the
 push it corrects the fire's own record in one journal-only commit: a fire
 published on a later UTC day, or more than an hour (or half the
 `MEDLANG_TRIGGER_EXPIRE_HOURS` window, whichever is shorter) after it was

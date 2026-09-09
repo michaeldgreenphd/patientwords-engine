@@ -681,14 +681,25 @@ def fire_token(repo):
             pass
 
 
-def _push_with_token(repo, branch, env=None):
+def _push_with_token(repo, branch, env=None, oid=None):
     """Push under the one-shot token. `env` is the mapping fire_token yielded when
     the caller already holds a token for the whole publish; without it this
-    function takes its own for the push alone."""
+    function takes its own for the push alone. With `oid`, push exactly that
+    commit to refs/heads/<branch> rather than the branch name: a refspec source
+    may be any object, and naming the branch would carry along whatever another
+    process commits to it between the caller's validation and the push (or
+    during a retry's backoff), uninspected, to a public repository."""
+    refspec = f"{oid}:refs/heads/{branch}" if oid else branch
     if env is not None:
-        return _git(repo, "push", "-u", "origin", branch, env=env)
+        return _git(repo, "push", "-u", "origin", refspec, env=env)
     with fire_token(repo) as own:
-        return _git(repo, "push", "-u", "origin", branch, env=own)
+        return _git(repo, "push", "-u", "origin", refspec, env=own)
+
+
+def _head_oid(repo):
+    """HEAD's commit id, or None when git cannot say."""
+    proc = _git(repo, "rev-parse", "--verify", "HEAD")
+    return proc.stdout.strip() if proc.returncode == 0 and proc.stdout.strip() else None
 
 
 def git_publish(repo, paths, message, backoff=PUSH_BACKOFF_SECONDS):
@@ -711,11 +722,15 @@ def git_publish(repo, paths, message, backoff=PUSH_BACKOFF_SECONDS):
             print(f"git rev-parse failed: {proc.stderr.strip()}", file=sys.stderr)
             return False
         branch = proc.stdout.strip()
+        head = _head_oid(repo)                  # the commit just made: push it, not the branch name
+        if head is None:
+            print("git rev-parse HEAD failed", file=sys.stderr)
+            return False
         for attempt, delay in enumerate((0,) + tuple(backoff)):
             if delay:
                 print(f"push retry {attempt}/{len(backoff)} in {delay}s", file=sys.stderr)
                 time.sleep(delay)
-            proc = _push_with_token(repo, branch, env)
+            proc = _push_with_token(repo, branch, env, oid=head)
             if proc.returncode == 0:
                 return True
             print(f"git push failed: {proc.stderr.strip()}", file=sys.stderr)
@@ -1006,6 +1021,31 @@ def unpublished_commits(repo: Path, branch: str) -> tuple[int, list[str]]:
     return int(count.stdout.strip() or 0), sorted({line.strip() for line in changed.stdout.split("\n") if line.strip()})
 
 
+def unpublished_merges(repo: Path, branch: str) -> list[str]:
+    """Merge commits among the commits origin/<branch> lacks. `git log --name-only`
+    omits a merge commit's own diff (--diff-merges=off is its default), so a
+    path that only the merge result introduced - a file added while resolving
+    the merge - is invisible to unpublished_commits; and a rebase onto a branch
+    that has not moved leaves the merge in place. A fire is a linear commit, so
+    the range must hold no merge at all."""
+    proc = _git(repo, "rev-list", "--merges", f"origin/{branch}..HEAD")
+    if proc.returncode != 0:
+        raise RuntimeError(proc.stderr.strip() or "git rev-list --merges failed")
+    return proc.stdout.split()
+
+
+def _refuse_merges(merges: list[str], branch: str) -> int | None:
+    if not merges:
+        return None
+    print(f"refused: the unpushed history holds {len(merges)} merge commit(s): " + ", ".join(m[:12] for m in merges)
+          + ". `publish` inspects each commit's own diff, which git omits for a merge, so a file that only the "
+          "merge result introduced would be pushed unseen to a public repository. Linearize by hand: check "
+          f"`git show <merge>` for anything only the merge added, then `git rebase --force-rebase origin/{branch}` "
+          "(it replays the non-merge commits and drops what only the merge result held), and `publish` again.",
+          file=sys.stderr)
+    return 3
+
+
 def is_publishable(relpath: str) -> bool:
     """Exactly the journal, or exactly one known trigger's JSON file directly under
     the trigger directory. Nothing nested, nothing else: the repository is public
@@ -1131,6 +1171,13 @@ def cmd_publish(args: argparse.Namespace) -> int:
     if count == 0:
         print(f"nothing to publish: origin/{branch} already has every local commit")
         return 0
+    try:
+        rc = _refuse_merges(unpublished_merges(repo, branch), branch)
+    except RuntimeError as exc:
+        print(f"git failed: {exc}", file=sys.stderr)
+        return 1
+    if rc is not None:
+        return rc
     rc = _publishable_fire(count, changed)
     if rc is not None:
         return rc
@@ -1154,9 +1201,13 @@ def cmd_publish(args: argparse.Namespace) -> int:
         return 1
     try:
         count, changed = unpublished_commits(repo, branch)  # what the rebase left to push
+        merges = unpublished_merges(repo, branch)           # a rebase onto an unmoved branch keeps a merge
     except RuntimeError as exc:
         print(f"git failed after rebase: {exc}", file=sys.stderr)
         return 1
+    rc = _refuse_merges(merges, branch)
+    if rc is not None:
+        return rc
     rc = _publishable_fire(count, changed)
     if rc is not None:
         return rc
@@ -1168,13 +1219,25 @@ def cmd_publish(args: argparse.Namespace) -> int:
     except RuntimeError as exc:
         print(f"git failed before push: {exc}", file=sys.stderr)
         return 1
+    # Everything above validated this commit; push exactly it, so a commit another
+    # process adds to the branch from here on (or during a retry's backoff) is not
+    # published uninspected.
+    head = _head_oid(repo)
+    if head is None:
+        print("git rev-parse HEAD failed before push", file=sys.stderr)
+        return 1
     for attempt, delay in enumerate((0,) + tuple(PUSH_BACKOFF_SECONDS)):
         if delay:
             print(f"push retry {attempt}/{len(PUSH_BACKOFF_SECONDS)} in {delay}s", file=sys.stderr)
             time.sleep(delay)
-        proc = _push_with_token(repo, branch)
+        proc = _push_with_token(repo, branch, oid=head)
         if proc.returncode == 0:
-            print(f"published {count} commit(s) to origin/{branch}: " + ", ".join(changed))
+            print(f"published {count} commit(s) ({head[:12]}) to origin/{branch}: " + ", ".join(changed))
+            moved = _head_oid(repo)
+            if moved != head:
+                print(f"warning: {branch} moved to {(moved or '?')[:12]} during the push; only {head[:12]} was "
+                      "validated and published, and the later commits stay local and unpublished.",
+                      file=sys.stderr)
             return 0
         print(f"git push failed: {proc.stderr.strip()}", file=sys.stderr)
     print("publish failed after retries; the local commits are intact, run `publish` again once the "
