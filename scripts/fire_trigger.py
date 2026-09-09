@@ -750,6 +750,17 @@ def _param_is_true(value: object) -> bool:
     return value is True or (isinstance(value, str) and value.strip().lower() == "true")
 
 
+def is_park_params(trigger: str, params: dict) -> bool:
+    """True when `params` is exactly the lane's park: PARK_DEFAULTS[trigger] plus
+    the script's own underscore keys with _parked true. Provenance by content,
+    not by flag: a park is the resting-state no-op by definition (no PNGs, the
+    park tag), so a fire that reproduces it exactly is one, whoever wrote it, and
+    a retry through `publish` can recognise it without the park command path."""
+    if trigger not in PARK_DEFAULTS or not _param_is_true(params.get("_parked")):
+        return False
+    return {k: v for k, v in params.items() if not k.startswith("_")} == PARK_DEFAULTS[trigger]
+
+
 def refuse_reused_archive_tag(repo: Path, trigger: str, params: dict, *, reuse_tag: bool, parked: bool) -> int | None:
     """None when an archive-renders fire may proceed; else 8, with the refusal
     printed. A tag that already has a manifest on this branch, or on the branch's
@@ -762,9 +773,10 @@ def refuse_reused_archive_tag(repo: Path, trigger: str, params: dict, *, reuse_t
 
     Exempt: `reuse_tag` (the operator means it: a superset re-archive, or a
     deliberate override with allow_shrink in the params; the CI guard still
-    checks the result); `parked`, set only by the park command path, since a
-    park re-fires its own no-op tag by design and uploads no PNGs (the `_parked`
-    param is metadata and grants nothing); and prune_only fires, which upload
+    checks the result); `parked`, set by the park command path or recognised by
+    content (is_park_params: the lane's PARK_DEFAULTS exactly, plus _parked), since
+    a park re-fires its own no-op tag by design and uploads no PNGs (a `_parked`
+    flag on any other params grants nothing); and prune_only fires, which upload
     nothing and reuse the tag whose Release already holds the PNGs by design.
     The remote tip is checked because CI's manifest commit can land after the
     local HEAD was cut; the local fire then fails its push, and the rebased
@@ -914,7 +926,7 @@ def cmd_fire(args):
     # 5b. archive-renders: refuse a tag whose Release already exists (see
     # refuse_reused_archive_tag for the incident and the exemptions).
     rc = refuse_reused_archive_tag(repo, args.trigger, params, reuse_tag=args.reuse_tag,
-                                   parked=getattr(args, "parked", False))
+                                   parked=getattr(args, "parked", False) or is_park_params(args.trigger, params))
     if rc is not None:
         return rc
     content = json.dumps(params, separators=(",", ":")) + "\n"
@@ -1240,7 +1252,8 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
     # The rebase just integrated the remote tip: a manifest CI committed for this
     # tag after the fire was cut is at HEAD now, and the guard that ran before the
     # first push could not have seen it.
-    rc = refuse_reused_archive_tag(repo, trigger, params, reuse_tag=getattr(args, "reuse_tag", False), parked=False)
+    rc = refuse_reused_archive_tag(repo, trigger, params, reuse_tag=getattr(args, "reuse_tag", False),
+                                   parked=is_park_params(trigger, params))
     if rc is not None:
         return rc
     entries = load_journal(repo / JOURNAL_RELPATH)

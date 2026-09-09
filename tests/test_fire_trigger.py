@@ -1511,3 +1511,26 @@ def test_publish_reruns_the_reused_tag_guard_after_the_rebase(tmp_path, capsys):
     assert ".github/trigger/archive-renders.json" not in _origin_main_files(origin, tmp_path)
     assert ft.main(["publish", "--repo", str(clone), "--reuse-tag"]) == 0          # the deliberate override
     assert ".github/trigger/archive-renders.json" in _origin_main_files(origin, tmp_path)
+
+
+def test_publish_keeps_the_park_exemption_when_the_park_push_was_rejected(tmp_path, monkeypatch, capsys):
+    """A park re-fires the lane's no-op tag, whose manifest is always on main. If
+    its push is rejected, the retry through `publish` must still recognise it as
+    a park (by content: PARK_DEFAULTS exactly, plus _parked) or the lane stays
+    unparked behind an unrelated --reuse-tag demand."""
+    origin, clone = _publish_fixture(tmp_path)
+    monkeypatch.setattr(ft, "PUSH_BACKOFF_SECONDS", ())
+    (clone / "render_archives").mkdir()
+    (clone / "render_archives" / "park-noop.manifest.json").write_text("{}", encoding="utf-8")
+    _commit(clone, "the park's manifest, as on main")
+    subprocess.run(["git", "-C", str(clone), "push", "-q", "origin", "main"], check=True)
+    _advance_origin(origin, tmp_path, "other", lambda r: (r / "README.md").write_text("moved\n", encoding="utf-8"))
+    assert ft.main(["park", "--repo", str(clone), "--trigger", "archive-renders", "--ignore-settle"]) == 1
+    assert "publish failed" in capsys.readouterr().err                     # rejected: origin moved
+    params = json.loads((clone / ".github" / "trigger" / "archive-renders.json").read_text(encoding="utf-8"))
+    assert ft.is_park_params("archive-renders", params)
+    assert not ft.is_park_params("archive-renders", {**params, "tag": "renders-x"})
+    assert not ft.is_park_params("archive-renders", {k: v for k, v in params.items() if k != "_parked"})
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    assert "published" in capsys.readouterr().out
+    assert json.loads(_origin_main_files(origin, tmp_path)[".github/trigger/archive-renders.json"]) == params
