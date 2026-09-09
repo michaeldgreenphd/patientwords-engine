@@ -970,6 +970,126 @@ def test_git_publish_commits_and_pushes_under_one_fire_token(repo, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# archive-renders: a tag whose manifest is already on the branch is refused
+# (the 2026-09-08 duplicate p3 fire), unless --reuse-tag says the reuse is meant
+# ---------------------------------------------------------------------------
+
+
+def _archive_params(tag, **extra):
+    return {"tag": tag, "runs": ["trace_out/pairs_x"], "prune": "true", **extra}
+
+
+def test_archive_fire_refuses_a_tag_whose_manifest_is_on_the_branch(repo, capsys):
+    (repo / "render_archives").mkdir()
+    (repo / "render_archives" / "renders-20260908-p3.manifest.json").write_text("{}", encoding="utf-8")
+    assert fire(repo, "archive-renders", _archive_params("renders-20260908-p3")) == 8
+    err = capsys.readouterr().err
+    assert "already on this branch" in err and "--reuse-tag" in err and "duplicate-fire" in err
+    assert not (repo / ".github" / "trigger" / "archive-renders.json").exists()   # nothing written
+    assert not (repo / "ops" / "trigger_journal.jsonl").exists()
+
+
+def test_archive_fire_with_a_fresh_tag_or_reuse_tag_proceeds(repo):
+    (repo / "render_archives").mkdir()
+    (repo / "render_archives" / "renders-20260908-p3.manifest.json").write_text("{}", encoding="utf-8")
+    assert fire(repo, "archive-renders", _archive_params("renders-20260908-p4")) == 0
+    assert fire(repo, "archive-renders", _archive_params("renders-20260908-p3", _nonce="again"),
+                extra=["--reuse-tag", "--ignore-settle"]) == 0
+
+
+def test_park_is_exempt_from_the_reused_tag_refusal(repo):
+    (repo / "render_archives").mkdir()
+    (repo / "render_archives" / "park-noop.manifest.json").write_text("{}", encoding="utf-8")
+    assert ft.main(["park", "--repo", str(repo), "--trigger", "archive-renders", "--no-git"]) == 0
+
+
+def test_archive_tag_has_manifest_reads_head_when_the_sparse_checkout_hides_the_file(tmp_path):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    _git_init(repo)
+    (repo / "render_archives").mkdir()
+    (repo / "render_archives" / "renders-x.manifest.json").write_text("{}", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "m"], check=True)
+    (repo / "render_archives" / "renders-x.manifest.json").unlink()   # as a sparse cone leaves it
+    assert ft.archive_tag_has_manifest(repo, "renders-x") is True
+    assert ft.archive_tag_has_manifest(repo, "renders-y") is False
+    (tmp_path / "not-a-repo").mkdir()
+    assert ft.archive_tag_has_manifest(tmp_path / "not-a-repo", "renders-x") is False   # filesystem only
+
+
+def test_archive_tag_guard_fails_closed_on_a_git_error_inside_a_work_tree(tmp_path, monkeypatch, capsys):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    _git_init(repo)
+    (repo / "x").write_text("x", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "m"], check=True)
+    real = ft._git
+
+    def broken_git(repo_, *argv, env=None):
+        if argv and argv[0] == "ls-tree":
+            class P:
+                returncode = 128
+                stdout = ""
+                stderr = "fatal: unable to read tree"
+            return P()
+        return real(repo_, *argv, env=env)
+
+    monkeypatch.setattr(ft, "_git", broken_git)
+    assert ft.archive_tag_has_manifest(repo, "renders-x") is None
+    rc = ft.refuse_reused_archive_tag(repo, "archive-renders", _archive_params("renders-x"), reuse_tag=False, parked=False)
+    assert rc == 8 and "fails closed" in capsys.readouterr().err
+
+
+def test_archive_fire_prune_only_is_exempt_but_a_parked_param_is_not(repo, capsys):
+    (repo / "render_archives").mkdir()
+    (repo / "render_archives" / "renders-20260721-pt5.manifest.json").write_text("{}", encoding="utf-8")
+    # the _parked param is metadata: only the park command path is exempt
+    assert fire(repo, "archive-renders", _archive_params("renders-20260721-pt5", _parked="true")) == 8
+    assert "already on this branch" in capsys.readouterr().err
+    assert fire(repo, "archive-renders", _archive_params("renders-20260721-pt5", prune_only="false")) == 8
+    assert not (repo / "ops" / "trigger_journal.jsonl").exists()      # refusals journal nothing
+    # prune_only reuses the tag whose Release holds the PNGs by design and uploads nothing
+    assert fire(repo, "archive-renders", _archive_params("renders-20260721-pt5", prune_only="true")) == 0
+    assert fire(repo, "archive-renders", _archive_params("renders-20260721-pt5", prune_only=True, _nonce="2"),
+                extra=["--ignore-settle"]) == 0
+
+
+def test_archive_fire_checks_the_fetched_remote_tip_not_only_the_local_head(tmp_path, capsys):
+    """CI's manifest commit can land on the remote after the local HEAD was cut:
+    the tag is a duplicate even though HEAD and the sparse tree show nothing."""
+    origin = tmp_path / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(origin)], check=True)
+    clone = tmp_path / "clone"
+    subprocess.run(["git", "clone", "-q", str(origin), str(clone)], check=True)
+    _git_init(clone)
+    subprocess.run(["git", "-C", str(clone), "checkout", "-q", "-b", "main"], check=True)
+    (clone / ".github" / "trigger").mkdir(parents=True)
+    (clone / ".github" / "workflows").mkdir()
+    (clone / ".github" / "workflows" / "stub.yml").write_text(
+        'on:\n  push:\n    paths:\n      - ".github/trigger/archive-renders.json"\n', encoding="utf-8")
+    (clone / "ops").mkdir()
+    (clone / "README.md").write_text("base", encoding="utf-8")
+    subprocess.run(["git", "-C", str(clone), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(clone), "commit", "-q", "-m", "base"], check=True)
+    subprocess.run(["git", "-C", str(clone), "push", "-q", "-u", "origin", "main"], check=True)
+    other = tmp_path / "ci"
+    subprocess.run(["git", "clone", "-q", str(origin), str(other)], check=True)
+    _git_init(other)
+    (other / "render_archives").mkdir()
+    (other / "render_archives" / "renders-20260908-p9.manifest.json").write_text("{}", encoding="utf-8")
+    subprocess.run(["git", "-C", str(other), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(other), "commit", "-q", "-m", "Archive renders: p9"], check=True)
+    subprocess.run(["git", "-C", str(other), "push", "-q", "origin", "main"], check=True)
+    assert ft.archive_tag_has_manifest(clone, "renders-20260908-p9") is False       # HEAD alone cannot see it
+    assert fire(clone, "archive-renders", _archive_params("renders-20260908-p9")) == 8
+    assert "remote tip origin/main" in capsys.readouterr().err
+    assert fire(clone, "archive-renders", _archive_params("renders-20260908-p10")) == 0
+
+
+
+# ---------------------------------------------------------------------------
 # publish: re-push a fire whose push was rejected (docs/operators_handbook.md, 4)
 # ---------------------------------------------------------------------------
 
@@ -1400,6 +1520,45 @@ def test_publish_inspects_every_unpublished_commit_not_only_the_final_tree(tmp_p
     assert _origin_main_files(origin, tmp_path)[".github/trigger/circuit-trace.json"] == '{"a": 1}\n'
 
 
+def test_publish_reruns_the_reused_tag_guard_after_the_rebase(tmp_path, capsys):
+    """The race the pre-push guard cannot close: CI commits the tag's manifest
+    after the fire was cut and before its push, the push is rejected, and the
+    rebased retry now carries the manifest at HEAD. `publish` must see it."""
+    origin, clone = _publish_fixture(tmp_path)
+    _fire_locally(clone, "archive-renders", {"tag": "renders-20260908-p9", "runs": ["trace_out/pairs_x"],
+                                             "prune": "true"})
+    _advance_origin(origin, tmp_path, "ci", lambda r: (
+        (r / "render_archives").mkdir(),
+        (r / "render_archives" / "renders-20260908-p9.manifest.json").write_text("{}", encoding="utf-8")))
+    assert ft.main(["publish", "--repo", str(clone)]) == 8
+    err = capsys.readouterr().err
+    assert "renders-20260908-p9" in err and "already on this branch" in err
+    assert ".github/trigger/archive-renders.json" not in _origin_main_files(origin, tmp_path)
+    assert ft.main(["publish", "--repo", str(clone), "--reuse-tag"]) == 0          # the deliberate override
+    assert ".github/trigger/archive-renders.json" in _origin_main_files(origin, tmp_path)
+
+
+def test_publish_keeps_the_park_exemption_when_the_park_push_was_rejected(tmp_path, monkeypatch, capsys):
+    """A park re-fires the lane's no-op tag, whose manifest is always on main. If
+    its push is rejected, the retry through `publish` must still recognise it as
+    a park (by content: PARK_DEFAULTS exactly, plus _parked) or the lane stays
+    unparked behind an unrelated --reuse-tag demand."""
+    origin, clone = _publish_fixture(tmp_path)
+    monkeypatch.setattr(ft, "PUSH_BACKOFF_SECONDS", ())
+    (clone / "render_archives").mkdir()
+    (clone / "render_archives" / "park-noop.manifest.json").write_text("{}", encoding="utf-8")
+    _commit(clone, "the park's manifest, as on main")
+    subprocess.run(["git", "-C", str(clone), "push", "-q", "origin", "main"], check=True)
+    _advance_origin(origin, tmp_path, "other", lambda r: (r / "README.md").write_text("moved\n", encoding="utf-8"))
+    assert ft.main(["park", "--repo", str(clone), "--trigger", "archive-renders", "--ignore-settle"]) == 1
+    assert "publish failed" in capsys.readouterr().err                     # rejected: origin moved
+    params = json.loads((clone / ".github" / "trigger" / "archive-renders.json").read_text(encoding="utf-8"))
+    assert ft.is_park_params("archive-renders", params)
+    assert not ft.is_park_params("archive-renders", {**params, "tag": "renders-x"})
+    assert not ft.is_park_params("archive-renders", {k: v for k, v in params.items() if k != "_parked"})
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    assert "published" in capsys.readouterr().out
+    assert json.loads(_origin_main_files(origin, tmp_path)[".github/trigger/archive-renders.json"]) == params
 def test_publish_refuses_when_a_later_commit_restored_the_trigger_file(tmp_path, capsys):
     """The workflow's paths filter sees the push as a whole: with the trigger file
     back to its origin content in the final tree, the push fires nothing while
