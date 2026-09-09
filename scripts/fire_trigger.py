@@ -1007,24 +1007,41 @@ def unpublished_commits(repo: Path, branch: str) -> tuple[int, list[str]]:
 
 
 def is_publishable(relpath: str) -> bool:
+    """Exactly the journal, or exactly one known trigger's JSON file directly under
+    the trigger directory. Nothing nested, nothing else: the repository is public
+    and the tokened push publishes every commit it carries."""
     path = Path(relpath)
-    return any(path == p or p in path.parents for p in PUBLISHABLE_RELPATHS)
+    if path == JOURNAL_RELPATH:
+        return True
+    return path.parent == TRIGGER_DIR_RELPATH and path.suffix == ".json" and path.stem in TRIGGERS
+
+
+def remote_journal(repo: Path, branch: str) -> tuple[list[dict] | None, list[str]]:
+    """(entries, problems) of origin/<branch>'s journal. entries is None when the
+    remote has no journal yet. A line that is not JSON is a problem, never a
+    skipped line: the same fail-closed rule as load_journal, because a line this
+    check cannot read is one a rewrite would silently delete."""
+    base = _git(repo, "show", f"origin/{branch}:{JOURNAL_RELPATH.as_posix()}")
+    if base.returncode != 0:
+        return None, []
+    entries, problems = [], []
+    for lineno, line in enumerate(base.stdout.splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            entries.append(json.loads(line))
+        except json.JSONDecodeError as exc:
+            problems.append(f"origin/{branch} journal line {lineno} is not JSON ({exc.msg}); repair it by hand "
+                            "before publishing")
+    return entries, problems
 
 
 def journal_entries_added(repo: Path, branch: str) -> list[dict]:
     """Journal entries present at HEAD but not at origin/<branch>: the entries the
     unpushed commits appended. Keyed on (trigger, fired_utc), which is what the
     ORDERED UNION rule dedupes on too."""
-    base = _git(repo, "show", f"origin/{branch}:{JOURNAL_RELPATH.as_posix()}")
-    before = set()
-    if base.returncode == 0:
-        for line in base.stdout.splitlines():
-            if line.strip():
-                try:
-                    e = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                before.add((e.get("trigger"), e.get("fired_utc")))
+    remote, _ = remote_journal(repo, branch)
+    before = {(e.get("trigger"), e.get("fired_utc")) for e in (remote or [])}
     return [e for e in load_journal(repo / JOURNAL_RELPATH) if (e.get("trigger"), e.get("fired_utc")) not in before]
 
 
@@ -1033,29 +1050,25 @@ JOURNAL_MONOTONIC_FIELDS = {"resolved", "evicted", "resolved_utc"}
 
 def journal_drops_remote_entries(repo: Path, branch: str) -> list[str]:
     """Problems with the local journal relative to origin/<branch>'s: a remote
-    entry missing (keyed on (trigger, fired_utc)), or one whose fields changed
-    other than the monotonic resolve/evict updates (resolved and evicted may go
-    false to true, resolved_utc may appear). A hand-resolved rebase conflict that
-    took the local side would otherwise truncate the journal, and the queue and
-    budget guards would then approve a push that hides a live run."""
-    base = _git(repo, "show", f"origin/{branch}:{JOURNAL_RELPATH.as_posix()}")
-    if base.returncode != 0:
+    line that cannot be parsed, a remote entry missing (keyed on (trigger,
+    fired_utc)), or one whose fields changed other than the monotonic
+    resolve/evict updates (resolved and evicted may go false to true, and a
+    resolve must carry a parseable resolved_utc, as cmd_resolve writes one:
+    without it the entry leaves the queue and the settle guard both). A
+    hand-resolved rebase conflict that took the local side would otherwise
+    truncate the journal, and the guards would then approve a push that hides a
+    live run."""
+    remote, problems = remote_journal(repo, branch)
+    if remote is None:
         return []                                   # no remote journal yet: nothing to preserve
     local = {(e.get("trigger"), e.get("fired_utc")): e for e in load_journal(repo / JOURNAL_RELPATH)}
-    problems = []
-    for line in base.stdout.splitlines():
-        if not line.strip():
-            continue
-        try:
-            remote = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        key = (remote.get("trigger"), remote.get("fired_utc"))
+    for entry in remote:
+        key = (entry.get("trigger"), entry.get("fired_utc"))
         mine = local.get(key)
         if mine is None:
             problems.append(f"missing remote entry {key[0]} fired {key[1]}")
             continue
-        for field, value in remote.items():
+        for field, value in entry.items():
             if field in JOURNAL_MONOTONIC_FIELDS:
                 if field in ("resolved", "evicted") and value and not mine.get(field):
                     problems.append(f"{key[0]} fired {key[1]}: {field} went true -> false")
@@ -1063,6 +1076,9 @@ def journal_drops_remote_entries(repo: Path, branch: str) -> list[str]:
                     problems.append(f"{key[0]} fired {key[1]}: resolved_utc changed")
             elif mine.get(field) != value:
                 problems.append(f"{key[0]} fired {key[1]}: {field} changed")
+        if mine.get("resolved") and not entry.get("resolved") and parse_utc(mine.get("resolved_utc")) is None:
+            problems.append(f"{key[0]} fired {key[1]}: resolved without a parseable resolved_utc (the settle "
+                            "guard needs it; cmd_resolve writes one)")
     return problems
 
 
@@ -1256,9 +1272,32 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
                                    parked=is_park_params(trigger, params))
     if rc is not None:
         return rc
+    # The workflow's paths filter sees the push as a whole: a commit that restored
+    # the trigger file after the fire leaves the final tree unchanged, so the push
+    # would land, fire nothing, and leave a journal entry for a run that never
+    # started.
+    rel = trigger_path.relative_to(repo).as_posix()
+    unchanged = _git(repo, "diff", "--quiet", f"origin/{branch}", "HEAD", "--", rel)
+    if unchanged.returncode == 0:
+        print(f"refused: {rel} is identical at origin/{branch} and HEAD, so the push would change no trigger "
+              "file and CI would run nothing while the journal entry held a queue slot. If the fire was "
+              "undone on purpose, mark its journal entry \"evicted\": true by hand and push the journal "
+              "with a plain `git push`.", file=sys.stderr)
+        return 3
+    dropped = journal_drops_remote_entries(repo, branch)
+    if dropped:
+        print(f"refused: the local journal does not preserve origin/{branch}'s entries (a hand-resolved conflict "
+              "that took the local side?); every remote entry must survive with only resolve/evict updates. "
+              "Restore them per the ORDERED UNION rule (docs/operators_handbook.md, section 4), commit, and "
+              "`publish` again:\n  " + "\n  ".join(dropped), file=sys.stderr)
+        return 3
     entries = load_journal(repo / JOURNAL_RELPATH)
-    mine = [e for e in journal_entries_added(repo, branch)
-            if e.get("trigger") == trigger and not e.get("resolved") and not e.get("evicted")]
+    added = {(e.get("trigger"), e.get("fired_utc")) for e in journal_entries_added(repo, branch)}
+    # Taken from `entries` (not from journal_entries_added's separate parse) so
+    # the corrections below land in the list save_journal writes.
+    mine = [e for e in entries
+            if (e.get("trigger"), e.get("fired_utc")) in added
+            and e.get("trigger") == trigger and not e.get("resolved") and not e.get("evicted")]
     if not mine:
         print(f"refused: the unpushed journal lines add no active {trigger} entry, so the trigger change "
               "is not a journaled fire; nothing is published.", file=sys.stderr)
@@ -1275,36 +1314,53 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
     fire = mine[0]
     key = (fire.get("trigger"), fire.get("fired_utc"))
     others = [e for e in entries if (e.get("trigger"), e.get("fired_utc")) != key]
-    dropped = journal_drops_remote_entries(repo, branch)
-    if dropped:
-        print(f"refused: the local journal does not preserve origin/{branch}'s entries (a hand-resolved conflict "
-              "that took the local side?); every remote entry must survive with only resolve/evict updates. "
-              "Restore them per the ORDERED UNION rule (docs/operators_handbook.md, section 4), commit, and "
-              "`publish` again:\n  " + "\n  ".join(dropped), file=sys.stderr)
-        return 3
-    # A fire published long after it was made would carry a stale stamp into the
-    # accounting: budget counts in-flight entries fired today, and the queue
-    # expires entries older than expire_hours. The run starts when this push
-    # lands, so a stale entry is restamped now (the original kept alongside) in a
-    # journal-only commit that publishes with the fire.
+    paid = trigger in PAID_TRIGGERS or is_mitigation_fire(trigger, params)
+    budget_params = None
+    if paid:
+        budget_params = params if trigger in PAID_TRIGGERS else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
+    # Corrections to the fire's own record, applied in one journal-only commit
+    # that publishes with the fire:
+    # - a fire published long after it was made would carry a stale stamp into
+    #   the accounting (budget counts in-flight entries fired today, the queue
+    #   expires entries older than expire_hours): restamp to the publication
+    #   time, the original kept alongside, when the entry is from another UTC
+    #   day or older than an hour or than half the expiry window;
+    # - a paid fire's max_spend and lane are what inflight_max_spend counts for
+    #   the running job: they must equal what cmd_fire computes from the final
+    #   params, not what a hand edit during conflict recovery left.
+    corrections = []
     fired = parse_utc(fire.get("fired_utc"))
-    stale = fired is None or fired.date() != now.date() or (now - fired) >= timedelta(hours=1)
-    if stale:
-        for e in entries:
-            if (e.get("trigger"), e.get("fired_utc")) == key:
-                e["fired_utc_original"] = e.get("fired_utc")
-                e["fired_utc"] = iso_utc(now)
-                e["published_utc"] = iso_utc(now)
+    threshold = min(timedelta(hours=1), timedelta(hours=expire_hours) / 2)
+    if fired is None or fired.date() != now.date() or (now - fired) >= threshold:
+        fire["fired_utc_original"] = fire.get("fired_utc")
+        fire["fired_utc"] = iso_utc(now)
+        fire["published_utc"] = iso_utc(now)
+        corrections.append(f"fired_utc {key[1]} -> {iso_utc(now)} (original kept as fired_utc_original)")
+    if paid:
+        expected_spend, error = fire_commitment(budget_params)
+        if error:
+            print(f"refused: {error}", file=sys.stderr)
+            return 4
+        expected_lane = fire_lane(trigger, params)
+        if fire.get("max_spend") != expected_spend or fire.get("lane") != expected_lane:
+            corrections.append(f"max_spend {fire.get('max_spend')!r} -> {expected_spend!r}, "
+                               f"lane {fire.get('lane')!r} -> {expected_lane!r}")
+            fire["max_spend"], fire["lane"] = expected_spend, expected_lane
+    elif "max_spend" in fire or "lane" in fire:
+        corrections.append("max_spend/lane removed: not a paid fire")
+        fire.pop("max_spend", None)
+        fire.pop("lane", None)
+    if corrections:
         save_journal(repo / JOURNAL_RELPATH, entries)
         proc = _git(repo, "add", "--", JOURNAL_RELPATH.as_posix())
         if proc.returncode == 0:
-            proc = _git(repo, "commit", "-m",
-                        f"Journal: restamp the {trigger} fire published late (fired {key[1]}, published {iso_utc(now)})")
+            proc = _git(repo, "commit", "-m", f"Journal: correct the {trigger} fire's record on publish "
+                        f"(fired {key[1]}): " + "; ".join(corrections))
         if proc.returncode != 0:
-            print(f"git failed while restamping the late fire: {proc.stderr.strip() or proc.stdout.strip()}",
+            print(f"git failed while correcting the fire's record: {proc.stderr.strip() or proc.stdout.strip()}",
                   file=sys.stderr)
             return 1
-        print(f"restamped the {trigger} fire: fired_utc {key[1]} -> {iso_utc(now)} (original kept as fired_utc_original)")
+        print(f"corrected the {trigger} fire's journal record: " + "; ".join(corrections))
     # 3. Queue guard, as cmd_fire ran it before appending this entry: other
     # sessions may have filled the lane while this fire sat unpublished.
     actives = active_entries(others, trigger, now, expire_hours)
@@ -1328,8 +1384,7 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
             return 6
     # 4. Budget guard, with the rebased dashboard and journal; the entry's own
     # max_spend is excluded from in-flight exactly as when cmd_fire approved it.
-    if trigger in PAID_TRIGGERS or is_mitigation_fire(trigger, params):
-        budget_params = params if trigger in PAID_TRIGGERS else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
+    if paid:
         dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
         overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
         kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),

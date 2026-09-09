@@ -1356,6 +1356,27 @@ def test_is_publishable_covers_exactly_the_fire_paths():
     assert not ft.is_publishable("ops/dashboard.json")
     assert not ft.is_publishable(".github/workflows/archive_renders.yml")
     assert not ft.is_publishable("README.md")
+    # exact paths only: the tokened push publishes every commit it carries, and
+    # the repository is public
+    assert not ft.is_publishable(".github/trigger/private/token.txt")
+    assert not ft.is_publishable(".github/trigger/private/circuit-trace.json")
+    assert not ft.is_publishable(".github/trigger/README.md")
+    assert not ft.is_publishable(".github/trigger/not-a-lane.json")
+    assert not ft.is_publishable("ops/trigger_journal.jsonl.bak")
+    assert not ft.is_publishable("ops/private/trigger_journal.jsonl")
+
+
+def test_publish_refuses_a_file_nested_under_the_trigger_directory(tmp_path, capsys):
+    origin, clone = _publish_fixture(tmp_path)
+    _fire_locally(clone)
+    nested = clone / ".github" / "trigger" / "private" / "token.txt"
+    nested.parent.mkdir()
+    nested.write_text("not a trigger\n", encoding="utf-8")
+    _commit(clone, "stray file")
+    assert ft.main(["publish", "--repo", str(clone)]) == 3
+    err = capsys.readouterr().err
+    assert "change files outside" in err and ".github/trigger/private/token.txt" in err
+    assert not _origin_main_files(origin, tmp_path).get(".github/trigger/private/token.txt")
 
 
 def test_publish_commits_a_fire_whose_own_commit_failed_and_pushes_it(tmp_path, capsys):
@@ -1435,7 +1456,7 @@ def test_publish_restamps_a_fire_published_long_after_it_was_made(tmp_path, caps
     _fire_locally(clone, fired_utc=old)
     assert ft.main(["publish", "--repo", str(clone)]) == 0
     out = capsys.readouterr().out
-    assert "restamped the circuit-trace fire" in out and "published 2 commit" in out
+    assert "corrected the circuit-trace fire's journal record: fired_utc" in out and "published 2 commit" in out
     entries = [json.loads(ln) for ln in _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"].splitlines()
                if ln.strip()]
     mine = [e for e in entries if e.get("fired_utc_original") == old]
@@ -1446,7 +1467,7 @@ def test_publish_restamps_a_fire_published_long_after_it_was_made(tmp_path, caps
     origin2, clone2 = _publish_fixture(tmp_path / "second")
     recent = _fire_locally(clone2)
     assert ft.main(["publish", "--repo", str(clone2)]) == 0
-    assert "restamped" not in capsys.readouterr().out
+    assert "corrected the" not in capsys.readouterr().out
     entries2 = [json.loads(ln) for ln in _origin_main_files(origin2, tmp_path / "second")["ops/trigger_journal.jsonl"]
                 .splitlines() if ln.strip()]
     assert any(e["fired_utc"] == recent and "fired_utc_original" not in e for e in entries2)
@@ -1534,3 +1555,128 @@ def test_publish_keeps_the_park_exemption_when_the_park_push_was_rejected(tmp_pa
     assert ft.main(["publish", "--repo", str(clone)]) == 0
     assert "published" in capsys.readouterr().out
     assert json.loads(_origin_main_files(origin, tmp_path)[".github/trigger/archive-renders.json"]) == params
+def test_publish_refuses_when_a_later_commit_restored_the_trigger_file(tmp_path, capsys):
+    """The workflow's paths filter sees the push as a whole: with the trigger file
+    back to its origin content in the final tree, the push fires nothing while
+    the journal entry holds a queue slot."""
+    origin, clone = _publish_fixture(tmp_path)
+    # a valid resting-state file at origin, as a parked lane holds
+    resting = dict(PUBLISH_PARAMS, mode="4quadrant")
+    (clone / ".github" / "trigger" / "circuit-trace.json").write_text(json.dumps(resting) + "\n", encoding="utf-8")
+    _commit(clone, "park")
+    subprocess.run(["git", "-C", str(clone), "push", "-q", "origin", "main"], check=True)
+    _fire_locally(clone)
+    (clone / ".github" / "trigger" / "circuit-trace.json").write_text(json.dumps(resting) + "\n", encoding="utf-8")
+    _commit(clone, "undo the fire")
+    head = _head(clone)
+    assert ft.main(["publish", "--repo", str(clone)]) == 3
+    err = capsys.readouterr().err
+    assert "identical at origin/main and HEAD" in err and '"evicted": true by hand' in err
+    assert _head(clone) == head
+    assert "circuit-trace fire" not in _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"]
+
+
+def test_publish_recomputes_a_paid_fires_commitment_from_the_final_params(tmp_path, capsys):
+    """inflight_max_spend counts the entry's max_spend and lane for the running
+    job, so they must equal what cmd_fire derives from the trigger file that is
+    actually pushed - not what a hand edit during conflict recovery left."""
+    origin, clone = _publish_fixture(tmp_path)
+    write_dashboard(clone, spent=0.0)
+    _commit(clone, "dashboard")
+    subprocess.run(["git", "-C", str(clone), "push", "-q", "origin", "main"], check=True)
+    params = {"task": "pairs", "num": "5", "max_spend": "1.0"}
+    (clone / ".github" / "trigger" / "scenario-generation.json").write_text(json.dumps(params) + "\n",
+                                                                            encoding="utf-8")
+    fired = ft.iso_utc(ft.utc_now())
+    _append_journal(clone / "ops" / "trigger_journal.jsonl",
+                    _journal_line("scenario-generation", fired, max_spend=0.1, lane="openrouter"))
+    _commit(clone, "Fire scenario-generation: local, commitment altered")
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    out = capsys.readouterr().out
+    assert "max_spend 0.1 -> 1.0, lane 'openrouter' -> 'anthropic'" in out and "published 2 commit" in out
+    entries = [json.loads(ln) for ln in _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"].splitlines()
+               if ln.strip()]
+    mine = [e for e in entries if e.get("fired_utc") == fired]
+    assert len(mine) == 1 and mine[0]["max_spend"] == 1.0 and mine[0]["lane"] == "anthropic"
+    assert "fired_utc_original" not in mine[0]                                 # fresh: no restamp
+    assert ft.inflight_max_spend(entries, ft.utc_now().strftime("%Y-%m-%d"), ft.utc_now(), 8.0) == 1.0
+
+    # the converse: a stray commitment on an unpaid fire is removed
+    origin2, clone2 = _publish_fixture(tmp_path / "unpaid")
+    (clone2 / ".github" / "trigger" / "circuit-trace.json").write_text(json.dumps(PUBLISH_PARAMS) + "\n",
+                                                                       encoding="utf-8")
+    fired2 = ft.iso_utc(ft.utc_now())
+    _append_journal(clone2 / "ops" / "trigger_journal.jsonl", _journal_line("circuit-trace", fired2, max_spend=5.0))
+    _commit(clone2, "Fire circuit-trace: local, stray commitment")
+    assert ft.main(["publish", "--repo", str(clone2)]) == 0
+    assert "max_spend/lane removed: not a paid fire" in capsys.readouterr().out
+    entries2 = [json.loads(ln) for ln in _origin_main_files(origin2, tmp_path / "unpaid")["ops/trigger_journal.jsonl"]
+                .splitlines() if ln.strip()]
+    assert all("max_spend" not in e for e in entries2 if e.get("fired_utc") == fired2)
+
+
+def test_publish_restamp_threshold_follows_the_expiry_window(tmp_path, capsys, monkeypatch):
+    """The queue guard expires entries older than MEDLANG_TRIGGER_EXPIRE_HOURS, so
+    a fire published later than half that window (not only an hour) would land
+    already expired: with a 0.5-hour window a 20-minute-old stamp is restamped."""
+    monkeypatch.setenv("MEDLANG_TRIGGER_EXPIRE_HOURS", "0.5")
+    origin, clone = _publish_fixture(tmp_path)
+    old = ft.iso_utc(ft.utc_now() - timedelta(minutes=20))
+    _fire_locally(clone, fired_utc=old)
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    assert "fired_utc_original" in capsys.readouterr().out
+    entries = [json.loads(ln) for ln in _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"].splitlines()
+               if ln.strip()]
+    assert [e for e in entries if e.get("fired_utc_original") == old]
+    assert ft.active_entries(entries, "circuit-trace", ft.utc_now(), 0.5), "the published run must count as active"
+    # the same 20-minute-old stamp keeps under the default window
+    monkeypatch.delenv("MEDLANG_TRIGGER_EXPIRE_HOURS", raising=False)
+    origin2, clone2 = _publish_fixture(tmp_path / "default")
+    old2 = ft.iso_utc(ft.utc_now() - timedelta(minutes=20))
+    _fire_locally(clone2, fired_utc=old2)
+    assert ft.main(["publish", "--repo", str(clone2)]) == 0
+    assert "fired_utc_original" not in capsys.readouterr().out
+
+
+def test_publish_refuses_when_the_remote_journal_has_a_line_it_cannot_read(tmp_path, capsys):
+    """A remote line that is not JSON is exactly what a local rewrite would
+    silently drop; the preserve check names the line rather than skipping it."""
+    origin, clone = _publish_fixture(tmp_path)
+    _advance_origin(origin, tmp_path, "corrupter",
+                    lambda r: _append_journal(r / "ops" / "trigger_journal.jsonl", "{not json\n"))
+    subprocess.run(["git", "-C", str(clone), "pull", "-q", "--rebase", "origin", "main"], check=True)
+    # the operator "repairs" the journal locally by dropping the bad line, then fires
+    journal = clone / "ops" / "trigger_journal.jsonl"
+    kept = [ln for ln in journal.read_text(encoding="utf-8").splitlines() if ln.strip() and ln != "{not json"]
+    journal.write_text("\n".join(kept) + "\n" + _journal_line("circuit-trace", ft.iso_utc(ft.utc_now())),
+                       encoding="utf-8")
+    (clone / ".github" / "trigger" / "circuit-trace.json").write_text(json.dumps(PUBLISH_PARAMS) + "\n",
+                                                                       encoding="utf-8")
+    _commit(clone, "Fire circuit-trace: local")
+    assert ft.main(["publish", "--repo", str(clone)]) == 3
+    err = capsys.readouterr().err
+    assert "origin/main journal line 2 is not JSON" in err and "repair it by hand" in err
+    assert "{not json" in _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"]   # untouched
+
+
+def test_publish_refuses_a_hand_resolve_that_carries_no_resolved_utc(tmp_path, capsys):
+    """resolved: true without a parseable resolved_utc leaves the queue and the
+    settle guard at once, which cmd_resolve never does."""
+    origin, clone = _publish_fixture(tmp_path)
+    live = ft.iso_utc(ft.utc_now() - timedelta(minutes=5))
+    _advance_origin(origin, tmp_path, "other",
+                    lambda r: _append_journal(r / "ops" / "trigger_journal.jsonl", _journal_line("circuit-trace", live)))
+    subprocess.run(["git", "-C", str(clone), "pull", "-q", "--rebase", "origin", "main"], check=True)
+    journal = clone / "ops" / "trigger_journal.jsonl"
+    entries = [json.loads(ln) for ln in journal.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    for e in entries:
+        if e["fired_utc"] == live:
+            e["resolved"] = True                                             # no resolved_utc
+    ft.save_journal(journal, entries)
+    _fire_locally(clone)
+    assert ft.main(["publish", "--repo", str(clone)]) == 3
+    err = capsys.readouterr().err
+    assert f"circuit-trace fired {live}: resolved without a parseable resolved_utc" in err
+    remote = _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"]
+    assert '"resolved": false' in remote and "circuit-trace fire" in remote     # nothing published
+
