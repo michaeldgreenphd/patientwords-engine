@@ -88,9 +88,18 @@ Still failing → verify remote state through the GitHub API instead and
 retry the pull next pass. Never stack retries in a loop.
 
 **"fire written locally but git publish failed" (exit 1):** the trigger
-file, journal entry, and commit already exist locally. NEVER re-fire —
-`git pull --rebase`, resolve any conflicts per the rules below, `git push`.
-The fire then publishes and the workflow runs once.
+file, journal entry, and commit already exist locally; main moved underneath
+(CI's output commits and other sessions interleave with every push) and the
+push was non-fast-forward. NEVER re-fire. Run
+`python scripts/fire_trigger.py publish`: it fetches, rebases the fire onto
+the remote branch, and pushes under the one-shot fire token. A hand
+`git push` will not do here — the commit carries a trigger-file change, which
+`.githooks/pre-push` and the Bash guard refuse from anything but the script
+(observed live 2026-09-09, batch p5 of the PNG prune campaign). `publish`
+refuses unpushed commits that touch anything beyond the trigger file and the
+journal, and a rebase conflict is aborted with the checkout left as it was:
+resolve it per the journal rule below, then run `publish` again. The fire
+then publishes and the workflow runs once.
 
 **Journal conflict** (`ops/trigger_journal.jsonl`): ORDERED UNION — take
 both sides (`git show :2:` / `:3:` during a rebase), dedupe on

@@ -17,6 +17,7 @@ Usage:
       --note "why this run fires"
   python scripts/fire_trigger.py resolve --trigger circuit-trace    # after the run lands
   python scripts/fire_trigger.py status
+  python scripts/fire_trigger.py publish   # after exit 1: the push was rejected, main moved
 
 A journal entry is ACTIVE while resolved and evicted are both false and it is
 younger than MEDLANG_TRIGGER_EXPIRE_HOURS (default 8; chunked workflow runs
@@ -884,6 +885,105 @@ def cmd_fire(args):
     return 0
 
 
+# Paths a fire commits. `publish` re-pushes only commits confined to these, so it
+# cannot become a general tokened push around .githooks/pre-push and the Bash guard.
+PUBLISHABLE_RELPATHS = (TRIGGER_DIR_RELPATH, JOURNAL_RELPATH)
+
+
+def unpublished_commits(repo, branch):
+    """(count, changed paths) of commits on HEAD that origin/<branch> lacks. Both
+    from git; the caller has fetched, so origin/<branch> is current."""
+    count = _git(repo, "rev-list", "--count", f"origin/{branch}..HEAD")
+    if count.returncode != 0:
+        raise RuntimeError(count.stderr.strip() or "git rev-list failed")
+    changed = _git(repo, "diff", "--name-only", f"origin/{branch}...HEAD")
+    if changed.returncode != 0:
+        raise RuntimeError(changed.stderr.strip() or "git diff failed")
+    return int(count.stdout.strip() or 0), [line for line in changed.stdout.split("\n") if line.strip()]
+
+
+def is_publishable(relpath):
+    path = Path(relpath)
+    return any(path == p or p in path.parents for p in PUBLISHABLE_RELPATHS)
+
+
+def cmd_publish(args):
+    """Re-publish a fire whose push was rejected (exit 1: "fire written locally but git
+    publish failed"), the case docs/operators_handbook.md section 4 covers. The
+    trigger file, journal entry and commit already exist locally; main moved
+    underneath (CI's output commits and other sessions interleave with every
+    session's pushes), so the push was non-fast-forward. A hand `git push` is
+    refused by .githooks/pre-push and the Bash guard because the commit carries a
+    trigger-file change, which is correct: only this script may publish one. This
+    subcommand is that publish: fetch, rebase the local commits onto the remote
+    branch, and push under the one-shot fire token.
+
+    Refuses (exit 3) when the unpushed commits touch anything outside
+    .github/trigger/ and ops/trigger_journal.jsonl, so it re-publishes a fire and
+    nothing else. Never re-fires: a fire that failed to publish is still one fire,
+    and CI runs it once when the push lands."""
+    repo = Path(args.repo).resolve()
+    proc = _git(repo, "rev-parse", "--abbrev-ref", "HEAD")
+    branch = proc.stdout.strip() if proc.returncode == 0 else ""
+    if not branch or branch == "HEAD":
+        print("refused: not on a branch (detached HEAD); check out the branch the fire was made on",
+              file=sys.stderr)
+        return 3
+    proc = _git(repo, "fetch", "origin", branch)
+    if proc.returncode != 0:
+        print(f"git fetch failed: {proc.stderr.strip()}", file=sys.stderr)
+        return 1
+    try:
+        count, changed = unpublished_commits(repo, branch)
+    except RuntimeError as exc:
+        print(f"git failed: {exc}", file=sys.stderr)
+        return 1
+    if count == 0:
+        print(f"nothing to publish: origin/{branch} already has every local commit")
+        return 0
+    foreign = [c for c in changed if not is_publishable(c)]
+    if foreign:
+        print(f"refused: the {count} unpushed commit(s) change files outside "
+              f"{TRIGGER_DIR_RELPATH.as_posix()}/ and {JOURNAL_RELPATH.as_posix()}: "
+              + ", ".join(foreign) + ". `publish` re-publishes a fire and nothing else; "
+              "push other work with a plain `git push` from a commit that carries no trigger change.",
+              file=sys.stderr)
+        return 3
+    if args.dry_run:
+        print(f"[dry-run] would rebase {count} commit(s) onto origin/{branch} and push under the fire token: "
+              + ", ".join(changed))
+        return 0
+    proc = _git(repo, "rebase", "--autostash", f"origin/{branch}")
+    if proc.returncode != 0:
+        _git(repo, "rebase", "--abort")
+        print("rebase onto origin/" + branch + " failed and was aborted; the checkout is as it was before. "
+              "Resolve by hand: `git pull --rebase origin " + branch + "`, and for a journal conflict keep "
+              "both sides as an ORDERED UNION (docs/operators_handbook.md, section 4), then run `publish` "
+              "again. Never re-fire.\n" + (proc.stderr.strip() or proc.stdout.strip()), file=sys.stderr)
+        return 1
+    try:
+        count, changed = unpublished_commits(repo, branch)  # re-check what the rebase left to push
+    except RuntimeError as exc:
+        print(f"git failed after rebase: {exc}", file=sys.stderr)
+        return 1
+    if any(not is_publishable(c) for c in changed):
+        print("refused: after the rebase the unpushed commits touch files outside the fire's two paths; "
+              "publish nothing and inspect `git log origin/" + branch + "..HEAD`", file=sys.stderr)
+        return 3
+    for attempt, delay in enumerate((0,) + tuple(PUSH_BACKOFF_SECONDS)):
+        if delay:
+            print(f"push retry {attempt}/{len(PUSH_BACKOFF_SECONDS)} in {delay}s", file=sys.stderr)
+            time.sleep(delay)
+        proc = _push_with_token(repo, branch)
+        if proc.returncode == 0:
+            print(f"published {count} commit(s) to origin/{branch}: " + ", ".join(changed))
+            return 0
+        print(f"git push failed: {proc.stderr.strip()}", file=sys.stderr)
+    print("publish failed after retries; the local commits are intact, run `publish` again once the "
+          "remote is reachable", file=sys.stderr)
+    return 1
+
+
 def cmd_park(args):
     """Fire the resting-state park default for one trigger (or every parkable one).
 
@@ -1045,6 +1145,13 @@ def build_parser():
                     help="leave the ops/dashboard.json queue update in the working tree "
                          "(daily Routine session only; every other caller gets it restored)")
     resolve.set_defaults(func=cmd_resolve)
+
+    publish = sub.add_parser("publish", parents=[common],
+                             help="re-push a fire whose push was rejected (exit 1): fetch, rebase, "
+                                  "push under the fire token; refuses unpushed commits outside the "
+                                  "trigger file and the journal; never re-fires")
+    publish.add_argument("--dry-run", action="store_true", help="report what would be pushed; write nothing")
+    publish.set_defaults(func=cmd_publish)
 
     status = sub.add_parser("status", parents=[common], help="per-trigger active counts and queue view")
     status.set_defaults(func=cmd_status)

@@ -963,3 +963,131 @@ def test_git_publish_commits_and_pushes_under_one_fire_token(repo, monkeypatch):
     monkeypatch.setattr(ft, "_git", fake_git)
     assert ft.git_publish(repo, [repo / "ops" / "trigger_journal.jsonl"], "msg", backoff=()) is True
     assert seen["commit"] and seen["commit"] == seen["push"], seen
+
+
+# ---------------------------------------------------------------------------
+# publish: re-push a fire whose push was rejected (docs/operators_handbook.md, 4)
+# ---------------------------------------------------------------------------
+
+
+def _publish_fixture(tmp_path):
+    """A bare origin, a clone with one pushed commit, and the clone on main with
+    origin/main tracked. Returns (origin, clone)."""
+    origin = tmp_path / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(origin)], check=True)
+    clone = tmp_path / "clone"
+    subprocess.run(["git", "clone", "-q", str(origin), str(clone)], check=True)
+    subprocess.run(["git", "-C", str(clone), "config", "user.email", "t@example.com"], check=True)
+    subprocess.run(["git", "-C", str(clone), "config", "user.name", "t"], check=True)
+    subprocess.run(["git", "-C", str(clone), "checkout", "-q", "-b", "main"], check=True)
+    (clone / "ops").mkdir()
+    (clone / ".github" / "trigger").mkdir(parents=True)
+    (clone / "ops" / "trigger_journal.jsonl").write_text('{"trigger": "x", "fired_utc": "2026-01-01T00:00:00Z"}\n',
+                                                         encoding="utf-8")
+    (clone / ".github" / "trigger" / "circuit-trace.json").write_text('{"a": 1}\n', encoding="utf-8")
+    (clone / "README.md").write_text("base\n", encoding="utf-8")
+    _commit(clone, "base")
+    subprocess.run(["git", "-C", str(clone), "push", "-q", "-u", "origin", "main"], check=True)
+    return origin, clone
+
+
+def _commit(repo, message, paths=None):
+    subprocess.run(["git", "-C", str(repo), "add", "-A"] + ([] if paths is None else ["--"] + paths), check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", message], check=True)
+
+
+def _advance_origin(origin, tmp_path, name, write):
+    """Push a commit to origin from a second clone, as another session or CI would."""
+    other = tmp_path / name
+    subprocess.run(["git", "clone", "-q", str(origin), str(other)], check=True)
+    subprocess.run(["git", "-C", str(other), "config", "user.email", "o@example.com"], check=True)
+    subprocess.run(["git", "-C", str(other), "config", "user.name", "o"], check=True)
+    write(other)
+    _commit(other, f"{name} moved main")
+    subprocess.run(["git", "-C", str(other), "push", "-q", "origin", "main"], check=True)
+
+
+def _origin_main_files(origin, tmp_path):
+    check = tmp_path / "check"
+    subprocess.run(["git", "clone", "-q", str(origin), str(check)], check=True)
+    return {p.relative_to(check).as_posix(): p.read_text(encoding="utf-8")
+            for p in check.rglob("*") if p.is_file() and ".git" not in p.parts}
+
+
+def test_publish_reports_nothing_when_origin_has_every_commit(tmp_path, capsys):
+    origin, clone = _publish_fixture(tmp_path)
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    assert "nothing to publish" in capsys.readouterr().out
+
+
+def test_publish_rebases_a_rejected_fire_onto_the_moved_branch_and_pushes(tmp_path, capsys):
+    origin, clone = _publish_fixture(tmp_path)
+    # the fire: trigger file + journal committed locally, as cmd_fire leaves them when the push fails
+    (clone / ".github" / "trigger" / "circuit-trace.json").write_text('{"a": 2}\n', encoding="utf-8")
+    with (clone / "ops" / "trigger_journal.jsonl").open("a", encoding="utf-8") as fh:
+        fh.write('{"trigger": "circuit-trace", "fired_utc": "2026-09-09T02:01:55Z"}\n')
+    _commit(clone, "Fire circuit-trace: p5")
+    # meanwhile main moved: a merge commit touching an unrelated file
+    _advance_origin(origin, tmp_path, "other", lambda r: (r / "README.md").write_text("moved\n", encoding="utf-8"))
+    rejected = subprocess.run(["git", "-C", str(clone), "push", "origin", "main"], capture_output=True, text=True)
+    assert rejected.returncode != 0 and "rejected" in rejected.stderr  # the exit-1 situation
+
+    assert ft.main(["publish", "--repo", str(clone), "--dry-run"]) == 0
+    assert "would rebase 1 commit" in capsys.readouterr().out
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    out = capsys.readouterr().out
+    assert "published 1 commit" in out and "circuit-trace.json" in out
+
+    files = _origin_main_files(origin, tmp_path)
+    assert files["README.md"] == "moved\n"                                  # the other session's commit kept
+    assert files[".github/trigger/circuit-trace.json"] == '{"a": 2}\n'     # the fire landed on top of it
+    assert files["ops/trigger_journal.jsonl"].count("\n") == 2
+    log = subprocess.run(["git", "-C", str(clone), "log", "--format=%s", "origin/main"],
+                         capture_output=True, text=True).stdout.split("\n")
+    assert log[0] == "Fire circuit-trace: p5" and log[1] == "other moved main"   # rebased, not merged
+    assert not (clone / ".git" / "rebase-merge").exists()
+
+
+def test_publish_refuses_unpushed_commits_outside_the_fire_paths(tmp_path, capsys):
+    origin, clone = _publish_fixture(tmp_path)
+    (clone / ".github" / "trigger" / "circuit-trace.json").write_text('{"a": 2}\n', encoding="utf-8")
+    (clone / "README.md").write_text("also edited\n", encoding="utf-8")
+    _commit(clone, "fire plus a stray edit")
+    assert ft.main(["publish", "--repo", str(clone)]) == 3
+    err = capsys.readouterr().err
+    assert "README.md" in err and "re-publishes a fire and nothing else" in err
+    assert _origin_main_files(origin, tmp_path)["README.md"] == "base\n"   # nothing pushed
+
+
+def test_publish_aborts_a_conflicting_rebase_and_leaves_the_checkout_clean(tmp_path, capsys):
+    origin, clone = _publish_fixture(tmp_path)
+    (clone / ".github" / "trigger" / "circuit-trace.json").write_text('{"a": 2}\n', encoding="utf-8")
+    _commit(clone, "fire")
+    _advance_origin(origin, tmp_path, "other",
+                    lambda r: (r / ".github" / "trigger" / "circuit-trace.json").write_text('{"a": 3}\n',
+                                                                                             encoding="utf-8"))
+    head_before = subprocess.run(["git", "-C", str(clone), "rev-parse", "HEAD"], capture_output=True,
+                                 text=True).stdout.strip()
+    assert ft.main(["publish", "--repo", str(clone)]) == 1
+    err = capsys.readouterr().err
+    assert "aborted" in err and "ORDERED UNION" in err and "Never re-fire" in err
+    assert not (clone / ".git" / "rebase-merge").exists() and not (clone / ".git" / "rebase-apply").exists()
+    head_after = subprocess.run(["git", "-C", str(clone), "rev-parse", "HEAD"], capture_output=True,
+                                text=True).stdout.strip()
+    assert head_after == head_before
+    assert _origin_main_files(origin, tmp_path)[".github/trigger/circuit-trace.json"] == '{"a": 3}\n'
+
+
+def test_publish_refuses_a_detached_head(tmp_path, capsys):
+    origin, clone = _publish_fixture(tmp_path)
+    subprocess.run(["git", "-C", str(clone), "checkout", "-q", "--detach"], check=True)
+    assert ft.main(["publish", "--repo", str(clone)]) == 3
+    assert "detached" in capsys.readouterr().err
+
+
+def test_is_publishable_covers_exactly_the_fire_paths():
+    assert ft.is_publishable(".github/trigger/archive-renders.json")
+    assert ft.is_publishable("ops/trigger_journal.jsonl")
+    assert not ft.is_publishable("ops/dashboard.json")
+    assert not ft.is_publishable(".github/workflows/archive_renders.yml")
+    assert not ft.is_publishable("README.md")
