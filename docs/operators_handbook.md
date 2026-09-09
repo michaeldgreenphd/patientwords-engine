@@ -110,8 +110,12 @@ JSON file directly under `.github/trigger/` may change; nothing nested; and
 no merge commit at all, since git omits a merge's own diff from that
 inspection), and still requires the trigger file to differ between origin and
 the final tree, since a later commit that restored it would push nothing CI
-runs. The push names the validated commit id, not the branch, so a commit
-another process adds meanwhile stays local rather than riding along. Before the
+runs. Every one of those checks reads one commit id captured after the
+rebase, the trigger file and journal included, and the push names that id
+rather than the branch, so a commit another process adds meanwhile is outside
+what was checked and outside the push; the one commit `publish` itself adds
+(the journal correction) must sit on that id and change only the journal, or
+nothing is pushed. Before the
 push it corrects the fire's own record in one journal-only commit: a fire
 published on a later UTC day, or more than an hour (or half the
 `MEDLANG_TRIGGER_EXPIRE_HOURS` window, whichever is shorter) after it was

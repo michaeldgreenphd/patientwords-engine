@@ -1412,7 +1412,7 @@ def test_publish_refuses_when_a_later_commit_restored_the_trigger_file(tmp_path,
     head = _head(clone)
     assert ft.main(["publish", "--repo", str(clone)]) == 3
     err = capsys.readouterr().err
-    assert "identical at origin/main and HEAD" in err and '"evicted": true by hand' in err
+    assert f"identical at origin/main and {head[:12]}" in err and '"evicted": true by hand' in err
     assert _head(clone) == head
     assert "circuit-trace fire" not in _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"]
 
@@ -1586,4 +1586,127 @@ def test_publish_pushes_the_validated_commit_not_the_branch_tip(tmp_path, capsys
     files = _origin_main_files(origin, tmp_path)
     assert "secret.txt" not in files and json.loads(files[".github/trigger/circuit-trace.json"]) == PUBLISH_PARAMS
     assert (clone / "secret.txt").exists() and _head(clone) != validated       # still local, still there
+
+
+def test_publish_checks_and_pushes_one_captured_commit(tmp_path, capsys, monkeypatch):
+    """Every post-rebase check reads one captured commit id. A commit another
+    process adds while the checks run is outside what they inspect and outside
+    the push; and when publish itself adds the journal-correction commit, that
+    commit must sit on the captured one or nothing is pushed."""
+    origin, clone = _publish_fixture(tmp_path)
+    _fire_locally(clone)
+    real = ft.workflow_reads_trigger
+
+    def racing(repo_, trigger):                                 # runs inside _revalidate_fire
+        (clone / "secret.txt").write_text("committed during the checks\n", encoding="utf-8")
+        _commit(clone, "another process")
+        return real(repo_, trigger)
+
+    monkeypatch.setattr(ft, "workflow_reads_trigger", racing)
+    validated = _head(clone)
+    assert ft.main(["publish", "--repo", str(clone)]) == 0                    # fresh fire: no correction commit
+    out, err = capsys.readouterr()
+    assert validated[:12] in out and "moved to" in err
+    files = _origin_main_files(origin, tmp_path)
+    assert "secret.txt" not in files and json.loads(files[".github/trigger/circuit-trace.json"]) == PUBLISH_PARAMS
+
+    # a late fire needs the correction commit; with the race it lands on the
+    # foreign commit and the publish is refused instead
+    origin2, clone2 = _publish_fixture(tmp_path / "late")
+    _fire_locally(clone2, fired_utc=ft.iso_utc(ft.utc_now() - timedelta(hours=26)))
+
+    def racing2(repo_, trigger):
+        (clone2 / "secret.txt").write_text("committed during the checks\n", encoding="utf-8")
+        _commit(clone2, "another process")
+        return real(repo_, trigger)
+
+    monkeypatch.setattr(ft, "workflow_reads_trigger", racing2)
+    assert ft.main(["publish", "--repo", str(clone2)]) == 3
+    err = capsys.readouterr().err
+    assert "moved from" in err and "journal correction commit" in err and "Nothing is pushed" in err
+    files2 = _origin_main_files(origin2, tmp_path / "late")
+    assert "secret.txt" not in files2 and files2[".github/trigger/circuit-trace.json"] == '{"a": 1}\n'
+
+
+def test_publish_refuses_a_queue_flag_that_is_not_a_json_boolean(tmp_path, capsys):
+    """entry_is_active reads any non-empty string as true, so a remote false that
+    became the string "false" during a hand resolve would hide a live run."""
+    origin, clone = _publish_fixture(tmp_path)
+    live = ft.iso_utc(ft.utc_now() - timedelta(minutes=5))
+    _advance_origin(origin, tmp_path, "other",
+                    lambda r: _append_journal(r / "ops" / "trigger_journal.jsonl", _journal_line("circuit-trace", live)))
+    subprocess.run(["git", "-C", str(clone), "pull", "-q", "--rebase", "origin", "main"], check=True)
+    journal = clone / "ops" / "trigger_journal.jsonl"
+    entries = [json.loads(ln) for ln in journal.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    for e in entries:
+        if e["fired_utc"] == live:
+            e["resolved"] = "false"
+    ft.save_journal(journal, entries)
+    _fire_locally(clone)
+    assert ft.entry_is_active(dict(entries[-1], resolved="false"), ft.utc_now(), 8.0) is False, "the hazard"
+    assert ft.main(["publish", "--repo", str(clone)]) == 3
+    err = capsys.readouterr().err
+    assert f"circuit-trace fired {live}: resolved is 'false', not a JSON boolean" in err
+    assert '"resolved": false' in _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"]
+    # the same for evicted, and a true that became a string, directly
+    for e in entries:
+        if e["fired_utc"] == live:
+            e["resolved"], e["evicted"] = False, "true"
+    ft.save_journal(journal, entries)
+    _commit(clone, "string evicted")
+    problems = ft.journal_drops_remote_entries(clone, "main")
+    assert any("evicted is 'true', not a JSON boolean" in p for p in problems)
+
+
+def test_publish_refuses_a_remote_journal_line_that_is_not_an_object(tmp_path, capsys):
+    """A remote line that parses as JSON but is not an object (null, a list) is
+    named like an unparseable one, rather than crashing the preserve check."""
+    origin, clone = _publish_fixture(tmp_path)
+    _advance_origin(origin, tmp_path, "corrupter",
+                    lambda r: _append_journal(r / "ops" / "trigger_journal.jsonl", "null\n[]\n"))
+    subprocess.run(["git", "-C", str(clone), "pull", "-q", "--rebase", "origin", "main"], check=True)
+    journal = clone / "ops" / "trigger_journal.jsonl"
+    kept = [ln for ln in journal.read_text(encoding="utf-8").splitlines() if ln.strip() and ln not in ("null", "[]")]
+    journal.write_text("\n".join(kept) + "\n" + _journal_line("circuit-trace", ft.iso_utc(ft.utc_now())),
+                       encoding="utf-8")
+    (clone / ".github" / "trigger" / "circuit-trace.json").write_text(json.dumps(PUBLISH_PARAMS) + "\n",
+                                                                       encoding="utf-8")
+    _commit(clone, "Fire circuit-trace: local")
+    assert ft.main(["publish", "--repo", str(clone)]) == 3
+    err = capsys.readouterr().err
+    assert "origin/main journal line 2 is not a JSON object" in err
+    assert "origin/main journal line 3 is not a JSON object" in err
+    assert "null\n[]\n" in _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"]   # untouched
+
+
+def test_publish_keeps_the_first_fire_time_across_two_restamps(tmp_path, capsys, monkeypatch):
+    """A restamped fire whose push then fails is restamped again on the next
+    publish; fired_utc_original must still be the time the fire was made."""
+    origin, clone = _publish_fixture(tmp_path)
+    made = ft.iso_utc(ft.utc_now() - timedelta(hours=26))
+    _fire_locally(clone, fired_utc=made)
+    monkeypatch.setattr(ft, "PUSH_BACKOFF_SECONDS", ())
+    real_push = ft._push_with_token
+    calls = []
+
+    def fails_once(repo_, branch, env=None, oid=None):
+        calls.append(oid)
+        if len(calls) == 1:
+            return subprocess.CompletedProcess(["git", "push"], 1, "", "rejected")
+        return real_push(repo_, branch, env, oid=oid)
+
+    monkeypatch.setattr(ft, "_push_with_token", fails_once)
+    assert ft.main(["publish", "--repo", str(clone)]) == 1
+    first = capsys.readouterr().out
+    assert "fired_utc_original" in first
+    real_now = ft.utc_now()
+    monkeypatch.setattr(ft, "utc_now", lambda: real_now + timedelta(hours=2))       # past the threshold again
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    second = capsys.readouterr().out
+    assert "fired_utc_original" in second and len(calls) == 2
+    entries = [json.loads(ln) for ln in _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"].splitlines()
+               if ln.strip()]
+    mine = [e for e in entries if "fired_utc_original" in e]
+    assert len(mine) == 1 and mine[0]["fired_utc_original"] == made
+    assert mine[0]["fired_utc"] == ft.iso_utc(real_now + timedelta(hours=2))
 
