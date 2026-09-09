@@ -41,8 +41,10 @@ The key column is the exact set the workflow's push path reads
 (`KNOWN_KEYS` in `scripts/fire_trigger.py`); any other key is refused. Keys
 beginning with `_` (`_nonce`, `_parked`) are the script's own and are never sent
 to a workflow. `tests/test_trigger_docs.py` fails when this table, the table in
-`AGENTS.md`, and the script's `TRIGGERS`, `PAID_TRIGGERS`, `PARK_DEFAULTS` or
-`KNOWN_KEYS` disagree, or when a row names a workflow that does not read its file.
+`AGENTS.md`, and the script's `TRIGGERS`, `PAID_TRIGGERS`, `PARK_DEFAULTS`,
+`KNOWN_KEYS` or `MITIGATION_IMPUTED_USD` disagree; when a row names a workflow
+whose parsed `on.push.paths` does not include its file; or when a lane's
+`KNOWN_KEYS` set differs from the keys its workflow's push path actually reads.
 
 | Trigger file | Workflow | What it does, and what it costs | Park default | Keys |
 |---|---|---|---|---|
