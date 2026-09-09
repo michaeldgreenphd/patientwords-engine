@@ -1756,10 +1756,10 @@ def test_publish_checks_and_pushes_one_captured_commit(tmp_path, capsys, monkeyp
     _fire_locally(clone)
     real = ft.workflow_reads_trigger
 
-    def racing(repo_, trigger):                                 # runs inside _revalidate_fire
+    def racing(repo_, trigger, ref=None):                       # runs inside _revalidate_fire
         (clone / "secret.txt").write_text("committed during the checks\n", encoding="utf-8")
         _commit(clone, "another process")
-        return real(repo_, trigger)
+        return real(repo_, trigger, ref=ref)
 
     monkeypatch.setattr(ft, "workflow_reads_trigger", racing)
     validated = _head(clone)
@@ -1774,10 +1774,10 @@ def test_publish_checks_and_pushes_one_captured_commit(tmp_path, capsys, monkeyp
     origin2, clone2 = _publish_fixture(tmp_path / "late")
     _fire_locally(clone2, fired_utc=ft.iso_utc(ft.utc_now() - timedelta(hours=26)))
 
-    def racing2(repo_, trigger):
+    def racing2(repo_, trigger, ref=None):
         (clone2 / "secret.txt").write_text("committed during the checks\n", encoding="utf-8")
         _commit(clone2, "another process")
-        return real(repo_, trigger)
+        return real(repo_, trigger, ref=ref)
 
     monkeypatch.setattr(ft, "workflow_reads_trigger", racing2)
     assert ft.main(["publish", "--repo", str(clone2)]) == 3
@@ -1868,4 +1868,60 @@ def test_publish_keeps_the_first_fire_time_across_two_restamps(tmp_path, capsys,
     mine = [e for e in entries if "fired_utc_original" in e]
     assert len(mine) == 1 and mine[0]["fired_utc_original"] == made
     assert mine[0]["fired_utc"] == ft.iso_utc(real_now + timedelta(hours=2))
+
+
+def test_publish_refuses_a_correction_commit_whose_journal_is_not_what_it_validated(tmp_path, capsys, monkeypatch):
+    """Between save_journal and `git add` another process rewrites the journal:
+    the commit has the right parent and touches only the journal, but its blob
+    is not the validated entries. The blob is compared, so nothing is pushed."""
+    origin, clone = _publish_fixture(tmp_path)
+    _fire_locally(clone, fired_utc=ft.iso_utc(ft.utc_now() - timedelta(hours=26)))    # needs the correction
+    real_save = ft.save_journal
+
+    def save_then_clobber(path, entries):
+        real_save(path, entries)
+        kept = [e for e in entries if e.get("note") != "old"]          # drop origin's resolved entry
+        Path(path).write_text("".join(json.dumps(e) + "\n" for e in kept), encoding="utf-8")
+
+    monkeypatch.setattr(ft, "save_journal", save_then_clobber)
+    assert ft.main(["publish", "--repo", str(clone)]) == 3
+    err = capsys.readouterr().err
+    assert "is not the corrected journal this run validated" in err
+    remote = _origin_main_files(origin, tmp_path)["ops/trigger_journal.jsonl"]
+    assert '"note": "old"' in remote and "circuit-trace fire" not in remote           # nothing pushed
+
+
+def test_publish_reads_workflow_wiring_from_the_captured_commit(tmp_path, capsys):
+    """CI runs what the pushed commit holds. An untracked workflow on disk that
+    names the trigger must not count when the commit to be pushed has none."""
+    origin, clone = _publish_fixture(tmp_path)
+    _fire_locally(clone)
+    _advance_origin(origin, tmp_path, "unwire",
+                    lambda r: (r / ".github" / "workflows" / "stub.yml").unlink())
+    (clone / ".github" / "workflows" / "local.yml").write_text(
+        'on:\n  push:\n    paths:\n      - ".github/trigger/circuit-trace.json"\n', encoding="utf-8")
+    assert ft.workflow_reads_trigger(clone, "circuit-trace") is True                   # the working tree says yes
+    assert ft.main(["publish", "--repo", str(clone)]) == 7
+    err = capsys.readouterr().err
+    assert "no workflow at" in err and "not the working tree" in err
+    assert ".github/trigger/circuit-trace.json" not in _origin_main_files(origin, tmp_path) or \
+        _origin_main_files(origin, tmp_path)[".github/trigger/circuit-trace.json"] == '{"a": 1}\n'
+    head = _head(clone)
+    assert ft.workflow_reads_trigger(clone, "circuit-trace", ref=head) is False
+    assert ft.workflow_reads_trigger(clone, "circuit-trace", ref="origin/main~1") is True   # the old tip had it
+
+
+def test_pinned_push_sets_the_upstream_of_a_new_branch(tmp_path):
+    """`push -u` records no upstream for an object-id refspec; the script sets
+    it, so the later `git pull --rebase` has a default."""
+    origin, clone = _publish_fixture(tmp_path)
+    subprocess.run(["git", "-C", str(clone), "checkout", "-q", "-b", "feature"], check=True)
+    assert subprocess.run(["git", "-C", str(clone), "rev-parse", "--abbrev-ref", "feature@{upstream}"],
+                          capture_output=True).returncode != 0
+    (clone / "ops" / "trigger_journal.jsonl").write_text("", encoding="utf-8")
+    assert ft.git_publish(clone, [clone / "ops" / "trigger_journal.jsonl"], "msg", backoff=()) is True
+    upstream = subprocess.run(["git", "-C", str(clone), "rev-parse", "--abbrev-ref", "feature@{upstream}"],
+                              capture_output=True, text=True)
+    assert upstream.returncode == 0 and upstream.stdout.strip() == "origin/feature"
+    assert subprocess.run(["git", "-C", str(clone), "pull", "--rebase"], capture_output=True).returncode == 0
 
