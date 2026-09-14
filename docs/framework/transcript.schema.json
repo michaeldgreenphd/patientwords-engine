@@ -276,7 +276,7 @@
               },
               "annotator": {
                 "type": "string",
-                "description": "Non-empty, and shaped by `method` (checked at import, section 3.3): for rule, `rule:<name>:<version>`; for judge, `judge:<model_version>:<prompt sha256[:12]>` where the digest must equal the current sha256 of the canonical JSON of the dimension's judge_prompt_ref file (a stale or fabricated digest is refused); for human, a role label that does not begin with `rule:` or `judge:`, never a name. `method` must be one the dimension enables in `detection.methods`.",
+                "description": "Non-empty, and shaped by `method` (checked at import, section 3.3): for rule, `rule:<name>:<version>`; for judge, `judge:<model_version>:<prompt sha256[:12]>` where the digest must equal the current sha256 of the order-preserving canonical form of the dimension's judge_prompt_ref file (its own key order, whitespace removed; a stale or fabricated digest is refused); for human, a role label that does not begin with `rule:` or `judge:`, never a name. `method` must be one the dimension enables in `detection.methods`.",
                 "minLength": 1
               },
               "confidence": {
@@ -290,7 +290,7 @@
               "rendered_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$",
-                "description": "Judge annotations only: sha256 of the fully rendered prompt as sent to the judge, produced by the prompt file's canonical `rendering` algorithm, so two adapters that rendered differently are distinguishable in the artifact."
+                "description": "Judge annotations only: sha256 of the fully rendered prompt as sent to the judge, produced by the prompt file's canonical `rendering` algorithm and recomputed at import from that file and the annotated turn's text (section 3.3): a stale, fabricated or differently rendered digest is refused."
               }
             },
             "if": {

@@ -150,12 +150,20 @@ non-empty, and `annotator` has the shape its `method` demands
 (`rule:<name>:<version>`; `judge:<model_version>:<prompt sha256[:12]>`; for
 a human, a role label that does not begin with either prefix), so a
 classification always traces to a versioned rule, a versioned prompt, or a
-role; a judge annotation's digest must equal the sha256 of the canonical
-JSON of the dimension's current `judge_prompt_ref` file, so a well-shaped
-but stale or fabricated digest is refused rather than accepted as
-provenance from a prompt that no longer exists in that form (editing a
-prompt therefore invalidates every earlier judge annotation on that
-dimension: they are re-judged, never carried); an annotation's `method`
+role; a judge annotation's digest must equal the sha256 of the
+order-preserving canonical form of the dimension's current
+`judge_prompt_ref` file (the file's own key order with whitespace removed,
+not the sorted-key form used for `turns`, because the order of `values` is
+what the judge is sent and reordering them must change the digest), so a
+well-shaped but stale or fabricated digest is refused rather than accepted
+as provenance from a prompt that no longer exists in that form (editing or
+reordering a prompt therefore invalidates every earlier judge annotation on
+that dimension: they are re-judged, never carried); a judge annotation's
+`rendered_sha256` must equal the digest of the canonical rendering of that
+prompt over the annotated turn's text, recomputed at import and never
+trusted, so a stale, fabricated or differently rendered digest is refused
+and the artifact establishes which instructions produced the
+classification; an annotation's `method`
 must be one its dimension enables in `detection.methods`, so a
 classification from an undeclared classifier never reaches the
 counterfactual step; an annotation's `value` is a declared value of its dimension or the

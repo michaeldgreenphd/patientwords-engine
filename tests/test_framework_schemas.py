@@ -103,11 +103,29 @@ def render_judge_prompt(prompt: dict, turn_text: str) -> str:
     return _PLACEHOLDER.sub(lambda m: fills[m.group(1)], prompt["instructions"])
 
 
+def prompt_canonical(prompt: dict) -> str:
+    """The prompt file's order-preserving canonical form: its own key order
+    with whitespace removed. Not `canonical_json`, which sorts keys: the order
+    of `values` is what the judge is sent, so reordering them must change the
+    digest."""
+    return json.dumps(prompt, sort_keys=False, ensure_ascii=False, separators=(",", ":"))
+
+
+def load_prompt(ref: str) -> dict:
+    return json.loads((ROOT / ref).read_text(encoding="utf-8"))
+
+
 def prompt_digest(ref: str) -> str:
     """The provenance digest a judge annotation must carry: sha256 of the
-    canonical JSON of the dimension's judge_prompt_ref file, first 12 hex."""
-    prompt = json.loads((ROOT / ref).read_text(encoding="utf-8"))
-    return hashlib.sha256(canonical_json(prompt).encode("utf-8")).hexdigest()[:12]
+    order-preserving canonical form of the dimension's judge_prompt_ref file,
+    first 12 hex."""
+    return hashlib.sha256(prompt_canonical(load_prompt(ref)).encode("utf-8")).hexdigest()[:12]
+
+
+def rendered_digest(ref: str, turn_text: str) -> str:
+    """sha256 of the canonical rendering of the referenced prompt over one turn:
+    what a judge annotation's rendered_sha256 must equal, recomputed at import."""
+    return hashlib.sha256(render_judge_prompt(load_prompt(ref), turn_text).encode("utf-8")).hexdigest()
 
 
 def semantic_problems(record: dict, dimensions: dict) -> list[str]:
@@ -120,6 +138,7 @@ def semantic_problems(record: dict, dimensions: dict) -> list[str]:
     if len(ids) != len(set(ids)):
         problems.append("duplicate turn_id")
     roles = {t["turn_id"]: t["role"] for t in record["turns"]}
+    texts = {t["turn_id"]: t["text"] for t in record["turns"]}
     by_id = {d["id"]: d for d in dimensions["dimensions"]}
     order = {t["turn_id"]: i for i, t in enumerate(record["turns"])}
     for t in record["turns"]:
@@ -149,10 +168,20 @@ def semantic_problems(record: dict, dimensions: dict) -> list[str]:
                 problems.append(f"method {ann['method']!r} is not enabled for dimension {ann['dimension_id']!r} "
                                 f"(detection.methods: {', '.join(enabled)})")
             elif ann["method"] == "judge":
-                expected = prompt_digest(dim["detection"]["judge_prompt_ref"])
+                ref = dim["detection"]["judge_prompt_ref"]
+                expected = prompt_digest(ref)
                 if ann["annotator"].rsplit(":", 1)[1] != expected:
                     problems.append(f"annotator {ann['annotator']!r} digest does not match the dimension's "
                                     f"judge prompt (current {expected}): stale or fabricated judge provenance")
+                elif ann["turn_id"] in texts:
+                    # the rendered digest is recomputed from the prompt and the annotated turn, never trusted
+                    want = rendered_digest(ref, texts[ann["turn_id"]])
+                    if "rendered_sha256" not in ann:
+                        problems.append(f"judge annotation on turn {ann['turn_id']} lacks rendered_sha256")
+                    elif ann["rendered_sha256"] != want:
+                        problems.append(f"rendered_sha256 on turn {ann['turn_id']} does not match the canonical "
+                                        f"rendering of {ref} over that turn's text: the judge did not receive "
+                                        f"the instructions this annotation claims")
         if roles.get(ann["turn_id"]) != "user":
             problems.append(f"annotation turn {ann['turn_id']} is not a single user turn")
     digest = hashlib.sha256(canonical_json(record["turns"]).encode("utf-8")).hexdigest()
@@ -355,17 +384,25 @@ def test_judge_digest_must_match_the_referenced_prompt(dimensions):
     base = _examples()[0]
     digest = prompt_digest("docs/framework/judge_prompts/register.draft.json")
     assert re.fullmatch(r"[0-9a-f]{12}", digest)
+    ref = "docs/framework/judge_prompts/register.draft.json"
     ok = json.loads(json.dumps(base))
-    ok["annotations"]["framing"][0].update(method="judge", annotator=f"judge:model-2026-09:{digest}")
+    ok["annotations"]["framing"][0].update(method="judge", annotator=f"judge:model-2026-09:{digest}",
+                                           rendered_sha256=rendered_digest(ref, base["turns"][0]["text"]))
     assert semantic_problems(ok, dimensions) == []
     stale = json.loads(json.dumps(base))
     stale["annotations"]["framing"][0].update(method="judge", annotator="judge:model-2026-09:0123456789ab")
     problems = semantic_problems(stale, dimensions)
     assert any("digest does not match" in p and digest in p for p in problems), problems
     # a prompt edit changes the digest, so every earlier judge annotation goes stale by construction
-    edited = json.loads((ROOT / "docs/framework/judge_prompts/register.draft.json").read_text(encoding="utf-8"))
+    edited = load_prompt(ref)
     edited["values"]["mixed"] += " (edited)"
-    assert hashlib.sha256(canonical_json(edited).encode("utf-8")).hexdigest()[:12] != digest
+    assert hashlib.sha256(prompt_canonical(edited).encode("utf-8")).hexdigest()[:12] != digest
+    # so does reordering the values, which changes what the judge is sent (canonical_json would hide it)
+    reordered = load_prompt(ref)
+    reordered["values"] = dict(reversed(list(reordered["values"].items())))
+    assert render_judge_prompt(reordered, "t") != render_judge_prompt(load_prompt(ref), "t")
+    assert hashlib.sha256(prompt_canonical(reordered).encode("utf-8")).hexdigest()[:12] != digest
+    assert canonical_json(reordered) == canonical_json(load_prompt(ref))      # the flaw the form avoids
 
 
 def test_annotation_method_must_be_enabled_for_its_dimension(dimensions):
@@ -407,8 +444,13 @@ def test_judge_prompt_rendering_is_canonical_and_recorded(schema, dimensions):
     judged = json.loads(json.dumps(base))
     judged["annotations"]["framing"][0].update(method="judge", annotator=f"judge:m:{prompt_digest(ref)}")
     assert any("rendered_sha256" in p and "required when" in p for p in validate(judged, schema))
+    assert any("lacks rendered_sha256" in p for p in semantic_problems(judged, dimensions))
+    # a digest of some other rendering (here: the synthetic turn above, not the annotated one) is refused
     judged["annotations"]["framing"][0]["rendered_sha256"] = hashlib.sha256(rendered.encode("utf-8")).hexdigest()
     assert validate(judged, schema) == []
+    assert any("rendered_sha256 on turn 1 does not match" in p for p in semantic_problems(judged, dimensions))
+    # the digest of the canonical rendering over the annotated turn's own text is accepted
+    judged["annotations"]["framing"][0]["rendered_sha256"] = rendered_digest(ref, base["turns"][0]["text"])
     assert semantic_problems(judged, dimensions) == []
     assert validate(base, schema) == []                                      # human: no digest required
 
