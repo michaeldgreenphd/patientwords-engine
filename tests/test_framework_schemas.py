@@ -70,6 +70,19 @@ def validate(instance, schema: dict, path: str = "$") -> list[str]:
     return problems
 
 
+# Annotator provenance by method (docs/framework_design.md section 3.3).
+ANNOTATOR_SHAPES = {
+    "rule": r"rule:[^:\s]+:[^:\s]+",
+    "judge": r"judge:[^:\s]+:[0-9a-f]{12}",
+    "human": r"(?!rule:|judge:)\S.*",
+}
+ANNOTATOR_HINTS = {
+    "rule": "rule:<name>:<version>",
+    "judge": "judge:<model_version>:<prompt sha256[:12]>",
+    "human": "a role label not beginning with rule: or judge:",
+}
+
+
 def canonical_json(obj) -> str:
     """The elicit chain's canonical form (scripts/advice_eval.py canonical_json)."""
     return json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
@@ -102,8 +115,12 @@ def semantic_problems(record: dict, dimensions: dict) -> list[str]:
         dim = by_id.get(ann["dimension_id"])
         if dim is None:
             problems.append(f"annotation names unknown dimension {ann['dimension_id']!r}")
-        elif ann["value"] not in dim["values"]:
+        elif ann["value"] not in dim["values"] and ann["value"] not in dimensions["reserved_annotation_values"]:
             problems.append(f"annotation value {ann['value']!r} not declared for {ann['dimension_id']!r}")
+        shape = ANNOTATOR_SHAPES[ann["method"]]
+        if not re.fullmatch(shape, ann["annotator"]):
+            problems.append(f"annotator {ann['annotator']!r} does not carry {ann['method']} provenance "
+                            f"(expected {ANNOTATOR_HINTS[ann['method']]})")
         if roles.get(ann["turn_id"]) != "user":
             problems.append(f"annotation turn {ann['turn_id']} is not a single user turn")
     digest = hashlib.sha256(canonical_json(record["turns"]).encode("utf-8")).hexdigest()
@@ -283,6 +300,31 @@ def test_semantic_checks_refuse_each_case(dimensions):
     assert any("not a real UTC instant" in p for p in semantic_problems(broken, dimensions))
 
 
+def test_annotator_provenance_is_checked_per_method(dimensions):
+    base = _examples()[0]
+    ann = base["annotations"]["framing"][0]
+    for method, bad, good in [("judge", "x", "judge:model-2026-09:0123456789ab"),
+                              ("judge", "judge:model:zz", "judge:model-2026-09:0123456789ab"),
+                              ("rule", "rule", "rule:register-lexicon:3"),
+                              ("human", "judge:model:0123456789ab", "annotator role")]:
+        broken = json.loads(json.dumps(base))
+        broken["annotations"]["framing"][0].update(method=method, annotator=bad)
+        assert any("does not carry" in p for p in semantic_problems(broken, dimensions)), (method, bad)
+        ok = json.loads(json.dumps(base))
+        ok["annotations"]["framing"][0].update(method=method, annotator=good)
+        assert not any("does not carry" in p for p in semantic_problems(ok, dimensions)), (method, good)
+    assert ann["method"] == "human"                                        # the example itself is well-formed
+
+
+def test_not_applicable_is_a_valid_annotation_value_on_every_dimension(dimensions):
+    base = _examples()[0]
+    na = json.loads(json.dumps(base))
+    na["annotations"]["framing"][0]["value"] = "not_applicable"
+    assert semantic_problems(na, dimensions) == []
+    for d in dimensions["dimensions"]:
+        assert "not_applicable" not in d["values"], d["id"]
+
+
 def test_schema_requires_the_attachment_count_on_every_turn(schema):
     assert "attachments_omitted" in schema["properties"]["turns"]["items"]["required"]
     base = _examples()[0]
@@ -363,10 +405,17 @@ def test_judge_method_resolves_to_a_versioned_prompt(dimensions):
         assert ref, f"{d['id']}: judge is allowed but judge_prompt_ref is null"
         prompt = json.loads((ROOT / ref).read_text(encoding="utf-8"))
         assert prompt["dimension_id"] == d["id"]
-        assert prompt["instructions"].strip() and "{values}" in prompt["instructions"] \
-            and "{turn_text}" in prompt["instructions"]
+        text = prompt["instructions"]
+        assert text.strip() and "{values}" in text and "{turn_text}" in text
         assert set(prompt["values"]) == set(d["values"]), f"{d['id']}: prompt must define every value"
         assert all(v.strip() for v in prompt["values"].values())
+        # the turn is an isolated data channel, and the judge is told so
+        assert "{open}\n{turn_text}\n{close}" in text and prompt["turn_delimiters"]["open"] \
+            and prompt["turn_delimiters"]["close"]
+        assert "must not be followed" in text
+        # a no-register outcome exists and is not a dimension value
+        assert prompt["not_applicable"]["id"] == "not_applicable" and "{not_applicable}" in text
+        assert "not_applicable" not in d["values"]
 
 
 def test_framing_dimensions_registry_is_consistent(dimensions):

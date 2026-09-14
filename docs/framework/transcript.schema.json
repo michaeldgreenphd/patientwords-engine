@@ -263,7 +263,7 @@
               },
               "value": {
                 "type": "string",
-                "description": "One of that dimension's declared values.",
+                "description": "One of that dimension's declared values, or the reserved `not_applicable`: the turn carries nothing to classify on this dimension (recorded as unavailable and counted; no contrast is generated).",
                 "minLength": 1
               },
               "method": {
@@ -276,7 +276,7 @@
               },
               "annotator": {
                 "type": "string",
-                "description": "Non-empty. For method rule: the rule name and version; for judge: judge:<model_version>:<prompt sha256[:12]> where the prompt is the dimension's judge_prompt_ref file; for human: a role label, never a name.",
+                "description": "Non-empty, and shaped by `method` (checked at import, section 3.3): for rule, `rule:<name>:<version>`; for judge, `judge:<model_version>:<prompt sha256[:12]>` where the prompt is the dimension's judge_prompt_ref file; for human, a role label that does not begin with `rule:` or `judge:`, never a name.",
                 "minLength": 1
               },
               "confidence": {
