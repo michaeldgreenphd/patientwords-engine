@@ -24,7 +24,7 @@
     "conversation_id": {
       "type": "string",
       "minLength": 1,
-      "description": "Opaque, stable, and not derived from any identifier of a person (a random id or a hash of the de-identified text)."
+      "description": "Opaque, stable, and not derived from any identifier of a person (a random id or a hash of the de-identified text). Unique across the input file and the existing transcript store: the importer treats a repeat with the same text_sha256 as an idempotent duplicate (skipped, reported) and a repeat with a different digest as a conflict (refused)."
     },
     "source": {
       "type": "object",
@@ -215,7 +215,15 @@
           "attachments_omitted": {
             "type": "integer",
             "minimum": 0,
-            "description": "Count of non-text items dropped at import (images, files). Required on every turn, an explicit 0 when nothing was omitted, so a dropped attachment is always reported and never silently lost."
+            "description": "Count of non-text items dropped at import (images, files). Required on every turn, an explicit 0 when nothing was omitted, so a dropped attachment is always reported and never silently lost. A user turn with a positive count is ineligible for the counterfactual step (its situation cannot be reproduced from text), and an assistant turn with a positive count is judged as an incomplete reply, both reported by name (section 3.3)."
+          },
+          "reply_to": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "description": "For an assistant turn: the turn_id of the user turn it answers. Optional; when absent the importer pairs the assistant turn with the immediately preceding turn only if that turn is a user turn (docs/framework_design.md section 3.3), and an assistant turn that cannot be paired unambiguously is ineligible for the counterfactual step (unpaired_reply)."
           }
         }
       }

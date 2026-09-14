@@ -58,13 +58,20 @@ cannot yield it. The import therefore does three things per assistant turn:
    which, and the judge model version, with every tier.
 2. **Classify the user turn on each framing dimension** (§4): by rule, by
    judge, or by a human, recorded with method and annotator.
-3. **Produce the counterfactual turn**: rewrite the user turn to the other
+3. **Produce the counterfactual pair**: rewrite the user turn to the other
    value of a dimension (for register, the existing patient-to-clinical
-   translation step and its reverse), re-elicit from the same model with the
-   same preceding context, and judge the reply. The difference between the
-   two judged replies is the framing effect for that turn, on that model,
-   in that conversation. "The same model" is a precondition, not an
-   aspiration: a record whose `source.model` is null (a manual or UI capture
+   translation step and its reverse), then re-elicit **both** the original
+   turn and the rewritten turn from the same model, in one run, under one
+   pinned environment (model version, request settings, system prompt,
+   sampling), with the same preceding context, and judge both replies. The
+   difference between those two judged replies is the framing effect. The
+   captured reply is never one arm of that pair: it was produced at another
+   time under settings the capture may not record, so comparing it with a
+   fresh counterfactual would confound framing with drift. This is how
+   `advice_eval.py`'s `elicit` already works (both arms in one run); the
+   captured reply stays the observational reading, and its judged tier
+   against the re-elicited original's is reported separately as a drift
+   check. "The same model" is a precondition, not an aspiration: a record whose `source.model` is null (a manual or UI capture
    that did not record it) is imported for the observational path only and
    its counterfactual is reported as `not_comparable: model_unidentified`,
    never run against a configured default, which would confound model drift
@@ -128,7 +135,11 @@ import-time checks below on it.
 
 The schema constrains shapes and types. The importer additionally refuses a
 record when any of these fail, and says which: `turn_id` values must be
-unique; every framing annotation must resolve to exactly one turn whose
+unique; `conversation_id` must be unique across the input file and the
+existing transcript store (a repeat with the same `text_sha256` is an
+idempotent duplicate, skipped and reported; a repeat with a different digest
+is a conflict, refused); an assistant turn's `reply_to`, when given, must
+name an earlier user turn; every framing annotation must resolve to exactly one turn whose
 role is `user` and must name a dimension and value declared in the
 registry; at most one annotation per turn and dimension (two classifications
 of one turn on one dimension would leave the counterfactual step with
@@ -137,19 +148,30 @@ instant, not only match the pattern; `text_sha256` must equal the digest of
 the turns as received. Every turn carries `attachments_omitted`, an explicit
 zero when nothing was dropped, so non-text content is always reported. A
 record that fails is reported, never partially imported, and an annotation
-that cannot be resolved is never dropped silently. The reference
-implementation of these checks is `semantic_problems` in
-`tests/test_framework_schemas.py`, with `counterfactual_ineligibility` for
-the model-identity precondition of §3.1; the importer (§7 step 4) adopts
-both.
+that cannot be resolved is never dropped silently. Which user turn an assistant turn answers is decided by rule, never by
+guess: an explicit `reply_to` wins; otherwise the immediately preceding
+turn, only if it is a user turn. An assistant turn that cannot be paired
+that way (consecutive assistant turns, a tool-mediated exchange, a reply
+with no preceding user turn) is judged observationally but is ineligible for
+the counterfactual step, reported as `unpaired_reply`. Two further
+per-turn ineligibilities come from `attachments_omitted`: a user turn with a
+positive count cannot be reproduced from text, so its pair is
+`attachments_omitted`; an assistant turn with a positive count is judged as
+`incomplete_reply`, since the judge does not see the whole answer. The
+reference implementations are `semantic_problems`, `file_problems`,
+`reply_pairs` and `counterfactual_ineligibility` in
+`tests/test_framework_schemas.py`; the importer (§7 step 4) adopts them.
 
 ### 3.4 Target tokens for the mechanistic probes
 
 The study's stimulus pairs carry a clinical target token, and every probe
 except the advice tier reads a probability or an activation at that token.
 An imported turn has none. The probe catalogue therefore declares each
-probe's `inputs`: `pair_text` (every pair has it) or `pair_text` plus
-`target_token`. A pair derived from a transcript lacks the target until a
+probe's `inputs`: `pair_text` (every pair has it), `response_text` (the two
+re-elicited replies; a pair whose re-elicitation was refused or failed on
+either arm lacks it, and the advice-tier probe is then reported as
+unavailable by name rather than judging a missing reply), or `pair_text`
+plus `target_token`. A pair derived from a transcript lacks the target until a
 target-selection rule assigns one and persists it in the pair record (the
 rule is an owner decision: a judge-chosen token, a rule over the rewritten
 turn, or a human choice, each recorded with method and annotator like a
@@ -194,8 +216,11 @@ writes a record; nothing else changes, and the dimension entries say which
 tools apply to which difference.
 
 **`requires` levels.** `text_io` (any model, API or product UI), `logits`
-(open weights or an API that returns logprobs), `activations` (open weights
-run locally), `hosted_graph` (a hosted attribution service serves graphs for
+(the probability of an explicit target token on both sides: open weights,
+or an API that scores a named target), `logprobs_topn` (an API returning
+only its top-N logprobs, which is not enough: the target may be absent, and
+a probe run there reports a named censored result for that side, never a
+probability), `activations` (open weights run locally), `hosted_graph` (a hosted attribution service serves graphs for
 the model), `hosted_graph_tagged` (that plus a transcoder source set, so
 features carry tags), and `hosted_lens` (a hosted lens endpoint serves
 readouts for the model; the J-lens probe calls Neuronpedia and uses no local
@@ -204,6 +229,14 @@ one). This is what makes the framework honest about
 portability: every dimension gets the `text_io` probes everywhere, and the
 mechanistic probes exactly where the model environment allows them. A report
 states which level each number came from.
+
+The three probes that read `batch_summary` files carry a `completeness`
+rule: a summary with `completed` false, or fewer results than
+`pairs_requested`, is rejected and a missing-index record is emitted per
+absent pair before any analysis. `run_batch` truncates `results` on a
+mid-batch failure with no per-pair error record (`AGENTS.md`), so a
+consumer that reads the surviving prefix as the cohort would be biased
+without knowing it.
 
 The test keeps the registry consistent: unique ids, every probe a dimension
 names exists, every probe's `requires` is a declared level, every contrast
@@ -219,8 +252,9 @@ must catch the accidental case, not only the well-formed one: a
 conversation pasted as plain text, a CSV export, or a single turn matches
 neither the record digest nor the schema's shape. The guard therefore keeps
 a private index of every imported turn's normalised text (case-folded,
-whitespace-collapsed, hashed in fixed-length shingles so the index reveals
-nothing) and scans every staged file's text for any shingle hit, refusing
+whitespace-collapsed; hashed in fixed-length shingles, and as a whole-turn
+hash for every turn, so a turn shorter than the shingle window is still
+matched by its whole text and the index reveals nothing) and scans every staged file's text for any shingle hit, refusing
 the commit and naming the file; whole-record digests and schema-shaped
 content are refused as well; and a path policy refuses any file under the
 transcript data directory or any `.jsonl` that validates as a transcript.

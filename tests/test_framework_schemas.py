@@ -86,6 +86,13 @@ def semantic_problems(record: dict, dimensions: dict) -> list[str]:
         problems.append("duplicate turn_id")
     roles = {t["turn_id"]: t["role"] for t in record["turns"]}
     by_id = {d["id"]: d for d in dimensions["dimensions"]}
+    order = {t["turn_id"]: i for i, t in enumerate(record["turns"])}
+    for t in record["turns"]:
+        if t.get("reply_to") is not None:
+            if t["role"] != "assistant":
+                problems.append(f"turn {t['turn_id']}: reply_to on a non-assistant turn")
+            elif roles.get(t["reply_to"]) != "user" or order.get(t["reply_to"], 10**9) >= order[t["turn_id"]]:
+                problems.append(f"turn {t['turn_id']}: reply_to {t['reply_to']} is not an earlier user turn")
     seen_keys = set()
     for ann in record.get("annotations", {}).get("framing", []):
         key = (ann["turn_id"], ann["dimension_id"])
@@ -116,12 +123,57 @@ def semantic_problems(record: dict, dimensions: dict) -> list[str]:
     return problems
 
 
-def counterfactual_ineligibility(record: dict) -> str | None:
-    """Why a record may not enter the counterfactual step (docs/framework_design.md
-    section 3.1), or None when it may. The observational path is unaffected."""
+def reply_pairs(record: dict) -> tuple[list[tuple[int, int]], list[int]]:
+    """(user turn, assistant turn) pairs and the assistant turns that cannot be
+    paired: an explicit reply_to wins; otherwise the immediately preceding turn,
+    only if it is a user turn (docs/framework_design.md section 3.3)."""
+    turns = record["turns"]
+    pairs, unpaired = [], []
+    for i, t in enumerate(turns):
+        if t["role"] != "assistant":
+            continue
+        if t.get("reply_to") is not None:
+            pairs.append((t["reply_to"], t["turn_id"]))
+        elif i > 0 and turns[i - 1]["role"] == "user":
+            pairs.append((turns[i - 1]["turn_id"], t["turn_id"]))
+        else:
+            unpaired.append(t["turn_id"])
+    return pairs, unpaired
+
+
+def counterfactual_ineligibility(record: dict, assistant_turn_id: int | None = None) -> str | None:
+    """Why a record, or one assistant turn of it, may not enter the counterfactual
+    step (docs/framework_design.md sections 3.1 and 3.3), or None when it may.
+    The observational path is unaffected."""
     if not record["source"].get("model"):
         return "model_unidentified: source.model is null, so re-eliciting from the same model is impossible"
+    if assistant_turn_id is None:
+        return None
+    pairs, unpaired = reply_pairs(record)
+    if assistant_turn_id in unpaired:
+        return f"unpaired_reply: assistant turn {assistant_turn_id} answers no identifiable user turn"
+    by_id = {t["turn_id"]: t for t in record["turns"]}
+    user_id = dict((a, u) for u, a in pairs)[assistant_turn_id]
+    if by_id[user_id]["attachments_omitted"] > 0:
+        return f"attachments_omitted: user turn {user_id} had non-text content the rewrite cannot reproduce"
+    if by_id[assistant_turn_id]["attachments_omitted"] > 0:
+        return f"incomplete_reply: assistant turn {assistant_turn_id} had non-text content the judge does not see"
     return None
+
+
+def file_problems(records: list[dict]) -> list[str]:
+    """Across one input file: a repeated conversation_id with the same digest is
+    an idempotent duplicate (reported), with a different digest a conflict
+    (refused). The importer runs the same check against its existing store."""
+    seen: dict[str, str] = {}
+    problems = []
+    for r in records:
+        cid, digest = r["conversation_id"], r["provenance"]["text_sha256"]
+        if cid in seen:
+            kind = "idempotent duplicate" if seen[cid] == digest else "conflict: same conversation_id, different text"
+            problems.append(f"{cid}: {kind}")
+        seen.setdefault(cid, digest)
+    return problems
 
 
 @pytest.fixture(scope="module")
@@ -229,6 +281,48 @@ def test_counterfactual_eligibility_needs_a_model_identity():
     anonymous = json.loads(json.dumps(base))
     anonymous["source"]["model"] = None
     assert (counterfactual_ineligibility(anonymous) or "").startswith("model_unidentified")
+
+
+def test_reply_pairing_and_the_per_turn_ineligibility_cases():
+    base = _examples()[0]
+    assert reply_pairs(base) == ([(1, 2)], [])
+    assert counterfactual_ineligibility(base, 2) is None
+    # adjacency rule without reply_to
+    adjacent = json.loads(json.dumps(base))
+    del adjacent["turns"][1]["reply_to"]
+    assert reply_pairs(adjacent) == ([(1, 2)], [])
+    # two consecutive assistant turns: the second answers no identifiable user turn
+    orphan = json.loads(json.dumps(base))
+    orphan["turns"].append({"turn_id": 3, "role": "assistant", "text": "<follow-up>", "attachments_omitted": 0})
+    assert reply_pairs(orphan) == ([(1, 2)], [3])
+    assert (counterfactual_ineligibility(orphan, 3) or "").startswith("unpaired_reply")
+    # attachments on either side
+    with_att = json.loads(json.dumps(base))
+    with_att["turns"][0]["attachments_omitted"] = 1
+    assert (counterfactual_ineligibility(with_att, 2) or "").startswith("attachments_omitted")
+    with_att = json.loads(json.dumps(base))
+    with_att["turns"][1]["attachments_omitted"] = 2
+    assert (counterfactual_ineligibility(with_att, 2) or "").startswith("incomplete_reply")
+
+
+def test_reply_to_must_name_an_earlier_user_turn(dimensions):
+    base = _examples()[0]
+    broken = json.loads(json.dumps(base))
+    broken["turns"][1]["reply_to"] = 2                                 # itself
+    assert any("not an earlier user turn" in p for p in semantic_problems(broken, dimensions))
+    broken = json.loads(json.dumps(base))
+    broken["turns"][0]["reply_to"] = 1                                 # on a user turn
+    assert any("non-assistant" in p for p in semantic_problems(broken, dimensions))
+
+
+def test_conversation_ids_are_unique_across_a_file():
+    base = _examples()[0]
+    assert file_problems([base]) == []
+    twice = [base, json.loads(json.dumps(base))]
+    assert file_problems(twice) == [f"{base['conversation_id']}: idempotent duplicate"]
+    changed = json.loads(json.dumps(base))
+    changed["provenance"]["text_sha256"] = "1" * 64
+    assert any("conflict" in p for p in file_problems([base, changed]))
 
 
 def test_framing_dimensions_registry_is_consistent(dimensions):

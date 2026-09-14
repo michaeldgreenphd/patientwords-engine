@@ -96,7 +96,8 @@
       "output": "tier id plus flag ids per assistant turn",
       "status": "in use",
       "inputs": [
-        "pair_text"
+        "pair_text",
+        "response_text"
       ]
     },
     {
@@ -109,7 +110,9 @@
       "inputs": [
         "pair_text",
         "target_token"
-      ]
+      ],
+      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture)",
+      "censoring": "on logprobs_topn the target may be absent from the returned set: emit a named censored result for that side, never a probability (scripts/paired_stats.py already distinguishes the censored case)"
     },
     {
       "id": "attribution_graph",
@@ -121,7 +124,8 @@
       "inputs": [
         "pair_text",
         "target_token"
-      ]
+      ],
+      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture)"
     },
     {
       "id": "clinical_feature_mass",
@@ -133,7 +137,8 @@
       "inputs": [
         "pair_text",
         "target_token"
-      ]
+      ],
+      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture)"
     },
     {
       "id": "activation_patching",
@@ -162,14 +167,16 @@
   ],
   "requires_levels": {
     "text_io": "Any model reachable as text in, text out: every API and every product UI. The behavioural layer.",
-    "logits": "Next-token probabilities: open weights run locally, or an API that returns logprobs.",
+    "logits": "Next-token probabilities for an explicit target token on both sides: open weights run locally, or an API that scores a named target.",
     "activations": "Forward-pass internals: open weights run locally.",
     "hosted_graph": "A hosted attribution-graph service that serves graphs for the model. Features are untagged unless hosted_graph_tagged also holds.",
     "hosted_graph_tagged": "hosted_graph plus a transcoder source set for the model, so features carry tags and clinical mass is meaningful.",
-    "hosted_lens": "A hosted lens endpoint that serves readouts for the model (discovered per model by probing; not a local capability)."
+    "hosted_lens": "A hosted lens endpoint that serves readouts for the model (discovered per model by probing; not a local capability).",
+    "logprobs_topn": "An API that returns only its top-N logprobs. Insufficient for logits: a probe listing logits may run here only with a named censored result whenever the target is absent from the returned set."
   },
   "inputs_levels": {
     "pair_text": "The two framings of the user turn plus the preceding context. Every pair has it.",
-    "target_token": "The clinical target token whose next-token probability the probe reads. Stimulus pairs carry it (target_clinical_token); a pair derived from an imported transcript has none until a target-selection rule (docs/framework_design.md section 3.4) assigns one and persists it in the pair record. Until then a probe that lists this input is reported as unavailable for that pair, never run with a null target (scripts/logits_eval.py build_result returns a null language_penalty in that case)."
+    "target_token": "The clinical target token whose next-token probability the probe reads. Stimulus pairs carry it (target_clinical_token); a pair derived from an imported transcript has none until a target-selection rule (docs/framework_design.md section 3.4) assigns one and persists it in the pair record. Until then a probe that lists this input is reported as unavailable for that pair, never run with a null target (scripts/logits_eval.py build_result returns a null language_penalty in that case).",
+    "response_text": "The assistant reply for each arm of the pair, from one re-elicitation run under one pinned environment (docs/framework_design.md section 3.1). A pair whose re-elicitation was refused or failed on either arm lacks it and reports the response probes as unavailable by name, never judges a missing reply."
   }
 }
