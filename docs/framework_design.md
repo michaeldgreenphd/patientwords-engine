@@ -31,7 +31,7 @@ Verified against the repository on 2026-09-14.
 | `scripts/advice_eval.py`: build-stimuli, elicit (append-only JSONL, per-record sha256 chain), judge (rubric tiers and flags in `data/advice_rubric.*.json`), analyze | The behavioural layer, unchanged in method, packaged so it runs outside this repository's CI |
 | `data/advice_providers.json` registry: nine providers, each an OpenAI-compatible or vendor endpoint with its consumer default, plus `manual_ui` for hand-captured product transcripts (`import-manual-responses`) | The model-environment adapter. Already model-agnostic for text in, text out |
 | `scripts/logits_eval.py` (CPU, bfloat16, `HF_IDS`) and the hosted Neuronpedia path for gemma-2-2b; interp-engine float32 as the reference | The mechanistic layer: probes that need weights or a hosted graph service |
-| Paired statistics (`paired_stats_rigor.py`, phrase-clustered bootstrap), judge agreement, retrace consistency | The analysis layer, reused as is |
+| Paired statistics (`paired_stats_rigor.py`, phrase-clustered bootstrap), judge agreement, retrace consistency | The analysis layer, with one required change for transcripts: the bootstrap cluster becomes the conversation, not the stimulus or phrase (§3.1) |
 | The drift sentinel (Tue/Fri, `drift_series.json`) | The monitoring pattern for a deployed model |
 | `scripts/seal_check.py` (holdout phrases never leave the sealed set) | The pattern for the transcript privacy guard (§5) |
 | `docs/advice_multiturn_design.md` (B6, designed, not implemented) | The multi-turn protocol the transcript import needs anyway |
@@ -63,7 +63,14 @@ cannot yield it. The import therefore does three things per assistant turn:
    translation step and its reverse), re-elicit from the same model with the
    same preceding context, and judge the reply. The difference between the
    two judged replies is the framing effect for that turn, on that model,
-   in that conversation.
+   in that conversation. "The same model" is a precondition, not an
+   aspiration: a record whose `source.model` is null (a manual or UI capture
+   that did not record it) is imported for the observational path only and
+   its counterfactual is reported as `not_comparable: model_unidentified`,
+   never run against a configured default, which would confound model drift
+   with framing. `source.model_version`, when the capture had it, is
+   recorded beside the re-elicitation's own version string so a mismatch is
+   visible in the pair record.
 
 Step 3 makes each turn a paired measurement in the form the study already
 analyses, with one change to the analysis: the unit of clustering. The
@@ -123,11 +130,33 @@ The schema constrains shapes and types. The importer additionally refuses a
 record when any of these fail, and says which: `turn_id` values must be
 unique; every framing annotation must resolve to exactly one turn whose
 role is `user` and must name a dimension and value declared in the
-registry; `text_sha256` must equal the digest of the turns as received. A
+registry; at most one annotation per turn and dimension (two classifications
+of one turn on one dimension would leave the counterfactual step with
+contradictory sources); every `*_utc` stamp must parse as a real UTC
+instant, not only match the pattern; `text_sha256` must equal the digest of
+the turns as received. Every turn carries `attachments_omitted`, an explicit
+zero when nothing was dropped, so non-text content is always reported. A
 record that fails is reported, never partially imported, and an annotation
 that cannot be resolved is never dropped silently. The reference
 implementation of these checks is `semantic_problems` in
-`tests/test_framework_schemas.py`, which the importer (§7 step 4) adopts.
+`tests/test_framework_schemas.py`, with `counterfactual_ineligibility` for
+the model-identity precondition of §3.1; the importer (§7 step 4) adopts
+both.
+
+### 3.4 Target tokens for the mechanistic probes
+
+The study's stimulus pairs carry a clinical target token, and every probe
+except the advice tier reads a probability or an activation at that token.
+An imported turn has none. The probe catalogue therefore declares each
+probe's `inputs`: `pair_text` (every pair has it) or `pair_text` plus
+`target_token`. A pair derived from a transcript lacks the target until a
+target-selection rule assigns one and persists it in the pair record (the
+rule is an owner decision: a judge-chosen token, a rule over the rewritten
+turn, or a human choice, each recorded with method and annotator like a
+framing annotation). Until then the probes that list `target_token` are
+reported as unavailable for that pair. They are never run with a null
+target: `scripts/logits_eval.py` returns a null `language_penalty` in that
+case, which would read as a measurement.
 
 ## 4. The framework of differences
 
@@ -154,8 +183,8 @@ expertise and belongs in the data file, never in code, the same rule the
 study applies to medical vocabulary.
 
 **Probes.** Each is one interpretability or behavioural measurement: id,
-what it needs (`requires`), where it is implemented, what it emits, and its
-status. The six in the file are the measurements the study already makes,
+what it needs from the environment (`requires`), what it needs from the pair
+(`inputs`, §3.4), where it is implemented, what it emits, and its status. The six in the file are the measurements the study already makes,
 with the attribution graph split in two: the served graph (available for
 any model the hosted service traces, features untagged) and clinical
 feature mass (meaningful only where a transcoder source set tags the
@@ -185,9 +214,17 @@ contrast or is listed as having none.
 
 Both repositories are public. Imported conversations are never committed to
 either; the framework's data directory for transcripts is outside the
-repository, and a guard in the spirit of `seal_check.py` refuses any commit
-whose content matches a transcript record (by `text_sha256` and by the
-schema's shape). De-identification is a precondition of import, enforced by
+repository. A guard in the spirit of `seal_check.py` enforces that, and it
+must catch the accidental case, not only the well-formed one: a
+conversation pasted as plain text, a CSV export, or a single turn matches
+neither the record digest nor the schema's shape. The guard therefore keeps
+a private index of every imported turn's normalised text (case-folded,
+whitespace-collapsed, hashed in fixed-length shingles so the index reveals
+nothing) and scans every staged file's text for any shingle hit, refusing
+the commit and naming the file; whole-record digests and schema-shaped
+content are refused as well; and a path policy refuses any file under the
+transcript data directory or any `.jsonl` that validates as a transcript.
+The index lives with the transcripts, outside both repositories. De-identification is a precondition of import, enforced by
 the schema (§3.2), and the counterfactual step sends de-identified text only.
 Which model environments may receive that text is the deploying
 organisation's decision: the adapter layer makes local open-weight models a
@@ -235,10 +272,12 @@ file.
 3. **Harness wrapping**: tasks and a scorer on the chosen harness; verify
    its provider list against the registry. Acceptance: one family runs end
    to end on the harness with matching numbers.
-4. **Counterfactual import**: the import-time checks of §3.3, per-turn
-   classification, rewrite per declared contrast, re-elicitation, paired
-   output keyed on conversation and turn, conversation-level clustering in
-   the analysis; the privacy guard. Acceptance: the synthetic example
+4. **Counterfactual import**: the import-time checks of §3.3 and the
+   model-identity precondition of §3.1, per-turn classification, rewrite per
+   declared contrast, re-elicitation, paired output keyed on conversation
+   and turn with the target-token rule of §3.4 applied or the target-needing
+   probes marked unavailable, conversation-level clustering in the analysis;
+   the privacy guard with its shingle index and path policy. Acceptance: the synthetic example
    produces a paired record with full provenance, a record failing any §3.3
    check is refused with the reason, and the guard refuses a commit
    containing a transcript.

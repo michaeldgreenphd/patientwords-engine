@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -85,7 +86,12 @@ def semantic_problems(record: dict, dimensions: dict) -> list[str]:
         problems.append("duplicate turn_id")
     roles = {t["turn_id"]: t["role"] for t in record["turns"]}
     by_id = {d["id"]: d for d in dimensions["dimensions"]}
+    seen_keys = set()
     for ann in record.get("annotations", {}).get("framing", []):
+        key = (ann["turn_id"], ann["dimension_id"])
+        if key in seen_keys:
+            problems.append(f"duplicate annotation for turn {key[0]} on dimension {key[1]!r}")
+        seen_keys.add(key)
         dim = by_id.get(ann["dimension_id"])
         if dim is None:
             problems.append(f"annotation names unknown dimension {ann['dimension_id']!r}")
@@ -96,7 +102,26 @@ def semantic_problems(record: dict, dimensions: dict) -> list[str]:
     digest = hashlib.sha256(canonical_json(record["turns"]).encode("utf-8")).hexdigest()
     if record["provenance"]["text_sha256"] != digest:
         problems.append("text_sha256 does not match the canonical turns")
+    stamps = [("source.captured_utc", record["source"].get("captured_utc")),
+              ("deidentification.reviewed_utc", record["deidentification"].get("reviewed_utc")),
+              ("provenance.import_utc", record["provenance"].get("import_utc"))]
+    stamps += [(f"turns[{i}].timestamp_utc", t.get("timestamp_utc")) for i, t in enumerate(record["turns"])]
+    for name, stamp in stamps:
+        if stamp is None:
+            continue
+        try:
+            datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            problems.append(f"{name}: {stamp!r} is not a real UTC instant")
     return problems
+
+
+def counterfactual_ineligibility(record: dict) -> str | None:
+    """Why a record may not enter the counterfactual step (docs/framework_design.md
+    section 3.1), or None when it may. The observational path is unaffected."""
+    if not record["source"].get("model"):
+        return "model_unidentified: source.model is null, so re-eliciting from the same model is impossible"
+    return None
 
 
 @pytest.fixture(scope="module")
@@ -182,6 +207,28 @@ def test_semantic_checks_refuse_each_case(dimensions):
     broken = json.loads(json.dumps(base))
     broken["turns"][0]["text"] = "edited after import"
     assert any("text_sha256" in p for p in semantic_problems(broken, dimensions))
+    broken = json.loads(json.dumps(base))
+    broken["annotations"]["framing"].append(dict(broken["annotations"]["framing"][0], value="clinical"))
+    assert any("duplicate annotation" in p for p in semantic_problems(broken, dimensions))
+    broken = json.loads(json.dumps(base))
+    broken["source"]["captured_utc"] = "2026-99-99T99:99:99Z"           # shape-valid, not an instant
+    assert any("not a real UTC instant" in p for p in semantic_problems(broken, dimensions))
+
+
+def test_schema_requires_the_attachment_count_on_every_turn(schema):
+    assert "attachments_omitted" in schema["properties"]["turns"]["items"]["required"]
+    base = _examples()[0]
+    broken = json.loads(json.dumps(base))
+    del broken["turns"][0]["attachments_omitted"]
+    assert any("missing 'attachments_omitted'" in p for p in validate(broken, schema))
+
+
+def test_counterfactual_eligibility_needs_a_model_identity():
+    base = _examples()[0]
+    assert counterfactual_ineligibility(base) is None
+    anonymous = json.loads(json.dumps(base))
+    anonymous["source"]["model"] = None
+    assert (counterfactual_ineligibility(anonymous) or "").startswith("model_unidentified")
 
 
 def test_framing_dimensions_registry_is_consistent(dimensions):
@@ -203,14 +250,19 @@ def test_framing_dimensions_registry_is_consistent(dimensions):
         for c in cf["contrasts"]:
             assert c["from"] in d["values"] and c["to"] in d["values"] and c["from"] != c["to"], (d["id"], c)
         assert set(cf.get("no_contrast", [])) <= set(d["values"]), d["id"]
-        sources = {c["from"] for c in cf["contrasts"]} | set(cf.get("no_contrast", []))
-        assert sources == set(d["values"]), f"{d['id']}: every value needs a contrast or a no_contrast entry"
+        contrast_sources = {c["from"] for c in cf["contrasts"]}
+        no_contrast = set(cf.get("no_contrast", []))
+        assert not (contrast_sources & no_contrast), f"{d['id']}: a value cannot both have a contrast and none"
+        assert contrast_sources | no_contrast == set(d["values"]), \
+            f"{d['id']}: every value needs a contrast or a no_contrast entry"
         unknown = set(d["probes"]) - set(probe_ids)
         assert not unknown, f"dimension {d['id']!r} names unknown probes {sorted(unknown)}"
+    inputs = set(dimensions["inputs_levels"])
     for p in probes:
-        for key in ("id", "name", "requires", "implementation", "output", "status"):
+        for key in ("id", "name", "requires", "implementation", "output", "status", "inputs"):
             assert key in p, f"probe {p.get('id')!r} lacks {key!r}"
         assert p["requires"] in levels, f"probe {p['id']!r} requires unknown level {p['requires']!r}"
+        assert p["inputs"] and set(p["inputs"]) <= inputs, f"probe {p['id']!r} lists unknown inputs {p['inputs']}"
 
 
 def test_example_annotations_use_declared_dimensions(dimensions):

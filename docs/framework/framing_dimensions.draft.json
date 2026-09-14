@@ -1,7 +1,7 @@
 {
   "schema_version": "0.1",
   "status": "draft pending owner review",
-  "_readme": "The framework of differences. Each dimension names one way the same clinical situation can be framed differently by a patient and by a clinician, how a turn is classified on it, which source-to-target contrasts its counterfactual step generates (each contrast is measured and reported under its own key; a source value with no contrast is observational only), and which probes can measure its effect. Dimensions and their values are owner-authored data: this file, never Python. Adding a dimension or a probe is a data change plus, for a probe, one adapter; tests/test_framework_schemas.py keeps the cross-references consistent.",
+  "_readme": "The framework of differences. Each dimension names one way the same clinical situation can be framed differently by a patient and by a clinician, how a turn is classified on it, which source-to-target contrasts its counterfactual step generates (each contrast is measured and reported under its own key; a source value with no contrast is observational only), and which probes can measure its effect. Dimensions and their values are owner-authored data: this file, never Python. Adding a dimension or a probe is a data change plus, for a probe, one adapter; tests/test_framework_schemas.py keeps the cross-references consistent. A probe's `inputs` say what a pair must carry before the probe may run; a pair lacking one is reported as unavailable for that probe, not measured with a default.",
   "dimensions": [
     {
       "id": "register",
@@ -94,7 +94,10 @@
       "requires": "text_io",
       "implementation": "scripts/advice_eval.py judge (rubric data/advice_rubric.*.json); a judge-model call per turn, or human coding via scripts/advice_human_coding.py",
       "output": "tier id plus flag ids per assistant turn",
-      "status": "in use"
+      "status": "in use",
+      "inputs": [
+        "pair_text"
+      ]
     },
     {
       "id": "language_penalty",
@@ -102,7 +105,11 @@
       "requires": "logits",
       "implementation": "scripts/logits_eval.py; hosted path via medlang_circuits",
       "output": "batch_summary results[].language_penalty",
-      "status": "in use"
+      "status": "in use",
+      "inputs": [
+        "pair_text",
+        "target_token"
+      ]
     },
     {
       "id": "attribution_graph",
@@ -110,7 +117,11 @@
       "requires": "hosted_graph",
       "implementation": "medlang_circuits/batch_eval.py via Neuronpedia",
       "output": "batch_summary results[] graph fields; clinical_mass is NOT meaningful at this level (features untagged, see AGENTS.md Feature tagging)",
-      "status": "in use (gemma-2-2b, qwen3-4b since the 2026-09-02 re-probe)"
+      "status": "in use (gemma-2-2b, qwen3-4b since the 2026-09-02 re-probe)",
+      "inputs": [
+        "pair_text",
+        "target_token"
+      ]
     },
     {
       "id": "clinical_feature_mass",
@@ -118,7 +129,11 @@
       "requires": "hosted_graph_tagged",
       "implementation": "medlang_circuits/batch_eval.py with neuronpedia_features.MODEL_SOURCE_SETS",
       "output": "batch_summary results[] clinical_mass",
-      "status": "in use (gemma-2-2b only)"
+      "status": "in use (gemma-2-2b only)",
+      "inputs": [
+        "pair_text",
+        "target_token"
+      ]
     },
     {
       "id": "activation_patching",
@@ -126,7 +141,11 @@
       "requires": "activations",
       "implementation": "scripts/activation_patch.py",
       "output": "recovery heatmap over (layer, position)",
-      "status": "designed (docs/activation_patching_design.md)"
+      "status": "designed (docs/activation_patching_design.md)",
+      "inputs": [
+        "pair_text",
+        "target_token"
+      ]
     },
     {
       "id": "jlens_depth",
@@ -134,7 +153,11 @@
       "requires": "hosted_lens",
       "implementation": "scripts/jlens_readout.py (POST Neuronpedia /api/lens/prompt; NEURONPEDIA_API_KEY; no local weights)",
       "output": "per-layer readouts",
-      "status": "in use (models the endpoint serves; probe per model, docs/cross-model.md)"
+      "status": "in use (models the endpoint serves; probe per model, docs/cross-model.md)",
+      "inputs": [
+        "pair_text",
+        "target_token"
+      ]
     }
   ],
   "requires_levels": {
@@ -144,5 +167,9 @@
     "hosted_graph": "A hosted attribution-graph service that serves graphs for the model. Features are untagged unless hosted_graph_tagged also holds.",
     "hosted_graph_tagged": "hosted_graph plus a transcoder source set for the model, so features carry tags and clinical mass is meaningful.",
     "hosted_lens": "A hosted lens endpoint that serves readouts for the model (discovered per model by probing; not a local capability)."
+  },
+  "inputs_levels": {
+    "pair_text": "The two framings of the user turn plus the preceding context. Every pair has it.",
+    "target_token": "The clinical target token whose next-token probability the probe reads. Stimulus pairs carry it (target_clinical_token); a pair derived from an imported transcript has none until a target-selection rule (docs/framework_design.md section 3.4) assigns one and persists it in the pair record. Until then a probe that lists this input is reported as unavailable for that pair, never run with a null target (scripts/logits_eval.py build_result returns a null language_penalty in that case)."
   }
 }

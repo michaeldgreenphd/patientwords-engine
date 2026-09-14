@@ -51,7 +51,7 @@
             "string",
             "null"
           ],
-          "description": "Model as configured, if known."
+          "description": "Model as configured, if known. Required for counterfactual eligibility (docs/framework_design.md section 3.1): a record with a null model is imported for the observational path only."
         },
         "model_version": {
           "type": [
@@ -70,7 +70,8 @@
         },
         "captured_utc": {
           "type": "string",
-          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+          "description": "ISO 8601 UTC instant. The pattern checks shape only; the importer also parses it and refuses an impossible date or time (section 3.3)."
         }
       }
     },
@@ -183,7 +184,8 @@
         "required": [
           "turn_id",
           "role",
-          "text"
+          "text",
+          "attachments_omitted"
         ],
         "additionalProperties": false,
         "properties": {
@@ -213,7 +215,7 @@
           "attachments_omitted": {
             "type": "integer",
             "minimum": 0,
-            "description": "Count of non-text items dropped at import (images, files). Recorded, never silently dropped."
+            "description": "Count of non-text items dropped at import (images, files). Required on every turn, an explicit 0 when nothing was omitted, so a dropped attachment is always reported and never silently lost."
           }
         }
       }
