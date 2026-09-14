@@ -68,7 +68,7 @@ with the sentinel params used in the journal's prior sentinel fires ($0,
 in this cycle: you are the dashboard's writer, and without it the queue block
 the tool just computed is put back the way it was.
 
-3b. WAIT on it: 5-minute `git pull` polls, 35-minute bound. When outputs
+3b. WAIT on it: 5-minute `git pull` polls, 45-minute bound. When outputs
 land, verify (3 pairs, penalties present), resolve the entry, and run the
 drift verdict against the pinned baseline (`scripts/drift_sentinel.py`,
 publishes `drift_series.json` to the site with the export gate below).
