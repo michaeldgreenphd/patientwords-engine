@@ -17,7 +17,7 @@
           "judge",
           "human"
         ],
-        "judge_prompt_ref": null
+        "judge_prompt_ref": "docs/framework/judge_prompts/register.draft.json"
       },
       "counterfactual": {
         "method": "translation",
@@ -111,8 +111,9 @@
         "pair_text",
         "target_token"
       ],
-      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture)",
-      "censoring": "on logprobs_topn the target may be absent from the returned set: emit a named censored result for that side, never a probability (scripts/paired_stats.py already distinguishes the censored case)"
+      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture); a result whose screening.status is screened_out (the --screen-targets path: patient trace skipped, language_penalty null) is emitted as a named screened_out record and counted, never read as a measurement or dropped",
+      "censoring": "on logprobs_topn the target may be absent from the returned set: emit a named censored result for that side, never a probability (scripts/paired_stats.py already distinguishes the censored case)",
+      "identity": "exact target identity: the probability read is the persisted target's own, never a neighbour's. Where the adapter returns token ids, the scored id must equal the persisted id; where it returns token text only (the hosted path), the returned token unwrapped byte for byte (the hosted 'Output \"...\"' wrapper removed and nothing else: no whitespace stripping, no case folding, so a persisted leading space survives; medlang_circuits/targets.py bare_token strips and lowercases and is not that unwrap) must equal the persisted surface string exactly; a token that cannot be recovered byte for byte is target_identity_unverified. Any other match, including a prefix either way, is emitted as a named target_identity_unverified result for that side and counted, never a probability. The existing hosted path does not meet this: medlang_circuits/targets.py anchor_matches accepts a prefix match either way and target_probability returns the highest-probability match, which is the ' ant'/' anti' misread in AGENTS.md (Known measurement limitations); the framework adapter applies this rule on top of it until that path is changed, which re-publishes live numbers and is a separate decision"
     },
     {
       "id": "attribution_graph",
@@ -125,7 +126,8 @@
         "pair_text",
         "target_token"
       ],
-      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture)"
+      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture); a result whose screening.status is screened_out (the --screen-targets path: patient trace skipped, language_penalty null) is emitted as a named screened_out record and counted, never read as a measurement or dropped",
+      "identity": "exact target identity: the probability read is the persisted target's own, never a neighbour's. Where the adapter returns token ids, the scored id must equal the persisted id; where it returns token text only (the hosted path), the returned token unwrapped byte for byte (the hosted 'Output \"...\"' wrapper removed and nothing else: no whitespace stripping, no case folding, so a persisted leading space survives; medlang_circuits/targets.py bare_token strips and lowercases and is not that unwrap) must equal the persisted surface string exactly; a token that cannot be recovered byte for byte is target_identity_unverified. Any other match, including a prefix either way, is emitted as a named target_identity_unverified result for that side and counted, never a probability. The existing hosted path does not meet this: medlang_circuits/targets.py anchor_matches accepts a prefix match either way and target_probability returns the highest-probability match, which is the ' ant'/' anti' misread in AGENTS.md (Known measurement limitations); the framework adapter applies this rule on top of it until that path is changed, which re-publishes live numbers and is a separate decision"
     },
     {
       "id": "clinical_feature_mass",
@@ -138,7 +140,8 @@
         "pair_text",
         "target_token"
       ],
-      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture)"
+      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture); a result whose screening.status is screened_out (the --screen-targets path: patient trace skipped, language_penalty null) is emitted as a named screened_out record and counted, never read as a measurement or dropped",
+      "identity": "exact target identity: the probability read is the persisted target's own, never a neighbour's. Where the adapter returns token ids, the scored id must equal the persisted id; where it returns token text only (the hosted path), the returned token unwrapped byte for byte (the hosted 'Output \"...\"' wrapper removed and nothing else: no whitespace stripping, no case folding, so a persisted leading space survives; medlang_circuits/targets.py bare_token strips and lowercases and is not that unwrap) must equal the persisted surface string exactly; a token that cannot be recovered byte for byte is target_identity_unverified. Any other match, including a prefix either way, is emitted as a named target_identity_unverified result for that side and counted, never a probability. The existing hosted path does not meet this: medlang_circuits/targets.py anchor_matches accepts a prefix match either way and target_probability returns the highest-probability match, which is the ' ant'/' anti' misread in AGENTS.md (Known measurement limitations); the framework adapter applies this rule on top of it until that path is changed, which re-publishes live numbers and is a separate decision"
     },
     {
       "id": "activation_patching",
@@ -150,7 +153,8 @@
       "inputs": [
         "pair_text",
         "target_token"
-      ]
+      ],
+      "identity": "exact target identity: the probability read is the persisted target's own, never a neighbour's. Where the adapter returns token ids, the scored id must equal the persisted id; where it returns token text only (the hosted path), the returned token unwrapped byte for byte (the hosted 'Output \"...\"' wrapper removed and nothing else: no whitespace stripping, no case folding, so a persisted leading space survives; medlang_circuits/targets.py bare_token strips and lowercases and is not that unwrap) must equal the persisted surface string exactly; a token that cannot be recovered byte for byte is target_identity_unverified. Any other match, including a prefix either way, is emitted as a named target_identity_unverified result for that side and counted, never a probability. The existing hosted path does not meet this: medlang_circuits/targets.py anchor_matches accepts a prefix match either way and target_probability returns the highest-probability match, which is the ' ant'/' anti' misread in AGENTS.md (Known measurement limitations); the framework adapter applies this rule on top of it until that path is changed, which re-publishes live numbers and is a separate decision"
     },
     {
       "id": "jlens_depth",
@@ -162,7 +166,8 @@
       "inputs": [
         "pair_text",
         "target_token"
-      ]
+      ],
+      "identity": "exact target identity: the probability read is the persisted target's own, never a neighbour's. Where the adapter returns token ids, the scored id must equal the persisted id; where it returns token text only (the hosted path), the returned token unwrapped byte for byte (the hosted 'Output \"...\"' wrapper removed and nothing else: no whitespace stripping, no case folding, so a persisted leading space survives; medlang_circuits/targets.py bare_token strips and lowercases and is not that unwrap) must equal the persisted surface string exactly; a token that cannot be recovered byte for byte is target_identity_unverified. Any other match, including a prefix either way, is emitted as a named target_identity_unverified result for that side and counted, never a probability. The existing hosted path does not meet this: medlang_circuits/targets.py anchor_matches accepts a prefix match either way and target_probability returns the highest-probability match, which is the ' ant'/' anti' misread in AGENTS.md (Known measurement limitations); the framework adapter applies this rule on top of it until that path is changed, which re-publishes live numbers and is a separate decision"
     }
   ],
   "requires_levels": {
@@ -176,7 +181,15 @@
   },
   "inputs_levels": {
     "pair_text": "The two framings of the user turn plus the preceding context. Every pair has it.",
-    "target_token": "The clinical target token whose next-token probability the probe reads. Stimulus pairs carry it (target_clinical_token); a pair derived from an imported transcript has none until a target-selection rule (docs/framework_design.md section 3.4) assigns one and persists it in the pair record. Until then a probe that lists this input is reported as unavailable for that pair, never run with a null target (scripts/logits_eval.py build_result returns a null language_penalty in that case).",
+    "target_token": "The clinical target token whose next-token probability the probe reads. Stimulus pairs carry it (target_clinical_token); a pair derived from an imported transcript has none until a target-selection rule (docs/framework_design.md section 3.4) assigns one and persists it in the pair record. The persisted value is per model: the surface string plus the token id actually scored, validated to be a single token in that model's tokenizer; a target that tokenises to more than one id is reported as target_not_atomic for that model, never scored on its first id (scripts/logits_eval.py build_result scores target_ids[0] only). Until a target is assigned, a probe that lists this input is reported as unavailable for that pair.",
     "response_text": "The assistant reply for each arm of the pair, from one re-elicitation run under one pinned environment (docs/framework_design.md section 3.1). A pair whose re-elicitation was refused or failed on either arm lacks it and reports the response probes as unavailable by name, never judges a missing reply."
+  },
+  "counterfactual_methods": {
+    "translation": "The study's patient-to-clinical translation step (advice_eval's translate request) and its reverse; recorded with the translator model version and the input/output sha256.",
+    "manual": "A human rewrites the turn; recorded with a role label and reviewed_utc.",
+    "rule": "A deterministic rewrite rule named and versioned in the adapter; recorded with the rule id."
+  },
+  "reserved_annotation_values": {
+    "not_applicable": "Allowed as an annotation value on every dimension: the turn carries nothing to classify on it (an affirmation, a bare number, a person's name or a register-free identifier, an empty or attachment-only turn; a named diagnosis, medication, procedure or symptom carries register and is classified). Recorded as classification unavailable and counted, never guessed into a declared value; no contrast is generated for it. A dimension never lists it among its own values."
   }
 }
