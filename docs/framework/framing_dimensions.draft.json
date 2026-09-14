@@ -1,0 +1,42 @@
+{
+  "schema_version": "0.1",
+  "status": "draft pending owner review",
+  "_readme": "The framework of differences. Each dimension names one way the same clinical situation can be framed differently by a patient and by a clinician, how a turn is classified on it, how its counterfactual is produced, and which probes can measure its effect. Dimensions and their values are owner-authored data: this file, never Python. Adding a dimension or a probe is a data change plus, for a probe, one adapter; tests/test_framework_schemas.py keeps the cross-references consistent.",
+  "dimensions": [
+    {
+      "id": "register",
+      "name": "Lexical register",
+      "definition": "Whether the situation is stated in everyday (colloquial) wording or in clinical terminology. The study's founding contrast.",
+      "values": ["colloquial", "clinical", "mixed"],
+      "detection": {"methods": ["judge", "human"], "judge_prompt_ref": null},
+      "counterfactual": {"rewrite_to": ["clinical", "colloquial"], "method": "translation"},
+      "probes": ["advice_tier", "language_penalty", "attribution_graph", "activation_patching", "jlens_depth"],
+      "status": "in use",
+      "owner_notes": ""
+    },
+    {
+      "id": "example_dimension",
+      "name": "<a second dimension, owner-authored>",
+      "definition": "<what differs between the two framings, stated so that a human annotator and a judge would agree on the boundary>",
+      "values": ["<value_a>", "<value_b>"],
+      "detection": {"methods": ["human"], "judge_prompt_ref": null},
+      "counterfactual": {"rewrite_to": ["<value_b>"], "method": "manual"},
+      "probes": ["advice_tier"],
+      "status": "placeholder",
+      "owner_notes": "Replace or delete. Kept so the structure of a full entry is visible."
+    }
+  ],
+  "probes": [
+    {"id": "advice_tier", "name": "Advice urgency tier and flags", "requires": "text_io", "implementation": "scripts/advice_eval.py judge (rubric data/advice_rubric.*.json)", "output": "tier id plus flag ids per assistant turn", "status": "in use"},
+    {"id": "language_penalty", "name": "Target-token probability difference", "requires": "logits", "implementation": "scripts/logits_eval.py; hosted path via medlang_circuits", "output": "batch_summary results[].language_penalty", "status": "in use"},
+    {"id": "attribution_graph", "name": "Attribution graph and clinical feature mass", "requires": "hosted_graph", "implementation": "medlang_circuits/batch_eval.py via Neuronpedia", "output": "batch_summary results[] graph fields", "status": "in use (gemma-2-2b only)"},
+    {"id": "activation_patching", "name": "Residual-stream patching recovery grid", "requires": "activations", "implementation": "scripts/activation_patch.py", "output": "recovery heatmap over (layer, position)", "status": "designed (docs/activation_patching_design.md)"},
+    {"id": "jlens_depth", "name": "Jacobian-lens depth readout", "requires": "activations", "implementation": "jlens lane", "output": "per-layer readouts", "status": "in use"}
+  ],
+  "requires_levels": {
+    "text_io": "Any model reachable as text in, text out: every API and every product UI. The behavioural layer.",
+    "logits": "Next-token probabilities: open weights run locally, or an API that returns logprobs.",
+    "activations": "Forward-pass internals: open weights run locally.",
+    "hosted_graph": "A hosted attribution-graph service with a transcoder set for the model."
+  }
+}
