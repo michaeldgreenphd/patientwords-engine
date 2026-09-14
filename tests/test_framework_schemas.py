@@ -22,11 +22,16 @@ _TYPES = {"object": dict, "array": list, "string": str, "integer": int, "number"
           "boolean": bool}
 
 
-def validate(instance, schema: dict, path: str = "$") -> list[str]:
+def validate(instance, schema: dict | bool, path: str = "$") -> list[str]:
     """Problems found in `instance` against `schema`, for the keywords the
     transcript schema uses: type, enum, const, required, properties,
     additionalProperties, items, minItems, minLength, minimum, maximum, pattern,
-    and if/then."""
+    if/then/else, and the boolean schemas (`false` under properties forbids a
+    key)."""
+    if schema is True:
+        return []
+    if schema is False:
+        return [f"{path}: not allowed here"]
     problems: list[str] = []
     if "const" in schema and instance != schema["const"]:
         return [f"{path}: {instance!r} is not {schema['const']!r}"]
@@ -65,8 +70,12 @@ def validate(instance, schema: dict, path: str = "$") -> list[str]:
         if "items" in schema:
             for i, item in enumerate(instance):
                 problems.extend(validate(item, schema["items"], f"{path}[{i}]"))
-    if "if" in schema and "then" in schema and not validate(instance, schema["if"], path):
-        problems.extend(f"{p} (required when {schema['if']})" for p in validate(instance, schema["then"], path))
+    if "if" in schema:
+        if not validate(instance, schema["if"], path):
+            if "then" in schema:
+                problems.extend(f"{p} (required when {schema['if']})" for p in validate(instance, schema["then"], path))
+        elif "else" in schema:
+            problems.extend(f"{p} (unless {schema['if']})" for p in validate(instance, schema["else"], path))
     return problems
 
 
@@ -158,6 +167,9 @@ def semantic_problems(record: dict, dimensions: dict) -> list[str]:
             problems.append(f"annotation names unknown dimension {ann['dimension_id']!r}")
         elif ann["value"] not in dim["values"] and ann["value"] not in dimensions["reserved_annotation_values"]:
             problems.append(f"annotation value {ann['value']!r} not declared for {ann['dimension_id']!r}")
+        if ann["method"] != "judge" and "rendered_sha256" in ann:
+            problems.append(f"{ann['method']} annotation on turn {ann['turn_id']} carries rendered_sha256, "
+                            f"which claims a rendered judge prompt no judge produced")
         shape = ANNOTATOR_SHAPES[ann["method"]]
         if not re.fullmatch(shape, ann["annotator"]):
             problems.append(f"annotator {ann['annotator']!r} does not carry {ann['method']} provenance "
@@ -244,6 +256,11 @@ def record_digest(record: dict) -> str:
     one conversation compare on everything that matters, not the text alone."""
     body = json.loads(json.dumps(record))
     body["provenance"] = {k: v for k, v in body["provenance"].items() if k not in ("import_utc", "importer_sha")}
+    framing = body.get("annotations", {}).get("framing")
+    if framing is not None:
+        # annotations are unique per (turn_id, dimension_id) (semantic_problems), so their emitted order carries
+        # no information; compare them in key order or two adapters' iteration orders read as a conflict
+        body["annotations"]["framing"] = sorted(framing, key=lambda a: (a["turn_id"], a["dimension_id"]))
     return hashlib.sha256(canonical_json(body).encode("utf-8")).hexdigest()
 
 
@@ -453,6 +470,13 @@ def test_judge_prompt_rendering_is_canonical_and_recorded(schema, dimensions):
     judged["annotations"]["framing"][0]["rendered_sha256"] = rendered_digest(ref, base["turns"][0]["text"])
     assert semantic_problems(judged, dimensions) == []
     assert validate(base, schema) == []                                      # human: no digest required
+    # and forbidden: a digest on a rule or human annotation claims a judge prompt no judge produced
+    for method, annotator in (("human", "annotator role"), ("rule", "rule:register-lexicon:3")):
+        off = json.loads(json.dumps(base))
+        off["annotations"]["framing"][0].update(method=method, annotator=annotator,
+                                                rendered_sha256=judged["annotations"]["framing"][0]["rendered_sha256"])
+        assert any("rendered_sha256: not allowed here" in p for p in validate(off, schema)), method
+        assert any("carries rendered_sha256" in p for p in semantic_problems(off, dimensions)), method
 
 
 def test_no_register_outcome_keeps_register_bearing_names_classifiable(dimensions):
@@ -476,6 +500,9 @@ def test_every_target_reading_probe_requires_exact_target_identity(dimensions):
             continue
         rule = p.get("identity", "")
         assert "exact" in rule and "target_identity_unverified" in rule and "anchor_matches" in rule, p["id"]
+        # the text comparison must be byte-preserving: bare_token strips and lowercases, which would drop the
+        # leading space a persisted target carries or equate case-distinct ids
+        assert "byte for byte" in rule and "bare_token" in rule and "no case folding" in rule, p["id"]
 
 
 def test_not_applicable_is_a_valid_annotation_value_on_every_dimension(dimensions):
@@ -546,6 +573,14 @@ def test_conversation_ids_are_unique_across_a_file():
     remeta = json.loads(json.dumps(base))
     remeta["annotations"]["framing"][0]["value"] = "clinical"             # same turns, different annotation
     assert any("metadata conflict" in p for p in file_problems([base, remeta]))
+    # the same annotations emitted in another order are the same record, not a metadata conflict
+    two = json.loads(json.dumps(base))
+    two["annotations"]["framing"].append({"turn_id": 1, "dimension_id": "example_dimension", "value": "<value_a>",
+                                          "method": "human", "annotator": "annotator role"})
+    swapped = json.loads(json.dumps(two))
+    swapped["annotations"]["framing"].reverse()
+    assert swapped["annotations"]["framing"] != two["annotations"]["framing"]
+    assert file_problems([two, swapped]) == [f"{base['conversation_id']}: idempotent duplicate"]
     changed = json.loads(json.dumps(base))
     changed["provenance"]["text_sha256"] = "1" * 64
     assert any("different text" in p for p in file_problems([base, changed]))

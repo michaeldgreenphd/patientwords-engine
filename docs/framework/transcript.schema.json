@@ -290,7 +290,7 @@
               "rendered_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$",
-                "description": "Judge annotations only: sha256 of the fully rendered prompt as sent to the judge, produced by the prompt file's canonical `rendering` algorithm and recomputed at import from that file and the annotated turn's text (section 3.3): a stale, fabricated or differently rendered digest is refused."
+                "description": "Judge annotations only, refused on any other method (else branch below): sha256 of the fully rendered prompt as sent to the judge, produced by the prompt file's canonical `rendering` algorithm and recomputed at import from that file and the annotated turn's text (section 3.3): a stale, fabricated or differently rendered digest is refused."
               }
             },
             "if": {
@@ -307,6 +307,11 @@
               "required": [
                 "rendered_sha256"
               ]
+            },
+            "else": {
+              "properties": {
+                "rendered_sha256": false
+              }
             }
           },
           "description": "Per-turn classifications. The schema checks types only; the importer additionally requires (see docs/framework_design.md section 3.3) that turn_id values are unique, that every annotation resolves to exactly one turn with role 'user', and that dimension_id and value are declared in the registry."

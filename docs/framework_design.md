@@ -141,7 +141,9 @@ The schema constrains shapes and types. The importer additionally refuses a
 record when any of these fail, and says which: `turn_id` values must be
 unique; `conversation_id` must be unique across the input file and the
 existing transcript store (a repeat whose whole record, minus the import-run
-fields, is identical is an idempotent duplicate, skipped and reported; a
+fields and with the framing annotations compared in `(turn_id,
+dimension_id)` order rather than the order an adapter happened to emit
+them, is identical is an idempotent duplicate, skipped and reported; a
 repeat with the same turns but different metadata or annotations is a
 metadata conflict, refused for hand merge, so the retained metadata never
 depends on import order; a repeat with different turns is a conflict,
@@ -163,7 +165,9 @@ that dimension: they are re-judged, never carried); a judge annotation's
 prompt over the annotated turn's text, recomputed at import and never
 trusted, so a stale, fabricated or differently rendered digest is refused
 and the artifact establishes which instructions produced the
-classification; an annotation's `method`
+classification, and a `rendered_sha256` on a rule or human annotation is
+refused, since it would claim a rendered judge prompt for a classification
+no judge produced; an annotation's `method`
 must be one its dimension enables in `detection.methods`, so a
 classification from an undeclared classifier never reaches the
 counterfactual step; an annotation's `value` is a declared value of its dimension or the
@@ -227,8 +231,14 @@ the neighbour's number: the `" ant"`/`" anti"` misread recorded in
 `AGENTS.md` (Known measurement limitations). Every probe that reads at the
 target therefore carries an `identity` rule in the registry: where the
 adapter returns ids, the scored id must equal the persisted id; where it
-returns text only, the returned token's bare text must equal the persisted
-surface string exactly; any other match is emitted as a named
+returns text only, the returned token unwrapped byte for byte (the hosted
+`Output "..."` wrapper removed and nothing else: no whitespace stripping
+and no case folding, so the leading space a persisted target such as
+`" ant"` carries survives; `bare_token` in `targets.py` strips and
+lowercases and is not that unwrap, since normalising both sides would
+equate case- or whitespace-distinct token ids) must equal the persisted
+surface string exactly; a token that cannot be recovered byte for byte,
+or any other match, is emitted as a named
 `target_identity_unverified` result for that side and counted, never a
 probability. The framework adapter applies this rule on top of the existing
 hosted path rather than changing it, since changing that path re-publishes
