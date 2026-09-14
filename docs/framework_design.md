@@ -86,7 +86,11 @@ stimulus id; turns within one conversation are correlated, so the transcript
 analysis keeps `conversation_id` and `turn_id` as separate keys, reports
 per-turn effects, and resamples conversations, not turns, in the bootstrap.
 Collapsing a conversation to one cell would lose the per-turn effects;
-treating turns as independent would narrow the interval. Step 2's
+treating turns as independent would narrow the interval. The bootstrap seed
+is explicit, passed rather than global, and written into the analysis
+artifact beside the cluster unit, the resample count and the estimator, as
+`scripts/paired_stats_rigor.py` does, so a published interval is
+reproducible from its own output. Step 2's
 classification also serves the observational analysis across conversations,
 as a covariate.
 
@@ -136,9 +140,14 @@ import-time checks below on it.
 The schema constrains shapes and types. The importer additionally refuses a
 record when any of these fail, and says which: `turn_id` values must be
 unique; `conversation_id` must be unique across the input file and the
-existing transcript store (a repeat with the same `text_sha256` is an
-idempotent duplicate, skipped and reported; a repeat with a different digest
-is a conflict, refused); an assistant turn's `reply_to`, when given, must
+existing transcript store (a repeat whose whole record, minus the import-run
+fields, is identical is an idempotent duplicate, skipped and reported; a
+repeat with the same turns but different metadata or annotations is a
+metadata conflict, refused for hand merge, so the retained metadata never
+depends on import order; a repeat with different turns is a conflict,
+refused); every annotation's `annotator`, `dimension_id` and `value` are
+non-empty, with `annotator` for the judge method carrying the judge model
+version and the prompt file's digest; an assistant turn's `reply_to`, when given, must
 name an earlier user turn; every framing annotation must resolve to exactly one turn whose
 role is `user` and must name a dimension and value declared in the
 registry; at most one annotation per turn and dimension (two classifications
@@ -158,8 +167,8 @@ per-turn ineligibilities come from `attachments_omitted`: a user turn with a
 positive count cannot be reproduced from text, so its pair is
 `attachments_omitted`; an assistant turn with a positive count is judged as
 `incomplete_reply`, since the judge does not see the whole answer. The
-reference implementations are `semantic_problems`, `file_problems`,
-`reply_pairs` and `counterfactual_ineligibility` in
+reference implementations are `semantic_problems`, `file_problems` (with
+`record_digest`), `reply_pairs` and `counterfactual_ineligibility` in
 `tests/test_framework_schemas.py`; the importer (§7 step 4) adopts them.
 
 ### 3.4 Target tokens for the mechanistic probes
@@ -175,10 +184,15 @@ plus `target_token`. A pair derived from a transcript lacks the target until a
 target-selection rule assigns one and persists it in the pair record (the
 rule is an owner decision: a judge-chosen token, a rule over the rewritten
 turn, or a human choice, each recorded with method and annotator like a
-framing annotation). Until then the probes that list `target_token` are
-reported as unavailable for that pair. They are never run with a null
-target: `scripts/logits_eval.py` returns a null `language_penalty` in that
-case, which would read as a measurement.
+framing annotation). The persisted target is per model: the surface string
+and the token id actually scored, validated as a single token in that
+model's tokenizer, since token boundaries differ across models and
+`scripts/logits_eval.py` scores only the first id of a multi-token target;
+a target that is not one token for a model is reported as
+`target_not_atomic` for that model. Until a target is assigned the probes
+that list `target_token` are reported as unavailable for that pair. They are
+never run with a null target: `scripts/logits_eval.py` returns a null
+`language_penalty` in that case, which would read as a measurement.
 
 ## 4. The framework of differences
 
@@ -187,9 +201,13 @@ lists and one vocabulary.
 
 **Dimensions.** Each is one way the same situation can be framed differently
 by a patient and by a clinician. An entry declares its `values`, how a turn
-is classified on it (`detection.methods` from rule, judge, human, with a
-judge prompt reference), how its counterfactual is produced
-(`counterfactual.method` and an explicit list of `contrasts`, each a named
+is classified on it (`detection.methods` from rule, judge, human; whenever
+`judge` is allowed, `judge_prompt_ref` must resolve to a versioned prompt
+file under `docs/framework/judge_prompts/` that defines every value, and the
+annotation records the judge model version and that file's digest, so no
+adapter classifies under an implicit prompt), how its counterfactual is produced
+(`counterfactual.method`, one of the registry's declared
+`counterfactual_methods`, and an explicit list of `contrasts`, each a named
 source-to-target pair; every contrast is generated and reported under its
 own key, and a value listed in `no_contrast` is classified and judged but
 not re-elicited), and which probes can measure its effect (`probes`, ids
@@ -233,7 +251,10 @@ states which level each number came from.
 The three probes that read `batch_summary` files carry a `completeness`
 rule: a summary with `completed` false, or fewer results than
 `pairs_requested`, is rejected and a missing-index record is emitted per
-absent pair before any analysis. `run_batch` truncates `results` on a
+absent pair before any analysis; and a result whose `screening.status` is
+`screened_out` (the `--screen-targets` path skips the patient trace and
+leaves `language_penalty` null) is emitted as a named `screened_out` record
+and counted, never read as a measurement or dropped. `run_batch` truncates `results` on a
 mid-batch failure with no per-pair error record (`AGENTS.md`), so a
 consumer that reads the surviving prefix as the cohort would be biased
 without knowing it.
@@ -257,8 +278,12 @@ hash for every turn, so a turn shorter than the shingle window is still
 matched by its whole text and the index reveals nothing) and scans every staged file's text for any shingle hit, refusing
 the commit and naming the file; whole-record digests and schema-shaped
 content are refused as well; and a path policy refuses any file under the
-transcript data directory or any `.jsonl` that validates as a transcript.
-The index lives with the transcripts, outside both repositories. De-identification is a precondition of import, enforced by
+transcript data directory or any `.jsonl` that validates as a transcript
+whose records are not all `synthetic`. The one committed fixture,
+`docs/framework/example_transcript.jsonl`, passes that policy because every
+record in it is `synthetic`; a `deidentified` record is refused wherever it
+appears, fixture path included. The index lives with the transcripts,
+outside both repositories. De-identification is a precondition of import, enforced by
 the schema (§3.2), and the counterfactual step sends de-identified text only.
 Which model environments may receive that text is the deploying
 organisation's decision: the adapter layer makes local open-weight models a
@@ -307,11 +332,12 @@ file.
    its provider list against the registry. Acceptance: one family runs end
    to end on the harness with matching numbers.
 4. **Counterfactual import**: the import-time checks of §3.3 and the
-   model-identity precondition of §3.1, per-turn classification, rewrite per
-   declared contrast, re-elicitation, paired output keyed on conversation
-   and turn with the target-token rule of §3.4 applied or the target-needing
-   probes marked unavailable, conversation-level clustering in the analysis;
-   the privacy guard with its shingle index and path policy. Acceptance: the synthetic example
+   model-identity precondition of §3.1, per-turn classification under the
+   versioned judge prompt, rewrite per declared contrast and method,
+   re-elicitation, paired output keyed on conversation and turn with the
+   target-token rule of §3.4 applied per model or the target-needing probes
+   marked unavailable, conversation-level clustering with the seed in the
+   artifact; the privacy guard with its shingle index and path policy. Acceptance: the synthetic example
    produces a paired record with full provenance, a record failing any §3.3
    check is refused with the reason, and the guard refuses a commit
    containing a transcript.
