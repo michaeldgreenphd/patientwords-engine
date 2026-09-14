@@ -88,6 +88,13 @@ def canonical_json(obj) -> str:
     return json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
 
+def prompt_digest(ref: str) -> str:
+    """The provenance digest a judge annotation must carry: sha256 of the
+    canonical JSON of the dimension's judge_prompt_ref file, first 12 hex."""
+    prompt = json.loads((ROOT / ref).read_text(encoding="utf-8"))
+    return hashlib.sha256(canonical_json(prompt).encode("utf-8")).hexdigest()[:12]
+
+
 def semantic_problems(record: dict, dimensions: dict) -> list[str]:
     """The import-time checks the schema cannot express (docs/framework_design.md
     section 3.3): turn ids unique, every annotation on exactly one user turn
@@ -121,6 +128,16 @@ def semantic_problems(record: dict, dimensions: dict) -> list[str]:
         if not re.fullmatch(shape, ann["annotator"]):
             problems.append(f"annotator {ann['annotator']!r} does not carry {ann['method']} provenance "
                             f"(expected {ANNOTATOR_HINTS[ann['method']]})")
+        elif dim is not None:
+            enabled = dim["detection"]["methods"]
+            if ann["method"] not in enabled:
+                problems.append(f"method {ann['method']!r} is not enabled for dimension {ann['dimension_id']!r} "
+                                f"(detection.methods: {', '.join(enabled)})")
+            elif ann["method"] == "judge":
+                expected = prompt_digest(dim["detection"]["judge_prompt_ref"])
+                if ann["annotator"].rsplit(":", 1)[1] != expected:
+                    problems.append(f"annotator {ann['annotator']!r} digest does not match the dimension's "
+                                    f"judge prompt (current {expected}): stale or fabricated judge provenance")
         if roles.get(ann["turn_id"]) != "user":
             problems.append(f"annotation turn {ann['turn_id']} is not a single user turn")
     digest = hashlib.sha256(canonical_json(record["turns"]).encode("utf-8")).hexdigest()
@@ -303,8 +320,9 @@ def test_semantic_checks_refuse_each_case(dimensions):
 def test_annotator_provenance_is_checked_per_method(dimensions):
     base = _examples()[0]
     ann = base["annotations"]["framing"][0]
-    for method, bad, good in [("judge", "x", "judge:model-2026-09:0123456789ab"),
-                              ("judge", "judge:model:zz", "judge:model-2026-09:0123456789ab"),
+    digest = prompt_digest("docs/framework/judge_prompts/register.draft.json")
+    for method, bad, good in [("judge", "x", f"judge:model-2026-09:{digest}"),
+                              ("judge", "judge:model:zz", f"judge:model-2026-09:{digest}"),
                               ("rule", "rule", "rule:register-lexicon:3"),
                               ("human", "judge:model:0123456789ab", "annotator role")]:
         broken = json.loads(json.dumps(base))
@@ -314,6 +332,39 @@ def test_annotator_provenance_is_checked_per_method(dimensions):
         ok["annotations"]["framing"][0].update(method=method, annotator=good)
         assert not any("does not carry" in p for p in semantic_problems(ok, dimensions)), (method, good)
     assert ann["method"] == "human"                                        # the example itself is well-formed
+
+
+def test_judge_digest_must_match_the_referenced_prompt(dimensions):
+    """A well-shaped but stale or fabricated digest claims provenance from a
+    prompt that is not the dimension's current one; the importer refuses it."""
+    base = _examples()[0]
+    digest = prompt_digest("docs/framework/judge_prompts/register.draft.json")
+    assert re.fullmatch(r"[0-9a-f]{12}", digest)
+    ok = json.loads(json.dumps(base))
+    ok["annotations"]["framing"][0].update(method="judge", annotator=f"judge:model-2026-09:{digest}")
+    assert semantic_problems(ok, dimensions) == []
+    stale = json.loads(json.dumps(base))
+    stale["annotations"]["framing"][0].update(method="judge", annotator="judge:model-2026-09:0123456789ab")
+    problems = semantic_problems(stale, dimensions)
+    assert any("digest does not match" in p and digest in p for p in problems), problems
+    # a prompt edit changes the digest, so every earlier judge annotation goes stale by construction
+    edited = json.loads((ROOT / "docs/framework/judge_prompts/register.draft.json").read_text(encoding="utf-8"))
+    edited["values"]["mixed"] += " (edited)"
+    assert hashlib.sha256(canonical_json(edited).encode("utf-8")).hexdigest()[:12] != digest
+
+
+def test_annotation_method_must_be_enabled_for_its_dimension(dimensions):
+    """`register` enables judge and human only; a well-shaped rule annotation on
+    it comes from an undeclared classifier and is refused."""
+    base = _examples()[0]
+    register = next(d for d in dimensions["dimensions"] if d["id"] == "register")
+    assert "rule" not in register["detection"]["methods"]
+    broken = json.loads(json.dumps(base))
+    broken["annotations"]["framing"][0].update(method="rule", annotator="rule:anything:1")
+    problems = semantic_problems(broken, dimensions)
+    assert any("not enabled for dimension 'register'" in p for p in problems), problems
+    for method in register["detection"]["methods"]:
+        assert method in ANNOTATOR_SHAPES
 
 
 def test_not_applicable_is_a_valid_annotation_value_on_every_dimension(dimensions):

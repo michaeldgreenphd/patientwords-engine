@@ -150,7 +150,15 @@ non-empty, and `annotator` has the shape its `method` demands
 (`rule:<name>:<version>`; `judge:<model_version>:<prompt sha256[:12]>`; for
 a human, a role label that does not begin with either prefix), so a
 classification always traces to a versioned rule, a versioned prompt, or a
-role; an annotation's `value` is a declared value of its dimension or the
+role; a judge annotation's digest must equal the sha256 of the canonical
+JSON of the dimension's current `judge_prompt_ref` file, so a well-shaped
+but stale or fabricated digest is refused rather than accepted as
+provenance from a prompt that no longer exists in that form (editing a
+prompt therefore invalidates every earlier judge annotation on that
+dimension: they are re-judged, never carried); an annotation's `method`
+must be one its dimension enables in `detection.methods`, so a
+classification from an undeclared classifier never reaches the
+counterfactual step; an annotation's `value` is a declared value of its dimension or the
 reserved `not_applicable`, which records that the turn carries nothing to
 classify on that dimension (an affirmation, a number, an empty or
 attachment-only turn), is counted, and generates no contrast; an assistant turn's `reply_to`, when given, must
