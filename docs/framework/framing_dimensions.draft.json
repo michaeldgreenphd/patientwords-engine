@@ -1,0 +1,182 @@
+{
+  "schema_version": "0.1",
+  "status": "draft pending owner review",
+  "_readme": "The framework of differences. Each dimension names one way the same clinical situation can be framed differently by a patient and by a clinician, how a turn is classified on it, which source-to-target contrasts its counterfactual step generates (each contrast is measured and reported under its own key; a source value with no contrast is observational only), and which probes can measure its effect. Dimensions and their values are owner-authored data: this file, never Python. Adding a dimension or a probe is a data change plus, for a probe, one adapter; tests/test_framework_schemas.py keeps the cross-references consistent. A probe's `inputs` say what a pair must carry before the probe may run; a pair lacking one is reported as unavailable for that probe, not measured with a default.",
+  "dimensions": [
+    {
+      "id": "register",
+      "name": "Lexical register",
+      "definition": "Whether the situation is stated in everyday (colloquial) wording or in clinical terminology. The study's founding contrast.",
+      "values": [
+        "colloquial",
+        "clinical",
+        "mixed"
+      ],
+      "detection": {
+        "methods": [
+          "judge",
+          "human"
+        ],
+        "judge_prompt_ref": null
+      },
+      "counterfactual": {
+        "method": "translation",
+        "contrasts": [
+          {
+            "id": "colloquial_to_clinical",
+            "from": "colloquial",
+            "to": "clinical"
+          },
+          {
+            "id": "clinical_to_colloquial",
+            "from": "clinical",
+            "to": "colloquial"
+          }
+        ],
+        "no_contrast": [
+          "mixed"
+        ],
+        "note": "A mixed turn has no single counterpart, so it is classified and judged but not re-elicited until the owner defines its contrast (candidate: rewrite to both poles, reported as two keys)."
+      },
+      "probes": [
+        "advice_tier",
+        "language_penalty",
+        "attribution_graph",
+        "clinical_feature_mass",
+        "activation_patching",
+        "jlens_depth"
+      ],
+      "status": "in use",
+      "owner_notes": ""
+    },
+    {
+      "id": "example_dimension",
+      "name": "<a second dimension, owner-authored>",
+      "definition": "<what differs between the two framings, stated so that a human annotator and a judge would agree on the boundary>",
+      "values": [
+        "<value_a>",
+        "<value_b>"
+      ],
+      "detection": {
+        "methods": [
+          "human"
+        ],
+        "judge_prompt_ref": null
+      },
+      "counterfactual": {
+        "method": "manual",
+        "contrasts": [
+          {
+            "id": "<a>_to_<b>",
+            "from": "<value_a>",
+            "to": "<value_b>"
+          },
+          {
+            "id": "<b>_to_<a>",
+            "from": "<value_b>",
+            "to": "<value_a>"
+          }
+        ],
+        "no_contrast": [],
+        "note": "Every value must appear as the source of a contrast or in no_contrast."
+      },
+      "probes": [
+        "advice_tier"
+      ],
+      "status": "placeholder",
+      "owner_notes": "Replace or delete. Kept so the structure of a full entry is visible."
+    }
+  ],
+  "probes": [
+    {
+      "id": "advice_tier",
+      "name": "Advice urgency tier and flags",
+      "requires": "text_io",
+      "implementation": "scripts/advice_eval.py judge (rubric data/advice_rubric.*.json); a judge-model call per turn, or human coding via scripts/advice_human_coding.py",
+      "output": "tier id plus flag ids per assistant turn",
+      "status": "in use",
+      "inputs": [
+        "pair_text",
+        "response_text"
+      ]
+    },
+    {
+      "id": "language_penalty",
+      "name": "Target-token probability difference",
+      "requires": "logits",
+      "implementation": "scripts/logits_eval.py; hosted path via medlang_circuits",
+      "output": "batch_summary results[].language_penalty",
+      "status": "in use",
+      "inputs": [
+        "pair_text",
+        "target_token"
+      ],
+      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture)",
+      "censoring": "on logprobs_topn the target may be absent from the returned set: emit a named censored result for that side, never a probability (scripts/paired_stats.py already distinguishes the censored case)"
+    },
+    {
+      "id": "attribution_graph",
+      "name": "Attribution graph (served graph, features untagged)",
+      "requires": "hosted_graph",
+      "implementation": "medlang_circuits/batch_eval.py via Neuronpedia",
+      "output": "batch_summary results[] graph fields; clinical_mass is NOT meaningful at this level (features untagged, see AGENTS.md Feature tagging)",
+      "status": "in use (gemma-2-2b, qwen3-4b since the 2026-09-02 re-probe)",
+      "inputs": [
+        "pair_text",
+        "target_token"
+      ],
+      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture)"
+    },
+    {
+      "id": "clinical_feature_mass",
+      "name": "Clinical feature mass on a tagged attribution graph",
+      "requires": "hosted_graph_tagged",
+      "implementation": "medlang_circuits/batch_eval.py with neuronpedia_features.MODEL_SOURCE_SETS",
+      "output": "batch_summary results[] clinical_mass",
+      "status": "in use (gemma-2-2b only)",
+      "inputs": [
+        "pair_text",
+        "target_token"
+      ],
+      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture)"
+    },
+    {
+      "id": "activation_patching",
+      "name": "Residual-stream patching recovery grid",
+      "requires": "activations",
+      "implementation": "scripts/activation_patch.py",
+      "output": "recovery heatmap over (layer, position)",
+      "status": "designed (docs/activation_patching_design.md)",
+      "inputs": [
+        "pair_text",
+        "target_token"
+      ]
+    },
+    {
+      "id": "jlens_depth",
+      "name": "Jacobian-lens depth readout",
+      "requires": "hosted_lens",
+      "implementation": "scripts/jlens_readout.py (POST Neuronpedia /api/lens/prompt; NEURONPEDIA_API_KEY; no local weights)",
+      "output": "per-layer readouts",
+      "status": "in use (models the endpoint serves; probe per model, docs/cross-model.md)",
+      "inputs": [
+        "pair_text",
+        "target_token"
+      ]
+    }
+  ],
+  "requires_levels": {
+    "text_io": "Any model reachable as text in, text out: every API and every product UI. The behavioural layer.",
+    "logits": "Next-token probabilities for an explicit target token on both sides: open weights run locally, or an API that scores a named target.",
+    "activations": "Forward-pass internals: open weights run locally.",
+    "hosted_graph": "A hosted attribution-graph service that serves graphs for the model. Features are untagged unless hosted_graph_tagged also holds.",
+    "hosted_graph_tagged": "hosted_graph plus a transcoder source set for the model, so features carry tags and clinical mass is meaningful.",
+    "hosted_lens": "A hosted lens endpoint that serves readouts for the model (discovered per model by probing; not a local capability).",
+    "logprobs_topn": "An API that returns only its top-N logprobs. Insufficient for logits: a probe listing logits may run here only with a named censored result whenever the target is absent from the returned set."
+  },
+  "inputs_levels": {
+    "pair_text": "The two framings of the user turn plus the preceding context. Every pair has it.",
+    "target_token": "The clinical target token whose next-token probability the probe reads. Stimulus pairs carry it (target_clinical_token); a pair derived from an imported transcript has none until a target-selection rule (docs/framework_design.md section 3.4) assigns one and persists it in the pair record. Until then a probe that lists this input is reported as unavailable for that pair, never run with a null target (scripts/logits_eval.py build_result returns a null language_penalty in that case).",
+    "response_text": "The assistant reply for each arm of the pair, from one re-elicitation run under one pinned environment (docs/framework_design.md section 3.1). A pair whose re-elicitation was refused or failed on either arm lacks it and reports the response probes as unavailable by name, never judges a missing reply."
+  }
+}
