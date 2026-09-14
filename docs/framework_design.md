@@ -49,7 +49,13 @@ difference between two framings of the same situation, so a transcript alone
 cannot yield it. The import therefore does three things per assistant turn:
 
 1. **Judge the turn as it is** with the existing rubric (tier and flags).
-   This is the observational reading and needs no model call.
+   This is the observational reading. It re-elicits nothing from the model
+   under test, but the rubric judge is itself a model call: `advice_eval.py`
+   resolves a judge provider from the registry, meters its spend, and calls
+   it once per unjudged turn. A deployment therefore needs judge credentials
+   and a budget for this step, or uses human coding
+   (`scripts/advice_human_coding.py`) in its place; the framework reports
+   which, and the judge model version, with every tier.
 2. **Classify the user turn on each framing dimension** (§4): by rule, by
    judge, or by a human, recorded with method and annotator.
 3. **Produce the counterfactual turn**: rewrite the user turn to the other
@@ -59,10 +65,16 @@ cannot yield it. The import therefore does three things per assistant turn:
    two judged replies is the framing effect for that turn, on that model,
    in that conversation.
 
-Step 3 makes the imported conversation a paired measurement in exactly the
-form the study already analyses, so the paired statistics apply without
-change. Step 2's classification also serves the observational analysis
-across conversations, as a covariate.
+Step 3 makes each turn a paired measurement in the form the study already
+analyses, with one change to the analysis: the unit of clustering. The
+existing advice analysis keys cells and bootstrap clusters on a single
+stimulus id; turns within one conversation are correlated, so the transcript
+analysis keeps `conversation_id` and `turn_id` as separate keys, reports
+per-turn effects, and resamples conversations, not turns, in the bootstrap.
+Collapsing a conversation to one cell would lose the per-turn effects;
+treating turns as independent would narrow the interval. Step 2's
+classification also serves the observational analysis across conversations,
+as a covariate.
 
 Constraints carried over from the study: the counterfactual rewrite is
 recorded in full (input, output, rewriter model version, sha256), the
@@ -78,9 +90,10 @@ line of a `.jsonl` file. The parts that matter:
 
 - **`deidentification.status`** allows only `deidentified` and `synthetic`.
   There is no `identified` value, so identified material cannot validate
-  and the importer refuses it before reading a single turn. `method`,
-  `reviewed_by` (a role, never a name) and `reviewed_utc` record how the
-  de-identification was done and confirmed.
+  and the importer refuses it before reading a single turn. For a
+  `deidentified` record the schema requires `method`, `reviewed_by` (a role,
+  never a name) and `reviewed_utc` to be present, so the audit evidence
+  cannot be omitted; they may be null only for `synthetic`.
 - **`source`** records the deploying system, product, configured model and
   the exact model version the capture saw, and how it was captured
   (`api_log`, `ui_export`, `manual`). This is the same provenance the elicit
@@ -93,14 +106,28 @@ line of a `.jsonl` file. The parts that matter:
 - **`annotations.framing[]`** holds per-turn classifications keyed on a
   dimension id from the registry, with the method and annotator that made
   them and an optional confidence.
-- **`provenance.text_sha256`** is a hash over the canonical JSON of `turns`,
-  so later edits to the text are detectable, as with the elicit chain.
+- **`provenance.text_sha256`** is the sha256 of the canonical JSON of
+  `turns` (sorted keys, no whitespace, UTF-8, the elicit chain's
+  `canonical_json`), so later edits to the text are detectable. The bundled
+  example carries its real digest and the test recomputes it.
 - `additionalProperties` is false at every level. A field the schema does
   not name cannot ride along, which is how a stray identifier is kept out.
 
 `docs/framework/example_transcript.jsonl` is a synthetic record with
-placeholder text; the test validates it against the schema and checks that
-its annotations name a declared dimension and value.
+placeholder text; the test validates it against the schema and runs the
+import-time checks below on it.
+
+### 3.3 Import-time checks the schema cannot express
+
+The schema constrains shapes and types. The importer additionally refuses a
+record when any of these fail, and says which: `turn_id` values must be
+unique; every framing annotation must resolve to exactly one turn whose
+role is `user` and must name a dimension and value declared in the
+registry; `text_sha256` must equal the digest of the turns as received. A
+record that fails is reported, never partially imported, and an annotation
+that cannot be resolved is never dropped silently. The reference
+implementation of these checks is `semantic_problems` in
+`tests/test_framework_schemas.py`, which the importer (§7 step 4) adopts.
 
 ## 4. The framework of differences
 
@@ -111,8 +138,13 @@ lists and one vocabulary.
 by a patient and by a clinician. An entry declares its `values`, how a turn
 is classified on it (`detection.methods` from rule, judge, human, with a
 judge prompt reference), how its counterfactual is produced
-(`counterfactual.rewrite_to` and `method`), and which probes can measure its
-effect (`probes`, ids from the second list). The first entry is `register`,
+(`counterfactual.method` and an explicit list of `contrasts`, each a named
+source-to-target pair; every contrast is generated and reported under its
+own key, and a value listed in `no_contrast` is classified and judged but
+not re-elicited), and which probes can measure its effect (`probes`, ids
+from the second list). For `register`, the two contrasts are colloquial to
+clinical and clinical to colloquial; `mixed` has no contrast until the owner
+defines one, and the registry says so. The first entry is `register`,
 colloquial against clinical wording, the study's founding contrast, wired to
 every probe in use. The second is a placeholder showing the full shape of an
 entry. The content of this list is owner-authored: which differences matter
@@ -123,22 +155,31 @@ study applies to medical vocabulary.
 
 **Probes.** Each is one interpretability or behavioural measurement: id,
 what it needs (`requires`), where it is implemented, what it emits, and its
-status. The five in the file are the measurements the study already makes.
+status. The six in the file are the measurements the study already makes,
+with the attribution graph split in two: the served graph (available for
+any model the hosted service traces, features untagged) and clinical
+feature mass (meaningful only where a transcoder source set tags the
+features; gemma-2-2b today, per `AGENTS.md`).
 A new tool joins by adding an entry and one adapter that reads a pair and
 writes a record; nothing else changes, and the dimension entries say which
 tools apply to which difference.
 
 **`requires` levels.** `text_io` (any model, API or product UI), `logits`
 (open weights or an API that returns logprobs), `activations` (open weights
-run locally), `hosted_graph` (a hosted attribution service with a
-transcoder set for the model). This is what makes the framework honest about
+run locally), `hosted_graph` (a hosted attribution service serves graphs for
+the model), `hosted_graph_tagged` (that plus a transcoder source set, so
+features carry tags), and `hosted_lens` (a hosted lens endpoint serves
+readouts for the model; the J-lens probe calls Neuronpedia and uses no local
+weights, so it is a hosted capability discovered per model, not a local
+one). This is what makes the framework honest about
 portability: every dimension gets the `text_io` probes everywhere, and the
 mechanistic probes exactly where the model environment allows them. A report
 states which level each number came from.
 
 The test keeps the registry consistent: unique ids, every probe a dimension
-names exists, every probe's `requires` is a declared level, every
-counterfactual target is a declared value.
+names exists, every probe's `requires` is a declared level, every contrast
+runs between two distinct declared values, and every value either has a
+contrast or is listed as having none.
 
 ## 5. Privacy as a design constraint
 
@@ -186,17 +227,21 @@ file.
 1. **Contracts** (this note): transcript schema, dimension and probe
    registry, consistency test. Owner fills the dimension list.
 2. **Package extraction**: the behavioural layer (stimuli, elicit, judge,
-   analyze) as an installable package with a `judge-only` mode that reads a
-   transcript file and judges assistant turns with no model call. Acceptance:
-   the existing advice families re-run through the package reproduce the
-   published tier counts.
+   analyze) as an installable package with a `no-reelicitation` mode that
+   reads a transcript file and judges assistant turns without calling the
+   model under test (the judge model, or human coding, is still required
+   and declared). Acceptance: the existing advice families re-run through
+   the package reproduce the published tier counts.
 3. **Harness wrapping**: tasks and a scorer on the chosen harness; verify
    its provider list against the registry. Acceptance: one family runs end
    to end on the harness with matching numbers.
-4. **Counterfactual import**: per-turn classification, rewrite,
-   re-elicitation, paired output; the privacy guard. Acceptance: the
-   synthetic example produces a paired record with full provenance, and the
-   guard refuses a commit containing it.
+4. **Counterfactual import**: the import-time checks of §3.3, per-turn
+   classification, rewrite per declared contrast, re-elicitation, paired
+   output keyed on conversation and turn, conversation-level clustering in
+   the analysis; the privacy guard. Acceptance: the synthetic example
+   produces a paired record with full provenance, a record failing any §3.3
+   check is refused with the reason, and the guard refuses a commit
+   containing a transcript.
 5. **Probe adapters**: the five existing measurements behind the probe
    interface, `requires` enforced. Acceptance: each dimension's probe list
    runs where its level allows and reports "not available at this level"

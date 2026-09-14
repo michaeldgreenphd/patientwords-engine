@@ -4,6 +4,7 @@ consistent with each other. A minimal validator for the JSON Schema subset the
 schema uses, so the suite needs no jsonschema dependency."""
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -22,9 +23,12 @@ _TYPES = {"object": dict, "array": list, "string": str, "integer": int, "number"
 
 def validate(instance, schema: dict, path: str = "$") -> list[str]:
     """Problems found in `instance` against `schema`, for the keywords the
-    transcript schema uses: type, enum, required, properties,
-    additionalProperties, items, minItems, minLength, minimum, maximum, pattern."""
+    transcript schema uses: type, enum, const, required, properties,
+    additionalProperties, items, minItems, minLength, minimum, maximum, pattern,
+    and if/then."""
     problems: list[str] = []
+    if "const" in schema and instance != schema["const"]:
+        return [f"{path}: {instance!r} is not {schema['const']!r}"]
     types = schema.get("type")
     if types is not None:
         allowed = [types] if isinstance(types, str) else types
@@ -60,6 +64,38 @@ def validate(instance, schema: dict, path: str = "$") -> list[str]:
         if "items" in schema:
             for i, item in enumerate(instance):
                 problems.extend(validate(item, schema["items"], f"{path}[{i}]"))
+    if "if" in schema and "then" in schema and not validate(instance, schema["if"], path):
+        problems.extend(f"{p} (required when {schema['if']})" for p in validate(instance, schema["then"], path))
+    return problems
+
+
+def canonical_json(obj) -> str:
+    """The elicit chain's canonical form (scripts/advice_eval.py canonical_json)."""
+    return json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+
+def semantic_problems(record: dict, dimensions: dict) -> list[str]:
+    """The import-time checks the schema cannot express (docs/framework_design.md
+    section 3.3): turn ids unique, every annotation on exactly one user turn
+    with a declared dimension and value, and the provenance digest matching
+    the turns. What a real importer must refuse a record for."""
+    problems = []
+    ids = [t["turn_id"] for t in record["turns"]]
+    if len(ids) != len(set(ids)):
+        problems.append("duplicate turn_id")
+    roles = {t["turn_id"]: t["role"] for t in record["turns"]}
+    by_id = {d["id"]: d for d in dimensions["dimensions"]}
+    for ann in record.get("annotations", {}).get("framing", []):
+        dim = by_id.get(ann["dimension_id"])
+        if dim is None:
+            problems.append(f"annotation names unknown dimension {ann['dimension_id']!r}")
+        elif ann["value"] not in dim["values"]:
+            problems.append(f"annotation value {ann['value']!r} not declared for {ann['dimension_id']!r}")
+        if roles.get(ann["turn_id"]) != "user":
+            problems.append(f"annotation turn {ann['turn_id']} is not a single user turn")
+    digest = hashlib.sha256(canonical_json(record["turns"]).encode("utf-8")).hexdigest()
+    if record["provenance"]["text_sha256"] != digest:
+        problems.append("text_sha256 does not match the canonical turns")
     return problems
 
 
@@ -109,12 +145,43 @@ def test_validator_catches_each_keyword(schema):
     broken = json.loads(json.dumps(base))
     broken["annotations"]["framing"][0]["confidence"] = 1.5            # maximum
     assert any("above 1" in p for p in validate(broken, schema))
+    broken = json.loads(json.dumps(base))
+    broken["deidentification"]["status"] = "deidentified"              # if/then: review metadata required
+    assert any("method" in p and "required when" in p for p in validate(broken, schema))
+    assert any("reviewed_by" in p for p in validate(broken, schema))
+    broken["deidentification"].update({"method": "tool-x", "reviewed_by": "privacy officer",
+                                       "reviewed_utc": "2026-09-14T00:00:00Z"})
+    assert validate(broken, schema) == []
 
 
 def test_identified_material_cannot_validate(schema):
     status = schema["properties"]["deidentification"]["properties"]["status"]
     assert "identified" not in status["enum"]
     assert set(status["enum"]) == {"deidentified", "synthetic"}
+
+
+def test_example_passes_the_import_time_semantic_checks(dimensions):
+    for record in _examples():
+        assert semantic_problems(record, dimensions) == []
+
+
+def test_semantic_checks_refuse_each_case(dimensions):
+    base = _examples()[0]
+    broken = json.loads(json.dumps(base))
+    broken["turns"].append(dict(broken["turns"][0]))                    # duplicate turn_id
+    assert any("duplicate turn_id" in p for p in semantic_problems(broken, dimensions))
+    broken = json.loads(json.dumps(base))
+    broken["annotations"]["framing"][0]["turn_id"] = 2                  # the assistant turn
+    assert any("not a single user turn" in p for p in semantic_problems(broken, dimensions))
+    broken = json.loads(json.dumps(base))
+    broken["annotations"]["framing"][0]["dimension_id"] = "nope"
+    assert any("unknown dimension" in p for p in semantic_problems(broken, dimensions))
+    broken = json.loads(json.dumps(base))
+    broken["annotations"]["framing"][0]["value"] = "nope"
+    assert any("not declared" in p for p in semantic_problems(broken, dimensions))
+    broken = json.loads(json.dumps(base))
+    broken["turns"][0]["text"] = "edited after import"
+    assert any("text_sha256" in p for p in semantic_problems(broken, dimensions))
 
 
 def test_framing_dimensions_registry_is_consistent(dimensions):
@@ -130,7 +197,14 @@ def test_framing_dimensions_registry_is_consistent(dimensions):
             assert key in d, f"dimension {d.get('id')!r} lacks {key!r}"
         assert d["values"] and len(set(d["values"])) == len(d["values"]), d["id"]
         assert set(d["detection"]["methods"]) <= {"rule", "judge", "human"}, d["id"]
-        assert set(d["counterfactual"]["rewrite_to"]) <= set(d["values"]), d["id"]
+        cf = d["counterfactual"]
+        contrast_ids = [c["id"] for c in cf["contrasts"]]
+        assert len(contrast_ids) == len(set(contrast_ids)), f"{d['id']}: contrast ids must be unique"
+        for c in cf["contrasts"]:
+            assert c["from"] in d["values"] and c["to"] in d["values"] and c["from"] != c["to"], (d["id"], c)
+        assert set(cf.get("no_contrast", [])) <= set(d["values"]), d["id"]
+        sources = {c["from"] for c in cf["contrasts"]} | set(cf.get("no_contrast", []))
+        assert sources == set(d["values"]), f"{d['id']}: every value needs a contrast or a no_contrast entry"
         unknown = set(d["probes"]) - set(probe_ids)
         assert not unknown, f"dimension {d['id']!r} names unknown probes {sorted(unknown)}"
     for p in probes:

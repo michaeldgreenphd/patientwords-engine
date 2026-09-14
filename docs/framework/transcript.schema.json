@@ -4,51 +4,175 @@
   "title": "Clinical AI conversation transcript (import format), draft 0.1",
   "description": "One conversation per JSON object, one object per line in a .jsonl file. Text is the only content field; everything else is provenance, de-identification state, and annotations. A record whose deidentification.status is not one of the allowed values is invalid and the importer refuses it; the value 'identified' is deliberately absent from the enum so that identified material can never validate.",
   "type": "object",
-  "required": ["schema_version", "conversation_id", "source", "deidentification", "speaker_roles", "turns", "provenance"],
+  "required": [
+    "schema_version",
+    "conversation_id",
+    "source",
+    "deidentification",
+    "speaker_roles",
+    "turns",
+    "provenance"
+  ],
   "additionalProperties": false,
   "properties": {
-    "schema_version": {"type": "string", "enum": ["0.1"]},
-    "conversation_id": {"type": "string", "minLength": 1,
-      "description": "Opaque, stable, and not derived from any identifier of a person (a random id or a hash of the de-identified text)."},
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "0.1"
+      ]
+    },
+    "conversation_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque, stable, and not derived from any identifier of a person (a random id or a hash of the de-identified text)."
+    },
     "source": {
       "type": "object",
-      "required": ["system", "capture_method", "captured_utc"],
+      "required": [
+        "system",
+        "capture_method",
+        "captured_utc"
+      ],
       "additionalProperties": false,
       "properties": {
-        "system": {"type": "string", "minLength": 1, "description": "The deploying organisation's label for the assistant, e.g. a product or pilot name. Never a person."},
-        "product": {"type": ["string", "null"]},
-        "model": {"type": ["string", "null"], "description": "Model as configured, if known."},
-        "model_version": {"type": ["string", "null"], "description": "Exact version string the provider returned, if the capture had it."},
-        "capture_method": {"type": "string", "enum": ["api_log", "ui_export", "manual"]},
-        "captured_utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"}
+        "system": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The deploying organisation's label for the assistant, e.g. a product or pilot name. Never a person."
+        },
+        "product": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Model as configured, if known."
+        },
+        "model_version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Exact version string the provider returned, if the capture had it."
+        },
+        "capture_method": {
+          "type": "string",
+          "enum": [
+            "api_log",
+            "ui_export",
+            "manual"
+          ]
+        },
+        "captured_utc": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        }
       }
     },
     "deidentification": {
       "type": "object",
-      "required": ["status", "method", "reviewed_by", "reviewed_utc"],
+      "required": [
+        "status",
+        "method",
+        "reviewed_by",
+        "reviewed_utc"
+      ],
       "additionalProperties": false,
       "properties": {
-        "status": {"type": "string", "enum": ["deidentified", "synthetic"]},
-        "method": {"type": ["string", "null"], "description": "Tool or procedure used; null only for synthetic."},
-        "reviewed_by": {"type": ["string", "null"], "description": "Role of the human who confirmed the de-identification (a role, not a name); null only for synthetic."},
-        "reviewed_utc": {"type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"}
+        "status": {
+          "type": "string",
+          "enum": [
+            "deidentified",
+            "synthetic"
+          ]
+        },
+        "method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Tool or procedure used; null only for synthetic."
+        },
+        "reviewed_by": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Role of the human who confirmed the de-identification (a role, not a name); null only for synthetic."
+        },
+        "reviewed_utc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        }
+      },
+      "description": "De-identification state. When status is 'deidentified', method, reviewed_by and reviewed_utc must be non-null (the audit evidence the privacy gate promises); they may be null only for 'synthetic'.",
+      "if": {
+        "properties": {
+          "status": {
+            "const": "deidentified"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reviewed_by": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reviewed_utc": {
+            "type": "string"
+          }
+        }
       }
     },
     "consent": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "basis": {"type": ["string", "null"], "description": "Legal or ethical basis for research use (e.g. an IRB determination reference), as a label."},
-        "reference": {"type": ["string", "null"]}
+        "basis": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Legal or ethical basis for research use (e.g. an IRB determination reference), as a label."
+        },
+        "reference": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
     "speaker_roles": {
       "type": "object",
-      "required": ["user_is"],
+      "required": [
+        "user_is"
+      ],
       "additionalProperties": false,
       "properties": {
-        "user_is": {"type": "string", "enum": ["patient", "caregiver", "clinician", "unknown"],
-          "description": "Who the human turns come from. The study's contrast is between patient-framed and clinician-framed wording of the same situation; this field records which the conversation is, so paired analysis can match across conversations."}
+        "user_is": {
+          "type": "string",
+          "enum": [
+            "patient",
+            "caregiver",
+            "clinician",
+            "unknown"
+          ],
+          "description": "Who the human turns come from. The study's contrast is between patient-framed and clinician-framed wording of the same situation; this field records which the conversation is, so paired analysis can match across conversations."
+        }
       }
     },
     "turns": {
@@ -56,14 +180,41 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["turn_id", "role", "text"],
+        "required": [
+          "turn_id",
+          "role",
+          "text"
+        ],
         "additionalProperties": false,
         "properties": {
-          "turn_id": {"type": "integer", "minimum": 1},
-          "role": {"type": "string", "enum": ["user", "assistant", "system", "tool"]},
-          "text": {"type": "string"},
-          "timestamp_utc": {"type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
-          "attachments_omitted": {"type": "integer", "minimum": 0, "description": "Count of non-text items dropped at import (images, files). Recorded, never silently dropped."}
+          "turn_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant",
+              "system",
+              "tool"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "timestamp_utc": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+          },
+          "attachments_omitted": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Count of non-text items dropped at import (images, files). Recorded, never silently dropped."
+          }
         }
       }
     },
@@ -71,33 +222,88 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "topic": {"type": ["string", "null"], "description": "Coarse topic label from the study's specialty map, if assigned."},
+        "topic": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Coarse topic label from the study's specialty map, if assigned."
+        },
         "framing": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["turn_id", "dimension_id", "value", "method", "annotator"],
+            "required": [
+              "turn_id",
+              "dimension_id",
+              "value",
+              "method",
+              "annotator"
+            ],
             "additionalProperties": false,
             "properties": {
-              "turn_id": {"type": "integer", "minimum": 1},
-              "dimension_id": {"type": "string", "description": "An id from docs/framework/framing_dimensions.draft.json."},
-              "value": {"type": "string", "description": "One of that dimension's declared values."},
-              "method": {"type": "string", "enum": ["rule", "judge", "human"]},
-              "annotator": {"type": "string", "description": "Rule name, judge model version, or a human role label."},
-              "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+              "turn_id": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "dimension_id": {
+                "type": "string",
+                "description": "An id from docs/framework/framing_dimensions.draft.json."
+              },
+              "value": {
+                "type": "string",
+                "description": "One of that dimension's declared values."
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "rule",
+                  "judge",
+                  "human"
+                ]
+              },
+              "annotator": {
+                "type": "string",
+                "description": "Rule name, judge model version, or a human role label."
+              },
+              "confidence": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              }
             }
-          }
+          },
+          "description": "Per-turn classifications. The schema checks types only; the importer additionally requires (see docs/framework_design.md section 3.3) that turn_id values are unique, that every annotation resolves to exactly one turn with role 'user', and that dimension_id and value are declared in the registry."
         }
       }
     },
     "provenance": {
       "type": "object",
-      "required": ["import_utc", "text_sha256"],
+      "required": [
+        "import_utc",
+        "text_sha256"
+      ],
       "additionalProperties": false,
       "properties": {
-        "import_utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
-        "importer_sha": {"type": ["string", "null"], "description": "Git sha of the importer that wrote this record."},
-        "text_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "sha256 over the canonical JSON of `turns`, so a later edit to the text is detectable."}
+        "import_utc": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        },
+        "importer_sha": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Git sha of the importer that wrote this record."
+        },
+        "text_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "sha256 (hex) of the UTF-8 bytes of the canonical JSON of `turns`: json.dumps(turns, sort_keys=True, ensure_ascii=False, separators=(',', ':')), the same canonical form scripts/advice_eval.py uses for its hash chain. A consumer recomputes it and refuses a record whose text changed."
+        }
       }
     }
   }
