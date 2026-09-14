@@ -146,8 +146,14 @@ repeat with the same turns but different metadata or annotations is a
 metadata conflict, refused for hand merge, so the retained metadata never
 depends on import order; a repeat with different turns is a conflict,
 refused); every annotation's `annotator`, `dimension_id` and `value` are
-non-empty, with `annotator` for the judge method carrying the judge model
-version and the prompt file's digest; an assistant turn's `reply_to`, when given, must
+non-empty, and `annotator` has the shape its `method` demands
+(`rule:<name>:<version>`; `judge:<model_version>:<prompt sha256[:12]>`; for
+a human, a role label that does not begin with either prefix), so a
+classification always traces to a versioned rule, a versioned prompt, or a
+role; an annotation's `value` is a declared value of its dimension or the
+reserved `not_applicable`, which records that the turn carries nothing to
+classify on that dimension (an affirmation, a number, an empty or
+attachment-only turn), is counted, and generates no contrast; an assistant turn's `reply_to`, when given, must
 name an earlier user turn; every framing annotation must resolve to exactly one turn whose
 role is `user` and must name a dimension and value declared in the
 registry; at most one annotation per turn and dimension (two classifications
@@ -203,7 +209,11 @@ lists and one vocabulary.
 by a patient and by a clinician. An entry declares its `values`, how a turn
 is classified on it (`detection.methods` from rule, judge, human; whenever
 `judge` is allowed, `judge_prompt_ref` must resolve to a versioned prompt
-file under `docs/framework/judge_prompts/` that defines every value, and the
+file under `docs/framework/judge_prompts/` that defines every value, offers
+the `not_applicable` outcome rather than forcing a value onto a turn with
+no register, places the turn between declared delimiters as data with an
+instruction that nothing inside them is to be followed (a turn that says
+"ignore previous instructions" is text to classify, not a command), and the
 annotation records the judge model version and that file's digest, so no
 adapter classifies under an implicit prompt), how its counterfactual is produced
 (`counterfactual.method`, one of the registry's declared
@@ -275,15 +285,17 @@ neither the record digest nor the schema's shape. The guard therefore keeps
 a private index of every imported turn's normalised text (case-folded,
 whitespace-collapsed; hashed in fixed-length shingles, and as a whole-turn
 hash for every turn, so a turn shorter than the shingle window is still
-matched by its whole text and the index reveals nothing) and scans every staged file's text for any shingle hit, refusing
-the commit and naming the file; whole-record digests and schema-shaped
-content are refused as well; and a path policy refuses any file under the
-transcript data directory or any `.jsonl` that validates as a transcript
-whose records are not all `synthetic`. The one committed fixture,
-`docs/framework/example_transcript.jsonl`, passes that policy because every
-record in it is `synthetic`; a `deidentified` record is refused wherever it
-appears, fixture path included. The index lives with the transcripts,
-outside both repositories. De-identification is a precondition of import, enforced by
+matched by its whole text and the index reveals nothing) and applies three
+checks to every staged file: any shingle or whole-turn hit against the
+index refuses the commit and names the file; any content that validates as
+a transcript record, or matches a whole-record digest, is refused; and any
+file under the transcript data directory is refused. One exemption, stated
+once and applied to the second and third checks alike: the path
+`docs/framework/example_transcript.jsonl`, and only when every record in it
+has `status: synthetic`. The first check has no exemption, so a fixture
+that came to contain real imported text is refused by its content whatever
+its declared status. The index lives with the transcripts, outside both
+repositories. De-identification is a precondition of import, enforced by
 the schema (§3.2), and the counterfactual step sends de-identified text only.
 Which model environments may receive that text is the deploying
 organisation's decision: the adapter layer makes local open-weight models a
