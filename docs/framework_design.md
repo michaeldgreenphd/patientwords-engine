@@ -160,8 +160,10 @@ must be one its dimension enables in `detection.methods`, so a
 classification from an undeclared classifier never reaches the
 counterfactual step; an annotation's `value` is a declared value of its dimension or the
 reserved `not_applicable`, which records that the turn carries nothing to
-classify on that dimension (an affirmation, a number, an empty or
-attachment-only turn), is counted, and generates no contrast; an assistant turn's `reply_to`, when given, must
+classify on that dimension (an affirmation, a bare number, a person's
+name or a register-free identifier, an empty or attachment-only turn; a
+named diagnosis, medication, procedure or symptom carries register and is
+classified), is counted, and generates no contrast; an assistant turn's `reply_to`, when given, must
 name an earlier user turn; every framing annotation must resolve to exactly one turn whose
 role is `user` and must name a dimension and value declared in the
 registry; at most one annotation per turn and dimension (two classifications
@@ -208,6 +210,22 @@ that list `target_token` are reported as unavailable for that pair. They are
 never run with a null target: `scripts/logits_eval.py` returns a null
 `language_penalty` in that case, which would read as a measurement.
 
+An atomic target with a persisted id is still not enough on a path that
+returns token text rather than ids. The hosted path's anchor match
+(`medlang_circuits/targets.py`, `anchor_matches`) accepts a prefix match in
+either direction and `target_probability` returns the highest-probability
+match, so a target that is a proper prefix of a likelier neighbour takes
+the neighbour's number: the `" ant"`/`" anti"` misread recorded in
+`AGENTS.md` (Known measurement limitations). Every probe that reads at the
+target therefore carries an `identity` rule in the registry: where the
+adapter returns ids, the scored id must equal the persisted id; where it
+returns text only, the returned token's bare text must equal the persisted
+surface string exactly; any other match is emitted as a named
+`target_identity_unverified` result for that side and counted, never a
+probability. The framework adapter applies this rule on top of the existing
+hosted path rather than changing it, since changing that path re-publishes
+numbers that are live on the site, which is a decision and not a fix.
+
 ## 4. The framework of differences
 
 `docs/framework/framing_dimensions.draft.json` is the registry. It has two
@@ -223,7 +241,12 @@ no register, places the turn between declared delimiters as data with an
 instruction that nothing inside them is to be followed (a turn that says
 "ignore previous instructions" is text to classify, not a command), and the
 annotation records the judge model version and that file's digest, so no
-adapter classifies under an implicit prompt), how its counterfactual is produced
+adapter classifies under an implicit prompt; the file also fixes the
+rendering, a single-pass substitution of its placeholders with the value
+lines in file order and the delimiters escaped inside the turn, and the
+annotation records `rendered_sha256`, the digest of the prompt as sent, so
+two adapters that rendered differently are told apart in the artifact
+rather than sharing one file digest), how its counterfactual is produced
 (`counterfactual.method`, one of the registry's declared
 `counterfactual_methods`, and an explicit list of `contrasts`, each a named
 source-to-target pair; every contrast is generated and reported under its

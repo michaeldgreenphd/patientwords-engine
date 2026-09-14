@@ -286,7 +286,27 @@
                 ],
                 "minimum": 0,
                 "maximum": 1
+              },
+              "rendered_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "Judge annotations only: sha256 of the fully rendered prompt as sent to the judge, produced by the prompt file's canonical `rendering` algorithm, so two adapters that rendered differently are distinguishable in the artifact."
               }
+            },
+            "if": {
+              "required": [
+                "method"
+              ],
+              "properties": {
+                "method": {
+                  "const": "judge"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "rendered_sha256"
+              ]
             }
           },
           "description": "Per-turn classifications. The schema checks types only; the importer additionally requires (see docs/framework_design.md section 3.3) that turn_id values are unique, that every annotation resolves to exactly one turn with role 'user', and that dimension_id and value are declared in the registry."

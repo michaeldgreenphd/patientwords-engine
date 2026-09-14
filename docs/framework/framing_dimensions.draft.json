@@ -112,7 +112,8 @@
         "target_token"
       ],
       "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture); a result whose screening.status is screened_out (the --screen-targets path: patient trace skipped, language_penalty null) is emitted as a named screened_out record and counted, never read as a measurement or dropped",
-      "censoring": "on logprobs_topn the target may be absent from the returned set: emit a named censored result for that side, never a probability (scripts/paired_stats.py already distinguishes the censored case)"
+      "censoring": "on logprobs_topn the target may be absent from the returned set: emit a named censored result for that side, never a probability (scripts/paired_stats.py already distinguishes the censored case)",
+      "identity": "exact target identity: the probability read is the persisted target's own, never a neighbour's. Where the adapter returns token ids, the scored id must equal the persisted id; where it returns token text only (the hosted path), the returned token's bare text must equal the persisted surface string exactly. Any other match, including a prefix either way, is emitted as a named target_identity_unverified result for that side and counted, never a probability. The existing hosted path does not meet this: medlang_circuits/targets.py anchor_matches accepts a prefix match either way and target_probability returns the highest-probability match, which is the ' ant'/' anti' misread in AGENTS.md (Known measurement limitations); the framework adapter applies this rule on top of it until that path is changed, which re-publishes live numbers and is a separate decision"
     },
     {
       "id": "attribution_graph",
@@ -125,7 +126,8 @@
         "pair_text",
         "target_token"
       ],
-      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture); a result whose screening.status is screened_out (the --screen-targets path: patient trace skipped, language_penalty null) is emitted as a named screened_out record and counted, never read as a measurement or dropped"
+      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture); a result whose screening.status is screened_out (the --screen-targets path: patient trace skipped, language_penalty null) is emitted as a named screened_out record and counted, never read as a measurement or dropped",
+      "identity": "exact target identity: the probability read is the persisted target's own, never a neighbour's. Where the adapter returns token ids, the scored id must equal the persisted id; where it returns token text only (the hosted path), the returned token's bare text must equal the persisted surface string exactly. Any other match, including a prefix either way, is emitted as a named target_identity_unverified result for that side and counted, never a probability. The existing hosted path does not meet this: medlang_circuits/targets.py anchor_matches accepts a prefix match either way and target_probability returns the highest-probability match, which is the ' ant'/' anti' misread in AGENTS.md (Known measurement limitations); the framework adapter applies this rule on top of it until that path is changed, which re-publishes live numbers and is a separate decision"
     },
     {
       "id": "clinical_feature_mass",
@@ -138,7 +140,8 @@
         "pair_text",
         "target_token"
       ],
-      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture); a result whose screening.status is screened_out (the --screen-targets path: patient trace skipped, language_penalty null) is emitted as a named screened_out record and counted, never read as a measurement or dropped"
+      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture); a result whose screening.status is screened_out (the --screen-targets path: patient trace skipped, language_penalty null) is emitted as a named screened_out record and counted, never read as a measurement or dropped",
+      "identity": "exact target identity: the probability read is the persisted target's own, never a neighbour's. Where the adapter returns token ids, the scored id must equal the persisted id; where it returns token text only (the hosted path), the returned token's bare text must equal the persisted surface string exactly. Any other match, including a prefix either way, is emitted as a named target_identity_unverified result for that side and counted, never a probability. The existing hosted path does not meet this: medlang_circuits/targets.py anchor_matches accepts a prefix match either way and target_probability returns the highest-probability match, which is the ' ant'/' anti' misread in AGENTS.md (Known measurement limitations); the framework adapter applies this rule on top of it until that path is changed, which re-publishes live numbers and is a separate decision"
     },
     {
       "id": "activation_patching",
@@ -150,7 +153,8 @@
       "inputs": [
         "pair_text",
         "target_token"
-      ]
+      ],
+      "identity": "exact target identity: the probability read is the persisted target's own, never a neighbour's. Where the adapter returns token ids, the scored id must equal the persisted id; where it returns token text only (the hosted path), the returned token's bare text must equal the persisted surface string exactly. Any other match, including a prefix either way, is emitted as a named target_identity_unverified result for that side and counted, never a probability. The existing hosted path does not meet this: medlang_circuits/targets.py anchor_matches accepts a prefix match either way and target_probability returns the highest-probability match, which is the ' ant'/' anti' misread in AGENTS.md (Known measurement limitations); the framework adapter applies this rule on top of it until that path is changed, which re-publishes live numbers and is a separate decision"
     },
     {
       "id": "jlens_depth",
@@ -162,7 +166,8 @@
       "inputs": [
         "pair_text",
         "target_token"
-      ]
+      ],
+      "identity": "exact target identity: the probability read is the persisted target's own, never a neighbour's. Where the adapter returns token ids, the scored id must equal the persisted id; where it returns token text only (the hosted path), the returned token's bare text must equal the persisted surface string exactly. Any other match, including a prefix either way, is emitted as a named target_identity_unverified result for that side and counted, never a probability. The existing hosted path does not meet this: medlang_circuits/targets.py anchor_matches accepts a prefix match either way and target_probability returns the highest-probability match, which is the ' ant'/' anti' misread in AGENTS.md (Known measurement limitations); the framework adapter applies this rule on top of it until that path is changed, which re-publishes live numbers and is a separate decision"
     }
   ],
   "requires_levels": {
@@ -185,6 +190,6 @@
     "rule": "A deterministic rewrite rule named and versioned in the adapter; recorded with the rule id."
   },
   "reserved_annotation_values": {
-    "not_applicable": "Allowed as an annotation value on every dimension: the turn carries nothing to classify on it (an affirmation, a number, an empty or attachment-only turn). Recorded as classification unavailable and counted, never guessed into a declared value; no contrast is generated for it. A dimension never lists it among its own values."
+    "not_applicable": "Allowed as an annotation value on every dimension: the turn carries nothing to classify on it (an affirmation, a bare number, a person's name or a register-free identifier, an empty or attachment-only turn; a named diagnosis, medication, procedure or symptom carries register and is classified). Recorded as classification unavailable and counted, never guessed into a declared value; no contrast is generated for it. A dimension never lists it among its own values."
   }
 }
