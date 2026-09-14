@@ -1,0 +1,13 @@
+{
+  "schema_version": "0.1",
+  "status": "draft pending owner review",
+  "dimension_id": "register",
+  "_readme": "Versioned classification instructions for the judge method. An adapter renders `instructions` with the value definitions and the turn text, records the judge model version and the sha256 of this file's canonical JSON in the annotation's `annotator` (judge:<model_version>:<sha256[:12]>), so two adapters cannot classify the same turn under different implicit prompts. Definitions are the owner's to refine; the boundary must be one a human annotator and the judge would agree on.",
+  "values": {
+    "colloquial": "The situation is stated in everyday wording a person would use without medical training.",
+    "clinical": "The situation is stated in clinical terminology a clinician would use in a note or a handover.",
+    "mixed": "Both registers appear in the same turn in a way that neither value describes on its own."
+  },
+  "instructions": "Classify the register of the following user turn as exactly one of the listed values, using only the definitions given. Answer with the value id alone.\n\nValues:\n{values}\n\nTurn:\n{turn_text}",
+  "answer_format": "one value id from `values`, nothing else"
+}

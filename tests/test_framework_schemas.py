@@ -161,18 +161,34 @@ def counterfactual_ineligibility(record: dict, assistant_turn_id: int | None = N
     return None
 
 
+def record_digest(record: dict) -> str:
+    """sha256 of the whole record minus the import-run fields, so two imports of
+    one conversation compare on everything that matters, not the text alone."""
+    body = json.loads(json.dumps(record))
+    body["provenance"] = {k: v for k, v in body["provenance"].items() if k not in ("import_utc", "importer_sha")}
+    return hashlib.sha256(canonical_json(body).encode("utf-8")).hexdigest()
+
+
 def file_problems(records: list[dict]) -> list[str]:
-    """Across one input file: a repeated conversation_id with the same digest is
-    an idempotent duplicate (reported), with a different digest a conflict
-    (refused). The importer runs the same check against its existing store."""
-    seen: dict[str, str] = {}
+    """Across one input file: a repeated conversation_id whose whole record
+    matches is an idempotent duplicate (reported, skipped); same turns with
+    different metadata or annotations is a metadata conflict (refused, merged
+    by hand); different turns is a conflict (refused). The importer runs the
+    same check against its existing store."""
+    seen: dict[str, tuple[str, str]] = {}
     problems = []
     for r in records:
-        cid, digest = r["conversation_id"], r["provenance"]["text_sha256"]
+        cid = r["conversation_id"]
+        key = (r["provenance"]["text_sha256"], record_digest(r))
         if cid in seen:
-            kind = "idempotent duplicate" if seen[cid] == digest else "conflict: same conversation_id, different text"
+            if seen[cid] == key:
+                kind = "idempotent duplicate"
+            elif seen[cid][0] == key[0]:
+                kind = "metadata conflict: same turns, different metadata or annotations"
+            else:
+                kind = "conflict: same conversation_id, different text"
             problems.append(f"{cid}: {kind}")
-        seen.setdefault(cid, digest)
+        seen.setdefault(cid, key)
     return problems
 
 
@@ -320,9 +336,37 @@ def test_conversation_ids_are_unique_across_a_file():
     assert file_problems([base]) == []
     twice = [base, json.loads(json.dumps(base))]
     assert file_problems(twice) == [f"{base['conversation_id']}: idempotent duplicate"]
+    reimported = json.loads(json.dumps(base))
+    reimported["provenance"]["import_utc"] = "2026-09-15T00:00:00Z"        # import-run fields do not count
+    assert file_problems([base, reimported]) == [f"{base['conversation_id']}: idempotent duplicate"]
+    remeta = json.loads(json.dumps(base))
+    remeta["annotations"]["framing"][0]["value"] = "clinical"             # same turns, different annotation
+    assert any("metadata conflict" in p for p in file_problems([base, remeta]))
     changed = json.loads(json.dumps(base))
     changed["provenance"]["text_sha256"] = "1" * 64
-    assert any("conflict" in p for p in file_problems([base, changed]))
+    assert any("different text" in p for p in file_problems([base, changed]))
+
+
+def test_annotation_provenance_cannot_be_empty(schema):
+    base = _examples()[0]
+    for field in ("annotator", "dimension_id", "value"):
+        broken = json.loads(json.dumps(base))
+        broken["annotations"]["framing"][0][field] = ""
+        assert any(f"framing[0].{field}: shorter than 1" in p for p in validate(broken, schema)), field
+
+
+def test_judge_method_resolves_to_a_versioned_prompt(dimensions):
+    for d in dimensions["dimensions"]:
+        if "judge" not in d["detection"]["methods"]:
+            continue
+        ref = d["detection"]["judge_prompt_ref"]
+        assert ref, f"{d['id']}: judge is allowed but judge_prompt_ref is null"
+        prompt = json.loads((ROOT / ref).read_text(encoding="utf-8"))
+        assert prompt["dimension_id"] == d["id"]
+        assert prompt["instructions"].strip() and "{values}" in prompt["instructions"] \
+            and "{turn_text}" in prompt["instructions"]
+        assert set(prompt["values"]) == set(d["values"]), f"{d['id']}: prompt must define every value"
+        assert all(v.strip() for v in prompt["values"].values())
 
 
 def test_framing_dimensions_registry_is_consistent(dimensions):
@@ -339,6 +383,8 @@ def test_framing_dimensions_registry_is_consistent(dimensions):
         assert d["values"] and len(set(d["values"])) == len(d["values"]), d["id"]
         assert set(d["detection"]["methods"]) <= {"rule", "judge", "human"}, d["id"]
         cf = d["counterfactual"]
+        assert cf.get("method") in dimensions["counterfactual_methods"], \
+            f"{d['id']}: counterfactual.method must be one of {sorted(dimensions['counterfactual_methods'])}"
         contrast_ids = [c["id"] for c in cf["contrasts"]]
         assert len(contrast_ids) == len(set(contrast_ids)), f"{d['id']}: contrast ids must be unique"
         for c in cf["contrasts"]:

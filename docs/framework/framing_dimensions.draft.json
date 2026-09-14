@@ -17,7 +17,7 @@
           "judge",
           "human"
         ],
-        "judge_prompt_ref": null
+        "judge_prompt_ref": "docs/framework/judge_prompts/register.draft.json"
       },
       "counterfactual": {
         "method": "translation",
@@ -111,7 +111,7 @@
         "pair_text",
         "target_token"
       ],
-      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture)",
+      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture); a result whose screening.status is screened_out (the --screen-targets path: patient trace skipped, language_penalty null) is emitted as a named screened_out record and counted, never read as a measurement or dropped",
       "censoring": "on logprobs_topn the target may be absent from the returned set: emit a named censored result for that side, never a probability (scripts/paired_stats.py already distinguishes the censored case)"
     },
     {
@@ -125,7 +125,7 @@
         "pair_text",
         "target_token"
       ],
-      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture)"
+      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture); a result whose screening.status is screened_out (the --screen-targets path: patient trace skipped, language_penalty null) is emitted as a named screened_out record and counted, never read as a measurement or dropped"
     },
     {
       "id": "clinical_feature_mass",
@@ -138,7 +138,7 @@
         "pair_text",
         "target_token"
       ],
-      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture)"
+      "completeness": "batch_summary consumer: reject a summary with completed false or fewer results than pairs_requested, and emit a missing-index record per absent pair before analysis (medlang_circuits.batch_eval.run_batch truncates results on a mid-batch failure with no per-pair error record, AGENTS.md Architecture); a result whose screening.status is screened_out (the --screen-targets path: patient trace skipped, language_penalty null) is emitted as a named screened_out record and counted, never read as a measurement or dropped"
     },
     {
       "id": "activation_patching",
@@ -176,7 +176,12 @@
   },
   "inputs_levels": {
     "pair_text": "The two framings of the user turn plus the preceding context. Every pair has it.",
-    "target_token": "The clinical target token whose next-token probability the probe reads. Stimulus pairs carry it (target_clinical_token); a pair derived from an imported transcript has none until a target-selection rule (docs/framework_design.md section 3.4) assigns one and persists it in the pair record. Until then a probe that lists this input is reported as unavailable for that pair, never run with a null target (scripts/logits_eval.py build_result returns a null language_penalty in that case).",
+    "target_token": "The clinical target token whose next-token probability the probe reads. Stimulus pairs carry it (target_clinical_token); a pair derived from an imported transcript has none until a target-selection rule (docs/framework_design.md section 3.4) assigns one and persists it in the pair record. The persisted value is per model: the surface string plus the token id actually scored, validated to be a single token in that model's tokenizer; a target that tokenises to more than one id is reported as target_not_atomic for that model, never scored on its first id (scripts/logits_eval.py build_result scores target_ids[0] only). Until a target is assigned, a probe that lists this input is reported as unavailable for that pair.",
     "response_text": "The assistant reply for each arm of the pair, from one re-elicitation run under one pinned environment (docs/framework_design.md section 3.1). A pair whose re-elicitation was refused or failed on either arm lacks it and reports the response probes as unavailable by name, never judges a missing reply."
+  },
+  "counterfactual_methods": {
+    "translation": "The study's patient-to-clinical translation step (advice_eval's translate request) and its reverse; recorded with the translator model version and the input/output sha256.",
+    "manual": "A human rewrites the turn; recorded with a role label and reviewed_utc.",
+    "rule": "A deterministic rewrite rule named and versioned in the adapter; recorded with the rule id."
   }
 }

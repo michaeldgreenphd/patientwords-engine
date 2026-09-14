@@ -24,7 +24,7 @@
     "conversation_id": {
       "type": "string",
       "minLength": 1,
-      "description": "Opaque, stable, and not derived from any identifier of a person (a random id or a hash of the de-identified text). Unique across the input file and the existing transcript store: the importer treats a repeat with the same text_sha256 as an idempotent duplicate (skipped, reported) and a repeat with a different digest as a conflict (refused)."
+      "description": "Opaque, stable, and not derived from any identifier of a person (a random id or a hash of the de-identified text). Unique across the input file and the existing transcript store: the importer treats a repeat whose whole record (everything but provenance.import_utc and importer_sha) is identical as an idempotent duplicate (skipped, reported); a repeat with the same turns but different metadata or annotations as a metadata conflict (refused, to be merged by hand); and a repeat with different turns as a conflict (refused)."
     },
     "source": {
       "type": "object",
@@ -258,11 +258,13 @@
               },
               "dimension_id": {
                 "type": "string",
-                "description": "An id from docs/framework/framing_dimensions.draft.json."
+                "description": "An id from docs/framework/framing_dimensions.draft.json.",
+                "minLength": 1
               },
               "value": {
                 "type": "string",
-                "description": "One of that dimension's declared values."
+                "description": "One of that dimension's declared values.",
+                "minLength": 1
               },
               "method": {
                 "type": "string",
@@ -274,7 +276,8 @@
               },
               "annotator": {
                 "type": "string",
-                "description": "Rule name, judge model version, or a human role label."
+                "description": "Non-empty. For method rule: the rule name and version; for judge: judge:<model_version>:<prompt sha256[:12]> where the prompt is the dimension's judge_prompt_ref file; for human: a role label, never a name.",
+                "minLength": 1
               },
               "confidence": {
                 "type": [
