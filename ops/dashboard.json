@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_utc": "2026-09-15T13:19:45Z",
+  "updated_utc": "2026-09-15T13:20:46Z",
   "updated_by": "routine",
   "queue": {
     "circuit-trace": {
@@ -756,6 +756,10 @@
     {
       "date": "2026-09-11",
       "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 34599624549, 36m20s, GitHub-confirmed) - eighth healthy Neuronpedia day since the 08-22..25 outage, and the slowest yet: it OVERRAN item 3b's 35-minute bound by 1m20s, the second successful sentinel to do so after 08-29's 38m38s. The outputs commit landed two seconds after the poll gave up; the pre-close GitHub status check recovered the day, as it did on 08-29 - see SENTINEL-WAIT-BOUND-20260829, now a second occurrence. Series 37 -> 38 measured days ending 20260911; today vs 20260908 max |dp| 0.0, top words unchanged, penalties 0.045/0.369/-0.046 unchanged for a fourth cycle. 09-09 and 09-10 are Tue/Fri cadence gaps, not holes. PUBLISHED TO THE LIVE SITE (gates first - contract 0 errors/1 known warning, seal CLEAN 183). Lane re-parked and resolved in-cycle; all 8 triggers at rest, all 9 lanes 0 active. 2 runs, both success, both $0. Item 3d fired nothing: the 10 unarchived PNGs sit at trace_out/ top level with no run directory and the archive lane cannot bundle them - see ORPHAN-TOPLEVEL-PNGS-20260911."
+    },
+    {
+      "date": "2026-09-15",
+      "text": "DRIFT verdict: no new breach. Sentinel SUCCEEDED (run 34969199841, 19m34s, GitHub-confirmed) - ninth healthy Neuronpedia day since the 08-22..25 outage, and the FASTEST of the recent set. Series 38 -> 39 measured days ending 20260915; today vs 20260911 max |dp| 0.0 at pair 1 clinical, top words unchanged, penalties 0.045/0.369/-0.046 unchanged for a fifth cycle. 09-12..09-14 are Tue/Fri cadence gaps, not holes. PUBLISHED TO THE LIVE SITE (gates first - contract 0 errors/1 known warning, seal CLEAN 183). NEW AND WORTH THE OWNER'S ATTENTION: item 3b's poll is structurally broken, not merely too short - it reported 'bound reached, no outputs' at 35 minutes on a run that had finished at 19m34s, because 'git pull --rebase' refuses while ops/dashboard.json is dirty and item 3a mandates the --keep-dashboard that dirties it. Only the pre-close GitHub check has ever found the outputs; SENTINEL-WAIT-BOUND-20260829 reframed accordingly. ORPHAN-TOPLEVEL-PNGS-20260911 closed (owner deleted the ten strays 09-12). PNG sweep fired for drift_sentinel_20260911; its entry is left for next cycle's harvest per 3d. $0 spent."
     }
   ],
   "decisions_pending": [
