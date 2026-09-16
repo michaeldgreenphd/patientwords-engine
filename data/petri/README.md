@@ -12,7 +12,7 @@ section 9; owner decision 8, 2026-09-16).
 | `runs/<run>/transcripts.jsonl` | `petri_audit.adapter` | Transcript 0.2 records, one per trajectory node, bound to the manifest's identity digest. |
 | `runs/<run>/rule_outcomes.jsonl` | `petri_audit.adapter` | Rule outcomes per record (tool invocation, order, marker echo, query text, parse errors). |
 | `runs/<run>/sanitised_log.json` | `petri_audit.adapter` | The allowlist projection of the raw log: messages, events with text, usage, timeline structure; no provider request bodies, headers, base URLs or arguments. |
-| `runs/<run>/judgments.jsonl` (+ `.report.json`) | `petri_audit.judge_runner`, bound by `petri_audit.manifest.bind_judgments` | The judge of record's per-turn annotations under both tier instruments and the outcome prompt files; null answers kept and counted. `judge` then records the file's path and digest and the judge's provenance in `manifest.json` and reseals it (identity digest unchanged, chain head line replaced), so `verify-chain` covers the judgments too. The `.report.json` sidecar carries the judge's billing channel and the per-prompt token estimator the ceiling used. |
+| `runs/<run>/judgments.jsonl` (+ `<run>.judge.report.json`) | `petri_audit.judge_runner`, bound by `petri_audit.manifest.bind_judgments` | The judge of record's per-turn annotations under both tier instruments and the outcome prompt files; null answers kept and counted. `judge` then records the file's path and digest and the judge's provenance in `manifest.json` and reseals it (identity digest unchanged, chain head line replaced), so `verify-chain` covers the judgments too. The `<run>.judge.report.json` sidecar (run-unique, because the ledger keys sidecars by basename) carries the judge's billing channel, the per-prompt token estimator the ceiling used, and the count of calls whose usage the provider omitted (charged at their worst case). |
 | `runs/<run>/analysis_rows.jsonl` | `petri_audit.cli analyze` | Analysis-ready rows with protocol, tree, branch and shared-prefix flags. |
 | `runs/<run>/<run>.report.json` | `petri_audit.cli adapt --report` | The cost sidecar the ledger folds into the daily spend (`scripts/ledger_update.py --petri-dir`), engine re-priced from Inspect's usage, explicit `billing_channel`. When any target call returned no usage block the sidecar imputes `max_spend` (`cost_basis: ceiling_imputed:usage_missing`) rather than booking the run below its charge. |
 | `runs/manifests.chain` | `petri_audit.manifest` | One line per manifest: path and digest, each linking to the previous; `verify-chain` checks every link and every artifact a manifest names (path present, digest as recorded). The only rewrite the chain permits is the head line, when `judge` binds judgments into the head manifest. |
@@ -23,6 +23,12 @@ runner's temporary directory, uploads them as a workflow artifact with 90-day
 retention, and binds them to the manifest by sha256. `.gitignore` refuses
 `*.eval` and `runs/*/logs/` everywhere, and the workflow refuses to commit
 while any `.eval` is inside the checkout.
+
+The measurement outputs of a run are committed only when `commit_outputs` is
+true and every prior step succeeded. The two cost sidecars of a paid run
+(`<run>.report.json`, `<run>.judge.report.json`) are committed by a separate
+step whatever happened to the outputs, because the ledger is the only record
+of landed spend and they carry no seed or model text.
 
 Paths inside a manifest are recorded relative to `runs/`, so the same log
 adapted anywhere yields byte-identical exports (tests/petri/test_zero_cost_e2e.py).

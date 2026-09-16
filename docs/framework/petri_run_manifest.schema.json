@@ -242,8 +242,11 @@
           "description": "sha256 of the rendered auditor system message for autonomous runs; null for scripted runs, which have no auditor model."
         },
         "log_model_api": {
-          "type": "boolean",
-          "description": "Whether Inspect kept the raw request and response for every call (default keeps only the first five per model per sample)."
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Inspect's configured log_model_api as the log recorded it: true keeps the raw request and response of every call, false keeps errors only, null is Inspect's default (the first few calls per model). Recorded verbatim, never inferred from how many calls happened to be retained; request coverage is the generation_config_pinned contract check."
         }
       }
     },

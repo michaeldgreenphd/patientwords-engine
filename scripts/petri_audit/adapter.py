@@ -39,9 +39,11 @@ from .checks import (
     ROOT_BRANCH,
     branch_staged_texts,
     claim_grade_eligible,
-    condition_text_pool,
     coverage_problems,
     expected_stimuli,
+    missing_branch_refusals,
+    request_prefix_problems,
+    request_stimuli,
     staging_problems,
     stimulus_problems,
 )
@@ -174,6 +176,10 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
               registry_spec: str | None = None, engine_sha: str | None = None, lock_path: Path | str | None = None,
               registry: dict | None = None, harness_commit: str | None = None) -> AdaptResult:
     eval_path, out_dir = Path(eval_path), Path(out_dir)
+    if out_dir.exists() and any(out_dir.iterdir()):
+        # never adapt over a run that exists: the chain would gain a second line for the same path while the first
+        # still names the old digest, and the stored measurement would be replaced (Codex round 2)
+        raise AdapterError(f"{out_dir}: run directory exists and is not empty; adapt into a new directory")
     out_dir.mkdir(parents=True, exist_ok=True)
     log: EvalLog = read_eval_log(str(eval_path), resolve_attachments=True)
     if log.samples is None:
@@ -230,6 +236,17 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         if seed is None:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"sample metadata names no known seed ({seed_id!r})"})
             continue
+        # the seed in hand must be the seed the run executed: the sample records its digest (task.samples_for) and a
+        # re-adaptation after the seed file changed would otherwise bind the run to new metadata (Codex round 2)
+        if meta.get("seed_sha256") != seed_digest(seed):
+            refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}",
+                            "reason": f"seed digest recorded by the run ({str(meta.get('seed_sha256'))[:12]}) differs from the "
+                                      f"seed file in hand ({seed_digest(seed)[:12]}); use the seed file of record"})
+            continue
+        if seed.get("mode") != "scripted":
+            refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}",
+                            "reason": f"seed mode {seed.get('mode')!r} has no execution path; only scripted seeds run"})
+            continue
         seeds_used[seed_id] = seed
         max_turns = max(max_turns, seed["protocol"]["max_target_turns"])
         if seed.get("tools"):
@@ -278,7 +295,6 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         branch_infos = [d for d in pw if d.get("pw") == "branch"]
         timeline = select_timeline(sample.timelines or [], "target")
         nodes = _walk_nodes(timeline.root)
-        condition_shas = condition_text_pool(seed, cond)
         branches_out: list[dict] = []
         child_index = 0
         for order, (span, parent, creation) in enumerate(nodes):
@@ -299,6 +315,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             messages = span_messages(span)
             if not messages:
                 dropped_empty += 1
+                refused.append({"branch_id": f"{tree_id}:{branch_id}", "reason": "branch timeline is empty"})
                 continue
             simple = [_message_to_simple(m) for m in messages]
             if any(m["prefill"] for m in simple):
@@ -348,17 +365,6 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                             checks["tool_results_from_data"].fail(f"{tree_id}:{branch_id} turn {turn['turn_id']}: tool result differs from the seed template")
                         elif sha256_text(turn["text"]) != hit.get("sha256"):
                             checks["tool_results_from_data"].fail(f"{tree_id}:{branch_id} turn {turn['turn_id']}: staged digest disagrees with the log")
-            # raw request bodies: every user message a target call received must be a text of this condition
-            for e in model_events:
-                if e.call is None or not isinstance(e.call.request, dict):
-                    continue
-                for m in e.call.request.get("messages") or []:
-                    if isinstance(m, dict) and m.get("role") == "user":
-                        content = m.get("content")
-                        text = content if isinstance(content, str) else "".join(
-                            c.get("text", "") for c in content if isinstance(c, dict)) if isinstance(content, list) else ""
-                        if sha256_text(text) not in condition_shas:
-                            checks["stimulus_digest_identity"].fail(f"{tree_id}: a raw request carried a user message that is not a text of this condition")
             anchor_turn = None
             if anchor_msg is not None:
                 anchor_turn = next((t["turn_id"] for t, m in zip(record["turns"], simple) if m["id"] == anchor_msg), None)
@@ -370,6 +376,15 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             branches_out.append({"branch_id": branch_id, "parent_branch_id": parent_id, "branched_from_message_id": anchor_msg,
                                  "branched_from_turn_id": anchor_turn, "condition_id": cond["condition_id"],
                                  "conversation_id": conv_id, "surviving": False, "creation_index": creation})
+        # raw request bodies (per sample, every branch): each retained request's complete system/user sequence must be
+        # a prefix of exactly the sequence one branch of this condition declares, never mere membership in a pool
+        for e in model_events:
+            if e.call is None or not isinstance(e.call.request, dict):
+                continue
+            for problem in request_prefix_problems(request_stimuli(e.call.request), seed, cond, where=tree_id):
+                checks["stimulus_digest_identity"].fail(problem)
+        # every declared branch must have been exported from this tree
+        refused.extend(missing_branch_refusals(seed, [b["branch_id"] for b in branches_out], where=tree_id))
         if branches_out:
             branches_out[-1]["surviving"] = True
             trees.append({"tree_id": tree_id, "sample_uuid": sample.uuid or str(sample.id), "sample_id": str(sample.id),
@@ -378,7 +393,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
 
     # contract check verdicts
     checks["stimulus_digest_identity"].ok("every record carries exactly the texts its condition and branch declare; "
-                                          "staging records and raw requests agree")
+                                          "staging records agree and every retained raw request is a branch prefix")
     epochs = int(getattr(spec.config, "epochs", None) or 1)
     task_meta = (spec.metadata or {}).get("patientwords") if isinstance(spec.metadata, dict) else None
     selected_ids = list(task_meta["seed_ids"]) if isinstance(task_meta, dict) and isinstance(task_meta.get("seed_ids"), list) else None
@@ -451,7 +466,10 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                       "prefill_enabled": False, "cache_enabled": False,
                       "target_tools_mode": "fixed" if any_tools else "none", "max_turns": max(max_turns, 1),
                       "epochs": epochs, "auditor_instruction_sha256": None,
-                      "log_model_api": bool(getattr(spec.config, "log_model_api", None)) or calls_missing == 0},
+                      # the configured value as Inspect recorded it (True: every call retained; False: errors only;
+                      # None: Inspect's default of the first few calls per model); request coverage is the
+                      # generation_config_pinned check, never inferred into this field
+                      "log_model_api": getattr(spec.config, "log_model_api", None)},
         "models": {"target": {"provider": target_provider, "model": target_name.split("/", 1)[1] if "/" in target_name else target_name,
                               "inspect_name": target_name, "registry_spec": registry_spec,
                               "served_model_strings": sorted(served_all),

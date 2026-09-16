@@ -123,7 +123,21 @@ def test_paid_steps_are_gated_on_mode_and_the_raw_log_stays_outside_the_checkout
     unconditional = [s["name"] for s in steps if "always()" in str(s.get("if", ""))]
     assert unconditional == ["Refuse to publish a raw log (belt and braces)",
                              "Upload the raw .eval as a workflow artifact (90-day custody; never committed)",
+                             "Commit cost sidecars of a paid run (mode run; independent of commit_outputs)",
                              "Job summary"]
+    # the cost sidecars of a paid run are booked whatever happened to the outputs (Codex round 2); nothing else
+    # is staged by that step, and it runs after the gated outputs commit
+    sidecars = _step(workflow, "Commit cost sidecars")
+    assert "mode == 'run'" in sidecars["if"] and "commit_outputs" not in sidecars["if"]
+    assert "*.report.json" in sidecars["run"] and "git add -f data/petri/runs/" not in sidecars["run"]
+    assert "*.eval" in sidecars["run"]
+    assert names.index(commit["name"]) < names.index(sidecars["name"])
+    # the judge step sees the same provider keys as the run step, and preflight resolves the judge spec first
+    judge_env = set(judge["env"])
+    assert {"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"} <= judge_env
+    assert judge_env == set(run["env"]) & judge_env | {"JUDGE_MODEL", "JUDGE_MAX_SPEND", "JUDGE_MAX_TOKENS", "SEEDS_FILE", "RUN_STEM"}
+    preflight = _step(workflow, "Preflight")
+    assert "--judge-model $JUDGE_MODEL" in preflight["run"] and "--judge-model $JUDGE_MODEL" in run["run"]
     seal = _step(workflow, "Holdout seal check")
     assert "seal_check.py" in seal["run"] and "verify-chain" in seal["run"]
     gate = _step(workflow, "Daily-ceiling gate", job="params")
@@ -159,6 +173,16 @@ def test_fire_lane_classifies_the_petri_target_and_judge_specs():
     # the lane agrees with the sidecar's classification of the same run
     from scripts.petri_audit import spend
     assert spend.billing_channel([orl]) == "openrouter" and spend.judge_billing_channel("openrouter:google/x") == "openrouter"
+    # a mixed-channel fire is refused outright: one journal entry carries one commitment on one account
+    base = dict(ft.PARK_DEFAULTS[TRIGGER], mode="run", judge="true", judge_max_spend="0.01")
+    with pytest.raises(ValueError, match="mixed-channel"):
+        ft.validate_params(TRIGGER, dict(base, target=orl, judge_model="claude-haiku-4-5"))
+    with pytest.raises(ValueError, match="mixed-channel"):
+        ft.validate_params(TRIGGER, dict(base, target="anthropic/claude-haiku-4-5", judge_model="openrouter:google/y"))
+    ft.validate_params(TRIGGER, dict(base, target=orl, judge_model="openrouter:google/y"))
+    ft.validate_params(TRIGGER, dict(base, target="anthropic/claude-haiku-4-5", judge_model="claude-haiku-4-5"))
+    ft.validate_params(TRIGGER, dict(base, target=orl, judge="false", judge_model="claude-haiku-4-5"))
+    assert ft.petri_channels({"target": orl, "judge": "true", "judge_model": "claude-x"}) == ("openrouter", "anthropic")
 
 
 def test_park_default_validates_and_is_a_true_no_op():

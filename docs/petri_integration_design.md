@@ -1029,6 +1029,49 @@ what a manifest or sidecar says.
     records `tool_results_from_data: not_applicable`, which counts as clean for
     claim-grade eligibility; `not_run` never does.
 
+### Corrections from the second Codex review (PR #26, 2026-09-16)
+
+Fourteen further findings on the corrected tree, again all verified and fixed
+with a regression test each.
+
+1. **OpenRouter pricing precedence** (`spend._openrouter_price`): the registry's
+   OpenRouter per-model entry first; otherwise the higher, rate by rate, of the
+   vendor's own registry price and the OpenRouter catch-all, which the registry
+   documents as its deliberate conservative floor. The vendor rate is consulted,
+   as the finding asked, without letting a cheap vendor undercut the floor.
+2. **Judge calls without usage** are charged the worst case the ceiling priced,
+   counted per row and in the sidecar, never recorded as $0.
+3. **Run-unique judge sidecar**: `<run>.judge.report.json`, because the ledger
+   keys sidecars by basename.
+4. **Cost sidecars of a paid run are committed regardless of
+   `commit_outputs`** by a dedicated workflow step that stages nothing else.
+5. **Mixed-channel fires are refused** by `fire_trigger.validate_params`: one
+   journal entry carries one commitment on one account.
+6. **`execution.log_model_api` is recorded verbatim** from Inspect's config
+   (true, false or null), never inferred from retained-call counts.
+7. **Adapting into a non-empty run directory is refused**, so a run is never
+   overwritten and the chain never gains a second line for one path.
+8. **Raw requests are checked as sequences** (`checks.request_stimuli`,
+   `request_prefix_problems`): each retained request's complete system/user
+   sequence, read per provider shape (mockllm, Anthropic, OpenAI-compatible,
+   Google), must be a prefix of one declared branch; an unreadable shape fails
+   by name.
+9. **Seed digests are verified**: the adapter refuses a sample whose recorded
+   `seed_sha256` differs from the seed in hand, and planning or analysis with
+   a drifted seed file raises.
+10. **Judge secrets and spec**: the judge step receives the same provider keys
+    as the run step, and preflight resolves and prices the judge spec before
+    any target call.
+11. **Missing declared branches are refusals**, whether the timeline is empty or
+    absent.
+12. **Eligibility flags**: `row_eligible`, `run_claim_grade_eligible`,
+    `estimator_eligible` (both) and `exploratory_eligible` (row-level, the
+    pilot's flag) travel on every analysis row.
+13. **Autonomous seeds are refused** by the task, the preflight and the adapter
+    until an autonomous path exists.
+14. **Tier flags are validated**: exactly the rubric's flag ids, JSON booleans
+    only; anything else is a null judgment with the error named.
+
 ## Decisions recorded from the owner (2026-09-16)
 
 These were open questions in the first draft and are now decided. Each entry

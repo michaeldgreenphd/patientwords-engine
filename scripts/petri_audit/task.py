@@ -33,6 +33,10 @@ PLACEHOLDER_MODEL = "none/none"
 def samples_for(seed_set: SeedSet, seeds: list[dict]) -> list[Sample]:
     samples: list[Sample] = []
     for seed in seeds:
+        if seed.get("mode") != "scripted":
+            # the scripted controller is the only task path; an autonomous seed (LLM auditor) has none yet and must
+            # never be executed as if it were scripted (Codex round 2)
+            raise ValueError(f"{seed['seed_id']}: mode {seed.get('mode')!r} has no execution path; only scripted seeds run")
         for cond in conditions(seed):
             metadata: dict[str, Any] = {
                 "seed_id": seed["seed_id"], "seed_sha256": seed_digest(seed), "seed_file": str(seed_set.path),

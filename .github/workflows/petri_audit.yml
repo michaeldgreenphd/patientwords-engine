@@ -257,6 +257,7 @@ jobs:
           TARGET: ${{ needs.params.outputs.target }}
           MAX_SPEND: ${{ needs.params.outputs.max_spend }}
           JUDGE: ${{ needs.params.outputs.judge }}
+          JUDGE_MODEL: ${{ needs.params.outputs.judge_model }}
           JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
           EPOCHS: ${{ needs.params.outputs.epochs }}
           TOKEN_LIMIT: ${{ needs.params.outputs.token_limit }}
@@ -264,7 +265,7 @@ jobs:
           ARGS=""
           for s in $SEED_IDS; do ARGS="$ARGS --seed-id $s"; done
           if [ -z "$SEED_IDS" ]; then ARGS="--wave $WAVE"; fi
-          if [ "$JUDGE" = "true" ]; then ARGS="$ARGS --judge-max-spend $JUDGE_MAX_SPEND"; fi
+          if [ "$JUDGE" = "true" ]; then ARGS="$ARGS --judge-max-spend $JUDGE_MAX_SPEND --judge-model $JUDGE_MODEL"; fi
           python -m scripts.petri_audit.cli preflight --seeds "$SEEDS_FILE" $ARGS \
             --target "$TARGET" --max-spend "$MAX_SPEND" --epochs "$EPOCHS" --token-limit "$TOKEN_LIMIT"
 
@@ -282,6 +283,7 @@ jobs:
           TARGET: ${{ needs.params.outputs.target }}
           MAX_SPEND: ${{ needs.params.outputs.max_spend }}
           JUDGE: ${{ needs.params.outputs.judge }}
+          JUDGE_MODEL: ${{ needs.params.outputs.judge_model }}
           JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
           EPOCHS: ${{ needs.params.outputs.epochs }}
           TOKEN_LIMIT: ${{ needs.params.outputs.token_limit }}
@@ -290,7 +292,7 @@ jobs:
           ARGS=""
           for s in $SEED_IDS; do ARGS="$ARGS --seed-id $s"; done
           if [ -z "$SEED_IDS" ]; then ARGS="--wave $WAVE"; fi
-          if [ "$JUDGE" = "true" ]; then ARGS="$ARGS --judge-max-spend $JUDGE_MAX_SPEND"; fi
+          if [ "$JUDGE" = "true" ]; then ARGS="$ARGS --judge-max-spend $JUDGE_MAX_SPEND --judge-model $JUDGE_MODEL"; fi
           python -m scripts.petri_audit.cli run --seeds "$SEEDS_FILE" $ARGS \
             --target "$TARGET" --max-spend "$MAX_SPEND" --epochs "$EPOCHS" --token-limit "$TOKEN_LIMIT" \
             --log-model-api "$LOG_MODEL_API" --out-dir "$RUNNER_TEMP/petri-run"
@@ -316,8 +318,13 @@ jobs:
       - name: Judge of record + analysis rows (paid; mode run only)
         if: ${{ needs.params.outputs.mode == 'run' && needs.params.outputs.judge == 'true' }}
         env:
+          # the same key set as the run step: the registry resolves a judge spec to whichever provider's key_env it
+          # names (Codex round 2: a google: judge used to fail here, after the target had already spent)
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SEEDS_FILE: ${{ needs.params.outputs.seeds_file }}
           JUDGE_MODEL: ${{ needs.params.outputs.judge_model }}
           JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
@@ -367,6 +374,34 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Petri audit: $RUN_STEM (sanitised export, transcripts, manifest)"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 2))
+          done
+          exit 1
+
+      # Cost sidecars are spend records (model ids, token counts, ceilings, digests; never seed or model text) and
+      # the ledger is the only consumer of landed spend, so a paid run books its sidecars whether or not its
+      # measurement outputs are committed and whether or not a later step failed (Codex round 2: with
+      # commit_outputs=false the runner destroyed them and the spend was never booked). Nothing else is staged.
+      - name: Commit cost sidecars of a paid run (mode run; independent of commit_outputs)
+        if: ${{ always() && needs.params.outputs.mode == 'run' }}
+        env:
+          BRANCH: ${{ github.ref_name }}
+          RUN_STEM: run_${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if find data/petri -name '*.eval' | grep -q .; then echo "raw log present; refusing" >&2; exit 1; fi
+          for f in data/petri/runs/$RUN_STEM/*.report.json; do
+            if [ -f "$f" ]; then git add -f "$f"; fi
+          done
+          if git diff --cached --quiet; then echo "No cost sidecars to commit (already committed, or none written)"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Petri audit: $RUN_STEM cost sidecars"
           for i in 1 2 3 4 5; do
             if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
               exit 0

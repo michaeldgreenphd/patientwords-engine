@@ -27,7 +27,7 @@ import importlib.util
 import json
 import sys
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol
@@ -72,6 +72,19 @@ class JudgeReply:
     output_tokens: int
     served_model: str | None
     request_id: str | None = None
+    usage_missing: bool = False     # the provider returned no usage block: the counts above are not measurements
+
+
+def _usage_missing(raw: Any) -> bool:
+    """True unless the raw response carries a usage object with both token
+    counts (Anthropic `input_tokens`/`output_tokens`, OpenAI-compatible
+    `prompt_tokens`/`completion_tokens`)."""
+    usage = raw.get("usage") if isinstance(raw, dict) else None
+    if not isinstance(usage, dict):
+        return True
+    have_in = usage.get("input_tokens") is not None or usage.get("prompt_tokens") is not None
+    have_out = usage.get("output_tokens") is not None or usage.get("completion_tokens") is not None
+    return not (have_in and have_out)
 
 
 class JudgeClient(Protocol):
@@ -133,8 +146,10 @@ class RegistryJudge:
         headers = res[4] if len(res) > 4 else {}
         info = ae._build_info(raw, headers)
         served = raw.get("model") if isinstance(raw, dict) else None
+        # the advice clients return 0 tokens when the provider omitted usage; that is not a measurement, so the
+        # reply says so and the ceiling charges the call's worst case instead (Codex round 2)
         return JudgeReply(text=text, input_tokens=int(in_tok or 0), output_tokens=int(out_tok or 0),
-                          served_model=served, request_id=info.get("request_id"))
+                          served_model=served, request_id=info.get("request_id"), usage_missing=_usage_missing(raw))
 
 
 # --------------------------------------------------------------- planning
@@ -153,6 +168,7 @@ class JudgePlan:
     context_sha256: str | None
     not_applicable_reason: str | None
     allowed_values: list[str]
+    allowed_flags: list[str] = field(default_factory=list)   # tier plans: the rubric's flag ids, all required
 
 
 def _prior_assistant_text(turns: list[dict], turn_id: int) -> str | None:
@@ -223,16 +239,17 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
         # tier instruments
         rd = rubric_digest(rubric)
         tier_values = [x["id"] for x in rubric["tiers"]]
+        flag_ids = [f["id"] for f in rubric.get("flags", [])]
         if seed["judge"]["advice_tier"]["response_only"]:
             plans.append(JudgePlan(cid, tid, assistant_index, "tier", "response_only", str(ADVICE_RUBRIC),
                                    None if text_unavailable else rubric_prompt(rubric, text), rd, None,
-                                   "reply text unavailable" if text_unavailable else None, tier_values))
+                                   "reply text unavailable" if text_unavailable else None, tier_values, flag_ids))
         if seed["judge"]["advice_tier"]["contextual"] and assistant_index >= 2:
             ctx_text = "\n".join(f"{x['role']}: {x['text']}" for x in turns if x["turn_id"] < tid)
             plans.append(JudgePlan(cid, tid, assistant_index, "tier", "contextual", str(ADVICE_RUBRIC),
                                    None if text_unavailable else contextual_tier_prompt(rubric, turns, tid), rd,
                                    sha256_text(ctx_text), "reply text unavailable" if text_unavailable else None,
-                                   tier_values))
+                                   tier_values, flag_ids))
         # outcome dimensions
         for dim_id, prompt in prompts.items():
             dim = dims[dim_id]
@@ -304,6 +321,7 @@ class SpendCeiling:
         self.spent = 0.0
         self.truncated = False
         self.largest_estimate = 0
+        self.calls_without_usage = 0
 
     def worst_case(self, prompt: str) -> float:
         est = estimate_input_tokens(prompt)
@@ -316,8 +334,16 @@ class SpendCeiling:
             return False
         return True
 
-    def record(self, input_tokens: int, output_tokens: int) -> float:
-        cost = input_tokens * self.price_in / 1e6 + output_tokens * self.price_out / 1e6
+    def record(self, input_tokens: int, output_tokens: int, *, prompt: str | None = None,
+               usage_missing: bool = False) -> float:
+        """Charge the call. A reply without a usage block is charged its worst
+        case (the bound `can_afford` priced), never the zero the client
+        returned, and counted."""
+        if usage_missing:
+            self.calls_without_usage += 1
+            cost = self.worst_case(prompt or "")
+        else:
+            cost = input_tokens * self.price_in / 1e6 + output_tokens * self.price_out / 1e6
         self.spent += cost
         return cost
 
@@ -326,9 +352,13 @@ class SpendCeiling:
         return round(max(0.0, self.spent - self.max_spend), 8)
 
 
-def parse_answer(text: str, allowed: list[str], kind: str) -> tuple[str | None, dict | None, str | None]:
+def parse_answer(text: str, allowed: list[str], kind: str,
+                 flag_ids: list[str] | None = None) -> tuple[str | None, dict | None, str | None]:
     """(value, flags, error). Outcome answers are one value id alone (or
-    not_applicable); tier answers are the rubric's JSON object."""
+    not_applicable); tier answers are the rubric's JSON object, whose `flags`
+    must name exactly the declared flag ids with JSON booleans: a quoted
+    "false", a missing flag or an undeclared one is a null judgment with the
+    error named, never coerced (Codex round 2)."""
     if kind == "outcome":
         candidate = (text or "").strip().strip("`'\" .").lower()
         if candidate in allowed or candidate == NA:
@@ -336,9 +366,18 @@ def parse_answer(text: str, allowed: list[str], kind: str) -> tuple[str | None, 
         return None, None, "answer is not one of the declared values"
     ae = _advice_eval_module()
     parsed = ae._extract_json_object(text or "")
-    if parsed and parsed.get("tier") in allowed:
-        return parsed["tier"], {k: bool(v) for k, v in (parsed.get("flags") or {}).items()}, None
-    return None, None, "unparseable or unknown tier"
+    if not parsed or parsed.get("tier") not in allowed:
+        return None, None, "unparseable or unknown tier"
+    flags = parsed.get("flags")
+    if flag_ids is None:
+        flag_ids = sorted(flags) if isinstance(flags, dict) else []
+    if not isinstance(flags, dict):
+        return None, None, "flags missing or not an object"
+    if set(flags) != set(flag_ids):
+        return None, None, (f"flags {sorted(flags)} do not match the declared ids {sorted(flag_ids)}")
+    if any(not isinstance(v, bool) for v in flags.values()):
+        return None, None, "a flag value is not a JSON boolean"
+    return parsed["tier"], {k: flags[k] for k in flag_ids}, None
 
 
 def dedupe_key(j: dict) -> tuple:
@@ -353,11 +392,13 @@ def read_jsonl(path: Path) -> list[dict]:
 
 def run_judgments(plans: list[JudgePlan], client: JudgeClient, *, out_path: Path, ceiling: SpendCeiling,
                   judge_max_tokens: int, labels: dict[str, dict], now_fn: Callable[[], str] = utc_now_iso,
-                  sidecar_extra: dict | None = None) -> dict:
+                  sidecar_extra: dict | None = None, report_path: Path | None = None) -> dict:
     """Execute the plans that are not already judged, append the judgments, and
     write the sidecar. `labels[conversation_id]` supplies seed/condition/branch
     identity for every judgment row; `sidecar_extra` (billing channel, price
-    source, run identity) is merged into the sidecar the ledger reads."""
+    source, run identity) is merged into the sidecar the ledger reads;
+    `report_path` names the sidecar (the lane uses a run-unique basename,
+    because the ledger keys sidecars by filename)."""
     existing = read_jsonl(out_path)
     done = {dedupe_key(j) for j in existing if j.get("value") is not None or j.get("not_applicable_reason")}
     counts = {"planned": len(plans), "already_judged": 0, "not_applicable": 0, "judged": 0, "null": 0, "stopped_early": False}
@@ -382,23 +423,30 @@ def run_judgments(plans: list[JudgePlan], client: JudgeClient, *, out_path: Path
                 counts["stopped_early"] = True
                 break
             reply = client.complete(p.prompt, max_tokens=judge_max_tokens, temperature=TIER_TEMPERATURE)
-            cost = ceiling.record(reply.input_tokens, reply.output_tokens)
-            value, flags, error = parse_answer(reply.text, p.allowed_values, p.kind)
+            cost = ceiling.record(reply.input_tokens, reply.output_tokens, prompt=p.prompt, usage_missing=reply.usage_missing)
+            value, flags, error = parse_answer(reply.text, p.allowed_values, p.kind, p.allowed_flags if p.kind == "tier" else None)
             served = reply.served_model or client.model_spec
             row = {**base, "value": value, "flags": flags, "method": "judge",
                    "annotator": f"judge:{served}:{p.prompt_file_digest}", "not_applicable_reason": None,
                    "rendered_sha256": sha256_text(p.prompt), "context_sha256": p.context_sha256,
                    "served_model": served, "judge_raw": reply.text, "judge_request_id": reply.request_id,
-                   "judged_utc": now_fn(), "input_tokens": reply.input_tokens, "output_tokens": reply.output_tokens,
+                   "judged_utc": now_fn(), "input_tokens": None if reply.usage_missing else reply.input_tokens,
+                   "output_tokens": None if reply.usage_missing else reply.output_tokens,
+                   "usage_missing": reply.usage_missing,
+                   "cost_basis": "imputed_worst_case" if reply.usage_missing else "actual_usage",
                    "cost_usd": round(cost, 8), "judge_error": error}
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
             counts["judged" if error is None else "null"] += 1
-    sidecar = {"run_utc": now_fn(), "judgments_file": str(out_path), "judge_model": client.model_spec,
+    sidecar = {"run_utc": now_fn(), "judgments_file": out_path.name, "judge_model": client.model_spec,
                "cost_usd": round(ceiling.spent, 8), "max_spend_usd": ceiling.max_spend, "truncated": ceiling.truncated,
                "overrun_usd": ceiling.overrun_usd, "input_token_estimator": INPUT_TOKEN_ESTIMATOR,
-               "largest_input_estimate": ceiling.largest_estimate, **counts, **(sidecar_extra or {})}
-    out_path.with_suffix(".report.json").write_text(json.dumps(sidecar, indent=2, ensure_ascii=False) + "\n",
-                                                    encoding="utf-8")
+               "largest_input_estimate": ceiling.largest_estimate,
+               "calls_without_usage": ceiling.calls_without_usage,
+               "cost_basis": ("actual_usage" if ceiling.calls_without_usage == 0
+                              else "actual_usage_plus_imputed_worst_case_for_calls_without_usage"),
+               **counts, **(sidecar_extra or {})}
+    report_path = report_path or out_path.with_suffix(".report.json")
+    report_path.write_text(json.dumps(sidecar, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return sidecar
 
 
@@ -410,7 +458,18 @@ def analysis_rows(judgments: list[dict], manifest: dict, seeds: dict[str, dict])
     hypotheses and exposure protocol, the tree and condition, and whether the
     turn is a shared prefix (always False here, because shared-prefix turns are
     never planned on branch records; the flag is carried so a consumer can
-    assert it). Rows with a null value are kept and flagged, never dropped."""
+    assert it). Rows with a null value are kept and flagged, never dropped.
+
+    Eligibility flags (Codex round 2): `row_eligible` is the row's own test
+    (not a shared prefix, a non-null, non-not_applicable value);
+    `run_claim_grade_eligible` is the manifest's run-level verdict;
+    `estimator_eligible` is both together, so a consumer filtering on that
+    one name never admits a row from a run the manifest refused; and
+    `exploratory_eligible` equals `row_eligible`, the flag the exploratory
+    pilot analyses use (owner decision 1: pilot results are never
+    confirmatory). The seeds in hand must be the seeds the run recorded."""
+    _refuse_seed_drift(manifest, seeds)
+    run_eligible = bool((manifest.get("execution") or {}).get("claim_grade_eligible", False))
     by_conv: dict[str, dict] = {}
     for tree in manifest["trees"]:
         for b in tree["branches"]:
@@ -425,6 +484,7 @@ def analysis_rows(judgments: list[dict], manifest: dict, seeds: dict[str, dict])
             raise ValueError(f"judgment for unknown conversation {j['conversation_id']}")
         seed = seeds[info["seed_id"]]
         shared = info["branched_from_turn_id"] is not None and j["turn_id"] <= info["branched_from_turn_id"]
+        row_ok = (not shared) and j["value"] is not None and j["value"] != NA
         rows.append({
             "seed_id": info["seed_id"], "scenario_id": seed["scenario"]["id"], "hypotheses": list(seed["hypotheses"]),
             "protocol": seed["protocol"]["register_exposure"], "tree_id": info["tree_id"], "epoch": info["epoch"],
@@ -433,9 +493,36 @@ def analysis_rows(judgments: list[dict], manifest: dict, seeds: dict[str, dict])
             "assistant_turn_index": j["assistant_turn_index"], "kind": j["kind"], "key": j["key"], "value": j["value"],
             "flags": j.get("flags"), "not_applicable_reason": j.get("not_applicable_reason"),
             "judge_error": j.get("judge_error"), "judge_model": j["judge_model"], "shared_prefix": shared,
-            "estimator_eligible": (not shared) and j["value"] is not None and j["value"] != NA,
+            "row_eligible": row_ok, "run_claim_grade_eligible": run_eligible,
+            "estimator_eligible": row_ok and run_eligible, "exploratory_eligible": row_ok,
         })
     return rows
+
+
+def _refuse_seed_drift(manifest: dict, seeds: dict[str, dict]) -> None:
+    """The seed file in hand must carry the seeds the run recorded, digest for
+    digest; judging or analysing a run with a changed seed would bind it to
+    metadata the run never had."""
+    from .seeds import seed_digest
+
+    for entry in manifest.get("seeds") or []:
+        seed = seeds.get(entry["seed_id"])
+        if seed is None:
+            raise ValueError(f"{entry['seed_id']}: recorded by the run but absent from the seed file in hand")
+        if seed_digest(seed) != entry["seed_sha256"]:
+            raise ValueError(f"{entry['seed_id']}: the seed in hand differs from the one the run recorded "
+                             f"({entry['seed_sha256'][:12]}); use the seed file of record")
+
+
+def judge_spec_problems(model_spec: str, providers_path: str | Path | None = None) -> list[str]:
+    """Why a judge spec cannot run, established before any target spend: the
+    registry must know its provider and the provider must have a public API."""
+    ae = _advice_eval_module()
+    try:
+        ae._resolve_spec(model_spec, ae._load_providers(providers_path or ae.DEFAULT_PROVIDERS))
+    except SystemExit as exc:
+        return [f"judge spec {model_spec!r}: {exc}"]
+    return []
 
 
 def load_rubric(path: Path | str = ADVICE_RUBRIC) -> dict:
@@ -465,7 +552,9 @@ def labels_from_manifest(manifest: dict) -> dict[str, dict]:
 
 
 def plan_run(records: list[dict], manifest: dict, seeds: dict[str, dict], *, outcomes: dict, rubric: dict) -> list[JudgePlan]:
-    """Plans for every exported record of a run, in record order."""
+    """Plans for every exported record of a run, in record order; refuses a
+    seed file whose seeds differ from the ones the run recorded."""
+    _refuse_seed_drift(manifest, seeds)
     by_conv = {}
     for tree in manifest["trees"]:
         for b in tree["branches"]:

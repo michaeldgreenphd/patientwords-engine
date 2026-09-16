@@ -199,21 +199,31 @@ def fire_lane(trigger: str, params: dict) -> str:
     return "openrouter"
 
 
-def _petri_lane(params):
-    """petri-audit (2026-09-16): the target is an Inspect model string
-    (`provider/model`, so OpenRouter is `openrouter/vendor/model`) and the
-    judge, when on, a registry spec (`provider:model` or a bare Anthropic
-    id). The fire bills OpenRouter alone only when the target routes there
-    and any judge does too; everything else, mockllm and the park default
-    included, stays on the anthropic lane (fail closed). The landed sidecars
-    classify the same way (scripts/petri_audit/spend.py billing_channel and
-    judge_billing_channel), so in-flight and landed spend agree per lane."""
+def petri_channels(params):
+    """(target channel, judge channel or None) of a petri-audit fire. The
+    target is an Inspect model string (`provider/model`, so OpenRouter is
+    `openrouter/vendor/model`); the judge, when on, a registry spec
+    (`provider:model` or a bare Anthropic id). Anything not OpenRouter bills
+    the anthropic lane, the one the $2/day guard bounds (fail closed; the
+    landed sidecars classify identically: scripts/petri_audit/spend.py
+    billing_channel and judge_billing_channel)."""
     target = str(params.get("target") or "").strip()
-    if not target.startswith("openrouter/"):
+    target_channel = "openrouter" if target.startswith("openrouter/") else "anthropic"
+    if not judge_is_on(params):
+        return target_channel, None
+    judge = str(params.get("judge_model") or "").strip()
+    return target_channel, ("openrouter" if judge.startswith("openrouter:") else "anthropic")
+
+
+def _petri_lane(params):
+    """petri-audit (2026-09-16): one lane per fire, so the target and any judge
+    must bill the same channel; validate_params refuses a mixed fire because a
+    single journal entry cannot carry two commitments on two accounts (Codex
+    round 2). A mixed fire that somehow reaches here still fails closed."""
+    target_channel, judge_channel = petri_channels(params)
+    if judge_channel is not None and judge_channel != target_channel:
         return "anthropic"
-    if judge_is_on(params) and not str(params.get("judge_model") or "").strip().startswith("openrouter:"):
-        return "anthropic"
-    return "openrouter"
+    return target_channel
 
 
 JOURNAL_RELPATH = Path("ops") / "trigger_journal.jsonl"
@@ -477,6 +487,15 @@ def validate_params(trigger, params):
             "the workflow's push-path default is false, which measures and then discards "
             "every output when the runner is reclaimed"
         )
+    if trigger == "petri-audit":
+        target_channel, judge_channel = petri_channels(params)
+        if judge_channel is not None and judge_channel != target_channel:
+            raise ValueError(
+                f"petri-audit target {params.get('target')!r} bills the {target_channel} lane but judge "
+                f"{params.get('judge_model')!r} bills the {judge_channel} lane: one fire carries one commitment on "
+                "one account, so a mixed-channel fire is refused; judge on the target's channel or run the judge "
+                "as its own fire"
+            )
 
 
 def parse_max_spend(value):

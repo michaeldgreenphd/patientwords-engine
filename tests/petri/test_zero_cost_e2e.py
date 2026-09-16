@@ -59,7 +59,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from scripts.petri_audit import cli, framework, judge_runner, sanitizer, seeds  # noqa: E402
-from scripts.petri_audit.adapter import adapt_run, read_records  # noqa: E402
+from scripts.petri_audit.adapter import AdapterError, adapt_run, read_records  # noqa: E402
 from scripts.petri_audit.manifest import bind_judgments, manifest_problems, verify_chain  # noqa: E402
 from scripts.petri_audit.task import run_study, study_task  # noqa: E402
 from scripts.petri_audit.transcripts import record_problems  # noqa: E402
@@ -68,6 +68,8 @@ WAVE1 = ["pw-petri-example-h4-persistence", "pw-petri-example-h1-sustained", "pw
          "pw-petri-example-h3-tools"]
 H4, H1, H6, H3 = WAVE1
 MARKER = "QX-4471"
+TIER_ANSWER = ('{"tier": "routine", "flags": {"professional_referral": true, "disclaimer": false, "refusal": false, '
+               '"safety_netting": true, "clarifying_question": false}}')
 
 
 class ScriptedTarget:
@@ -202,6 +204,7 @@ def test_contract_verdicts_are_honest_under_a_mock_provider(run):
     assert checks["generation_config_pinned"]["status"] == "fail" and "not_sent" in checks["generation_config_pinned"]["detail"]
     assert run["r1"].manifest["execution"]["claim_grade_eligible"] is False
     assert checks["holdout_seal"]["status"] in ("pass", "not_run")
+    assert run["r1"].manifest["execution"]["log_model_api"] is True, "recorded as configured, never inferred"
 
 
 # ------------------------------------------ initial_only continuation / pressure branch (H4)
@@ -250,7 +253,7 @@ def test_no_duplicated_turn_enters_an_estimator(run):
         root_id = _branch(tree, "root")["conversation_id"]
         root_tier = [p for p in plans if p.conversation_id == root_id and p.key == "response_only" and p.turn_id == 2]
         assert len(root_tier) == 1
-    client = judge_runner.MockJudge(lambda prompt: ('{"tier": "routine", "flags": {}}' if "tier id" in prompt else "absent"))
+    client = judge_runner.MockJudge(lambda prompt: (TIER_ANSWER if "tier id" in prompt else "absent"))
     out = run["out1"] / "judgments.jsonl"
     side = judge_runner.run_judgments(plans, client, out_path=out, ceiling=judge_runner.SpendCeiling(1.0, 0.0, 0.0, 300),
                                       judge_max_tokens=300, labels=judge_runner.labels_from_manifest(run["r1"].manifest),
@@ -370,7 +373,7 @@ def test_judging_binds_the_judgments_into_the_manifest_and_verify_chain_covers_t
     before = framework.load_json(out / "manifest.json")
     outcomes = framework.load_json(framework.OUTCOME_REGISTRY)
     plans = judge_runner.plan_run(run["r2"].records, before, run["seed_set"].seeds, outcomes=outcomes, rubric=judge_runner.load_rubric())
-    client = judge_runner.MockJudge(lambda prompt: ('{"tier": "routine", "flags": {}}' if "tier id" in prompt else "absent"))
+    client = judge_runner.MockJudge(lambda prompt: (TIER_ANSWER if "tier id" in prompt else "absent"))
     judgments = out / "judgments.jsonl"
     side = judge_runner.run_judgments(plans, client, out_path=judgments, ceiling=judge_runner.SpendCeiling(1.0, 0.0, 0.0, 300),
                                       judge_max_tokens=300, labels=judge_runner.labels_from_manifest(before),
@@ -396,4 +399,54 @@ def test_judging_binds_the_judgments_into_the_manifest_and_verify_chain_covers_t
     assert not ok and "judgments" in msg
     judgments.write_bytes(original)
     assert verify_chain(out.parent)[0]
+
+
+# ------------------------------------------------------------ round-2 refusals
+
+
+def test_adapting_over_an_existing_run_directory_is_refused(run):
+    """Codex round 2: a second adapt into the same directory overwrote the run
+    and appended a second chain line for the same path."""
+    chain_before = (run["out1"].parent / "manifests.chain").read_bytes()
+    with pytest.raises(AdapterError, match="exists and is not empty"):
+        adapt_run(run["eval_path"], run["seed_set"], run["out1"], custody="github_actions_artifact:90d",
+                  spend={"max_spend_usd": 0.01, "judge_max_spend_usd": None, "journal_nonce": None,
+                         "cost_limit_per_sample_usd": 0.01, "token_limit_per_sample": 20000},
+                  registry_spec="mockllm/model", engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+    assert (run["out1"].parent / "manifests.chain").read_bytes() == chain_before
+
+
+def test_a_seed_that_changed_since_the_run_is_refused_by_the_adapter_and_the_task(run, tmp_path_factory):
+    """Codex round 2: the sample records the seed's digest; adapting with a
+    seed file whose seed differs binds the run to metadata it never had, so
+    such samples are refused; an autonomous seed has no task path at all."""
+    import dataclasses
+
+    seed_set = run["seed_set"]
+    drifted_h4 = json.loads(json.dumps(seed_set.seeds[H4]))
+    drifted_h4["hypotheses"] = ["H1"]
+    drifted = dataclasses.replace(seed_set, seeds={**seed_set.seeds, H4: drifted_h4})
+    out = tmp_path_factory.mktemp("drifted") / "run"
+    result = adapt_run(run["eval_path"], drifted, out, custody="github_actions_artifact:90d",
+                       spend={"max_spend_usd": 0.01, "judge_max_spend_usd": None, "journal_nonce": None,
+                              "cost_limit_per_sample_usd": 0.01, "token_limit_per_sample": 20000},
+                       registry_spec="mockllm/model", engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+    reasons = [r["reason"] for r in result.refused]
+    assert sum("seed digest recorded by the run" in r for r in reasons) == 2, reasons        # both H4 conditions
+    assert not any(t["seed_id"] == H4 for t in result.manifest["trees"])
+    assert result.manifest["execution"]["claim_grade_eligible"] is False
+    autonomous = json.loads(json.dumps(seed_set.seeds[H4]))
+    autonomous.update(mode="autonomous", claim_grade_eligible=False, auditor_instruction="explore")
+    with pytest.raises(ValueError, match="no execution path"):
+        study_task(seed_set, [autonomous])
+
+
+def test_cli_preflight_refuses_an_unresolvable_judge_spec_before_any_call(capsys):
+    code = cli.main(["preflight", "--target", "mockllm/model", "--max-spend", "0.01", "--wave", "1", "--no-harness-commit",
+                     "--judge-model", "nope:model", "--judge-max-spend", "0.01"])
+    err = capsys.readouterr().err
+    assert code == 5 and "unknown provider" in err
+    code = cli.main(["preflight", "--target", "mockllm/model", "--max-spend", "0.01", "--wave", "1", "--no-harness-commit",
+                     "--judge-model", "claude-haiku-4-5", "--judge-max-spend", "0.01"])
+    assert code == 0 and "judge claude-haiku-4-5: anthropic channel" in capsys.readouterr().out
 

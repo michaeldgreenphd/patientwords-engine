@@ -83,6 +83,49 @@ def judge_billing_channel(spec: str) -> str:
     return "openrouter" if spec.strip().startswith("openrouter:") else "anthropic"
 
 
+def _registry_price(cfg: Any, name: str, label: str) -> Price | None:
+    """A provider entry's own price for `name`: its `pricing` table, else its
+    `default_pricing`; None when the entry names neither."""
+    if not isinstance(cfg, dict):
+        return None
+    table = cfg.get("pricing") or {}
+    if name in table:
+        return Price(float(table[name][0]), float(table[name][1]), f"registry:{label}:pricing")
+    if cfg.get("default_pricing"):
+        dp = cfg["default_pricing"]
+        return Price(float(dp[0]), float(dp[1]), f"registry:{label}:default_pricing")
+    return None
+
+
+def _openrouter_price(name: str, registry: dict, engine_pricing: dict) -> Price | None:
+    """`openrouter/<vendor>/<model>`. The registry's OpenRouter entry keys its
+    reviewed, markup-inclusive rates by `vendor/model` and documents its
+    `default_pricing` as a deliberately high GPT-tier catch-all
+    (data/advice_providers.json `pricing_note`). Precedence: the OpenRouter
+    per-model entry; otherwise the higher, rate by rate, of the vendor's own
+    registry price (its table or default, or the engine table for Anthropic
+    models) and the OpenRouter catch-all, so a vendor whose list price exceeds
+    the catch-all (Codex round 2: openai's 5.25/31.5 over 5/30) never
+    understates the ceiling and a cheap vendor never undercuts the floor."""
+    ocfg = registry.get("openrouter") if isinstance(registry, dict) else None
+    if isinstance(ocfg, dict) and name in (ocfg.get("pricing") or {}):
+        entry = ocfg["pricing"][name]
+        return Price(float(entry[0]), float(entry[1]), "registry:openrouter:pricing")
+    floor = Price(float(ocfg["default_pricing"][0]), float(ocfg["default_pricing"][1]),
+                  "registry:openrouter:default_pricing") if isinstance(ocfg, dict) and ocfg.get("default_pricing") else None
+    vendor_price: Price | None = None
+    if "/" in name:
+        vendor, model = name.split("/", 1)
+        vendor_price = _registry_price(registry.get(vendor) if isinstance(registry, dict) else None, name, vendor)
+        if vendor_price is None and vendor == "anthropic" and model in engine_pricing:
+            vendor_price = Price(*engine_pricing[model], "engine:evaluate_models.PRICING")
+    if vendor_price and floor:
+        return Price(max(vendor_price.input_per_mtok, floor.input_per_mtok),
+                     max(vendor_price.output_per_mtok, floor.output_per_mtok),
+                     f"max({vendor_price.source}, {floor.source})")
+    return vendor_price or floor
+
+
 def resolve_price(model: str, registry: dict | None = None, engine_pricing: dict | None = None) -> Price:
     """The price for an Inspect model string, with its source. Zero-cost mock
     and placeholder models price at zero so `cost_limit` can start."""
@@ -91,27 +134,16 @@ def resolve_price(model: str, registry: dict | None = None, engine_pricing: dict
     registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
     engine_pricing = engine_pricing if engine_pricing is not None else _engine_pricing()
     provider, name = split_inspect_name(model)
-    cfg = registry.get(provider) if isinstance(registry, dict) else None
-    if isinstance(cfg, dict):
-        table = cfg.get("pricing") or {}
-        if name in table:
-            return Price(float(table[name][0]), float(table[name][1]), f"registry:{provider}:pricing")
-        if cfg.get("default_pricing"):
-            dp = cfg["default_pricing"]
-            return Price(float(dp[0]), float(dp[1]), f"registry:{provider}:default_pricing")
-    if name in engine_pricing:
-        return Price(*engine_pricing[name], "engine:evaluate_models.PRICING")
-    if provider == "openrouter" and "/" in name:
-        # openrouter/<vendor>/<model>: the registry keys OpenRouter prices by vendor entry
-        vendor = name.split("/", 1)[0]
-        vcfg = registry.get(vendor) if isinstance(registry, dict) else None
-        if isinstance(vcfg, dict):
-            table = vcfg.get("pricing") or {}
-            if name in table:
-                return Price(float(table[name][0]), float(table[name][1]), f"registry:{vendor}:pricing")
-            if vcfg.get("default_pricing"):
-                dp = vcfg["default_pricing"]
-                return Price(float(dp[0]), float(dp[1]), f"registry:{vendor}:default_pricing")
+    if provider == "openrouter":
+        priced = _openrouter_price(name, registry, engine_pricing)
+        if priced is not None:
+            return priced
+    else:
+        priced = _registry_price(registry.get(provider) if isinstance(registry, dict) else None, name, provider)
+        if priced is not None:
+            return priced
+        if name in engine_pricing:
+            return Price(*engine_pricing[name], "engine:evaluate_models.PRICING")
     return Price(*FALLBACK_PRICING, "fallback:advice_eval._FALLBACK_PRICING")
 
 

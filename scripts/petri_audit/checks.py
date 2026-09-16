@@ -14,6 +14,8 @@ nothing to examine.
 """
 from __future__ import annotations
 
+from typing import Any
+
 from .framework import sha256_text
 from .seeds import SeedSet, conditions, text_of
 
@@ -135,3 +137,140 @@ def coverage_problems(seed_set: SeedSet, selected_seed_ids: list[str] | None, se
 def claim_grade_eligible(contract_checks: dict[str, dict], refused: int) -> bool:
     """Every check passed or had nothing to examine, and no record was refused."""
     return all(c["status"] in ELIGIBLE_STATUSES for c in contract_checks.values()) and refused == 0
+
+
+# ------------------------------------------------- raw provider requests (Codex round 2)
+
+
+def _block_text(content: Any) -> str | None:
+    """Text of a message content value: a string, or the text blocks of a list
+    (Inspect's ChatMessage dumps, Anthropic content blocks, OpenAI input_text
+    parts, Google parts). None when the content carries no text at all (a
+    tool-result-only user message), so the caller can skip it."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        texts: list[str] = []
+        saw_text = False
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if isinstance(block.get("text"), str) and block.get("type") in (None, "text", "input_text", "output_text"):
+                texts.append(block["text"])
+                saw_text = True
+        return "".join(texts) if saw_text else None
+    return None
+
+
+def request_stimuli(request: dict) -> list[tuple[str, str]] | None:
+    """The (role, text) sequence of system and user text a raw provider request
+    carries, in order, for the request shapes the lane can meet: Inspect's
+    mockllm (`messages` of ChatMessage dumps), Anthropic (`system` plus
+    `messages`), OpenAI-compatible (`messages` with system/developer/user
+    roles) and Google (`contents` plus a system instruction). Tool-result-only
+    user messages and every assistant/tool message are skipped: those are
+    checked through the staging records. None when the shape is not one of
+    these, so the caller records the request as unprovable rather than clean."""
+    if not isinstance(request, dict):
+        return None
+    out: list[tuple[str, str]] = []
+    if isinstance(request.get("messages"), list):
+        system = request.get("system")
+        if system is not None:
+            text = _block_text(system)
+            if text is None:
+                return None
+            out.append(("system", text))
+        for m in request["messages"]:
+            if not isinstance(m, dict):
+                return None
+            role = m.get("role")
+            if role in ("system", "developer"):
+                text = _block_text(m.get("content"))
+                if text is None:
+                    return None
+                out.append(("system", text))
+            elif role == "user":
+                text = _block_text(m.get("content"))
+                if text is not None:
+                    out.append(("user", text))
+            elif role in ("assistant", "tool"):
+                continue
+            else:
+                return None
+        return out
+    if isinstance(request.get("contents"), list):
+        instruction = request.get("system_instruction", request.get("systemInstruction"))
+        if instruction is None and isinstance(request.get("config"), dict):
+            instruction = request["config"].get("system_instruction", request["config"].get("systemInstruction"))
+        if instruction is not None:
+            text = instruction if isinstance(instruction, str) else _block_text(
+                instruction.get("parts") if isinstance(instruction, dict) else instruction)
+            if text is None:
+                return None
+            out.append(("system", text))
+        for c in request["contents"]:
+            if not isinstance(c, dict):
+                return None
+            role = c.get("role", "user")
+            if role == "user":
+                text = _block_text(c.get("parts"))
+                if text is not None:
+                    out.append(("user", text))
+            elif role == "model":
+                continue
+            else:
+                return None
+        return out
+    return None
+
+
+def request_prefix_problems(sequence: list[tuple[str, str]] | None, seed: dict, cond: dict, *, where: str) -> list[str]:
+    """A raw request's system/user sequence must be a non-empty prefix of the
+    exact sequence some branch of this condition declares (the root, or any
+    declared branch); duplicated, omitted, reordered, wrong-branch or foreign
+    texts all fail, and an unrecognised request shape fails by name."""
+    if sequence is None:
+        return [f"{where}: a raw request has a shape the adapter cannot read; its stimuli are unprovable"]
+    if not sequence:
+        return [f"{where}: a raw request carries no system or user text"]
+    branch_ids = [ROOT_BRANCH] + [b["id"] for b in seed["protocol"]["branches"]]
+    for branch_id in branch_ids:
+        expected = expected_stimuli(seed, cond, branch_id)
+        if len(expected) >= len(sequence) and expected[: len(sequence)] == sequence:
+            return []
+    return [f"{where}: a raw request's {len(sequence)} system/user text(s) are not a prefix of any branch declared for "
+            f"this condition"]
+
+
+# ------------------------------------------------------- branches and seeds
+
+
+def declared_branch_ids(seed: dict) -> list[str]:
+    return [ROOT_BRANCH] + [b["id"] for b in seed["protocol"]["branches"]]
+
+
+def missing_branch_refusals(seed: dict, exported_branch_ids: list[str], *, where: str) -> list[dict]:
+    """Every branch the seed declares must have been exported from the tree;
+    an absent one is a refusal entry (branch_id, reason), never a silently
+    smaller tree."""
+    exported = set(exported_branch_ids)
+    return [{"branch_id": f"{where}:{bid}", "reason": "declared branch absent from the timeline"}
+            for bid in declared_branch_ids(seed) if bid not in exported]
+
+
+def seed_drift_problems(manifest_seeds: list[dict], seed_set: SeedSet) -> list[str]:
+    """The seeds a manifest recorded (id and digest) against the seed file in
+    hand: a seed that changed since the run must not be used to interpret,
+    judge or analyse it."""
+    from .seeds import seed_digest
+
+    problems: list[str] = []
+    for entry in manifest_seeds:
+        seed = seed_set.seeds.get(entry["seed_id"])
+        if seed is None:
+            problems.append(f"{entry['seed_id']}: recorded by the run but absent from {seed_set.path.name}")
+        elif seed_digest(seed) != entry["seed_sha256"]:
+            problems.append(f"{entry['seed_id']}: the seed in {seed_set.path.name} differs from the one the run recorded "
+                            f"({entry['seed_sha256'][:12]}); use the seed file of record")
+    return problems

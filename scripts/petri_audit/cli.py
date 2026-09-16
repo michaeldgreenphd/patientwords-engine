@@ -68,6 +68,11 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
     seed_set = load_seed_file(args.seeds)
     seeds = select_seeds(seed_set, args.seed_id or None, args.wave)
     problems = {s["seed_id"]: validate_seed(s, seed_set) for s in seeds}
+    for seed in seeds:
+        if seed.get("mode") != "scripted":
+            # the validator admits autonomous seeds as data; no task path executes them yet, and the scripted
+            # controller must never be handed one (Codex round 2)
+            problems[seed["seed_id"]].append(f"mode {seed.get('mode')!r} has no execution path; only scripted seeds run")
     if any(problems.values()):
         for sid, ps in problems.items():
             for p in ps:
@@ -77,6 +82,18 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
     print("\n".join(report_lines(lock_report)))
     if not lock_report.ok:
         return 3, {}
+    if args.judge_model:
+        # a judge spec the registry cannot resolve must fail here, before the target spends (Codex round 2)
+        from .judge_runner import judge_spec_problems
+
+        judge_problems = judge_spec_problems(args.judge_model)
+        if judge_problems:
+            for p in judge_problems:
+                print(p, file=sys.stderr)
+            return 5, {}
+        judge_price = resolve_registry_price(args.judge_model)
+        print(f"judge {args.judge_model}: {judge_billing_channel(args.judge_model)} channel, in {judge_price.input_per_mtok}/Mtok "
+              f"out {judge_price.output_per_mtok}/Mtok ({judge_price.source})")
     price = resolve_price(args.target)
     samples = sum(len(conditions(s)) for s in seeds)
     bound = preflight_bound(samples=samples, epochs=args.epochs, token_limit=args.token_limit, price=price,
@@ -159,14 +176,17 @@ def cmd_judge(args: argparse.Namespace) -> int:
     ceiling = SpendCeiling(args.judge_max_spend, price.input_per_mtok, price.output_per_mtok, args.judge_max_tokens)
     client = RegistryJudge(args.judge_model)
     judgments_path = run_dir / "judgments.jsonl"
+    # the sidecar's basename is run-unique: the ledger keys sidecars by filename (Codex round 2)
+    report_path = run_dir / f"{run_dir.name}.judge.report.json"
     sidecar = run_judgments(plans, client, out_path=judgments_path, ceiling=ceiling,
                             judge_max_tokens=args.judge_max_tokens, labels=labels_from_manifest(manifest),
+                            report_path=report_path,
                             sidecar_extra={"task": "petri-audit-judge", "run_id": manifest["run_id"],
                                            "eval_id": manifest["eval_id"], "billing_channel": channel,
                                            "price_source": price.source, "input_per_mtok": price.input_per_mtok,
                                            "output_per_mtok": price.output_per_mtok})
     # bind the judgment family into the manifest and reseal the chain head, so verify-chain covers it
-    sealed = bind_judgments(run_dir, judgments_path=judgments_path, report_path=judgments_path.with_suffix(".report.json"),
+    sealed = bind_judgments(run_dir, judgments_path=judgments_path, report_path=report_path,
                             judge_of_record={"judge_model": args.judge_model, "billing_channel": channel,
                                              "price_source": price.source, "judged_utc": sidecar["run_utc"],
                                              "cost_usd": sidecar["cost_usd"], "truncated": sidecar["truncated"],
@@ -190,6 +210,8 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     out = run_dir / "analysis_rows.jsonl"
     out.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
     print(json.dumps({"rows": len(rows), "estimator_eligible": sum(r["estimator_eligible"] for r in rows),
+                      "exploratory_eligible": sum(r["exploratory_eligible"] for r in rows),
+                      "run_claim_grade_eligible": bool(manifest["execution"]["claim_grade_eligible"]),
                       "by_key": judged_value_counts(judgments)}, indent=2))
     return 0
 
@@ -223,6 +245,8 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--target", required=True, help="Inspect model string, e.g. anthropic/claude-haiku-4-5")
         p.add_argument("--max-spend", type=float, required=True)
         p.add_argument("--judge-max-spend", type=float, default=None)
+        p.add_argument("--judge-model", default=None,
+                       help="registry judge spec, resolved and priced before any target call when judging")
         p.add_argument("--epochs", type=int, default=1)
         p.add_argument("--token-limit", type=int, default=20000)
 

@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.petri_audit import (  # noqa: E402
     checks,
+    cli,
     envlock,
     framework,
     judge_runner,
@@ -120,6 +121,77 @@ def test_stimulus_check_is_exact_to_the_condition_and_branch(seed_set):
     seq = checks.expected_stimuli(h5, cond, "root")
     assert seq[0] == ("system", seeds.text_of(h5, "sysprompt_clinician_facing")) and seq[1][0] == "user"
     assert framework.sha256_text(seeds.text_of(h5, "sysprompt_patient_facing")) not in checks.condition_text_pool(h5, cond)
+
+
+def test_raw_requests_are_read_per_provider_and_must_be_a_branch_prefix(seed_set):
+    """Codex round 2: the raw-request check read only user messages and tested
+    pool membership, so a system prompt was never checked and a duplicated,
+    omitted, reordered or wrong-branch turn passed. Each request's complete
+    system/user sequence must now be a prefix of one declared branch."""
+    h4 = seed_set.seeds["pw-petri-example-h4-persistence"]
+    cond = next(c for c in seeds.conditions(h4) if c["condition_id"] == "colloquial")
+    stim, push, neutral = (seeds.text_of(h4, k) for k in ("stimulus_colloquial", "pushback_minimize", "neutral_followup"))
+    clinical = seeds.text_of(h4, "stimulus_clinical")
+    rs = checks.request_stimuli
+    # Inspect's mockllm: ChatMessage dumps; tool and assistant messages are skipped
+    assert rs({"messages": [{"role": "user", "content": stim}, {"role": "assistant", "content": "a"},
+                            {"role": "tool", "content": "r", "tool_call_id": "c"},
+                            {"role": "user", "content": [{"type": "text", "text": push}]}]}) == [("user", stim), ("user", push)]
+    # Anthropic: top-level system, tool_result-only user messages skipped
+    assert rs({"system": [{"type": "text", "text": "sys"}], "messages": [
+        {"role": "user", "content": [{"type": "text", "text": stim}]},
+        {"role": "assistant", "content": [{"type": "tool_use", "id": "c", "name": "t", "input": {}}]},
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "c", "content": "r"}]}]}) == [("system", "sys"), ("user", stim)]
+    # OpenAI-compatible: system/developer messages, tool role skipped
+    assert rs({"messages": [{"role": "system", "content": "sys"}, {"role": "user", "content": stim},
+                            {"role": "tool", "content": "r"}]}) == [("system", "sys"), ("user", stim)]
+    # Google: system_instruction plus contents; model turns and functionResponse parts skipped
+    assert rs({"system_instruction": {"parts": [{"text": "sys"}]}, "contents": [
+        {"role": "user", "parts": [{"text": stim}]}, {"role": "model", "parts": [{"text": "a"}]},
+        {"role": "user", "parts": [{"functionResponse": {"name": "t", "response": {}}}]}]}) == [("system", "sys"), ("user", stim)]
+    assert rs({"prompt": "free-form"}) is None and rs("x") is None
+    assert rs({"messages": [{"role": "weird", "content": "x"}]}) is None
+    rp = checks.request_prefix_problems
+    assert rp([("user", stim)], h4, cond, where="t") == []
+    assert rp([("user", stim), ("user", push)], h4, cond, where="t") == []
+    assert rp([("user", stim), ("user", neutral)], h4, cond, where="t") == []
+    for bad in ([("user", stim), ("user", stim)], [("user", push)], [("user", stim), ("user", push), ("user", neutral)],
+                [("user", clinical)], [("system", "sys"), ("user", stim)], [("user", stim), ("user", "not a seed text")], []):
+        assert rp(bad, h4, cond, where="t"), bad
+    assert "cannot read" in rp(None, h4, cond, where="t")[0]
+    h5 = seed_set.seeds["pw-petri-example-h5-audience"]
+    cond5 = next(c for c in seeds.conditions(h5) if c["condition_id"] == "clinical__clinician_facing")
+    own, other = seeds.text_of(h5, "sysprompt_clinician_facing"), seeds.text_of(h5, "sysprompt_patient_facing")
+    first = seeds.text_of(h5, "stimulus_clinical")
+    assert rp([("system", own), ("user", first)], h5, cond5, where="t") == []
+    assert rp([("system", other), ("user", first)], h5, cond5, where="t"), "the other variant's system prompt is foreign here"
+    assert rp([("user", first)], h5, cond5, where="t"), "a request that dropped the condition's system prompt fails"
+
+
+def test_every_declared_branch_must_be_exported_from_its_tree(seed_set):
+    """Codex round 2: an empty or absent branch timeline was only counted."""
+    h4 = seed_set.seeds["pw-petri-example-h4-persistence"]
+    assert checks.declared_branch_ids(h4) == ["root", "pressure_minimize", "neutral_control"]
+    assert checks.missing_branch_refusals(h4, ["root", "pressure_minimize", "neutral_control"], where="t") == []
+    missing = checks.missing_branch_refusals(h4, ["root"], where="t")
+    assert [m["branch_id"] for m in missing] == ["t:pressure_minimize", "t:neutral_control"]
+    assert all("absent" in m["reason"] for m in missing)
+    assert checks.missing_branch_refusals(h4, [], where="t")[0]["branch_id"] == "t:root"
+
+
+def test_preflight_refuses_a_seed_with_no_execution_path(tmp_path, seed_set, capsys):
+    """Codex round 2: the validator admits autonomous seeds as data, but the
+    only task path is the scripted controller, so preflight refuses them
+    before the lock or price checks."""
+    doc = framework.load_json(framework.SEED_FILE)
+    h4 = next(s for s in doc["seeds"] if s["seed_id"] == "pw-petri-example-h4-persistence")
+    h4["mode"], h4["claim_grade_eligible"], h4["auditor_instruction"] = "autonomous", False, "explore"
+    seed_file = tmp_path / "seeds.json"
+    framework.write_json(seed_file, doc)
+    code = cli.main(["preflight", "--seeds", str(seed_file), "--seed-id", "pw-petri-example-h4-persistence",
+                     "--target", "mockllm/model", "--max-spend", "0.01", "--no-harness-commit"])
+    err = capsys.readouterr().err
+    assert code == 4 and "no execution path" in err
 
 
 def test_coverage_check_names_absent_seeds_conditions_and_short_epochs(seed_set):
@@ -468,6 +540,32 @@ def test_registry_form_judge_specs_price_and_bill_by_their_provider():
     assert spend.judge_billing_channel("google:gemini-2.5-flash") == "anthropic"      # fail closed, as fire_lane
 
 
+def test_openrouter_prices_take_the_vendor_rate_but_never_undercut_the_catch_all():
+    """Codex round 2: with the live registry, OpenRouter's default_pricing
+    returned before the vendor lookup, so openrouter/openai/gpt-5.5 was priced
+    at the 5/30 catch-all under openai's 5.25/31.5. The catch-all is the
+    registry's documented conservative floor, so the vendor rate wins only
+    where it is higher, rate by rate."""
+    registry = {"openrouter": {"default_pricing": [5.0, 30.0], "pricing": {"google/gemini-3.5-flash": [0.4, 2.5]}},
+                "openai": {"pricing": {"openai/gpt-5.4-mini": [0.8, 4.75]}, "default_pricing": [5.25, 31.5]},
+                "deepseek": {"default_pricing": [0.5, 2.0]}, "anthropic": {}}
+    p = spend.resolve_price("openrouter/google/gemini-3.5-flash", registry, engine_pricing={})
+    assert (p.input_per_mtok, p.output_per_mtok, p.source) == (0.4, 2.5, "registry:openrouter:pricing")
+    p = spend.resolve_price("openrouter/openai/gpt-5.5", registry, engine_pricing={})
+    assert (p.input_per_mtok, p.output_per_mtok) == (5.25, 31.5)
+    assert p.source == "max(registry:openai:default_pricing, registry:openrouter:default_pricing)"
+    p = spend.resolve_price("openrouter/openai/gpt-5.4-mini", registry, engine_pricing={})
+    assert (p.input_per_mtok, p.output_per_mtok) == (5.0, 30.0), "a cheap vendor entry never undercuts the floor"
+    p = spend.resolve_price("openrouter/deepseek/deepseek-chat", registry, engine_pricing={})
+    assert (p.input_per_mtok, p.output_per_mtok) == (5.0, 30.0)
+    p = spend.resolve_price("openrouter/nobody/x", registry, engine_pricing={})
+    assert p.source == "registry:openrouter:default_pricing"
+    p = spend.resolve_price("openrouter/anthropic/claude-haiku-4-5", registry, engine_pricing={"claude-haiku-4-5": (1.0, 5.0)})
+    assert (p.input_per_mtok, p.output_per_mtok) == (5.0, 30.0) and "engine:evaluate_models.PRICING" in p.source
+    live = spend.resolve_price("openrouter/openai/gpt-5.5")                          # the registry in the tree
+    assert live.input_per_mtok >= 5.25 and live.output_per_mtok >= 31.5
+
+
 def test_missing_usage_is_never_priced_as_zero(tmp_path):
     """Codex round 1: a paid call whose provider omitted usage was booked at
     $0. Now the row says usage_missing, the total is None, and the sidecar
@@ -568,7 +666,8 @@ def test_judge_runner_records_every_answer_dedupes_and_stops_at_the_ceiling(tmp_
 
     def answer(prompt: str) -> str:
         if "tier id" in prompt:
-            return '{"tier": "routine", "flags": {"safety_netting": false}}'
+            return ('{"tier": "routine", "flags": {"professional_referral": true, "disclaimer": false, "refusal": false, '
+                    '"safety_netting": false, "clarifying_question": false}}')
         if "safety_netting_persistence" in prompt:
             return "withdrawn"
         if "recommendation_specificity" in prompt:
@@ -589,7 +688,8 @@ def test_judge_runner_records_every_answer_dedupes_and_stops_at_the_ceiling(tmp_
     assert spec["value"] == "withdrawn" and spec["annotator"].startswith("judge:mockllm/judge:")
     assert spec["rendered_sha256"] == framework.sha256_text(next(p for p in plans if p.key == spec["key"]).prompt)
     tier = next(r for r in rows if r["key"] == "response_only")
-    assert tier["value"] == "routine" and tier["flags"] == {"safety_netting": False}
+    assert tier["value"] == "routine" and tier["flags"]["safety_netting"] is False and len(tier["flags"]) == 5
+    assert tier["usage_missing"] is False and tier["cost_basis"] == "actual_usage"
     assert (out.with_suffix(".report.json")).is_file()
     # a second run re-judges only the null one
     side2 = judge_runner.run_judgments(plans, client, out_path=out, ceiling=judge_runner.SpendCeiling(1.0, 1.0, 5.0, 300),
@@ -628,6 +728,72 @@ def test_judge_ceiling_bounds_each_call_from_its_own_prompt(tmp_path, seed_set, 
     assert side["billing_channel"] == "anthropic"
 
 
+class _NoUsageJudge(judge_runner.MockJudge):
+    def complete(self, prompt: str, *, max_tokens: int, temperature: float) -> judge_runner.JudgeReply:
+        reply = super().complete(prompt, max_tokens=max_tokens, temperature=temperature)
+        return judge_runner.JudgeReply(text=reply.text, input_tokens=0, output_tokens=0, served_model=reply.served_model,
+                                       usage_missing=True)
+
+
+def test_judge_calls_without_usage_are_charged_their_worst_case_and_counted(tmp_path, seed_set, outcomes, rubric):
+    """Codex round 2: a compatible provider that omits usage made the advice
+    client return 0 tokens, the ceiling recorded $0, and the judge could run
+    past its ceiling. A reply without usage is now charged the bound the
+    ceiling priced and counted in the row and the sidecar."""
+    assert judge_runner._usage_missing({}) and judge_runner._usage_missing({"usage": {"input_tokens": 1}})
+    assert judge_runner._usage_missing("not a dict")
+    assert not judge_runner._usage_missing({"usage": {"prompt_tokens": 1, "completion_tokens": 2}})
+    assert not judge_runner._usage_missing({"usage": {"input_tokens": 1, "output_tokens": 2}})
+    ceiling = judge_runner.SpendCeiling(1.0, 1.0, 5.0, 300)
+    cost = ceiling.record(0, 0, prompt="x" * 250, usage_missing=True)
+    assert cost == pytest.approx(100 * 1.0 / 1e6 + 300 * 5.0 / 1e6) and ceiling.calls_without_usage == 1
+    h4, record = _branch_record(seed_set)
+    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2)
+    report = tmp_path / "run_x.judge.report.json"
+    side = judge_runner.run_judgments(plans, _NoUsageJudge(lambda p: "absent"), out_path=tmp_path / "judgments.jsonl",
+                                      ceiling=judge_runner.SpendCeiling(1.0, 1.0, 5.0, 300), judge_max_tokens=300, labels={},
+                                      now_fn=lambda: "2026-09-16T00:00:00Z", report_path=report)
+    rows = [r for r in judge_runner.read_jsonl(tmp_path / "judgments.jsonl") if r["method"] == "judge"]
+    assert rows and all(r["usage_missing"] and r["input_tokens"] is None and r["cost_basis"] == "imputed_worst_case" for r in rows)
+    assert all(r["cost_usd"] > 0 for r in rows)
+    assert side["calls_without_usage"] == len(rows) and side["cost_basis"].startswith("actual_usage_plus_imputed")
+    assert report.is_file() and side["judgments_file"] == "judgments.jsonl"
+    assert not (tmp_path / "judgments.report.json").exists(), "the sidecar carries the run-unique name it was given"
+    # the ledger keys sidecars by basename, so two runs' judge sidecars must not collide
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("ledger_update_for_test", ROOT / "scripts" / "ledger_update.py")
+    ledger = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ledger)
+    assert ledger.sidecar_key(Path("data/petri/runs/run_1/run_1.judge.report.json")) != \
+        ledger.sidecar_key(Path("data/petri/runs/run_2/run_2.judge.report.json"))
+
+
+def test_tier_flags_must_be_exactly_the_declared_ids_as_json_booleans():
+    """Codex round 2: bool("false") is True, and missing or undeclared flags
+    were accepted; every such answer is now a null judgment with the error."""
+    tiers, flags = ["routine", "urgent"], ["a", "b"]
+    assert judge_runner.parse_answer('{"tier": "routine", "flags": {"a": true, "b": false}}', tiers, "tier", flags) == \
+        ("routine", {"a": True, "b": False}, None)
+    for bad in ('{"tier": "routine", "flags": {"a": "false", "b": false}}',
+                '{"tier": "routine", "flags": {"a": true}}',
+                '{"tier": "routine", "flags": {"a": true, "b": false, "c": true}}',
+                '{"tier": "routine"}',
+                '{"tier": "routine", "flags": [true, false]}'):
+        value, parsed_flags, error = judge_runner.parse_answer(bad, tiers, "tier", flags)
+        assert value is None and parsed_flags is None and error, bad
+    assert judge_runner.parse_answer('{"tier": "routine", "flags": {"a": true, "b": false}}', tiers, "tier", ["a"])[2]
+
+
+def test_judge_specs_are_resolved_through_the_registry_before_any_spend():
+    """Codex round 2: an unknown or manual-UI judge provider used to fail only
+    in the judge step, after the target had spent."""
+    assert judge_runner.judge_spec_problems("claude-haiku-4-5") == []
+    assert judge_runner.judge_spec_problems("openrouter:google/gemini-3.5-flash") == []
+    problems = judge_runner.judge_spec_problems("nope:some-model")
+    assert problems and "unknown provider" in problems[0]
+    assert judge_runner.judge_spec_problems("copilot"), "a manual-UI provider has no API to judge with"
+
+
 def test_analysis_rows_carry_protocol_and_flag_shared_prefix(seed_set):
     h4 = seed_set.seeds["pw-petri-example-h4-persistence"]
     manifest = {"trees": [{"tree_id": "t", "epoch": 1, "seed_id": h4["seed_id"], "arm": "colloquial", "system_prompt_variant": None,
@@ -640,10 +806,28 @@ def test_analysis_rows_carry_protocol_and_flag_shared_prefix(seed_set):
                   "value": "urgent", "judge_model": "m"},
                  {"conversation_id": "b" * 64, "turn_id": 4, "assistant_turn_index": 2, "kind": "tier", "key": "response_only",
                   "value": None, "judge_error": "x", "judge_model": "m"}]
+    manifest["execution"] = {"claim_grade_eligible": True}
+    manifest["seeds"] = [{"seed_id": h4["seed_id"], "seed_sha256": seeds.seed_digest(h4)}]
     rows = judge_runner.analysis_rows(judgments, manifest, seed_set.seeds)
     assert [r["shared_prefix"] for r in rows] == [False, True, False]
     assert [r["estimator_eligible"] for r in rows] == [True, False, False]
+    assert [r["exploratory_eligible"] for r in rows] == [True, False, False]
     assert {r["protocol"] for r in rows} == {"initial_only"} and rows[0]["hypotheses"] == ["H1", "H4"]
+    # a run the manifest refused (Codex round 2): row-level eligibility survives as exploratory, the estimator
+    # flag does not, and the run-level verdict travels on every row
+    manifest["execution"]["claim_grade_eligible"] = False
+    rows = judge_runner.analysis_rows(judgments, manifest, seed_set.seeds)
+    assert [r["estimator_eligible"] for r in rows] == [False, False, False]
+    assert [r["exploratory_eligible"] for r in rows] == [True, False, False]
+    assert all(r["run_claim_grade_eligible"] is False and r["row_eligible"] == r["exploratory_eligible"] for r in rows)
+    # a seed file that drifted from the run's recorded digest is refused for analysis and for planning
+    drifted = dict(manifest, seeds=[{"seed_id": h4["seed_id"], "seed_sha256": "0" * 64}])
+    with pytest.raises(ValueError, match="differs from the one the run recorded"):
+        judge_runner.analysis_rows(judgments, drifted, seed_set.seeds)
+    with pytest.raises(ValueError, match="differs from the one the run recorded"):
+        judge_runner.plan_run([], drifted, seed_set.seeds, outcomes={"dimensions": []}, rubric={"tiers": []})
+    assert checks.seed_drift_problems(manifest["seeds"], seed_set) == []
+    assert checks.seed_drift_problems([{"seed_id": "pw-petri-nope", "seed_sha256": "0" * 64}], seed_set)
     with pytest.raises(ValueError):
         judge_runner.analysis_rows([{"conversation_id": "x" * 64, "turn_id": 1, "kind": "tier", "key": "k", "value": "v",
                                      "judge_model": "m", "assistant_turn_index": 1}], manifest, seed_set.seeds)
