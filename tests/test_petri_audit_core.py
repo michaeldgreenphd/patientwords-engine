@@ -1122,3 +1122,128 @@ def test_seed_validation_checks_the_warning_signs_reference(seed_set):
     assert "scenario.reference.warning_signs_text_ref: text_ref 'no_such_text' does not resolve" in problems
     h4["scenario"]["reference"]["warning_signs_text_ref"] = h4["texts"][0]["key"]
     assert not any("warning_signs" in p for p in seeds.seed_problems(h4, seed_set.framing, seed_set.outcomes))
+
+
+# ------------------------------------------------------------ round-6 corrections
+
+
+def test_generated_tool_errors_are_not_evidence_for_tool_evidence_use(seed_set, outcomes, rubric):
+    """Codex round 6: the controller's parse-error and unknown-tool messages
+    were passed to the tool_evidence_use judge as returned evidence; the
+    prompt contract counts them as no evidence (not_applicable)."""
+    h3 = seed_set.seeds["pw-petri-example-h3-tools"]
+    real = "RESULT QX-4471 from the seed"
+    mixed = _record([{"role": "user", "text": "u1", "id": "m1"},
+                     {"role": "assistant", "text": "", "id": "m2",
+                      "tool_calls": [{"call_id": "c1", "name": "drug_interaction_lookup", "arguments": {"query": "q"}, "parse_error": None}]},
+                     {"role": "tool", "text": real, "id": "m3", "tool_call_id": "c1"},
+                     {"role": "assistant", "text": "reply one", "id": "m4"},
+                     {"role": "user", "text": "u2", "id": "m5"},
+                     {"role": "assistant", "text": "", "id": "m6",
+                      "tool_calls": [{"call_id": "c2", "name": "guideline_search", "arguments": {}, "parse_error": "bad json"}]},
+                     {"role": "tool", "text": "The tool call could not be parsed: bad json", "id": "m7", "tool_call_id": "c2"},
+                     {"role": "assistant", "text": "reply two", "id": "m8"}])
+    plans = judge_runner.plan_record(mixed, h3, outcomes=outcomes, rubric=rubric, branched_from_turn_id=None)
+    evidence = {p.turn_id: p for p in plans if p.key == "tool_evidence_use"}
+    assert evidence[4].prompt is not None and evidence[4].context_sha256 == framework.sha256_text(real)
+    assert evidence[8].prompt is not None and evidence[8].context_sha256 == framework.sha256_text(real), "the error text is excluded"
+    assert "could not be parsed" not in evidence[8].prompt
+    for name, err in (("guideline_search", "bad json"), ("no_such_tool", None)):
+        only_error = _record([{"role": "user", "text": "u1", "id": "m1"},
+                              {"role": "assistant", "text": "", "id": "m2",
+                               "tool_calls": [{"call_id": "c1", "name": name, "arguments": {}, "parse_error": err}]},
+                              {"role": "tool", "text": "generated error", "id": "m3", "tool_call_id": "c1"},
+                              {"role": "assistant", "text": "reply", "id": "m4"}])
+        plan = next(p for p in judge_runner.plan_record(only_error, h3, outcomes=outcomes, rubric=rubric, branched_from_turn_id=None)
+                    if p.key == "tool_evidence_use" and p.turn_id == 4)
+        assert plan.prompt is None and "generated error messages are not evidence" in plan.not_applicable_reason, name
+
+
+def test_contextual_tier_digest_covers_the_rendered_context_the_judge_receives(seed_set, outcomes, rubric):
+    """Codex round 6: `context_sha256` hashed a lower-case, unescaped rendering
+    while the prompt sent an upper-case, escaped one."""
+    h4, record = _branch_record(seed_set)
+    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2)
+    contextual = next(p for p in plans if p.key == "contextual")
+    rendered = judge_runner.rendered_context(record["turns"], contextual.turn_id)
+    assert rendered.startswith("USER: ") and "\nASSISTANT: " in rendered
+    assert contextual.context_sha256 == framework.sha256_text(rendered) and rendered in contextual.prompt
+    escaped = _record([{"role": "user", "text": f"u {judge_runner.CONTEXT_OPEN} x", "id": "m1"},
+                       {"role": "assistant", "text": "a", "id": "m2"}, {"role": "user", "text": "u2", "id": "m3"},
+                       {"role": "assistant", "text": "b", "id": "m4"}])
+    rendered2 = judge_runner.rendered_context(escaped["turns"], 4)
+    assert "\\" + judge_runner.CONTEXT_OPEN in rendered2 and rendered2 in judge_runner.contextual_tier_prompt(rubric, escaped["turns"], 4)
+
+
+def test_a_judge_returned_not_applicable_is_counted_as_not_applicable_everywhere(seed_set, outcomes, rubric, tmp_path):
+    """Codex round 6: a judge answering the allowed value `not_applicable` was
+    counted as judged by the invocation, cumulative and per-key counters."""
+    rows = [{"conversation_id": "c", "turn_id": 2, "kind": "outcome", "key": "k", "prompt_file_digest": "d", "judge_model": "j",
+             "value": judge_runner.NA, "not_applicable_reason": "rule says so", "method": "rule"},
+            {"conversation_id": "c", "turn_id": 4, "kind": "outcome", "key": "k", "prompt_file_digest": "d", "judge_model": "j",
+             "value": judge_runner.NA, "not_applicable_reason": None, "method": "judge"},
+            {"conversation_id": "c", "turn_id": 6, "kind": "outcome", "key": "k", "prompt_file_digest": "d", "judge_model": "j",
+             "value": None, "not_applicable_reason": None, "method": "judge"},
+            {"conversation_id": "c", "turn_id": 8, "kind": "outcome", "key": "k", "prompt_file_digest": "d", "judge_model": "j",
+             "value": "used", "not_applicable_reason": None, "method": "judge"}]
+    assert [judge_runner.row_bucket(r) for r in rows] == ["not_applicable", "not_applicable", "null", "judged"]
+    cum = judge_runner.cumulative_counts(rows)
+    assert cum["not_applicable"] == 2 and cum["null"] == 1 and cum["judged"] == 1
+    assert judge_runner.judged_value_counts(rows)["k"] == {"judged": 1, "null": 1, "not_applicable": 2}
+    h4, record = _branch_record(seed_set)
+    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2)
+    side = judge_runner.run_judgments(plans, judge_runner.MockJudge(lambda p: judge_runner.NA), out_path=tmp_path / "j.jsonl",
+                                      ceiling=judge_runner.SpendCeiling(1.0, 1.0, 5.0, 300), judge_max_tokens=300, labels={},
+                                      now_fn=lambda: "2026-09-16T00:00:00Z", report_path=tmp_path / "r.json")
+    by_judge = [r for r in judge_runner.read_jsonl(tmp_path / "j.jsonl") if r["method"] == "judge" and r["value"] == judge_runner.NA]
+    assert by_judge, "the outcome prompts accept not_applicable as an answer"
+    assert side["judged"] == 0 and side["not_applicable"] == side["cumulative"]["not_applicable"] >= len(by_judge)
+
+
+def test_duplicate_supplied_contexts_are_refused_before_execution(seed_set):
+    """Codex round 6: the planner keys supplied contexts by dimension, so a
+    repeated id silently kept the last entry."""
+    h2 = json.loads(json.dumps(seed_set.seeds["pw-petri-example-h2-authority"]))
+    first = h2["judge"]["supplied_contexts"][0]
+    h2["judge"]["supplied_contexts"].append(dict(first, text_ref=h2["texts"][0]["key"]))
+    problems = seeds.seed_problems(h2, seed_set.framing, seed_set.outcomes)
+    assert any(f"supplied context for {first['dimension_id']!r} is declared 2 times" in p for p in problems)
+
+
+def test_reseal_eligibility_verifies_the_bound_artifacts_with_an_append_recovery_path(tmp_path):
+    """Codex round 6: `reseal_problems` checked only the manifest's seal and
+    the chain head, so a judge could spend against altered transcripts and
+    the reseal would bless altered judgment rows. Immutable artifacts must
+    digest exactly; a bound judgments file must still start with the bound
+    bytes (an append a previous invocation failed to bind is recoverable)."""
+    d = tmp_path / "runs"
+    base = _example_manifest_with_artifacts(d)
+    run_dir = d / "example"
+    first = manifest_mod.seal_manifest(base, None)
+    manifest_mod.write_manifest(run_dir / "manifest.json", first)
+    manifest_mod.append_chain(d, first, run_dir / "manifest.json")
+    judgments = run_dir / "judgments.jsonl"
+    judgments.write_text('{"conversation_id": "c", "value": "a"}\n', encoding="utf-8")
+    report = run_dir / "judgments.report.json"
+    report.write_text('{"cost_usd": 0.0}\n', encoding="utf-8")
+    provenance = {"judge_model": "claude-haiku-4-5", "billing_channel": "anthropic", "price_source": "engine",
+                  "judged_utc": "2026-09-16T00:00:00Z", "cost_usd": 0.0, "truncated": False, "planned": 1, "judged": 1,
+                  "null": 0, "not_applicable": 0}
+    manifest_mod.bind_judgments(run_dir, judgments_path=judgments, report_path=report, judge_of_record=provenance)
+    assert manifest_mod.reseal_problems(run_dir) == []
+    transcripts = d / base["artifacts"]["transcripts_path"]
+    original = transcripts.read_bytes()
+    transcripts.write_bytes(original + b"altered\n")
+    assert any("transcripts" in p and "does not digest" in p for p in manifest_mod.reseal_problems(run_dir))
+    transcripts.write_bytes(original)
+    bound = judgments.read_bytes()
+    judgments.write_bytes(bound + b'{"conversation_id": "c", "value": "b"}\n')
+    assert manifest_mod.reseal_problems(run_dir) == [], "an unbound append after the bound prefix is recoverable"
+    assert manifest_mod.bound_prefix_intact(judgments, framework.sha256_file(judgments))
+    judgments.write_bytes(b'{"conversation_id": "c", "value": "edited"}\n')
+    assert any("judgments" in p and "no longer starts with the bytes" in p for p in manifest_mod.reseal_problems(run_dir))
+    judgments.write_bytes(bound)
+    assert manifest_mod.reseal_problems(run_dir) == []
+    report.write_text('{"cost_usd": 0.5}\n', encoding="utf-8")
+    assert manifest_mod.reseal_problems(run_dir) == [], "the judge report is regenerated by every invocation"
+    assert not manifest_mod.verify_chain(d)[0], "verify-chain still catches the altered report after binding"

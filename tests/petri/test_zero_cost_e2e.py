@@ -367,6 +367,17 @@ def test_cli_preflight_clears_without_a_model_call(capsys):
     out = capsys.readouterr().out
     assert code == 0 and "preflight: clear (no model call made)" in out
     assert "pre-flight bound" in out and "environment lock" in out
+    assert "holdout seal: no sealed phrase in the selected seeds" in out
+
+
+def test_cli_preflight_refuses_a_sealed_phrase_before_any_model_call(monkeypatch, capsys):
+    """Codex round 6: the seal was first checked at adaptation, after the
+    target had already received every stimulus."""
+    monkeypatch.setattr(cli, "seed_texts_against_registry", lambda texts, registry: ["tierB:demo"])
+    code = cli.main(["preflight", "--target", "mockllm/model", "--max-spend", "0.01", "--wave", "1", "--no-harness-commit"])
+    captured = capsys.readouterr()
+    assert code == 6 and "holdout seal: 1 sealed phrase(s)" in captured.err and "refused before any model call" in captured.err
+    assert "environment lock" not in captured.out, "refused before the lock check, the judge check and the price"
 
 
 # ------------------------------------------------------- judge binding (manifest reseal)
@@ -443,6 +454,9 @@ def test_a_seed_that_changed_since_the_run_is_refused_by_the_adapter_and_the_tas
     assert sum("seed digest recorded by the run" in r for r in reasons) == 2, reasons        # both H4 conditions
     assert not any(t["seed_id"] == H4 for t in result.manifest["trees"])
     assert result.manifest["execution"]["claim_grade_eligible"] is False
+    # the refused samples' calls were still made and are still booked (Codex round 6): the usage block equals the
+    # one the undrifted adaptation recorded
+    assert result.manifest["usage"] == run["r1"].manifest["usage"]
     autonomous = json.loads(json.dumps(seed_set.seeds[H4]))
     autonomous.update(mode="autonomous", claim_grade_eligible=False, auditor_instruction="explore")
     with pytest.raises(ValueError, match="no execution path"):

@@ -30,6 +30,7 @@ from pathlib import Path
 from .envlock import load_lock, report_lines, verify_lock
 from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, sha256_file, write_json
 from .manifest import bind_judgments, reseal_problems, verify_chain
+from .seal import sealed_registry, seed_texts_against_registry
 from .seeds import conditions, load_seed_file, select_seeds, validate_seed
 from .spend import judge_billing_channel, preflight_bound, resolve_price, resolve_registry_price, write_report_sidecar
 
@@ -81,6 +82,14 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
             for p in ps:
                 print(f"seed {sid}: {p}", file=sys.stderr)
         return 4, {}
+    # the holdout seal is checked here, before any model call, not only at adaptation (Codex round 6): a seed that
+    # copied a sealed phrase would otherwise expose the holdout to the target before the adapter refused publication
+    sealed_hits = seed_texts_against_registry([t["text"] for s in seeds for t in s["texts"]], sealed_registry())
+    if sealed_hits:
+        print(f"holdout seal: {len(sealed_hits)} sealed phrase(s) in the selected seeds ({', '.join(sealed_hits[:5])}); "
+              "the pilot uses the explore split only; refused before any model call", file=sys.stderr)
+        return 6, {}
+    print("holdout seal: no sealed phrase in the selected seeds")
     lock_report = verify_lock(load_lock(args.lock), harness_commit_known=not args.no_harness_commit, lock_path=args.lock)
     print("\n".join(report_lines(lock_report)))
     if not lock_report.ok:

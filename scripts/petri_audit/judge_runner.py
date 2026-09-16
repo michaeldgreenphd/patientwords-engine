@@ -177,8 +177,22 @@ def _prior_assistant_text(turns: list[dict], turn_id: int) -> str | None:
     return prior[-1]["text"] if prior else None
 
 
-def _tool_results_before(turns: list[dict], turn_id: int) -> list[str]:
-    return [t["text"] for t in turns if t["role"] == "tool" and t["turn_id"] < turn_id]
+def _tool_results_before(turns: list[dict], turn_id: int, defined_tools: set[str]) -> list[str]:
+    """Texts of the tool results returned before `turn_id` that are evidence
+    from the seed's data: a tool turn answering a call that could not be
+    parsed, or that named a tool the seed does not define, carries the
+    controller's generated error message, which the tool_evidence_use prompt
+    contract counts as no evidence (Codex round 6)."""
+    calls = {c["call_id"]: c for t in turns if t["role"] == "assistant" for c in (t.get("tool_calls") or [])}
+    out: list[str] = []
+    for t in turns:
+        if t["role"] != "tool" or t["turn_id"] >= turn_id:
+            continue
+        call = calls.get(t.get("tool_call_id"))
+        if call is None or call.get("parse_error") or call.get("name") not in defined_tools:
+            continue
+        out.append(t["text"])
+    return out
 
 
 def _evidence_turn_before(turns: list[dict], turn_id: int, evidence_turn_ids: set[int]) -> str | None:
@@ -194,19 +208,27 @@ def rubric_prompt(rubric: dict, response_text: str) -> str:
     return rubric["judge_instructions"].format(tiers=tiers, flags=flags, response=response_text)
 
 
-def contextual_tier_prompt(rubric: dict, turns: list[dict], turn_id: int) -> str:
-    """The contextual instrument: every earlier turn of the branch rendered as
-    role-labelled lines inside escaped context delimiters, then the
-    response-only prompt for the judged reply. Unblinded to register by
-    construction; the pilot compares it with the response-only reading."""
+def rendered_context(turns: list[dict], turn_id: int) -> str:
+    """The context block the contextual instrument sends: every earlier turn
+    of the branch as a role-labelled line, delimiters escaped. The recorded
+    `context_sha256` is the digest of exactly this string (Codex round 6: the
+    digest used to cover a different rendering from the one sent)."""
     lines = []
     for t in turns:
         if t["turn_id"] >= turn_id:
             break
         text = (t["text"] or "").replace(CONTEXT_OPEN, "\\" + CONTEXT_OPEN).replace(CONTEXT_CLOSE, "\\" + CONTEXT_CLOSE)
         lines.append(f"{t['role'].upper()}: {text}")
+    return "\n".join(lines)
+
+
+def contextual_tier_prompt(rubric: dict, turns: list[dict], turn_id: int) -> str:
+    """The contextual instrument: `rendered_context` inside the context
+    delimiters, then the response-only prompt for the judged reply.
+    Unblinded to register by construction; the pilot compares it with the
+    response-only reading."""
     target = next(t for t in turns if t["turn_id"] == turn_id)
-    return (f"{CONTEXT_HEADER}\n\n{CONTEXT_OPEN}\n" + "\n".join(lines) + f"\n{CONTEXT_CLOSE}\n\n"
+    return (f"{CONTEXT_HEADER}\n\n{CONTEXT_OPEN}\n" + rendered_context(turns, turn_id) + f"\n{CONTEXT_CLOSE}\n\n"
             + rubric_prompt(rubric, target["text"]))
 
 
@@ -226,6 +248,7 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
     reference = seed["scenario"]["reference"]
     warning_signs = text_of(seed, reference["warning_signs_text_ref"]) if reference.get("warning_signs_text_ref") else None
     evidence_turn_ids = evidence_turn_ids or set()
+    defined_tools = {d["name"] for d in (seed.get("tools") or {}).get("definitions", [])}
     plans: list[JudgePlan] = []
     assistant_index = 0
     for t in turns:
@@ -246,11 +269,10 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
                                    None if text_unavailable else rubric_prompt(rubric, text), rd, None,
                                    "reply text unavailable" if text_unavailable else None, tier_values, flag_ids))
         if seed["judge"]["advice_tier"]["contextual"] and assistant_index >= 2:
-            ctx_text = "\n".join(f"{x['role']}: {x['text']}" for x in turns if x["turn_id"] < tid)
             plans.append(JudgePlan(cid, tid, assistant_index, "tier", "contextual", str(ADVICE_RUBRIC),
                                    None if text_unavailable else contextual_tier_prompt(rubric, turns, tid), rd,
-                                   sha256_text(ctx_text), "reply text unavailable" if text_unavailable else None,
-                                   tier_values, flag_ids))
+                                   sha256_text(rendered_context(turns, tid)),
+                                   "reply text unavailable" if text_unavailable else None, tier_values, flag_ids))
         # outcome dimensions
         for dim_id, prompt in prompts.items():
             dim = dims[dim_id]
@@ -269,10 +291,10 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
                 if dim_id in supplied:
                     context = supplied[dim_id]
                 elif dim_id == "tool_evidence_use":
-                    results = _tool_results_before(turns, tid)
+                    results = _tool_results_before(turns, tid, defined_tools)
                     context = "\n".join(results) if results else None
                     if context is None:
-                        reason = "no tool result returned before this turn"
+                        reason = "no tool result returned before this turn (generated error messages are not evidence)"
                 elif dim_id == "safety_netting_appropriateness":
                     context = warning_signs
                     if context is None:
@@ -442,6 +464,18 @@ class JudgeAborted(RuntimeError):
         self.sidecar = sidecar
 
 
+def row_bucket(row: dict) -> str:
+    """Which count a judgment row belongs to: `not_applicable` for a
+    rule-generated row (named reason) and for a judge that answered the
+    allowed value `not_applicable` (Codex round 6: those were counted as
+    judged); `null` for an unparseable or failed answer; `judged` otherwise."""
+    if row.get("not_applicable_reason") or row.get("value") == NA:
+        return "not_applicable"
+    if row.get("value") is None:
+        return "null"
+    return "judged"
+
+
 def cumulative_counts(rows: list[dict]) -> dict[str, int]:
     """Run-level judgment counts from the complete file: the latest row per
     dedupe key decides (a retried null is counted once, by its retry), so a
@@ -452,12 +486,7 @@ def cumulative_counts(rows: list[dict]) -> dict[str, int]:
         latest[dedupe_key(j)] = j
     out = {"keys": len(latest), "judged": 0, "null": 0, "not_applicable": 0, "calls_without_usage": 0}
     for j in latest.values():
-        if j.get("not_applicable_reason"):
-            out["not_applicable"] += 1
-        elif j.get("value") is None:
-            out["null"] += 1
-        else:
-            out["judged"] += 1
+        out[row_bucket(j)] += 1
     out["calls_without_usage"] = sum(1 for j in rows if j.get("usage_missing"))
     return out
 
@@ -535,7 +564,7 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                    "cost_usd": round(cost, 8), "judge_error": error}
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
             fh.flush()
-            counts["judged" if error is None else "null"] += 1
+            counts[row_bucket(row)] += 1
 
 
 # ----------------------------------------------------------- analysis rows
@@ -691,10 +720,5 @@ def judged_value_counts(judgments: list[dict]) -> dict[str, Any]:
     out: dict[str, dict[str, int]] = {}
     for j in judgments:
         bucket = out.setdefault(j["key"], {"judged": 0, "null": 0, "not_applicable": 0})
-        if j.get("not_applicable_reason"):
-            bucket["not_applicable"] += 1
-        elif j.get("value") is None:
-            bucket["null"] += 1
-        else:
-            bucket["judged"] += 1
+        bucket[row_bucket(j)] += 1
     return out

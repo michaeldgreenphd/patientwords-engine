@@ -75,6 +75,22 @@ def test_params_heredoc_canonicalises_booleans_before_any_paid_step(raw):
     block = raw[raw.index("Resolve parameters"):raw.index("Daily-ceiling gate")]
     assert 'for k in ("judge", "log_model_api", "commit_outputs"):' in block
     assert "must be true or false" in block and 'p[k] = v' in block
+    # every numeric key is parsed before a paid step, the judge's token allowance included (Codex round 6)
+    for key in ("max_spend", "judge_max_spend", "epochs", "token_limit", "judge_max_tokens"):
+        assert f'p["{key}"]' in block, key
+    assert 'int(p["judge_max_tokens"]) <= 0' in block and "judge_max_tokens must be a positive integer" in block
+
+
+def test_fire_path_refuses_a_bad_judge_token_allowance(capsys):
+    """Codex round 6: judge_max_tokens was the one numeric key no entry point
+    parsed before the paid run."""
+    base = dict(ft.PARK_DEFAULTS[TRIGGER], mode="run", target="anthropic/claude-haiku-4-5", judge="true",
+                judge_model="claude-haiku-4-5", judge_max_spend="0.01")
+    for bad in ("three-hundred", "0", "-5", ""):
+        assert any("judge_max_tokens must be a positive integer" in p
+                   for p in ft.petri_params_problems(dict(base, judge_max_tokens=bad))), bad
+    assert ft.petri_params_problems(dict(base, judge_max_tokens="300")) == []
+    assert ft.petri_params_problems(dict(base, judge_max_tokens=300)) == []
 
 
 def test_defaults_cover_every_trigger_key_and_dispatch_input(workflow, defaults):

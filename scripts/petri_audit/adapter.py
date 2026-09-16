@@ -236,6 +236,25 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         seed_id = meta.get("seed_id")
         seed = seed_set.seeds.get(seed_id) if seed_id else None
         tree_id = f"{sample.id}#{sample.epoch}"
+        # usage and call counts are taken from every sample BEFORE any refusal, the metadata refusals below included
+        # (Codex rounds 3 and 6): a sample that errored after paid calls, or whose seed digest or condition no longer
+        # matches the seed file in hand, still spent them, and a partial usage map would book part of the run
+        model_events = _target_model_events(sample)
+        for role, usage in (sample.role_usage or {}).items():
+            accumulate(role_usage, role, usage)
+        for model, usage in (sample.model_usage or {}).items():
+            accumulate(model_usage, model, usage)
+        # calls are counted from the events themselves, so a model Inspect recorded no usage for still shows its
+        # calls; a call whose output carries no usage block is counted as such and never priced as zero
+        # (spend.reprice_usage refuses a priced model with missing usage)
+        for e in model_events:
+            for bucket, key in ((model_usage, e.model), (role_usage, e.role or "target")):
+                row = usage_row(bucket, key)
+                row["calls"] += 1
+                if e.output is None or e.output.usage is None:
+                    row["calls_without_usage"] += 1
+        served = {e.output.model for e in model_events if e.output and e.output.model}
+        served_all |= served
         if seed is None:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"sample metadata names no known seed ({seed_id!r})"})
             continue
@@ -260,24 +279,6 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             continue
         counts = seen_counts.setdefault(seed_id, {})
         counts[cond["condition_id"]] = counts.get(cond["condition_id"], 0) + 1
-        # usage and call counts are taken from every sample BEFORE any refusal: a sample that errored after paid
-        # calls still spent them (Codex round 3)
-        model_events = _target_model_events(sample)
-        for role, usage in (sample.role_usage or {}).items():
-            accumulate(role_usage, role, usage)
-        for model, usage in (sample.model_usage or {}).items():
-            accumulate(model_usage, model, usage)
-        # calls are counted from the events themselves, so a model Inspect recorded no usage for still shows its
-        # calls; a call whose output carries no usage block is counted as such and never priced as zero
-        # (spend.reprice_usage refuses a priced model with missing usage)
-        for e in model_events:
-            for bucket, key in ((model_usage, e.model), (role_usage, e.role or "target")):
-                row = usage_row(bucket, key)
-                row["calls"] += 1
-                if e.output is None or e.output.usage is None:
-                    row["calls_without_usage"] += 1
-        served = {e.output.model for e in model_events if e.output and e.output.model}
-        served_all |= served
         if sample.error:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"sample error: {sample.error}"})
             continue

@@ -183,6 +183,10 @@ jobs:
           if p["mode"] == "run" and p["target"] == "mockllm/model":
               raise SystemExit("mode run needs a real target; use dry_run for mockllm")
           float(p["max_spend"]); float(p["judge_max_spend"]); int(p["epochs"]); int(p["token_limit"])
+          # the judge's token allowance is parsed here too (Codex round 6): a bad value used to fail only in the
+          # judge step's argparse, after every target call had spent and the judge_started marker was set
+          if int(p["judge_max_tokens"]) <= 0:
+              raise SystemExit(f"judge_max_tokens must be a positive integer, got {p['judge_max_tokens']!r}")
           # boolean keys are compared against "true" exactly downstream, so every spelling other than true/false
           # (a typo, "yes", "True") is refused here rather than silently read as false after a paid step
           for k in ("judge", "log_model_api", "commit_outputs"):

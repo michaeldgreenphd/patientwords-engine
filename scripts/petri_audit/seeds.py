@@ -285,6 +285,10 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
         if od not in outcome_ids:
             problems.append(f"judge outcome dimension {od!r} not in the outcome registry")
     supplied = {c["dimension_id"]: c for c in seed["judge"]["supplied_contexts"]}
+    supplied_ids = [c["dimension_id"] for c in seed["judge"]["supplied_contexts"]]
+    for dup in sorted({d for d in supplied_ids if supplied_ids.count(d) > 1}):
+        # the planner keys supplied contexts by dimension, so a repeated id would silently keep one entry (Codex round 6)
+        problems.append(f"supplied context for {dup!r} is declared {supplied_ids.count(dup)} times; one per dimension")
     for c in seed["judge"]["supplied_contexts"]:
         if c["dimension_id"] not in judged:
             problems.append(f"supplied context for {c['dimension_id']!r}, which the seed does not judge")

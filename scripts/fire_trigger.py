@@ -258,6 +258,14 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
                 problems.append(f"petri-audit {key} must be true or false (JSON boolean or the exact strings), "
                                 f"got {value!r}: the workflow compares against \"true\" exactly, so any other "
                                 f"spelling silently reads as false")
+    if "judge_max_tokens" in params:
+        # the workflow's params job parses this too; a bad value must never reach a paid step (Codex round 6)
+        try:
+            ok = int(str(params["judge_max_tokens"])) > 0
+        except (TypeError, ValueError):
+            ok = False
+        if not ok:
+            problems.append(f"petri-audit judge_max_tokens must be a positive integer, got {params['judge_max_tokens']!r}")
     target_channel, judge_channel = petri_channels(params, registry)
     if judge_channel is not None and judge_channel != target_channel:
         problems.append(

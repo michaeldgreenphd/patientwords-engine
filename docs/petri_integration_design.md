@@ -1195,6 +1195,39 @@ regression test each.
 9. **`warning_signs_text_ref` is validated before the paid run.** An
    unresolved reference passed preflight and raised in `plan_record`.
 
+### Corrections from the sixth Codex review (PR #26, 2026-09-16)
+
+Eight findings on the fifth corrected tree, all verified and fixed with a
+regression test each.
+
+1. **Usage is accumulated before every refusal.** The seed-digest, unknown
+   seed, non-scripted mode and unknown-condition refusals skipped the
+   sample's usage, so a run with one drifted sample booked part of its spend
+   and the empty-usage imputation never fired. The usage block now precedes
+   every `continue`.
+2. **Generated tool errors are not evidence.** `_tool_results_before` now
+   drops tool turns whose call could not be parsed or named an undefined
+   tool, so a reply after only a generated error message gets the registered
+   `not_applicable` instead of a paid `tool_evidence_use` judgment.
+3. **Bound artifacts are verified before resealing.** `reseal_problems`
+   checks the sanitised log, transcripts and rule outcomes against their
+   recorded digests and requires a bound judgments file to still start with
+   the bound bytes (`bound_prefix_intact`, the recovery path for an append a
+   previous invocation failed to bind); the judge report, regenerated each
+   invocation, is left to `verify_chain`.
+4. **`judge_max_tokens` is parsed in the params job** and in
+   `fire_trigger.petri_params_problems`, so a bad value fails before any
+   target call rather than in the judge step's argparse.
+5. **Duplicate supplied contexts are refused** by `seed_problems`; the
+   planner keyed them by dimension and kept one silently.
+6. **A judge-returned `not_applicable` is counted as such.** One predicate,
+   `row_bucket`, decides every count (invocation, cumulative, per-key).
+7. **The holdout seal is checked in preflight**, before any model call, with
+   exit code 6; the adapter's check at publication stays.
+8. **`context_sha256` for the contextual tier is the digest of the rendered
+   context the judge received** (`rendered_context`, shared by the prompt and
+   the digest).
+
 ## Decisions recorded from the owner (2026-09-16)
 
 These were open questions in the first draft and are now decided. Each entry
