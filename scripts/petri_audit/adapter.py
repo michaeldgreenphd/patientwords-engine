@@ -36,11 +36,14 @@ from inspect_petri import select_timeline
 from inspect_scout import span_messages
 
 from .checks import (
+    MAX_TOOL_ROUNDS_PER_TURN,
     ROOT_BRANCH,
     branch_staged_texts,
     claim_grade_eligible,
     coverage_problems,
+    exchange_problems,
     expected_stimuli,
+    generation_problems,
     missing_branch_refusals,
     request_prefix_problems,
     request_stimuli,
@@ -257,9 +260,8 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             continue
         counts = seen_counts.setdefault(seed_id, {})
         counts[cond["condition_id"]] = counts.get(cond["condition_id"], 0) + 1
-        if sample.error:
-            refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"sample error: {sample.error}"})
-            continue
+        # usage and call counts are taken from every sample BEFORE any refusal: a sample that errored after paid
+        # calls still spent them (Codex round 3)
         model_events = _target_model_events(sample)
         for role, usage in (sample.role_usage or {}).items():
             accumulate(role_usage, role, usage)
@@ -276,7 +278,12 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                     row["calls_without_usage"] += 1
         served = {e.output.model for e in model_events if e.output and e.output.model}
         served_all |= served
-        # config and raw-request checks read the retained raw request, never the merged config
+        if sample.error:
+            refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"sample error: {sample.error}"})
+            continue
+        # config and raw-request checks read the retained raw request, never the merged config; the settings are
+        # read per provider shape (nested for Google) and the requested seed is required where the provider
+        # forwards it (Codex round 3)
         expected_gen = seed["generation"]
         for e in model_events:
             if e.cache:
@@ -284,22 +291,21 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             if e.call is None or not isinstance(e.call.request, dict):
                 calls_missing += 1
                 continue
-            req = e.call.request
-            for key, want in (("temperature", expected_gen["temperature"]), ("max_tokens", expected_gen["max_tokens"])):
-                if key not in req:
-                    config_detail.append(f"{key}: not_sent")
-                elif want is not None and req[key] != want:
-                    config_detail.append(f"{key}: sent {req[key]!r}, seed {want!r}")
+            config_detail.extend(generation_problems(expected_gen, e.call.request,
+                                                     forwards_seed=SEED_FORWARDING.get(target_provider)))
         pw = _pw_events(sample)
         staged = [d for d in pw if d.get("pw") == "staged"]
         branch_infos = [d for d in pw if d.get("pw") == "branch"]
+        limits = [d for d in pw if d.get("pw") == "limit"]
         timeline = select_timeline(sample.timelines or [], "target")
         nodes = _walk_nodes(timeline.root)
         branches_out: list[dict] = []
+        branch_ids_seen: list[str] = []          # every branch the timeline carried, exported or refused
         child_index = 0
         for order, (span, parent, creation) in enumerate(nodes):
             if parent is None:
                 branch_id, parent_id, anchor_msg = ROOT_BRANCH, None, None
+                branch_ids_seen.append(branch_id)
             else:
                 if child_index >= len(branch_infos):
                     refused.append({"branch_id": f"{tree_id}:{span.id}", "reason": "trajectory has no matching branch record"})
@@ -308,6 +314,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                 info = branch_infos[child_index]
                 child_index += 1
                 branch_id, parent_id, anchor_msg = info["branch_id"], info["parent_branch_id"], info["anchor_message_id"]
+                branch_ids_seen.append(branch_id)
                 if span.branched_from != anchor_msg:
                     refused.append({"branch_id": f"{tree_id}:{branch_id}",
                                     "reason": f"branch anchor {span.branched_from!r} differs from the recorded anchor {anchor_msg!r}"})
@@ -365,6 +372,18 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                             checks["tool_results_from_data"].fail(f"{tree_id}:{branch_id} turn {turn['turn_id']}: tool result differs from the seed template")
                         elif sha256_text(turn["text"]) != hit.get("sha256"):
                             checks["tool_results_from_data"].fail(f"{tree_id}:{branch_id} turn {turn['turn_id']}: staged digest disagrees with the log")
+            # protocol limits: a branch the controller truncated (a limit event names it) or whose realised
+            # trajectory exceeds the seed's turn limit or the tool-round limit is refused (Codex round 3)
+            hit = [d for d in limits if d.get("branch_id") == branch_id]
+            if hit:
+                refused.append({"branch_id": f"{tree_id}:{branch_id}",
+                                "reason": f"trajectory truncated by the controller at the {hit[0].get('kind')} limit "
+                                          f"({hit[0].get('limit', hit[0].get('reason'))})"})
+                continue
+            overlong = exchange_problems(record["turns"], seed["protocol"]["max_target_turns"], where=where)
+            if overlong:
+                refused.append({"branch_id": f"{tree_id}:{branch_id}", "reason": "; ".join(overlong)})
+                continue
             anchor_turn = None
             if anchor_msg is not None:
                 anchor_turn = next((t["turn_id"] for t, m in zip(record["turns"], simple) if m["id"] == anchor_msg), None)
@@ -383,8 +402,9 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                 continue
             for problem in request_prefix_problems(request_stimuli(e.call.request), seed, cond, where=tree_id):
                 checks["stimulus_digest_identity"].fail(problem)
-        # every declared branch must have been exported from this tree
-        refused.extend(missing_branch_refusals(seed, [b["branch_id"] for b in branches_out], where=tree_id))
+        # every declared branch must appear in this tree's timeline; one the timeline never carried is refused here,
+        # one it carried but the adapter refused above is already recorded once
+        refused.extend(missing_branch_refusals(seed, branch_ids_seen, where=tree_id))
         if branches_out:
             branches_out[-1]["surviving"] = True
             trees.append({"tree_id": tree_id, "sample_uuid": sample.uuid or str(sample.id), "sample_id": str(sample.id),
@@ -465,6 +485,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                       "contract_checks": {k: v.as_dict() for k, v in checks.items()},
                       "prefill_enabled": False, "cache_enabled": False,
                       "target_tools_mode": "fixed" if any_tools else "none", "max_turns": max(max_turns, 1),
+                      "max_tool_rounds_per_turn": MAX_TOOL_ROUNDS_PER_TURN,
                       "epochs": epochs, "auditor_instruction_sha256": None,
                       # the configured value as Inspect recorded it (True: every call retained; False: errors only;
                       # None: Inspect's default of the first few calls per model); request coverage is the

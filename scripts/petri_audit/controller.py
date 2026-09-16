@@ -20,7 +20,7 @@ from inspect_ai.agent import Agent, AgentState, agent
 from inspect_ai.log import transcript
 from inspect_petri.target import ResponseOutput, controller
 
-from .checks import ROOT_BRANCH
+from .checks import MAX_TOOL_ROUNDS_PER_TURN, ROOT_BRANCH
 from .framework import sha256_text
 from .seeds import SeedSet, conditions, seed_digest, text_of, tool_result_for
 
@@ -33,10 +33,14 @@ def _info(data: dict[str, Any]) -> None:
 
 
 async def _stage_user_and_resume(seed: dict, turn: dict, *, branch_id: str, condition_id: str, turn_index: int,
-                                 counters: dict[str, int]) -> Any:
+                                 counters: dict[str, int]) -> tuple[Any, bool]:
     """Stage one user turn from the seed, resume the target, answer every tool
     call from the seed's results table, and return the final output of the
-    exchange (a text reply without pending calls)."""
+    exchange (a text reply without pending calls) plus whether the exchange was
+    truncated: after MAX_TOOL_ROUNDS_PER_TURN rounds of tool calls the
+    controller stops resuming, records the limit, and leaves the last calls
+    unanswered, so a target that keeps calling tools can never run to the
+    token or cost limit as if it had followed the protocol (Codex round 3)."""
     c = controller()
     text = text_of(seed, turn["text_ref"])
     anchor = await c.stage_user(text)
@@ -45,7 +49,13 @@ async def _stage_user_and_resume(seed: dict, turn: dict, *, branch_id: str, cond
            "context_role": turn.get("context_role")})
     resp = await c.resume(expected=ResponseOutput)
     counters["generates"] += 1
+    rounds = 0
     while resp.output.message.tool_calls:
+        if rounds >= MAX_TOOL_ROUNDS_PER_TURN:
+            _info({"pw": "limit", "kind": "tool_rounds", "limit": MAX_TOOL_ROUNDS_PER_TURN, "branch_id": branch_id,
+                   "condition_id": condition_id, "turn_index": turn_index})
+            counters["limits"] += 1
+            return resp.output, True
         for call in resp.output.message.tool_calls:
             counters["tool_calls"] += 1
             if call.parse_error:
@@ -68,7 +78,8 @@ async def _stage_user_and_resume(seed: dict, turn: dict, *, branch_id: str, cond
                    "turn_index": turn_index, "parse_error": call.parse_error})
         resp = await c.resume(expected=ResponseOutput)
         counters["generates"] += 1
-    return resp.output
+        rounds += 1
+    return resp.output, False
 
 
 @agent(name="patientwords_scripted_controller")
@@ -84,7 +95,8 @@ def scripted_auditor(seed_set: SeedSet) -> Agent:
         meta = c.state.metadata
         seed = seed_set.seeds[meta["seed_id"]]
         cond = next(x for x in conditions(seed) if x["condition_id"] == meta["condition_id"])
-        counters = {"generates": 0, "tool_calls": 0, "parse_errors": 0, "unknown_tools": 0}
+        counters = {"generates": 0, "tool_calls": 0, "parse_errors": 0, "unknown_tools": 0, "limits": 0}
+        max_turns = seed["protocol"]["max_target_turns"]
         _info({"pw": "condition", "seed_id": seed["seed_id"], "seed_sha256": seed_digest(seed),
                "condition_id": cond["condition_id"], "arm_id": cond["arm_id"], "variant_id": cond["variant_id"],
                "register_exposure": seed["protocol"]["register_exposure"], "user_is": cond["user_is"]})
@@ -96,9 +108,21 @@ def scripted_auditor(seed_set: SeedSet) -> Agent:
         anchor_spec = seed["protocol"]["branch_anchor"]
         anchor_message_id: str | None = None
         anchor_short: str | None = None
+        truncated = False
+        exchanges = 0
         for i, turn in enumerate(cond["turns"], 1):
-            output = await _stage_user_and_resume(seed, turn, branch_id=ROOT_BRANCH, condition_id=cond["condition_id"],
-                                                  turn_index=i, counters=counters)
+            if exchanges >= max_turns:
+                _info({"pw": "limit", "kind": "target_turns", "limit": max_turns, "branch_id": ROOT_BRANCH,
+                       "condition_id": cond["condition_id"], "turn_index": i})
+                counters["limits"] += 1
+                truncated = True
+                break
+            output, truncated = await _stage_user_and_resume(seed, turn, branch_id=ROOT_BRANCH,
+                                                             condition_id=cond["condition_id"], turn_index=i,
+                                                             counters=counters)
+            exchanges += 1
+            if truncated:
+                break
             if anchor_spec and i == anchor_spec["after_arm_turn"]:
                 anchor_message_id = output.message.id
                 anchor_short = c.short_id(anchor_message_id)
@@ -106,13 +130,29 @@ def scripted_auditor(seed_set: SeedSet) -> Agent:
                        "anchor_message_id": anchor_message_id, "anchor_short": anchor_short,
                        "reply_sha256": sha256_text(output.message.text or "")})
         for branch in seed["protocol"]["branches"]:
-            assert anchor_short is not None, "branches declared without a realised anchor"
+            if anchor_short is None:
+                # the root was truncated before its anchor: the branches have no prefix to replay and are
+                # recorded as unrealised rather than staged on a broken trajectory
+                _info({"pw": "limit", "kind": "branch_unrealised", "branch_id": branch["id"],
+                       "condition_id": cond["condition_id"], "reason": "root truncated before the branch anchor"})
+                counters["limits"] += 1
+                continue
             await c.rollback(anchor_short)
             _info({"pw": "branch", "branch_id": branch["id"], "condition_id": cond["condition_id"],
                    "parent_branch_id": ROOT_BRANCH, "anchor_message_id": anchor_message_id, "anchor_short": anchor_short})
+            exchanges = anchor_spec["after_arm_turn"]
             for i, turn in enumerate(branch["turns"], 1):
-                await _stage_user_and_resume(seed, turn, branch_id=branch["id"], condition_id=cond["condition_id"],
-                                             turn_index=i, counters=counters)
+                if exchanges >= max_turns:
+                    _info({"pw": "limit", "kind": "target_turns", "limit": max_turns, "branch_id": branch["id"],
+                           "condition_id": cond["condition_id"], "turn_index": i})
+                    counters["limits"] += 1
+                    break
+                _output, cut = await _stage_user_and_resume(seed, turn, branch_id=branch["id"],
+                                                            condition_id=cond["condition_id"], turn_index=i,
+                                                            counters=counters)
+                exchanges += 1
+                if cut:
+                    break
         _info({"pw": "done", "condition_id": cond["condition_id"], **counters})
         return state
 

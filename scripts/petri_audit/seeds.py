@@ -235,6 +235,10 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
                     problems.append(f"sustained exposure: arm turn {i + 1} registers {sorted(regs)} do not realise the "
                                     f"contrast {sorted(expected)}")
     anchor = proto["branch_anchor"]
+    # every declared trajectory fits max_target_turns (checks.exchange_limit_problems; Codex round 3)
+    from .checks import exchange_limit_problems
+
+    problems.extend(exchange_limit_problems(seed))
     if anchor is None and branches:
         problems.append("branches declared without a branch_anchor")
     if anchor is not None and not branches:

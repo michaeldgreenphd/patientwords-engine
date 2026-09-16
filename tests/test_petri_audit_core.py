@@ -168,6 +168,47 @@ def test_raw_requests_are_read_per_provider_and_must_be_a_branch_prefix(seed_set
     assert rp([("user", first)], h5, cond5, where="t"), "a request that dropped the condition's system prompt fails"
 
 
+def test_generation_settings_are_read_per_provider_shape(seed_set):
+    """Codex round 3: only top-level temperature and max_tokens were compared,
+    so a Google request's nested settings read as not_sent and a requested
+    seed was never checked where the provider forwards it."""
+    rg = checks.request_generation
+    assert rg({"temperature": 1.0, "max_tokens": 1024, "seed": 7}) == {"temperature": 1.0, "max_tokens": 1024, "seed": 7}
+    assert rg({"temperature": 0.0, "max_completion_tokens": 512}) == {"temperature": 0.0, "max_tokens": 512, "seed": None}
+    assert rg({"generation_config": {"temperature": 1.0, "max_output_tokens": 1024, "seed": 7}, "contents": []}) == \
+        {"temperature": 1.0, "max_tokens": 1024, "seed": 7}
+    assert rg({"generationConfig": {"maxOutputTokens": 64}}) == {"temperature": None, "max_tokens": 64, "seed": None}
+    assert rg({"model": "mockllm/model", "messages": []}) == {"temperature": None, "max_tokens": None, "seed": None}
+    assert rg("not a dict")["max_tokens"] is None
+    expected = {"temperature": 1.0, "max_tokens": 1024, "seed_requested": 7}
+    gp = checks.generation_problems
+    assert gp(expected, {"temperature": 1.0, "max_tokens": 1024, "seed": 7}, forwards_seed=True) == []
+    assert gp(expected, {"generation_config": {"temperature": 1.0, "max_output_tokens": 1024, "seed": 7}}, forwards_seed=True) == []
+    assert gp(expected, {"temperature": 1.0, "max_tokens": 1024}, forwards_seed=True) == ["seed: not_sent although the provider forwards seeds"]
+    assert gp(expected, {"temperature": 1.0, "max_tokens": 1024, "seed": 8}, forwards_seed=True) == ["seed: sent 8, seed 7"]
+    assert gp(expected, {"temperature": 1.0, "max_tokens": 1024}, forwards_seed=False) == [], "a provider that never forwards seeds is not asked"
+    assert gp(expected, {"messages": []}, forwards_seed=None) == ["temperature: not_sent", "max_tokens: not_sent"]
+    assert gp(expected, {"temperature": 0.5, "max_tokens": 10}, forwards_seed=False) == ["temperature: sent 0.5, seed 1.0", "max_tokens: sent 10, seed 1024"]
+    assert gp({"temperature": None, "max_tokens": 1024, "seed_requested": None}, {"temperature": 0.3, "max_tokens": 1024}, forwards_seed=True) == []
+
+
+def test_turn_limits_are_declared_consistently_and_enforced_on_records(seed_set):
+    """Codex round 3: the tool loop ran until an external limit and the
+    realised turn count was never compared with max_target_turns."""
+    for seed in seed_set.seeds.values():
+        assert checks.exchange_limit_problems(seed) == [], seed["seed_id"]
+    h4 = json.loads(json.dumps(seed_set.seeds["pw-petri-example-h4-persistence"]))
+    h4["protocol"]["max_target_turns"] = 1
+    problems = checks.exchange_limit_problems(h4)
+    assert len(problems) == 2 and all("above max_target_turns 1" in p for p in problems)
+    assert any("above max_target_turns" in p for p in seeds.validate_seed(h4, seed_set))
+    turns = _record(_messages_with_tool())["turns"]                      # two exchanges, one tool round each
+    assert checks.exchange_problems(turns, 2, where="t") == []
+    assert checks.exchange_problems(turns, 1, where="t") == ["t: 2 target replies, above max_target_turns 1"]
+    assert checks.exchange_problems(turns, 2, max_tool_rounds=0, where="t")[0].startswith("t: 1 tool-call rounds")
+    assert checks.MAX_TOOL_ROUNDS_PER_TURN >= 1
+
+
 def test_every_declared_branch_must_be_exported_from_its_tree(seed_set):
     """Codex round 2: an empty or absent branch timeline was only counted."""
     h4 = seed_set.seeds["pw-petri-example-h4-persistence"]
@@ -535,9 +576,16 @@ def test_registry_form_judge_specs_price_and_bill_by_their_provider():
     assert p.source == "registry:openai:pricing" and p.output_per_mtok == 4.75
     p = spend.resolve_registry_price("google:gemini-2.5-flash", registry, engine_pricing={})
     assert p.source == "registry:google:default_pricing" and p.output_per_mtok == 2.5
+    # the channel comes from the registry's key_env, not the spec's prefix (Codex round 3): openai:, xai:, deepseek:
+    # and moonshot: route through OPENROUTER_API_KEY in data/advice_providers.json
     assert spend.judge_billing_channel("openrouter:openai/gpt-5.4-mini") == "openrouter"
+    assert spend.judge_billing_channel("openai:gpt-5.4-mini") == "openrouter"
+    assert spend.judge_billing_channel("deepseek:deepseek-chat") == "openrouter"
     assert spend.judge_billing_channel("claude-haiku-4-5") == "anthropic"
-    assert spend.judge_billing_channel("google:gemini-2.5-flash") == "anthropic"      # fail closed, as fire_lane
+    assert spend.judge_billing_channel("google:gemini-2.5-flash") == "anthropic"      # GEMINI_API_KEY: fail closed
+    assert spend.judge_billing_channel("nope:model") == "anthropic"                   # unknown provider: fail closed
+    assert spend.judge_billing_channel("openai:x", registry={"openai": {"key_env": "OPENAI_API_KEY"}}) == "anthropic"
+    assert spend.registry_provider("xai:grok") == "xai" and spend.registry_provider("claude-x") == "anthropic"
 
 
 def test_openrouter_prices_take_the_vendor_rate_but_never_undercut_the_catch_all():
@@ -691,15 +739,26 @@ def test_judge_runner_records_every_answer_dedupes_and_stops_at_the_ceiling(tmp_
     assert tier["value"] == "routine" and tier["flags"]["safety_netting"] is False and len(tier["flags"]) == 5
     assert tier["usage_missing"] is False and tier["cost_basis"] == "actual_usage"
     assert (out.with_suffix(".report.json")).is_file()
-    # a second run re-judges only the null one
+    # a second run re-judges only the null one, and its ceiling and sidecar carry the cost already in the file
+    # (Codex round 3): cost_usd is cumulative over every row, run_cost_usd is this invocation's delta
+    assert side["prior_cost_usd"] == 0.0 and side["run_cost_usd"] == side["cost_usd"] > 0
+    assert side["cost_basis"] == "cumulative_from_records"
     side2 = judge_runner.run_judgments(plans, client, out_path=out, ceiling=judge_runner.SpendCeiling(1.0, 1.0, 5.0, 300),
                                        judge_max_tokens=300, labels=labels, now_fn=lambda: "2026-09-16T00:00:01Z")
     assert side2["already_judged"] == len(plans) - 1 and side2["null"] == 1
+    assert side2["prior_cost_usd"] == pytest.approx(side["cost_usd"])
+    assert side2["cost_usd"] == pytest.approx(side2["prior_cost_usd"] + side2["run_cost_usd"]) and side2["run_cost_usd"] > 0
+    assert side2["cost_usd"] == pytest.approx(sum(r["cost_usd"] for r in judge_runner.read_jsonl(out)))
+    # a resumed pass under a ceiling the file has already exhausted stops before any call
+    exhausted = judge_runner.SpendCeiling(side2["cost_usd"] / 2, 1.0, 5.0, 300)
+    side3 = judge_runner.run_judgments(plans, client, out_path=out, ceiling=exhausted, judge_max_tokens=300, labels=labels,
+                                       now_fn=lambda: "2026-09-16T00:00:02Z")
+    assert side3["stopped_early"] and side3["judged"] == 0 and side3["run_cost_usd"] == 0.0
     # the ceiling stops the run and says so
     tight = judge_runner.SpendCeiling(0.000001, 1.0, 5.0, 300)
-    side3 = judge_runner.run_judgments(plans, judge_runner.MockJudge(answer), out_path=tmp_path / "j2.jsonl", ceiling=tight,
+    side4 = judge_runner.run_judgments(plans, judge_runner.MockJudge(answer), out_path=tmp_path / "j2.jsonl", ceiling=tight,
                                        judge_max_tokens=300, labels=labels, now_fn=lambda: "2026-09-16T00:00:00Z")
-    assert side3["stopped_early"] and side3["judged"] == 0
+    assert side4["stopped_early"] and side4["judged"] == 0
     counts = judge_runner.judged_value_counts(rows)
     assert counts["recommendation_specificity"]["null"] == 1 and counts["safety_netting_persistence"]["judged"] == 1
 
@@ -756,7 +815,8 @@ def test_judge_calls_without_usage_are_charged_their_worst_case_and_counted(tmp_
     rows = [r for r in judge_runner.read_jsonl(tmp_path / "judgments.jsonl") if r["method"] == "judge"]
     assert rows and all(r["usage_missing"] and r["input_tokens"] is None and r["cost_basis"] == "imputed_worst_case" for r in rows)
     assert all(r["cost_usd"] > 0 for r in rows)
-    assert side["calls_without_usage"] == len(rows) and side["cost_basis"].startswith("actual_usage_plus_imputed")
+    assert side["calls_without_usage"] == len(rows) and side["usage_basis"].startswith("actual_usage_plus_imputed")
+    assert side["cost_basis"] == "cumulative_from_records"
     assert report.is_file() and side["judgments_file"] == "judgments.jsonl"
     assert not (tmp_path / "judgments.report.json").exists(), "the sidecar carries the run-unique name it was given"
     # the ledger keys sidecars by basename, so two runs' judge sidecars must not collide

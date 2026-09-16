@@ -76,11 +76,24 @@ def resolve_registry_price(spec: str, registry: dict | None = None, engine_prici
     return resolve_price(registry_spec_to_inspect(spec), registry, engine_pricing)
 
 
-def judge_billing_channel(spec: str) -> str:
-    """The prepaid account a judge spec bills: OpenRouter only for an
-    `openrouter:` spec; everything else stays on the Anthropic channel, the
-    one the daily ceiling bounds (fail closed, as fire_trigger.fire_lane does)."""
-    return "openrouter" if spec.strip().startswith("openrouter:") else "anthropic"
+def registry_provider(spec: str) -> str:
+    """The registry provider a judge spec names: `provider:model` or a bare
+    Anthropic model id (scripts/advice_eval.py `_resolve_spec`)."""
+    spec = spec.strip()
+    return spec.split(":", 1)[0] if ":" in spec else "anthropic"
+
+
+def judge_billing_channel(spec: str, registry: dict | None = None) -> str:
+    """The prepaid account a judge spec bills, derived from the provider
+    registry's `key_env` rather than the spec's prefix: `openai:`, `xai:`,
+    `deepseek:` and `moonshot:` route through OPENROUTER_API_KEY and bill the
+    OpenRouter account (Codex round 3). Anything else, an unknown provider
+    included, stays on the Anthropic channel, the one the daily ceiling bounds
+    (fail closed, as fire_trigger.petri_channels does with the same rule)."""
+    registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
+    cfg = registry.get(registry_provider(spec)) if isinstance(registry, dict) else None
+    key_env = cfg.get("key_env") if isinstance(cfg, dict) else None
+    return "openrouter" if key_env == "OPENROUTER_API_KEY" else "anthropic"
 
 
 def _registry_price(cfg: Any, name: str, label: str) -> Price | None:
@@ -235,6 +248,7 @@ def reprice_usage(model_usage: dict[str, dict[str, Any]], registry: dict | None 
         rows.append({"model": model, "input_tokens": in_tok, "output_tokens": out_tok,
                      "total_tokens": None if usage.get("total_tokens") is None and missing
                      else int(usage.get("total_tokens") or (in_tok or 0) + (out_tok or 0)),
+                     "calls": int(usage.get("calls") or 0),
                      "calls_without_usage": int(usage.get("calls_without_usage") or 0), "usage_missing": missing,
                      "cost_usd": None if cost is None else round(cost, 8), "price_source": price.source,
                      "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok})

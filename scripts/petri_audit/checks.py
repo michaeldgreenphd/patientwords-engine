@@ -274,3 +274,106 @@ def seed_drift_problems(manifest_seeds: list[dict], seed_set: SeedSet) -> list[s
             problems.append(f"{entry['seed_id']}: the seed in {seed_set.path.name} differs from the one the run recorded "
                             f"({entry['seed_sha256'][:12]}); use the seed file of record")
     return problems
+
+
+# ------------------------------------------------ generation settings and turn limits (Codex round 3)
+
+MAX_TOOL_ROUNDS_PER_TURN = 4
+"""Protocol constant: how many rounds of tool calls the controller answers
+within one user exchange before it stops resuming the target. A trajectory
+that hits it is truncated and refused; the value is recorded in every
+manifest (`execution.max_tool_rounds_per_turn`)."""
+
+_GENERATION_NAMES = {
+    "temperature": ("temperature",),
+    "max_tokens": ("max_tokens", "max_completion_tokens", "max_output_tokens", "maxOutputTokens"),
+    "seed": ("seed",),
+}
+
+
+def request_generation(request: Any) -> dict[str, Any]:
+    """The sampling settings a raw request carries, normalised across provider
+    shapes: `temperature`, `max_tokens` (any of the provider spellings) and
+    `seed`, read from the top level (Anthropic, OpenAI-compatible, mockllm) or
+    from a nested Google `generation_config` / `generationConfig` / `config`
+    block. None for a setting the request does not carry."""
+    out: dict[str, Any] = {"temperature": None, "max_tokens": None, "seed": None}
+    if not isinstance(request, dict):
+        return out
+    layers = [request] + [request[k] for k in ("generation_config", "generationConfig", "config")
+                          if isinstance(request.get(k), dict)]
+    for field, names in _GENERATION_NAMES.items():
+        for layer in layers:
+            found = next((layer[n] for n in names if layer.get(n) is not None), None)
+            if found is not None:
+                out[field] = found
+                break
+    return out
+
+
+def generation_problems(expected: dict, request: Any, *, forwards_seed: bool | None) -> list[str]:
+    """The seed's generation block against one raw request: temperature and
+    max_tokens must be sent (and equal when the seed sets them); the requested
+    seed must be sent and equal when the provider forwards seeds, while a
+    provider that never forwards them is not asked (the manifest records
+    `seed_forwarded_by_provider`)."""
+    got = request_generation(request)
+    problems: list[str] = []
+    for field in ("temperature", "max_tokens"):
+        want = expected.get(field)
+        if got[field] is None:
+            problems.append(f"{field}: not_sent")
+        elif want is not None and got[field] != want:
+            problems.append(f"{field}: sent {got[field]!r}, seed {want!r}")
+    want_seed = expected.get("seed_requested")
+    if want_seed is not None and forwards_seed:
+        if got["seed"] is None:
+            problems.append("seed: not_sent although the provider forwards seeds")
+        elif got["seed"] != want_seed:
+            problems.append(f"seed: sent {got['seed']!r}, seed {want_seed!r}")
+    return problems
+
+
+def exchange_limit_problems(seed: dict) -> list[str]:
+    """Every root-to-leaf trajectory a seed declares must fit its
+    `max_target_turns` (user exchanges: the arm's turns, or the anchored
+    prefix plus a branch's turns)."""
+    proto = seed["protocol"]
+    limit = proto["max_target_turns"]
+    problems: list[str] = []
+    for arm in proto["arms"]:
+        if len(arm["turns"]) > limit:
+            problems.append(f"arm {arm['id']!r} declares {len(arm['turns'])} user turns, above max_target_turns {limit}")
+    anchor = proto.get("branch_anchor")
+    if anchor is not None:
+        for branch in proto["branches"]:
+            n = anchor["after_arm_turn"] + len(branch["turns"])
+            if n > limit:
+                problems.append(f"branch {branch['id']!r} reaches {n} user turns with its prefix, above max_target_turns {limit}")
+    return problems
+
+
+def exchange_problems(turns: list[dict], max_target_turns: int, max_tool_rounds: int = MAX_TOOL_ROUNDS_PER_TURN,
+                      *, where: str) -> list[str]:
+    """A record's realised trajectory against the protocol limits: assistant
+    replies that close an exchange (no tool calls) must not exceed
+    `max_target_turns`, and the tool-call replies inside any one exchange must
+    not exceed `max_tool_rounds`."""
+    problems: list[str] = []
+    exchanges = 0
+    rounds = 0
+    for t in turns:
+        if t["role"] == "user":
+            rounds = 0
+        elif t["role"] == "assistant":
+            if t.get("tool_calls"):
+                rounds += 1
+                if rounds > max_tool_rounds:
+                    problems.append(f"{where}: {rounds} tool-call rounds in one exchange, above the limit of {max_tool_rounds}")
+                    break
+            else:
+                exchanges += 1
+    if exchanges > max_target_turns:
+        problems.append(f"{where}: {exchanges} target replies, above max_target_turns {max_target_turns}")
+    return problems
+

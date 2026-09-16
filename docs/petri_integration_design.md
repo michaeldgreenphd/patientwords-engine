@@ -1072,6 +1072,46 @@ with a regression test each.
 14. **Tier flags are validated**: exactly the rubric's flag ids, JSON booleans
     only; anything else is a null judgment with the error named.
 
+### Corrections from the third Codex review (PR #26, 2026-09-16)
+
+Eleven findings on the second corrected tree, all verified and fixed with a
+regression test each.
+
+1. **A sample that errored after paid calls still books them**: usage and call
+   counts are taken from every sample before any refusal.
+2. **A run that fails before adaptation still gets a spend report**: the
+   `spend-report` subcommand prices whatever the retained log records, imputes
+   the ceiling for a priced target when nothing usable was recorded, and the
+   workflow writes it whenever no adapted report exists.
+3. **A resumed judge pass starts from the file's cost**: the ceiling is
+   preloaded from the existing rows and the sidecar is cumulative
+   (`cost_basis: cumulative_from_records`, `run_cost_usd` per invocation),
+   which the ledger's growth pass books as deltas.
+4. **The server-side budget-gate enforces the lane invariants** a
+   `workflow_dispatch` never sends through `fire_trigger`: mixed channels and
+   non-canonical booleans are refused there too.
+5. **The sidecar commit step measures against the remote**: local commits that
+   never reached `origin` are undone (soft reset, files kept) and the sidecars
+   are committed alone.
+6. **Judge channels come from the registry's `key_env`**: `openai:`, `xai:`,
+   `deepseek:` and `moonshot:` bill OpenRouter; unknown or Google-keyed
+   providers fail closed to the Anthropic lane.
+7. **`petri_channels` is typed**, with `petri_params_problems` and
+   `lane_params_problems` beside it.
+8. **Generation settings are read per provider shape** (nested for Google,
+   every `max_tokens` spelling) and the requested seed is required where the
+   provider forwards it.
+9. **The per-sample cost limit reaches the manifest**: `run` writes
+   `run_params.json`, `adapt --run-params` records it.
+10. **Boolean trigger values are canonicalised** in the workflow's parameter
+    resolver and refused elsewhere; any spelling other than `true`/`false` is
+    an error before a paid step.
+11. **Turn limits are enforced**: the controller answers at most
+    `MAX_TOOL_ROUNDS_PER_TURN` (4) tool rounds per exchange and never stages a
+    turn beyond `max_target_turns`, recording a limit event; the adapter refuses
+    a truncated or overlong branch; the validator requires every declared
+    trajectory to fit `max_target_turns`; the manifest records the round limit.
+
 ## Decisions recorded from the owner (2026-09-16)
 
 These were open questions in the first draft and are now decided. Each entry

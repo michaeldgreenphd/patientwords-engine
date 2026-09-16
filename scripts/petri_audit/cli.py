@@ -8,7 +8,8 @@ same checks and calls nothing.
     python -m scripts.petri_audit.cli verify-lock [--lock FILE]
     python -m scripts.petri_audit.cli preflight --target SPEC --max-spend USD [--epochs N] [--token-limit N]
     python -m scripts.petri_audit.cli run --target SPEC --max-spend USD --out-dir DIR [--log-model-api true|false] [...]
-    python -m scripts.petri_audit.cli adapt --eval FILE --out-dir DIR --custody STR --max-spend USD [...]
+    python -m scripts.petri_audit.cli adapt --eval FILE --out-dir DIR --custody STR --max-spend USD [--run-params FILE] [...]
+    python -m scripts.petri_audit.cli spend-report --out FILE --run-id ID --target SPEC --max-spend USD [--eval FILE]
     python -m scripts.petri_audit.cli judge --run-dir DIR --judge-model SPEC --judge-max-spend USD [...]
     python -m scripts.petri_audit.cli analyze --run-dir DIR
     python -m scripts.petri_audit.cli verify-chain --data-dir DIR
@@ -22,10 +23,11 @@ import argparse
 import json
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .envlock import load_lock, report_lines, verify_lock
-from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, sha256_file
+from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, sha256_file, write_json
 from .manifest import bind_judgments, verify_chain
 from .seeds import conditions, load_seed_file, select_seeds, validate_seed
 from .spend import judge_billing_channel, preflight_bound, resolve_price, resolve_registry_price, write_report_sidecar
@@ -125,6 +127,12 @@ def cmd_run(args: argparse.Namespace) -> int:
     task = study_task(facts["seed_set"], facts["seeds"])
     # max_spend is the target ceiling alone (the judge has its own); Inspect's cost_limit is per sample
     per_sample_cost = args.max_spend / max(1, facts["samples"] * args.epochs)
+    # the limits the run actually passes to Inspect, for `adapt --run-params` to record in the manifest
+    write_json(out_dir / "run_params.json", {
+        "target": args.target, "max_spend_usd": args.max_spend, "judge_max_spend_usd": args.judge_max_spend,
+        "cost_limit_per_sample_usd": per_sample_cost, "token_limit_per_sample": args.token_limit,
+        "epochs": args.epochs, "samples": facts["samples"], "log_model_api": args.log_model_api == "true",
+        "seed_ids": [s["seed_id"] for s in facts["seeds"]]})
     log = run_study(task, target=args.target, seeds=facts["seeds"], epochs=args.epochs, log_dir=out_dir / "logs",
                     token_limit=args.token_limit, cost_limit=per_sample_cost, log_model_api=args.log_model_api == "true")
     print(f"eval {log.eval.eval_id} status {log.status}; log {log.location}")
@@ -135,9 +143,13 @@ def cmd_adapt(args: argparse.Namespace) -> int:
     from .adapter import adapt_run  # 3.12 only
 
     seed_set = load_seed_file(args.seeds)
+    run_params = load_json(args.run_params) if args.run_params else {}
     spend = {"max_spend_usd": args.max_spend, "judge_max_spend_usd": args.judge_max_spend,
-             "journal_nonce": args.journal_nonce, "cost_limit_per_sample_usd": args.cost_limit,
-             "token_limit_per_sample": args.token_limit}
+             "journal_nonce": args.journal_nonce,
+             "cost_limit_per_sample_usd": args.cost_limit if args.cost_limit is not None
+             else run_params.get("cost_limit_per_sample_usd"),
+             "token_limit_per_sample": args.token_limit if args.token_limit is not None
+             else run_params.get("token_limit_per_sample")}
     result = adapt_run(args.eval, seed_set, args.out_dir, custody=args.custody, spend=spend, registry_spec=args.target,
                        engine_sha=engine_sha(), lock_path=args.lock)
     m = result.manifest
@@ -151,6 +163,52 @@ def cmd_adapt(args: argparse.Namespace) -> int:
                              eval_id=m["eval_id"], model_usage=usage, max_spend_usd=args.max_spend,
                              judge_max_spend_usd=args.judge_max_spend, run_utc=m["created_utc"],
                              extra={"raw_eval_log_sha256": m["artifacts"]["raw_eval_log_sha256"]})
+    return 0
+
+
+def cmd_spend_report(args: argparse.Namespace) -> int:
+    """A cost sidecar for an attempted run that produced no adapted report
+    (the run failed, or adaptation did): priced from whatever the retained log
+    records, the ceiling imputed for a priced target when the log records
+    calls without usage or no log exists at all, exactly zero only for a
+    zero-price target (Codex round 3)."""
+    target = args.target
+    model_usage: dict[str, dict] = {}
+    extra: dict = {"spend_report_reason": args.reason, "eval_log": None, "run_status": None}
+    if args.eval:
+        from inspect_ai.event import ModelEvent  # 3.12 only
+        from inspect_ai.log import read_eval_log
+
+        log = read_eval_log(str(args.eval))
+        extra.update(eval_log=Path(args.eval).name, run_status=log.status, eval_id=log.eval.eval_id)
+        for sample in log.samples or []:
+            for model, usage in (sample.model_usage or {}).items():
+                row = model_usage.setdefault(model, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0,
+                                                     "calls": 0, "calls_without_usage": 0})
+                row["input_tokens"] += int(usage.input_tokens or 0)
+                row["output_tokens"] += int(usage.output_tokens or 0)
+                row["total_tokens"] += int(usage.total_tokens or 0)
+            for e in sample.events:
+                if isinstance(e, ModelEvent) and e.role == "target":
+                    row = model_usage.setdefault(e.model, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0,
+                                                           "calls": 0, "calls_without_usage": 0})
+                    row["calls"] += 1
+                    if e.output is None or e.output.usage is None:
+                        row["calls_without_usage"] += 1
+        if not model_usage and log.stats and log.stats.model_usage:
+            for model, usage in log.stats.model_usage.items():
+                model_usage[model] = {"input_tokens": int(usage.input_tokens or 0), "output_tokens": int(usage.output_tokens or 0),
+                                      "total_tokens": int(usage.total_tokens or 0), "calls": 0, "calls_without_usage": 0}
+    if not model_usage:
+        # no evidence of what was spent: the target's usage is recorded as missing, which prices a paid target at the
+        # ceiling and a zero-price target at zero
+        model_usage[target] = {"input_tokens": None, "output_tokens": None, "calls": 0, "calls_without_usage": 0}
+        extra["spend_report_reason"] += "; no usage recorded, ceiling imputed for a priced target"
+    run_utc = args.run_utc or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    report = write_report_sidecar(Path(args.out), run_id=args.run_id, eval_id=extra.get("eval_id") or args.run_id,
+                                  model_usage=model_usage, max_spend_usd=args.max_spend,
+                                  judge_max_spend_usd=args.judge_max_spend, run_utc=run_utc, extra=extra)
+    print(f"spend report {args.out}: cost_usd {report['cost_usd']} ({report['cost_basis']}); {args.reason}")
     return 0
 
 
@@ -286,8 +344,21 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--journal-nonce", default=None)
     p.add_argument("--cost-limit", type=float, default=None)
     p.add_argument("--token-limit", type=int, default=None)
+    p.add_argument("--run-params", default=None,
+                   help="the run_params.json `run` wrote beside its logs; supplies cost_limit and token_limit when not given")
     p.add_argument("--report", action="store_true", help="also write the <dir>.report.json cost sidecar")
     p.set_defaults(func=cmd_adapt)
+
+    p = sub.add_parser("spend-report")
+    p.add_argument("--out", required=True)
+    p.add_argument("--run-id", required=True)
+    p.add_argument("--target", required=True)
+    p.add_argument("--max-spend", type=float, required=True)
+    p.add_argument("--judge-max-spend", type=float, default=None)
+    p.add_argument("--eval", default=None, help="the retained raw log, when one exists")
+    p.add_argument("--run-utc", default=None)
+    p.add_argument("--reason", default="run attempted but no adapted report exists")
+    p.set_defaults(func=cmd_spend_report)
 
     p = sub.add_parser("judge")
     common_seeds(p)

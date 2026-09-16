@@ -58,7 +58,7 @@ from inspect_ai.model import ChatMessageTool, ChatMessageUser, GenerateConfig, M
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from scripts.petri_audit import cli, framework, judge_runner, sanitizer, seeds  # noqa: E402
+from scripts.petri_audit import checks, cli, framework, judge_runner, sanitizer, seeds  # noqa: E402
 from scripts.petri_audit.adapter import AdapterError, adapt_run, read_records  # noqa: E402
 from scripts.petri_audit.manifest import bind_judgments, manifest_problems, verify_chain  # noqa: E402
 from scripts.petri_audit.task import run_study, study_task  # noqa: E402
@@ -449,4 +449,111 @@ def test_cli_preflight_refuses_an_unresolvable_judge_spec_before_any_call(capsys
     code = cli.main(["preflight", "--target", "mockllm/model", "--max-spend", "0.01", "--wave", "1", "--no-harness-commit",
                      "--judge-model", "claude-haiku-4-5", "--judge-max-spend", "0.01"])
     assert code == 0 and "judge claude-haiku-4-5: anthropic channel" in capsys.readouterr().out
+
+
+# ------------------------------------------------------------ round-3: limits, failures, spend reports
+
+
+class _LoopingTarget(ScriptedTarget):
+    """Calls a tool after every result, forever, on the tools seed."""
+
+    def __call__(self, input, tools, tool_choice, config) -> ModelOutput:
+        self.n += 1
+        if tools:
+            self.calls += 1
+            return ModelOutput.for_tool_call(model="mockllm", tool_name="drug_interaction_lookup",
+                                             tool_arguments={"query": f"again {self.calls}"}, tool_call_id=f"loop-{self.calls}")
+        return super().__call__(input, tools, tool_choice, config)
+
+
+class _RaisingTarget(ScriptedTarget):
+    """Raises on the second user turn of the clinical arm, so that sample errors after a paid call."""
+
+    def __call__(self, input, tools, tool_choice, config) -> ModelOutput:
+        users = [m for m in input if isinstance(m, ChatMessageUser)]
+        if len(users) >= 2 and users[0].text == seeds.text_of(self.seed_set.seeds[H1], "stimulus_clinical"):
+            raise RuntimeError("provider failure after one paid call")
+        return super().__call__(input, tools, tool_choice, config)
+
+    def __init__(self, seed_set: seeds.SeedSet) -> None:
+        super().__init__(seed_set)
+        self.seed_set = seed_set
+
+
+def _adapt(eval_path, seed_set, out):
+    return adapt_run(eval_path, seed_set, out, custody="github_actions_artifact:90d",
+                     spend={"max_spend_usd": 0.01, "judge_max_spend_usd": None, "journal_nonce": None,
+                            "cost_limit_per_sample_usd": 0.01, "token_limit_per_sample": 20000},
+                     registry_spec="mockllm/model", engine_sha="0" * 40, harness_commit="e199ec1abcd10267c60cd7eb03035a76567d9e52")
+
+
+def test_a_target_that_never_stops_calling_tools_is_cut_off_and_its_branch_refused(run, tmp_path_factory):
+    """Codex round 3: the tool loop ran until an external token or cost limit."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H3])
+    target = get_model("mockllm/model", custom_outputs=_LoopingTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("loop-logs"), token_limit=200000, cost_limit=1.0)
+    assert log.status == "success", log.error
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("loop") / "run")
+    reasons = [r["reason"] for r in result.refused]
+    assert len(reasons) == 2 and all("tool_rounds limit" in r for r in reasons), reasons
+    assert result.manifest["trees"] == [] and result.manifest["execution"]["claim_grade_eligible"] is False
+    assert result.manifest["execution"]["max_tool_rounds_per_turn"] == checks.MAX_TOOL_ROUNDS_PER_TURN
+    calls = next(row for row in result.manifest["usage"]["by_model"] if row["model"] == "mockllm/model")["calls"]
+    assert calls == 2 * (checks.MAX_TOOL_ROUNDS_PER_TURN + 1), "one generate per round plus the first, per condition"
+
+
+def test_a_sample_that_errors_after_a_paid_call_is_refused_but_its_calls_are_booked(run, tmp_path_factory):
+    """Codex round 3: the sample-error refusal ran before usage accumulation."""
+    seed_set = run["seed_set"]
+    chosen = seeds.select_seeds(seed_set, [H1])
+    target = get_model("mockllm/model", custom_outputs=_RaisingTarget(seed_set), config=GenerateConfig(temperature=1.0, max_tokens=1024))
+    log = run_study(study_task(seed_set, chosen), target=target, seeds=chosen, epochs=1,
+                    log_dir=tmp_path_factory.mktemp("err-logs"), token_limit=20000, cost_limit=0.01)
+    errored = [s for s in log.samples if s.error]
+    assert len(errored) == 1
+    result = _adapt(Path(log.location), seed_set, tmp_path_factory.mktemp("err") / "run")
+    assert [r for r in result.refused if "sample error" in r["reason"]]
+    row = next(r for r in result.manifest["usage"]["by_model"] if r["model"] == "mockllm/model")
+    # the healthy sample's two calls, the errored sample's one completed call, and the call that raised: a call that
+    # failed is still a call the provider may have charged, so it is counted rather than dropped
+    assert row["calls"] == 4
+    assert len(result.manifest["trees"]) == 1
+
+
+def test_run_params_reach_the_manifest_and_a_spend_report_covers_a_run_without_one(run, tmp_path_factory, capsys):
+    """Codex round 3: the per-sample cost limit the run enforced never reached
+    the manifest, and a run that failed before adaptation left no sidecar."""
+    out = tmp_path_factory.mktemp("cli-run")
+    code = cli.main(["run", "--target", "mockllm/model", "--max-spend", "0.01", "--seed-id", H4, "--no-harness-commit",
+                     "--out-dir", str(out)])
+    assert code == 0
+    params = framework.load_json(out / "run_params.json")
+    assert params["cost_limit_per_sample_usd"] == pytest.approx(0.005) and params["samples"] == 2
+    eval_path = next((out / "logs").glob("*.eval"))
+    run_dir = tmp_path_factory.mktemp("cli-adapt") / "run_x"
+    code = cli.main(["adapt", "--eval", str(eval_path), "--out-dir", str(run_dir), "--custody", "github_actions_artifact:90d",
+                     "--target", "mockllm/model", "--max-spend", "0.01", "--run-params", str(out / "run_params.json"),
+                     "--no-harness-commit", "--report"])
+    assert code == 0
+    m = framework.load_json(run_dir / "manifest.json")
+    assert m["spend"]["cost_limit_per_sample_usd"] == pytest.approx(0.005) and m["spend"]["token_limit_per_sample"] == 20000
+    # a spend report from the retained log alone, and one with no log at all
+    report = tmp_path_factory.mktemp("spend") / "run_y.report.json"
+    assert cli.main(["spend-report", "--out", str(report), "--run-id", "run_y", "--target", "mockllm/model", "--max-spend", "0.01",
+                     "--eval", str(eval_path)]) == 0
+    on_disk = framework.load_json(report)
+    assert on_disk["run_status"] == "success" and on_disk["cost_usd"] == 0.0
+    # H4: two conditions, each one arm turn plus two branch turns -> six target calls in the retained log; mockllm's
+    # default output path (no custom callable) does fill usage, so nothing is missing here
+    assert on_disk["models"][0]["calls"] == 6 and on_disk["usage_missing_models"] == []
+    assert on_disk["models"][0]["calls_without_usage"] == 0 and on_disk["cost_basis"] == "engine_repriced_from_inspect_model_usage"
+    report2 = report.parent / "run_z.report.json"
+    assert cli.main(["spend-report", "--out", str(report2), "--run-id", "run_z", "--target", "anthropic/claude-haiku-4-5",
+                     "--max-spend", "0.02"]) == 0
+    imputed = framework.load_json(report2)
+    assert imputed["cost_usd"] == 0.02 and imputed["cost_basis"] == "ceiling_imputed:usage_missing"
+    assert "no usage recorded" in imputed["spend_report_reason"] and imputed["billing_channel"] == "anthropic"
+    capsys.readouterr()
 

@@ -161,7 +161,8 @@
         "max_turns",
         "epochs",
         "auditor_instruction_sha256",
-        "log_model_api"
+        "log_model_api",
+        "max_tool_rounds_per_turn"
       ],
       "properties": {
         "mode": {
@@ -247,6 +248,11 @@
             "null"
           ],
           "description": "Inspect's configured log_model_api as the log recorded it: true keeps the raw request and response of every call, false keeps errors only, null is Inspect's default (the first few calls per model). Recorded verbatim, never inferred from how many calls happened to be retained; request coverage is the generation_config_pinned contract check."
+        },
+        "max_tool_rounds_per_turn": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The controller's limit on rounds of tool calls it answers within one user exchange (checks.MAX_TOOL_ROUNDS_PER_TURN); a trajectory that reaches it is truncated and refused."
         }
       }
     },
@@ -301,7 +307,7 @@
     },
     "trees": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 0,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -412,7 +418,8 @@
             }
           }
         }
-      }
+      },
+      "description": "A run in which every tree was refused (a truncated or errored run) still writes its manifest, with the refusals under integrity.records_refused and an empty trees list; such a manifest is never claim-grade eligible."
     },
     "usage": {
       "type": "object",
@@ -1277,7 +1284,8 @@
         "max_turns": 6,
         "epochs": 1,
         "auditor_instruction_sha256": null,
-        "log_model_api": true
+        "log_model_api": true,
+        "max_tool_rounds_per_turn": 4
       },
       "models": {
         "target": {

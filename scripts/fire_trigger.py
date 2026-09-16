@@ -199,27 +199,81 @@ def fire_lane(trigger: str, params: dict) -> str:
     return "openrouter"
 
 
-def petri_channels(params):
+PROVIDERS_RELPATH = Path("data") / "advice_providers.json"
+PETRI_BOOLEAN_KEYS = ("judge", "log_model_api", "commit_outputs")
+
+
+def providers_registry(repo=None):
+    """The provider registry (data/advice_providers.json) the judge specs
+    resolve against; {} when the checkout lacks it (every classification then
+    fails closed to the anthropic lane)."""
+    root = Path(repo) if repo else Path(__file__).resolve().parents[1]
+    path = root / PROVIDERS_RELPATH
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def petri_channels(params: dict, registry: dict | None = None) -> tuple[str, str | None]:
     """(target channel, judge channel or None) of a petri-audit fire. The
     target is an Inspect model string (`provider/model`, so OpenRouter is
     `openrouter/vendor/model`); the judge, when on, a registry spec
-    (`provider:model` or a bare Anthropic id). Anything not OpenRouter bills
-    the anthropic lane, the one the $2/day guard bounds (fail closed; the
-    landed sidecars classify identically: scripts/petri_audit/spend.py
-    billing_channel and judge_billing_channel)."""
+    (`provider:model` or a bare Anthropic id) whose channel is the provider
+    registry's `key_env` (OPENROUTER_API_KEY bills OpenRouter: `openai:`,
+    `xai:`, `deepseek:` and `moonshot:` route there too, not only
+    `openrouter:`; Codex round 3). Anything else bills the anthropic lane, the
+    one the $2/day guard bounds (fail closed; the landed sidecars classify
+    identically: scripts/petri_audit/spend.py billing_channel and
+    judge_billing_channel)."""
     target = str(params.get("target") or "").strip()
     target_channel = "openrouter" if target.startswith("openrouter/") else "anthropic"
     if not judge_is_on(params):
         return target_channel, None
     judge = str(params.get("judge_model") or "").strip()
-    return target_channel, ("openrouter" if judge.startswith("openrouter:") else "anthropic")
+    provider = judge.split(":", 1)[0] if ":" in judge else "anthropic"
+    registry = providers_registry() if registry is None else registry
+    cfg = registry.get(provider) if isinstance(registry, dict) else None
+    key_env = cfg.get("key_env") if isinstance(cfg, dict) else None
+    return target_channel, ("openrouter" if key_env == "OPENROUTER_API_KEY" else "anthropic")
 
 
-def _petri_lane(params):
+def petri_params_problems(params: dict, registry: dict | None = None) -> list:
+    """The petri-audit invariants every entry point must enforce before a paid
+    step (fire_trigger's fire path, the server-side budget-gate a
+    workflow_dispatch reaches without it): one billing channel per fire, and
+    boolean keys in the one spelling the workflow compares against."""
+    problems = []
+    for key in PETRI_BOOLEAN_KEYS:
+        if key in params:
+            value = params[key]
+            if not (isinstance(value, bool) or str(value) in ("true", "false")):
+                problems.append(f"petri-audit {key} must be true or false (JSON boolean or the exact strings), "
+                                f"got {value!r}: the workflow compares against \"true\" exactly, so any other "
+                                f"spelling silently reads as false")
+    target_channel, judge_channel = petri_channels(params, registry)
+    if judge_channel is not None and judge_channel != target_channel:
+        problems.append(
+            f"petri-audit target {params.get('target')!r} bills the {target_channel} lane but judge "
+            f"{params.get('judge_model')!r} bills the {judge_channel} lane: one fire carries one commitment on "
+            "one account, so a mixed-channel fire is refused; judge on the target's channel or run the judge "
+            "as its own fire")
+    return problems
+
+
+def lane_params_problems(trigger: str, params: dict, registry: dict | None = None) -> list:
+    """Lane-specific invariants beyond the key set; empty for lanes that have none."""
+    if trigger == "petri-audit":
+        return petri_params_problems(params, registry)
+    return []
+
+
+def _petri_lane(params: dict) -> str:
     """petri-audit (2026-09-16): one lane per fire, so the target and any judge
-    must bill the same channel; validate_params refuses a mixed fire because a
-    single journal entry cannot carry two commitments on two accounts (Codex
-    round 2). A mixed fire that somehow reaches here still fails closed."""
+    must bill the same channel; validate_params and budget-gate refuse a
+    mixed fire because a single journal entry cannot carry two commitments on
+    two accounts (Codex rounds 2 and 3). A mixed fire that somehow reaches
+    here still fails closed."""
     target_channel, judge_channel = petri_channels(params)
     if judge_channel is not None and judge_channel != target_channel:
         return "anthropic"
@@ -487,15 +541,9 @@ def validate_params(trigger, params):
             "the workflow's push-path default is false, which measures and then discards "
             "every output when the runner is reclaimed"
         )
-    if trigger == "petri-audit":
-        target_channel, judge_channel = petri_channels(params)
-        if judge_channel is not None and judge_channel != target_channel:
-            raise ValueError(
-                f"petri-audit target {params.get('target')!r} bills the {target_channel} lane but judge "
-                f"{params.get('judge_model')!r} bills the {judge_channel} lane: one fire carries one commitment on "
-                "one account, so a mixed-channel fire is refused; judge on the target's channel or run the judge "
-                "as its own fire"
-            )
+    problems = lane_params_problems(trigger, params)
+    if problems:
+        raise ValueError("; ".join(problems))
 
 
 def parse_max_spend(value):
@@ -1803,6 +1851,13 @@ def cmd_budget_gate(args):
         params = json.loads(params_path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         print(f"budget-gate: cannot read params ({params_path}): {exc}", file=sys.stderr)
+        return 6
+    # lane invariants the fire path enforces in validate_params run here too, because a workflow_dispatch never
+    # passes through fire_trigger (Codex round 3)
+    problems = lane_params_problems(args.trigger, params, providers_registry(repo))
+    if problems:
+        for problem in problems:
+            print(f"budget-gate: REFUSED - {problem}", file=sys.stderr)
         return 6
     if args.trigger not in PAID_TRIGGERS and not is_mitigation_fire(args.trigger, params):
         print(f"budget-gate: {args.trigger} is a free fire; clear")

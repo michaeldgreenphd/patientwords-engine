@@ -183,6 +183,13 @@ jobs:
           if p["mode"] == "run" and p["target"] == "mockllm/model":
               raise SystemExit("mode run needs a real target; use dry_run for mockllm")
           float(p["max_spend"]); float(p["judge_max_spend"]); int(p["epochs"]); int(p["token_limit"])
+          # boolean keys are compared against "true" exactly downstream, so every spelling other than true/false
+          # (a typo, "yes", "True") is refused here rather than silently read as false after a paid step
+          for k in ("judge", "log_model_api", "commit_outputs"):
+              v = p[k].strip().lower()
+              if v not in ("true", "false"):
+                  raise SystemExit(f"{k} must be true or false, got {p[k]!r}")
+              p[k] = v
           out = os.environ["GITHUB_OUTPUT"]
           with open(out, "a", encoding="utf-8") as f:
               for k in defaults:
@@ -313,7 +320,8 @@ jobs:
           if [ "$JUDGE" = "true" ]; then ARGS="--judge-max-spend $JUDGE_MAX_SPEND"; fi
           python -m scripts.petri_audit.cli adapt --seeds "$SEEDS_FILE" --eval "$EVAL" \
             --out-dir "data/petri/runs/$RUN_STEM" --custody "github_actions_artifact:90d" \
-            --target "$TARGET" --max-spend "$MAX_SPEND" --token-limit "$TOKEN_LIMIT" $ARGS --report
+            --target "$TARGET" --max-spend "$MAX_SPEND" --token-limit "$TOKEN_LIMIT" $ARGS --report \
+            --run-params "$RUNNER_TEMP/petri-run/run_params.json"
 
       - name: Judge of record + analysis rows (paid; mode run only)
         if: ${{ needs.params.outputs.mode == 'run' && needs.params.outputs.judge == 'true' }}
@@ -348,6 +356,30 @@ jobs:
             echo "a raw .eval is inside the checkout; refusing" >&2
             exit 1
           fi
+
+      # An attempted run that produced no adapted report (the run exited non-success, or adaptation failed) still
+      # spent: a spend report is written from whatever the retained log records, with the ceiling imputed for a
+      # priced target when nothing usable was recorded, so the sidecar commit below always has a report to book
+      # (Codex round 3).
+      - name: Spend report for an attempted run that produced no adapted report
+        if: ${{ always() && needs.params.outputs.mode != 'preflight' }}
+        env:
+          TARGET: ${{ needs.params.outputs.target }}
+          MAX_SPEND: ${{ needs.params.outputs.max_spend }}
+          JUDGE: ${{ needs.params.outputs.judge }}
+          JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
+          RUN_STEM: run_${{ github.run_id }}
+        run: |
+          REPORT="data/petri/runs/$RUN_STEM/$RUN_STEM.report.json"
+          if [ -f "$REPORT" ]; then echo "adapted report present; nothing to impute"; exit 0; fi
+          ARGS=""
+          if [ "$JUDGE" = "true" ]; then ARGS="--judge-max-spend $JUDGE_MAX_SPEND"; fi
+          EVAL=$(ls "$RUNNER_TEMP"/petri-run/logs/*.eval 2>/dev/null | head -n 1 || true)
+          if [ -n "$EVAL" ]; then ARGS="$ARGS --eval $EVAL"; fi
+          mkdir -p "data/petri/runs/$RUN_STEM"
+          python -m scripts.petri_audit.cli spend-report --out "$REPORT" --run-id "$RUN_STEM" \
+            --target "$TARGET" --max-spend "$MAX_SPEND" $ARGS \
+            --reason "run attempted; no adapted report exists (run or adaptation failed)"
 
       - name: Upload the raw .eval as a workflow artifact (90-day custody; never committed)
         if: ${{ always() && needs.params.outputs.mode != 'preflight' }}
@@ -395,10 +427,19 @@ jobs:
         run: |
           set -euo pipefail
           if find data/petri -name '*.eval' | grep -q .; then echo "raw log present; refusing" >&2; exit 1; fi
+          # index cleanliness is no proof the sidecars landed: the outputs step may have committed them locally and
+          # then failed every push. Measure against the remote and, if local commits never reached it, fall back to
+          # the remote head (the files stay in the working tree) and commit the sidecars alone (Codex round 3).
+          git fetch origin "$BRANCH"
+          if [ -n "$(git log --oneline "origin/$BRANCH..HEAD")" ]; then
+            echo "local commit(s) never reached origin/$BRANCH; re-committing the cost sidecars alone"
+            git reset --soft "origin/$BRANCH"
+            git reset -q
+          fi
           for f in data/petri/runs/$RUN_STEM/*.report.json; do
             if [ -f "$f" ]; then git add -f "$f"; fi
           done
-          if git diff --cached --quiet; then echo "No cost sidecars to commit (already committed, or none written)"; exit 0; fi
+          if git diff --cached --quiet; then echo "No cost sidecars to commit (already on the remote, or none written)"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Petri audit: $RUN_STEM cost sidecars"

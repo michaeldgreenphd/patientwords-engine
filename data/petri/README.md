@@ -28,7 +28,12 @@ The measurement outputs of a run are committed only when `commit_outputs` is
 true and every prior step succeeded. The two cost sidecars of a paid run
 (`<run>.report.json`, `<run>.judge.report.json`) are committed by a separate
 step whatever happened to the outputs, because the ledger is the only record
-of landed spend and they carry no seed or model text.
+of landed spend and they carry no seed or model text. A run that failed
+before adaptation gets `<run>.report.json` from `cli spend-report` instead
+(priced from the retained log, or the ceiling imputed for a priced target), so
+the ledger never misses an attempted paid run. The judge sidecar is cumulative
+over every row in `judgments.jsonl` (`cost_basis: cumulative_from_records`,
+`run_cost_usd` per invocation), so a resumed pass books only its delta.
 
 Paths inside a manifest are recorded relative to `runs/`, so the same log
 adapted anywhere yields byte-identical exports (tests/petri/test_zero_cost_e2e.py).

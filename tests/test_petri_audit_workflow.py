@@ -71,6 +71,12 @@ def test_shape_and_entry_paths(workflow):
         assert "!github.event.created" in str(job.get("if")), name
 
 
+def test_params_heredoc_canonicalises_booleans_before_any_paid_step(raw):
+    block = raw[raw.index("Resolve parameters"):raw.index("Daily-ceiling gate")]
+    assert 'for k in ("judge", "log_model_api", "commit_outputs"):' in block
+    assert "must be true or false" in block and 'p[k] = v' in block
+
+
 def test_defaults_cover_every_trigger_key_and_dispatch_input(workflow, defaults):
     on = workflow.get("on") or workflow.get(True)
     inputs = set(on["workflow_dispatch"]["inputs"])
@@ -122,6 +128,7 @@ def test_paid_steps_are_gated_on_mode_and_the_raw_log_stays_outside_the_checkout
     assert names.index("Holdout seal check over every publishable Petri output (fails closed)") < names.index(commit["name"])
     unconditional = [s["name"] for s in steps if "always()" in str(s.get("if", ""))]
     assert unconditional == ["Refuse to publish a raw log (belt and braces)",
+                             "Spend report for an attempted run that produced no adapted report",
                              "Upload the raw .eval as a workflow artifact (90-day custody; never committed)",
                              "Commit cost sidecars of a paid run (mode run; independent of commit_outputs)",
                              "Job summary"]
@@ -138,6 +145,15 @@ def test_paid_steps_are_gated_on_mode_and_the_raw_log_stays_outside_the_checkout
     assert judge_env == set(run["env"]) & judge_env | {"JUDGE_MODEL", "JUDGE_MAX_SPEND", "JUDGE_MAX_TOKENS", "SEEDS_FILE", "RUN_STEM"}
     preflight = _step(workflow, "Preflight")
     assert "--judge-model $JUDGE_MODEL" in preflight["run"] and "--judge-model $JUDGE_MODEL" in run["run"]
+    # round 3: the limits the run passed reach the manifest, an attempted run without an adapted report still gets a
+    # spend report before the sidecar commit, the params heredoc refuses non-canonical booleans, and the sidecar step
+    # measures against the remote rather than trusting a clean index
+    assert '--run-params "$RUNNER_TEMP/petri-run/run_params.json"' in adapt["run"]
+    spend_report = _step(workflow, "Spend report for an attempted run")
+    assert "always()" in spend_report["if"] and "mode != 'preflight'" in spend_report["if"]
+    assert "spend-report" in spend_report["run"] and names.index(spend_report["name"]) < names.index(sidecars["name"])
+    assert names.index(adapt["name"]) < names.index(spend_report["name"])
+    assert 'git fetch origin "$BRANCH"' in sidecars["run"] and 'git reset --soft "origin/$BRANCH"' in sidecars["run"]
     seal = _step(workflow, "Holdout seal check")
     assert "seal_check.py" in seal["run"] and "verify-chain" in seal["run"]
     gate = _step(workflow, "Daily-ceiling gate", job="params")
@@ -183,6 +199,34 @@ def test_fire_lane_classifies_the_petri_target_and_judge_specs():
     ft.validate_params(TRIGGER, dict(base, target="anthropic/claude-haiku-4-5", judge_model="claude-haiku-4-5"))
     ft.validate_params(TRIGGER, dict(base, target=orl, judge="false", judge_model="claude-haiku-4-5"))
     assert ft.petri_channels({"target": orl, "judge": "true", "judge_model": "claude-x"}) == ("openrouter", "anthropic")
+    # the judge's channel is the registry's key_env (Codex round 3): an openai: judge bills OpenRouter, so it pairs
+    # with an OpenRouter target and not with an Anthropic one; a google: judge fails closed to the anthropic lane
+    assert ft.petri_channels({"target": orl, "judge": "true", "judge_model": "openai:gpt-5.4-mini"}) == ("openrouter", "openrouter")
+    ft.validate_params(TRIGGER, dict(base, target=orl, judge_model="openai:gpt-5.4-mini"))
+    with pytest.raises(ValueError, match="mixed-channel"):
+        ft.validate_params(TRIGGER, dict(base, target="anthropic/claude-haiku-4-5", judge_model="deepseek:deepseek-chat"))
+    assert ft.petri_channels({"target": orl, "judge": "true", "judge_model": "google:gemini-2.5-flash"}) == ("openrouter", "anthropic")
+    # boolean keys must be spelled the one way the workflow compares against (Codex round 3)
+    for bad in ("True", "yes", "1", ""):
+        with pytest.raises(ValueError, match="must be true or false"):
+            ft.validate_params(TRIGGER, dict(ft.PARK_DEFAULTS[TRIGGER], commit_outputs=bad))
+    ft.validate_params(TRIGGER, dict(ft.PARK_DEFAULTS[TRIGGER], commit_outputs=False, judge=True, judge_max_spend="0.01"))
+    assert ft.lane_params_problems("advice-eval", {"models": "x", "commit_outputs": "True"}) == []
+
+
+def test_budget_gate_enforces_the_lane_invariants_a_dispatch_never_sends_through_fire_trigger(tmp_path, capsys):
+    """Codex round 3: workflow_dispatch reaches budget-gate without
+    validate_params, so the server-side gate applies the lane invariants."""
+    params = dict(ft.PARK_DEFAULTS[TRIGGER], mode="run", target="openrouter/openai/gpt-5.5", judge="true",
+                  judge_model="claude-haiku-4-5", judge_max_spend="0.01")
+    params_file = tmp_path / "gate_params.json"
+    params_file.write_text(json.dumps(params), encoding="utf-8")
+    args = type("Args", (), {"repo": str(ROOT), "trigger": TRIGGER, "params_file": str(params_file)})()
+    assert ft.cmd_budget_gate(args) == 6
+    assert "mixed-channel" in capsys.readouterr().err
+    params_file.write_text(json.dumps(dict(params, commit_outputs="True", judge="false")), encoding="utf-8")
+    assert ft.cmd_budget_gate(args) == 6
+    assert "must be true or false" in capsys.readouterr().err
 
 
 def test_park_default_validates_and_is_a_true_no_op():
