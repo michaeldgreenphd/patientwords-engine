@@ -64,8 +64,9 @@ GPU) still commits no locally produced measurement: every committed summary reco
 | `activation-patching.json` | `activation_patching.yml` | CPU residual-stream patching grid ($0) |
 | `jlens-readout.json` | `jlens_readout.yml` | hosted Jacobian-lens depth readouts ($0) |
 | `advice-eval.json` | `advice_evaluation.yml` | deployed-assistant advice elicitation + judging (paid) |
+| `petri-audit.json` | `petri_audit.yml` | Petri-hosted multi-turn register experiments (paid when `mode: run`; park default `preflight` calls nothing) |
 
-Eight lanes. `scripts/fire_trigger.py` also knows `pab-probe`, whose
+Nine lanes. `scripts/fire_trigger.py` also knows `pab-probe`, whose
 workflow exists only on the PAB branch. The fact-check of 2026-09-04 found this table
 one lane behind and `.github/trigger/README.md` six behind. That README predates the
 ops system and cannot be edited from a session (the guard hooks refuse every write
@@ -96,12 +97,13 @@ existing branch. Cherry-picks and rebases onto an existing branch still fire; an
 any branch operation can pull, so its committed content should be the cheapest stage that
 exists with `commit_outputs`/`commit_sidecar` false, never the last expensive thing that
 ran. Implemented 2026-08-29: `scripts/fire_trigger.py park --trigger <t>` (or `--all`)
-fires each lane's no-op default from `PARK_DEFAULTS`; all eight lanes are parked, and
+fires each lane's no-op default from `PARK_DEFAULTS`; all eight original lanes are parked (`petri-audit`, added 2026-09-16, has no
+trigger file until the owner parks it after the lane merges), and
 after any real fire lands, re-park that lane (`docs/operators_handbook.md` §3).
 
-**Cost discipline:** Neuronpedia tracing, CPU logits, and all analysis are $0. Four
+**Cost discipline:** Neuronpedia tracing, CPU logits, and all analysis are $0. Five
 lanes spend provider credits — `scenario-generation`, `model-evaluation`, `advice-eval`,
-and `circuit-trace` when `show_mitigation: true` (a flat $0.15 imputed per fire);
+`petri-audit` when `mode: run`, and `circuit-trace` when `show_mitigation: true` (a flat $0.15 imputed per fire);
 `fire_trigger.py`'s `PAID_TRIGGERS` is the source of truth. Measured per accepted pair
 across the landed `.report.json` sidecars (2026-09-04): opus **$0.020**, haiku $0.0017,
 sonnet $0.060. Every paid generation run writes `<batch>.report.json` (one archived

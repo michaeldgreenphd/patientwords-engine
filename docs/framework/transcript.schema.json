@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/michaeldgreenphd/patientwords-engine/docs/framework/transcript.schema.json",
-  "title": "Clinical AI conversation transcript (import format), draft 0.1",
-  "description": "One conversation per JSON object, one object per line in a .jsonl file. Text is the only content field; everything else is provenance, de-identification state, and annotations. A record whose deidentification.status is not one of the allowed values is invalid and the importer refuses it; the value 'identified' is deliberately absent from the enum so that identified material can never validate.",
+  "title": "Clinical AI conversation transcript (import format), draft 0.2 (legacy 0.1 records supported)",
+  "description": "One conversation per JSON object, one object per line in a .jsonl file. Text is the only content field; everything else is provenance, de-identification state, and annotations. A record whose deidentification.status is not one of the allowed values is invalid and the importer refuses it; the value 'identified' is deliberately absent from the enum so that identified material can never validate. Version contract: a record labelled schema_version 0.1 is a legacy record and validates exactly as before, and it must not carry any 0.2-only field (turns[].tool_calls, turns[].tool_call_id, provenance.run_manifest); those fields require schema_version 0.2. The if/then block at the top level enforces the forward labelling.",
   "type": "object",
   "required": [
     "schema_version",
@@ -18,8 +18,10 @@
     "schema_version": {
       "type": "string",
       "enum": [
-        "0.1"
-      ]
+        "0.1",
+        "0.2"
+      ],
+      "description": "0.2 (proposed 2026-09-16) adds optional, harness-agnostic fields: turns[].tool_calls and turns[].tool_call_id, which record the assistant's tool calls and pair each tool turn with its call, and provenance.run_manifest, a digest reference to the closed run manifest of the execution that produced the record. Every 0.1 record validates unchanged under 0.2; a 0.2 record that uses none of the new fields is a 0.1 record."
     },
     "conversation_id": {
       "type": "string",
@@ -203,7 +205,8 @@
             ]
           },
           "text": {
-            "type": "string"
+            "type": "string",
+            "description": "The turn's text. For a tool turn, the tool result string exactly as the model received it."
           },
           "timestamp_utc": {
             "type": [
@@ -224,6 +227,94 @@
             ],
             "minimum": 1,
             "description": "For an assistant turn: the turn_id of the user turn it answers. Optional; when absent the importer pairs the assistant turn with the immediately preceding turn only if that turn is a user turn (docs/framework_design.md section 3.3), and an assistant turn that cannot be paired unambiguously is ineligible for the counterfactual step (unpaired_reply)."
+          },
+          "tool_calls": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "call_id",
+                "name",
+                "arguments",
+                "parse_error"
+              ],
+              "properties": {
+                "call_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The call identifier the harness assigned; the tool turn that answers it carries the same value in tool_call_id."
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "arguments": {
+                  "type": "object",
+                  "description": "The parsed arguments as the model emitted them, an open object because its shape is the tool's; unparseable arguments leave this empty and set parse_error. Part of the turns array, so provenance.text_sha256 covers it."
+                },
+                "parse_error": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The harness's parse error text when the model's call could not be parsed; null otherwise. Recorded, never dropped: a malformed call is target behaviour."
+                }
+              }
+            },
+            "description": "Tool calls the assistant made in this turn, in emission order; present only on assistant turns. Target behaviour, not an analysis sidecar."
+          },
+          "tool_call_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "On a tool turn: the call_id this result answers, which must name a tool call on an earlier assistant turn of the record (import-time check). Null or absent on every other role."
+          }
+        },
+        "if": {
+          "properties": {
+            "role": {
+              "const": "assistant"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "tool_call_id": {
+              "type": "null"
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "tool_calls": false
+          },
+          "if": {
+            "properties": {
+              "role": {
+                "const": "tool"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "tool_call_id"
+            ],
+            "properties": {
+              "tool_call_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "tool_call_id": {
+                "type": "null"
+              }
+            }
           }
         }
       }
@@ -263,7 +354,7 @@
               },
               "value": {
                 "type": "string",
-                "description": "One of that dimension's declared values, or the reserved `not_applicable`: the turn carries nothing to classify on this dimension (recorded as unavailable and counted; no contrast is generated).",
+                "description": "One of that dimension's declared values, or the reserved `not_applicable`, whose meaning is defined per dimension by the registry entry and its prompt file: it is reserved for the case where the object or context the dimension requires is genuinely unavailable (recorded as unavailable and counted; no contrast is generated). Absence of a behaviour uses that dimension's declared substantive absence value when one exists, never not_applicable.",
                 "minLength": 1
               },
               "method": {
@@ -341,6 +432,56 @@
           "type": "string",
           "pattern": "^[0-9a-f]{64}$",
           "description": "sha256 (hex) of the UTF-8 bytes of the canonical JSON of `turns`: json.dumps(turns, sort_keys=True, ensure_ascii=False, separators=(',', ':')), the same canonical form scripts/advice_eval.py uses for its hash chain. A consumer recomputes it and refuses a record whose text changed."
+        },
+        "run_manifest": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "ref"
+          ],
+          "properties": {
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "The run manifest's identity digest (its chain.identity_sha256: the manifest with the chain block removed and the record-dependent artifact digests blanked), binding the record to the execution that produced it without a digest cycle."
+            },
+            "ref": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Repo-relative path of that manifest when it is committed; null when only the digest is known."
+            }
+          },
+          "description": "Optional, harness-agnostic reference to a closed run manifest; absent for captures that have none. Execution-specific detail stays in the manifest, never here."
+        }
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "schema_version": {
+        "const": "0.1"
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "turns": {
+        "items": {
+          "properties": {
+            "tool_calls": false,
+            "tool_call_id": false
+          }
+        }
+      },
+      "provenance": {
+        "properties": {
+          "run_manifest": false
         }
       }
     }

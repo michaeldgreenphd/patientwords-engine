@@ -54,6 +54,9 @@ def parse_args(argv=None):
     parser.add_argument("--pab-dir", default="data/pab",
                         help="PatientAgentBench probe sidecars (exploratory arm); "
                              "their cost_usd folds into the same spend totals")
+    parser.add_argument("--petri-dir", default="data/petri/runs",
+                        help="Petri lane run directories; each <run>/<run>.report.json cost sidecar "
+                             "(engine re-priced from Inspect usage, explicit billing_channel) folds into the same totals")
     parser.add_argument("--dashboard", default="ops/dashboard.json")
     parser.add_argument("--ledger", default=None,
                         help="ledger markdown file (default: lexicographically newest docs/*ledger*.md, "
@@ -345,9 +348,13 @@ def main(argv=None):
     # through a CI trigger, so without this glob the $2/day guard would never
     # see it at all -- the same accounting gap the advice arm hit in July.
     # attribute_tierb's task gate ("pairs") keeps them out of Tier B rows.
+    # Petri lane sidecars (data/petri/runs/<run>/<run>.report.json, 2026-09-16) join
+    # the same fold; they carry an explicit billing_channel because Inspect names
+    # OpenRouter models `openrouter/...`, which the derivation above would not see.
     scan_specs = [(Path(args.simulated_dir), "*.report.json"),
                   (Path(args.advice_dir), "*.report.json"),
                   (Path(args.pab_dir), "*.report.json"),
+                  (Path(args.petri_dir), "*/*.report.json"),
                   (Path(args.trace_dir), "*/mitigation*.report.json")]
     pab_dir = Path(args.pab_dir)
     by_day_ch = spend.setdefault("by_day_by_channel", {})

@@ -1,0 +1,399 @@
+name: Petri Audit (medlang-circuits)
+
+# PatientWords multi-turn register experiments executed through the Petri
+# harness (docs/petri_integration_design.md). PAID when mode is `run`: the
+# target model and the optional judge spend provider tokens under max_spend
+# and judge_max_spend; `preflight` validates seeds, verifies the exact
+# environment lock, prices the run and bounds it, and calls nothing;
+# `dry_run` executes the whole pipeline against mockllm at $0.
+#
+# The raw Inspect .eval log is NEVER committed: it is written outside the
+# checkout, uploaded as a workflow artifact with 90-day retention, and bound
+# to the committed manifest by sha256. Only the sanitised allowlist
+# projection, the transcripts, the rule outcomes, the judgments and the
+# manifest enter the repository.
+#
+# Start it from the Actions tab (workflow_dispatch) or by pushing a params file
+# to .github/trigger/petri-audit.json via scripts/fire_trigger.py ONLY. The
+# trigger file is created by `fire_trigger.py park --trigger petri-audit`
+# after this workflow lands, never by hand; until it exists, no push fires
+# this lane. Owner rule (2026-09-16): no fire of any mode until the owner
+# authorises the first execution explicitly.
+
+on:
+  workflow_dispatch:
+    inputs:
+      seeds_file:
+        description: "Seed file (docs/framework/petri_seeds.draft.json or a successor)"
+        type: string
+        default: "docs/framework/petri_seeds.draft.json"
+      seed_ids:
+        description: "Space-separated seed ids to run (empty = every seed of the wave)"
+        type: string
+        default: ""
+      wave:
+        description: "Pilot wave to select when seed_ids is empty (1 = the first end-to-end pilot)"
+        type: string
+        default: "1"
+      target:
+        description: "Inspect target model string, e.g. anthropic/claude-haiku-4-5 (mockllm/model under dry_run)"
+        type: string
+        default: "mockllm/model"
+      mode:
+        description: "preflight (no calls), dry_run (mockllm, $0), run (paid)"
+        type: string
+        default: "preflight"
+      epochs:
+        description: "Repeats per condition (the pilot's provisional R)"
+        type: string
+        default: "1"
+      token_limit:
+        description: "Per-sample token limit passed to Inspect (input + output)"
+        type: string
+        default: "20000"
+      max_spend:
+        description: "HARD spend ceiling in USD for the target calls (required, counted by the guard)"
+        type: string
+        default: "0.01"
+      judge:
+        description: "Also run the judge of record over the exported records (paid)"
+        type: boolean
+        default: false
+      judge_model:
+        description: "Judge model spec (registry: bare Anthropic id or provider:model)"
+        type: string
+        default: "claude-haiku-4-5"
+      judge_max_spend:
+        description: "HARD judge spend ceiling in USD"
+        type: string
+        default: "0.01"
+      judge_max_tokens:
+        description: "Max output tokens per judge call"
+        type: string
+        default: "300"
+      log_model_api:
+        description: "Keep every raw provider request and response in the (unpublished) .eval"
+        type: boolean
+        default: true
+      commit_outputs:
+        description: "Commit the sanitised exports, transcripts, judgments and manifest back to the branch (mode run only)"
+        type: boolean
+        default: false
+  push:
+    paths:
+      - ".github/trigger/petri-audit.json"
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: petri-audit-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  params:
+    # A push that creates a ref carries created:true, and on a new ref every
+    # trigger file counts as changed. Skip on creation; fires are pushes to
+    # existing branches.
+    if: ${{ !github.event.created }}
+    runs-on: ubuntu-latest
+    outputs:
+      seeds_file: ${{ steps.params.outputs.seeds_file }}
+      seed_ids: ${{ steps.params.outputs.seed_ids }}
+      wave: ${{ steps.params.outputs.wave }}
+      target: ${{ steps.params.outputs.target }}
+      mode: ${{ steps.params.outputs.mode }}
+      epochs: ${{ steps.params.outputs.epochs }}
+      token_limit: ${{ steps.params.outputs.token_limit }}
+      max_spend: ${{ steps.params.outputs.max_spend }}
+      judge: ${{ steps.params.outputs.judge }}
+      judge_model: ${{ steps.params.outputs.judge_model }}
+      judge_max_spend: ${{ steps.params.outputs.judge_max_spend }}
+      judge_max_tokens: ${{ steps.params.outputs.judge_max_tokens }}
+      log_model_api: ${{ steps.params.outputs.log_model_api }}
+      commit_outputs: ${{ steps.params.outputs.commit_outputs }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            medlang_circuits
+            docs
+            ops
+            tests
+      - name: Resolve parameters
+        id: params
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IN_SEEDS_FILE: ${{ inputs.seeds_file }}
+          IN_SEED_IDS: ${{ inputs.seed_ids }}
+          IN_WAVE: ${{ inputs.wave }}
+          IN_TARGET: ${{ inputs.target }}
+          IN_MODE: ${{ inputs.mode }}
+          IN_EPOCHS: ${{ inputs.epochs }}
+          IN_TOKEN_LIMIT: ${{ inputs.token_limit }}
+          IN_MAX_SPEND: ${{ inputs.max_spend }}
+          IN_JUDGE: ${{ inputs.judge }}
+          IN_JUDGE_MODEL: ${{ inputs.judge_model }}
+          IN_JUDGE_MAX_SPEND: ${{ inputs.judge_max_spend }}
+          IN_JUDGE_MAX_TOKENS: ${{ inputs.judge_max_tokens }}
+          IN_LOG_MODEL_API: ${{ inputs.log_model_api }}
+          IN_COMMIT_OUTPUTS: ${{ inputs.commit_outputs }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          # The push-path defaults dict MUST contain every trigger key (unknown
+          # keys in the trigger file are silently ignored by design; the fire
+          # guard's KNOWN_KEYS mirrors this set).
+          defaults = {"seeds_file": "docs/framework/petri_seeds.draft.json",
+                      "seed_ids": "",
+                      "wave": "1",
+                      "target": "mockllm/model",
+                      "mode": "preflight",
+                      "epochs": "1",
+                      "token_limit": "20000",
+                      "max_spend": "0.01",
+                      "judge": "false",
+                      "judge_model": "claude-haiku-4-5",
+                      "judge_max_spend": "0.01",
+                      "judge_max_tokens": "300",
+                      "log_model_api": "true",
+                      "commit_outputs": "false"}
+          p = dict(defaults)
+          if os.environ["EVENT_NAME"] == "push":
+              with open(".github/trigger/petri-audit.json", encoding="utf-8") as f:
+                  cfg = json.load(f)
+              if isinstance(cfg.get("seed_ids"), list):
+                  cfg["seed_ids"] = " ".join(str(s) for s in cfg["seed_ids"])
+              p.update({k: (str(v).lower() if isinstance(v, bool) else str(v))
+                        for k, v in cfg.items() if k in defaults})
+          else:
+              for k in defaults:
+                  v = os.environ.get("IN_" + k.upper(), "")
+                  if v:
+                      p[k] = v
+          if p["mode"] not in ("preflight", "dry_run", "run"):
+              raise SystemExit("mode must be preflight, dry_run or run")
+          if p["mode"] == "dry_run" and p["target"] != "mockllm/model":
+              raise SystemExit("dry_run runs against mockllm/model only")
+          if p["mode"] == "run" and p["target"] == "mockllm/model":
+              raise SystemExit("mode run needs a real target; use dry_run for mockllm")
+          float(p["max_spend"]); float(p["judge_max_spend"]); int(p["epochs"]); int(p["token_limit"])
+          out = os.environ["GITHUB_OUTPUT"]
+          with open(out, "a", encoding="utf-8") as f:
+              for k in defaults:
+                  f.write(k + "=" + p[k] + "\n")
+          print(" | ".join(f"{k}={p[k]}" for k in sorted(defaults)))
+          EOF
+
+      - name: Daily-ceiling gate (server-side; same budget_check as the fire guard)
+        env:
+          GATE_PARAMS: ${{ toJSON(steps.params.outputs) }}
+        run: |
+          printf '%s' "$GATE_PARAMS" > "$RUNNER_TEMP/gate_params.json"
+          python3 scripts/fire_trigger.py budget-gate --trigger petri-audit --params-file "$RUNNER_TEMP/gate_params.json"
+
+  audit:
+    if: ${{ !github.event.created }}
+    needs: params
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            scripts
+            data
+            medlang_circuits
+            docs
+            ops
+            tests
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          # the exact interpreter the environment lock records; verify-lock refuses any other
+          python-version: "3.12.3"
+
+      - name: Install the locked environment (exact versions from docs/framework/petri_environment.lock.json)
+        run: |
+          python - <<'EOF'
+          import json
+          lock = json.load(open("docs/framework/petri_environment.lock.json", encoding="utf-8"))
+          with open("petri-lock-requirements.txt", "w", encoding="utf-8") as f:
+              for name, version in sorted(lock["packages"].items()):
+                  f.write(f"{name}=={version}\n")
+          with open("petri-harness-commit.txt", "w", encoding="utf-8") as f:
+              f.write(lock["harness"]["commit"])
+          EOF
+          pip install --quiet -r petri-lock-requirements.txt
+          pip install --quiet --no-deps "inspect_petri @ git+https://github.com/michaeldgreenphd/patientwords-inspect_petri@$(cat petri-harness-commit.txt)"
+          pip install --quiet -e ".[llm]" pyyaml
+          rm -f petri-lock-requirements.txt petri-harness-commit.txt
+
+      - name: Verify the environment lock (refuses any drift before a model call)
+        run: python -m scripts.petri_audit.cli verify-lock
+
+      - name: Validate seeds
+        env:
+          SEEDS_FILE: ${{ needs.params.outputs.seeds_file }}
+          SEED_IDS: ${{ needs.params.outputs.seed_ids }}
+          WAVE: ${{ needs.params.outputs.wave }}
+        run: |
+          ARGS=""
+          for s in $SEED_IDS; do ARGS="$ARGS --seed-id $s"; done
+          if [ -z "$SEED_IDS" ]; then ARGS="--wave $WAVE"; fi
+          python -m scripts.petri_audit.cli validate-seeds --seeds "$SEEDS_FILE" $ARGS
+
+      - name: Preflight (prices, bound, lock; no model call)
+        env:
+          SEEDS_FILE: ${{ needs.params.outputs.seeds_file }}
+          SEED_IDS: ${{ needs.params.outputs.seed_ids }}
+          WAVE: ${{ needs.params.outputs.wave }}
+          TARGET: ${{ needs.params.outputs.target }}
+          MAX_SPEND: ${{ needs.params.outputs.max_spend }}
+          JUDGE: ${{ needs.params.outputs.judge }}
+          JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
+          EPOCHS: ${{ needs.params.outputs.epochs }}
+          TOKEN_LIMIT: ${{ needs.params.outputs.token_limit }}
+        run: |
+          ARGS=""
+          for s in $SEED_IDS; do ARGS="$ARGS --seed-id $s"; done
+          if [ -z "$SEED_IDS" ]; then ARGS="--wave $WAVE"; fi
+          if [ "$JUDGE" = "true" ]; then ARGS="$ARGS --judge-max-spend $JUDGE_MAX_SPEND"; fi
+          python -m scripts.petri_audit.cli preflight --seeds "$SEEDS_FILE" $ARGS \
+            --target "$TARGET" --max-spend "$MAX_SPEND" --epochs "$EPOCHS" --token-limit "$TOKEN_LIMIT"
+
+      - name: Run (mode dry_run or run; the raw .eval is written OUTSIDE the checkout)
+        if: ${{ needs.params.outputs.mode != 'preflight' }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SEEDS_FILE: ${{ needs.params.outputs.seeds_file }}
+          SEED_IDS: ${{ needs.params.outputs.seed_ids }}
+          WAVE: ${{ needs.params.outputs.wave }}
+          TARGET: ${{ needs.params.outputs.target }}
+          MAX_SPEND: ${{ needs.params.outputs.max_spend }}
+          JUDGE: ${{ needs.params.outputs.judge }}
+          JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
+          EPOCHS: ${{ needs.params.outputs.epochs }}
+          TOKEN_LIMIT: ${{ needs.params.outputs.token_limit }}
+        run: |
+          ARGS=""
+          for s in $SEED_IDS; do ARGS="$ARGS --seed-id $s"; done
+          if [ -z "$SEED_IDS" ]; then ARGS="--wave $WAVE"; fi
+          if [ "$JUDGE" = "true" ]; then ARGS="$ARGS --judge-max-spend $JUDGE_MAX_SPEND"; fi
+          python -m scripts.petri_audit.cli run --seeds "$SEEDS_FILE" $ARGS \
+            --target "$TARGET" --max-spend "$MAX_SPEND" --epochs "$EPOCHS" --token-limit "$TOKEN_LIMIT" \
+            --out-dir "$RUNNER_TEMP/petri-run"
+
+      - name: Adapt (sanitised export, transcripts 0.2, rule outcomes, manifest, cost sidecar)
+        if: ${{ needs.params.outputs.mode != 'preflight' }}
+        env:
+          SEEDS_FILE: ${{ needs.params.outputs.seeds_file }}
+          TARGET: ${{ needs.params.outputs.target }}
+          MAX_SPEND: ${{ needs.params.outputs.max_spend }}
+          JUDGE: ${{ needs.params.outputs.judge }}
+          JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
+          TOKEN_LIMIT: ${{ needs.params.outputs.token_limit }}
+          RUN_STEM: run_${{ github.run_id }}
+        run: |
+          EVAL=$(ls "$RUNNER_TEMP"/petri-run/logs/*.eval | head -n 1)
+          ARGS=""
+          if [ "$JUDGE" = "true" ]; then ARGS="--judge-max-spend $JUDGE_MAX_SPEND"; fi
+          python -m scripts.petri_audit.cli adapt --seeds "$SEEDS_FILE" --eval "$EVAL" \
+            --out-dir "data/petri/runs/$RUN_STEM" --custody "github_actions_artifact:90d" \
+            --target "$TARGET" --max-spend "$MAX_SPEND" --token-limit "$TOKEN_LIMIT" $ARGS --report
+
+      - name: Judge of record + analysis rows (paid; mode run only)
+        if: ${{ needs.params.outputs.mode == 'run' && needs.params.outputs.judge == 'true' }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SEEDS_FILE: ${{ needs.params.outputs.seeds_file }}
+          JUDGE_MODEL: ${{ needs.params.outputs.judge_model }}
+          JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
+          JUDGE_MAX_TOKENS: ${{ needs.params.outputs.judge_max_tokens }}
+          RUN_STEM: run_${{ github.run_id }}
+        run: |
+          python -m scripts.petri_audit.cli judge --seeds "$SEEDS_FILE" --run-dir "data/petri/runs/$RUN_STEM" \
+            --judge-model "$JUDGE_MODEL" --judge-max-spend "$JUDGE_MAX_SPEND" --judge-max-tokens "$JUDGE_MAX_TOKENS"
+          python -m scripts.petri_audit.cli analyze --seeds "$SEEDS_FILE" --run-dir "data/petri/runs/$RUN_STEM"
+
+      - name: Holdout seal check over every publishable Petri output (fails closed)
+        if: ${{ needs.params.outputs.mode != 'preflight' }}
+        run: |
+          python scripts/seal_check.py --site "$RUNNER_TEMP/no-site" --extra data/petri/runs
+          python -m scripts.petri_audit.cli verify-chain --data-dir data/petri/runs
+
+      - name: Refuse to publish a raw log (belt and braces)
+        if: ${{ always() }}
+        run: |
+          if find data/petri -name '*.eval' | grep -q .; then
+            echo "a raw .eval is inside the checkout; refusing" >&2
+            exit 1
+          fi
+
+      - name: Upload the raw .eval as a workflow artifact (90-day custody; never committed)
+        if: ${{ always() && needs.params.outputs.mode != 'preflight' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: petri-audit-raw-eval-${{ github.run_id }}
+          path: ${{ runner.temp }}/petri-run/logs/
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Commit sanitised outputs to the branch (mode run only)
+        if: ${{ always() && needs.params.outputs.mode == 'run' && needs.params.outputs.commit_outputs == 'true' }}
+        env:
+          BRANCH: ${{ github.ref_name }}
+          RUN_STEM: run_${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if find data/petri -name '*.eval' | grep -q .; then echo "raw log present; refusing" >&2; exit 1; fi
+          git add -f data/petri/runs/ || true
+          if git diff --cached --quiet; then echo "No outputs to commit"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Petri audit: $RUN_STEM (sanitised export, transcripts, manifest)"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin "$BRANCH" && git push origin HEAD:"refs/heads/$BRANCH"; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 2))
+          done
+          exit 1
+
+      - name: Job summary
+        if: ${{ always() }}
+        env:
+          RUN_STEM: run_${{ github.run_id }}
+          MODE: ${{ needs.params.outputs.mode }}
+        run: |
+          {
+            echo "## Petri audit ($MODE, $RUN_STEM)"
+            echo '```'
+            if [ -f "data/petri/runs/$RUN_STEM/manifest.json" ]; then
+              python - <<'EOF'
+          import json, os
+          m = json.load(open(f"data/petri/runs/{os.environ['RUN_STEM']}/manifest.json", encoding="utf-8"))
+          print("claim_grade_eligible:", m["execution"]["claim_grade_eligible"])
+          for k, v in m["execution"]["contract_checks"].items():
+              print(f"{k}: {v['status']}" + (f" ({v['detail']})" if v["detail"] else ""))
+          print("records refused:", len(m["integrity"]["records_refused"]))
+          print("raw eval sha256:", m["artifacts"]["raw_eval_log_sha256"])
+          EOF
+            fi
+            for f in data/petri/runs/$RUN_STEM/*.report.json; do
+              if [ -f "$f" ]; then cat "$f"; fi
+            done
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

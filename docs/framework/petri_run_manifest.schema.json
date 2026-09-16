@@ -1,0 +1,1307 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/michaeldgreenphd/patientwords-engine/docs/framework/petri_run_manifest.schema.json",
+  "title": "Petri run manifest (closed execution sidecar), draft 0.2",
+  "description": "One manifest per Petri eval run, written by the deterministic adapter (docs/petri_integration_design.md section 9). It carries every execution-specific fact the transcript records do not: harness and adapter identity, models per role, generation settings, the tree and branch structure that pairs transcript records, usage, spend, integrity checks and the hash chain. The transcript schema stays unchanged; a transcript record is paired and interpreted through this manifest by conversation_id. Every object is closed (additionalProperties false) so an adapter cannot invent a field, and every value that is unknown is an explicit null, never a default. Nothing from the EvalLog header is dropped: eval_spec_dump embeds it verbatim. Draft 0.2 (owner corrections 2026-09-16): the exact environment lock is bound by digest, the raw .eval is never published (a sanitised projection is), and holdout consumption is recorded.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "run_id",
+    "eval_id",
+    "created_utc",
+    "harness",
+    "adapter",
+    "framework",
+    "execution",
+    "models",
+    "seeds",
+    "trees",
+    "usage",
+    "spend",
+    "holdout",
+    "artifacts",
+    "integrity",
+    "eval_spec_dump",
+    "chain"
+  ],
+  "properties": {
+    "manifest_version": {
+      "type": "string",
+      "enum": [
+        "0.2"
+      ],
+      "description": "The manifest contract version. 0.2 (2026-09-16) added the environment-lock binding, the unpublished-raw-log artifacts block and the holdout consumption block; no 0.1 manifest was ever written, so no legacy value is accepted."
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "EvalSpec.run_id as recorded by Inspect."
+    },
+    "eval_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "EvalSpec.eval_id."
+    },
+    "created_utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+      "description": "EvalSpec.created reformatted to second precision; the truncation is a recorded fact of this schema."
+    },
+    "harness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "commit",
+        "version_string",
+        "inspect_ai_version",
+        "inspect_scout_version",
+        "python_version",
+        "environment_lock_path",
+        "environment_lock_sha256"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "enum": [
+            "inspect_petri"
+          ]
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$",
+          "description": "Full git SHA of the Petri fork installed for the run, read from the pinned install (direct_url.json vcs_info.commit_id) or the lane config; never from the package version string, which hatch-vcs cannot tie to a commit on an untagged fork."
+        },
+        "version_string": {
+          "type": "string",
+          "description": "importlib.metadata.version('inspect_petri') as installed, for the record only."
+        },
+        "inspect_ai_version": {
+          "type": "string"
+        },
+        "inspect_scout_version": {
+          "type": "string"
+        },
+        "python_version": {
+          "type": "string"
+        },
+        "environment_lock_path": {
+          "type": "string",
+          "description": "Repo-relative path of the exact integration environment lock the run executed under (docs/framework/petri_environment.lock.json or a successor)."
+        },
+        "environment_lock_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "sha256 of that lock file's canonical content minus its own lock_sha256 field; the lock pins Python, the Petri commit, inspect-ai, inspect-scout and every provider SDK, and records the offline Petri test result against that combination."
+        }
+      }
+    },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "engine_sha"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Semantic version of the export rules; a change in how branches, turns or digests are derived bumps it."
+        },
+        "engine_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      }
+    },
+    "framework": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "transcript_schema_version",
+        "framing_registry_sha256",
+        "outcome_registry_sha256",
+        "seed_schema_version"
+      ],
+      "properties": {
+        "transcript_schema_version": {
+          "type": "string"
+        },
+        "framing_registry_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "sha256 of docs/framework/framing_dimensions.draft.json bytes at run time; the registry has no content version of its own."
+        },
+        "outcome_registry_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "seed_schema_version": {
+          "type": "string"
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "claim_grade_eligible",
+        "contract_checks",
+        "prefill_enabled",
+        "cache_enabled",
+        "target_tools_mode",
+        "max_turns",
+        "epochs",
+        "auditor_instruction_sha256",
+        "log_model_api"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "scripted",
+            "autonomous"
+          ]
+        },
+        "claim_grade_eligible": {
+          "type": "boolean",
+          "description": "true only when mode is scripted and every contract check passed; autonomous runs are exploratory by construction."
+        },
+        "contract_checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "stimulus_digest_identity",
+            "arms_in_one_run",
+            "generation_config_pinned",
+            "no_prefill",
+            "no_cache",
+            "tool_results_from_data",
+            "holdout_seal"
+          ],
+          "properties": {
+            "stimulus_digest_identity": {
+              "$ref": "#/$defs/check"
+            },
+            "arms_in_one_run": {
+              "$ref": "#/$defs/check"
+            },
+            "generation_config_pinned": {
+              "$ref": "#/$defs/check"
+            },
+            "no_prefill": {
+              "$ref": "#/$defs/check"
+            },
+            "no_cache": {
+              "$ref": "#/$defs/check"
+            },
+            "tool_results_from_data": {
+              "$ref": "#/$defs/check"
+            },
+            "holdout_seal": {
+              "$ref": "#/$defs/check"
+            }
+          }
+        },
+        "prefill_enabled": {
+          "type": "boolean"
+        },
+        "cache_enabled": {
+          "type": "boolean"
+        },
+        "target_tools_mode": {
+          "type": "string",
+          "enum": [
+            "none",
+            "fixed",
+            "synthetic"
+          ]
+        },
+        "max_turns": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "epochs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "auditor_instruction_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "sha256 of the rendered auditor system message for autonomous runs; null for scripted runs, which have no auditor model."
+        },
+        "log_model_api": {
+          "type": "boolean",
+          "description": "Whether Inspect kept the raw request and response for every call (default keeps only the first five per model per sample)."
+        }
+      }
+    },
+    "models": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "auditor",
+        "judge_harness"
+      ],
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/role_model"
+        },
+        "auditor": {
+          "$ref": "#/$defs/role_model_nullable",
+          "description": "null for scripted runs."
+        },
+        "judge_harness": {
+          "$ref": "#/$defs/role_model_nullable",
+          "description": "Petri's own judge, used for harness quality dimensions only; null when no harness judge ran. Claim-grade judging is recorded on the transcript annotations, not here."
+        }
+      }
+    },
+    "seeds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "seed_id",
+          "seed_sha256",
+          "file"
+        ],
+        "properties": {
+          "seed_id": {
+            "type": "string"
+          },
+          "seed_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "sha256 of the seed object's canonical JSON (sorted keys, no whitespace, UTF-8)."
+          },
+          "file": {
+            "type": "string",
+            "description": "Repo-relative path of the seed file."
+          }
+        }
+      }
+    },
+    "trees": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tree_id",
+          "sample_uuid",
+          "sample_id",
+          "epoch",
+          "seed_id",
+          "arm",
+          "system_prompt_variant",
+          "branches"
+        ],
+        "properties": {
+          "tree_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sample_uuid": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sample_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The repeat index; the repeat count itself is a provisional pilot decision."
+          },
+          "seed_id": {
+            "type": "string"
+          },
+          "arm": {
+            "type": "string",
+            "minLength": 1
+          },
+          "system_prompt_variant": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "branches": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "branch_id",
+                "parent_branch_id",
+                "branched_from_message_id",
+                "branched_from_turn_id",
+                "condition_id",
+                "conversation_id",
+                "surviving",
+                "creation_index"
+              ],
+              "properties": {
+                "branch_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The trajectory span id from the target timeline."
+                },
+                "parent_branch_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "branched_from_message_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The anchor message id (null for the root)."
+                },
+                "branched_from_turn_id": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 1,
+                  "description": "That anchor resolved to a turn_id in the parent's transcript record; the shared prefix is turns 1..this."
+                },
+                "condition_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The seed's branch condition this branch executed, or null for the root of a branched design."
+                },
+                "conversation_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$",
+                  "description": "sha256 of '<eval_id>:<sample_uuid>:<branch_id>'; the transcript record with this conversation_id is this branch's root-to-node conversation with the replayed prefix included."
+                },
+                "surviving": {
+                  "type": "boolean"
+                },
+                "creation_index": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "by_role",
+        "by_model",
+        "engine_priced_cost_usd",
+        "pricing_source",
+        "pricing_source_sha256"
+      ],
+      "properties": {
+        "by_role": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/role_usage"
+          }
+        },
+        "by_model": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/model_usage"
+          }
+        },
+        "engine_priced_cost_usd": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Re-priced from by_model with the engine registry; null when any model in the run lacks a registry price, never a fallback rate."
+        },
+        "pricing_source": {
+          "type": "string"
+        },
+        "pricing_source_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "spend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lane",
+        "max_spend_usd",
+        "judge_max_spend_usd",
+        "journal_nonce",
+        "cost_limit_per_sample_usd",
+        "token_limit_per_sample"
+      ],
+      "properties": {
+        "lane": {
+          "type": "string"
+        },
+        "max_spend_usd": {
+          "type": "number",
+          "minimum": 0.0001,
+          "description": "A positive ceiling; the sanctioned fire path refuses a non-positive max_spend before any run."
+        },
+        "judge_max_spend_usd": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "journal_nonce": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The fire_trigger.py journal nonce of the fire that produced this run."
+        },
+        "cost_limit_per_sample_usd": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "token_limit_per_sample": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "holdout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phrases_in_seeds",
+        "sealed_phrases_in_seeds",
+        "consumed",
+        "consumption_registry_ref",
+        "consumed_phrase_sha1"
+      ],
+      "properties": {
+        "phrases_in_seeds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Study phrases (accepted clinical prompts) the run's seeds reference."
+        },
+        "sealed_phrases_in_seeds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many of those are Tier B holdout phrases under scripts/tierb_split.py; 0 for a run built through the holdout exclusion."
+        },
+        "consumed": {
+          "type": "boolean",
+          "description": "true when a sealed phrase's content leaves the seal through this run's published exports; a consumed phrase is recorded in the consumption registry and can never again serve as a reusable sealed holdout."
+        },
+        "consumption_registry_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Repo-relative path of the append-only holdout consumption registry entry; required when any sealed phrase is consumed."
+        },
+        "consumed_phrase_sha1": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "description": "sha1 of each consumed clinical prompt (the seal's own key), never the phrase text."
+        }
+      },
+      "if": {
+        "properties": {
+          "sealed_phrases_in_seeds": {
+            "minimum": 1
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "consumed": {
+            "const": true
+          },
+          "consumption_registry_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "consumed_phrase_sha1": {
+            "minItems": 1
+          }
+        }
+      },
+      "description": "Publication of a sealed holdout phrase's content is a one-way event: the manifest records it, and the registry it references marks the phrase consumed."
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_eval_log_sha256",
+        "raw_eval_log_published",
+        "raw_eval_log_custody",
+        "sanitised_log_path",
+        "sanitised_log_sha256",
+        "sanitiser",
+        "transcripts_path",
+        "transcripts_sha256",
+        "rule_outcomes_path",
+        "rule_outcomes_sha256",
+        "judgments_path",
+        "judgments_sha256"
+      ],
+      "properties": {
+        "raw_eval_log_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Digest of the unmodified .eval file as written by Inspect, so the raw artifact is bound to this manifest even though it is never published."
+        },
+        "raw_eval_log_published": {
+          "type": "boolean",
+          "const": false,
+          "description": "Always false: a raw log written with log_model_api=True carries provider request and config fields that redaction does not cover, so it is an execution artifact held outside the public repositories."
+        },
+        "raw_eval_log_custody": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Where the raw log is held and for how long, for example github_actions_artifact:90d or owner_private_store; never a public location."
+        },
+        "sanitised_log_path": {
+          "type": "string",
+          "description": "Repo-relative path of the published sanitised export: an allowlist projection of the .eval (messages, events with text, usage, allowlisted config keys, timeline structure), produced by the sanitiser before anything is committed. Recorded relative to the runs directory that holds the manifest chain (for example `<run>/transcripts.jsonl`), never as an absolute path, so the same log adapted anywhere yields byte-identical exports."
+        },
+        "sanitised_log_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "sanitiser": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "version",
+            "allowlist_sha256",
+            "redaction_report"
+          ],
+          "properties": {
+            "version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "allowlist_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Digest of the allowlist data file naming every key that may pass through; anything not named is removed and counted."
+            },
+            "redaction_report": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "fields_removed",
+                "fields_hashed",
+                "request_bodies_kept",
+                "headers_kept",
+                "base_urls_kept"
+              ],
+              "properties": {
+                "fields_removed": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "fields_hashed": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "request_bodies_kept": {
+                  "type": "boolean",
+                  "description": "Whether raw request bodies survive in the sanitised export (message content yes; provider extra_body and headers never)."
+                },
+                "headers_kept": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "base_urls_kept": {
+                  "type": "boolean",
+                  "const": false
+                }
+              }
+            }
+          }
+        },
+        "transcripts_path": {
+          "type": "string",
+          "description": "Recorded relative to the runs directory that holds the manifest chain (for example `<run>/transcripts.jsonl`), never as an absolute path, so the same log adapted anywhere yields byte-identical exports."
+        },
+        "transcripts_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "judgments_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Per-turn judgment record family for this run; null before judging. Recorded relative to the runs directory that holds the manifest chain (for example `<run>/transcripts.jsonl`), never as an absolute path, so the same log adapted anywhere yields byte-identical exports."
+        },
+        "judgments_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "rule_outcomes_path": {
+          "type": "string",
+          "description": "Repo-relative path of the rule-outcome record family (tool invocation, order, marker echo, query text), one record per transcript record. Recorded relative to the runs directory that holds the manifest chain (for example `<run>/transcripts.jsonl`), never as an absolute path, so the same log adapted anywhere yields byte-identical exports."
+        },
+        "rule_outcomes_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "description": "What was produced and what may be published. The raw .eval is bound by digest and held privately; only the sanitised projection, the transcripts and the judgments are committed."
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attachments_resolved",
+        "branches_dropped_empty",
+        "records_refused",
+        "timestamps_truncated_to_seconds"
+      ],
+      "properties": {
+        "attachments_resolved": {
+          "type": "boolean",
+          "description": "Inspect rewrites event text over 100 characters into attachment references at write time; the adapter must resolve them before export or it exports pointers as turn text."
+        },
+        "branches_dropped_empty": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Branches that reached no generation and so have no record; counted, never silent."
+        },
+        "records_refused": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "branch_id",
+              "reason"
+            ],
+            "properties": {
+              "branch_id": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "timestamps_truncated_to_seconds": {
+          "type": "boolean",
+          "description": "Inspect serialises timestamps with sub-second precision; the transcript schema's pattern is second precision, so the adapter truncates and says so here."
+        }
+      }
+    },
+    "eval_spec_dump": {
+      "type": "object",
+      "description": "EvalLog.eval serialized verbatim (model_dump), so nothing the harness recorded is lost even if this schema names it nowhere. Open by necessity; it is a copy, not a contract."
+    },
+    "chain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prev_sha256",
+        "identity_sha256",
+        "manifest_sha256"
+      ],
+      "properties": {
+        "prev_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "sha256 of the canonical JSON of this manifest with chain.manifest_sha256 removed; the same sealing rule as the advice archive."
+        },
+        "identity_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "sha256 of the manifest with the chain block removed and the record-dependent artifact digests (transcripts, rule outcomes, judgments) blanked: the identity a transcript record's provenance.run_manifest.sha256 carries. It cannot include those digests because they are computed over files that carry it; manifest_sha256 covers everything."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "detail"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "fail",
+            "not_run"
+          ]
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "role_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "model",
+        "inspect_name",
+        "registry_spec",
+        "served_model_strings",
+        "config",
+        "seed_requested",
+        "seed_forwarded_by_provider",
+        "seed_honored"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "inspect_name": {
+          "type": "string",
+          "description": "The 'provider/model' string Inspect resolved."
+        },
+        "registry_spec": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The data/advice_providers.json spec this maps to, or null when the model is outside the registry."
+        },
+        "served_model_strings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Every distinct provider-returned model string seen in this role's ModelEvents; more than one is a recorded fact, not an error."
+        },
+        "config": {
+          "type": "object",
+          "description": "GenerateConfig as recorded on the role (model_dump, exclude_none). Open because it is Inspect's object, copied."
+        },
+        "seed_requested": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "seed_forwarded_by_provider": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Whether this Inspect provider forwards GenerateConfig.seed (read from the provider source at adapter version time); null when not established."
+        },
+        "seed_honored": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Whether two identical calls returned identical text in a separate determinism probe; null unless that probe ran. Never inferred."
+        }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_tokens",
+        "output_tokens",
+        "total_tokens",
+        "input_tokens_cache_read",
+        "input_tokens_cache_write",
+        "reasoning_tokens",
+        "calls"
+      ],
+      "properties": {
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "input_tokens_cache_read": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "input_tokens_cache_write": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "reasoning_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "calls": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "role_model_nullable": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "model",
+        "inspect_name",
+        "registry_spec",
+        "served_model_strings",
+        "config",
+        "seed_requested",
+        "seed_forwarded_by_provider",
+        "seed_honored"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "inspect_name": {
+          "type": "string",
+          "description": "The 'provider/model' string Inspect resolved."
+        },
+        "registry_spec": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The data/advice_providers.json spec this maps to, or null when the model is outside the registry."
+        },
+        "served_model_strings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Every distinct provider-returned model string seen in this role's ModelEvents; more than one is a recorded fact, not an error."
+        },
+        "config": {
+          "type": "object",
+          "description": "GenerateConfig as recorded on the role (model_dump, exclude_none). Open because it is Inspect's object, copied."
+        },
+        "seed_requested": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "seed_forwarded_by_provider": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Whether this Inspect provider forwards GenerateConfig.seed (read from the provider source at adapter version time); null when not established."
+        },
+        "seed_honored": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Whether two identical calls returned identical text in a separate determinism probe; null unless that probe ran. Never inferred."
+        }
+      }
+    },
+    "role_usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "input_tokens",
+        "output_tokens",
+        "total_tokens",
+        "input_tokens_cache_read",
+        "input_tokens_cache_write",
+        "reasoning_tokens",
+        "calls"
+      ],
+      "properties": {
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "input_tokens_cache_read": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "input_tokens_cache_write": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "reasoning_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "calls": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "model_usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "input_tokens",
+        "output_tokens",
+        "total_tokens",
+        "input_tokens_cache_read",
+        "input_tokens_cache_write",
+        "reasoning_tokens",
+        "calls"
+      ],
+      "properties": {
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "input_tokens_cache_read": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "input_tokens_cache_write": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "reasoning_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "calls": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "manifest_version": "0.2",
+      "run_id": "example-run",
+      "eval_id": "example-eval",
+      "created_utc": "2026-09-16T00:00:00Z",
+      "harness": {
+        "name": "inspect_petri",
+        "commit": "e199ec1abcd10267c60cd7eb03035a76567d9e52",
+        "version_string": "0.1.dev62",
+        "inspect_ai_version": "0.3.237",
+        "inspect_scout_version": "0.4.39",
+        "python_version": "3.12.3",
+        "environment_lock_path": "docs/framework/petri_environment.lock.json",
+        "environment_lock_sha256": "4aecf38c856ea4b68567bb76335954d4b92f16a112de200f9b9eb7e432aa0eff"
+      },
+      "adapter": {
+        "name": "petri_export",
+        "version": "0.1.0",
+        "engine_sha": "0000000000000000000000000000000000000000"
+      },
+      "framework": {
+        "transcript_schema_version": "0.2",
+        "framing_registry_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "outcome_registry_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "seed_schema_version": "0.2"
+      },
+      "execution": {
+        "mode": "scripted",
+        "claim_grade_eligible": false,
+        "contract_checks": {
+          "stimulus_digest_identity": {
+            "status": "pass",
+            "detail": null
+          },
+          "arms_in_one_run": {
+            "status": "pass",
+            "detail": null
+          },
+          "generation_config_pinned": {
+            "status": "pass",
+            "detail": null
+          },
+          "no_prefill": {
+            "status": "pass",
+            "detail": null
+          },
+          "no_cache": {
+            "status": "pass",
+            "detail": null
+          },
+          "tool_results_from_data": {
+            "status": "not_run",
+            "detail": "no tools in this seed"
+          },
+          "holdout_seal": {
+            "status": "not_run",
+            "detail": "synthetic example; seal check not run"
+          }
+        },
+        "prefill_enabled": false,
+        "cache_enabled": false,
+        "target_tools_mode": "none",
+        "max_turns": 6,
+        "epochs": 1,
+        "auditor_instruction_sha256": null,
+        "log_model_api": true
+      },
+      "models": {
+        "target": {
+          "provider": "mockllm",
+          "model": "model",
+          "inspect_name": "mockllm/model",
+          "registry_spec": null,
+          "served_model_strings": [
+            "mockllm"
+          ],
+          "config": {
+            "temperature": 1.0,
+            "max_tokens": 1024
+          },
+          "seed_requested": null,
+          "seed_forwarded_by_provider": null,
+          "seed_honored": null
+        },
+        "auditor": null,
+        "judge_harness": null
+      },
+      "seeds": [
+        {
+          "seed_id": "pw-petri-example-h4-persistence",
+          "seed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "file": "docs/framework/petri_seeds.draft.json"
+        }
+      ],
+      "trees": [
+        {
+          "tree_id": "t1",
+          "sample_uuid": "u1",
+          "sample_id": "pw-petri-example-h4-persistence:colloquial",
+          "epoch": 1,
+          "seed_id": "pw-petri-example-h4-persistence",
+          "arm": "colloquial",
+          "system_prompt_variant": null,
+          "branches": [
+            {
+              "branch_id": "root",
+              "parent_branch_id": null,
+              "branched_from_message_id": null,
+              "branched_from_turn_id": null,
+              "condition_id": null,
+              "conversation_id": "1111111111111111111111111111111111111111111111111111111111111111",
+              "surviving": false,
+              "creation_index": 1
+            },
+            {
+              "branch_id": "b2",
+              "parent_branch_id": "root",
+              "branched_from_message_id": "m3",
+              "branched_from_turn_id": 2,
+              "condition_id": "pressure_minimize",
+              "conversation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+              "surviving": false,
+              "creation_index": 2
+            },
+            {
+              "branch_id": "b3",
+              "parent_branch_id": "root",
+              "branched_from_message_id": "m3",
+              "branched_from_turn_id": 2,
+              "condition_id": "neutral_control",
+              "conversation_id": "3333333333333333333333333333333333333333333333333333333333333333",
+              "surviving": true,
+              "creation_index": 3
+            }
+          ]
+        }
+      ],
+      "usage": {
+        "by_role": [
+          {
+            "role": "target",
+            "input_tokens": 120,
+            "output_tokens": 90,
+            "total_tokens": 210,
+            "input_tokens_cache_read": null,
+            "input_tokens_cache_write": null,
+            "reasoning_tokens": null,
+            "calls": 3
+          }
+        ],
+        "by_model": [
+          {
+            "model": "mockllm/model",
+            "input_tokens": 120,
+            "output_tokens": 90,
+            "total_tokens": 210,
+            "input_tokens_cache_read": null,
+            "input_tokens_cache_write": null,
+            "reasoning_tokens": null,
+            "calls": 3
+          }
+        ],
+        "engine_priced_cost_usd": null,
+        "pricing_source": "data/advice_providers.json",
+        "pricing_source_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "spend": {
+        "lane": "petri-audit",
+        "max_spend_usd": 0.01,
+        "judge_max_spend_usd": null,
+        "journal_nonce": null,
+        "cost_limit_per_sample_usd": null,
+        "token_limit_per_sample": null
+      },
+      "holdout": {
+        "phrases_in_seeds": 0,
+        "sealed_phrases_in_seeds": 0,
+        "consumed": false,
+        "consumption_registry_ref": null,
+        "consumed_phrase_sha1": []
+      },
+      "artifacts": {
+        "raw_eval_log_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "raw_eval_log_published": false,
+        "raw_eval_log_custody": "github_actions_artifact:90d",
+        "sanitised_log_path": "example/sanitised_log.json",
+        "sanitised_log_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "sanitiser": {
+          "version": "0.1",
+          "allowlist_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "redaction_report": {
+            "fields_removed": 0,
+            "fields_hashed": 0,
+            "request_bodies_kept": true,
+            "headers_kept": false,
+            "base_urls_kept": false
+          }
+        },
+        "transcripts_path": "example/transcripts.jsonl",
+        "transcripts_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "rule_outcomes_path": "example/rule_outcomes.jsonl",
+        "rule_outcomes_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "judgments_path": null,
+        "judgments_sha256": null
+      },
+      "integrity": {
+        "attachments_resolved": true,
+        "branches_dropped_empty": 0,
+        "records_refused": [],
+        "timestamps_truncated_to_seconds": true
+      },
+      "eval_spec_dump": {
+        "task": "example"
+      },
+      "chain": {
+        "prev_sha256": null,
+        "identity_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    }
+  ]
+}

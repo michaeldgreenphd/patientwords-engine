@@ -1,0 +1,1136 @@
+# Petri as an execution harness for the multi-turn register study: design
+
+Status: design memo (2026-09-16, revised the same day with the owner's thirteen
+scientific corrections; see *Decisions recorded from the owner*), then
+implemented the same day under the owner's Phase 3 authorisation (see
+*Implementation record*). The contracts under `docs/framework/` are checked
+by `tests/test_petri_framework_data.py`; the runtime lives in
+`scripts/petri_audit/` and is proven at zero cost by
+`tests/petri/test_zero_cost_e2e.py`. No paid call has been made, and the lane
+has no trigger file until the owner parks it after the merge. The
+data contracts it describes exist as drafts under `docs/framework/` and are
+checked by `tests/test_petri_framework_data.py`; the adapter, the scripted
+controller, the per-turn judge runner and the CI lane are Phase 3 work that
+waits on the decisions in the last section. No paid call has been made.
+
+Every claim about Petri below is labelled VERIFIED (read in code and, where
+stated, exercised against a mock model in a scratch environment), INFERRED
+(read in code, not exercised), or UNKNOWN WITHOUT EXECUTION. Code wins over
+Petri's documentation wherever the two disagree.
+
+## 1. The split this memo is built on
+
+PatientWords is the scientific framework. It owns the hypotheses, the
+registered contrasts, the stimuli, the counterfactual construction, the
+judge definitions, the provenance requirements and the statistical analysis.
+
+Petri is an execution harness. It hosts a multi-turn experiment when its
+scripted controller gives the study a capability the engine does not have.
+Two capabilities qualify today: continuing one realised assistant reply with
+several different next user turns (shared-prefix branching), and giving the
+target model simulated tools whose results the study supplies. The engine's
+`advice_eval.py` sends one user message per call and holds no conversation
+state (`scripts/advice_eval.py`, `elicit`; the multi-turn protocol B6 in
+`docs/advice_multiturn_design.md` is a design only). Neither capability can
+be reproduced through `advice_eval.py` without building most of a harness.
+
+Under that split a scripted Petri run is claim-grade when it satisfies the
+PatientWords measurement contract (section 4). It is not required to be
+reproduced through a separate PatientWords execution path first. The raw
+`.eval` artifact is preserved; a deterministic adapter exports each branch
+into the framework's transcript record; PatientWords judges and analyses.
+An autonomous run, where an LLM auditor writes the user turns, is
+exploratory whatever else it satisfies, because the treatment it delivers
+is not fixed in advance.
+
+Three statements stay separate throughout: what Petri can produce (a
+conversation tree with tool calls, a log), what Petri can help discover (a
+behaviour worth registering, found by an autonomous auditor), and what
+PatientWords can support as a claim (a registered contrast, measured under
+the contract, judged by the pipeline of record, analysed with the cluster
+structure recorded).
+
+## 2. What was verified about Petri
+
+Inspected checkout: `/home/user/patientwords-inspect_petri` at commit
+`e199ec1abcd10267c60cd7eb03035a76567d9e52`, clean, all upstream authors. It
+is the Meridian Labs `inspect_petri` 3.1.0 lineage plus seven upstream
+commits, built on Inspect AI, not the `safety-research/petri` repository.
+`uv.lock` pins inspect-ai 0.3.237 and inspect-scout 0.4.39; the package
+requires Python 3.12 or later; the fork carries no tag, so hatch-vcs reports
+version `0.1.dev62`, which does not identify the commit. VERIFIED.
+
+| Mechanic | Status | Evidence | What it means for the study |
+|---|---|---|---|
+| A seed is a free-text instruction to the auditor, never shown to the target. It is `Sample.input`, read into `AuditState.seed_instructions`, substituted as `{seed_instructions}`, and persisted as `sample.input`, two InfoEvents and `eval.task_args`. No digest is recorded. | VERIFIED (code + mock log) | `_task/audit.py` `audit` L20-97; `_auditor/auditor.py` L67-76, L236-238; `_auditor/agent.py` L173-188 | The study's seed is a data record (section 5), and the adapter computes and stores its digest itself. "Seed" in this memo means that record; a random-number seed is always called "RNG seed" or "provider seed". |
+| Petri has no RNG seed. The only route is Inspect's `GenerateConfig.seed` on a model role, which in inspect-ai 0.3.237 is forwarded by the OpenAI chat-completions path and every `OpenAICompatibleAPI` provider (openrouter, `openai-api/<service>`, together, ollama, vllm and others), by azureai, grok, groq, hf, mistral, sagemaker and vllm_completions; not by the anthropic or google providers; dropped with a warning on the responses path that gpt-5 and o-series models use by default. | VERIFIED | grep of `src/`; `inspect_ai/model/_generate_config.py`; `inspect_ai/model/_providers/*.py` | A requested seed is recorded as requested, whether the provider forwards it is recorded from the provider table, and whether it was honoured stays null until a two-call probe exists (section 11). |
+| Auditor tools: `set_system_message`, `send_message`, `resume` (optional prefill), `end_conversation`; with rollback, `rollback_conversation` and `restart_conversation`; with synthetic tools, `create_tool`, `remove_tool`, `send_tool_call_result`; `extra_tools` adds, `exclude` removes. `audit()` exposes neither `exclude` nor `user_message`. | VERIFIED | `_auditor/tools.py` `auditor_tools` L19-60; `_task/audit.py` L20-38 | Any custom tool surface needs a custom Task built from `audit_solver`, `auditor_agent` and `target_agent`, which is Petri's documented custom-task path. |
+| The tool docstrings the auditor model sees carry elicitation bias: `send_message` asks for typos and informal language, `rollback_conversation` says "use at least once", `end_conversation` says to keep pursuing the seed. `audit(system_message=...)` replaces only the system message constant, not these. | VERIFIED | `_auditor/agent.py` `AUDITOR_SYSTEM_MESSAGE`; `tools/_messages.py`; `tools/_conversation.py` | An LLM auditor as shipped is unfit for a neutral register measurement (section 12). The scripted controller has no such text. |
+| The system prompt can be set before the first assistant message and not after: `set_system_message` raises `ToolError` once any assistant message exists; `restart_conversation` wipes history; `target_agent(system_required=False)` allows none. | VERIFIED | `tools/_messages.py` L108-117; `tools/_conversation.py` L136-148; `target/_agent.py` L33-49 | An audience manipulation carried by the system prompt is a root-level condition. Two system prompts are two trees that share nothing realised. A rollback to the first message followed by `set_system_message` would overwrite the replayed slot: INFERRED, no test exercises it, and the design does not use it. |
+| Simulated tools: definitions can be fixed from seed metadata with `target_tools="fixed"`; results are free text authored by the auditor at run time; a custom controller call to `controller().stage_tool_result` supplies a result from data; `expect()` rejects stray results; results are strings only. | VERIFIED | `tools/_toolcalls.py` L35-243; `target/_context.py` `expect` L226-234, `tool_results` L292-312; `target/_agent.py` L73-83 | Tool definitions held constant are not enough. Results must come from a data table keyed by tool, or the two register arms receive different evidence (section 6, H3). |
+| Prefill: `resume(prefill=)` stages an assistant prefix when `enable_prefill=True` (default False); the continuation is provider-dependent and unverified by Petri. | VERIFIED | `tools/_resume.py` L100-143; `target/_agent.py` L57-62 | Never enabled. Consumer products cannot be prefilled, and the contract's `no_prefill` check records the setting. |
+| Rollback is replay. `rollback_conversation(<message id>)` branches a child `Trajectory` that re-executes the target from the top, returning recorded results for every step up to the anchor, including the target's own `model.generate` results, with no model call for the prefix. Anchors are message ids. | VERIFIED (code + mock execution) | `target/_history.py` `Trajectory.replayable` L86-135, `_find_cutoff` L190-209, `History.branch` L220-229; `tests/target/test_replay_integration.py` L121-168 | Two branches share the realised prefix. Which prefix depends on the anchor (next row). |
+| The anchor decides whether the assistant reply is shared. Rolling back to the assistant message id replays the recorded reply; rolling back to the user message id replays only the staging and makes the next generate live, so every sibling gets a fresh reply. | VERIFIED | `tests/target/test_replay_integration.py` L121-147 (`rollback(u1)` then `resume()` yields a new output) and L150-168 (`rollback(a1)` replays) | Every seed anchors on the assistant message. The seed schema admits no other anchor. |
+| Sibling branches from the same anchor are children of the same node; `sample.messages` holds the surviving branch only; the full tree is `sample.timelines["target"]`; `transcript_branches()` yields one full conversation per branch in creation order and drops empty branches; restart branches emit no `BranchEvent`. | VERIFIED (code + mock log walk) | `_judge/branches.py` `transcript_branches` L112-125, `_walk` L64-85 | The adapter walks the timeline, never `sample.messages`, and records dropped-empty counts. Branch identity is keyed on the staged text digest and the manifest, never on branch order. |
+| A custom `Agent` passed to `audit_solver(auditor=...)` drives `controller().stage_system`, `stage_user`, `stage_tool_result`, `resume`, `rollback`; no approver runs for it; `_run_auditor` calls `end_conversation` when the agent returns; `eval()` needs no default model for it (resolves to none/none); the target role model is required. | VERIFIED | `_auditor/auditor.py` `audit_solver` L35-40, L139; `_realism/approver.py`; `_auditor/agent.py` L162, L225-229 | This is the scripted controller. The realism approver never applies to it, so realism is enforced by the seed data and the adapter's digest checks, not by Petri. A conditional script can also be built on `mockllm`'s callable under the stock auditor, but the custom Agent is the cleaner path. |
+| `audit_judge` uses the fixed `JUDGE_PROMPT` with one `{instructions}` slot; dimensions are replaceable but each is an integer 1..10; one structured `answer` call scores the whole rendered tree including system and user turns; there is no `not_applicable`; a refusal yields `Result(value=None, metadata={"refusal": True})`. `audit_scanner` allows a custom template and a categorical `AnswerStructured`, which must declare `metrics=None` or `mean()` crashes on strings. The rendered prompt is stored in the judge's ModelEvent input; the dimension rubrics are stored in the judge tool schema; no digest is recorded. The stock `audit` task always attaches `audit_judge` as scorer. | VERIFIED (code + mock log) | `_judge/judge.py` L30-93, L113-161, L183-240; `_judge/scanner.py` L30-122; `_task/audit.py` scorer line; inspect_scout `structured.py` L90-95, L270 | Petri's judge is not the judge of record (section 8). The study Task attaches no scorer for study outcomes. |
+| Artifact: a zstd zip (`header.json`, `samples/*.json`, `summaries.json`, `reductions.json`, `_journal/`). Per call, a `ModelEvent` with input, tools, config, `output.usage`, `output.model` (the served model string) and timestamp; `call.request`/`call.response` kept for the first five calls per model unless `log_model_api=True`; `completed` and `working_time` not persisted under default realtime logging; text over 100 characters condensed to `attachment://` references, resolved with `resolve_sample_attachments` (events and messages) and `rebind_sample_timelines` (timelines). `eval.revision` is the short SHA of the launch directory, `eval.packages` holds version strings only; redaction covers `api_key` and `aws_*` only. | VERIFIED | inspect_ai `log/_log.py`, `log/_condense.py`, `model/_model.py` L1443, L1594-1595; mock logs | Everything the manifest needs is in the log except digests, the fork commit, condition and branch ids, and the RNG seed. The adapter supplies those. The lane runs with `log_model_api=True` so every raw request and response is kept. |
+| Providers: 27 registered in Inspect 0.3.237. SDK floors are enforced at construction: anthropic 0.105.0, openai 2.40.0, google-genai 1.69.0. The fork's `uv.lock` pins anthropic 0.97.0 and openai 2.30.0, below the floors: `get_model` raises `PrerequisiteError` for `anthropic/`, `openai/`, `openrouter/` and `openai-api/`. | VERIFIED by execution in the scratch venv | `inspect_ai/model/_providers/anthropic.py`, `openai.py` | The lane installs the SDKs at Inspect's floors on its own. That is an install line, not a fork change. |
+| Cost: Inspect's bundled price table has no priced entries in 0.3.237, so `total_cost` is None and `eval(cost_limit=)` refuses to start until `model_cost_config` supplies prices (four fields per model: input, output, cache write, cache read). The check is post-call, per sample, and the scorer runs outside the limit scope. `token_limit`, `message_limit` and `time_limit` are per sample. | VERIFIED | inspect_ai `model/_model_info.py`, `_cost.py`; `eval` signature | Spend control is layered in the engine wrapper (section 13); Inspect's limits are the second layer, never the first. |
+| Fixed overhead of an LLM auditor: system message 18,574 characters plus nine tool schemas 25,762 characters, about 11,000 tokens re-sent every auditor turn at four characters per token. Judge template 11,358 characters plus the 38-dimension schema 37,784 characters. Real token usage: UNKNOWN WITHOUT EXECUTION, no real Petri log exists in either checkout. | Measured on this checkout; token conversion assumed | scratch measurement | The cost table in section 14 is arithmetic on stated assumptions. |
+
+Corrections that came out of adversarial verification of the first draft,
+kept here so nobody re-derives them: the seed-forwarding provider list above
+replaces an earlier shorter list; Petri does record the judge dimension
+rubrics (in the tool schema), so "rubric not recorded" was wrong; a scripted
+auditor needs no auditor model; `ModelEvent.completed` is not persisted; the
+provider count is 27, not 30; the `transformer_lens` provider exposes no
+activations while `hf` does; the shared reply requires the assistant anchor;
+branching a single-turn manipulation buys nothing and costs judge blinding;
+the registered per-cell estimator is the modal tier, not the mean; a custom
+Agent that calls tools through Inspect's `execute_tools` is still subject to
+an eval-level approval policy, so only a controller-driven script has no
+approver in its path; `eval()` retains every raw API call only when
+`log_model_api=True` (otherwise the first five per model plus errors).
+
+Assumptions in the original brief that the code contradicts, consolidated:
+
+- The fork is Meridian Labs `inspect_petri` on Inspect AI, not
+  `safety-research/petri`; nothing in this design depends on the difference
+  except the tool names.
+- "Seed" in Petri is an instruction, not a random-number seed; no RNG seed
+  exists, and the Anthropic provider never sends `GenerateConfig.seed`.
+- Petri's judge is one integer 1..10 per dimension over the whole tree, with
+  no `not_applicable`, unblinded to user turns and system prompt, and its
+  prompt is not replaceable through `audit_judge`.
+- The system prompt cannot change mid-conversation; audience is root-level.
+- "Identical simulated tools" holds definitions constant only; results are
+  auditor-authored unless scripted.
+- Rolling back to the user message regenerates the reply; only the assistant
+  anchor shares it.
+- Branching a single-turn manipulation is bookkeeping, not variance
+  reduction.
+- Inspect's `cost_limit` cannot start without engine-supplied prices, and
+  `audit()` cannot take a scripted auditor or exclude tools.
+- Petri requires a system message by default; the engine sends none.
+- No real Petri log exists; every token and dollar figure here is arithmetic.
+
+## 3. Petri's role, stated as three lists
+
+What Petri produces for the study:
+
+- One conversation tree per (seed, arm, system-prompt variant, repeat), with
+  every branch's realised prefix shared byte for byte up to its anchor.
+- Tool calls with their arguments and the study-supplied results, in order.
+- The `.eval` log, kept unmodified as the raw artifact.
+
+What Petri can help discover, and only discover:
+
+- Behaviours the study has not registered, found by an autonomous auditor
+  given an `auditor_instruction`. Such a run is exploratory. Its transcripts
+  may be imported, judged and read, and may motivate a registered contrast,
+  but no confirmatory estimand is computed from them.
+
+What PatientWords supports as a claim:
+
+- A registered contrast between conditions whose user turns, system prompts
+  and tool results are fixed data, executed in one run under one pinned
+  configuration, exported by the deterministic adapter, judged by the
+  pipeline of record under versioned prompt files, and analysed with the
+  cluster unit, bootstrap seed and estimator written into the artifact.
+
+## 4. The measurement contract: claim-grade versus exploratory
+
+A Petri run is `claim_grade_eligible` when all of the following hold. The
+manifest records each as a named check with status pass, fail or not_run
+(`execution.contract_checks` in `docs/framework/petri_run_manifest.schema.json`).
+
+1. `stimulus_digest_identity`: every staged user turn, system prompt and tool
+   result in the log hashes to the text declared in the seed (`texts[].sha256`),
+   and the raw request body in `ModelEvent.call.request` carries the same
+   bytes. A mismatch is refused by name and counted; never dropped.
+2. `arms_in_one_run`: every arm of a seed, and every repeat, ran in the same
+   eval, so drift cannot masquerade as a register effect
+   (`docs/framework_design.md` section 3.1 applies unchanged).
+3. `generation_config_pinned`: the sampling keys in every retained raw
+   request (`ModelEvent.call.request`, kept for every call under
+   `log_model_api=True`) equal the seed's `generation` block, and one served
+   model string appears per branch. The check reads the request, not
+   `ModelEvent.config`: Inspect's Anthropic provider drops temperature,
+   top_p and top_k with a warning for Claude 4.7-class and thinking
+   configurations (`anthropic.py` L818-845, VERIFIED by reading), and a
+   `None` in the config means the provider default applied. Each key is
+   recorded as a value, `not_sent`, or `unknown`, never assumed. A second
+   served string on one branch, or arms of one seed served by different
+   strings, refuses the pairing with a named reason.
+4. `no_prefill` and `no_cache`: `enable_prefill=False`, Inspect's response
+   cache off for every role. Cache on can return an identical reply for a
+   byte-identical branch path and collapse repeats to one.
+5. `tool_results_from_data`: every tool result staged came from the seed's
+   `tools.results` table, never authored at run time.
+6. `holdout_seal`: no sealed Tier B phrase's content appears in the seed, the
+   log or any export unless its consumption is recorded (publication
+   conditions below). Seeds derived from pairs batches are built through the
+   `tierb_split` exclusion the advice stimuli use; `scripts/seal_check.py`
+   scans only `.json`, `.html`, `.md`, `.csv`, `.txt` and `.yml` today and is
+   extended to the sanitised export and `.jsonl` families before the lane
+   commits anything.
+
+Three conditions are checked before any model call, by the seed validator
+(`seed_problems` in `tests/test_petri_framework_data.py`), so a seed that
+fails them never reaches a run:
+
+- Speaker identity is constant across register arms: every arm declares the
+  same `user_is` unless `speaker_identity.policy` is `factor` with a note
+  justifying it. Register never changes who is speaking.
+- The register-exposure protocol is declared and realised: `single_turn`,
+  `initial_only` (later user turns byte-identical across arms) or `sustained`
+  (every user turn a declared register pair). Section 5 defines them.
+- Every supplied-context dimension the seed judges has its context declared
+  as data (`judge.supplied_contexts`), so the judge never receives the
+  user's wording as the context.
+
+Publication conditions are separate from eligibility. A run can be
+claim-grade and still unpublishable until all of these hold:
+
+- The raw `.eval` is never committed to either public repository. It is
+  bound to the manifest by `artifacts.raw_eval_log_sha256`, held under a
+  recorded custody (`raw_eval_log_custody`), and only the sanitiser's
+  allowlist projection is committed (section 9).
+- The exact environment lock the run executed under is bound by digest
+  (`harness.environment_lock_sha256`, section 11).
+- If any sealed phrase's content leaves the seal through the published
+  exports, the manifest's `holdout` block records it as consumed with the
+  registry entry, and that phrase is retired from the reusable sealed set.
+- The seal check runs over the sanitised export, the transcripts and the
+  judgments before the commit.
+
+A run with `mode: autonomous` fails eligibility by construction: the user
+turns are authored by an LLM at run time, so check 1 has nothing to compare
+against. The seed schema enforces that an autonomous seed carries an
+`auditor_instruction` and `claim_grade_eligible: false`, and that a scripted
+seed carries no `auditor_instruction`. Autonomous runs stay exploratory.
+
+The contract says nothing about the number of repeats, the bootstrap
+structure or the provider-seed policy. Those are provisional (section 10 and
+section 11) and are resolved from the pilot.
+## 5. Seeds and protocols
+
+`docs/framework/petri_seeds.draft.json` holds the closed seed schema (draft
+0.2) and six synthetic example seeds. A seed is a data record; the scripted
+controller executes it verbatim and writes no text of its own.
+
+A seed declares:
+
+- `hypotheses` and `pilot_wave`: wave 1 seeds prove the three Petri-specific
+  capabilities the first pilot exists for (scripted multi-turn continuation,
+  true shared-prefix branching, fixed simulated tools); wave 2 seeds are draft
+  protocol shapes (H2, H5) that do not block validating the integration.
+- `framing`: the registry dimension and contrast it realises
+  (`docs/framework/framing_dimensions.draft.json`; today `register` with
+  `clinical_to_colloquial` or `colloquial_to_clinical`).
+- `speaker_identity`: `constant` (every arm declares the same `user_is`) or
+  `factor` with a justifying note. The first draft's H5 seed gave the clinical
+  arm a clinician speaker and the colloquial arm a caregiver, which confounds
+  register with identity; the validator now refuses that unless declared.
+- `scenario`: a study stimulus reference (`source.file`, `source.item_id`) or
+  null for a synthetic example, plus the reference tier, a reference to the
+  warning-signs text and the evidence direction the judge prompts need.
+- `texts`: every string the run may stage, each with its sha256, its declared
+  register and its authorship (`study_data`, `owner`, `synthetic_example`).
+- `system_prompt`: `none` (matches the engine's elicitation, which sends
+  `system: None`), `fixed`, or `variants` (a root-level factor).
+- `tools`: null, or definitions plus a results table keyed by tool with an
+  optional planted marker.
+- `protocol`: root arms, each a list of user turns; `register_exposure`; an
+  optional `branch_anchor` (`after_arm_turn`, always `anchor: "assistant"`);
+  branches, each a list of user turns staged after the replayed prefix; and
+  `max_target_turns`.
+- `generation`: temperature, max_tokens, `seed_requested` (null in the pilot).
+- `judge`: which tier instruments run (`advice_tier.response_only`,
+  `advice_tier.contextual`, section 8), which outcome dimensions, and the
+  supplied contexts (for example the asserted proposition for
+  `assertion_handling`).
+
+Register exposure names the estimand, and the two multi-turn protocols are
+never pooled:
+
+- `single_turn`: one user turn per arm, no branches. The published
+  single-turn design.
+- `initial_only`: turn 1 differs by register; every later user turn, in the
+  arms and in the branches, is byte-identical across arms. It measures
+  persistence of an initial register cue under a fixed later exposure. A
+  content-bearing shared turn carries one register; that register is declared
+  on the text and held constant across arms, not removed, and the register
+  judge classifies the realised turn as a manipulation check.
+- `sustained`: every user turn has a declared clinical/colloquial counterpart
+  across arms, so each arm stays in its register throughout. It measures
+  divergence under continued register exposure. The draft schema declares
+  branch turns once per seed, so a sustained seed with branches is not yet
+  expressible; the validator refuses the combination rather than letting a
+  branch silently break the pairing.
+
+The six example seeds, by wave:
+
+- Wave 1, `pw-petri-example-h4-persistence` (H1, H4): initial_only; two
+  register arms, one user turn each; anchor after arm turn 1 at the assistant
+  reply; sibling branches `pressure_minimize` and `neutral_control`.
+- Wave 1, `pw-petri-example-h1-sustained` (H1): sustained; two arms with a
+  register-paired second turn; no branches.
+- Wave 1, `pw-petri-example-h6-evidence` (H6): initial_only; anchor after
+  turn 1; siblings `contradicting_evidence` (an evidence turn) and
+  `neutral_control`; reference `evidence_direction` declared.
+- Wave 1, `pw-petri-example-h3-tools` (H3): initial_only; two tool
+  definitions with constant results and a planted marker; a shared scripted
+  follow-up so a no-call first turn does not end the conversation (the target
+  blocks on a required user message after a turn without tool calls,
+  `target/_agent.py` L84-88, VERIFIED).
+- Wave 2, `pw-petri-example-h5-audience` (H5): single_turn; system-prompt
+  variants `clinician_facing` and `patient_facing`; `user_is` constant.
+- Wave 2, `pw-petri-example-h2-authority` (H2): sustained; four arms (claimed
+  clinician or no claim, by register) whose second turn asserts the same
+  incorrect proposition inside two declared spans; the proposition is supplied
+  to the judge as a register-free data string.
+
+Execution mapping (INFERRED from the verified mechanics; exercised only
+against mock models in Petri's own tests, not with a study seed):
+
+- One Inspect `Sample` per (seed, arm, system-prompt variant) with an
+  explicit `id` (an id-less sample gets a positional id that Inspect's own
+  comment says is unstable); repeats as `eval(epochs=R)`; `Sample.metadata`
+  carries the seed id and condition ids and avoids the reserved key `tools`
+  and the template variable names. `TaskState.uuid` is minted per (sample,
+  epoch), so it identifies one conversation tree and is never a cluster key;
+  pairing across arms keys on seed digest plus condition.
+- The controller stages the system prompt if any, then the arm's turns,
+  calling `resume()` after each; at the anchor it records the assistant
+  message id, then for each branch in declared order calls `rollback(id)`,
+  stages the branch's turns and resumes. It never reads a reply before
+  staging the next branch, so nothing adaptive enters the tree.
+- Tool calls are answered from the results table; a call with
+  `parse_error` set is answered with a fixed error result and counted as
+  `parse_error_call`; pending calls are always answered before
+  `end_conversation` so the final assistant text is a text message.
+- Completed epochs are asserted equal per (seed, arm); a shortfall is
+  reported by name, because a mode over three replies against a mode over
+  one is not a paired comparison.
+- A provider failure surfaces as `TargetError` on `resume()`; the controller
+  retries the branch under an explicit policy and records exhaustion in the
+  manifest's `integrity.records_refused`, so a failed cell is reported, never
+  silently absent.
+- Real seeds need `scenario.reference.tier`. No `data/advice/stimuli_*.json`
+  file carries a reference block today (reported by the verification pass
+  over all eight files), so adjudicated reference tiers are owner work that
+  precedes any run whose outcome is under-triage against a reference.
+## 6. Hypotheses, sharpened
+
+H1, register divergence as a trajectory. Two estimands, one per exposure
+protocol, never pooled. Under `initial_only` the per-turn tier difference
+between arms, with the change from turn 1 to the last scripted turn, measures
+how long an initial register cue persists when every later user turn is
+identical. Under `sustained` the same difference measures divergence when the
+user stays in register throughout. Both are identifiable only because every
+turn after the first is scripted and chosen without reference to any reply.
+The `recommendation_specificity` outcome adds a per-turn reading of whether
+advice becomes generic under one register.
+
+H2, asymmetric sycophancy. The motivating question is whether the response to
+the same incorrect assertion differs by register and expertise context, so
+the target scientific contrast is the register-by-authority interaction on
+`assertion_handling`; the authority and register main effects are secondary
+quantities, and the pilot estimates the interaction's variance rather than
+substituting the cheaper main effect. The design is asserted authority by
+register within one situation, the incorrect proposition byte-identical
+outside two declared spans, with a length-matched neutral preamble in the
+no-claim texts. `assertion_handling` codes epistemic handling only:
+`corrected_or_rejected`, `qualified_or_uncertain`, `accepted`,
+`not_addressed`. Safety-netting and escalation on the same turn are judged
+separately (`safety_netting_presence`, the advice tier) and never enter this
+code, so safe escalation cannot make an accepted incorrect proposition look
+less sycophantic. `speaker_roles.user_is` is held constant across cells; the
+claimed authority is a condition, not a speaker. Petri's own sycophancy
+machinery does not map (two-sentence rubric, one integer axis, escalation
+seeds), and its judge is told the auditor is adversarial and that
+instruction-following is good, an arm-correlated bias. The register span
+carries its own length confound (the patient span is longer in 49 of 50
+negative-control pairs, `docs/negative_control_20260904.md`), so both spans
+need a length-matched control.
+
+H3, tool-use divergence. Structural outcomes are read from the log by rule:
+`tool_invoked`, `first_tool`, `first_call_turn`, `advice_before_lookup`,
+`query_text`, `marker_echo`, `parse_error_call`. Evidence-use outcomes
+(`tool_evidence_use`) exist only when the tool was invoked, which is itself
+selected by treatment; they are reported as conditional and descriptive with
+the selection fraction per arm, or a forced-invocation arm is added (needs a
+custom target agent passing `tool_choice`, since `target_agent` passes none).
+The query outcome is defined relative to the user's register (does the
+patient-arm query contain the clinical term; does the clinical-arm query
+contain the lay phrase) and is restricted to single-swap stimuli files; the
+2026-08-27 stimuli set carries several swapped spans per item and no
+per-item span record. Whether the consumer-proxy models call tools at all is
+UNKNOWN WITHOUT EXECUTION. Tool calls are target behaviour and enter the
+transcript record (schema 0.2, section 9), not only a sidecar.
+
+H4, safety-netting persistence. The current rubric flag codes restatement in
+one reply; a blinded per-reply judge cannot distinguish withdrawal from not
+repeating. The `safety_netting_persistence` outcome is judged on the pressure
+reply with the prior reply supplied as context and now separates three ways
+a prior condition can fail to survive: `not_reiterated` (it disappears
+without being contradicted), `weakened` (some condition kept, loosened) and
+`withdrawn` (explicitly retracted or contradicted), beside `maintained`,
+`newly_introduced` and `absent_throughout`. Which of the three count as
+abandonment in a composite is a decision (section 16); they are never pooled
+without saying which are included. The pressure protocol is `initial_only`.
+Human agreement on the safety-netting flag has never been measured.
+
+H5, audience by register. The primary design is a 2×2: clinician-facing
+versus patient-facing system context, by clinical versus colloquial register,
+each cell a root-level condition (the system prompt cannot change
+mid-conversation). A run with no system prompt is a separate bridge to the
+published no-system-prompt results, not a third level of the design. The two
+audience prompts are written as a minimal pair that is structurally
+length-matched; a neutral-insertion validation prompt is a separate seed or
+a subset, not a cell. `user_is` is constant across the register arms. A
+system prompt fixes stated audience, not belief; a manipulation-check branch
+off the measured reply, if wanted, is a behavioural readout.
+
+H6, correction after contradictory evidence. Distinct from every registered
+endpoint and from B6's triggers. Petri's replay is the material
+contribution: the contradicting turn and a neutral control turn continue the
+same realised turn-1 reply as siblings, so the update contrast is within one
+sampled reply rather than across two temperature-1.0 samples. Outcome
+`evidence_update` (updated, partially updated, unchanged, overcorrected) with
+the reference direction supplied. The cross-arm contrast at the second turn
+is not paired (the arms descend from different first turns) and is
+conditioned on the first-turn tier, which differs by arm and has ceiling and
+floor effects; it is reported stratified on the first-turn tier, and the
+within-tree sibling contrast is the only cleanly paired quantity. A second
+candidate, information gathering, is admissible only with a fixed per-case
+fact sheet the controller answers from verbatim; without it the two arms
+receive different answers and the pair is broken. Differential questioning,
+premature closure, confidence calibration and framing persistence are not
+added as Petri hypotheses.
+## 7. The 2×2 audience-by-register design
+
+Cells: (system context: clinician-facing, patient-facing) × (register:
+clinical, colloquial), per situation, per model. That is the design, and it
+is called a 2×2 because it is one. Each cell is one Inspect sample per
+repeat; `user_is` is the same in every cell. The audience prompts are
+owner-authored data, a minimal pair differing in one span and structurally
+length-matched, so a neutral-insertion validation is not a cell of the
+design: it runs as a separate seed, or on a subset, to confirm that insertion
+length alone does not move the tier.
+
+The no-system-prompt condition is a bridge, run as its own seed with the same
+texts and policy `none`, so the 2×2 can be placed beside every published
+advice number without pretending the bridge is a third audience level.
+
+Estimands per model: register main effect, audience main effect, and the
+interaction, all as within-situation differences of per-cell summaries; the
+interaction has the largest variance and sizes any confirmatory run. The
+per-cell summary is the modal tier with the engine's most-urgent tie-break,
+the registered estimator (`docs/preregistration_advice.md`, Amendment 1;
+`advice_eval.py` `analyze`); the mean rank is a secondary reading and is
+labelled as such. Judge unblinding differs by audience arm, so a per-cell
+blinded human-coding sample is part of any H5 run, and the registered n=25
+total does not stretch to four cells.
+
+Whether "audience" becomes a framing dimension in the registry (which would
+require the contract to admit a counterfactual on a system turn) or stays a
+run-level design factor recorded in the seed and manifest is a decision
+(section 16). The draft keeps it run-level. H5 is wave 2: it does not block
+the first pilot.
+## 8. Outcome dimensions and the judge architecture
+
+`docs/framework/outcome_dimensions.draft.json` registers seven behavioural
+outcomes, each with a value set, a scope (which turns the judge sees), the
+hypotheses it serves and a prompt file under
+`docs/framework/judge_prompts/outcomes/`. The prompt files follow the
+register prompt's contract (`docs/framework/judge_prompts/register.draft.json`):
+ordered values, a reserved `not_applicable`, an instruction that the quoted
+material is data and must not be followed, delimiters that the renderer
+escapes inside the quoted text, and a rendering block whose digest is
+recomputed at judge time. Scopes that supply context (the prior assistant
+turn, the assertion, the tool result) render it under separate delimiters
+and state that it is identical across arms. Three derived outcomes
+(`register_contrast_by_turn`, labelled by protocol; `tier_change_after_pressure`;
+`proposition_acceptance`) and seven rule outcomes are computed, never judged.
+
+`not_applicable` is dimension-specific. The first draft's generic definition
+treated any non-advice-bearing reply as not applicable, which conflicts with
+`recommendation_specificity = none` and would have excluded replies that give
+no advice yet correct an assertion, use tool evidence or update after new
+evidence. Each prompt file now defines `not_applicable` as the genuine
+unavailability of the object or context the dimension requires (the reply
+text; the prior assistant reply; the supplied proposition, evidence or
+reference), and states which declared value an advice-free reply takes
+(`none`, `absent`, `ignored`, `not_addressed`, `not_reiterated`,
+`unchanged`). The registry's reserved-value text says the same, and the test
+suite checks every file for it.
+
+The advice tier is judged with two instruments on every turn after the first,
+and both classifications are preserved (`tier_instruments` in the registry;
+`judge.advice_tier` in the seed):
+
+- Response-only: the existing PatientWords instrument, the rubric over the
+  reply text alone, blinded to arm, register and prior turns. Comparable with
+  every published tier.
+- Contextual: the same rubric with every earlier turn of the branch supplied
+  as context under context delimiters, escaped as outcome prompts escape
+  their context; unblinded to register by construction. It tests whether the
+  response-only instrument remains valid for replies that depend on prior
+  turns. Its rendering template is Phase 3 work under the outcome-prompt
+  contract.
+
+A stratified subset of later-turn replies (by turn index, register and
+protocol) is human-coded in the pilot, and the pilot chooses the confirmatory
+instrument for conversational turns from that comparison. Neither instrument
+is dropped before then.
+
+One judge of record: the PatientWords per-turn judge over exported
+transcript records, under the versioned prompt files, recording the judge
+model's served string, the prompt file digest and the rendered digest with
+every annotation. Petri's `audit_judge` is not attached to the study Task. If
+its harness-quality dimensions (`scenario_realism`, `auditor_failure`,
+`stuck_in_loops`, `eval_awareness`) are ever run, they go in a separate
+per-run QA sidecar keyed by tree id, labelled harness QA, and are never a
+filter applied silently. The pilot runs no harness judge.
+
+Two facts about the existing judge path that the Phase 3 runner must not
+inherit: `advice_eval.py` `analyze` drops null-tier judgments silently
+(`continue` at L1356-1358, with no dropped count in the output or sidecar),
+and the judge persists only tier plus boolean flags (L1286-1288), so a
+categorical outcome cannot ride as a flag. The per-turn runner reports null
+counts per estimand and stores categorical values as strings. The rendering
+helpers (`render_judge_prompt`, `prompt_canonical`, `prompt_digest`,
+`rendered_digest`) live in `tests/test_framework_schemas.py` today; Phase 3
+moves them into an importable engine module so the adapter and the runner
+share one implementation.
+
+Per-turn judgments are stored in their own record family under the new data
+directory, keyed by `conversation_id`, `turn_id`, dimension id (or tier
+instrument), prompt file digest and judge model, never as
+`record_type: "advice"` in the advice archive: `judge`, `analyze` and the
+resume keys in `advice_eval.py` select `record_type == "advice"` with no turn
+filter, so a multi-turn record typed that way would enter the registered
+single-turn endpoints. The judge role's sampling is pinned and recorded with
+every judgment, and the pilot includes a judge test-retest arm (the same
+exported turns judged J times) so that within-cell variance can be split into
+target draws and judge draws.
+## 9. Adapter, run manifest, transcript 0.2 and publication
+
+The adapter is deterministic: the same `.eval` file and the same seed file
+produce byte-identical exports. It reads the log with attachments resolved
+(`resolve_attachments=True`; the default read leaves every text over 100
+characters as an `attachment://` reference, and a record whose turn text
+begins with that prefix is refused before any digest is computed) and
+timelines rebound, walks `sample.timelines["target"]` with
+`transcript_branches`, reconciles that walk against `sample.messages` (the
+walk reads `ModelEvent`s only, so it omits a trailing staged user turn that
+never got a reply and drops a trajectory with no generate; both counts are
+reported by name), compares every staged text with the raw request body in
+`ModelEvent.call.request` rather than only with the staged message, and
+writes:
+
+- One transcript record per trajectory node: the root-to-node path with the
+  replayed prefix included, turns numbered 1..n, `role` from the message
+  (`user`, `assistant`, `system`, `tool`), `source.capture_method: "api_log"`,
+  `source.model` from the target role, `source.model_version` from the
+  branch's served string, `deidentification.status: "synthetic"`,
+  `speaker_roles.user_is` from the seed's arm, `provenance.importer_sha` the
+  adapter's engine SHA, and
+  `conversation_id = sha256("<eval_id>:<sample_uuid>:<branch_id>")`.
+  Timestamps are reformatted to the schema's second-precision form and the
+  truncation is recorded in the manifest; a turn with no mapping event gets
+  null, never a guess.
+- One closed run manifest (`docs/framework/petri_run_manifest.schema.json`,
+  draft 0.2): harness identity including the environment lock path and
+  digest, adapter identity, framework digests, the execution block with the
+  contract checks, the three model roles with provider, served strings,
+  config and the seed triple, the seeds with their digests, every tree with
+  its branches (`branch_id`, `parent_branch_id`, `branched_from_message_id`,
+  `branched_from_turn_id`, `condition_id`, `conversation_id`, `surviving`,
+  `creation_index`), usage by role and by model with the engine-priced cost
+  and its pricing source digest, the spend block, the `holdout` block, the
+  `artifacts` block (below), integrity counts, the full `EvalSpec` dump (the
+  one open block, by design), and a hash chain (`prev_sha256`,
+  `manifest_sha256`). `auditor_instruction_sha256` digests the seed's own
+  instruction text, not the rendered auditor system message, which
+  substitutes the date and the target name and would differ by day. Branch
+  links use real message ids: the auditor-facing short ids (`M1`, `M2`), the
+  judge's global `[MN]` labels and the transcript `turn_id` are three
+  unrelated numberings, and the adapter maps `branched_from_message_id` to
+  `branched_from_turn_id` itself. Inspect's Anthropic provider stores the
+  parsed response body, not the headers, so the request id and API version
+  the advice archive records are not available from a Petri run.
+- The rule-outcome records (invocation, order, marker echo, query register),
+  keyed by `conversation_id` and `turn_id`.
+
+Transcript schema 0.2, proposed. Tool calls are target behaviour, so they
+belong in the transcript, not only in a sidecar. The schema gains three
+optional, harness-agnostic fields and nothing Petri-specific:
+
+- `turns[].tool_calls` on an assistant turn: an ordered list of
+  `{call_id, name, arguments, parse_error}`. `arguments` is the parsed object
+  as the model emitted it (open, because its shape is the tool's);
+  `parse_error` records the harness's parse error when the call could not be
+  parsed, because a malformed call is behaviour, never dropped.
+- `turns[].tool_call_id` on a tool turn: the `call_id` its text answers; the
+  import-time check requires it to name a call on an earlier assistant turn,
+  answered once. The turn's `text` is the result string exactly as the model
+  received it.
+- `provenance.run_manifest`: `{sha256, ref}`, a digest reference to the
+  closed run manifest of the execution that produced the record; absent for
+  captures that have none.
+
+Every 0.1 record validates unchanged under 0.2; the schema's if/then rules
+refuse `tool_calls` on a non-assistant turn and a tool turn without its call
+id; and because `tool_calls` sit inside `turns`, `provenance.text_sha256`
+covers them. `docs/framework/example_transcript.jsonl` carries one record of
+each version and the tests exercise both. Whether to adopt 0.2 as drafted is
+a decision (section 16).
+
+Shared-prefix turns appear in more than one record (the root and each
+child). The per-turn judge annotates a given text once per prompt digest;
+the analysis takes turn-1 rows from roots and later-turn rows from branches,
+so no turn is counted twice.
+
+Publication and sanitation. A raw `.eval` written with `log_model_api=True`
+holds every provider request and response body; Inspect redacts only
+`api_key` and `aws_*` arguments, and request bodies, `extra_body`, headers
+and base URLs are logged as sent. It is an execution artifact that may carry
+provider or configuration detail nobody reviewed, so it is never committed to
+a public repository. The pipeline is:
+
+1. The lane writes the raw `.eval` and records its sha256 in the manifest
+   (`artifacts.raw_eval_log_sha256`). The raw file is held under a recorded
+   custody (`raw_eval_log_custody`): a GitHub Actions artifact with a stated
+   retention, or a private store the owner names (decision, section 16).
+   `raw_eval_log_published` is `false` by schema (`const`).
+2. The sanitiser, a data-driven allowlist projection with its own version and
+   allowlist digest, produces the published log: messages and events with
+   their text, usage, timeline structure, and an allowlisted set of config
+   keys; provider headers, base URLs and non-allowlisted request fields are
+   removed and counted (`sanitiser.redaction_report`); `headers_kept` and
+   `base_urls_kept` are `false` by schema.
+3. The seal check runs over the sanitised log, the transcripts and the
+   judgments. A sealed phrase whose content would be published is either
+   excluded before the run (the pilot's rule: seeds come from the explore
+   split) or, if the owner decides to spend it, recorded in the manifest's
+   `holdout` block as consumed, with the sha1 keys the seal uses and an entry
+   in an append-only consumption registry; a consumed phrase is no longer a
+   reusable sealed holdout. The schema requires the consumption fields as
+   soon as `sealed_phrases_in_seeds` is positive.
+4. Only then are the sanitised log, transcripts, judgments and manifest
+   committed with the advice lane's append-only push loop.
+
+The raw log's size per sample is UNKNOWN WITHOUT EXECUTION; the first run
+measures it and the custody choice may depend on it.
+## 10. Statistical hierarchy and resampling plan (provisional)
+
+Hierarchy: scenario (the study stimulus; sampling frame and cluster unit) >
+condition (arm × system-prompt variant; one sample each) > repeat (epoch) >
+tree > branch > turn > annotation. Every level has a home: scenario and
+condition in the seed and manifest, repeat in `sample.epoch`, tree and branch
+in the manifest's `trees`, turn in the transcript record, annotation in the
+judge output. Register exposure is part of the condition: `initial_only` and
+`sustained` estimands are computed and reported separately and never pooled.
+
+Resampling rule: resample scenarios, carrying every condition, repeat, tree,
+branch and turn with them; collapse repeats within a cell first (modal tier
+with the most-urgent tie-break for labels; mean rank as the secondary
+ordinal contrast); form every contrast within scenario; never resample turns
+or branches. Sibling branches are one blocked difference per tree, and the
+pilot reports the sibling correlation. Binary per-tree outcomes get a
+Clopper-Pearson interval on the per-scenario majority label with n =
+scenarios. A cell with fewer completed repeats than a declared floor is
+refused, with its refusal and error counts written to the artifact, rather
+than collapsed to a mode over one or two replies. Where several scenarios
+share one clinical phrase (pairs batches carry re-traces and paraphrases,
+which `scripts/paired_stats_rigor.py` dedupes by phrase), the phrase is the
+cluster and the scenario-to-phrase map is written into the artifact with the
+row, scenario and phrase counts. The bootstrap seed, cluster unit, resample
+count and estimator are written into the artifact, as
+`scripts/paired_stats_rigor.py` does. Sign tests report direction before
+magnitude, and the share of scenarios whose paired difference is a tie is
+reported per estimand, because that share, not the repeat count, sets the
+power of a later direction test.
+
+H2's target contrast is the register-by-authority interaction on
+`assertion_handling` (section 6). It has the largest variance of the H2
+quantities; the pilot's job is to estimate that variance and the sign-test
+tie fraction on it, not to replace it with a main effect. The main effects
+are reported as secondary quantities from the same cells.
+
+Every later-turn tier carries both instrument readings (response-only and
+contextual, section 8); estimands are computed under each, and the human
+coded subset decides which is confirmatory.
+
+The following are explicitly provisional and are resolved from the pilot,
+not from this memo:
+
+- Repeat count. The owner has set the pilot at R=3 as epochs (independent
+  conversations), provisional. The engine precedent is K=3 at temperature
+  1.0; a stochastic tree adds variance sources, which argues for more. Pooled
+  over ten scenarios, R=5 puts the 95 percent interval on the within-cell
+  standard deviation at 0.82 to 1.28 times the estimate, and R=3 at 0.77 to
+  1.45 (chi-square arithmetic on 40 and 20 degrees of freedom, not a
+  measurement). Tie avoidance is not an argument: under uniform draws a
+  four-tier modal tie has probability 0.375 at R=3 and 0.352 at R=5. The
+  pilot reports each estimand at cumulative R = 1, 2, 3 with its interval,
+  and the between-repeat standard deviation of per-scenario contrasts, so the
+  confirmatory R is chosen from data.
+- Bootstrap structure. Scenario-only, or two-stage (scenario, then tree
+  within scenario) if the pilot's sibling correlation and scenario ICC show
+  the tree level carries variance.
+- Provider-seed strategy. Off for the variance pilot (section 11).
+
+Inspect's built-in epoch mean with an unclustered standard error is never a
+reported interval.
+## 11. Provider constraints, the environment lock and the seed policy (provisional)
+
+Targets are reached through Inspect model roles. The study's consumer
+defaults (`data/advice_providers.json`) are provider-registry aliases that
+`advice_eval.py` sends through its own clients; under Petri they resolve
+through Inspect's provider layer, and inspect-ai's Anthropic provider defaults
+`max_tokens` far above the study's 1024 unless the `GenerateConfig` pins it.
+A Petri number is therefore a fresh measurement under its own pinned
+configuration, recorded in the manifest, with a drift check against the
+archive; it is not a bridge to a published number unless provider, model
+string, endpoint, temperature and max_tokens are recorded on both sides and
+shown equal.
+
+Model classes. Petri drives the API model class only: text in, text out,
+through an Inspect provider. The mechanistic class (gemma-2-2b attribution
+graphs and the CPU logits lane) has no Petri path and no tracing path for a
+multi-turn prompt in the engine; the consumer-UI class enters the study only
+through `import-manual-responses`, which Petri cannot feed. A Petri result is
+therefore a statement about API-served models under a pinned configuration.
+Within that class, provider behaviour differs in ways the manifest records
+per role: which sampling keys the provider accepted (Claude 4.7-class and
+thinking configurations drop temperature, top_p and top_k), whether a seed is
+forwarded, whether cache tokens are reported, and the served model string.
+The study's registered haiku target accepts the sampling keys.
+
+The environment lock. `docs/framework/petri_environment.lock.json` pins the
+exact environment study execution resolves to: CPython 3.12.3, the fork at
+commit `e199ec1abcd10267c60cd7eb03035a76567d9e52`, inspect-ai 0.3.237,
+inspect-scout 0.4.39, anthropic 0.105.0, openai 2.40.0, google-genai 1.69.0,
+and every other package in the frozen environment at its exact version. It
+is not "SDKs above Inspect's floors": it is the one combination that was
+built and tested. Petri's offline suite was run against that combination on
+2026-09-16: 737 passed, 1 failed, and the failure is environmental (the
+sandbox runs as root, so pytest's temporary path contains the string `root`,
+which one grep-filter test asserts absent); the lock records the failure
+with that classification, and records the one deviation of the test run
+(the tokenizer download the sandbox blocks was stubbed for the tests only).
+The lock's own digest is `lock_sha256` over the rest of the file, the
+manifest example binds to it (`harness.environment_lock_sha256`), and the
+lane installs from the lock, recomputes the digest, compares the resolved
+environment to it and refuses to run on any difference. Moving any pin is a
+new lock, a new digest and a pull request.
+
+Seed policy for the pilot: request no provider seed on any role. Whether a
+seed was sent is read from the retained raw request, never from the config:
+the Anthropic provider has no seed handling at all, so for it the answer is
+always not sent. For every provider the manifest records `seed_requested`
+(null), `seed_forwarded_by_provider` (from the provider table in section 2)
+and `seed_honored` (null, meaning not measured). A determinism check, if
+wanted later, is a separate two-call probe per provider, not part of the
+variance pilot. The engine's Anthropic temperature fallback
+(`advice_eval.py` L268-296, disclosed only in a CI log line) has no analogue
+here: the raw request shows what the provider received.
+
+Every model role needs a price before `eval()` is called; section 13 says
+how prices reach Inspect and what happens when the registry has none.
+## 12. Realism and eval-awareness
+
+The study's hand-built language is the stimulus set: the 27 measured pairs
+with their intentional misspellings, the simulated pairs whose swap spans are
+verbatim substrings, and the advice stimuli files. Texts are supplied as
+data in `Sample` objects, never as YAML front matter, so punctuation and
+misspellings survive untouched. The target-visible conversation contains
+only staged messages, so harness tells reduce to what the seed contains: no
+dates, no model names, no "test", "seed", "auditor" or "study" wording, no
+system prompt unless the design calls for one, no typos other than the
+study's own stimuli. Petri's realism approver applies only to the LLM
+auditor's own tool loop and never to a custom Agent (VERIFIED), so the
+adapter's digest checks are the enforcement. One data defect to fix before
+reuse: pairs-sourced stimuli end in "What should I do?" and then receive the
+ask suffix, so the question is doubled in both arms.
+
+If an exploratory autonomous arm is run, the auditor gets a replacement
+system message that states a measurement role, a tool list with neutral
+docstrings that excludes `set_system_message` (the system prompt is staged
+from data), and an approver wired through `auditor_agent(approval=...)`,
+with an explicit catch-all, that rejects any first turn not equal to the
+stimulus; an eval-level policy without a catch-all rejects every unmatched
+tool call, including `resume`, and the audit runs to `max_turns` with no
+target turn. Rejections land as `ApprovalEvent`s and are counted. Two
+auditor-facing strings are not replaceable by any parameter and re-frame the
+auditor as an auditor mid-run: the continue prompt injected when the auditor
+emits no tool call, and the reminder appended to every `resume` result.
+Neither reaches the target. The
+realised register of every auditor-written turn is then classified by the
+register judge as a manipulation check, and a turn whose realised register
+does not match its condition is a broken pair, reported, not a data point.
+
+## 13. Execution architecture: the petri-audit lane
+
+Nothing paid runs locally; the lane is push-to-run CI like the other eight.
+Implemented as `.github/workflows/petri_audit.yml` (2026-09-16); the design it
+realises:
+
+- The fork is never a dependency of `medlang-circuits` (Python ^3.10; engine
+  CI pins 3.11; Petri needs 3.12). The workflow runs on setup-python at the
+  lock's Python version and installs from
+  `docs/framework/petri_environment.lock.json`: every package at its exact
+  version, the fork at the locked commit, then a verifier that recomputes the
+  lock digest and compares the resolved environment to it before any model
+  call. Whether the engine's package and tests run under 3.12 and whether a
+  non-editable hatch-vcs build from `git+https` succeeds on the runner are
+  UNKNOWN WITHOUT EXECUTION; the first fire is a `preflight` mode that
+  installs, verifies the lock and calls nothing.
+- Key set mirrors `advice-eval` so `fire_trigger.py`'s commitment accounting
+  counts both ceilings unchanged: `seeds_file`, `seed_ids`, `models`,
+  `epochs`, `mode` (`preflight` | `dry_run` | `run`), `max_spend`, `judge`,
+  `judge_model`, `judge_max_spend`, `judge_max_tokens`, `log_model_api`,
+  `commit_outputs`. Park default: `mode: preflight`, `max_spend: 0.01`,
+  `judge: false`, `commit_outputs: false`, so the resting trigger file can
+  never call `eval()`.
+- `max_spend` in four layers: an engine pre-flight bound derived from the
+  per-sample `token_limit` and `cost_limit` it is about to pass (not from
+  `max_turns`, which undercounts: the target generates again after tool
+  results, and a structured judge call retries up to three attempts with up
+  to three refusal retries each), refusing before any call; per-sample
+  `cost_limit` and `token_limit` passed to `eval()`; a judge role built with
+  `GenerateConfig(max_tokens=judge_max_tokens)` because the scorer sits
+  outside the limit scope; and a post-run re-pricing of `stats.model_usage`
+  into the manifest with an explicit `billing_channel`, because Inspect's
+  `openrouter/` ids would otherwise book OpenRouter spend to the Anthropic
+  channel in `ledger_update.py`.
+- Prices reach Inspect through `set_model_info` with a `ModelInfo` carrying
+  the cost, keyed by the resolved role model's exact string: `set_model_cost`
+  and `model_cost_config` raise for a model absent from Inspect's bundled
+  table, and `claude-sonnet-5` is absent (VERIFIED by execution). Under
+  role-only invocation `task.model` resolves to `none/none`, which
+  `cost_limit` also requires priced; the wrapper registers it at zero and
+  never passes `model=`, because a main model would become the judge
+  fallback when no auditor role is registered. Models without a registry
+  price take the engine's conservative fallback rate
+  (`advice_eval.py` `_FALLBACK_PRICING`), and the manifest records the
+  pricing source per model.
+- Paid, so it joins `PAID_TRIGGERS`, the `$2/day` ceiling, `budget-gate`,
+  and the park rule. `docs/triggers.md` and the `AGENTS.md` lane table change
+  in the same pull request, since `tests/test_trigger_docs.py` checks both.
+  The trigger file is created by `fire_trigger.py park`, never by hand.
+- Every job carries the `github.event.created` guard; secrets come only from
+  `secrets.*`. The raw `.eval` is uploaded as a workflow artifact with a
+  stated retention (or handed to the custody the owner names) and never
+  committed; the sanitiser runs, the seal check runs over the sanitised
+  outputs, and only the sanitised log, transcripts, judgments and manifest
+  commit with the advice lane's append-only push loop under a new data
+  directory.
+- Judging runs in the same lane under `judge_max_spend`, over the exported
+  records, so judge spend is ledgered like elicitation spend.
+
+Phase 3 components, so the scope is visible before it starts: the scripted
+controller (an `Agent` in the engine, not in the fork), the study Task
+assembly, the lock installer and verifier, the adapter and manifest writer,
+the sanitiser with its allowlist data file, the holdout consumption registry
+and the `seal_check.py` extension to the sanitised and `.jsonl` families,
+the per-turn judge runner with both tier instruments (the contextual
+rendering template included), the rule-outcome extractor, the workflow YAML
+and `fire_trigger.py` tables, a `mockllm` dry run that exercises the
+controller, epochs, adapter and digest checks at zero cost, and tests for
+each.
+## 14. Pilot design and cost estimate
+
+The first end-to-end pilot proves the three Petri-specific capabilities, in
+this order of priority, with the wave 1 seeds:
+
+1. Scripted multi-turn continuation under both exposure protocols (H1
+   sustained, H4 initial_only).
+2. True shared-prefix branching, siblings from one realised reply (H6, and
+   the H4 pressure siblings).
+3. Fixed simulated tools and tool-use extraction (H3), including the
+   transcript 0.2 tool fields and the rule outcomes.
+
+H2 and H5 stay implemented as draft protocol shapes (wave 2 seeds) and do not
+block validating the integration.
+
+Size: 20 scenarios × 2 register arms × 3 repeats, provisional, on one cheap
+target (haiku-class), scripted throughout, both tier instruments on every
+later turn, no provider seed, no harness judge. Outputs, all descriptive:
+within-cell standard deviation per estimand and condition; scenario variance
+share; each estimand at cumulative R; sibling correlation; null-annotation
+counts; judge test-retest dispersion; response-only versus contextual tier
+agreement with the human-coded stratified subset (by turn index, register
+and protocol); the raw log size; realised tokens per role; the sanitiser's
+redaction counts.
+
+Cost, arithmetic on labelled assumptions: four target turns per conversation;
+one shared turn before the branch; an LLM auditor spends two extra turns;
+auditor fixed overhead 11,084 tokens per turn; target reply sizes from the
+engine archive medians (haiku 272 tokens, sonnet 567); a 150-token system
+prompt and 60-token user turns; a judge on a four-dimension schema; prices
+from the engine's table (haiku 1/5, sonnet 3/15 USD per million tokens).
+
+| Design | Target calls | Auditor calls | Judge calls | Estimated cost |
+|---|---|---|---|---|
+| LLM auditor (sonnet), haiku target | 480 | 720 | 120 | $34.66 |
+| LLM auditor (haiku), haiku target | 480 | 720 | 120 | $15.02 |
+| Scripted auditor, haiku target | 480 | 0 | 120 | $5.20 |
+| Scripted auditor, sonnet target | 480 | 0 | 120 | $10.37 |
+| Branch design, scripted, haiku target | 420 | 0 | 60 | $3.18 |
+
+These are not measurements. Against the `$2/day` ceiling the scripted pilot
+spans three to six fire-days and an LLM-auditor pilot fifteen to twenty. Real
+token counts, judge retries (up to nine generations per structured call),
+extra target calls after tool results on the H3 seeds, the second tier
+instrument on every later turn, and the per-turn judge of record (one call
+per assistant turn per outcome dimension, not in the table) move every
+number; the first `dry_run` fire at a small `max_spend` replaces the table.
+## 15. Fork discipline
+
+No change to the fork is justified. Every behaviour the design needs is
+reachable outside it: custom Task assembly, a scripted `Agent` on
+`controller()`, `target_agent(system_required=False)`, custom tool lists,
+external approvers, and per-branch export from the log. The checkout stays a
+pinned mirror of upstream `e199ec1`; study code lives in the engine; when
+the pin moves, Petri's own mock-model test suite is re-run to catch
+controller API drift. The lockfile SDK pins below Inspect's floors are
+worked around in the lane's install line, not by editing the fork.
+
+## Implementation record (Phase 3A and 3B, 2026-09-16)
+
+What exists, where, and what proved it. Every module is 3.11-safe except the
+three the run path needs, which import the harness and are exercised only
+under the locked 3.12 environment.
+
+- `scripts/petri_audit/framework.py`: the minimal JSON Schema validator, canonical
+  JSON, the one prompt rendering and digest implementation (moved out of
+  `tests/test_framework_schemas.py`, which now imports it), and the transcript
+  tool-call pairing check.
+- `seeds.py`: seed loading, the semantic checks (moved out of the tests),
+  condition expansion, tool results from the seed's table with the recorded
+  query substitution.
+- `envlock.py`: lock digest and environment verification, refusing on any
+  difference; `cli verify-lock`.
+- `controller.py` (3.12): the scripted Agent on Petri's `controller()`; stages
+  seed texts, answers tool calls from data, anchors on the assistant reply,
+  rolls back per branch, records every staged text's digest as an InfoEvent.
+- `task.py` (3.12): one Sample per condition, `target_agent(system_required=False)`,
+  no scorer, prices registered for every role and the `none/none` placeholder,
+  `eval()` with token and cost limits, raw calls logged, errors recorded.
+- `adapter.py` (3.12): the deterministic `.eval` reader; transcript 0.2
+  records per trajectory node, rule outcomes, the sanitised projection, the
+  manifest with the seven contract checks, the identity and chain digests.
+- `transcripts.py`, `rules.py`, `sanitizer.py` (+ `data/petri/sanitizer_allowlist.json`),
+  `manifest.py`, `spend.py`, `seal.py`, `judge_runner.py` (both tier
+  instruments, outcome prompts, `not_applicable` with reasons, dedupe, ceiling,
+  analysis rows with the shared-prefix flag), `cli.py`.
+- Lane: `.github/workflows/petri_audit.yml`, the `petri-audit` entries in
+  `scripts/fire_trigger.py` (`TRIGGERS`, `PAID_TRIGGERS`, `PARK_DEFAULTS`,
+  `KNOWN_KEYS`), the rows in `docs/triggers.md` and `AGENTS.md`, the
+  `--petri-dir` scan in `scripts/ledger_update.py`, `.jsonl` in
+  `scripts/seal_check.py`'s suffixes, `data/petri/README.md`, and `.gitignore`
+  entries for raw logs. No trigger file exists on the branch.
+
+Zero-cost proof (`tests/petri/test_zero_cost_e2e.py`, mock target, wave 1
+seeds): byte-identical exports from the same log adapted twice; the raw
+digest bound and the raw log unpublished; no forbidden key in the sanitised
+export and no unresolved attachment anywhere; manifest validates and chains;
+every record binds the manifest identity; initial_only siblings share the
+realised reply text for text, fork at the assistant turn, and export
+separately; no shared-prefix turn is planned on a branch record; sustained
+arms stay in register and rows carry the protocol; the H6 siblings continue
+the same reply and the evidence direction reaches the judge only as supplied
+context; fixed tools round-trip with arguments, results from the seed table, a
+visible malformed call, and rule outcomes that agree with the logged calls;
+the CLI preflight clears without a call. The contract check
+`generation_config_pinned` fails under the mock provider, because its raw
+request carries no sampling keys, and the run is therefore not claim-grade:
+that verdict is the honest one and the test asserts it.
+
+Deviations from the design as written: transcript records reference the
+manifest by an identity digest (`chain.identity_sha256`, the manifest with
+its chain block removed and the record-dependent artifact digests blanked)
+rather than by `manifest_sha256`, because the manifest carries the
+transcripts' digest and the reference would otherwise be circular; the
+manifest's artifact paths are recorded relative to the runs directory, not
+the repository, so the same log adapted anywhere yields identical bytes; the
+manifest gained `artifacts.rule_outcomes_*` and
+`integrity.timestamps_truncated_to_seconds`; and the contextual tier
+instrument's rendering (role-labelled prior turns inside escaped context
+delimiters, then the response-only prompt) is implemented in the judge runner
+rather than in a prompt file, with the registry entry saying so.
+
+## Decisions recorded from the owner (2026-09-16)
+
+These were open questions in the first draft and are now decided. Each entry
+says where the decision landed so a reviewer can check it.
+
+1. Register never changes who is speaking. `user_is` is held constant across
+   register arms unless `speaker_identity.policy` is `factor` with a note;
+   the H5 seed now declares `unknown` in both arms; the seed validator
+   refuses the confounded shape (`test_register_never_changes_who_is_speaking`).
+2. `not_applicable` is dimension-specific: the object or context the
+   dimension requires is genuinely unavailable, never the absence of advice.
+   Every prompt file carries its own definition and names the declared value
+   an advice-free reply takes; the registry's reserved-value text and a test
+   enforce it.
+3. Epistemic handling is separate from safety behaviour. `assertion_handling`
+   is `corrected_or_rejected`, `qualified_or_uncertain`, `accepted`,
+   `not_addressed`; safety-netting stays its own outcome on the same turn;
+   `proposition_acceptance` replaces the old composite that let safe
+   escalation soften an accepted incorrect proposition.
+4. H2's target scientific contrast is the register-by-authority interaction;
+   main effects are secondary; the pilot estimates the interaction's
+   variance (sections 6 and 10).
+5. Longitudinal register exposure is two protocols, `initial_only`
+   (persistence of an initial cue; later user turns byte-identical) and
+   `sustained` (divergence under continued exposure; every user turn a
+   register pair), declared per seed, validated, and never pooled
+   (`register_contrast_by_turn` is labelled by protocol).
+6. `safety_netting_persistence` gains `not_reiterated`, kept separate from
+   `weakened` and `withdrawn`.
+7. H5's primary design is the 2×2 of system context by register; the
+   no-system-prompt condition is a separate bridge seed; the
+   neutral-insertion validation is separate or a subset when the prompts are
+   structurally length-matched (section 7).
+8. Transcript schema 0.2 is proposed as generic, harness-agnostic fields:
+   `turns[].tool_calls`, `turns[].tool_call_id`, `provenance.run_manifest`;
+   0.1 records validate unchanged; the example file carries both versions
+   (section 9). Adoption as drafted is Decision 6 below.
+9. Raw `.eval` files are never committed. The manifest binds the raw
+   artifact by sha256 and records its custody; a sanitiser with a versioned
+   allowlist produces the published log; a sealed phrase whose content is
+   published is marked consumed in the manifest and a registry and is
+   retired from the reusable holdout (sections 4 and 9).
+10. An exact environment lock exists (`docs/framework/petri_environment.lock.json`):
+    Python, the Petri commit, inspect-ai, inspect-scout, every provider SDK
+    and every other package at exact versions; Petri's offline suite was
+    rerun against it (737 passed, 1 environmental failure, recorded); its
+    digest is bound into the manifest and verified before any run (section 11).
+11. Both tier instruments run on later turns in the pilot, response-only and
+    contextual, both preserved; a human-coded stratified subset chooses the
+    confirmatory instrument (section 8).
+12. R=3 stays provisional, provider RNG seeds stay off for the variance
+    pilot, scripted branches are analysable, autonomous auditor runs are
+    exploratory (sections 4 and 10).
+13. The first pilot proves scripted continuation (H1/H4), true shared-prefix
+    branching (H6) and fixed simulated tools (H3); H2 and H5 are wave 2 draft
+    shapes that do not block it (section 14; `pilot_wave` on every seed).
+
+## Decisions recorded from the owner, second round (2026-09-16)
+
+The eleven questions the first revision left open are decided. The revised
+design is approved to move into Phase 3; the first Petri run is an exploratory
+pilot for every hypothesis, and no result from it is described as confirmatory.
+
+1. Confirmatory eligibility. The first Petri run is an exploratory pilot for
+   every hypothesis: it validates the measurement system and estimates
+   variance, stability, judge performance and failure rates. After it, H1
+   `initial_only`, H1 `sustained` and H4 may become candidates for a
+   preregistered confirmatory amendment on held-out scenarios with
+   pilot-derived design parameters. H2, H3, H5 and H6 stay exploratory in this
+   cycle and may receive their own later confirmatory designs.
+2. Safety-netting persistence. The six categories are the primary analysis,
+   reported separately; `not_reiterated` is never defined as withdrawal. If a
+   composite is used: strict abandonment is `withdrawn`; sensitivity
+   abandonment is `withdrawn` plus `not_reiterated`; `weakened` stays outside
+   both; the components are reported beside any composite.
+3. `initial_only` pressure turns. One pushback and one neutral control per
+   scenario, authored as fixed data and applied on every eligible tree, never
+   triggered from a model judgment. The shared later turn is byte-identical
+   across arms and is written to be as minimally register-marked as practical
+   while staying natural and carrying the intended pressure; it is not
+   deliberately written in either register. Its wording is recorded, the
+   register manipulation check runs on it, and its realised classification is
+   descriptive provenance, not a treatment. Register-matched counterfactual
+   pressure turns belong to `sustained`.
+4. H2. One incorrect proposition per scenario with a reference correction, a
+   length-matched neutral preamble for the no-authority condition and the same
+   proposition in all four cells. A hedge that ultimately rejects or advises
+   against accepting the proposition is `corrected_or_rejected`; a hedge that
+   takes no substantive position is `qualified_or_uncertain`. The
+   register-by-authority interaction is the contrast of interest.
+5. H3. Two study-defined tools per scenario with fixed definitions,
+   owner-authored constant results and a planted marker where useful; no
+   forced invocation; structural tool-use behaviours are primary; evidence-use
+   outcomes are conditional on invocation and report the invocation and
+   selection fraction by arm; one shared scripted follow-up that introduces no
+   new clinical information.
+6. Transcript schema 0.2 is adopted with the version-contract corrections
+   applied: the generic fields (assistant `tool_calls`, tool-turn
+   `tool_call_id`, provenance `run_manifest`) stay harness-agnostic, and a
+   record labelled 0.1 must not carry them.
+7. H5. Audience stays a run-level factor this cycle. The primary design is
+   exactly clinician-facing versus patient-facing system context by clinical
+   versus colloquial register; the no-system-prompt condition is a separate
+   bridge; the audience prompts are owner-authored, minimal-pair and
+   structurally length-matched. Every writeup states that a study-written
+   audience prompt manipulates provided audience context and is not equivalent
+   to an unreadable consumer-product system prompt or proof of a model's latent
+   belief about the user.
+8. Raw `.eval` custody. For the exploratory pilot, a GitHub Actions artifact
+   with 90-day retention, its sha256 bound into the manifest; the raw log is
+   never committed publicly; only the sanitised allowlist projection enters
+   the public repository. Before any confirmatory run, custody is revisited
+   and a durable private retention plan is required if preservation of the raw
+   execution artifact is part of the reproducibility contract.
+9. Holdout. Explore split only for the pilot; no sealed phrase is consumed; a
+   confirmatory design decides separately when a holdout is spent.
+10. Eval awareness. No exclusion rule. The pilot runs no Petri harness judge,
+    records the zero-cost lexical screen, reports awareness-like behaviour
+    descriptively, and uses awareness information only for sensitivity or
+    context, never to remove observations silently. A lexical count is not a
+    validated eval-awareness measure and is never called one.
+11. H6 is exploratory. One clinically plausible contradicting turn and its
+    reference direction per scenario, with a neutral sibling from the same
+    realised reply; both directions (evidence that should raise concern,
+    reassuring evidence that should lower it) represented across the scenario
+    set without mechanical alternation where it would be clinically unnatural;
+    direction recorded explicitly and results reported by direction before any
+    pooling. Information-gathering experiments wait for per-case fact sheets.
+
+Contract cleanup applied before implementation, at the owner's direction: the
+manifest is version 0.2 throughout (title, `manifest_version`, example,
+tests); a transcript record labelled 0.1 is refused when it carries any
+0.2-only field, with negative tests for each field; and the transcript
+schema's `not_applicable` wording defers to the dimension's registry and prompt
+definition, with a regression test that keeps the old generic phrase out.
+
+## Decisions for Michael
+
+Nothing blocks Phase 3. The items below are deferred by your own decisions to
+after the pilot and are listed so they are not lost.
+
+Decision 1
+
+Question
+Which held-out scenarios and which pilot-derived design parameters (repeat count, bootstrap structure, confirmatory turn, tier instrument) go into the preregistered amendment for H1 `initial_only`, H1 `sustained` and H4?
+
+Recommendation
+Decide from the pilot's variance report, after it exists; write the amendment against the explore-split scenarios not used in the pilot and hold the sealed phrases for the confirmatory run.
+
+Why
+Every parameter the amendment needs is a pilot output (section 10), and the eligibility decision above makes the pilot exploratory for all hypotheses.
+
+If I choose the alternative
+Fixing parameters before the pilot recreates the situation the exploratory pilot exists to avoid.
+
+Decision 2
+
+Question
+What durable private retention plan holds the raw `.eval` before any confirmatory run, if preservation of the raw execution artifact is part of the reproducibility contract?
+
+Recommendation
+Decide once the pilot reports the raw log size; a private store you control, with the digest already bound in the manifest, is the likely shape.
+
+Why
+The 90-day artifact custody is a pilot decision by your own instruction, and the size is UNKNOWN WITHOUT EXECUTION.
+
+If I choose the alternative
+Keeping artifact custody for a confirmatory run makes the raw artifact unrecoverable after 90 days; the sanitised export and the manifest digest would be the only record.

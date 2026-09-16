@@ -62,12 +62,16 @@ TRIGGERS = (
     "model-evaluation",
     "archive-renders",
     "advice-eval",
+    "petri-audit",
     "pab-probe",
 )
 # advice-eval: elicit AND judge spend Anthropic/provider tokens (2026-07-21)
 # pab-probe: patient/assistant/sandbox legs bill the prepaid OpenRouter key and
 # the evaluate stage bills Anthropic (2026-08-04, exploratory arm).
-PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval", "pab-probe"})
+# petri-audit: the target model and the optional judge of record spend provider
+# tokens when mode is `run` (2026-09-16); preflight and dry_run cost nothing but
+# the lane is counted paid so every fire goes through the ceiling.
+PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval", "petri-audit", "pab-probe"})
 # A circuit-trace fire with show_mitigation=true makes Anthropic translation
 # calls (the only paid path outside PAID_TRIGGERS). Its cost has no max_spend
 # param, so the guard imputes a conservative flat commitment per fire.
@@ -105,6 +109,13 @@ PARK_DEFAULTS = {
     "advice-eval": {"stimuli_file": "data/advice/stimuli_20260827T141036Z.json",
                     "models": "anthropic:claude-haiku-4-5", "samples": "1",
                     "max_spend": "0.01", "judge": "false", "commit_outputs": "false"},
+    # petri-audit: mode preflight validates seeds, verifies the environment lock,
+    # prices and bounds the run, and calls no model; a true $0 no-op when re-fired.
+    "petri-audit": {"seeds_file": "docs/framework/petri_seeds.draft.json", "seed_ids": "",
+                    "wave": "1", "target": "mockllm/model", "mode": "preflight", "epochs": "1",
+                    "token_limit": "20000", "max_spend": "0.01", "judge": "false",
+                    "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01",
+                    "judge_max_tokens": "300", "log_model_api": "true", "commit_outputs": "false"},
     # pab-probe: not parked - its workflow lives on the PAB branch only.
 }
 PARK_NOTE = ("PARK (resting-state rule): cheapest no-op default committed so branch operations "
@@ -254,6 +265,15 @@ KNOWN_KEYS = {
         "translator_model", "max_spend", "judge", "judge_model", "judge_max_spend",
         "judge_max_tokens", "rubric", "offset", "limit", "commit_outputs",
         "restore_artifact_run_id", "restore_merge_fork", "gen_config",
+    }),
+    # petri_audit.yml `defaults` dict (2026-09-16; tests/test_petri_audit_workflow.py
+    # checks it against the heredoc): seeds_file, seed_ids, wave, target, mode,
+    # epochs, token_limit, max_spend, judge, judge_model, judge_max_spend,
+    # judge_max_tokens, log_model_api, commit_outputs.
+    "petri-audit": frozenset({
+        "seeds_file", "seed_ids", "wave", "target", "mode", "epochs", "token_limit",
+        "max_spend", "judge", "judge_model", "judge_max_spend", "judge_max_tokens",
+        "log_model_api", "commit_outputs",
     }),
     # pab_probe.yml `defaults` dict (verified 2026-08-04 against the params
     # heredoc by tests/test_pab_ci_staged.py): stage, fork_ref, cases_file,
