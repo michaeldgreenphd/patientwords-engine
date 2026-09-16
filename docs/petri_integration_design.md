@@ -1228,6 +1228,44 @@ regression test each.
    context the judge received** (`rendered_context`, shared by the prompt and
    the digest).
 
+### Corrections from the seventh Codex review (PR #26, 2026-09-16)
+
+Eight findings on the sixth corrected tree, all verified and fixed with a
+regression test each.
+
+1. **An empty sealed registry refuses preflight.** `sealed_registry()` is
+   empty when the dashboard has no `tierb.start_utc` or no Tier B batch
+   exists; that is not a clean scan, and the seeds could not be established
+   unexposed, so preflight exits 6 instead of printing no hit.
+2. **Rows past the bound prefix are authenticated.** Every judge invocation
+   (an aborted one and the `judge-spend-report` fallback included) records
+   `judgments_sha256`, the digest of the judgments file it left behind;
+   `reseal_problems` accepts unbound rows only when the run's judge sidecar
+   records the file's current digest, so a file edited or appended outside
+   an invocation is refused.
+3. **The ledger folds every positive Petri delta.** The growth pass's
+   `0.0005` rounding-noise floor would have dropped a cheap retry's delta for
+   good; Petri sidecars fold any positive delta at eight decimals.
+4. **The judge of record is one spec.** `judge` refuses before any call
+   (exit 10) when the bound judge or existing rows carry a different spec,
+   an alias included, because `dedupe_key` carries the spec and a second one
+   would re-judge every plan and pool two judges.
+5. **The input-token bound is the UTF-8 byte count**, which no byte-fallback
+   tokenizer exceeds; the characters-per-token figure was not a bound for
+   emoji, CJK or dense fragments. The ceiling now stops runs earlier on
+   English prose (about four times over-estimated); pilot ceilings should be
+   set with that in mind.
+6. **Generation settings are provenance.** `judge_max_tokens` and the
+   temperature are recorded on every judgment row, in the judge sidecar and
+   in `judge_of_record` (schema fields, required).
+7. **Every workflow attempt gets its own run directory**: the run stem is
+   `run_<run_id>_<run_attempt>`, and the raw-log artifact name carries the
+   attempt, so a re-run never reuses or overwrites a paid attempt's paths.
+8. **Retained events price a failed run.** `spend.usage_from_samples` (used
+   by `spend-report`) and the adapter take token counts from a model event's
+   own usage when the sample aggregate lacks the model, so a row with calls
+   and zero tokens no longer prices a paid call at zero.
+
 ## Decisions recorded from the owner (2026-09-16)
 
 These were open questions in the first draft and are now decided. Each entry

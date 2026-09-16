@@ -532,10 +532,10 @@ def test_bind_judgments_reseals_only_the_chain_head_and_keeps_the_identity(tmp_p
     judgments = run_dir / "judgments.jsonl"
     judgments.write_text('{"conversation_id": "c", "value": "urgent"}\n', encoding="utf-8")
     report = run_dir / "judgments.report.json"
-    report.write_text('{"cost_usd": 0.0}\n', encoding="utf-8")
+    report.write_text(json.dumps({"cost_usd": 0.0, "judgments_sha256": framework.sha256_file(judgments)}) + "\n", encoding="utf-8")
     provenance = {"judge_model": "claude-haiku-4-5", "billing_channel": "anthropic", "price_source": "engine",
                   "judged_utc": "2026-09-16T00:00:00Z", "cost_usd": 0.0, "truncated": False, "planned": 1, "judged": 1,
-                  "null": 0, "not_applicable": 0}
+                  "null": 0, "not_applicable": 0, "judge_max_tokens": 300, "temperature": 0.0}
     sealed = manifest_mod.bind_judgments(run_dir, judgments_path=judgments, report_path=report, judge_of_record=provenance)
     on_disk = framework.load_json(run_dir / "manifest.json")
     assert on_disk == sealed and manifest_mod.manifest_problems(on_disk) == []
@@ -824,12 +824,14 @@ def test_judge_ceiling_bounds_each_call_from_its_own_prompt(tmp_path, seed_set, 
     prompt carrying a 20,000-token conversation could pass the check and breach
     the ceiling after the provider had charged. The bound is now taken from the
     prompt, with the estimator named in the sidecar."""
-    assert judge_runner.estimate_input_tokens("a" * 10) == 4 and judge_runner.estimate_input_tokens("") == 0
+    # Codex round 7: the bound is the UTF-8 byte count, which no byte-fallback tokenizer exceeds for any script
+    assert judge_runner.estimate_input_tokens("a" * 10) == 10 and judge_runner.estimate_input_tokens("") == 0
+    assert judge_runner.estimate_input_tokens("\u65e5\u672c\u8a9e") == 9 and judge_runner.estimate_input_tokens("\U0001f600") == 4
     ceiling = judge_runner.SpendCeiling(0.01, 1.0, 5.0, 300)          # $1/Mtok in, $5/Mtok out, 300 out tokens
     assert ceiling.can_afford("short prompt")                          # 0.0000 + 0.0015
-    long_prompt = "x" * 25_000                                         # 10,000 tokens by the bound -> $0.0100 + $0.0015
+    long_prompt = "x" * 25_000                                         # 25,000 tokens by the bound -> $0.0250 + $0.0015
     assert not ceiling.can_afford(long_prompt) and ceiling.truncated
-    assert ceiling.largest_estimate == 10_000 and ceiling.overrun_usd == 0.0
+    assert ceiling.largest_estimate == 25_000 and ceiling.overrun_usd == 0.0
     ceiling.record(input_tokens=20_000, output_tokens=300)
     assert ceiling.overrun_usd == pytest.approx(0.0115)                # an overrun, if one happened, is reported
     h4, record = _branch_record(seed_set)
@@ -861,7 +863,7 @@ def test_judge_calls_without_usage_are_charged_their_worst_case_and_counted(tmp_
     assert not judge_runner._usage_missing({"usage": {"input_tokens": 1, "output_tokens": 2}})
     ceiling = judge_runner.SpendCeiling(1.0, 1.0, 5.0, 300)
     cost = ceiling.record(0, 0, prompt="x" * 250, usage_missing=True)
-    assert cost == pytest.approx(100 * 1.0 / 1e6 + 300 * 5.0 / 1e6) and ceiling.calls_without_usage == 1
+    assert cost == pytest.approx(250 * 1.0 / 1e6 + 300 * 5.0 / 1e6) and ceiling.calls_without_usage == 1
     h4, record = _branch_record(seed_set)
     plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2)
     report = tmp_path / "run_x.judge.report.json"
@@ -1047,10 +1049,10 @@ def test_bind_judgments_writes_the_manifest_before_the_chain_line_and_repairs_an
     judgments = run_dir / "judgments.jsonl"
     judgments.write_text('{"conversation_id": "c", "value": "a"}\n', encoding="utf-8")
     report = run_dir / "judgments.report.json"
-    report.write_text('{"cost_usd": 0.0}\n', encoding="utf-8")
+    report.write_text(json.dumps({"cost_usd": 0.0, "judgments_sha256": framework.sha256_file(judgments)}) + "\n", encoding="utf-8")
     provenance = {"judge_model": "claude-haiku-4-5", "billing_channel": "anthropic", "price_source": "engine",
                   "judged_utc": "2026-09-16T00:00:00Z", "cost_usd": 0.0, "truncated": False, "planned": 1, "judged": 1,
-                  "null": 0, "not_applicable": 0}
+                  "null": 0, "not_applicable": 0, "judge_max_tokens": 300, "temperature": 0.0}
     real_replace = manifest_mod.replace_chain_head
 
     def interrupted(*a, **k):
@@ -1198,6 +1200,10 @@ def test_a_judge_returned_not_applicable_is_counted_as_not_applicable_everywhere
     by_judge = [r for r in judge_runner.read_jsonl(tmp_path / "j.jsonl") if r["method"] == "judge" and r["value"] == judge_runner.NA]
     assert by_judge, "the outcome prompts accept not_applicable as an answer"
     assert side["judged"] == 0 and side["not_applicable"] == side["cumulative"]["not_applicable"] >= len(by_judge)
+    # Codex round 7: the generation settings and the file the invocation left are provenance in the sidecar and rows
+    assert side["judge_max_tokens"] == 300 and side["temperature"] == judge_runner.TIER_TEMPERATURE
+    assert side["judgments_sha256"] == framework.sha256_file(tmp_path / "j.jsonl")
+    assert all(r["max_tokens"] == 300 and r["temperature"] == judge_runner.TIER_TEMPERATURE for r in by_judge)
 
 
 def test_duplicate_supplied_contexts_are_refused_before_execution(seed_set):
@@ -1225,10 +1231,10 @@ def test_reseal_eligibility_verifies_the_bound_artifacts_with_an_append_recovery
     judgments = run_dir / "judgments.jsonl"
     judgments.write_text('{"conversation_id": "c", "value": "a"}\n', encoding="utf-8")
     report = run_dir / "judgments.report.json"
-    report.write_text('{"cost_usd": 0.0}\n', encoding="utf-8")
+    report.write_text(json.dumps({"cost_usd": 0.0, "judgments_sha256": framework.sha256_file(judgments)}) + "\n", encoding="utf-8")
     provenance = {"judge_model": "claude-haiku-4-5", "billing_channel": "anthropic", "price_source": "engine",
                   "judged_utc": "2026-09-16T00:00:00Z", "cost_usd": 0.0, "truncated": False, "planned": 1, "judged": 1,
-                  "null": 0, "not_applicable": 0}
+                  "null": 0, "not_applicable": 0, "judge_max_tokens": 300, "temperature": 0.0}
     manifest_mod.bind_judgments(run_dir, judgments_path=judgments, report_path=report, judge_of_record=provenance)
     assert manifest_mod.reseal_problems(run_dir) == []
     transcripts = d / base["artifacts"]["transcripts_path"]
@@ -1238,8 +1244,14 @@ def test_reseal_eligibility_verifies_the_bound_artifacts_with_an_append_recovery
     transcripts.write_bytes(original)
     bound = judgments.read_bytes()
     judgments.write_bytes(bound + b'{"conversation_id": "c", "value": "b"}\n')
-    assert manifest_mod.reseal_problems(run_dir) == [], "an unbound append after the bound prefix is recoverable"
+    # Codex round 7: an append past the bound prefix is accepted only when the judge sidecar an invocation wrote
+    # records the file's current digest; an append from anywhere else cannot be authenticated
+    assert any("cannot be authenticated" in p for p in manifest_mod.reseal_problems(run_dir))
+    report.write_text(json.dumps({"cost_usd": 0.0, "judgments_sha256": framework.sha256_file(judgments)}) + "\n", encoding="utf-8")
+    assert manifest_mod.reseal_problems(run_dir) == [], "rows a judge invocation wrote and recorded are recoverable"
     assert manifest_mod.bound_prefix_intact(judgments, framework.sha256_file(judgments))
+    judgments.write_bytes(judgments.read_bytes() + b'{"conversation_id": "c", "value": "c"}\n')
+    assert any("records a different digest" in p for p in manifest_mod.reseal_problems(run_dir))
     judgments.write_bytes(b'{"conversation_id": "c", "value": "edited"}\n')
     assert any("judgments" in p and "no longer starts with the bytes" in p for p in manifest_mod.reseal_problems(run_dir))
     judgments.write_bytes(bound)
@@ -1247,3 +1259,41 @@ def test_reseal_eligibility_verifies_the_bound_artifacts_with_an_append_recovery
     report.write_text('{"cost_usd": 0.5}\n', encoding="utf-8")
     assert manifest_mod.reseal_problems(run_dir) == [], "the judge report is regenerated by every invocation"
     assert not manifest_mod.verify_chain(d)[0], "verify-chain still catches the altered report after binding"
+
+
+# ------------------------------------------------------------ round-7 corrections
+
+
+def test_the_judge_of_record_is_one_exact_spec(tmp_path):
+    """Codex round 7: a resumed pass under another spec (an alias included)
+    re-judged every plan, because dedupe_key carries the spec, and overwrote
+    judge_of_record with the latest model while the rows held both."""
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    manifest = {"artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}}}
+    assert judge_runner.judge_model_problems(run_dir, manifest, "claude-haiku-4-5") == []
+    (run_dir / "judgments.jsonl").write_text('{"judge_model": "claude-haiku-4-5", "value": "a"}\n'
+                                             '{"judge_model": "claude-haiku-4-5", "value": null}\n', encoding="utf-8")
+    assert judge_runner.judge_model_problems(run_dir, manifest, "claude-haiku-4-5") == []
+    problems = judge_runner.judge_model_problems(run_dir, manifest, "anthropic:claude-haiku-4-5")
+    assert len(problems) == 2 and "judge of record is 'claude-haiku-4-5'" in problems[0] and "existing judgment rows" in problems[1]
+    assert judge_runner.judge_model_problems(run_dir, {"artifacts": {"judge_of_record": None}}, "other") and \
+        judge_runner.judge_model_problems(run_dir, {"artifacts": {}}, "claude-haiku-4-5") == []
+
+
+def test_usage_rows_take_token_counts_from_retained_events_when_the_aggregate_lacks_the_model():
+    """Codex round 7: a failed eval can retain a target event with usage but
+    no sample aggregate; the row then had calls and zero tokens and a paid
+    call was priced at zero."""
+    from types import SimpleNamespace as NS
+
+    usage = NS(input_tokens=10, output_tokens=5, total_tokens=15)
+    ev = lambda model, u, role="target": NS(event="model", role=role, model=model, output=NS(usage=u))  # noqa: E731
+    no_aggregate = NS(model_usage={}, events=[ev("m", usage), ev("m", None), ev("m", usage, role="judge"),
+                                              NS(event="info", role="target", model="m", output=None)])
+    with_aggregate = NS(model_usage={"m": usage}, events=[ev("m", usage)])
+    rows = spend.usage_from_samples([no_aggregate, with_aggregate])
+    assert rows == {"m": {"input_tokens": 20, "output_tokens": 10, "total_tokens": 30, "calls": 3, "calls_without_usage": 1}}
+    priced = spend.usage_from_samples([with_aggregate, NS(model_usage={}, events=[ev("n", usage)])])
+    assert priced["n"] == {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15, "calls": 1, "calls_without_usage": 0}
+    assert not spend.usage_is_missing(priced["n"]) and spend.usage_is_missing(rows["m"])

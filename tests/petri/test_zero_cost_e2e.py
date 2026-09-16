@@ -367,7 +367,15 @@ def test_cli_preflight_clears_without_a_model_call(capsys):
     out = capsys.readouterr().out
     assert code == 0 and "preflight: clear (no model call made)" in out
     assert "pre-flight bound" in out and "environment lock" in out
-    assert "holdout seal: no sealed phrase in the selected seeds" in out
+    assert "sealed phrases, no hit in the selected seeds" in out
+
+
+def test_cli_preflight_refuses_an_empty_or_unavailable_sealed_registry(monkeypatch, capsys):
+    """Codex round 7: an empty registry produced no hit and read as clean."""
+    monkeypatch.setattr(cli, "sealed_registry", lambda: {})
+    code = cli.main(["preflight", "--target", "mockllm/model", "--max-spend", "0.01", "--wave", "1", "--no-harness-commit"])
+    captured = capsys.readouterr()
+    assert code == 6 and "empty or unavailable" in captured.err and "environment lock" not in captured.out
 
 
 def test_cli_preflight_refuses_a_sealed_phrase_before_any_model_call(monkeypatch, capsys):
@@ -401,7 +409,7 @@ def test_judging_binds_the_judgments_into_the_manifest_and_verify_chain_covers_t
                             judge_of_record={"judge_model": "mockllm/judge", "billing_channel": "anthropic", "price_source": "zero",
                                              "judged_utc": side["run_utc"], "cost_usd": side["cost_usd"], "truncated": side["truncated"],
                                              "planned": side["planned"], "judged": side["judged"], "null": side["null"],
-                                             "not_applicable": side["not_applicable"]})
+                                             "not_applicable": side["not_applicable"], "judge_max_tokens": 300, "temperature": 0.0})
     after = framework.load_json(out / "manifest.json")
     assert after == sealed and manifest_problems(after) == []
     assert after["chain"]["identity_sha256"] == before["chain"]["identity_sha256"]
@@ -594,7 +602,7 @@ def test_manifest_seeds_carry_their_own_eligibility_and_a_judge_spend_report_cov
     code = cli.main(["judge-spend-report", "--run-dir", str(run_dir), "--judge-model", "claude-haiku-4-5", "--judge-max-spend", "0.05"])
     report = framework.load_json(run_dir / "run_j.judge.report.json")
     assert code == 0 and report["cost_usd"] == 0.05 and report["cost_basis"] == "ceiling_imputed:judge_aborted_without_sidecar"
-    assert report["rows_cost_usd"] == 0.0 and report["cumulative"]["keys"] == 0
+    assert report["rows_cost_usd"] == 0.0 and report["cumulative"]["keys"] == 0 and report["judgments_sha256"] is None
     assert report["aborted"] is True and report["billing_channel"] == "anthropic" and report["task"] == "petri-audit-judge"
     (run_dir / "run_j.judge.report.json").unlink()
     (run_dir / "judgments.jsonl").write_text('{"conversation_id": "c", "turn_id": 2, "kind": "tier", "key": "response_only", '
@@ -605,6 +613,7 @@ def test_manifest_seeds_carry_their_own_eligibility_and_a_judge_spend_report_cov
     assert code == 0 and report["cost_usd"] == 0.05 and report["cost_basis"] == "ceiling_imputed:judge_aborted_without_sidecar"
     assert report["rows_cost_usd"] == 0.002 and report["cumulative"]["judged"] == 1
     assert "1 row(s) survived" in report["spend_report_reason"]
+    assert report["judgments_sha256"] == framework.sha256_file(run_dir / "judgments.jsonl"), "the rows it found are recorded"
     # a zero-price judge books zero whatever survived
     (run_dir / "run_j.judge.report.json").unlink()
     assert cli.main(["judge-spend-report", "--run-dir", str(run_dir), "--judge-model", "mockllm:model", "--judge-max-spend", "0.05"]) == 0
@@ -631,3 +640,23 @@ def test_judge_refuses_a_run_that_is_not_the_chain_head_before_any_call(run, tmp
     assert code == 9
     assert not (data_dir / "run_a" / "judgments.jsonl").exists() and not (data_dir / "run_a" / "run_a.judge.report.json").exists()
     assert verify_chain(data_dir)[0]
+
+
+def test_judge_refuses_a_resume_under_another_spec_before_any_call(run, tmp_path_factory):
+    """Codex round 7: a resumed judge under a different spec re-judged every
+    plan and overwrote the judge of record. A run whose rows a prior
+    invocation wrote under one spec refuses another spec (exit 10) before any
+    call; the rows themselves are accepted because that invocation's sidecar
+    records the file it left."""
+    data_dir = tmp_path_factory.mktemp("pinned")
+    _adapt(run["eval_path"], run["seed_set"], data_dir / "run_p")
+    judgments = data_dir / "run_p" / "judgments.jsonl"
+    judgments.write_text('{"conversation_id": "c", "turn_id": 2, "kind": "tier", "key": "response_only", "prompt_file_digest": "d", '
+                         '"judge_model": "mockllm/judge", "value": null, "method": "judge", "cost_usd": 0.0}\n', encoding="utf-8")
+    assert any("cannot be authenticated" in p for p in reseal_problems(data_dir / "run_p"))
+    (data_dir / "run_p" / "run_p.judge.report.json").write_text(
+        json.dumps({"cost_usd": 0.0, "judgments_sha256": framework.sha256_file(judgments)}), encoding="utf-8")
+    assert reseal_problems(data_dir / "run_p") == []
+    code = cli.main(["judge", "--run-dir", str(data_dir / "run_p"), "--judge-model", "claude-haiku-4-5", "--judge-max-spend", "0.05"])
+    assert code == 10
+    assert judgments.read_text(encoding="utf-8").count("\n") == 1, "no row was added"

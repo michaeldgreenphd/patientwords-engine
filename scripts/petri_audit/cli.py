@@ -32,7 +32,14 @@ from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, s
 from .manifest import bind_judgments, reseal_problems, verify_chain
 from .seal import sealed_registry, seed_texts_against_registry
 from .seeds import conditions, load_seed_file, select_seeds, validate_seed
-from .spend import judge_billing_channel, preflight_bound, resolve_price, resolve_registry_price, write_report_sidecar
+from .spend import (
+    judge_billing_channel,
+    preflight_bound,
+    resolve_price,
+    resolve_registry_price,
+    usage_from_samples,
+    write_report_sidecar,
+)
 
 DEFAULT_RUNS_DIR = ROOT / "data" / "petri" / "runs"
 
@@ -84,12 +91,20 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
         return 4, {}
     # the holdout seal is checked here, before any model call, not only at adaptation (Codex round 6): a seed that
     # copied a sealed phrase would otherwise expose the holdout to the target before the adapter refused publication
-    sealed_hits = seed_texts_against_registry([t["text"] for s in seeds for t in s["texts"]], sealed_registry())
+    registry_sealed = sealed_registry()
+    if not registry_sealed:
+        # an empty registry is not a clean scan (Codex round 7): without tierb.start_utc in the dashboard or the
+        # Tier B batches, nothing can establish that the seeds carry no sealed phrase, so the run is refused
+        print("holdout seal: the sealed registry is empty or unavailable (no tierb.start_utc in the dashboard, or no "
+              "Tier B batches); the holdout cannot be established unexposed, so the run is refused before any model call",
+              file=sys.stderr)
+        return 6, {}
+    sealed_hits = seed_texts_against_registry([t["text"] for s in seeds for t in s["texts"]], registry_sealed)
     if sealed_hits:
         print(f"holdout seal: {len(sealed_hits)} sealed phrase(s) in the selected seeds ({', '.join(sealed_hits[:5])}); "
               "the pilot uses the explore split only; refused before any model call", file=sys.stderr)
         return 6, {}
-    print("holdout seal: no sealed phrase in the selected seeds")
+    print(f"holdout seal: {len(registry_sealed)} sealed phrases, no hit in the selected seeds")
     lock_report = verify_lock(load_lock(args.lock), harness_commit_known=not args.no_harness_commit, lock_path=args.lock)
     print("\n".join(report_lines(lock_report)))
     if not lock_report.ok:
@@ -187,25 +202,13 @@ def cmd_spend_report(args: argparse.Namespace) -> int:
     model_usage: dict[str, dict] = {}
     extra: dict = {"spend_report_reason": args.reason, "eval_log": None, "run_status": None}
     if args.eval:
-        from inspect_ai.event import ModelEvent  # 3.12 only
-        from inspect_ai.log import read_eval_log
+        from inspect_ai.log import read_eval_log  # 3.12 only
 
         log = read_eval_log(str(args.eval))
         extra.update(eval_log=Path(args.eval).name, run_status=log.status, eval_id=log.eval.eval_id)
-        for sample in log.samples or []:
-            for model, usage in (sample.model_usage or {}).items():
-                row = model_usage.setdefault(model, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0,
-                                                     "calls": 0, "calls_without_usage": 0})
-                row["input_tokens"] += int(usage.input_tokens or 0)
-                row["output_tokens"] += int(usage.output_tokens or 0)
-                row["total_tokens"] += int(usage.total_tokens or 0)
-            for e in sample.events:
-                if isinstance(e, ModelEvent) and e.role == "target":
-                    row = model_usage.setdefault(e.model, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0,
-                                                           "calls": 0, "calls_without_usage": 0})
-                    row["calls"] += 1
-                    if e.output is None or e.output.usage is None:
-                        row["calls_without_usage"] += 1
+        # token counts from the sample aggregates, else from the retained events' own usage (Codex round 7: a row
+        # with calls and zero tokens priced a paid call at zero); calls counted from the events
+        model_usage = usage_from_samples(log.samples or [])
         if not model_usage and log.stats and log.stats.model_usage:
             for model, usage in log.stats.model_usage.items():
                 model_usage[model] = {"input_tokens": int(usage.input_tokens or 0), "output_tokens": int(usage.output_tokens or 0),
@@ -232,14 +235,15 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
     under `can_afford`, so the judge ceiling bounds the total: a priced judge
     is booked at its ceiling with the surviving rows' sum recorded beside it,
     a zero-price judge at zero (Codex rounds 4 and 5)."""
-    from .judge_runner import cumulative_counts, read_jsonl
+    from .judge_runner import TIER_TEMPERATURE, cumulative_counts, read_jsonl
 
     run_dir = Path(args.run_dir)
     report_path = run_dir / f"{run_dir.name}.judge.report.json"
     if report_path.is_file():
         print(f"{report_path} exists; nothing to impute")
         return 0
-    rows = read_jsonl(run_dir / "judgments.jsonl")
+    judgments_path = run_dir / "judgments.jsonl"
+    rows = read_jsonl(judgments_path)
     price = resolve_registry_price(args.judge_model)
     channel = judge_billing_channel(args.judge_model)
     zero_priced = price.input_per_mtok == 0 and price.output_per_mtok == 0
@@ -255,6 +259,8 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
                "judge_model": args.judge_model, "cost_usd": cost, "run_cost_usd": cost, "prior_cost_usd": 0.0,
                "rows_cost_usd": rows_cost, "cost_basis": basis, "max_spend_usd": float(args.judge_max_spend), "truncated": None, "aborted": True,
                "abort_error": None, "spend_report_reason": reason, "cumulative": cumulative_counts(rows),
+               "judgments_sha256": sha256_file(judgments_path) if judgments_path.is_file() else None,
+               "judge_max_tokens": args.judge_max_tokens, "temperature": TIER_TEMPERATURE,
                "task": "petri-audit-judge", "run_id": run_dir.name, "billing_channel": channel,
                "price_source": price.source, "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok}
     write_json(report_path, sidecar)
@@ -265,10 +271,12 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
 def cmd_judge(args: argparse.Namespace) -> int:
     from .adapter import read_records
     from .judge_runner import (
+        TIER_TEMPERATURE,
         JudgeAborted,
         RegistryJudge,
         SpendCeiling,
         cumulative_counts,
+        judge_model_problems,
         labels_from_manifest,
         load_rubric,
         plan_run,
@@ -285,6 +293,13 @@ def cmd_judge(args: argparse.Namespace) -> int:
             print(f"refused before any judge call: {r}", file=sys.stderr)
         return 9
     manifest = load_json(run_dir / "manifest.json")
+    # the judge of record is one spec: a bound judge or existing rows under another spec refuse the pass before any
+    # call, because dedupe_key carries the spec and a second spec would re-judge every plan (Codex round 7)
+    pinned = judge_model_problems(run_dir, manifest, args.judge_model)
+    if pinned:
+        for p in pinned:
+            print(f"refused before any judge call: {p}", file=sys.stderr)
+        return 10
     records = read_records(run_dir / "transcripts.jsonl")
     seed_set = load_seed_file(args.seeds)
     plans = plan_run(records, manifest, seed_set.seeds, outcomes=load_json(OUTCOME_REGISTRY), rubric=load_rubric())
@@ -318,7 +333,8 @@ def cmd_judge(args: argparse.Namespace) -> int:
                                              "price_source": price.source, "judged_utc": sidecar["run_utc"],
                                              "cost_usd": sidecar["cost_usd"], "truncated": sidecar["truncated"],
                                              "planned": sidecar["planned"], "judged": totals["judged"],
-                                             "null": totals["null"], "not_applicable": totals["not_applicable"]})
+                                             "null": totals["null"], "not_applicable": totals["not_applicable"],
+                                             "judge_max_tokens": args.judge_max_tokens, "temperature": TIER_TEMPERATURE})
     print(json.dumps(sidecar, indent=2))
     print(f"manifest resealed: judgments bound ({sealed['artifacts']['judgments_sha256'][:12]}), "
           f"identity {sealed['chain']['identity_sha256'][:12]} unchanged")
@@ -433,6 +449,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--run-dir", required=True)
     p.add_argument("--judge-model", required=True)
     p.add_argument("--judge-max-spend", type=float, required=True)
+    p.add_argument("--judge-max-tokens", type=int, default=None)
     p.set_defaults(func=cmd_judge_spend_report)
 
     p = sub.add_parser("judge")

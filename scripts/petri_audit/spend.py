@@ -228,6 +228,43 @@ def preflight_bound(*, samples: int, epochs: int, token_limit: int, price: Price
                           judge_reserve_usd=judge_reserve_usd, total_usd=total, max_spend_usd=max_spend_usd)
 
 
+def usage_from_samples(samples: Any, role: str = "target") -> dict[str, dict[str, Any]]:
+    """Per-model usage rows from Inspect samples (duck-typed, so the 3.11 suite
+    can test it): token counts from the sample's aggregate `model_usage` when
+    it has the model, else from the model event's own `output.usage` (Codex
+    round 7: a failed eval can retain events with usage but no aggregate, and
+    a row with calls and zero tokens priced a paid call at zero); calls
+    counted from the events of the given role; an event without a usage block
+    counted in `calls_without_usage`, never priced as zero."""
+    rows: dict[str, dict[str, Any]] = {}
+
+    def row(model: str) -> dict[str, Any]:
+        return rows.setdefault(model, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0,
+                                       "calls": 0, "calls_without_usage": 0})
+
+    def add(r: dict[str, Any], usage: Any) -> None:
+        r["input_tokens"] += int(getattr(usage, "input_tokens", 0) or 0)
+        r["output_tokens"] += int(getattr(usage, "output_tokens", 0) or 0)
+        r["total_tokens"] += int(getattr(usage, "total_tokens", 0) or 0)
+
+    for sample in samples:
+        aggregate = dict(getattr(sample, "model_usage", None) or {})
+        for model, usage in aggregate.items():
+            add(row(model), usage)
+        for e in getattr(sample, "events", None) or []:
+            if getattr(e, "event", None) != "model" or getattr(e, "role", None) != role:
+                continue
+            r = row(e.model)
+            r["calls"] += 1
+            output = getattr(e, "output", None)
+            usage = getattr(output, "usage", None) if output is not None else None
+            if usage is None:
+                r["calls_without_usage"] += 1
+            elif e.model not in aggregate:
+                add(r, usage)
+    return rows
+
+
 def usage_is_missing(usage: dict[str, Any]) -> bool:
     """A usage row cannot be priced when a token count is absent (None or no
     key) or when any of its calls returned no usage block at all

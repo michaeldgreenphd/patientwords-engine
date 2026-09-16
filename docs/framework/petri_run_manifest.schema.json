@@ -746,13 +746,25 @@
             "null",
             "not_applicable",
             "report_path",
-            "report_sha256"
+            "report_sha256",
+            "judge_max_tokens",
+            "temperature"
           ],
           "properties": {
             "judge_model": {
               "type": "string",
               "minLength": 1,
               "description": "Registry spec (provider:model or a bare Anthropic id)."
+            },
+            "judge_max_tokens": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The output allowance every judge call was made with."
+            },
+            "temperature": {
+              "type": "number",
+              "minimum": 0,
+              "description": "The sampling temperature every judge call was made with."
             },
             "billing_channel": {
               "type": "string",

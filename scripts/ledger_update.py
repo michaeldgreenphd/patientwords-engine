@@ -411,9 +411,14 @@ def main(argv=None):
     # attribution by construction.
     entries_folded = spend.setdefault("entries_folded", {})
     seen_set = set(entries_seen)
+    petri_dir = Path(args.petri_dir)
     for scan_dir, pattern in scan_specs:
         if not Path(scan_dir).is_dir():
             continue
+        # Petri judge sidecars are cumulative to eight decimals and a resumed retry through a cheap provider can
+        # legitimately add $0.0005 or less; the rounding-noise floor below would drop such a delta for good
+        # (Codex round 7 on PR #26), so every positive Petri delta folds
+        min_delta = 0.0 if Path(scan_dir) == petri_dir else 0.0005
         for path in sorted(Path(scan_dir).glob(pattern)):
             key = sidecar_key(path)
             if key not in seen_set and path.name not in seen_set:
@@ -428,8 +433,8 @@ def main(argv=None):
             if key not in entries_folded:
                 prior = folded_from_ledger(ledger_path, key)
                 entries_folded[key] = prior if prior is not None else current
-            delta = round(current - float(entries_folded[key]), 6)
-            if delta > 0.0005:
+            delta = round(current - float(entries_folded[key]), 8)
+            if delta > min_delta:
                 # book to the sidecar's own run day: a bootstrap can surface
                 # WEEKS-old underbooking, and charging that to today would
                 # poison the daily guard (first live run found $8.06 of July

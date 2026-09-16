@@ -317,7 +317,7 @@ jobs:
           JUDGE: ${{ needs.params.outputs.judge }}
           JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
           TOKEN_LIMIT: ${{ needs.params.outputs.token_limit }}
-          RUN_STEM: run_${{ github.run_id }}
+          RUN_STEM: run_${{ github.run_id }}_${{ github.run_attempt }}
         run: |
           EVAL=$(ls "$RUNNER_TEMP"/petri-run/logs/*.eval | head -n 1)
           ARGS=""
@@ -341,7 +341,7 @@ jobs:
           JUDGE_MODEL: ${{ needs.params.outputs.judge_model }}
           JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
           JUDGE_MAX_TOKENS: ${{ needs.params.outputs.judge_max_tokens }}
-          RUN_STEM: run_${{ github.run_id }}
+          RUN_STEM: run_${{ github.run_id }}_${{ github.run_attempt }}
         run: |
           # the marker lets the spend-report step tell a judge that started and died from one that never ran
           touch "$RUNNER_TEMP/petri-run/judge_started"
@@ -375,7 +375,8 @@ jobs:
           JUDGE: ${{ needs.params.outputs.judge }}
           JUDGE_MODEL: ${{ needs.params.outputs.judge_model }}
           JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
-          RUN_STEM: run_${{ github.run_id }}
+          JUDGE_MAX_TOKENS: ${{ needs.params.outputs.judge_max_tokens }}
+          RUN_STEM: run_${{ github.run_id }}_${{ github.run_attempt }}
         run: |
           REPORT="data/petri/runs/$RUN_STEM/$RUN_STEM.report.json"
           if [ -f "$REPORT" ]; then
@@ -394,14 +395,14 @@ jobs:
           # the surviving rows recorded beside it; a judge that never started books nothing
           if [ -f "$RUNNER_TEMP/petri-run/judge_started" ] && [ ! -f "data/petri/runs/$RUN_STEM/$RUN_STEM.judge.report.json" ]; then
             python -m scripts.petri_audit.cli judge-spend-report --run-dir "data/petri/runs/$RUN_STEM" \
-              --judge-model "$JUDGE_MODEL" --judge-max-spend "$JUDGE_MAX_SPEND"
+              --judge-model "$JUDGE_MODEL" --judge-max-spend "$JUDGE_MAX_SPEND" --judge-max-tokens "$JUDGE_MAX_TOKENS"
           fi
 
       - name: Upload the raw .eval as a workflow artifact (90-day custody; never committed)
         if: ${{ always() && needs.params.outputs.mode != 'preflight' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: petri-audit-raw-eval-${{ github.run_id }}
+          name: petri-audit-raw-eval-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/petri-run/logs/
           retention-days: 90
           if-no-files-found: warn
@@ -413,7 +414,7 @@ jobs:
         if: ${{ needs.params.outputs.mode == 'run' && needs.params.outputs.commit_outputs == 'true' }}
         env:
           BRANCH: ${{ github.ref_name }}
-          RUN_STEM: run_${{ github.run_id }}
+          RUN_STEM: run_${{ github.run_id }}_${{ github.run_attempt }}
         run: |
           set -euo pipefail
           if find data/petri -name '*.eval' | grep -q .; then echo "raw log present; refusing" >&2; exit 1; fi
@@ -439,7 +440,7 @@ jobs:
         if: ${{ always() && needs.params.outputs.mode == 'run' }}
         env:
           BRANCH: ${{ github.ref_name }}
-          RUN_STEM: run_${{ github.run_id }}
+          RUN_STEM: run_${{ github.run_id }}_${{ github.run_attempt }}
         run: |
           set -euo pipefail
           if find data/petri -name '*.eval' | grep -q .; then echo "raw log present; refusing" >&2; exit 1; fi
@@ -471,7 +472,7 @@ jobs:
       - name: Job summary
         if: ${{ always() }}
         env:
-          RUN_STEM: run_${{ github.run_id }}
+          RUN_STEM: run_${{ github.run_id }}_${{ github.run_attempt }}
           MODE: ${{ needs.params.outputs.mode }}
         run: |
           {

@@ -93,6 +93,19 @@ def test_fire_path_refuses_a_bad_judge_token_allowance(capsys):
     assert ft.petri_params_problems(dict(base, judge_max_tokens=300)) == []
 
 
+def test_every_attempt_gets_its_own_run_directory_and_the_judge_fallback_records_its_tokens(workflow):
+    """Codex round 7: a re-run keeps github.run_id, so the paid attempt reused
+    the previous attempt's run directory and sidecar names."""
+    stems = [step["env"]["RUN_STEM"] for job in workflow["jobs"].values() for step in job.get("steps", [])
+             if "RUN_STEM" in (step.get("env") or {})]
+    assert len(stems) >= 6 and all(s == "run_${{ github.run_id }}_${{ github.run_attempt }}" for s in stems), stems
+    upload = _step(workflow, "Upload the raw .eval")
+    assert "github.run_attempt" in upload["with"]["name"]
+    report = _step(workflow, "Spend report")
+    assert report["env"]["JUDGE_MAX_TOKENS"] == "${{ needs.params.outputs.judge_max_tokens }}"
+    assert '--judge-max-tokens "$JUDGE_MAX_TOKENS"' in report["run"]
+
+
 def test_defaults_cover_every_trigger_key_and_dispatch_input(workflow, defaults):
     on = workflow.get("on") or workflow.get(True)
     inputs = set(on["workflow_dispatch"]["inputs"])

@@ -247,12 +247,19 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         # calls are counted from the events themselves, so a model Inspect recorded no usage for still shows its
         # calls; a call whose output carries no usage block is counted as such and never priced as zero
         # (spend.reprice_usage refuses a priced model with missing usage)
+        aggregated = {id(model_usage): set((sample.model_usage or {}).keys()),
+                      id(role_usage): set((sample.role_usage or {}).keys())}
         for e in model_events:
+            usage = e.output.usage if e.output is not None else None
             for bucket, key in ((model_usage, e.model), (role_usage, e.role or "target")):
                 row = usage_row(bucket, key)
                 row["calls"] += 1
-                if e.output is None or e.output.usage is None:
+                if usage is None:
                     row["calls_without_usage"] += 1
+                elif key not in aggregated[id(bucket)]:
+                    # an event with usage whose model the sample aggregate lacks would otherwise be a row with calls
+                    # and zero tokens, priced at zero (Codex round 7)
+                    accumulate(bucket, key, usage)
         served = {e.output.model for e in model_events if e.output and e.output.model}
         served_all |= served
         if seed is None:
