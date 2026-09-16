@@ -386,8 +386,8 @@ jobs:
               --target "$TARGET" --max-spend "$MAX_SPEND" $ARGS \
               --reason "run attempted; no adapted report exists (run or adaptation failed)"
           fi
-          # a judge that started (marker) and left no sidecar (the client raised, the process died) is booked from
-          # its rows or at its ceiling; a judge that never started books nothing
+          # a judge that started (marker) and left no sidecar (the process died mid-call) is booked at its ceiling with
+          # the surviving rows recorded beside it; a judge that never started books nothing
           if [ -f "$RUNNER_TEMP/petri-run/judge_started" ] && [ ! -f "data/petri/runs/$RUN_STEM/$RUN_STEM.judge.report.json" ]; then
             python -m scripts.petri_audit.cli judge-spend-report --run-dir "data/petri/runs/$RUN_STEM" \
               --judge-model "$JUDGE_MODEL" --judge-max-spend "$JUDGE_MAX_SPEND"

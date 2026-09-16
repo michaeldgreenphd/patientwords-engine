@@ -32,6 +32,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol
 
+from .checks import ROOT_BRANCH
 from .framework import (
     ADVICE_RUBRIC,
     ROOT,
@@ -416,7 +417,8 @@ def run_judgments(plans: list[JudgePlan], client: JudgeClient, *, out_path: Path
     # sidecar is cumulative over every row so the ledger's growth pass books each invocation's delta
     ceiling.preload(sum(float(j.get("cost_usd") or 0.0) for j in existing),
                     sum(1 for j in existing if j.get("usage_missing")))
-    counts = {"planned": len(plans), "already_judged": 0, "not_applicable": 0, "judged": 0, "null": 0, "stopped_early": False}
+    counts = {"planned": len(plans), "already_judged": 0, "not_applicable": 0, "judged": 0, "null": 0, "stopped_early": False,
+              "call_failures": 0}
     out_path.parent.mkdir(parents=True, exist_ok=True)
     abort_error: str | None = None
     try:
@@ -500,7 +502,25 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
             if not ceiling.can_afford(p.prompt):
                 counts["stopped_early"] = True
                 break
-            reply = client.complete(p.prompt, max_tokens=judge_max_tokens, temperature=TIER_TEMPERATURE)
+            try:
+                reply = client.complete(p.prompt, max_tokens=judge_max_tokens, temperature=TIER_TEMPERATURE)
+            except Exception as exc:  # noqa: BLE001 - the provider may have charged a call the client never returned
+                # Codex round 5: a call that raises after the request was accepted is charged its worst case (the bound
+                # can_afford admitted) and written as a null row, so the aborted sidecar agrees with the rows and a
+                # resumed pass retries the key; the exception then propagates to run_judgments
+                cost = ceiling.record(0, 0, prompt=p.prompt, usage_missing=True)
+                row = {**base, "value": None, "flags": None, "method": "judge",
+                       "annotator": f"judge:{client.model_spec}:{p.prompt_file_digest}", "not_applicable_reason": None,
+                       "rendered_sha256": sha256_text(p.prompt), "context_sha256": p.context_sha256,
+                       "served_model": None, "judge_raw": None, "judge_request_id": None, "judged_utc": now_fn(),
+                       "input_tokens": None, "output_tokens": None, "usage_missing": True,
+                       "cost_basis": "imputed_worst_case:call_failed", "cost_usd": round(cost, 8),
+                       "judge_error": f"call failed: {type(exc).__name__}: {exc}"}
+                fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+                fh.flush()
+                counts["null"] += 1
+                counts["call_failures"] += 1
+                raise
             cost = ceiling.record(reply.input_tokens, reply.output_tokens, prompt=p.prompt, usage_missing=reply.usage_missing)
             value, flags, error = parse_answer(reply.text, p.allowed_values, p.kind, p.allowed_flags if p.kind == "tier" else None)
             served = reply.served_model or client.model_spec
@@ -597,17 +617,46 @@ def load_rubric(path: Path | str = ADVICE_RUBRIC) -> dict:
     return load_json(path)
 
 
-def evidence_turn_ids_for(record: dict, seed: dict, branch_id: str) -> set[int]:
-    """turn_ids of user turns that a seed declares as `evidence` context in the
-    branch or arm this record realises (by text digest, never by position)."""
-    evidence_refs: set[str] = set()
-    for arm in seed["protocol"]["arms"]:
-        evidence_refs |= {t["text_ref"] for t in arm["turns"] if t.get("context_role") == "evidence"}
-    for b in seed["protocol"]["branches"]:
-        if b["id"] == branch_id:
-            evidence_refs |= {t["text_ref"] for t in b["turns"] if t.get("context_role") == "evidence"}
-    evidence_texts = {text_of(seed, ref) for ref in evidence_refs}
-    return {t["turn_id"] for t in record["turns"] if t["role"] == "user" and t["text"] in evidence_texts}
+def declared_user_turns(seed: dict, arm_id: str, branch_id: str) -> list[dict]:
+    """The seed's declared user-turn entries (`text_ref`, `context_role`) a
+    record of this arm and branch carries, in order: the arm's turns on the
+    root; the arm's turns up to the anchor, then the branch's own, on a
+    branch (the same sequence `checks.expected_stimuli` verifies)."""
+    arm = next((a for a in seed["protocol"]["arms"] if a["id"] == arm_id), None)
+    if arm is None:
+        raise KeyError(f"{seed['seed_id']}: arm {arm_id!r} is not declared")
+    if branch_id == ROOT_BRANCH:
+        return list(arm["turns"])
+    anchor = seed["protocol"]["branch_anchor"]
+    if anchor is None:
+        raise KeyError(f"{seed['seed_id']}: branch {branch_id!r} declared without a branch_anchor")
+    branch = next((b for b in seed["protocol"]["branches"] if b["id"] == branch_id), None)
+    if branch is None:
+        raise KeyError(f"{seed['seed_id']}: branch {branch_id!r} is not declared")
+    return list(arm["turns"][: anchor["after_arm_turn"]]) + list(branch["turns"])
+
+
+def evidence_turn_ids_for(record: dict, seed: dict, branch_id: str, arm_id: str) -> set[int]:
+    """turn_ids of the record's user turns the seed declares as `evidence`
+    context, by position in the declared arm-and-branch sequence the record
+    realises (Codex round 5: matching by text pooled every arm's evidence
+    texts and marked any user turn carrying one, so a control turn sharing an
+    evidence turn's text was supplied to the judge as evidence). The record's
+    user turns must match the declared sequence in number and text; a
+    mismatch is refused, never guessed over."""
+    declared = declared_user_turns(seed, arm_id, branch_id)
+    user_turns = [t for t in record["turns"] if t["role"] == "user"]
+    if len(user_turns) != len(declared):
+        raise ValueError(f"{record['conversation_id']}: {len(user_turns)} user turns, but seed {seed['seed_id']} arm "
+                         f"{arm_id!r} branch {branch_id!r} declares {len(declared)}")
+    out: set[int] = set()
+    for turn, entry in zip(user_turns, declared):
+        if turn["text"] != text_of(seed, entry["text_ref"]):
+            raise ValueError(f"{record['conversation_id']}: user turn {turn['turn_id']} does not carry the declared text "
+                             f"{entry['text_ref']!r}")
+        if entry.get("context_role") == "evidence":
+            out.add(turn["turn_id"])
+    return out
 
 
 def labels_from_manifest(manifest: dict) -> dict[str, dict]:
@@ -631,7 +680,7 @@ def plan_run(records: list[dict], manifest: dict, seeds: dict[str, dict], *, out
     for record in records:
         tree, branch = by_conv[record["conversation_id"]]
         seed = seeds[tree["seed_id"]]
-        evidence_ids = evidence_turn_ids_for(record, seed, branch["branch_id"])
+        evidence_ids = evidence_turn_ids_for(record, seed, branch["branch_id"], tree["arm"])
         plans.extend(plan_record(record, seed, outcomes=outcomes, rubric=rubric,
                                  branched_from_turn_id=branch["branched_from_turn_id"], evidence_turn_ids=evidence_ids))
     return plans

@@ -25,9 +25,11 @@ removed after binding is detected.
 """
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
 
-from .framework import MANIFEST_SCHEMA, canonical_json, load_json, sha256_file, sha256_text, validate_with_refs, write_json
+from .framework import MANIFEST_SCHEMA, canonical_json, load_json, sha256_file, sha256_text, validate_with_refs
 
 MANIFEST_VERSION = "0.2"
 CHAIN_FILE = "manifests.chain"           # one manifest digest per line, append-only, per data directory
@@ -79,6 +81,19 @@ def chain_head(data_dir: Path) -> str | None:
         return None
     lines = [ln.strip() for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
     return lines[-1].split()[-1] if lines else None
+
+
+def chain_head_line(data_dir: Path) -> tuple[str, str] | None:
+    """(relative manifest path, digest) of the chain's last line; None when
+    the chain does not exist or is empty."""
+    path = data_dir / CHAIN_FILE
+    if not path.is_file():
+        return None
+    lines = [ln.strip() for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    if not lines:
+        return None
+    rel, digest = lines[-1].rsplit(" ", 1)
+    return rel, digest
 
 
 def append_chain(data_dir: Path, manifest: dict, manifest_path: Path) -> None:
@@ -136,28 +151,68 @@ def verify_chain(data_dir: Path) -> tuple[bool, str]:
 def replace_chain_head(data_dir: Path, manifest_path: Path, old_digest: str, new_digest: str) -> None:
     """Rewrite the chain's last line for a manifest being resealed. Only the
     head may be resealed: a later manifest links to this one's digest, and
-    changing an interior line would break every successor."""
+    changing an interior line would break every successor. Written atomically
+    (temp file, then rename)."""
     path = data_dir / CHAIN_FILE
     lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
     rel = manifest_path.resolve().relative_to(data_dir.resolve()).as_posix()
     if not lines or lines[-1] != f"{rel} {old_digest}":
         raise ValueError(f"{rel} is not the chain head; only the head manifest can be resealed")
     lines[-1] = f"{rel} {new_digest}"
-    path.write_text("".join(ln + "\n" for ln in lines), encoding="utf-8")
+    _atomic_write_text(path, "".join(ln + "\n" for ln in lines))
+
+
+def reseal_problems(run_dir: Path) -> list[str]:
+    """Why the run's manifest cannot be resealed, established before the judge
+    spends anything (Codex round 5: `judge` used to append rows and rewrite
+    the sidecar first and learn at binding time that the run was no longer
+    the chain head, leaving the manifest's recorded digests stale). Empty
+    when the manifest digests to its own seal and the chain's last line names
+    it; the line's digest may differ from the manifest's only in the state a
+    reseal leaves when interrupted between the manifest write and the chain
+    write, which the next binding repairs."""
+    run_dir = Path(run_dir)
+    data_dir = run_dir.parent
+    manifest_path = run_dir / "manifest.json"
+    if not manifest_path.is_file():
+        return [f"{manifest_path} is missing"]
+    head = chain_head_line(data_dir)
+    if head is None:
+        return [f"{data_dir / CHAIN_FILE} is missing or empty"]
+    rel = manifest_path.resolve().relative_to(data_dir.resolve()).as_posix()
+    problems: list[str] = []
+    if head[0] != rel:
+        problems.append(f"{rel} is not the chain head ({head[0]} is); only the head manifest can be resealed")
+    manifest = load_json(manifest_path)
+    if manifest_digest(manifest) != manifest["chain"]["manifest_sha256"]:
+        problems.append(f"{rel} does not digest to its own seal")
+    return problems
 
 
 def bind_judgments(run_dir: Path, *, judgments_path: Path, report_path: Path, judge_of_record: dict) -> dict:
     """After the judge of record has written `judgments.jsonl` and its report,
     record both in the run's manifest (path, digest, provenance), reseal it
     with the same `prev_sha256`, assert the identity digest is unchanged (so
-    every transcript bound to it stays bound), validate, write, and replace
-    the chain head line. Raises rather than writing anything on any failure."""
+    every transcript bound to it stays bound), validate, write the manifest,
+    then replace the chain head line. Raises before writing anything when the
+    run is not resealable (`reseal_problems`) or the reseal fails validation.
+    The manifest is written before the chain line that references it, each
+    atomically, so an interruption between the two leaves a manifest that
+    digests to its own seal under a stale head line, a state `reseal_problems`
+    accepts and the next binding repairs (Codex round 5: the reverse order
+    left a chain line naming a digest no manifest had)."""
     run_dir = Path(run_dir)
     data_dir = run_dir.parent
     manifest_path = run_dir / "manifest.json"
+    problems = reseal_problems(run_dir)
+    if problems:
+        raise ValueError("; ".join(problems))
+    head = chain_head_line(data_dir)
+    if head is None:                                   # reseal_problems already refused this; defensive, not reachable
+        raise ValueError(f"{data_dir / CHAIN_FILE} is missing or empty")
     manifest = load_json(manifest_path)
     before_identity = manifest["chain"]["identity_sha256"]
-    before_digest = manifest["chain"]["manifest_sha256"]
+    before_digest = head[1]                            # the line's digest, which equals the manifest's unless interrupted
 
     def rel(p: Path) -> str:
         return p.resolve().relative_to(data_dir.resolve()).as_posix()
@@ -172,10 +227,18 @@ def bind_judgments(run_dir: Path, *, judgments_path: Path, report_path: Path, ju
     problems = manifest_problems(sealed)
     if problems:
         raise ValueError("manifest does not validate after binding the judgments: " + "; ".join(problems[:8]))
-    replace_chain_head(data_dir, manifest_path, before_digest, sealed["chain"]["manifest_sha256"])
     write_manifest(manifest_path, sealed)
+    replace_chain_head(data_dir, manifest_path, before_digest, sealed["chain"]["manifest_sha256"])
     return sealed
 
 
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Write via a temp file in the same directory and rename, so a reader
+    never sees a partial file and an interruption leaves the old one."""
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+
+
 def write_manifest(path: Path, manifest: dict) -> None:
-    write_json(path, manifest)
+    _atomic_write_text(Path(path), json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")

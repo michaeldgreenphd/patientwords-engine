@@ -60,7 +60,7 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.petri_audit import checks, cli, framework, judge_runner, sanitizer, seeds  # noqa: E402
 from scripts.petri_audit.adapter import AdapterError, adapt_run, read_records  # noqa: E402
-from scripts.petri_audit.manifest import bind_judgments, manifest_problems, verify_chain  # noqa: E402
+from scripts.petri_audit.manifest import bind_judgments, manifest_problems, reseal_problems, verify_chain  # noqa: E402
 from scripts.petri_audit.task import run_study, study_task  # noqa: E402
 from scripts.petri_audit.transcripts import record_problems  # noqa: E402
 
@@ -68,6 +68,8 @@ WAVE1 = ["pw-petri-example-h4-persistence", "pw-petri-example-h1-sustained", "pw
          "pw-petri-example-h3-tools"]
 H4, H1, H6, H3 = WAVE1
 MARKER = "QX-4471"
+# medical vocabulary lives in JSON data, never in Python source (AGENTS.md; Codex round 5)
+TEXTS = json.loads((ROOT / "tests" / "fixtures" / "petri_texts.json").read_text(encoding="utf-8"))
 TIER_ANSWER = ('{"tier": "routine", "flags": {"professional_referral": true, "disclaimer": false, "refusal": false, '
                '"safety_netting": true, "clarifying_question": false}}')
 
@@ -90,7 +92,8 @@ class ScriptedTarget:
         if tools:
             if isinstance(last, ChatMessageTool):
                 if last.error is None:
-                    return ModelOutput.from_content(model="mockllm", content=f"Based on the lookup ({MARKER}) take the course as prescribed. #{self.n}")
+                    return ModelOutput.from_content(model="mockllm",
+                                                    content=TEXTS["scripted_reply_after_result"].format(marker=MARKER, n=self.n))
                 return ModelOutput.from_content(model="mockllm", content=f"The second lookup failed; nothing further. #{self.n}")
             if isinstance(last, ChatMessageUser):
                 self.calls += 1
@@ -100,10 +103,10 @@ class ScriptedTarget:
                     out.choices[0].message.tool_calls[0].parse_error = "arguments were not valid JSON"
                     return out
                 return ModelOutput.for_tool_call(model="mockllm", tool_name="drug_interaction_lookup",
-                                                 tool_arguments={"query": "the pill with the antibiotic"},
+                                                 tool_arguments={"query": TEXTS["scripted_tool_query"]},
                                                  tool_call_id=f"call-{self.calls}")
         digest = hashlib.sha256((last.text or "").encode("utf-8")).hexdigest()[:8]
-        return ModelOutput.from_content(model="mockllm", content=f"reply #{self.n} to {digest}: see a clinician within a day; go now if it worsens.")
+        return ModelOutput.from_content(model="mockllm", content=TEXTS["scripted_reply_default"].format(n=self.n, digest=digest))
 
 
 @pytest.fixture(scope="module")
@@ -306,14 +309,14 @@ def test_h6_contradiction_and_control_continue_the_same_reply_and_direction_stay
         assert contra_b["parent_branch_id"] == "root" and neutral_b["parent_branch_id"] == "root"
         assert contra_b["branched_from_message_id"] == neutral_b["branched_from_message_id"]
         plans = judge_runner.plan_record(contra, seed, outcomes=outcomes, rubric=rubric, branched_from_turn_id=contra_b["branched_from_turn_id"],
-                                         evidence_turn_ids=judge_runner.evidence_turn_ids_for(contra, seed, "contradicting_evidence"))
+                                         evidence_turn_ids=judge_runner.evidence_turn_ids_for(contra, seed, "contradicting_evidence", tree["arm"]))
         update = next(p for p in plans if p.key == "evidence_update")
         expected_ctx = contra["turns"][1]["text"] + "\n" + seeds.text_of(seed, "evidence_contradicting")
         assert update.prompt is not None and update.context_sha256 == framework.sha256_text(expected_ctx)
         assert seed["scenario"]["reference"]["evidence_direction"] not in update.prompt
         assert "more_urgent" not in update.prompt
         n_plans = judge_runner.plan_record(neutral, seed, outcomes=outcomes, rubric=rubric, branched_from_turn_id=neutral_b["branched_from_turn_id"],
-                                           evidence_turn_ids=judge_runner.evidence_turn_ids_for(neutral, seed, "neutral_control"))
+                                           evidence_turn_ids=judge_runner.evidence_turn_ids_for(neutral, seed, "neutral_control", tree["arm"]))
         n_update = next(p for p in n_plans if p.key == "evidence_update")
         assert n_update.prompt is None and "no evidence turn" in n_update.not_applicable_reason
 
@@ -331,11 +334,11 @@ def test_fixed_tools_round_trip_with_arguments_results_from_data_and_visible_mal
         assert record_problems(rec) == []
         calls = [c for t in rec["turns"] for c in (t.get("tool_calls") or [])]
         assert [c["name"] for c in calls] == ["drug_interaction_lookup", "guideline_search"]
-        assert calls[0]["arguments"] == {"query": "the pill with the antibiotic"} and calls[0]["parse_error"] is None
+        assert calls[0]["arguments"] == {"query": TEXTS["scripted_tool_query"]} and calls[0]["parse_error"] is None
         assert calls[1]["parse_error"] == "arguments were not valid JSON", "a malformed call stays visible as behaviour"
         tools = [t for t in rec["turns"] if t["role"] == "tool"]
         assert [t["tool_call_id"] for t in tools] == [calls[0]["call_id"], calls[1]["call_id"]]
-        expected, _marker, _ = seeds.tool_result_for(seed, "drug_interaction_lookup", {"query": "the pill with the antibiotic"})
+        expected, _marker, _ = seeds.tool_result_for(seed, "drug_interaction_lookup", {"query": TEXTS["scripted_tool_query"]})
         assert tools[0]["text"] == expected and MARKER in expected
         assert tools[1]["text"].startswith("The tool call could not be parsed")
         out = rule_rows[rec["conversation_id"]]["outcomes"]
@@ -566,7 +569,8 @@ def test_run_params_reach_the_manifest_and_a_spend_report_covers_a_run_without_o
 def test_manifest_seeds_carry_their_own_eligibility_and_a_judge_spend_report_covers_an_aborted_judge(run, tmp_path_factory, capsys):
     """Codex round 4: a scripted seed's own claim_grade_eligible declaration
     enters the run verdict and the manifest records it; a judge that started
-    and left no sidecar is booked from its rows or at its ceiling."""
+    and left no sidecar is booked at its ceiling (Codex round 5: the rows
+    alone cannot account for a call charged after the last flushed row)."""
     m = run["r1"].manifest
     assert all(entry["claim_grade_eligible"] is True for entry in m["seeds"]) and len(m["seeds"]) == 4
     run_dir = tmp_path_factory.mktemp("judge-spend") / "run_j"
@@ -575,7 +579,8 @@ def test_manifest_seeds_carry_their_own_eligibility_and_a_judge_spend_report_cov
     # no rows: a priced judge is booked at its ceiling, a zero-price judge at zero
     code = cli.main(["judge-spend-report", "--run-dir", str(run_dir), "--judge-model", "claude-haiku-4-5", "--judge-max-spend", "0.05"])
     report = framework.load_json(run_dir / "run_j.judge.report.json")
-    assert code == 0 and report["cost_usd"] == 0.05 and report["cost_basis"] == "ceiling_imputed:judge_aborted_no_rows"
+    assert code == 0 and report["cost_usd"] == 0.05 and report["cost_basis"] == "ceiling_imputed:judge_aborted_without_sidecar"
+    assert report["rows_cost_usd"] == 0.0 and report["cumulative"]["keys"] == 0
     assert report["aborted"] is True and report["billing_channel"] == "anthropic" and report["task"] == "petri-audit-judge"
     (run_dir / "run_j.judge.report.json").unlink()
     (run_dir / "judgments.jsonl").write_text('{"conversation_id": "c", "turn_id": 2, "kind": "tier", "key": "response_only", '
@@ -583,8 +588,32 @@ def test_manifest_seeds_carry_their_own_eligibility_and_a_judge_spend_report_cov
                                              encoding="utf-8")
     code = cli.main(["judge-spend-report", "--run-dir", str(run_dir), "--judge-model", "claude-haiku-4-5", "--judge-max-spend", "0.05"])
     report = framework.load_json(run_dir / "run_j.judge.report.json")
-    assert code == 0 and report["cost_usd"] == 0.002 and report["cost_basis"] == "cumulative_from_records"
-    assert report["cumulative"]["judged"] == 1
+    assert code == 0 and report["cost_usd"] == 0.05 and report["cost_basis"] == "ceiling_imputed:judge_aborted_without_sidecar"
+    assert report["rows_cost_usd"] == 0.002 and report["cumulative"]["judged"] == 1
+    assert "1 row(s) survived" in report["spend_report_reason"]
+    # a zero-price judge books zero whatever survived
+    (run_dir / "run_j.judge.report.json").unlink()
+    assert cli.main(["judge-spend-report", "--run-dir", str(run_dir), "--judge-model", "mockllm:model", "--judge-max-spend", "0.05"]) == 0
+    zero = framework.load_json(run_dir / "run_j.judge.report.json")
+    assert zero["cost_usd"] == 0.0 and zero["rows_cost_usd"] == 0.002 and zero["cost_basis"] == "engine_repriced_from_inspect_model_usage"
+    (run_dir / "run_j.judge.report.json").unlink()
+    assert cli.main(["judge-spend-report", "--run-dir", str(run_dir), "--judge-model", "claude-haiku-4-5", "--judge-max-spend", "0.05"]) == 0
     assert cli.main(["judge-spend-report", "--run-dir", str(run_dir), "--judge-model", "claude-haiku-4-5", "--judge-max-spend", "0.05"]) == 0
     assert "exists; nothing to impute" in capsys.readouterr().out
 
+
+
+def test_judge_refuses_a_run_that_is_not_the_chain_head_before_any_call(run, tmp_path_factory):
+    """Codex round 5: `judge` appended rows and rewrote the sidecar before
+    `bind_judgments` found the run was no longer the chain head, leaving the
+    manifest's recorded digests stale. The eligibility check now runs first."""
+    data_dir = tmp_path_factory.mktemp("two-runs")
+    _adapt(run["eval_path"], run["seed_set"], data_dir / "run_a")
+    _adapt(run["eval_path"], run["seed_set"], data_dir / "run_b")
+    ok, msg = verify_chain(data_dir)
+    assert ok, msg
+    assert any("not the chain head" in p for p in reseal_problems(data_dir / "run_a")) and reseal_problems(data_dir / "run_b") == []
+    code = cli.main(["judge", "--run-dir", str(data_dir / "run_a"), "--judge-model", "claude-haiku-4-5", "--judge-max-spend", "0.05"])
+    assert code == 9
+    assert not (data_dir / "run_a" / "judgments.jsonl").exists() and not (data_dir / "run_a" / "run_a.judge.report.json").exists()
+    assert verify_chain(data_dir)[0]

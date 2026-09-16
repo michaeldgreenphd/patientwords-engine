@@ -29,7 +29,7 @@ from pathlib import Path
 
 from .envlock import load_lock, report_lines, verify_lock
 from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, sha256_file, write_json
-from .manifest import bind_judgments, verify_chain
+from .manifest import bind_judgments, reseal_problems, verify_chain
 from .seeds import conditions, load_seed_file, select_seeds, validate_seed
 from .spend import judge_billing_channel, preflight_bound, resolve_price, resolve_registry_price, write_report_sidecar
 
@@ -216,9 +216,13 @@ def cmd_spend_report(args: argparse.Namespace) -> int:
 
 def cmd_judge_spend_report(args: argparse.Namespace) -> int:
     """The judge cost sidecar for a judge step that started and left none (the
-    client raised before run_judgments could write, or the process died):
-    cumulative from whatever rows the judgments file holds, the judge ceiling
-    imputed for a priced judge when it holds none (Codex round 4)."""
+    process died, or the client raised before run_judgments could write). A
+    missing sidecar means the last call is unaccounted for whether or not
+    earlier rows survived (the process may have died after a request was
+    charged and before its row was flushed), and every call was admitted
+    under `can_afford`, so the judge ceiling bounds the total: a priced judge
+    is booked at its ceiling with the surviving rows' sum recorded beside it,
+    a zero-price judge at zero (Codex rounds 4 and 5)."""
     from .judge_runner import cumulative_counts, read_jsonl
 
     run_dir = Path(args.run_dir)
@@ -230,16 +234,17 @@ def cmd_judge_spend_report(args: argparse.Namespace) -> int:
     price = resolve_registry_price(args.judge_model)
     channel = judge_billing_channel(args.judge_model)
     zero_priced = price.input_per_mtok == 0 and price.output_per_mtok == 0
-    if rows:
-        cost = round(sum(float(j.get("cost_usd") or 0.0) for j in rows), 8)
-        basis, reason = "cumulative_from_records", "judge step started; sidecar reconstructed from the judgment rows"
+    rows_cost = round(sum(float(j.get("cost_usd") or 0.0) for j in rows), 8)
+    if zero_priced:
+        cost, basis = 0.0, "engine_repriced_from_inspect_model_usage"
+        reason = f"judge step started and left no sidecar; zero-price judge, {len(rows)} row(s) survived"
     else:
-        cost = 0.0 if zero_priced else float(args.judge_max_spend)
-        basis = "engine_repriced_from_inspect_model_usage" if zero_priced else "ceiling_imputed:judge_aborted_no_rows"
-        reason = "judge step started; no judgment row survived, ceiling imputed for a priced judge"
+        cost, basis = float(args.judge_max_spend), "ceiling_imputed:judge_aborted_without_sidecar"
+        reason = (f"judge step started and left no sidecar; {len(rows)} row(s) survived summing to {rows_cost}, the last "
+                  "call is unaccounted for, so the judge ceiling is booked")
     sidecar = {"run_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "judgments_file": "judgments.jsonl",
                "judge_model": args.judge_model, "cost_usd": cost, "run_cost_usd": cost, "prior_cost_usd": 0.0,
-               "cost_basis": basis, "max_spend_usd": float(args.judge_max_spend), "truncated": None, "aborted": True,
+               "rows_cost_usd": rows_cost, "cost_basis": basis, "max_spend_usd": float(args.judge_max_spend), "truncated": None, "aborted": True,
                "abort_error": None, "spend_report_reason": reason, "cumulative": cumulative_counts(rows),
                "task": "petri-audit-judge", "run_id": run_dir.name, "billing_channel": channel,
                "price_source": price.source, "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok}
@@ -263,6 +268,13 @@ def cmd_judge(args: argparse.Namespace) -> int:
     )
 
     run_dir = Path(args.run_dir)
+    # Codex round 5: the run must be resealable before any paid call, or the rows and the sidecar would be written
+    # and the binding would then find the run is no longer the chain head, leaving the manifest's digests stale
+    refusals = reseal_problems(run_dir)
+    if refusals:
+        for r in refusals:
+            print(f"refused before any judge call: {r}", file=sys.stderr)
+        return 9
     manifest = load_json(run_dir / "manifest.json")
     records = read_records(run_dir / "transcripts.jsonl")
     seed_set = load_seed_file(args.seeds)

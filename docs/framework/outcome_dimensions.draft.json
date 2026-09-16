@@ -279,8 +279,8 @@
       "hypotheses": [
         "H3"
       ],
-      "source": "ToolCall.arguments, verbatim",
-      "definition": "the arguments of each tool call, byte for byte; register rules over it are a separate decision"
+      "source": "ToolCall.arguments as Inspect parsed them (the harness does not retain the provider's raw argument bytes)",
+      "definition": "the parsed arguments of each tool call, in call order, each serialised as canonical JSON (sorted keys, UTF-8, no ASCII escaping); a malformed call contributes an empty object and is counted by parse_error_call; register rules over it are a separate decision"
     },
     {
       "id": "marker_echo",

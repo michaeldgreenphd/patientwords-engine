@@ -59,21 +59,34 @@ def split_inspect_name(model: str) -> tuple[str, str]:
     return "anthropic", model
 
 
-def registry_spec_to_inspect(spec: str) -> str:
+def registry_spec_to_inspect(spec: str, registry: dict | None = None) -> str:
     """The judge takes a registry spec (scripts/advice_eval.py `_resolve_spec`:
-    `provider:model`, or a bare Anthropic model id); prices are keyed by
-    Inspect's `provider/model` form. `openrouter:vendor/model` becomes
-    `openrouter/vendor/model`, which `resolve_price` prices by vendor entry."""
+    `provider:model`, a bare provider the registry knows, or a bare Anthropic
+    model id); prices are keyed by Inspect's `provider/model` form.
+    `openrouter:vendor/model` becomes `openrouter/vendor/model`, which
+    `resolve_price` prices by vendor entry. A bare provider expands to its
+    `consumer_default`, the model the judge actually calls (Codex round 5:
+    `openai` used to price as `anthropic/openai`, the fallback rate), and a
+    provider without one is refused, as the resolver refuses it."""
     spec = spec.strip()
     if ":" in spec:
         provider, model = spec.split(":", 1)
         return f"{provider}/{model}"
+    registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
+    cfg = registry.get(spec) if isinstance(registry, dict) else None
+    if isinstance(cfg, dict):
+        default = str(cfg.get("consumer_default") or "").strip()
+        if not default:
+            raise ValueError(f"judge spec {spec!r} names a registry provider with no consumer_default; give provider:model")
+        return f"{spec}/{default}"
     return f"anthropic/{spec}"
 
 
 def resolve_registry_price(spec: str, registry: dict | None = None, engine_pricing: dict | None = None) -> Price:
-    """`resolve_price` for a registry-form spec (the judge's)."""
-    return resolve_price(registry_spec_to_inspect(spec), registry, engine_pricing)
+    """`resolve_price` for a registry-form spec (the judge's), under one
+    registry load for both the spec expansion and the price."""
+    registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
+    return resolve_price(registry_spec_to_inspect(spec, registry), registry, engine_pricing)
 
 
 def registry_provider(spec: str, registry: dict | None = None) -> str:

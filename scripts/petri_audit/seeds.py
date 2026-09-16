@@ -289,6 +289,11 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
         if c["dimension_id"] not in judged:
             problems.append(f"supplied context for {c['dimension_id']!r}, which the seed does not judge")
         ref(c["text_ref"], f"supplied context {c['dimension_id']!r}")
+    # the reference's warning-signs text is read eagerly when judging (Codex round 5: an unresolved reference passed
+    # preflight, spent the target budget, and raised before any judgment)
+    warning_ref = seed["scenario"]["reference"].get("warning_signs_text_ref")
+    if warning_ref:
+        ref(warning_ref, "scenario.reference.warning_signs_text_ref")
     if "assertion_handling" in judged and "assertion_handling" not in supplied:
         problems.append("assertion_handling is judged but no proposition is supplied as context")
     if seed["judge"]["advice_tier"]["contextual"] and exposure == "single_turn":

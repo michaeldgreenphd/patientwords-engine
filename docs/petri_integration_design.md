@@ -1146,6 +1146,55 @@ regression test each.
 10. **A scripted seed's own `claim_grade_eligible: false` enters the run
     verdict**, and the manifest's seed entries record each seed's declaration.
 
+### Corrections from the fifth Codex review (PR #26, 2026-09-16)
+
+Nine findings on the fourth corrected tree, all verified and fixed with a
+regression test each.
+
+1. **A judge call that raises is charged.** `client.complete` raising after
+   the provider accepted the request left the aborted sidecar short by that
+   call. The loop now charges the failed call its worst case, writes it as a
+   null row (`cost_basis: imputed_worst_case:call_failed`, retried by a
+   resumed pass) and re-raises, so the sidecar and the rows agree.
+2. **A judge that died without a sidecar books its ceiling.** With surviving
+   rows the reconstruction booked their sum, which cannot cover a call charged
+   after the last flushed row; `judge-spend-report` now books the judge
+   ceiling for a priced judge (every call was admitted under `can_afford`, so
+   the ceiling bounds the total) and records `rows_cost_usd` beside it.
+3. **Bare provider judge specs price by their consumer default.** `openai`
+   classified to the OpenRouter channel (round 4) but priced as
+   `anthropic/openai`, the fallback rate. `registry_spec_to_inspect` expands a
+   bare registry provider to `provider/<consumer_default>`, the model the
+   judge actually calls, and refuses a provider without one.
+4. **`query_text` is defined over what the harness holds.** The registry said
+   "byte for byte"; Inspect's `ToolCall` carries the parsed arguments, never
+   the provider's bytes, so the registry entry now defines the outcome as the
+   parsed arguments of each call in call order as canonical JSON, and
+   `RULE_VERSION` is 2 (nothing under 1 was ever published). Restoring the
+   byte-level definition would need the fork to retain raw argument text,
+   which the fork discipline forbids; recorded as decision 4 for Michael.
+5. **`bind_judgments` writes the manifest before the chain line**, each
+   atomically (temp file and rename). The reverse order left a chain line
+   naming a digest no manifest had if the manifest write failed. An
+   interruption now leaves a manifest that digests to its own seal under a
+   stale head line, which `reseal_problems` accepts and the next binding
+   repairs.
+6. **`judge` refuses a non-head run before any call.** `reseal_problems`
+   (chain head names this manifest; the manifest digests to its own seal)
+   runs first, exit code 9, so no row, sidecar or paid call precedes a binding
+   that would fail.
+7. **Medical text in tests moved to data.** The Python test modules embedded
+   assistant replies and tool queries with medical vocabulary; they now read
+   `tests/fixtures/petri_texts.json`.
+8. **Evidence turns are found by declared position.** Text-membership pooled
+   every arm's evidence texts and marked any user turn carrying one, so a
+   control turn sharing an evidence turn's text was supplied to the judge as
+   evidence. `evidence_turn_ids_for` now walks the record's user turns against
+   the declared arm-and-branch sequence (the one `checks.expected_stimuli`
+   verifies) and refuses a record that does not match it.
+9. **`warning_signs_text_ref` is validated before the paid run.** An
+   unresolved reference passed preflight and raised in `plan_record`.
+
 ## Decisions recorded from the owner (2026-09-16)
 
 These were open questions in the first draft and are now decided. Each entry
@@ -1324,4 +1373,18 @@ Keeping artifact custody for a confirmatory run makes the raw artifact unrecover
    controller stages instead; the adapter would then recompute it from the seed
    like any other result. Decide before the first paid run whether the pilot
    accepts the exclusion or the schema grows.
+
+4. **`query_text` at the byte level.** The registry (draft, owner-reviewed)
+   first defined `query_text` as each tool call's arguments byte for byte. The
+   harness cannot measure that: Inspect parses tool-call arguments into an
+   object before the controller or the adapter sees them, and the provider's
+   raw bytes are not retained anywhere the adapter reads (the raw API response
+   is kept only for the first few calls when `log_model_api` is unset, and
+   never for all of them). The fifth review correction re-defined the outcome
+   over the parsed arguments as canonical JSON, which is what `rules.py`
+   measures. If the byte-level outcome matters for H3 (it would detect
+   whitespace and key-order differences between registers, which the parsed
+   form collapses), the fork would need to retain the raw argument string on
+   the `ToolCall`, a fork change the discipline in section 15 forbids without
+   your decision. Decide whether the parsed definition stands.
 
