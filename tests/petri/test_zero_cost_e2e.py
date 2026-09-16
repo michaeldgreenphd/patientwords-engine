@@ -60,7 +60,7 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.petri_audit import cli, framework, judge_runner, sanitizer, seeds  # noqa: E402
 from scripts.petri_audit.adapter import adapt_run, read_records  # noqa: E402
-from scripts.petri_audit.manifest import manifest_problems, verify_chain  # noqa: E402
+from scripts.petri_audit.manifest import bind_judgments, manifest_problems, verify_chain  # noqa: E402
 from scripts.petri_audit.task import run_study, study_task  # noqa: E402
 from scripts.petri_audit.transcripts import record_problems  # noqa: E402
 
@@ -160,7 +160,10 @@ def test_raw_digest_sanitised_export_and_no_unresolved_attachment(run):
         assert "attachment://" not in (run["out1"] / name).read_text(encoding="utf-8"), name
     model_events = [e for s in sanitised["samples"] for e in s["events"] if e["event"] == "model"]
     assert model_events and all("call" not in e and "input" in e for e in model_events)
-    assert m["artifacts"]["sanitiser"]["redaction_report"]["headers_kept"] is False
+    report = m["artifacts"]["sanitiser"]["redaction_report"]
+    assert report["headers_kept"] is False
+    assert isinstance(report["events_dropped_by_type"], dict) and report["samples"] == len(sanitised["samples"])
+    assert report["events_kept"] == sum(len(s["events"]) for s in sanitised["samples"])
     assert m["artifacts"]["sanitised_log_sha256"] == framework.sha256_file(run["out1"] / "sanitised_log.json")
 
 
@@ -182,9 +185,18 @@ def test_manifest_validates_chains_and_binds_every_record(run):
 def test_contract_verdicts_are_honest_under_a_mock_provider(run):
     checks = run["r1"].manifest["execution"]["contract_checks"]
     assert checks["stimulus_digest_identity"]["status"] == "pass", checks
-    assert checks["arms_in_one_run"]["status"] == "pass"
+    assert checks["arms_in_one_run"]["status"] == "pass" and "ran 1 time(s)" in checks["arms_in_one_run"]["detail"]
     assert checks["no_prefill"]["status"] == "pass" and checks["no_cache"]["status"] == "pass"
-    assert checks["tool_results_from_data"]["status"] == "pass", checks["tool_results_from_data"]
+    # the mock target's malformed second call made the controller stage a generated error text: not seed data, so
+    # the tools check fails by name for that tree while the successful result still matched the seed template
+    tools = checks["tool_results_from_data"]
+    assert tools["status"] == "fail" and "generated error result" in tools["detail"] and "guideline_search" in tools["detail"]
+    assert tools["detail"].count("generated error result") == 2, "one per H3 condition, nothing else"
+    # the locked inspect-ai's mockllm returns no usage block: recorded per model, and priced at exactly 0 only because
+    # the model's price is zero (a priced model with missing usage gets a null cost and the sidecar imputes the ceiling)
+    usage = run["r1"].manifest["usage"]
+    assert usage["usage_missing_models"] == ["mockllm/model"] and usage["engine_priced_cost_usd"] == 0.0
+    assert all(row["calls_without_usage"] == row["calls"] > 0 for row in usage["by_model"])
     # the mock provider's raw request carries no sampling keys, so the config check fails by name, and the run is
     # not claim-grade: the harness never infers a value it did not see
     assert checks["generation_config_pinned"]["status"] == "fail" and "not_sent" in checks["generation_config_pinned"]["detail"]
@@ -344,3 +356,44 @@ def test_cli_preflight_clears_without_a_model_call(capsys):
     out = capsys.readouterr().out
     assert code == 0 and "preflight: clear (no model call made)" in out
     assert "pre-flight bound" in out and "environment lock" in out
+
+
+# ------------------------------------------------------- judge binding (manifest reseal)
+
+
+def test_judging_binds_the_judgments_into_the_manifest_and_verify_chain_covers_them(run):
+    """Codex round 1: judgments.jsonl used to be written beside a manifest that
+    still said no judgments existed. After binding, the manifest names the
+    file and its digest, the chain head is resealed, transcripts stay bound
+    (identity digest unchanged), and verify-chain catches an altered file."""
+    out = run["out2"]
+    before = framework.load_json(out / "manifest.json")
+    outcomes = framework.load_json(framework.OUTCOME_REGISTRY)
+    plans = judge_runner.plan_run(run["r2"].records, before, run["seed_set"].seeds, outcomes=outcomes, rubric=judge_runner.load_rubric())
+    client = judge_runner.MockJudge(lambda prompt: ('{"tier": "routine", "flags": {}}' if "tier id" in prompt else "absent"))
+    judgments = out / "judgments.jsonl"
+    side = judge_runner.run_judgments(plans, client, out_path=judgments, ceiling=judge_runner.SpendCeiling(1.0, 0.0, 0.0, 300),
+                                      judge_max_tokens=300, labels=judge_runner.labels_from_manifest(before),
+                                      now_fn=lambda: "2026-09-16T00:00:00Z", sidecar_extra={"billing_channel": "anthropic"})
+    sealed = bind_judgments(out, judgments_path=judgments, report_path=judgments.with_suffix(".report.json"),
+                            judge_of_record={"judge_model": "mockllm/judge", "billing_channel": "anthropic", "price_source": "zero",
+                                             "judged_utc": side["run_utc"], "cost_usd": side["cost_usd"], "truncated": side["truncated"],
+                                             "planned": side["planned"], "judged": side["judged"], "null": side["null"],
+                                             "not_applicable": side["not_applicable"]})
+    after = framework.load_json(out / "manifest.json")
+    assert after == sealed and manifest_problems(after) == []
+    assert after["chain"]["identity_sha256"] == before["chain"]["identity_sha256"]
+    assert after["artifacts"]["judgments_path"] == f"{out.name}/judgments.jsonl"
+    assert after["artifacts"]["judgments_sha256"] == framework.sha256_file(judgments)
+    assert after["artifacts"]["judge_of_record"]["planned"] == len(plans)
+    for r in read_records(out / "transcripts.jsonl"):
+        assert r["provenance"]["run_manifest"]["sha256"] == after["chain"]["identity_sha256"]
+    ok, msg = verify_chain(out.parent)
+    assert ok, msg
+    original = judgments.read_bytes()
+    judgments.write_bytes(original + b'{"conversation_id": "forged"}\n')
+    ok, msg = verify_chain(out.parent)
+    assert not ok and "judgments" in msg
+    judgments.write_bytes(original)
+    assert verify_chain(out.parent)[0]
+

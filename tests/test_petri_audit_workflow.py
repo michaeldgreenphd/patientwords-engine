@@ -101,6 +101,8 @@ def test_interpreter_and_harness_are_the_locked_ones(workflow, raw):
 def test_paid_steps_are_gated_on_mode_and_the_raw_log_stays_outside_the_checkout(workflow):
     run = _step(workflow, "Run (mode dry_run or run")
     assert "mode != 'preflight'" in run["if"] and "$RUNNER_TEMP/petri-run" in run["run"]
+    assert "LOG_MODEL_API" in run["env"] and '--log-model-api "$LOG_MODEL_API"' in run["run"], (
+        "the log_model_api input must reach the CLI (Codex round 1: it was accepted and ignored)")
     judge = _step(workflow, "Judge of record")
     assert "mode == 'run'" in judge["if"] and "judge == 'true'" in judge["if"]
     adapt = _step(workflow, "Adapt")
@@ -111,7 +113,17 @@ def test_paid_steps_are_gated_on_mode_and_the_raw_log_stays_outside_the_checkout
     assert "*.eval" in guard["run"] and "exit 1" in guard["run"]
     commit = _step(workflow, "Commit sanitised outputs")
     assert "mode == 'run'" in commit["if"] and "commit_outputs == 'true'" in commit["if"]
+    assert "always()" not in commit["if"], (
+        "the commit step must depend on every prior step succeeding, or outputs the seal check rejected get pushed "
+        "(Codex round 1)")
     assert "*.eval" in commit["run"] and "git add -f data/petri/runs/" in commit["run"]
+    steps = _steps(workflow, "audit")
+    names = [s.get("name", "") for s in steps]
+    assert names.index("Holdout seal check over every publishable Petri output (fails closed)") < names.index(commit["name"])
+    unconditional = [s["name"] for s in steps if "always()" in str(s.get("if", ""))]
+    assert unconditional == ["Refuse to publish a raw log (belt and braces)",
+                             "Upload the raw .eval as a workflow artifact (90-day custody; never committed)",
+                             "Job summary"]
     seal = _step(workflow, "Holdout seal check")
     assert "seal_check.py" in seal["run"] and "verify-chain" in seal["run"]
     gate = _step(workflow, "Daily-ceiling gate", job="params")
@@ -130,6 +142,23 @@ def test_secrets_reach_only_env_blocks_and_are_never_echoed(workflow, raw):
 def test_gitignore_keeps_raw_logs_out():
     ignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
     assert "*.eval" in ignore and "data/petri/runs/*/logs/" in ignore
+
+
+def test_fire_lane_classifies_the_petri_target_and_judge_specs():
+    """Codex round 1: fire_lane booked every petri-audit fire to the anthropic
+    lane while the landed sidecar could classify the same spend as OpenRouter,
+    so concurrent OpenRouter fires never saw the commitment."""
+    orl = "openrouter/openai/gpt-5.5"
+    assert ft.fire_lane(TRIGGER, {"target": orl, "judge": "false"}) == "openrouter"
+    assert ft.fire_lane(TRIGGER, {"target": orl, "judge": "true", "judge_model": "openrouter:google/gemini-2.5-flash"}) == "openrouter"
+    assert ft.fire_lane(TRIGGER, {"target": orl, "judge": "true", "judge_model": "claude-haiku-4-5"}) == "anthropic"  # mixed
+    assert ft.fire_lane(TRIGGER, {"target": orl, "judge": "true"}) == "anthropic"           # judge model unstated
+    assert ft.fire_lane(TRIGGER, {"target": "anthropic/claude-haiku-4-5", "judge": "false"}) == "anthropic"
+    assert ft.fire_lane(TRIGGER, {"target": "mockllm/model"}) == "anthropic"
+    assert ft.fire_lane(TRIGGER, {}) == "anthropic"
+    # the lane agrees with the sidecar's classification of the same run
+    from scripts.petri_audit import spend
+    assert spend.billing_channel([orl]) == "openrouter" and spend.judge_billing_channel("openrouter:google/x") == "openrouter"
 
 
 def test_park_default_validates_and_is_a_true_no_op():

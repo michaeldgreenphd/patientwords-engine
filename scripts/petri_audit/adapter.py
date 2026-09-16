@@ -35,7 +35,17 @@ from inspect_ai.model import ChatMessageAssistant, ChatMessageTool
 from inspect_petri import select_timeline
 from inspect_scout import span_messages
 
-from .controller import INFO_SOURCE, ROOT_BRANCH
+from .checks import (
+    ROOT_BRANCH,
+    branch_staged_texts,
+    claim_grade_eligible,
+    condition_text_pool,
+    coverage_problems,
+    expected_stimuli,
+    staging_problems,
+    stimulus_problems,
+)
+from .controller import INFO_SOURCE
 from .envlock import installed_harness_commit, load_lock
 from .framework import (
     FRAMING_REGISTRY,
@@ -187,7 +197,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     served_all: set[str] = set()
     role_usage: dict[str, dict[str, Any]] = {}
     model_usage: dict[str, dict[str, Any]] = {}
-    conditions_seen: dict[str, set[str]] = {}
+    seen_counts: dict[str, dict[str, int]] = {}
     any_tools = False
     prefill_seen = False
     cache_seen = False
@@ -196,10 +206,13 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     seeds_used: dict[str, dict] = {}
     max_turns = 0
 
-    def accumulate(bucket: dict[str, dict[str, Any]], key: str, usage: Any, calls: int) -> None:
-        row = bucket.setdefault(key, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0,
-                                      "input_tokens_cache_read": None, "input_tokens_cache_write": None,
-                                      "reasoning_tokens": None, "calls": 0})
+    def usage_row(bucket: dict[str, dict[str, Any]], key: str) -> dict[str, Any]:
+        return bucket.setdefault(key, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0,
+                                       "input_tokens_cache_read": None, "input_tokens_cache_write": None,
+                                       "reasoning_tokens": None, "calls": 0, "calls_without_usage": 0})
+
+    def accumulate(bucket: dict[str, dict[str, Any]], key: str, usage: Any) -> None:
+        row = usage_row(bucket, key)
         row["input_tokens"] += int(getattr(usage, "input_tokens", 0) or 0)
         row["output_tokens"] += int(getattr(usage, "output_tokens", 0) or 0)
         row["total_tokens"] += int(getattr(usage, "total_tokens", 0) or 0)
@@ -207,7 +220,6 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             value = getattr(usage, attr, None)
             if value is not None:
                 row[attr] = (row[attr] or 0) + int(value)
-        row["calls"] += calls
 
     for sample in sorted(log.samples, key=lambda s: (str(s.id), s.epoch)):
         sample = rebind_sample_timelines(sample)
@@ -226,15 +238,25 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         if cond is None:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"unknown condition {meta.get('condition_id')!r}"})
             continue
-        conditions_seen.setdefault(seed_id, set()).add(cond["condition_id"])
+        counts = seen_counts.setdefault(seed_id, {})
+        counts[cond["condition_id"]] = counts.get(cond["condition_id"], 0) + 1
         if sample.error:
             refused.append({"branch_id": f"{tree_id}:{ROOT_BRANCH}", "reason": f"sample error: {sample.error}"})
             continue
         model_events = _target_model_events(sample)
         for role, usage in (sample.role_usage or {}).items():
-            accumulate(role_usage, role, usage, sum(1 for e in model_events if e.role == role))
+            accumulate(role_usage, role, usage)
         for model, usage in (sample.model_usage or {}).items():
-            accumulate(model_usage, model, usage, sum(1 for e in model_events if e.model == model))
+            accumulate(model_usage, model, usage)
+        # calls are counted from the events themselves, so a model Inspect recorded no usage for still shows its
+        # calls; a call whose output carries no usage block is counted as such and never priced as zero
+        # (spend.reprice_usage refuses a priced model with missing usage)
+        for e in model_events:
+            for bucket, key in ((model_usage, e.model), (role_usage, e.role or "target")):
+                row = usage_row(bucket, key)
+                row["calls"] += 1
+                if e.output is None or e.output.usage is None:
+                    row["calls_without_usage"] += 1
         served = {e.output.model for e in model_events if e.output and e.output.model}
         served_all |= served
         # config and raw-request checks read the retained raw request, never the merged config
@@ -256,7 +278,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         branch_infos = [d for d in pw if d.get("pw") == "branch"]
         timeline = select_timeline(sample.timelines or [], "target")
         nodes = _walk_nodes(timeline.root)
-        seed_text_shas = {t["sha256"] for t in seed["texts"]}
+        condition_shas = condition_text_pool(seed, cond)
         branches_out: list[dict] = []
         child_index = 0
         for order, (span, parent, creation) in enumerate(nodes):
@@ -293,24 +315,40 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             if problems:
                 refused.append({"branch_id": f"{tree_id}:{branch_id}", "reason": "; ".join(problems[:5])})
                 continue
-            # staged-text identity: every user, system and tool turn in the record is a seed text (or a
-            # seed template with the recorded query substituted); the staged InfoEvent must agree
+            # staged-text identity: the record's user and system turns are exactly the sequence this condition
+            # and branch declare (never merely members of the seed's text pool), and the controller's staging
+            # records for the branch name the same texts; tool results are the seed's templates with the
+            # recorded query substituted, and a generated error result is a contract failure, not seed data
+            where = f"{tree_id}:{branch_id}"
+            try:
+                expected = expected_stimuli(seed, cond, branch_id)
+                staged_here = branch_staged_texts(seed, cond, branch_id)
+            except KeyError as exc:
+                checks["stimulus_digest_identity"].fail(f"{where}: {exc}")
+                expected, staged_here = [], []
+            for problem in stimulus_problems(expected, record["turns"], where=where):
+                checks["stimulus_digest_identity"].fail(problem)
+            staged_shas = [s.get("sha256") for s in staged
+                           if s.get("kind") in ("user", "system") and s.get("branch_id") == branch_id]
+            for problem in staging_problems(staged_here, staged_shas, where=where):
+                checks["stimulus_digest_identity"].fail(problem)
             for turn in record["turns"]:
-                if turn["role"] in ("user", "system"):
-                    if sha256_text(turn["text"]) not in seed_text_shas:
-                        checks["stimulus_digest_identity"].fail(f"{tree_id}:{branch_id} turn {turn['turn_id']}: {turn['role']} text is not a seed text")
-                elif turn["role"] == "tool":
+                if turn["role"] == "tool":
                     hit = next((s for s in staged if s.get("kind") == "tool_result" and s.get("tool_call_id") == turn["tool_call_id"]), None)
                     if hit is None:
-                        checks["tool_results_from_data"].fail(f"{tree_id}:{branch_id} turn {turn['turn_id']}: tool result has no staging record")
-                    elif hit.get("status") == "success":
+                        checks["tool_results_from_data"].fail(f"{where} turn {turn['turn_id']}: tool result has no staging record")
+                    elif hit.get("status") != "success":
+                        checks["tool_results_from_data"].fail(
+                            f"{where} turn {turn['turn_id']}: a generated error result reached the target "
+                            f"(status {hit.get('status')!r}, tool {hit.get('tool')!r}); error texts are not seed data")
+                    else:
                         expected, _marker, _q = tool_result_for(seed, hit["tool"], {"query": hit.get("substituted_query")}
                                                                 if hit.get("substituted_query") is not None else {})
                         if expected is None or sha256_text(expected) != sha256_text(turn["text"]):
                             checks["tool_results_from_data"].fail(f"{tree_id}:{branch_id} turn {turn['turn_id']}: tool result differs from the seed template")
                         elif sha256_text(turn["text"]) != hit.get("sha256"):
                             checks["tool_results_from_data"].fail(f"{tree_id}:{branch_id} turn {turn['turn_id']}: staged digest disagrees with the log")
-            # raw request bodies: every user message a target call received must be a seed text
+            # raw request bodies: every user message a target call received must be a text of this condition
             for e in model_events:
                 if e.call is None or not isinstance(e.call.request, dict):
                     continue
@@ -319,8 +357,8 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                         content = m.get("content")
                         text = content if isinstance(content, str) else "".join(
                             c.get("text", "") for c in content if isinstance(c, dict)) if isinstance(content, list) else ""
-                        if sha256_text(text) not in seed_text_shas:
-                            checks["stimulus_digest_identity"].fail(f"{tree_id}: a raw request carried a user message that is not a seed text")
+                        if sha256_text(text) not in condition_shas:
+                            checks["stimulus_digest_identity"].fail(f"{tree_id}: a raw request carried a user message that is not a text of this condition")
             anchor_turn = None
             if anchor_msg is not None:
                 anchor_turn = next((t["turn_id"] for t, m in zip(record["turns"], simple) if m["id"] == anchor_msg), None)
@@ -339,12 +377,14 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                           "system_prompt_variant": cond["variant_id"], "branches": branches_out})
 
     # contract check verdicts
-    checks["stimulus_digest_identity"].ok("every staged user, system and tool text matches its seed text; raw requests agree")
-    for seed_id, seen in conditions_seen.items():
-        want = {c["condition_id"] for c in conditions(seed_set.seeds[seed_id])}
-        if seen != want:
-            checks["arms_in_one_run"].fail(f"{seed_id}: conditions present {sorted(seen)} differ from declared {sorted(want)}")
-    checks["arms_in_one_run"].ok("every condition of every seed ran in this eval")
+    checks["stimulus_digest_identity"].ok("every record carries exactly the texts its condition and branch declare; "
+                                          "staging records and raw requests agree")
+    epochs = int(getattr(spec.config, "epochs", None) or 1)
+    task_meta = (spec.metadata or {}).get("patientwords") if isinstance(spec.metadata, dict) else None
+    selected_ids = list(task_meta["seed_ids"]) if isinstance(task_meta, dict) and isinstance(task_meta.get("seed_ids"), list) else None
+    for problem in coverage_problems(seed_set, selected_ids, seen_counts, epochs):
+        checks["arms_in_one_run"].fail(problem)
+    checks["arms_in_one_run"].ok(f"every condition of every selected seed ran {epochs} time(s) in this eval")
     if calls_missing:
         checks["generation_config_pinned"].fail(f"{calls_missing} target call(s) have no retained raw request (log_model_api off?)")
     if config_detail:
@@ -362,7 +402,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     if any_tools:
         checks["tool_results_from_data"].ok("every tool result matches the seed's results table")
     else:
-        checks["tool_results_from_data"] = Check("not_run", "no tools in this run's seeds")
+        checks["tool_results_from_data"] = Check("not_applicable", "no tools declared by this run's seeds")
 
     # write the record families first (their digests enter the manifest), then the manifest
     transcripts_path = out_dir / "transcripts.jsonl"
@@ -391,7 +431,8 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         # two locations yields byte-identical exports; the run directory name is the only path component recorded
         return p.resolve().relative_to(out_dir.parent.resolve()).as_posix()
 
-    priced_cost, _priced_rows = reprice_usage(model_usage, registry)
+    priced_cost, priced_rows = reprice_usage(model_usage, registry)
+    usage_missing_models = sorted(r["model"] for r in priced_rows if r["usage_missing"])
     manifest: dict[str, Any] = {
         "manifest_version": MANIFEST_VERSION,
         "run_id": spec.run_id,
@@ -409,7 +450,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                       "contract_checks": {k: v.as_dict() for k, v in checks.items()},
                       "prefill_enabled": False, "cache_enabled": False,
                       "target_tools_mode": "fixed" if any_tools else "none", "max_turns": max(max_turns, 1),
-                      "epochs": int(getattr(spec.config, "epochs", None) or 1), "auditor_instruction_sha256": None,
+                      "epochs": epochs, "auditor_instruction_sha256": None,
                       "log_model_api": bool(getattr(spec.config, "log_model_api", None)) or calls_missing == 0},
         "models": {"target": {"provider": target_provider, "model": target_name.split("/", 1)[1] if "/" in target_name else target_name,
                               "inspect_name": target_name, "registry_spec": registry_spec,
@@ -423,7 +464,8 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         "trees": trees,
         "usage": {"by_role": [{"role": r, **u} for r, u in sorted(role_usage.items())],
                   "by_model": [{"model": m, **u} for m, u in sorted(model_usage.items())],
-                  "engine_priced_cost_usd": priced_cost, "pricing_source": "data/advice_providers.json + medlang_circuits.evaluate_models.PRICING + fallback",
+                  "engine_priced_cost_usd": priced_cost, "usage_missing_models": usage_missing_models,
+                  "pricing_source": "data/advice_providers.json + medlang_circuits.evaluate_models.PRICING + fallback",
                   "pricing_source_sha256": pricing_source_digest(registry)},
         "spend": {"lane": "petri-audit", "max_spend_usd": spend["max_spend_usd"], "judge_max_spend_usd": spend.get("judge_max_spend_usd"),
                   "journal_nonce": spend.get("journal_nonce"), "cost_limit_per_sample_usd": spend.get("cost_limit_per_sample_usd"),
@@ -437,7 +479,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                                     "redaction_report": report.as_dict()},
                       "transcripts_path": rel(transcripts_path), "transcripts_sha256": "",
                       "rule_outcomes_path": rel(rules_path), "rule_outcomes_sha256": "",
-                      "judgments_path": None, "judgments_sha256": None},
+                      "judgments_path": None, "judgments_sha256": None, "judge_of_record": None},
         "integrity": {"attachments_resolved": True, "branches_dropped_empty": dropped_empty, "records_refused": refused,
                       "timestamps_truncated_to_seconds": True},
         "eval_spec_dump": spec_dump,
@@ -454,8 +496,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         seal_result = scan_strings(strings, registry_sealed, "exports")
         checks["holdout_seal"] = Check(seal_result.status, seal_result.detail)
     manifest["execution"]["contract_checks"]["holdout_seal"] = checks["holdout_seal"].as_dict()
-    manifest["execution"]["claim_grade_eligible"] = (
-        all(c["status"] == "pass" for c in manifest["execution"]["contract_checks"].values()) and not refused)
+    manifest["execution"]["claim_grade_eligible"] = claim_grade_eligible(manifest["execution"]["contract_checks"], len(refused))
     # identity digest, then bind the records and write the families whose digests the manifest carries
     sealed = seal_manifest(manifest, chain_head(out_dir.parent))
     identity = sealed["chain"]["identity_sha256"]

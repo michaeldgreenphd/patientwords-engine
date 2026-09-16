@@ -34,12 +34,13 @@ class RedactionReport:
     base_urls_kept: bool = False
 
     def as_dict(self) -> dict:
+        """The whole report, as the manifest records it: an event type the
+        allowlist does not name is dropped AND counted here by type, so a
+        sanitised log with events missing always says which and how many."""
         return {"fields_removed": self.fields_removed, "fields_hashed": self.fields_hashed,
                 "request_bodies_kept": self.request_bodies_kept, "headers_kept": self.headers_kept,
-                "base_urls_kept": self.base_urls_kept}
-
-    def details(self) -> dict:
-        return {**self.as_dict(), "events_dropped_by_type": dict(sorted(self.events_dropped_by_type.items())),
+                "base_urls_kept": self.base_urls_kept,
+                "events_dropped_by_type": dict(sorted(self.events_dropped_by_type.items())),
                 "samples": self.samples, "events_kept": self.events_kept}
 
 

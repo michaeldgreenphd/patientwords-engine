@@ -20,11 +20,12 @@ from inspect_ai.agent import Agent, AgentState, agent
 from inspect_ai.log import transcript
 from inspect_petri.target import ResponseOutput, controller
 
+from .checks import ROOT_BRANCH
 from .framework import sha256_text
 from .seeds import SeedSet, conditions, seed_digest, text_of, tool_result_for
 
 INFO_SOURCE = "patientwords"
-ROOT_BRANCH = "root"
+__all__ = ["INFO_SOURCE", "ROOT_BRANCH", "scripted_auditor"]
 
 
 def _info(data: dict[str, Any]) -> None:

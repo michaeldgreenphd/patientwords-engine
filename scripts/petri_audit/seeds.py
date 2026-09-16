@@ -58,7 +58,8 @@ def seed_digest(seed: dict) -> str:
 
 def select_seeds(seed_set: SeedSet, seed_ids: list[str] | None = None, wave: int | None = None) -> list[dict]:
     """The seeds a run executes, in file order; an unknown id is an error, never
-    silently skipped."""
+    silently skipped, and an empty selection is an error, never a clear
+    pre-flight with zero samples."""
     if seed_ids:
         missing = [s for s in seed_ids if s not in seed_set.seeds]
         if missing:
@@ -68,6 +69,9 @@ def select_seeds(seed_set: SeedSet, seed_ids: list[str] | None = None, wave: int
         chosen = list(seed_set.seeds.values())
     if wave is not None:
         chosen = [s for s in chosen if s["pilot_wave"] == wave]
+    if not chosen:
+        selector = (f"seed ids {list(seed_ids)}" if seed_ids else "every seed") + (f" in wave {wave}" if wave is not None else "")
+        raise ValueError(f"{selector} selects no seed from {seed_set.path.name}; an empty run is refused, not reported clear")
     return chosen
 
 

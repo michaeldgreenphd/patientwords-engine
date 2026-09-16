@@ -182,7 +182,10 @@ def fire_lane(trigger: str, params: dict) -> str:
     the OpenRouter key alone (registry: bare ids are Anthropic; provider specs
     starting anthropic: are Anthropic; everything else routes via OpenRouter
     or an OpenRouter-compatible endpoint). Mixed or ambiguous specs stay on
-    the anthropic lane - fail closed."""
+    the anthropic lane - fail closed. petri-audit has its own rule
+    (`_petri_lane`): its target is an Inspect model string, not a registry spec."""
+    if trigger == "petri-audit":
+        return _petri_lane(params)
     if trigger != "advice-eval":
         return "anthropic"
     models = str(params.get("models") or "").strip()
@@ -194,6 +197,25 @@ def fire_lane(trigger: str, params: dict) -> str:
         if provider == "anthropic" or ":" not in spec:
             return "anthropic"
     return "openrouter"
+
+
+def _petri_lane(params):
+    """petri-audit (2026-09-16): the target is an Inspect model string
+    (`provider/model`, so OpenRouter is `openrouter/vendor/model`) and the
+    judge, when on, a registry spec (`provider:model` or a bare Anthropic
+    id). The fire bills OpenRouter alone only when the target routes there
+    and any judge does too; everything else, mockllm and the park default
+    included, stays on the anthropic lane (fail closed). The landed sidecars
+    classify the same way (scripts/petri_audit/spend.py billing_channel and
+    judge_billing_channel), so in-flight and landed spend agree per lane."""
+    target = str(params.get("target") or "").strip()
+    if not target.startswith("openrouter/"):
+        return "anthropic"
+    if judge_is_on(params) and not str(params.get("judge_model") or "").strip().startswith("openrouter:"):
+        return "anthropic"
+    return "openrouter"
+
+
 JOURNAL_RELPATH = Path("ops") / "trigger_journal.jsonl"
 DASHBOARD_RELPATH = Path("ops") / "dashboard.json"
 OVERRIDES_RELPATH = Path("ops") / "budget_overrides.json"

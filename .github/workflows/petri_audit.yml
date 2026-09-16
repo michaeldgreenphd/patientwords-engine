@@ -285,6 +285,7 @@ jobs:
           JUDGE_MAX_SPEND: ${{ needs.params.outputs.judge_max_spend }}
           EPOCHS: ${{ needs.params.outputs.epochs }}
           TOKEN_LIMIT: ${{ needs.params.outputs.token_limit }}
+          LOG_MODEL_API: ${{ needs.params.outputs.log_model_api }}
         run: |
           ARGS=""
           for s in $SEED_IDS; do ARGS="$ARGS --seed-id $s"; done
@@ -292,7 +293,7 @@ jobs:
           if [ "$JUDGE" = "true" ]; then ARGS="$ARGS --judge-max-spend $JUDGE_MAX_SPEND"; fi
           python -m scripts.petri_audit.cli run --seeds "$SEEDS_FILE" $ARGS \
             --target "$TARGET" --max-spend "$MAX_SPEND" --epochs "$EPOCHS" --token-limit "$TOKEN_LIMIT" \
-            --out-dir "$RUNNER_TEMP/petri-run"
+            --log-model-api "$LOG_MODEL_API" --out-dir "$RUNNER_TEMP/petri-run"
 
       - name: Adapt (sanitised export, transcripts 0.2, rule outcomes, manifest, cost sidecar)
         if: ${{ needs.params.outputs.mode != 'preflight' }}
@@ -350,8 +351,11 @@ jobs:
           retention-days: 90
           if-no-files-found: warn
 
-      - name: Commit sanitised outputs to the branch (mode run only)
-        if: ${{ always() && needs.params.outputs.mode == 'run' && needs.params.outputs.commit_outputs == 'true' }}
+      # Deliberately NOT always(): this step runs only when every step before it succeeded, so an output the
+      # holdout seal check or verify-chain rejected, or a half-written export after an adapt or judge failure,
+      # can never be committed. Only the raw-log refusal, the artifact upload and the summary are unconditional.
+      - name: Commit sanitised outputs to the branch (mode run only; requires every prior step green)
+        if: ${{ needs.params.outputs.mode == 'run' && needs.params.outputs.commit_outputs == 'true' }}
         env:
           BRANCH: ${{ github.ref_name }}
           RUN_STEM: run_${{ github.run_id }}

@@ -419,7 +419,8 @@
         "by_model",
         "engine_priced_cost_usd",
         "pricing_source",
-        "pricing_source_sha256"
+        "pricing_source_sha256",
+        "usage_missing_models"
       ],
       "properties": {
         "by_role": {
@@ -439,7 +440,7 @@
             "number",
             "null"
           ],
-          "description": "Re-priced from by_model with the engine registry; null when any model in the run lacks a registry price, never a fallback rate."
+          "description": "Re-priced from by_model with the engine's price tables; null when any model in the run has missing usage (usage_missing_models), never zero for an unpriced call."
         },
         "pricing_source": {
           "type": "string"
@@ -447,6 +448,13 @@
         "pricing_source_sha256": {
           "type": "string",
           "pattern": "^[0-9a-f]{64}$"
+        },
+        "usage_missing_models": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Models whose usage could not be priced (a null token count or calls_without_usage > 0); empty when every call reported usage."
         }
       }
     },
@@ -576,7 +584,8 @@
         "rule_outcomes_path",
         "rule_outcomes_sha256",
         "judgments_path",
-        "judgments_sha256"
+        "judgments_sha256",
+        "judge_of_record"
       ],
       "properties": {
         "raw_eval_log_sha256": {
@@ -628,7 +637,10 @@
                 "fields_hashed",
                 "request_bodies_kept",
                 "headers_kept",
-                "base_urls_kept"
+                "base_urls_kept",
+                "events_dropped_by_type",
+                "samples",
+                "events_kept"
               ],
               "properties": {
                 "fields_removed": {
@@ -650,6 +662,22 @@
                 "base_urls_kept": {
                   "type": "boolean",
                   "const": false
+                },
+                "events_dropped_by_type": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "description": "Event types the allowlist does not name, with the count dropped per type; an Inspect release that adds an event type shows up here rather than disappearing from the sanitised log."
+                },
+                "samples": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "events_kept": {
+                  "type": "integer",
+                  "minimum": 0
                 }
               }
             }
@@ -668,7 +696,7 @@
             "string",
             "null"
           ],
-          "description": "Per-turn judgment record family for this run; null before judging. Recorded relative to the runs directory that holds the manifest chain (for example `<run>/transcripts.jsonl`), never as an absolute path, so the same log adapted anywhere yields byte-identical exports."
+          "description": "Per-turn judgment record family for this run; null until the `judge` subcommand binds it (manifest.bind_judgments), which reseals the manifest while it is the chain head, keeping the identity digest unchanged. Recorded relative to the runs directory that holds the manifest chain, never as an absolute path."
         },
         "judgments_sha256": {
           "type": [
@@ -684,6 +712,84 @@
         "rule_outcomes_sha256": {
           "type": "string",
           "pattern": "^[0-9a-f]{64}$"
+        },
+        "judge_of_record": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "judge_model",
+            "billing_channel",
+            "price_source",
+            "judged_utc",
+            "cost_usd",
+            "truncated",
+            "planned",
+            "judged",
+            "null",
+            "not_applicable",
+            "report_path",
+            "report_sha256"
+          ],
+          "properties": {
+            "judge_model": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Registry spec (provider:model or a bare Anthropic id)."
+            },
+            "billing_channel": {
+              "type": "string",
+              "enum": [
+                "anthropic",
+                "openrouter"
+              ]
+            },
+            "price_source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "judged_utc": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+            },
+            "cost_usd": {
+              "type": "number",
+              "minimum": 0
+            },
+            "truncated": {
+              "type": "boolean",
+              "description": "The judge ceiling stopped the run before every plan was judged."
+            },
+            "planned": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "judged": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "null": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Answers recorded with judge_error and a null value."
+            },
+            "not_applicable": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "report_path": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The judge cost sidecar, relative to the runs directory."
+            },
+            "report_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "description": "Provenance of the judge of record, written by `judge` beside judgments_path; null before judging. Blanked in the identity digest with the judgment path and digest, so transcripts bound before judging stay bound."
         }
       },
       "description": "What was produced and what may be published. The raw .eval is bound by digest and held privately; only the sanitised projection, the transcripts and the judgments are committed."
@@ -780,8 +886,10 @@
           "enum": [
             "pass",
             "fail",
+            "not_applicable",
             "not_run"
-          ]
+          ],
+          "description": "pass: examined and clean. fail: examined and violated (detail names where). not_applicable: nothing in this run for the check to examine (a tools check on seeds that declare none); counts as clean for claim-grade eligibility. not_run: the check did not execute; never eligible."
         },
         "detail": {
           "type": [
@@ -866,7 +974,8 @@
         "input_tokens_cache_read",
         "input_tokens_cache_write",
         "reasoning_tokens",
-        "calls"
+        "calls",
+        "calls_without_usage"
       ],
       "properties": {
         "input_tokens": {
@@ -902,6 +1011,11 @@
         "calls": {
           "type": "integer",
           "minimum": 0
+        },
+        "calls_without_usage": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Target calls whose output carried no usage block. Any value above zero makes the row unpriceable: the manifest's engine_priced_cost_usd is null and the cost sidecar imputes the spend ceiling (spend.write_report_sidecar), never zero."
         }
       }
     },
@@ -984,7 +1098,8 @@
         "input_tokens_cache_read",
         "input_tokens_cache_write",
         "reasoning_tokens",
-        "calls"
+        "calls",
+        "calls_without_usage"
       ],
       "properties": {
         "role": {
@@ -1024,6 +1139,11 @@
         "calls": {
           "type": "integer",
           "minimum": 0
+        },
+        "calls_without_usage": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Target calls whose output carried no usage block. Any value above zero makes the row unpriceable: the manifest's engine_priced_cost_usd is null and the cost sidecar imputes the spend ceiling (spend.write_report_sidecar), never zero."
         }
       }
     },
@@ -1038,7 +1158,8 @@
         "input_tokens_cache_read",
         "input_tokens_cache_write",
         "reasoning_tokens",
-        "calls"
+        "calls",
+        "calls_without_usage"
       ],
       "properties": {
         "model": {
@@ -1078,6 +1199,11 @@
         "calls": {
           "type": "integer",
           "minimum": 0
+        },
+        "calls_without_usage": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Target calls whose output carried no usage block. Any value above zero makes the row unpriceable: the manifest's engine_priced_cost_usd is null and the cost sidecar imputes the spend ceiling (spend.write_report_sidecar), never zero."
         }
       }
     }
@@ -1134,8 +1260,8 @@
             "detail": null
           },
           "tool_results_from_data": {
-            "status": "not_run",
-            "detail": "no tools in this seed"
+            "status": "not_applicable",
+            "detail": "no tools declared by this run's seeds"
           },
           "holdout_seal": {
             "status": "not_run",
@@ -1230,7 +1356,8 @@
             "input_tokens_cache_read": null,
             "input_tokens_cache_write": null,
             "reasoning_tokens": null,
-            "calls": 3
+            "calls": 3,
+            "calls_without_usage": 0
           }
         ],
         "by_model": [
@@ -1242,12 +1369,14 @@
             "input_tokens_cache_read": null,
             "input_tokens_cache_write": null,
             "reasoning_tokens": null,
-            "calls": 3
+            "calls": 3,
+            "calls_without_usage": 0
           }
         ],
         "engine_priced_cost_usd": null,
         "pricing_source": "data/advice_providers.json",
-        "pricing_source_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        "pricing_source_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "usage_missing_models": []
       },
       "spend": {
         "lane": "petri-audit",
@@ -1278,7 +1407,10 @@
             "fields_hashed": 0,
             "request_bodies_kept": true,
             "headers_kept": false,
-            "base_urls_kept": false
+            "base_urls_kept": false,
+            "events_dropped_by_type": {},
+            "samples": 1,
+            "events_kept": 0
           }
         },
         "transcripts_path": "example/transcripts.jsonl",
@@ -1286,7 +1418,8 @@
         "rule_outcomes_path": "example/rule_outcomes.jsonl",
         "rule_outcomes_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
         "judgments_path": null,
-        "judgments_sha256": null
+        "judgments_sha256": null,
+        "judge_of_record": null
       },
       "integrity": {
         "attachments_resolved": true,

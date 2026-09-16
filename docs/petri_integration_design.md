@@ -966,6 +966,69 @@ instrument's rendering (role-labelled prior turns inside escaped context
 delimiters, then the response-only prompt) is implemented in the judge runner
 rather than in a prompt file, with the registry entry saying so.
 
+### Corrections from the first Codex review (PR #26, 2026-09-16)
+
+Fourteen findings, all verified against the files and all fixed on the branch;
+each has a regression test named beside it. Recorded here because several change
+what a manifest or sidecar says.
+
+1. **Billing lane for Petri fires** (`fire_trigger.fire_lane`): a petri-audit
+   fire with an `openrouter/...` target, and an `openrouter:` judge if judging,
+   now books its commitment to the OpenRouter lane; anything else stays on the
+   Anthropic lane, fail closed, so the in-flight commitment and the landed
+   sidecar's `billing_channel` agree. `tests/test_petri_audit_workflow.py`.
+2. **Judge affordability per prompt** (`judge_runner.SpendCeiling`): each call is
+   bounded from its own rendered prompt (`ceil(len/2.5)` input tokens, a
+   deliberate over-estimate) plus the full output allowance; the estimator and
+   any overrun are written to the sidecar. `test_petri_audit_core.py`.
+3. **`log_model_api` reaches the run** (workflow + `cli run --log-model-api`);
+   off leaves `generation_config_pinned` unprovable, which the manifest records.
+4. **Stimulus identity is exact** (`checks.expected_stimuli`,
+   `stimulus_problems`, `staging_problems`): each record is compared with the
+   text sequence its condition and branch declare, and the controller's
+   staging records for the branch must match; raw requests are checked against
+   the condition's pool, not the seed's.
+5. **Commit step is gated** (workflow): the commit no longer runs under
+   `always()`, so an output the seal check or `verify-chain` rejected is never
+   pushed; only the raw-log refusal, the artifact upload and the summary stay
+   unconditional.
+6. **Judgments are bound into the manifest** (`manifest.bind_judgments`): the
+   `judge` subcommand records the judgment path, digest and judge-of-record
+   provenance, reseals the manifest with the identity digest unchanged
+   (asserted) and replaces the chain head line; only the head can be resealed.
+   `verify-chain` now also checks every artifact a manifest names exists and
+   digests to its recorded value.
+7. **The whole redaction report is persisted**, including
+   `events_dropped_by_type`, `samples` and `events_kept` (schema extended).
+8. **Coverage is taken against the task's selected seeds**
+   (`checks.coverage_problems`): a seed absent from a truncated log, a missing
+   condition, a stray condition, or a sample count that differs from `epochs`
+   all fail `arms_in_one_run` by name; a log without task metadata fails too.
+9. **An empty seed selection is refused** (`seeds.select_seeds`), naming the
+   selector that matched nothing.
+10. **Target and judge ceilings are separate** (`spend.preflight_bound`,
+    `cli`): the target bound is compared with `max_spend` alone and the per-sample
+    `cost_limit` no longer subtracts the judge reserve; the judge's own ceiling
+    is enforced per call and counted once by `fire_commitment`.
+11. **A generated error result fails the tools check**: the controller's
+    parse-error and unknown-tool texts are Python-authored, so a tree that
+    received one is recorded as a `tool_results_from_data` failure with the
+    call named (visible in the rule outcomes as before). Seed-declared constant
+    error texts would keep such trees claim-grade; that is a seed-schema change
+    and is listed under *Decisions for Michael*.
+12. **Missing usage is never priced as zero** (`spend.reprice_usage`,
+    `write_report_sidecar`): the adapter counts calls whose output carried no
+    usage block per model, a row with missing usage carries a null cost, the
+    manifest's `engine_priced_cost_usd` is null with `usage_missing_models`
+    listed, and the ledger sidecar imputes the spend ceiling with
+    `cost_basis: ceiling_imputed:usage_missing`.
+13. **Judge specs are priced in registry form** (`spend.resolve_registry_price`,
+    `judge_billing_channel`): `provider:model` and bare Anthropic ids are
+    normalised before pricing; the judge sidecar states its billing channel.
+14. **`not_applicable` is a check status**: a run whose seeds declare no tools
+    records `tool_results_from_data: not_applicable`, which counts as clean for
+    claim-grade eligibility; `not_run` never does.
+
 ## Decisions recorded from the owner (2026-09-16)
 
 These were open questions in the first draft and are now decided. Each entry
@@ -1134,3 +1197,14 @@ The 90-day artifact custody is a pilot decision by your own instruction, and the
 
 If I choose the alternative
 Keeping artifact custody for a confirmatory run makes the raw artifact unrecoverable after 90 days; the sanitised export and the manifest digest would be the only record.
+
+3. **Seed-declared error texts for malformed or unknown tool calls.** Since
+   the review correction above, a tree in which the target made a malformed or
+   unknown tool call fails `tool_results_from_data`, because the controller's
+   error text is Python-authored rather than seed data. If such trees should
+   stay claim-grade, the seed schema needs a `tools.error_texts` block (one
+   constant, owner-authored text per error kind, no substitution) that the
+   controller stages instead; the adapter would then recompute it from the seed
+   like any other result. Decide before the first paid run whether the pilot
+   accepts the exclusion or the schema grows.
+

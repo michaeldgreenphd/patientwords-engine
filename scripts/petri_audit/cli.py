@@ -7,7 +7,7 @@ same checks and calls nothing.
     python -m scripts.petri_audit.cli validate-seeds [--seeds FILE] [--seed-id ID ...] [--wave N]
     python -m scripts.petri_audit.cli verify-lock [--lock FILE]
     python -m scripts.petri_audit.cli preflight --target SPEC --max-spend USD [--epochs N] [--token-limit N]
-    python -m scripts.petri_audit.cli run --target SPEC --max-spend USD --out-dir DIR [...]
+    python -m scripts.petri_audit.cli run --target SPEC --max-spend USD --out-dir DIR [--log-model-api true|false] [...]
     python -m scripts.petri_audit.cli adapt --eval FILE --out-dir DIR --custody STR --max-spend USD [...]
     python -m scripts.petri_audit.cli judge --run-dir DIR --judge-model SPEC --judge-max-spend USD [...]
     python -m scripts.petri_audit.cli analyze --run-dir DIR
@@ -26,9 +26,9 @@ from pathlib import Path
 
 from .envlock import load_lock, report_lines, verify_lock
 from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, sha256_file
-from .manifest import verify_chain
+from .manifest import bind_judgments, verify_chain
 from .seeds import conditions, load_seed_file, select_seeds, validate_seed
-from .spend import preflight_bound, resolve_price, write_report_sidecar
+from .spend import judge_billing_channel, preflight_bound, resolve_price, resolve_registry_price, write_report_sidecar
 
 DEFAULT_RUNS_DIR = ROOT / "data" / "petri" / "runs"
 
@@ -83,9 +83,10 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
                             judge_reserve_usd=args.judge_max_spend or 0.0, max_spend_usd=args.max_spend)
     print(f"price {args.target}: in {price.input_per_mtok}/Mtok out {price.output_per_mtok}/Mtok ({price.source})")
     print(f"pre-flight bound: {samples} sample(s) x {args.epochs} epoch(s) x {args.token_limit} tokens -> "
-          f"${bound.total_usd:.4f} (judge reserve ${bound.judge_reserve_usd:.4f}) against max_spend ${args.max_spend:.4f}")
+          f"${bound.total_usd:.4f} against max_spend ${args.max_spend:.4f} (target calls); "
+          f"judge ceiling ${bound.judge_reserve_usd:.4f} is its own commitment, enforced per call")
     if not bound.within:
-        print("pre-flight: REFUSED - the worst case exceeds max_spend", file=sys.stderr)
+        print("pre-flight: REFUSED - the target worst case exceeds max_spend", file=sys.stderr)
         return 5, {}
     return 0, {"seed_set": seed_set, "seeds": seeds, "price": price, "bound": bound, "samples": samples}
 
@@ -105,9 +106,10 @@ def cmd_run(args: argparse.Namespace) -> int:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     task = study_task(facts["seed_set"], facts["seeds"])
-    per_sample_cost = (args.max_spend - (args.judge_max_spend or 0.0)) / max(1, facts["samples"] * args.epochs)
+    # max_spend is the target ceiling alone (the judge has its own); Inspect's cost_limit is per sample
+    per_sample_cost = args.max_spend / max(1, facts["samples"] * args.epochs)
     log = run_study(task, target=args.target, seeds=facts["seeds"], epochs=args.epochs, log_dir=out_dir / "logs",
-                    token_limit=args.token_limit, cost_limit=per_sample_cost)
+                    token_limit=args.token_limit, cost_limit=per_sample_cost, log_model_api=args.log_model_api == "true")
     print(f"eval {log.eval.eval_id} status {log.status}; log {log.location}")
     return 0 if log.status == "success" else 7
 
@@ -151,12 +153,28 @@ def cmd_judge(args: argparse.Namespace) -> int:
     records = read_records(run_dir / "transcripts.jsonl")
     seed_set = load_seed_file(args.seeds)
     plans = plan_run(records, manifest, seed_set.seeds, outcomes=load_json(OUTCOME_REGISTRY), rubric=load_rubric())
-    price = resolve_price(args.judge_model)
+    # the judge spec is registry form (provider:model or a bare Anthropic id), so it is normalised before pricing
+    price = resolve_registry_price(args.judge_model)
+    channel = judge_billing_channel(args.judge_model)
     ceiling = SpendCeiling(args.judge_max_spend, price.input_per_mtok, price.output_per_mtok, args.judge_max_tokens)
     client = RegistryJudge(args.judge_model)
-    sidecar = run_judgments(plans, client, out_path=run_dir / "judgments.jsonl", ceiling=ceiling,
-                            judge_max_tokens=args.judge_max_tokens, labels=labels_from_manifest(manifest))
+    judgments_path = run_dir / "judgments.jsonl"
+    sidecar = run_judgments(plans, client, out_path=judgments_path, ceiling=ceiling,
+                            judge_max_tokens=args.judge_max_tokens, labels=labels_from_manifest(manifest),
+                            sidecar_extra={"task": "petri-audit-judge", "run_id": manifest["run_id"],
+                                           "eval_id": manifest["eval_id"], "billing_channel": channel,
+                                           "price_source": price.source, "input_per_mtok": price.input_per_mtok,
+                                           "output_per_mtok": price.output_per_mtok})
+    # bind the judgment family into the manifest and reseal the chain head, so verify-chain covers it
+    sealed = bind_judgments(run_dir, judgments_path=judgments_path, report_path=judgments_path.with_suffix(".report.json"),
+                            judge_of_record={"judge_model": args.judge_model, "billing_channel": channel,
+                                             "price_source": price.source, "judged_utc": sidecar["run_utc"],
+                                             "cost_usd": sidecar["cost_usd"], "truncated": sidecar["truncated"],
+                                             "planned": sidecar["planned"], "judged": sidecar["judged"],
+                                             "null": sidecar["null"], "not_applicable": sidecar["not_applicable"]})
     print(json.dumps(sidecar, indent=2))
+    print(f"manifest resealed: judgments bound ({sealed['artifacts']['judgments_sha256'][:12]}), "
+          f"identity {sealed['chain']['identity_sha256'][:12]} unchanged")
     return 0
 
 
@@ -227,6 +245,9 @@ def build_parser() -> argparse.ArgumentParser:
     common_lock(p)
     common_spend(p)
     p.add_argument("--out-dir", required=True)
+    p.add_argument("--log-model-api", choices=["true", "false"], default="true",
+                   help="retain every raw provider request/response in the (never committed) .eval; "
+                        "false leaves generation_config_pinned unprovable, so the run cannot be claim-grade")
     p.set_defaults(func=cmd_run)
 
     p = sub.add_parser("adapt")

@@ -59,6 +59,30 @@ def split_inspect_name(model: str) -> tuple[str, str]:
     return "anthropic", model
 
 
+def registry_spec_to_inspect(spec: str) -> str:
+    """The judge takes a registry spec (scripts/advice_eval.py `_resolve_spec`:
+    `provider:model`, or a bare Anthropic model id); prices are keyed by
+    Inspect's `provider/model` form. `openrouter:vendor/model` becomes
+    `openrouter/vendor/model`, which `resolve_price` prices by vendor entry."""
+    spec = spec.strip()
+    if ":" in spec:
+        provider, model = spec.split(":", 1)
+        return f"{provider}/{model}"
+    return f"anthropic/{spec}"
+
+
+def resolve_registry_price(spec: str, registry: dict | None = None, engine_pricing: dict | None = None) -> Price:
+    """`resolve_price` for a registry-form spec (the judge's)."""
+    return resolve_price(registry_spec_to_inspect(spec), registry, engine_pricing)
+
+
+def judge_billing_channel(spec: str) -> str:
+    """The prepaid account a judge spec bills: OpenRouter only for an
+    `openrouter:` spec; everything else stays on the Anthropic channel, the
+    one the daily ceiling bounds (fail closed, as fire_trigger.fire_lane does)."""
+    return "openrouter" if spec.strip().startswith("openrouter:") else "anthropic"
+
+
 def resolve_price(model: str, registry: dict | None = None, engine_pricing: dict | None = None) -> Price:
     """The price for an Inspect model string, with its source. Zero-cost mock
     and placeholder models price at zero so `cost_limit` can start."""
@@ -124,33 +148,65 @@ class PreflightBound:
 
 def preflight_bound(*, samples: int, epochs: int, token_limit: int, price: Price, judge_reserve_usd: float,
                     max_spend_usd: float) -> PreflightBound:
-    """The worst case a run can cost before Inspect's per-sample limits stop it:
-    every sample spends its whole token limit at the dearer of the two rates
-    (input and output are not distinguishable in advance), times epochs, plus
-    the judge reserve. Derived from the limits the run passes, not from turn
-    counts, which undercount (design memo section 13)."""
+    """The worst case the TARGET calls can cost before Inspect's per-sample
+    limits stop them: every sample spends its whole token limit at the dearer
+    of the two rates (input and output are not distinguishable in advance),
+    times epochs. Compared against `max_spend`, the target ceiling. The judge
+    has its own ceiling (`judge_max_spend`, enforced per call by
+    judge_runner.SpendCeiling), which `fire_trigger.fire_commitment` counts as
+    a second commitment; it is carried here for the report only and never
+    added to the target bound, or the guard would count it twice. Derived
+    from the limits the run passes, not from turn counts, which undercount
+    (design memo section 13)."""
     per_sample = token_limit * max(price.input_per_mtok, price.output_per_mtok) / 1e6
-    total = samples * epochs * per_sample + judge_reserve_usd
+    total = samples * epochs * per_sample
     return PreflightBound(samples=samples, epochs=epochs, token_limit=token_limit, per_sample_usd=per_sample,
                           judge_reserve_usd=judge_reserve_usd, total_usd=total, max_spend_usd=max_spend_usd)
 
 
-def reprice_usage(model_usage: dict[str, dict[str, Any]], registry: dict | None = None) -> tuple[float, list[dict]]:
+def usage_is_missing(usage: dict[str, Any]) -> bool:
+    """A usage row cannot be priced when a token count is absent (None or no
+    key) or when any of its calls returned no usage block at all
+    (`calls_without_usage`, counted by the adapter per model event)."""
+    if usage.get("input_tokens") is None or usage.get("output_tokens") is None:
+        return True
+    return int(usage.get("calls_without_usage") or 0) > 0
+
+
+def reprice_usage(model_usage: dict[str, dict[str, Any]], registry: dict | None = None) -> tuple[float | None, list[dict]]:
     """Cost from Inspect's per-model usage under the engine's prices: the
-    post-run layer of the four (design memo section 13)."""
+    post-run layer of the four (design memo section 13). A priced model whose
+    usage is missing is never priced as zero: its row carries `usage_missing:
+    true` and a null cost, and the total is None, so the sidecar imputes the
+    ceiling (`write_report_sidecar`) rather than booking a paid run below its
+    charge. A zero-price model (mockllm, the placeholder) with missing usage
+    costs exactly 0 whatever its token counts were, so its cost is 0 and the
+    missing usage is still recorded on the row (the locked inspect-ai's mockllm
+    returns no usage block at all)."""
     rows: list[dict] = []
     total = 0.0
+    any_missing = False
     for model, usage in sorted(model_usage.items()):
         price = resolve_price(model, registry)
-        in_tok = int(usage.get("input_tokens") or 0)
-        out_tok = int(usage.get("output_tokens") or 0)
-        cost = price.cost(in_tok, out_tok)
-        total += cost
+        missing = usage_is_missing(usage)
+        zero_priced = price.input_per_mtok == 0 and price.output_per_mtok == 0
+        in_tok = None if usage.get("input_tokens") is None else int(usage["input_tokens"])
+        out_tok = None if usage.get("output_tokens") is None else int(usage["output_tokens"])
+        if missing and not zero_priced:
+            cost = None
+            any_missing = True
+        elif missing:
+            cost = 0.0
+        else:
+            cost = price.cost(in_tok, out_tok)
+            total += cost
         rows.append({"model": model, "input_tokens": in_tok, "output_tokens": out_tok,
-                     "total_tokens": int(usage.get("total_tokens") or in_tok + out_tok),
-                     "cost_usd": round(cost, 8), "price_source": price.source,
+                     "total_tokens": None if usage.get("total_tokens") is None and missing
+                     else int(usage.get("total_tokens") or (in_tok or 0) + (out_tok or 0)),
+                     "calls_without_usage": int(usage.get("calls_without_usage") or 0), "usage_missing": missing,
+                     "cost_usd": None if cost is None else round(cost, 8), "price_source": price.source,
                      "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok})
-    return round(total, 8), rows
+    return (None if any_missing else round(total, 8)), rows
 
 
 def write_report_sidecar(path: Path, *, run_id: str, eval_id: str, model_usage: dict[str, dict[str, Any]],
@@ -161,9 +217,16 @@ def write_report_sidecar(path: Path, *, run_id: str, eval_id: str, model_usage: 
     billing_channel (Inspect's `openrouter/` ids would otherwise book
     OpenRouter spend to the Anthropic channel)."""
     cost, rows = reprice_usage(model_usage, registry)
+    missing = [r["model"] for r in rows if r["usage_missing"]]
+    if cost is None:
+        # a model returned no usage for at least one paid call: the ledger gets the ceiling the guard reserved,
+        # never a figure below what the provider may have charged, and the sidecar says why
+        cost, basis = float(max_spend_usd), "ceiling_imputed:usage_missing"
+    else:
+        basis = "engine_repriced_from_inspect_model_usage"
     report = {
         "run_utc": run_utc, "run_id": run_id, "eval_id": eval_id, "task": "petri-audit",
-        "cost_usd": cost, "cost_basis": "engine_repriced_from_inspect_model_usage",
+        "cost_usd": cost, "cost_basis": basis, "usage_missing_models": missing,
         "max_spend_usd": max_spend_usd, "judge_max_spend_usd": judge_max_spend_usd,
         "billing_channel": billing_channel([r["model"] for r in rows]),
         "models": rows,
