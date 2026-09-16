@@ -466,7 +466,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         # two locations yields byte-identical exports; the run directory name is the only path component recorded
         return p.resolve().relative_to(out_dir.parent.resolve()).as_posix()
 
-    priced_cost, priced_rows = reprice_usage(model_usage, registry)
+    priced_cost, priced_rows = reprice_usage(model_usage, registry, target=target_name)
     usage_missing_models = sorted(r["model"] for r in priced_rows if r["usage_missing"])
     manifest: dict[str, Any] = {
         "manifest_version": MANIFEST_VERSION,
@@ -499,7 +499,8 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
                               "seed_forwarded_by_provider": SEED_FORWARDING.get(target_provider),
                               "seed_honored": None},
                    "auditor": None, "judge_harness": None},
-        "seeds": [{"seed_id": s["seed_id"], "seed_sha256": seed_digest(s), "file": repo_rel(seed_set.path)} for s in seeds_used.values()],
+        "seeds": [{"seed_id": s["seed_id"], "seed_sha256": seed_digest(s), "file": repo_rel(seed_set.path),
+                   "claim_grade_eligible": bool(s["claim_grade_eligible"])} for s in seeds_used.values()],
         "trees": trees,
         "usage": {"by_role": [{"role": r, **u} for r, u in sorted(role_usage.items())],
                   "by_model": [{"model": m, **u} for m, u in sorted(model_usage.items())],
@@ -535,7 +536,9 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         seal_result = scan_strings(strings, registry_sealed, "exports")
         checks["holdout_seal"] = Check(seal_result.status, seal_result.detail)
     manifest["execution"]["contract_checks"]["holdout_seal"] = checks["holdout_seal"].as_dict()
-    manifest["execution"]["claim_grade_eligible"] = claim_grade_eligible(manifest["execution"]["contract_checks"], len(refused))
+    manifest["execution"]["claim_grade_eligible"] = claim_grade_eligible(
+        manifest["execution"]["contract_checks"], len(refused),
+        seeds_declared=[bool(s["claim_grade_eligible"]) for s in seeds_used.values()])
     # identity digest, then bind the records and write the families whose digests the manifest carries
     sealed = seal_manifest(manifest, chain_head(out_dir.parent))
     identity = sealed["chain"]["identity_sha256"]

@@ -352,12 +352,15 @@ class SpendCeiling:
     def overrun_usd(self) -> float:
         return round(max(0.0, self.spent - self.max_spend), 8)
 
-    def preload(self, prior_spent_usd: float) -> None:
+    def preload(self, prior_spent_usd: float, prior_calls_without_usage: int = 0) -> None:
         """Start from the cost already recorded in an existing judgments file,
         so a resumed pass (a retry of null rows, a truncated pass continued)
-        can never spend another full ceiling (Codex round 3)."""
+        can never spend another full ceiling (Codex round 3), and from the
+        calls already charged at their worst case, so the cumulative sidecar's
+        provenance never says actual usage over an imputed call (round 4)."""
         self.spent = float(prior_spent_usd)
         self.prior_spent = float(prior_spent_usd)
+        self.calls_without_usage = int(prior_calls_without_usage)
 
 
 def parse_answer(text: str, allowed: list[str], kind: str,
@@ -411,9 +414,73 @@ def run_judgments(plans: list[JudgePlan], client: JudgeClient, *, out_path: Path
     done = {dedupe_key(j) for j in existing if j.get("value") is not None or j.get("not_applicable_reason")}
     # a resumed pass starts from what the file already cost: the ceiling is per run, not per invocation, and the
     # sidecar is cumulative over every row so the ledger's growth pass books each invocation's delta
-    ceiling.preload(sum(float(j.get("cost_usd") or 0.0) for j in existing))
+    ceiling.preload(sum(float(j.get("cost_usd") or 0.0) for j in existing),
+                    sum(1 for j in existing if j.get("usage_missing")))
     counts = {"planned": len(plans), "already_judged": 0, "not_applicable": 0, "judged": 0, "null": 0, "stopped_early": False}
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    abort_error: str | None = None
+    try:
+        _judge_loop(plans, client, ceiling, judge_max_tokens, labels, now_fn, out_path, done, counts)
+    except Exception as exc:  # noqa: BLE001 - the sidecar must record whatever was charged before the failure
+        abort_error = f"{type(exc).__name__}: {exc}"
+    sidecar = _sidecar(out_path, client, ceiling, counts, now_fn, sidecar_extra, abort_error)
+    report_path = report_path or out_path.with_suffix(".report.json")
+    report_path.write_text(json.dumps(sidecar, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    if abort_error is not None:
+        raise JudgeAborted(abort_error, sidecar)
+    return sidecar
+
+
+class JudgeAborted(RuntimeError):
+    """The judge client raised mid-run; the sidecar was written first (with
+    `aborted` set) so the calls charged before the failure are booked."""
+
+    def __init__(self, message: str, sidecar: dict) -> None:
+        super().__init__(message)
+        self.sidecar = sidecar
+
+
+def cumulative_counts(rows: list[dict]) -> dict[str, int]:
+    """Run-level judgment counts from the complete file: the latest row per
+    dedupe key decides (a retried null is counted once, by its retry), so a
+    resumed invocation never replaces the run's totals with its own
+    (Codex round 4)."""
+    latest: dict[tuple, dict] = {}
+    for j in rows:
+        latest[dedupe_key(j)] = j
+    out = {"keys": len(latest), "judged": 0, "null": 0, "not_applicable": 0, "calls_without_usage": 0}
+    for j in latest.values():
+        if j.get("not_applicable_reason"):
+            out["not_applicable"] += 1
+        elif j.get("value") is None:
+            out["null"] += 1
+        else:
+            out["judged"] += 1
+    out["calls_without_usage"] = sum(1 for j in rows if j.get("usage_missing"))
+    return out
+
+
+def _sidecar(out_path: Path, client: JudgeClient, ceiling: SpendCeiling, counts: dict, now_fn: Callable[[], str],
+             sidecar_extra: dict | None, abort_error: str | None) -> dict:
+    rows = read_jsonl(out_path)
+    return {"run_utc": now_fn(), "judgments_file": out_path.name, "judge_model": client.model_spec,
+            # cumulative over every row in the file (cost_basis the ledger knows: it books run_cost_usd to the day
+            # on first sight and each later growth as a delta), never this invocation alone
+            "cost_usd": round(ceiling.spent, 8), "run_cost_usd": round(ceiling.spent - ceiling.prior_spent, 8),
+            "prior_cost_usd": round(ceiling.prior_spent, 8), "cost_basis": "cumulative_from_records",
+            "max_spend_usd": ceiling.max_spend, "truncated": ceiling.truncated,
+            "overrun_usd": ceiling.overrun_usd, "input_token_estimator": INPUT_TOKEN_ESTIMATOR,
+            "largest_input_estimate": ceiling.largest_estimate,
+            "calls_without_usage": ceiling.calls_without_usage,
+            "usage_basis": ("actual_usage" if ceiling.calls_without_usage == 0
+                            else "actual_usage_plus_imputed_worst_case_for_calls_without_usage"),
+            "aborted": abort_error is not None, "abort_error": abort_error,
+            "cumulative": cumulative_counts(rows),
+            **counts, **(sidecar_extra or {})}
+
+
+def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeiling, judge_max_tokens: int,
+                labels: dict[str, dict], now_fn: Callable[[], str], out_path: Path, done: set, counts: dict) -> None:
     with open(out_path, "a", encoding="utf-8") as fh:
         for p in plans:
             base = {"conversation_id": p.conversation_id, "turn_id": p.turn_id, "assistant_turn_index": p.assistant_turn_index,
@@ -447,22 +514,8 @@ def run_judgments(plans: list[JudgePlan], client: JudgeClient, *, out_path: Path
                    "cost_basis": "imputed_worst_case" if reply.usage_missing else "actual_usage",
                    "cost_usd": round(cost, 8), "judge_error": error}
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+            fh.flush()
             counts["judged" if error is None else "null"] += 1
-    sidecar = {"run_utc": now_fn(), "judgments_file": out_path.name, "judge_model": client.model_spec,
-               # cumulative over every row in the file (cost_basis the ledger knows: it books run_cost_usd to the day
-               # on first sight and each later growth as a delta), never this invocation alone
-               "cost_usd": round(ceiling.spent, 8), "run_cost_usd": round(ceiling.spent - ceiling.prior_spent, 8),
-               "prior_cost_usd": round(ceiling.prior_spent, 8), "cost_basis": "cumulative_from_records",
-               "max_spend_usd": ceiling.max_spend, "truncated": ceiling.truncated,
-               "overrun_usd": ceiling.overrun_usd, "input_token_estimator": INPUT_TOKEN_ESTIMATOR,
-               "largest_input_estimate": ceiling.largest_estimate,
-               "calls_without_usage": ceiling.calls_without_usage,
-               "usage_basis": ("actual_usage" if ceiling.calls_without_usage == 0
-                               else "actual_usage_plus_imputed_worst_case_for_calls_without_usage"),
-               **counts, **(sidecar_extra or {})}
-    report_path = report_path or out_path.with_suffix(".report.json")
-    report_path.write_text(json.dumps(sidecar, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    return sidecar
 
 
 # ----------------------------------------------------------- analysis rows

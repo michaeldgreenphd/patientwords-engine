@@ -76,11 +76,17 @@ def resolve_registry_price(spec: str, registry: dict | None = None, engine_prici
     return resolve_price(registry_spec_to_inspect(spec), registry, engine_pricing)
 
 
-def registry_provider(spec: str) -> str:
-    """The registry provider a judge spec names: `provider:model` or a bare
-    Anthropic model id (scripts/advice_eval.py `_resolve_spec`)."""
+def registry_provider(spec: str, registry: dict | None = None) -> str:
+    """The registry provider a judge spec names, by the advice resolver's own
+    rule (scripts/advice_eval.py `_resolve_spec`): `provider:model`; a bare
+    provider name that the registry knows (expanded to its consumer default);
+    otherwise a bare Anthropic model id (Codex round 4)."""
     spec = spec.strip()
-    return spec.split(":", 1)[0] if ":" in spec else "anthropic"
+    if ":" in spec:
+        return spec.split(":", 1)[0]
+    if isinstance(registry, dict) and spec in registry and isinstance(registry.get(spec), dict):
+        return spec
+    return "anthropic"
 
 
 def judge_billing_channel(spec: str, registry: dict | None = None) -> str:
@@ -91,7 +97,7 @@ def judge_billing_channel(spec: str, registry: dict | None = None) -> str:
     included, stays on the Anthropic channel, the one the daily ceiling bounds
     (fail closed, as fire_trigger.petri_channels does with the same rule)."""
     registry = registry if registry is not None else (load_json(PROVIDERS_PATH) if PROVIDERS_PATH.is_file() else {})
-    cfg = registry.get(registry_provider(spec)) if isinstance(registry, dict) else None
+    cfg = registry.get(registry_provider(spec, registry)) if isinstance(registry, dict) else None
     key_env = cfg.get("key_env") if isinstance(cfg, dict) else None
     return "openrouter" if key_env == "OPENROUTER_API_KEY" else "anthropic"
 
@@ -218,7 +224,8 @@ def usage_is_missing(usage: dict[str, Any]) -> bool:
     return int(usage.get("calls_without_usage") or 0) > 0
 
 
-def reprice_usage(model_usage: dict[str, dict[str, Any]], registry: dict | None = None) -> tuple[float | None, list[dict]]:
+def reprice_usage(model_usage: dict[str, dict[str, Any]], registry: dict | None = None,
+                  target: str | None = None) -> tuple[float | None, list[dict]]:
     """Cost from Inspect's per-model usage under the engine's prices: the
     post-run layer of the four (design memo section 13). A priced model whose
     usage is missing is never priced as zero: its row carries `usage_missing:
@@ -231,6 +238,11 @@ def reprice_usage(model_usage: dict[str, dict[str, Any]], registry: dict | None 
     rows: list[dict] = []
     total = 0.0
     any_missing = False
+    if not model_usage and target:
+        # no usage row at all for a run that had a target (an all-error eval, a provider failure before any usable
+        # event): no evidence of zero spend, so the target is recorded as missing usage, which prices a paid target
+        # at the ceiling and a zero-price target at zero (Codex round 4)
+        model_usage = {target: {"input_tokens": None, "output_tokens": None, "calls": 0, "calls_without_usage": 0}}
     for model, usage in sorted(model_usage.items()):
         price = resolve_price(model, registry)
         missing = usage_is_missing(usage)
@@ -257,12 +269,12 @@ def reprice_usage(model_usage: dict[str, dict[str, Any]], registry: dict | None 
 
 def write_report_sidecar(path: Path, *, run_id: str, eval_id: str, model_usage: dict[str, dict[str, Any]],
                          max_spend_usd: float, judge_max_spend_usd: float | None, run_utc: str,
-                         registry: dict | None = None, extra: dict | None = None) -> dict:
+                         registry: dict | None = None, extra: dict | None = None, target: str | None = None) -> dict:
     """The `<stem>.report.json` the ledger folds into the daily spend: cost_usd
     re-priced from Inspect's usage, the ceilings, and an explicit
     billing_channel (Inspect's `openrouter/` ids would otherwise book
     OpenRouter spend to the Anthropic channel)."""
-    cost, rows = reprice_usage(model_usage, registry)
+    cost, rows = reprice_usage(model_usage, registry, target=target)
     missing = [r["model"] for r in rows if r["usage_missing"]]
     if cost is None:
         # a model returned no usage for at least one paid call: the ledger gets the ceiling the guard reserved,

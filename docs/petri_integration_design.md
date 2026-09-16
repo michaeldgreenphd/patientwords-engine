@@ -1112,6 +1112,40 @@ regression test each.
     a truncated or overlong branch; the validator requires every declared
     trajectory to fit `max_target_turns`; the manifest records the round limit.
 
+### Corrections from the fourth Codex review (PR #26, 2026-09-16)
+
+Ten findings on the third corrected tree, all verified and fixed with a
+regression test each.
+
+1. **A judge that aborts still leaves a sidecar**: `run_judgments` writes the
+   cumulative sidecar (marked `aborted`, with the error) before re-raising
+   `JudgeAborted`; the workflow's judge step drops a start marker, and the
+   spend-report step reconstructs a missing judge sidecar from the rows or
+   imputes the judge ceiling (`cli judge-spend-report`) only when the marker
+   shows the judge started.
+2. **Resumed passes carry prior imputed calls**: the ceiling preloads the
+   count of rows charged at their worst case, so the cumulative sidecar's
+   `usage_basis` never says actual usage over an imputed call.
+3. **`query_text` is every call's arguments, in order**, as the registry
+   defines it, not the first call's alone.
+4. **The manifest's judge counts are the run's**: `cumulative_counts` reads
+   the complete judgments file (latest row per key) for `judge_of_record` and
+   the sidecar's `cumulative` block.
+5. **`advice_before_lookup`** requires a reply with no tool call and non-empty
+   text before the first call; text sharing the first tool-calling message
+   does not count.
+6. **An adapted run with no usage row imputes the ceiling** for a priced
+   target (`reprice_usage(..., target=)`), never a normal zero.
+7. **A bare provider judge spec** (`openai`) resolves to that provider, by the
+   advice resolver's rule, in `spend.registry_provider` and
+   `fire_trigger.petri_channels` alike.
+8. **`marker_echo` reads the final reply only**, never an intermediate
+   tool-calling reply; a trajectory with no reply after the tool result is
+   `not_applicable` with the reason.
+9. **`providers_registry` is typed.**
+10. **A scripted seed's own `claim_grade_eligible: false` enters the run
+    verdict**, and the manifest's seed entries record each seed's declaration.
+
 ## Decisions recorded from the owner (2026-09-16)
 
 These were open questions in the first draft and are now decided. Each entry

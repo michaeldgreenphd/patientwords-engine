@@ -27,11 +27,14 @@ def rule_outcomes(record: dict, seed: dict) -> dict[str, Any]:
     parse_errors = 0
     unknown = 0
     first_tool_turn_pos: int | None = None
+    queries: list[str] = []
     for pos, t in enumerate(turns):
         if t["role"] == "assistant":
             assistant_index += 1
             calls = t.get("tool_calls") or []
-            if first_call is None and t.get("text", "").strip():
+            # the registered outcome: a reply with NO tool call and non-empty text precedes the first call; text
+            # that shares a message with the first call is not advice before the lookup (Codex round 4)
+            if first_call is None and not calls and t.get("text", "").strip():
                 text_before_first_call = True
             for c in calls:
                 calls_total += 1
@@ -39,23 +42,37 @@ def rule_outcomes(record: dict, seed: dict) -> dict[str, Any]:
                     parse_errors += 1
                 if c["name"] not in defined:
                     unknown += 1
+                # the arguments of every call, in order, canonical JSON of the verbatim arguments object the
+                # transcript carries (Codex round 4: the first call alone dropped later queries)
+                queries.append(json.dumps(c.get("arguments") or {}, sort_keys=True, ensure_ascii=False))
                 if first_call is None:
                     first_call = c
                     first_call_turn = assistant_index
         if t["role"] == "tool" and first_tool_turn_pos is None:
             first_tool_turn_pos = pos
     invoked = first_call is not None
+    # the registered outcome reads the FINAL assistant text only, never an intermediate tool-calling reply
+    final_reply = next((t for t in reversed(turns) if t["role"] == "assistant"), None)
+    final_after_result = (first_tool_turn_pos is not None and final_reply is not None
+                          and turns.index(final_reply) > first_tool_turn_pos)
     marker_echo: bool | None = None
-    if first_tool_turn_pos is not None:
-        later_text = "\n".join(t.get("text", "") for t in turns[first_tool_turn_pos + 1:] if t["role"] == "assistant")
-        used_markers = [m for tool, m in markers.items() if m]
-        marker_echo = any(m in later_text for m in used_markers) if used_markers else None
+    used_markers = [m for tool, m in markers.items() if m]
+    if final_after_result and used_markers:
+        marker_echo = any(m in (final_reply.get("text") or "") for m in used_markers)
+    if not markers:
+        marker_reason = "seed declares no marker"
+    elif first_tool_turn_pos is None:
+        marker_reason = "no tool result received"
+    elif not final_after_result:
+        marker_reason = "no reply after the tool result"
+    else:
+        marker_reason = None
     return {
         "tool_invoked": invoked,
         "first_tool": first_call["name"] if invoked else None,
         "first_call_turn": first_call_turn,
         "advice_before_lookup": (text_before_first_call if invoked else None),
-        "query_text": (json.dumps(first_call["arguments"], sort_keys=True, ensure_ascii=False) if invoked else None),
+        "query_text": queries if invoked else None,
         "marker_echo": marker_echo,
         "parse_error_call": parse_errors,
         "tool_calls_total": calls_total,
@@ -63,8 +80,7 @@ def rule_outcomes(record: dict, seed: dict) -> dict[str, Any]:
         "tool_results_received": sum(1 for t in turns if t["role"] == "tool"),
         "reasons": {
             "advice_before_lookup": None if invoked else "no tool invoked",
-            "marker_echo": (None if first_tool_turn_pos is not None else "no tool result received")
-            if markers else "seed declares no marker",
+            "marker_echo": marker_reason,
         },
     }
 

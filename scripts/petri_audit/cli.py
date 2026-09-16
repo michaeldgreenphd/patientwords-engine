@@ -11,6 +11,7 @@ same checks and calls nothing.
     python -m scripts.petri_audit.cli adapt --eval FILE --out-dir DIR --custody STR --max-spend USD [--run-params FILE] [...]
     python -m scripts.petri_audit.cli spend-report --out FILE --run-id ID --target SPEC --max-spend USD [--eval FILE]
     python -m scripts.petri_audit.cli judge --run-dir DIR --judge-model SPEC --judge-max-spend USD [...]
+    python -m scripts.petri_audit.cli judge-spend-report --run-dir DIR --judge-model SPEC --judge-max-spend USD
     python -m scripts.petri_audit.cli analyze --run-dir DIR
     python -m scripts.petri_audit.cli verify-chain --data-dir DIR
 
@@ -162,7 +163,8 @@ def cmd_adapt(args: argparse.Namespace) -> int:
         write_report_sidecar(Path(args.out_dir) / f"{Path(args.out_dir).name}.report.json", run_id=m["run_id"],
                              eval_id=m["eval_id"], model_usage=usage, max_spend_usd=args.max_spend,
                              judge_max_spend_usd=args.judge_max_spend, run_utc=m["created_utc"],
-                             extra={"raw_eval_log_sha256": m["artifacts"]["raw_eval_log_sha256"]})
+                             extra={"raw_eval_log_sha256": m["artifacts"]["raw_eval_log_sha256"]},
+                             target=m["models"]["target"]["inspect_name"])
     return 0
 
 
@@ -212,14 +214,51 @@ def cmd_spend_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_judge_spend_report(args: argparse.Namespace) -> int:
+    """The judge cost sidecar for a judge step that started and left none (the
+    client raised before run_judgments could write, or the process died):
+    cumulative from whatever rows the judgments file holds, the judge ceiling
+    imputed for a priced judge when it holds none (Codex round 4)."""
+    from .judge_runner import cumulative_counts, read_jsonl
+
+    run_dir = Path(args.run_dir)
+    report_path = run_dir / f"{run_dir.name}.judge.report.json"
+    if report_path.is_file():
+        print(f"{report_path} exists; nothing to impute")
+        return 0
+    rows = read_jsonl(run_dir / "judgments.jsonl")
+    price = resolve_registry_price(args.judge_model)
+    channel = judge_billing_channel(args.judge_model)
+    zero_priced = price.input_per_mtok == 0 and price.output_per_mtok == 0
+    if rows:
+        cost = round(sum(float(j.get("cost_usd") or 0.0) for j in rows), 8)
+        basis, reason = "cumulative_from_records", "judge step started; sidecar reconstructed from the judgment rows"
+    else:
+        cost = 0.0 if zero_priced else float(args.judge_max_spend)
+        basis = "engine_repriced_from_inspect_model_usage" if zero_priced else "ceiling_imputed:judge_aborted_no_rows"
+        reason = "judge step started; no judgment row survived, ceiling imputed for a priced judge"
+    sidecar = {"run_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "judgments_file": "judgments.jsonl",
+               "judge_model": args.judge_model, "cost_usd": cost, "run_cost_usd": cost, "prior_cost_usd": 0.0,
+               "cost_basis": basis, "max_spend_usd": float(args.judge_max_spend), "truncated": None, "aborted": True,
+               "abort_error": None, "spend_report_reason": reason, "cumulative": cumulative_counts(rows),
+               "task": "petri-audit-judge", "run_id": run_dir.name, "billing_channel": channel,
+               "price_source": price.source, "input_per_mtok": price.input_per_mtok, "output_per_mtok": price.output_per_mtok}
+    write_json(report_path, sidecar)
+    print(f"judge spend report {report_path}: cost_usd {cost} ({basis}); {reason}")
+    return 0
+
+
 def cmd_judge(args: argparse.Namespace) -> int:
     from .adapter import read_records
     from .judge_runner import (
+        JudgeAborted,
         RegistryJudge,
         SpendCeiling,
+        cumulative_counts,
         labels_from_manifest,
         load_rubric,
         plan_run,
+        read_jsonl,
         run_judgments,
     )
 
@@ -236,20 +275,29 @@ def cmd_judge(args: argparse.Namespace) -> int:
     judgments_path = run_dir / "judgments.jsonl"
     # the sidecar's basename is run-unique: the ledger keys sidecars by filename (Codex round 2)
     report_path = run_dir / f"{run_dir.name}.judge.report.json"
-    sidecar = run_judgments(plans, client, out_path=judgments_path, ceiling=ceiling,
-                            judge_max_tokens=args.judge_max_tokens, labels=labels_from_manifest(manifest),
-                            report_path=report_path,
-                            sidecar_extra={"task": "petri-audit-judge", "run_id": manifest["run_id"],
-                                           "eval_id": manifest["eval_id"], "billing_channel": channel,
-                                           "price_source": price.source, "input_per_mtok": price.input_per_mtok,
-                                           "output_per_mtok": price.output_per_mtok})
-    # bind the judgment family into the manifest and reseal the chain head, so verify-chain covers it
+    try:
+        sidecar = run_judgments(plans, client, out_path=judgments_path, ceiling=ceiling,
+                                judge_max_tokens=args.judge_max_tokens, labels=labels_from_manifest(manifest),
+                                report_path=report_path,
+                                sidecar_extra={"task": "petri-audit-judge", "run_id": manifest["run_id"],
+                                               "eval_id": manifest["eval_id"], "billing_channel": channel,
+                                               "price_source": price.source, "input_per_mtok": price.input_per_mtok,
+                                               "output_per_mtok": price.output_per_mtok})
+    except JudgeAborted as exc:
+        # the sidecar was written before the exception reached here; the judgments are not bound (the manifest
+        # keeps saying no judge of record ran) and the step fails, with the charged calls booked
+        print(json.dumps(exc.sidecar, indent=2))
+        print(f"judge aborted: {exc}; sidecar written, judgments not bound", file=sys.stderr)
+        return 8
+    # bind the judgment family into the manifest and reseal the chain head, so verify-chain covers it; the counts
+    # are the run's, from the complete file, never this invocation's alone (Codex round 4)
+    totals = cumulative_counts(read_jsonl(judgments_path))
     sealed = bind_judgments(run_dir, judgments_path=judgments_path, report_path=report_path,
                             judge_of_record={"judge_model": args.judge_model, "billing_channel": channel,
                                              "price_source": price.source, "judged_utc": sidecar["run_utc"],
                                              "cost_usd": sidecar["cost_usd"], "truncated": sidecar["truncated"],
-                                             "planned": sidecar["planned"], "judged": sidecar["judged"],
-                                             "null": sidecar["null"], "not_applicable": sidecar["not_applicable"]})
+                                             "planned": sidecar["planned"], "judged": totals["judged"],
+                                             "null": totals["null"], "not_applicable": totals["not_applicable"]})
     print(json.dumps(sidecar, indent=2))
     print(f"manifest resealed: judgments bound ({sealed['artifacts']['judgments_sha256'][:12]}), "
           f"identity {sealed['chain']['identity_sha256'][:12]} unchanged")
@@ -359,6 +407,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--run-utc", default=None)
     p.add_argument("--reason", default="run attempted but no adapted report exists")
     p.set_defaults(func=cmd_spend_report)
+
+    p = sub.add_parser("judge-spend-report")
+    p.add_argument("--run-dir", required=True)
+    p.add_argument("--judge-model", required=True)
+    p.add_argument("--judge-max-spend", type=float, required=True)
+    p.set_defaults(func=cmd_judge_spend_report)
 
     p = sub.add_parser("judge")
     common_seeds(p)

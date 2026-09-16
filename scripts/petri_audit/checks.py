@@ -134,9 +134,15 @@ def coverage_problems(seed_set: SeedSet, selected_seed_ids: list[str] | None, se
     return problems
 
 
-def claim_grade_eligible(contract_checks: dict[str, dict], refused: int) -> bool:
-    """Every check passed or had nothing to examine, and no record was refused."""
-    return all(c["status"] in ELIGIBLE_STATUSES for c in contract_checks.values()) and refused == 0
+def claim_grade_eligible(contract_checks: dict[str, dict], refused: int,
+                         seeds_declared: list[bool] | None = None) -> bool:
+    """Every check passed or had nothing to examine, no record was refused,
+    and every seed the run used declares itself claim-grade eligible: a
+    scripted seed marked exploratory by its author is never promoted by the
+    runtime checks passing (Codex round 4)."""
+    checks_ok = all(c["status"] in ELIGIBLE_STATUSES for c in contract_checks.values())
+    seeds_ok = all(bool(x) for x in (seeds_declared if seeds_declared is not None else [True]))
+    return checks_ok and refused == 0 and seeds_ok
 
 
 # ------------------------------------------------- raw provider requests (Codex round 2)

@@ -287,7 +287,8 @@
         "required": [
           "seed_id",
           "seed_sha256",
-          "file"
+          "file",
+          "claim_grade_eligible"
         ],
         "properties": {
           "seed_id": {
@@ -301,6 +302,10 @@
           "file": {
             "type": "string",
             "description": "Repo-relative path of the seed file."
+          },
+          "claim_grade_eligible": {
+            "type": "boolean",
+            "description": "The seed's own declaration; a false here makes the run's execution.claim_grade_eligible false whatever the contract checks found (a scripted seed marked exploratory by its author is never promoted by the runtime)."
           }
         }
       }
@@ -1311,7 +1316,8 @@
         {
           "seed_id": "pw-petri-example-h4-persistence",
           "seed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-          "file": "docs/framework/petri_seeds.draft.json"
+          "file": "docs/framework/petri_seeds.draft.json",
+          "claim_grade_eligible": true
         }
       ],
       "trees": [

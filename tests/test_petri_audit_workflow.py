@@ -154,6 +154,11 @@ def test_paid_steps_are_gated_on_mode_and_the_raw_log_stays_outside_the_checkout
     assert "spend-report" in spend_report["run"] and names.index(spend_report["name"]) < names.index(sidecars["name"])
     assert names.index(adapt["name"]) < names.index(spend_report["name"])
     assert 'git fetch origin "$BRANCH"' in sidecars["run"] and 'git reset --soft "origin/$BRANCH"' in sidecars["run"]
+    # round 4: a judge that started and left no sidecar is booked from its rows or at its ceiling; one that never
+    # started books nothing (the marker distinguishes them)
+    assert 'touch "$RUNNER_TEMP/petri-run/judge_started"' in judge["run"]
+    assert "judge-spend-report" in spend_report["run"] and 'judge_started" ] && [ ! -f' in spend_report["run"]
+    assert "JUDGE_MODEL" in spend_report["env"]
     seal = _step(workflow, "Holdout seal check")
     assert "seal_check.py" in seal["run"] and "verify-chain" in seal["run"]
     gate = _step(workflow, "Daily-ceiling gate", job="params")
@@ -206,6 +211,11 @@ def test_fire_lane_classifies_the_petri_target_and_judge_specs():
     with pytest.raises(ValueError, match="mixed-channel"):
         ft.validate_params(TRIGGER, dict(base, target="anthropic/claude-haiku-4-5", judge_model="deepseek:deepseek-chat"))
     assert ft.petri_channels({"target": orl, "judge": "true", "judge_model": "google:gemini-2.5-flash"}) == ("openrouter", "anthropic")
+    # a bare provider the registry knows is that provider (Codex round 4): `openai` bills OpenRouter
+    assert ft.petri_channels({"target": orl, "judge": "true", "judge_model": "openai"}) == ("openrouter", "openrouter")
+    with pytest.raises(ValueError, match="mixed-channel"):
+        ft.validate_params(TRIGGER, dict(base, target="anthropic/claude-haiku-4-5", judge_model="openai"))
+    assert ft.petri_channels({"target": orl, "judge": "true", "judge_model": "claude-haiku-4-5"})[1] == "anthropic"
     # boolean keys must be spelled the one way the workflow compares against (Codex round 3)
     for bad in ("True", "yes", "1", ""):
         with pytest.raises(ValueError, match="must be true or false"):

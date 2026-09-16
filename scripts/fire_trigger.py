@@ -203,7 +203,7 @@ PROVIDERS_RELPATH = Path("data") / "advice_providers.json"
 PETRI_BOOLEAN_KEYS = ("judge", "log_model_api", "commit_outputs")
 
 
-def providers_registry(repo=None):
+def providers_registry(repo: str | Path | None = None) -> dict:
     """The provider registry (data/advice_providers.json) the judge specs
     resolve against; {} when the checkout lacks it (every classification then
     fails closed to the anthropic lane)."""
@@ -231,8 +231,15 @@ def petri_channels(params: dict, registry: dict | None = None) -> tuple[str, str
     if not judge_is_on(params):
         return target_channel, None
     judge = str(params.get("judge_model") or "").strip()
-    provider = judge.split(":", 1)[0] if ":" in judge else "anthropic"
     registry = providers_registry() if registry is None else registry
+    # the advice resolver's own rule: provider:model, a bare provider the registry knows (its consumer default),
+    # else a bare Anthropic model id (Codex round 4)
+    if ":" in judge:
+        provider = judge.split(":", 1)[0]
+    elif isinstance(registry, dict) and isinstance(registry.get(judge), dict):
+        provider = judge
+    else:
+        provider = "anthropic"
     cfg = registry.get(provider) if isinstance(registry, dict) else None
     key_env = cfg.get("key_env") if isinstance(cfg, dict) else None
     return target_channel, ("openrouter" if key_env == "OPENROUTER_API_KEY" else "anthropic")
