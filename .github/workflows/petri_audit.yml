@@ -129,6 +129,7 @@ jobs:
         id: params
         env:
           EVENT_NAME: ${{ github.event_name }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
           IN_SEEDS_FILE: ${{ inputs.seeds_file }}
           IN_SEED_IDS: ${{ inputs.seed_ids }}
           IN_WAVE: ${{ inputs.wave }}
@@ -182,6 +183,16 @@ jobs:
               raise SystemExit("dry_run runs against mockllm/model only")
           if p["mode"] == "run" and p["target"] == "mockllm/model":
               raise SystemExit("mode run needs a real target; use dry_run for mockllm")
+          # a paid run is admitted only from a push-to-run fire on its first attempt: the fire path journals the
+          # reservation the daily ceiling counts, and neither a workflow_dispatch nor an Actions-tab re-run has one
+          # of its own (Codex round 8); preflight and dry_run cost nothing and may run from anywhere
+          if p["mode"] == "run" and os.environ["EVENT_NAME"] != "push":
+              raise SystemExit("mode run is fired through scripts/fire_trigger.py only (its journal entry is the "
+                               "reservation the daily ceiling counts); a workflow_dispatch may run preflight or dry_run")
+          if p["mode"] == "run" and os.environ.get("RUN_ATTEMPT", "1") != "1":
+              raise SystemExit("mode run cannot be re-run from the Actions tab (attempt "
+                               f"{os.environ.get('RUN_ATTEMPT')} has no reservation of its own); re-fire through "
+                               "scripts/fire_trigger.py")
           float(p["max_spend"]); float(p["judge_max_spend"]); int(p["epochs"]); int(p["token_limit"])
           # the judge's token allowance is parsed here too (Codex round 6): a bad value used to fail only in the
           # judge step's argparse, after every target call had spent and the judge_started marker was set

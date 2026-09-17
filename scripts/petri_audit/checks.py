@@ -17,9 +17,8 @@ from __future__ import annotations
 from typing import Any
 
 from .framework import sha256_text
-from .seeds import SeedSet, conditions, text_of
+from .seeds import ROOT_BRANCH, SeedSet, conditions, text_of  # noqa: F401 - ROOT_BRANCH re-exported
 
-ROOT_BRANCH = "root"
 ELIGIBLE_STATUSES = ("pass", "not_applicable")
 
 

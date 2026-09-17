@@ -441,13 +441,23 @@ def main(argv=None):
                 # spend the filename gate had hidden)
                 run_ts = parse_ts(report.get("run_utc") or report.get("run_timestamp"))
                 day = run_ts.astimezone(timezone.utc).date().isoformat() if run_ts else date
-                spend["lifetime_generation_usd"] = round(
-                    float(spend.get("lifetime_generation_usd") or 0.0) + delta, 4)
-                by_day[day] = round(float(by_day.get(day) or 0.0) + delta, 4)
+                lifetime_before = float(spend.get("lifetime_generation_usd") or 0.0)
+                if Path(scan_dir) == petri_dir:
+                    # the accumulators hold four decimals: book what they can represent and advance the folded
+                    # watermark by that amount alone, so a sub-representable delta waits, unfolded, until growth
+                    # makes it representable instead of being discarded (Codex round 8 on PR #26)
+                    booked = round(round(lifetime_before + delta, 4) - lifetime_before, 4)
+                    if booked <= 0:
+                        continue
+                    entries_folded[key] = round(float(entries_folded[key]) + booked, 8)
+                else:
+                    booked = delta
+                    entries_folded[key] = current
+                spend["lifetime_generation_usd"] = round(lifetime_before + booked, 4)
+                by_day[day] = round(float(by_day.get(day) or 0.0) + booked, 4)
                 chan = by_day_ch.setdefault(billing_channel(report, scan_dir == pab_dir), {})
-                chan[day] = round(float(chan.get(day) or 0.0) + delta, 4)
-                entries_folded[key] = current
-                bullets.append(f"- {key} · ${delta:.4f} · delta (cumulative ${current:.4f}, day {day})")
+                chan[day] = round(float(chan.get(day) or 0.0) + booked, 4)
+                bullets.append(f"- {key} · ${booked:.4f} · delta (cumulative ${current:.4f}, day {day})")
 
     if bullets:
         spend["today"] = today_record(date, by_day, by_day_ch)

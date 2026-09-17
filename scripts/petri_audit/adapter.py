@@ -64,7 +64,7 @@ from .manifest import MANIFEST_VERSION, append_chain, chain_head, manifest_probl
 from .rules import rule_record
 from .sanitizer import _project_eval, allowlist_digest, load_allowlist, sanitise_log
 from .seal import scan_strings, sealed_registry, seed_texts_against_registry
-from .seeds import SeedSet, conditions, seed_digest, text_of, tool_result_for
+from .seeds import SeedSet, conditions, seed_digest, target_visible_strings, text_of, tool_result_for
 from .spend import pricing_source_digest, reprice_usage
 from .transcripts import bind_manifest, build_record, conversation_id, record_problems
 
@@ -307,6 +307,10 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         limits = [d for d in pw if d.get("pw") == "limit"]
         timeline = select_timeline(sample.timelines or [], "target")
         nodes = _walk_nodes(timeline.root)
+        # the surviving trajectory is the last one the harness created, decided on the timeline before any refusal
+        # (Codex round 8: marking the last exported branch promoted an earlier branch when the real survivor was refused)
+        survivor_creation = max((c for _, _, c in nodes), default=None)
+        surviving_branch_id: str | None = None
         branches_out: list[dict] = []
         branch_ids_seen: list[str] = []          # every branch the timeline carried, exported or refused
         child_index = 0
@@ -314,15 +318,21 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             if parent is None:
                 branch_id, parent_id, anchor_msg = ROOT_BRANCH, None, None
                 branch_ids_seen.append(branch_id)
+                if creation == survivor_creation:
+                    surviving_branch_id = branch_id
             else:
                 if child_index >= len(branch_infos):
                     refused.append({"branch_id": f"{tree_id}:{span.id}", "reason": "trajectory has no matching branch record"})
+                    if creation == survivor_creation:
+                        surviving_branch_id = span.id
                     child_index += 1
                     continue
                 info = branch_infos[child_index]
                 child_index += 1
                 branch_id, parent_id, anchor_msg = info["branch_id"], info["parent_branch_id"], info["anchor_message_id"]
                 branch_ids_seen.append(branch_id)
+                if creation == survivor_creation:
+                    surviving_branch_id = branch_id
                 if span.branched_from != anchor_msg:
                     refused.append({"branch_id": f"{tree_id}:{branch_id}",
                                     "reason": f"branch anchor {span.branched_from!r} differs from the recorded anchor {anchor_msg!r}"})
@@ -402,7 +412,8 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
             rule_records.append(rule_record(record, seed, branch_id=branch_id, condition_id=cond["condition_id"]))
             branches_out.append({"branch_id": branch_id, "parent_branch_id": parent_id, "branched_from_message_id": anchor_msg,
                                  "branched_from_turn_id": anchor_turn, "condition_id": cond["condition_id"],
-                                 "conversation_id": conv_id, "surviving": False, "creation_index": creation})
+                                 "conversation_id": conv_id, "surviving": creation == survivor_creation,
+                                 "creation_index": creation})
         # raw request bodies (per sample, every branch): each retained request's complete system/user sequence must be
         # a prefix of exactly the sequence one branch of this condition declares, never mere membership in a pool
         for e in model_events:
@@ -414,10 +425,11 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
         # one it carried but the adapter refused above is already recorded once
         refused.extend(missing_branch_refusals(seed, branch_ids_seen, where=tree_id))
         if branches_out:
-            branches_out[-1]["surviving"] = True
             trees.append({"tree_id": tree_id, "sample_uuid": sample.uuid or str(sample.id), "sample_id": str(sample.id),
                           "epoch": sample.epoch, "seed_id": seed_id, "arm": cond["arm_id"],
-                          "system_prompt_variant": cond["variant_id"], "branches": branches_out})
+                          "system_prompt_variant": cond["variant_id"], "branches": branches_out,
+                          "surviving_branch_id": surviving_branch_id,
+                          "survivor_exported": any(b["surviving"] for b in branches_out)})
 
     # contract check verdicts
     checks["stimulus_digest_identity"].ok("every record carries exactly the texts its condition and branch declare; "
@@ -459,7 +471,7 @@ def adapt_run(eval_path: Path | str, seed_set: SeedSet, out_dir: Path | str, *, 
     lock = load_lock(lock_path) if lock_path else load_lock()
     lock_rel = str(Path(lock_path).resolve().relative_to(ROOT)) if lock_path and Path(lock_path).resolve().is_relative_to(ROOT) else "docs/framework/petri_environment.lock.json"
     commit = harness_commit or installed_harness_commit() or lock["harness"]["commit"]
-    seed_text_all = [t["text"] for s in seeds_used.values() for t in s["texts"]]
+    seed_text_all = [s for seed in seeds_used.values() for s in target_visible_strings(seed)]
     registry_sealed = sealed_registry()
     sealed_hits = seed_texts_against_registry(seed_text_all, registry_sealed)
 

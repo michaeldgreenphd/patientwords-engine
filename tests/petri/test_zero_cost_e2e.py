@@ -235,6 +235,8 @@ def test_initial_only_pressure_branches_share_one_realised_reply_and_export_sepa
         assert pressure["turns"][1]["text"] == neutral["turns"][1]["text"], "siblings continue the same realised reply"
         assert pressure["conversation_id"] != neutral["conversation_id"]
         assert sum(b["surviving"] for b in tree["branches"]) == 1 and _branch(tree, "neutral_control")["surviving"]
+        # Codex round 8: the survivor is decided on the timeline, and the tree names it
+        assert tree["surviving_branch_id"] == "neutral_control" and tree["survivor_exported"] is True
         # exact staged-text hashes: every user turn is a seed text
         seed_shas = {t["sha256"] for t in seed["texts"]}
         for rec in (root, pressure, neutral):
@@ -368,6 +370,16 @@ def test_cli_preflight_clears_without_a_model_call(capsys):
     assert code == 0 and "preflight: clear (no model call made)" in out
     assert "pre-flight bound" in out and "environment lock" in out
     assert "sealed phrases, no hit in the selected seeds" in out
+
+
+def test_cli_preflight_scans_tool_definitions_for_sealed_phrases(monkeypatch, capsys):
+    """Codex round 8: the seal scan read the seed texts alone while the task
+    forwards tool names, descriptions and parameter schemas to the target."""
+    description = seeds.load_seed_file().seeds[H3]["tools"]["definitions"][0]["description"]
+    monkeypatch.setattr(cli, "sealed_registry", lambda: {description: "tierB:demo"})
+    code = cli.main(["preflight", "--target", "mockllm/model", "--max-spend", "0.01", "--wave", "1", "--no-harness-commit"])
+    captured = capsys.readouterr()
+    assert code == 6 and "1 sealed phrase(s) in the selected seeds" in captured.err and "environment lock" not in captured.out
 
 
 def test_cli_preflight_refuses_an_empty_or_unavailable_sealed_registry(monkeypatch, capsys):
@@ -529,6 +541,7 @@ def test_a_target_that_never_stops_calling_tools_is_cut_off_and_its_branch_refus
     reasons = [r["reason"] for r in result.refused]
     assert len(reasons) == 2 and all("tool_rounds limit" in r for r in reasons), reasons
     assert result.manifest["trees"] == [] and result.manifest["execution"]["claim_grade_eligible"] is False
+    assert not any(t.get("survivor_exported") for t in result.manifest["trees"]), "a refused survivor promotes nothing"
     assert result.manifest["execution"]["max_tool_rounds_per_turn"] == checks.MAX_TOOL_ROUNDS_PER_TURN
     calls = next(row for row in result.manifest["usage"]["by_model"] if row["model"] == "mockllm/model")["calls"]
     assert calls == 2 * (checks.MAX_TOOL_ROUNDS_PER_TURN + 1), "one generate per round plus the first, per condition"

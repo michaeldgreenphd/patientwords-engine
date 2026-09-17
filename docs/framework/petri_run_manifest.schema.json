@@ -324,7 +324,9 @@
           "seed_id",
           "arm",
           "system_prompt_variant",
-          "branches"
+          "branches",
+          "surviving_branch_id",
+          "survivor_exported"
         ],
         "properties": {
           "tree_id": {
@@ -421,6 +423,17 @@
                 }
               }
             }
+          },
+          "surviving_branch_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The branch id of the trajectory the harness left surviving (the last created), decided on the timeline before any refusal; null only when the timeline had no node."
+          },
+          "survivor_exported": {
+            "type": "boolean",
+            "description": "Whether the surviving trajectory is among the exported branches; false when it was refused, in which case no exported branch is marked surviving."
           }
         }
       },
@@ -655,7 +668,8 @@
                 "base_urls_kept",
                 "events_dropped_by_type",
                 "samples",
-                "events_kept"
+                "events_kept",
+                "timeline_content_dropped_by_type"
               ],
               "properties": {
                 "fields_removed": {
@@ -693,6 +707,14 @@
                 "events_kept": {
                   "type": "integer",
                   "minimum": 0
+                },
+                "timeline_content_dropped_by_type": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "description": "Timeline content items dropped by type (an item type the sanitiser allowlist does not name)."
                 }
               }
             }
@@ -1372,7 +1394,9 @@
               "surviving": true,
               "creation_index": 3
             }
-          ]
+          ],
+          "surviving_branch_id": "b3",
+          "survivor_exported": true
         }
       ],
       "usage": {
@@ -1439,7 +1463,8 @@
             "base_urls_kept": false,
             "events_dropped_by_type": {},
             "samples": 1,
-            "events_kept": 0
+            "events_kept": 0,
+            "timeline_content_dropped_by_type": {}
           }
         },
         "transcripts_path": "example/transcripts.jsonl",

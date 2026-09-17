@@ -79,6 +79,31 @@ def texts_by_key(seed: dict) -> dict[str, dict]:
     return {t["key"]: t for t in seed["texts"]}
 
 
+ROOT_BRANCH = "root"       # the adapter's reserved id for the root trajectory; a seed may not declare a branch with it
+
+
+def _string_leaves(obj: Any) -> list[str]:
+    if isinstance(obj, str):
+        return [obj]
+    if isinstance(obj, dict):
+        return [s for v in obj.values() for s in _string_leaves(v)]
+    if isinstance(obj, list):
+        return [s for v in obj for s in _string_leaves(v)]
+    return []
+
+
+def target_visible_strings(seed: dict) -> list[str]:
+    """Every string the target can receive from a seed: the texts, and every
+    string leaf of the tool definitions (name, description, parameter schema),
+    which the task forwards verbatim (Codex round 8: the holdout seal scan
+    read the texts alone, so a sealed phrase in a tool description would have
+    reached the target)."""
+    out = [t["text"] for t in seed["texts"]]
+    for d in (seed.get("tools") or {}).get("definitions", []):
+        out.extend(_string_leaves(d))
+    return out
+
+
 def text_of(seed: dict, key: str) -> str:
     texts = texts_by_key(seed)
     if key not in texts:
@@ -168,6 +193,9 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
     branch_ids = [b["id"] for b in proto["branches"]]
     if len(branch_ids) != len(set(branch_ids)):
         problems.append("duplicate branch ids")
+    if ROOT_BRANCH in branch_ids:
+        # the root and a branch named root would share a conversation id (Codex round 8)
+        problems.append(f"branch id {ROOT_BRANCH!r} is reserved for the root trajectory")
     branches = {b["id"]: b for b in proto["branches"]}
 
     speakers = {a["user_is"] for a in proto["arms"]}

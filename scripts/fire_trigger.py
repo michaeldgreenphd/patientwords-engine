@@ -126,6 +126,28 @@ PARK_NOTE = ("PARK (resting-state rule): cheapest no-op default committed so bra
 
 def is_mitigation_fire(trigger, params):
     return trigger == "circuit-trace" and str(params.get("show_mitigation", "")).lower() in ("true", "1")
+
+
+def is_paid_fire(trigger, params):
+    """Whether this fire can spend, so the daily ceiling must count it: a
+    PAID_TRIGGERS lane, or a circuit-trace fire with show_mitigation. The one
+    exemption is petri-audit outside `mode: run`: preflight and dry_run make
+    no paid call, and counting them paid refused the lane's park once the
+    ceiling was reached, leaving the last paid configuration at rest where a
+    branch operation could re-fire it (Codex round 8 on PR #26)."""
+    if is_mitigation_fire(trigger, params):
+        return True
+    if trigger not in PAID_TRIGGERS:
+        return False
+    if trigger == "petri-audit" and str(params.get("mode", "preflight")).strip().lower() != "run":
+        return False
+    return True
+
+
+def paid_budget_params(trigger, params):
+    """The params budget_check prices for a paid fire: the fire's own for a
+    PAID_TRIGGERS lane, the flat imputed commitment for a mitigation fire."""
+    return params if trigger in PAID_TRIGGERS else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
 DEFAULT_EXPIRE_HOURS = 8.0
 DEFAULT_SETTLE_MINUTES = 15.0
 DEFAULT_DAILY_CEILING_USD = 2.0
@@ -1113,9 +1135,8 @@ def cmd_fire(args):
     # Mitigation circuit-trace fires are paid too (Anthropic translation calls);
     # they carry no max_spend param, so a flat imputed commitment is used.
     max_spend = None
-    if args.trigger in PAID_TRIGGERS or is_mitigation_fire(args.trigger, params):
-        budget_params = params if args.trigger in PAID_TRIGGERS \
-            else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
+    if is_paid_fire(args.trigger, params):
+        budget_params = paid_budget_params(args.trigger, params)
         dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
         overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
         kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),
@@ -1664,10 +1685,10 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
     fire = mine[0]
     key = (fire.get("trigger"), fire.get("fired_utc"))
     others = [e for e in entries if (e.get("trigger"), e.get("fired_utc")) != key]
-    paid = trigger in PAID_TRIGGERS or is_mitigation_fire(trigger, params)
+    paid = is_paid_fire(trigger, params)
     budget_params = None
     if paid:
-        budget_params = params if trigger in PAID_TRIGGERS else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
+        budget_params = paid_budget_params(trigger, params)
     # Corrections to the fire's own record, applied in one journal-only commit
     # that publishes with the fire:
     # - a fire published long after it was made would carry a stale stamp into
@@ -1874,11 +1895,10 @@ def cmd_budget_gate(args):
         for problem in problems:
             print(f"budget-gate: REFUSED - {problem}", file=sys.stderr)
         return 6
-    if args.trigger not in PAID_TRIGGERS and not is_mitigation_fire(args.trigger, params):
+    if not is_paid_fire(args.trigger, params):
         print(f"budget-gate: {args.trigger} is a free fire; clear")
         return 0
-    budget_params = params if args.trigger in PAID_TRIGGERS \
-        else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
+    budget_params = paid_budget_params(args.trigger, params)
     now = utc_now()
     entries = load_journal(repo / JOURNAL_RELPATH)
     dashboard = load_dashboard(repo / DASHBOARD_RELPATH)

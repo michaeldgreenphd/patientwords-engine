@@ -106,6 +106,31 @@ def test_every_attempt_gets_its_own_run_directory_and_the_judge_fallback_records
     assert '--judge-max-tokens "$JUDGE_MAX_TOKENS"' in report["run"]
 
 
+def test_only_mode_run_is_a_paid_petri_fire(tmp_path, capsys):
+    """Codex round 8: counting preflight and dry_run as paid refused the park
+    once the daily ceiling was reached, leaving a paid configuration at rest."""
+    assert ft.is_paid_fire(TRIGGER, {"mode": "run", "target": "anthropic/claude-haiku-4-5"}) is True
+    assert ft.is_paid_fire(TRIGGER, {"mode": "preflight"}) is False and ft.is_paid_fire(TRIGGER, {"mode": "dry_run"}) is False
+    assert ft.is_paid_fire(TRIGGER, {}) is False, "no mode is the workflow's preflight default"
+    assert ft.is_paid_fire(TRIGGER, ft.PARK_DEFAULTS[TRIGGER]) is False, "the park is a free fire"
+    assert ft.is_paid_fire("advice-eval", {}) is True and ft.is_paid_fire("logits-eval", {}) is False
+    assert ft.is_paid_fire("circuit-trace", {"show_mitigation": "true"}) is True
+    params_file = tmp_path / "park_params.json"
+    params_file.write_text(json.dumps(ft.PARK_DEFAULTS[TRIGGER]), encoding="utf-8")
+    args = type("Args", (), {"repo": str(ROOT), "trigger": TRIGGER, "params_file": str(params_file)})()
+    assert ft.cmd_budget_gate(args) == 0 and "free fire" in capsys.readouterr().out
+
+
+def test_a_paid_run_is_admitted_from_a_push_fire_on_its_first_attempt_only(raw, workflow):
+    """Codex round 8: a workflow_dispatch and an Actions-tab re-run carry no
+    journal reservation, so the daily ceiling could be passed twice."""
+    block = raw[raw.index("Resolve parameters"):raw.index("Daily-ceiling gate")]
+    assert 'if p["mode"] == "run" and os.environ["EVENT_NAME"] != "push":' in block
+    assert 'if p["mode"] == "run" and os.environ.get("RUN_ATTEMPT", "1") != "1":' in block
+    params = _step(workflow, "Resolve parameters", job="params")
+    assert params["env"]["RUN_ATTEMPT"] == "${{ github.run_attempt }}" and params["env"]["EVENT_NAME"] == "${{ github.event_name }}"
+
+
 def test_defaults_cover_every_trigger_key_and_dispatch_input(workflow, defaults):
     on = workflow.get("on") or workflow.get(True)
     inputs = set(on["workflow_dispatch"]["inputs"])

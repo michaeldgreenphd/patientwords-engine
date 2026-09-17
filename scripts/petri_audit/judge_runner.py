@@ -57,7 +57,11 @@ NA = "not_applicable"
 # exceeds, whatever the script (Codex round 7: a characters-per-token figure was not a bound for emoji, CJK or dense
 # fragments). It over-estimates English prose by roughly four times, so the ceiling stops the run early rather than
 # after the provider has charged past it. The estimator is named in the sidecar.
-INPUT_TOKEN_ESTIMATOR = "len(prompt.encode('utf-8')) upper bound (at most one token per byte)"
+# The provider frames the prompt as a chat message (role markers, message boundaries, any wrapper the request
+# adds), and that framing is charged as input tokens that are not bytes of the prompt (Codex round 8); the
+# allowance below is far above the handful of tokens a single user message costs on the registry's providers.
+REQUEST_FRAMING_TOKENS = 128
+INPUT_TOKEN_ESTIMATOR = f"len(prompt.encode('utf-8')) + {REQUEST_FRAMING_TOKENS} framing tokens, upper bound"
 
 
 def utc_now_iso() -> str:
@@ -92,7 +96,8 @@ def _usage_missing(raw: Any) -> bool:
 class JudgeClient(Protocol):
     model_spec: str
 
-    def complete(self, prompt: str, *, max_tokens: int, temperature: float) -> JudgeReply: ...
+    def complete(self, prompt: str, *, max_tokens: int, temperature: float,
+                 attempt_gate: Callable[[int], bool] | None = None) -> JudgeReply: ...
 
 
 class MockJudge:
@@ -104,7 +109,8 @@ class MockJudge:
         self.model_spec = model_spec
         self.prompts: list[str] = []
 
-    def complete(self, prompt: str, *, max_tokens: int, temperature: float) -> JudgeReply:
+    def complete(self, prompt: str, *, max_tokens: int, temperature: float,
+                 attempt_gate: Callable[[int], bool] | None = None) -> JudgeReply:
         self.prompts.append(prompt)
         text = self.answer_fn(prompt)
         return JudgeReply(text=text, input_tokens=len(prompt) // 4, output_tokens=len(text) // 4,
@@ -137,13 +143,21 @@ class RegistryJudge:
         self.is_anthropic = self.spec["provider"] == "anthropic"
         self.client = ae._client() if self.is_anthropic else None
 
-    def complete(self, prompt: str, *, max_tokens: int, temperature: float) -> JudgeReply:
+    def complete(self, prompt: str, *, max_tokens: int, temperature: float,
+                 attempt_gate: Callable[[int], bool] | None = None) -> JudgeReply:
+        """One judgment. `attempt_gate(failed_attempts)` is consulted before
+        every provider retry (Codex round 8): the caller charges the failed
+        attempt to the ceiling there and returns whether another attempt is
+        affordable; a refusal ends the call with the provider's error."""
         ae = self.ae
+        before_retry = (lambda attempt, status: attempt_gate(attempt + 1)) if attempt_gate is not None else None
         if self.is_anthropic:
-            res = ae._send_anthropic_retrying(self.client, self.spec["model"], None, prompt, max_tokens, temperature)
+            res = ae._send_anthropic_retrying(self.client, self.spec["model"], None, prompt, max_tokens, temperature,
+                                              before_retry=before_retry)
         else:
             ae._pace(self.spec["provider"], self.spec["cfg"])
-            res = ae._send_compat(self.spec["cfg"], self.spec["model"], None, prompt, max_tokens, temperature)
+            res = ae._send_compat(self.spec["cfg"], self.spec["model"], None, prompt, max_tokens, temperature,
+                                  before_retry=before_retry)
         text, in_tok, out_tok, raw = res[:4]
         headers = res[4] if len(res) > 4 else {}
         info = ae._build_info(raw, headers)
@@ -325,7 +339,7 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
 def estimate_input_tokens(prompt: str) -> int:
     """The per-call input bound `SpendCeiling.can_afford` prices: see
     INPUT_TOKEN_ESTIMATOR."""
-    return len(prompt.encode("utf-8"))
+    return len(prompt.encode("utf-8")) + REQUEST_FRAMING_TOKENS
 
 
 class SpendCeiling:
@@ -347,6 +361,7 @@ class SpendCeiling:
         self.truncated = False
         self.largest_estimate = 0
         self.calls_without_usage = 0
+        self.retry_attempts_charged = 0
 
     def worst_case(self, prompt: str) -> float:
         est = estimate_input_tokens(prompt)
@@ -508,6 +523,7 @@ def _sidecar(out_path: Path, client: JudgeClient, ceiling: SpendCeiling, counts:
             "overrun_usd": ceiling.overrun_usd, "input_token_estimator": INPUT_TOKEN_ESTIMATOR,
             "largest_input_estimate": ceiling.largest_estimate,
             "calls_without_usage": ceiling.calls_without_usage,
+            "retry_attempts_charged": ceiling.retry_attempts_charged,
             "usage_basis": ("actual_usage" if ceiling.calls_without_usage == 0
                             else "actual_usage_plus_imputed_worst_case_for_calls_without_usage"),
             "aborted": abort_error is not None, "abort_error": abort_error,
@@ -536,13 +552,23 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
             if not ceiling.can_afford(p.prompt):
                 counts["stopped_early"] = True
                 break
+            retry_charges: list[float] = []
+
+            def attempt_gate(failed_attempts: int, prompt: str = p.prompt) -> bool:
+                # a provider retry follows an attempt the provider may have accepted and charged: it is charged at
+                # its worst case and another attempt is admitted only while the ceiling affords one (Codex round 8)
+                retry_charges.append(ceiling.record(0, 0, prompt=prompt, usage_missing=True))
+                ceiling.retry_attempts_charged += 1
+                return ceiling.can_afford(prompt)
+
             try:
-                reply = client.complete(p.prompt, max_tokens=judge_max_tokens, temperature=TIER_TEMPERATURE)
+                reply = client.complete(p.prompt, max_tokens=judge_max_tokens, temperature=TIER_TEMPERATURE,
+                                        attempt_gate=attempt_gate)
             except Exception as exc:  # noqa: BLE001 - the provider may have charged a call the client never returned
                 # Codex round 5: a call that raises after the request was accepted is charged its worst case (the bound
                 # can_afford admitted) and written as a null row, so the aborted sidecar agrees with the rows and a
                 # resumed pass retries the key; the exception then propagates to run_judgments
-                cost = ceiling.record(0, 0, prompt=p.prompt, usage_missing=True)
+                cost = ceiling.record(0, 0, prompt=p.prompt, usage_missing=True) + sum(retry_charges)
                 row = {**base, "value": None, "flags": None, "method": "judge",
                        "annotator": f"judge:{client.model_spec}:{p.prompt_file_digest}", "not_applicable_reason": None,
                        "rendered_sha256": sha256_text(p.prompt), "context_sha256": p.context_sha256,
@@ -550,13 +576,15 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                        "input_tokens": None, "output_tokens": None, "usage_missing": True,
                        "cost_basis": "imputed_worst_case:call_failed", "cost_usd": round(cost, 8),
                        "max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
+                       "retry_attempts_charged": len(retry_charges),
                        "judge_error": f"call failed: {type(exc).__name__}: {exc}"}
                 fh.write(json.dumps(row, ensure_ascii=False) + "\n")
                 fh.flush()
                 counts["null"] += 1
                 counts["call_failures"] += 1
                 raise
-            cost = ceiling.record(reply.input_tokens, reply.output_tokens, prompt=p.prompt, usage_missing=reply.usage_missing)
+            cost = (ceiling.record(reply.input_tokens, reply.output_tokens, prompt=p.prompt, usage_missing=reply.usage_missing)
+                    + sum(retry_charges))
             value, flags, error = parse_answer(reply.text, p.allowed_values, p.kind, p.allowed_flags if p.kind == "tier" else None)
             served = reply.served_model or client.model_spec
             row = {**base, "value": value, "flags": flags, "method": "judge",
@@ -568,7 +596,7 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                    "usage_missing": reply.usage_missing,
                    "cost_basis": "imputed_worst_case" if reply.usage_missing else "actual_usage",
                    "cost_usd": round(cost, 8), "max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
-                   "judge_error": error}
+                   "retry_attempts_charged": len(retry_charges), "judge_error": error}
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
             fh.flush()
             counts[row_bucket(row)] += 1
@@ -649,21 +677,33 @@ def judge_spec_problems(model_spec: str, providers_path: str | Path | None = Non
     return []
 
 
-def judge_model_problems(run_dir: Path | str, manifest: dict, spec: str) -> list[str]:
-    """Why `spec` may not judge this run (Codex round 7): a bound judge of
-    record or existing judgment rows under a different spec. The comparison
-    is the exact spec string, because `dedupe_key` carries it: a second spec,
-    an alias included, would re-judge every plan and pool two judges under one
-    `judge_of_record`. A second judge is a separate decision, not a resume."""
+def judge_settings_problems(run_dir: Path | str, manifest: dict, spec: str, max_tokens: int) -> list[str]:
+    """Why `spec` under `max_tokens` may not judge this run (Codex rounds 7
+    and 8): a bound judge of record, or existing judgment rows, under a
+    different spec or a different output allowance. The spec comparison is
+    the exact string, because `dedupe_key` carries it: a second spec, an alias
+    included, would re-judge every plan and pool two judges under one
+    `judge_of_record`; a second allowance would retry under one cap and record
+    another. A second judge or a second cap is a separate decision, not a
+    resume."""
     problems: list[str] = []
-    bound = ((manifest.get("artifacts") or {}).get("judge_of_record") or {}).get("judge_model")
-    if bound and bound != spec:
-        problems.append(f"the judge of record is {bound!r}; a resumed pass must use that exact spec, not {spec!r}")
-    others = sorted({str(r.get("judge_model")) for r in read_jsonl(Path(run_dir) / "judgments.jsonl")
-                     if r.get("judge_model") != spec})
+    bound = (manifest.get("artifacts") or {}).get("judge_of_record") or {}
+    if bound.get("judge_model") and bound["judge_model"] != spec:
+        problems.append(f"the judge of record is {bound['judge_model']!r}; a resumed pass must use that exact spec, not {spec!r}")
+    if bound.get("judge_max_tokens") is not None and int(bound["judge_max_tokens"]) != int(max_tokens):
+        problems.append(f"the judge of record ran with judge_max_tokens {bound['judge_max_tokens']}; a resumed pass must "
+                        f"use the same allowance, not {max_tokens}")
+    if bound.get("temperature") is not None and float(bound["temperature"]) != TIER_TEMPERATURE:
+        problems.append(f"the judge of record ran at temperature {bound['temperature']}; this build judges at {TIER_TEMPERATURE}")
+    rows = read_jsonl(Path(run_dir) / "judgments.jsonl")
+    others = sorted({str(r.get("judge_model")) for r in rows if r.get("judge_model") != spec})
     if others:
         problems.append(f"existing judgment rows carry judge spec(s) {others}; a resumed pass must use the same exact "
                         f"spec, not {spec!r}")
+    caps = sorted({int(r["max_tokens"]) for r in rows if r.get("max_tokens") is not None and int(r["max_tokens"]) != int(max_tokens)})
+    if caps:
+        problems.append(f"existing judgment rows were made with judge_max_tokens {caps}; a resumed pass must use the same "
+                        f"allowance, not {max_tokens}")
     return problems
 
 

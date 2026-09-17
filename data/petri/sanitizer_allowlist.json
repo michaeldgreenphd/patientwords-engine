@@ -1,5 +1,5 @@
 {
-  "version": "0.1",
+  "version": "0.2",
   "_readme": "Allowlist for scripts/petri_audit/sanitizer.py: the projection of a raw Inspect .eval log that may enter the public repository (docs/petri_integration_design.md section 9). Anything not named here is removed and counted in the manifest's redaction report. The raw log is never committed; it is bound to the manifest by sha256 and held under the custody the manifest records. Keys listed under forbidden_keys are refused anywhere in the output, allowlist or not, as a second line of defence. Data, not code: a change here is a new sanitiser allowlist version and a new allowlist digest in every manifest that used it.",
   "forbidden_keys": [
     "call",
@@ -252,5 +252,25 @@
         "explanation"
       ]
     }
+  },
+  "timeline": {
+    "_readme": "Timeline span nodes (inspect_ai TimelineSpan) are projected onto node_keys; a content item whose type is not in content_types_kept is dropped and counted (Codex round 8 on PR #26). `outline` is a derived summary of content and is dropped.",
+    "node_keys": [
+      "type",
+      "id",
+      "name",
+      "span_type",
+      "content",
+      "branches",
+      "branched_from",
+      "description",
+      "utility",
+      "tool_invoked",
+      "agent_result"
+    ],
+    "content_types_kept": [
+      "event",
+      "span"
+    ]
   }
 }

@@ -27,6 +27,7 @@ class RedactionReport:
     fields_removed: int = 0
     fields_hashed: int = 0
     events_dropped_by_type: dict[str, int] = field(default_factory=dict)
+    timeline_content_dropped_by_type: dict[str, int] = field(default_factory=dict)
     samples: int = 0
     events_kept: int = 0
     request_bodies_kept: bool = True
@@ -41,6 +42,7 @@ class RedactionReport:
                 "request_bodies_kept": self.request_bodies_kept, "headers_kept": self.headers_kept,
                 "base_urls_kept": self.base_urls_kept,
                 "events_dropped_by_type": dict(sorted(self.events_dropped_by_type.items())),
+                "timeline_content_dropped_by_type": dict(sorted(self.timeline_content_dropped_by_type.items())),
                 "samples": self.samples, "events_kept": self.events_kept}
 
 
@@ -106,21 +108,29 @@ def _project_event(event: Any, allowlist: dict, report: RedactionReport) -> dict
 
 
 def _project_timeline_node(node: Any, allowlist: dict, report: RedactionReport) -> Any:
-    """Timeline spans carry events inline as {type: event, event: {...}}."""
+    """Timeline spans carry events inline as {type: event, event: {...}}. The
+    span itself is projected onto the allowlist's `timeline.node_keys`, and a
+    content item of a type the allowlist does not name is dropped and counted
+    (Codex round 8: nodes used to be copied whole, so an unreviewed node
+    field or content type reached the public export)."""
     if not isinstance(node, dict):
         return node
-    out = dict(node)
+    out = _project(node, allowlist["timeline"]["node_keys"], report)
+    kept_types = allowlist["timeline"]["content_types_kept"]
     if isinstance(out.get("content"), list):
         projected = []
         for item in out["content"]:
-            if isinstance(item, dict) and item.get("type") == "event":
+            itype = item.get("type") if isinstance(item, dict) else None
+            if itype not in kept_types:
+                report.timeline_content_dropped_by_type[str(itype)] = report.timeline_content_dropped_by_type.get(str(itype), 0) + 1
+                continue
+            if itype == "event":
                 ev = _project_event(item.get("event"), allowlist, report)
                 if ev is not None:
-                    projected.append({**item, "event": ev})
-            elif isinstance(item, dict) and item.get("type") == "span":
-                projected.append(_project_timeline_node(item, allowlist, report))
+                    projected.append({"type": "event", "event": ev})
+                    report.fields_removed += len(item) - 2
             else:
-                projected.append(item)
+                projected.append(_project_timeline_node(item, allowlist, report))
         out["content"] = projected
     if isinstance(out.get("branches"), list):
         out["branches"] = [_project_timeline_node(b, allowlist, report) for b in out["branches"]]

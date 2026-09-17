@@ -424,10 +424,12 @@ def _raw_log() -> dict:
                          {"event": "mystery", "uuid": "2", "timestamp": "t", "span_id": "s", "payload": 1},
                          {"event": "info", "uuid": "3", "timestamp": "t", "span_id": "s", "source": "patientwords", "data": {"pw": "x"}},
                      ],
-                     "timelines": [{"name": "target", "description": "", "root": {"id": "r", "name": "branch 1", "content": [
+                     "timelines": [{"name": "target", "description": "", "root": {"id": "r", "name": "branch 1",
+                                                                                     "secret_meta": {"api_key": "SECRET2"}, "content": [
                          {"type": "event", "event": {"event": "model", "uuid": "1", "timestamp": "t", "span_id": "s", "model": "m",
                                                      "role": "target", "input": [], "tools": [], "config": {}, "output": {},
-                                                     "call": {"request": {}}}}], "branches": []}}]}],
+                                                     "call": {"request": {}}}, "stray": "x"},
+                         {"type": "mystery_item", "payload": "x"}], "branches": []}}]}],
         "stats": {"started_at": "t", "completed_at": "t"}, "status": "success",
     }
 
@@ -445,8 +447,12 @@ def test_sanitiser_projects_onto_the_allowlist_and_counts_what_it_drops():
     ev = out["samples"][0]["events"][0]
     assert "call" not in ev and ev["config"] == {"max_tokens": 10} and "extra_headers" not in ev["input"][0]
     assert "attachments" not in out["samples"][0]
-    tl_event = out["samples"][0]["timelines"][0]["root"]["content"][0]["event"]
+    root = out["samples"][0]["timelines"][0]["root"]
+    tl_event = root["content"][0]["event"]
     assert "call" not in tl_event
+    # Codex round 8: timeline nodes are projected too; unknown node fields and content types are dropped and counted
+    assert "secret_meta" not in root and len(root["content"]) == 1 and set(root["content"][0]) == {"type", "event"}
+    assert report.timeline_content_dropped_by_type == {"mystery_item": 1} == recorded["timeline_content_dropped_by_type"]
     assert out["sanitiser"]["version"] == sanitizer.load_allowlist()["version"]
 
 
@@ -825,13 +831,15 @@ def test_judge_ceiling_bounds_each_call_from_its_own_prompt(tmp_path, seed_set, 
     the ceiling after the provider had charged. The bound is now taken from the
     prompt, with the estimator named in the sidecar."""
     # Codex round 7: the bound is the UTF-8 byte count, which no byte-fallback tokenizer exceeds for any script
-    assert judge_runner.estimate_input_tokens("a" * 10) == 10 and judge_runner.estimate_input_tokens("") == 0
-    assert judge_runner.estimate_input_tokens("\u65e5\u672c\u8a9e") == 9 and judge_runner.estimate_input_tokens("\U0001f600") == 4
+    # ... plus a framing allowance for the chat-message wrapper the provider charges beyond the prompt (round 8)
+    F = judge_runner.REQUEST_FRAMING_TOKENS
+    assert F >= 64 and judge_runner.estimate_input_tokens("a" * 10) == 10 + F and judge_runner.estimate_input_tokens("") == F
+    assert judge_runner.estimate_input_tokens("\u65e5\u672c\u8a9e") == 9 + F and judge_runner.estimate_input_tokens("\U0001f600") == 4 + F
     ceiling = judge_runner.SpendCeiling(0.01, 1.0, 5.0, 300)          # $1/Mtok in, $5/Mtok out, 300 out tokens
-    assert ceiling.can_afford("short prompt")                          # 0.0000 + 0.0015
-    long_prompt = "x" * 25_000                                         # 25,000 tokens by the bound -> $0.0250 + $0.0015
+    assert ceiling.can_afford("short prompt")                          # 0.0001 + 0.0015
+    long_prompt = "x" * 25_000                                         # 25,000 + F tokens by the bound -> > $0.0250 + $0.0015
     assert not ceiling.can_afford(long_prompt) and ceiling.truncated
-    assert ceiling.largest_estimate == 25_000 and ceiling.overrun_usd == 0.0
+    assert ceiling.largest_estimate == 25_000 + F and ceiling.overrun_usd == 0.0
     ceiling.record(input_tokens=20_000, output_tokens=300)
     assert ceiling.overrun_usd == pytest.approx(0.0115)                # an overrun, if one happened, is reported
     h4, record = _branch_record(seed_set)
@@ -846,7 +854,7 @@ def test_judge_ceiling_bounds_each_call_from_its_own_prompt(tmp_path, seed_set, 
 
 
 class _NoUsageJudge(judge_runner.MockJudge):
-    def complete(self, prompt: str, *, max_tokens: int, temperature: float) -> judge_runner.JudgeReply:
+    def complete(self, prompt: str, *, max_tokens: int, temperature: float, attempt_gate=None) -> judge_runner.JudgeReply:
         reply = super().complete(prompt, max_tokens=max_tokens, temperature=temperature)
         return judge_runner.JudgeReply(text=reply.text, input_tokens=0, output_tokens=0, served_model=reply.served_model,
                                        usage_missing=True)
@@ -863,7 +871,8 @@ def test_judge_calls_without_usage_are_charged_their_worst_case_and_counted(tmp_
     assert not judge_runner._usage_missing({"usage": {"input_tokens": 1, "output_tokens": 2}})
     ceiling = judge_runner.SpendCeiling(1.0, 1.0, 5.0, 300)
     cost = ceiling.record(0, 0, prompt="x" * 250, usage_missing=True)
-    assert cost == pytest.approx(250 * 1.0 / 1e6 + 300 * 5.0 / 1e6) and ceiling.calls_without_usage == 1
+    assert cost == pytest.approx((250 + judge_runner.REQUEST_FRAMING_TOKENS) * 1.0 / 1e6 + 300 * 5.0 / 1e6)
+    assert ceiling.calls_without_usage == 1
     h4, record = _branch_record(seed_set)
     plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2)
     report = tmp_path / "run_x.judge.report.json"
@@ -891,7 +900,7 @@ class _RaisingJudge(judge_runner.MockJudge):
         super().__init__(answer_fn)
         self.fail_at = fail_at
 
-    def complete(self, prompt: str, *, max_tokens: int, temperature: float) -> judge_runner.JudgeReply:
+    def complete(self, prompt: str, *, max_tokens: int, temperature: float, attempt_gate=None) -> judge_runner.JudgeReply:
         if len(self.prompts) >= self.fail_at:
             raise RuntimeError("provider failure mid-run")
         return super().complete(prompt, max_tokens=max_tokens, temperature=temperature)
@@ -1270,15 +1279,20 @@ def test_the_judge_of_record_is_one_exact_spec(tmp_path):
     judge_of_record with the latest model while the rows held both."""
     run_dir = tmp_path / "run"
     run_dir.mkdir()
-    manifest = {"artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5"}}}
-    assert judge_runner.judge_model_problems(run_dir, manifest, "claude-haiku-4-5") == []
-    (run_dir / "judgments.jsonl").write_text('{"judge_model": "claude-haiku-4-5", "value": "a"}\n'
-                                             '{"judge_model": "claude-haiku-4-5", "value": null}\n', encoding="utf-8")
-    assert judge_runner.judge_model_problems(run_dir, manifest, "claude-haiku-4-5") == []
-    problems = judge_runner.judge_model_problems(run_dir, manifest, "anthropic:claude-haiku-4-5")
+    manifest = {"artifacts": {"judge_of_record": {"judge_model": "claude-haiku-4-5", "judge_max_tokens": 300, "temperature": 0.0}}}
+    assert judge_runner.judge_settings_problems(run_dir, manifest, "claude-haiku-4-5", 300) == []
+    (run_dir / "judgments.jsonl").write_text('{"judge_model": "claude-haiku-4-5", "value": "a", "max_tokens": 300}\n'
+                                             '{"judge_model": "claude-haiku-4-5", "value": null, "max_tokens": 300}\n'
+                                             '{"judge_model": "claude-haiku-4-5", "value": "not_applicable", "method": "rule"}\n',
+                                             encoding="utf-8")
+    assert judge_runner.judge_settings_problems(run_dir, manifest, "claude-haiku-4-5", 300) == []
+    problems = judge_runner.judge_settings_problems(run_dir, manifest, "anthropic:claude-haiku-4-5", 300)
     assert len(problems) == 2 and "judge of record is 'claude-haiku-4-5'" in problems[0] and "existing judgment rows" in problems[1]
-    assert judge_runner.judge_model_problems(run_dir, {"artifacts": {"judge_of_record": None}}, "other") and \
-        judge_runner.judge_model_problems(run_dir, {"artifacts": {}}, "claude-haiku-4-5") == []
+    # Codex round 8: the output allowance is pinned like the spec, from the bound record and from the rows
+    capped = judge_runner.judge_settings_problems(run_dir, manifest, "claude-haiku-4-5", 500)
+    assert len(capped) == 2 and "judge_max_tokens 300" in capped[0] and "[300]" in capped[1]
+    assert judge_runner.judge_settings_problems(run_dir, {"artifacts": {"judge_of_record": None}}, "other", 300) and \
+        judge_runner.judge_settings_problems(run_dir, {"artifacts": {}}, "claude-haiku-4-5", 300) == []
 
 
 def test_usage_rows_take_token_counts_from_retained_events_when_the_aggregate_lacks_the_model():
@@ -1297,3 +1311,118 @@ def test_usage_rows_take_token_counts_from_retained_events_when_the_aggregate_la
     priced = spend.usage_from_samples([with_aggregate, NS(model_usage={}, events=[ev("n", usage)])])
     assert priced["n"] == {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15, "calls": 1, "calls_without_usage": 0}
     assert not spend.usage_is_missing(priced["n"]) and spend.usage_is_missing(rows["m"])
+
+
+# ------------------------------------------------------------ round-8 corrections
+
+
+def test_root_is_refused_as_a_declared_branch_id(seed_set):
+    """Codex round 8: a branch declared as `root` would share the root's
+    conversation id."""
+    assert seeds.ROOT_BRANCH == checks.ROOT_BRANCH == "root"
+    h4 = json.loads(json.dumps(seed_set.seeds["pw-petri-example-h4-persistence"]))
+    h4["protocol"]["branches"][0]["id"] = "root"
+    assert any("reserved for the root trajectory" in p for p in seeds.seed_problems(h4, seed_set.framing, seed_set.outcomes))
+
+
+def test_target_visible_strings_include_the_tool_definitions(seed_set):
+    """Codex round 8: the holdout seal scan read the texts alone while the task
+    forwards tool names, descriptions and parameter schemas verbatim."""
+    h3 = seed_set.seeds["pw-petri-example-h3-tools"]
+    strings = seeds.target_visible_strings(h3)
+    definition = h3["tools"]["definitions"][0]
+    assert definition["name"] in strings and definition["description"] in strings
+    assert definition["parameters"]["properties"]["query"]["description"] in strings
+    assert strings[: len(h3["texts"])] == [t["text"] for t in h3["texts"]]
+    h4 = seed_set.seeds["pw-petri-example-h4-persistence"]
+    assert seeds.target_visible_strings(h4) == [t["text"] for t in h4["texts"]]
+
+
+class _FlakyJudge(judge_runner.MockJudge):
+    """One transient failure before every answer, reported through the gate."""
+
+    def complete(self, prompt: str, *, max_tokens: int, temperature: float, attempt_gate=None) -> judge_runner.JudgeReply:
+        if attempt_gate is not None and not attempt_gate(1):
+            raise RuntimeError("transient 529; retry refused by the ceiling")
+        return super().complete(prompt, max_tokens=max_tokens, temperature=temperature)
+
+
+def test_every_provider_retry_is_charged_against_the_judge_ceiling(tmp_path, seed_set, outcomes, rubric):
+    """Codex round 8: one judge call could make up to six provider requests
+    while the ceiling reserved one and charged only the final response."""
+    h4, record = _branch_record(seed_set)
+    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2)
+    side = judge_runner.run_judgments(plans, _FlakyJudge(lambda p: "absent"), out_path=tmp_path / "j.jsonl",
+                                      ceiling=judge_runner.SpendCeiling(1.0, 1.0, 5.0, 300), judge_max_tokens=300, labels={},
+                                      now_fn=lambda: "2026-09-17T00:00:00Z", report_path=tmp_path / "r.json")
+    rows = [r for r in judge_runner.read_jsonl(tmp_path / "j.jsonl") if r["method"] == "judge"]
+    assert rows and all(r["retry_attempts_charged"] == 1 for r in rows)
+    assert side["retry_attempts_charged"] == len(rows) and side["calls_without_usage"] == len(rows)
+    worst = judge_runner.estimate_input_tokens(plans[0].prompt) * 1.0 / 1e6 + 300 * 5.0 / 1e6
+    assert rows[0]["cost_usd"] > worst, "the failed attempt's worst case is charged on top of the answered call"
+    assert side["cost_usd"] == pytest.approx(sum(r["cost_usd"] for r in rows))
+    # a ceiling that affords one attempt but not a retry stops the call, charges the attempt, and aborts the run
+    first = next(p for p in plans if p.prompt)
+    one_attempt = judge_runner.estimate_input_tokens(first.prompt) * 1.0 / 1e6 + 300 * 5.0 / 1e6 + 1e-6
+    with pytest.raises(judge_runner.JudgeAborted, match="retry refused"):
+        judge_runner.run_judgments(plans, _FlakyJudge(lambda p: "absent"), out_path=tmp_path / "j2.jsonl",
+                                   ceiling=judge_runner.SpendCeiling(one_attempt, 1.0, 5.0, 300), judge_max_tokens=300,
+                                   labels={}, now_fn=lambda: "2026-09-17T00:00:00Z", report_path=tmp_path / "r2.json")
+    aborted = framework.load_json(tmp_path / "r2.json")
+    failed = [r for r in judge_runner.read_jsonl(tmp_path / "j2.jsonl") if r["method"] == "judge"]
+    assert len(failed) == 1 and failed[0]["retry_attempts_charged"] == 1 and failed[0]["judge_error"].startswith("call failed")
+    assert aborted["retry_attempts_charged"] == 1 and aborted["cost_usd"] == pytest.approx(failed[0]["cost_usd"])
+
+
+def test_the_advice_senders_consult_before_retry(monkeypatch):
+    """Codex round 8: the judge's ceiling must see every provider attempt."""
+    import sys
+    import types
+
+    ae = judge_runner._advice_eval_module()
+    monkeypatch.setattr(ae.time, "sleep", lambda s: None)
+    attempts = {"n": 0}
+
+    class Transient(Exception):
+        status_code = 429
+
+    def flaky_send(client, model, system, user_text, max_tokens, temperature):
+        attempts["n"] += 1
+        if attempts["n"] <= 2:
+            raise Transient("429")
+        return "ok", 1, 1, {"model": model}, {}
+
+    monkeypatch.setattr(ae, "_send", flaky_send)
+    seen = []
+    assert ae._send_anthropic_retrying(None, "m", None, "p", 10, 0.0, before_retry=lambda a, s: seen.append((a, s)) or True)[0] == "ok"
+    assert seen == [(0, 429), (1, 429)] and attempts["n"] == 3
+    attempts["n"] = 0
+    with pytest.raises(Transient):
+        ae._send_anthropic_retrying(None, "m", None, "p", 10, 0.0, before_retry=lambda a, s: False)
+    assert attempts["n"] == 1, "a refused retry ends the call after the failed attempt"
+    # the compat path: a fake requests module standing in for the provider
+    posts = {"n": 0}
+
+    class Resp:
+        def __init__(self, status, body):
+            self.status_code, self._body, self.headers = status, body, {}
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise RuntimeError(f"http {self.status_code}")
+
+        def json(self):
+            return self._body
+
+    def post(url, headers, json, timeout):
+        posts["n"] += 1
+        return Resp(503, {}) if posts["n"] == 1 else Resp(200, {"choices": [{"message": {"content": "ok"}}], "usage": {}})
+
+    monkeypatch.setitem(sys.modules, "requests", types.SimpleNamespace(post=post))
+    monkeypatch.setenv("FAKE_JUDGE_KEY", "k")
+    cfg = {"key_env": "FAKE_JUDGE_KEY", "base_url": "https://provider.invalid/v1"}
+    assert ae._send_compat(cfg, "m", None, "p", 10, 0.0, before_retry=lambda a, s: True)[0] == "ok" and posts["n"] == 2
+    posts["n"] = 0
+    with pytest.raises(RuntimeError, match="http 503"):
+        ae._send_compat(cfg, "m", None, "p", 10, 0.0, before_retry=lambda a, s: False)
+    assert posts["n"] == 1

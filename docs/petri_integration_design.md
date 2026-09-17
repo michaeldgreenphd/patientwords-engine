@@ -1266,6 +1266,46 @@ regression test each.
    own usage when the sample aggregate lacks the model, so a row with calls
    and zero tokens no longer prices a paid call at zero.
 
+### Corrections from the eighth Codex review (PR #26, 2026-09-17)
+
+Ten findings on the seventh corrected tree, all verified and fixed with a
+regression test each.
+
+1. **The holdout seal scans every target-visible string.** Tool definitions
+   (name, description, parameter schema) are forwarded to the target
+   verbatim; `seeds.target_visible_strings` now feeds the preflight and the
+   adapter's seal scan, not the texts alone.
+2. **The judge's output allowance is pinned across resumes** with the spec:
+   `judge_settings_problems` refuses a bound judge of record or existing
+   rows under a different `judge_max_tokens` (or temperature).
+3. **The input-token bound carries a framing allowance** of 128 tokens for
+   the chat-message framing the provider charges beyond the prompt's bytes.
+4. **Sub-representable Petri deltas are never discarded.** The ledger's
+   accumulators hold four decimals; a Petri growth delta is booked to the
+   amount they represent and the folded watermark advances by that amount
+   alone, so the remainder waits, unfolded, until growth makes it
+   representable.
+5. **Every provider retry is charged against the judge ceiling.** The advice
+   senders take a `before_retry` hook; the judge charges each failed attempt
+   at its worst case through `attempt_gate` and admits another attempt only
+   while the ceiling affords one. Rows and the sidecar record
+   `retry_attempts_charged`.
+6. **Only `mode: run` is a paid Petri fire.** `fire_trigger.is_paid_fire`
+   exempts preflight and dry_run from the ceiling in the fire path, the
+   publish correction and the server-side gate, so the park is never refused
+   for budget and a paid configuration never has to stay at rest.
+7. **Timeline nodes are projected through the allowlist** (`timeline.node_keys`,
+   `content_types_kept`, allowlist 0.2); unknown node fields and content
+   types are dropped and counted (`timeline_content_dropped_by_type`).
+8. **The surviving branch is decided on the timeline before refusals.** The
+   tree records `surviving_branch_id` and `survivor_exported`; when the
+   survivor was refused no exported branch is marked surviving.
+9. **A paid run is admitted from a push-to-run fire on its first attempt
+   only.** The params job refuses `mode: run` from a workflow_dispatch or an
+   Actions-tab re-run, neither of which carries a journal reservation.
+10. **`root` is refused as a declared branch id**; `ROOT_BRANCH` now lives in
+    `seeds.py` and `checks.py` re-exports it.
+
 ## Decisions recorded from the owner (2026-09-16)
 
 These were open questions in the first draft and are now decided. Each entry

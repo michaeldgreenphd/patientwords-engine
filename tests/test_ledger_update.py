@@ -664,3 +664,35 @@ def test_petri_judge_sidecar_growth_folds_any_positive_delta(tree, tmp_path):
     write_sidecar(tree["adv"], "responses_stimuli_y.report.json", cost_usd=1.0003)
     run(tree, "--petri-dir", str(petri))
     assert load_dash(tree)["spend"]["entries_folded"]["responses_stimuli_y.report.json"] == pytest.approx(1.0)
+
+
+def test_petri_deltas_below_the_accumulators_precision_wait_instead_of_vanishing(tree, tmp_path):
+    """Codex round 8 on PR #26: the accumulators hold four decimals, so a
+    Petri delta below half a unit was accepted, rounded away, and the folded
+    watermark advanced past it. It now waits, unfolded, until growth makes it
+    representable."""
+    petri = tmp_path / "data" / "petri" / "runs"
+    run_dir = petri / "run_2_1"
+    run_dir.mkdir(parents=True)
+    side = run_dir / "run_2_1.judge.report.json"
+    body = dict(cost_usd=0.001, run_cost_usd=0.001, prior_cost_usd=0.0, cost_basis="cumulative_from_records",
+                run_utc=f"{TODAY}T00:00:00Z", billing_channel="anthropic", task="petri-audit-judge")
+    side.write_text(json.dumps(body), encoding="utf-8")
+    run(tree, "--petri-dir", str(petri))
+    key = ledger_update.sidecar_key(side)
+    side.write_text(json.dumps(dict(body, cost_usd=0.00104)), encoding="utf-8")
+    run(tree, "--petri-dir", str(petri))
+    dash = load_dash(tree)
+    assert dash["spend"]["entries_folded"][key] == pytest.approx(0.001), "not representable yet: the watermark waits"
+    assert dash["spend"]["lifetime_generation_usd"] == pytest.approx(0.001)
+    side.write_text(json.dumps(dict(body, cost_usd=0.00112)), encoding="utf-8")
+    run(tree, "--petri-dir", str(petri))
+    dash = load_dash(tree)
+    assert dash["spend"]["entries_folded"][key] == pytest.approx(0.0011) and dash["spend"]["lifetime_generation_usd"] == pytest.approx(0.0011)
+    side.write_text(json.dumps(dict(body, cost_usd=0.0012)), encoding="utf-8")
+    run(tree, "--petri-dir", str(petri))
+    dash = load_dash(tree)
+    assert dash["spend"]["entries_folded"][key] == pytest.approx(0.0012) and dash["spend"]["by_day"][TODAY] == pytest.approx(0.0012)
+    before = sha(tree["dash"])
+    run(tree, "--petri-dir", str(petri))
+    assert sha(tree["dash"]) == before

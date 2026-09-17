@@ -31,7 +31,7 @@ from .envlock import load_lock, report_lines, verify_lock
 from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, sha256_file, write_json
 from .manifest import bind_judgments, reseal_problems, verify_chain
 from .seal import sealed_registry, seed_texts_against_registry
-from .seeds import conditions, load_seed_file, select_seeds, validate_seed
+from .seeds import conditions, load_seed_file, select_seeds, target_visible_strings, validate_seed
 from .spend import (
     judge_billing_channel,
     preflight_bound,
@@ -99,7 +99,8 @@ def _preflight(args: argparse.Namespace) -> tuple[int, dict]:
               "Tier B batches); the holdout cannot be established unexposed, so the run is refused before any model call",
               file=sys.stderr)
         return 6, {}
-    sealed_hits = seed_texts_against_registry([t["text"] for s in seeds for t in s["texts"]], registry_sealed)
+    # every string the target can receive, the tool definitions included (Codex round 8)
+    sealed_hits = seed_texts_against_registry([s for seed in seeds for s in target_visible_strings(seed)], registry_sealed)
     if sealed_hits:
         print(f"holdout seal: {len(sealed_hits)} sealed phrase(s) in the selected seeds ({', '.join(sealed_hits[:5])}); "
               "the pilot uses the explore split only; refused before any model call", file=sys.stderr)
@@ -276,7 +277,7 @@ def cmd_judge(args: argparse.Namespace) -> int:
         RegistryJudge,
         SpendCeiling,
         cumulative_counts,
-        judge_model_problems,
+        judge_settings_problems,
         labels_from_manifest,
         load_rubric,
         plan_run,
@@ -293,9 +294,10 @@ def cmd_judge(args: argparse.Namespace) -> int:
             print(f"refused before any judge call: {r}", file=sys.stderr)
         return 9
     manifest = load_json(run_dir / "manifest.json")
-    # the judge of record is one spec: a bound judge or existing rows under another spec refuse the pass before any
-    # call, because dedupe_key carries the spec and a second spec would re-judge every plan (Codex round 7)
-    pinned = judge_model_problems(run_dir, manifest, args.judge_model)
+    # the judge of record is one spec under one generation setting: a bound judge or existing rows under another
+    # spec or token allowance refuse the pass before any call, because dedupe_key carries the spec and a second
+    # spec would re-judge every plan, and a second allowance would mix caps under one provenance (Codex rounds 7, 8)
+    pinned = judge_settings_problems(run_dir, manifest, args.judge_model, args.judge_max_tokens)
     if pinned:
         for p in pinned:
             print(f"refused before any judge call: {p}", file=sys.stderr)
