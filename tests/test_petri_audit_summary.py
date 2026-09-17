@@ -457,7 +457,8 @@ def test_incomplete_cost_sidecars_are_unavailable_not_tables_with_dashes(run_dir
     framework.write_json(judge_side, {"judge_model": "claude-haiku-4-5", "cost_basis": "x", "billing_channel": "anthropic"})
     s = summary.run_summary(run_dir, mode="run")
     assert s["judge_sidecar"] == {"path": "example.judge.report.json", "unavailable": "example.judge.report.json lacks 'cost_usd'"}
-    framework.write_json(judge_side, {"judge_model": "claude-haiku-4-5", "cost_usd": 0.01, "cost_basis": "x", "billing_channel": "anthropic"})
+    framework.write_json(judge_side, {"judge_model": "claude-haiku-4-5", "cost_usd": 0.01, "cost_basis": "x", "billing_channel": "anthropic",
+                                      "max_spend_usd": 0.05})
     assert summary.run_summary(run_dir, mode="run")["judge_sidecar"]["cost_usd"] == 0.01
 
 
@@ -616,7 +617,7 @@ def test_a_judge_that_left_only_its_fallback_sidecar_is_reported_from_it(run_dir
     judge was omitted from the usage table."""
     framework.write_json(run_dir / "example.judge.report.json",
                          {"judge_model": "claude-haiku-4-5", "cost_usd": 0.01, "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar",
-                          "billing_channel": "anthropic", "aborted": True})
+                          "billing_channel": "anthropic", "aborted": True, "max_spend_usd": 0.05})
     usage = summary.run_summary(run_dir, mode="run")["usage"]
     judge = [r for r in usage if r["model"] == "claude-haiku-4-5"]
     assert len(judge) == 1 and judge[0]["status"] == summary.USAGE_UNAVAILABLE and judge[0]["calls"] is None
@@ -636,7 +637,7 @@ def test_a_judgments_file_without_judge_rows_falls_back_to_the_sidecar(run_dir):
 
     framework.write_json(run_dir / "example.judge.report.json",
                          {"judge_model": "claude-haiku-4-5", "cost_usd": 0.01, "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar",
-                          "billing_channel": "anthropic", "aborted": True})
+                          "billing_channel": "anthropic", "aborted": True, "max_spend_usd": 0.05})
     (run_dir / "judgments.jsonl").write_text("", encoding="utf-8")
     judge = judge_rows()
     assert len(judge) == 1 and judge[0]["model"] == "claude-haiku-4-5" and judge[0]["status"] == summary.USAGE_UNAVAILABLE
@@ -885,6 +886,30 @@ def test_artifact_families_are_bound_to_their_consumed_filenames(run_dir):
     assert manifest_mod.artifact_name_problems([("example/example.judge.report.json", "d", "judge_of_record.report"), (None, None, "judgments")]) == []
 
 
+def test_artifacts_are_bound_to_the_manifest_s_directory(run_dir, tmp_path):
+    """Codex (PR #27, thirteenth round): a resealed manifest recording every
+    artifact under another run directory, same basenames and matching
+    digests, verified in the chain while the files beside it were unbound."""
+    import shutil
+    runs = tmp_path / "runs2"
+    shutil.copytree(run_dir, runs / "example")
+    shutil.copytree(run_dir, runs / "other")          # the same files under another run's directory
+    m = framework.load_json(runs / "example" / "manifest.json")
+    for fam in ("sanitised_log", "transcripts", "rule_outcomes"):
+        m["artifacts"][f"{fam}_path"] = "other/" + Path(m["artifacts"][f"{fam}_path"]).name
+    sealed = manifest_mod.seal_manifest(m, None)
+    manifest_mod.write_manifest(runs / "example" / "manifest.json", sealed)
+    manifest_mod.append_chain(runs, sealed, runs / "example" / "manifest.json")
+    assert manifest_mod.artifact_problems(sealed, runs) == [], "basenames and digests alone accept the other run's files"
+    problems = manifest_mod.artifact_problems(sealed, runs, manifest_dir="example")
+    assert "sanitised_log: other/sanitised_log.json is recorded outside the manifest's directory example" in problems
+    ok, msg = manifest_mod.verify_chain(runs)
+    assert not ok and "recorded outside the manifest's directory example" in msg
+    s = summary.run_summary(runs / "example", mode="dry_run")
+    assert any("recorded outside" in p for p in s["integrity"]["artifact_problems"]) and s["integrity"]["chain"]["ok"] is False
+    assert manifest_mod.verify_run(run_dir) == [] and manifest_mod.verify_chain(run_dir.parent)[0] is True, "the sound layout is unchanged"
+
+
 def test_duplicate_branch_conversation_ids_are_reported(run_dir):
     """Codex (PR #27, twelfth round): two manifest branches sharing a
     conversation_id collapsed in the set comparison, so a single record
@@ -969,12 +994,15 @@ def test_sidecar_spend_values_are_bounded(run_dir):
     (run_dir / "example.report.json").write_text(json.dumps(side).replace('"cost_usd": 0.0', '"cost_usd": Infinity'), encoding="utf-8")
     assert summary.run_summary(run_dir, mode="dry_run")["sidecar"]["unavailable"] == "example.report.json 'cost_usd' is not finite (inf)"
     assert target()["cost_usd"] == 0.0, "the sound sidecar still reads"
-    judge = {"judge_model": "claude-haiku-4-5", "cost_usd": -0.5, "cost_basis": "b", "billing_channel": "anthropic"}
+    judge = {"judge_model": "claude-haiku-4-5", "cost_usd": -0.5, "cost_basis": "b", "billing_channel": "anthropic", "max_spend_usd": 0.05}
     framework.write_json(run_dir / "example.judge.report.json", judge)
     assert summary.run_summary(run_dir, mode="dry_run")["judge_sidecar"]["unavailable"] == "example.judge.report.json 'cost_usd' is negative (-0.5)"
     framework.write_json(run_dir / "example.judge.report.json", {**judge, "cost_usd": 0.0, "max_spend_usd": 0})
     assert summary.run_summary(run_dir, mode="dry_run")["judge_sidecar"]["unavailable"] == \
         "example.judge.report.json 'max_spend_usd' is not a positive ceiling (0)"
+    # Codex (PR #27, thirteenth round): both judge-sidecar writers emit the ceiling, so a sidecar without it is damaged
+    framework.write_json(run_dir / "example.judge.report.json", {k: v for k, v in judge.items() if k != "max_spend_usd"} | {"cost_usd": 0.0})
+    assert summary.run_summary(run_dir, mode="dry_run")["judge_sidecar"]["unavailable"] == "example.judge.report.json lacks 'max_spend_usd'"
 
 
 def test_sidecars_are_found_by_pattern_after_a_flat_extraction(run_dir, tmp_path):
@@ -988,7 +1016,8 @@ def test_sidecars_are_found_by_pattern_after_a_flat_extraction(run_dir, tmp_path
     framework.write_json(flat / "other.report.json", {"cost_usd": 0.0})
     s = summary.run_summary(flat, mode="dry_run")
     assert s["sidecar"]["unavailable"] == "2 target cost sidecars in the run directory"
-    framework.write_json(flat / "example.judge.report.json", {"judge_model": "x", "cost_usd": 0.0, "cost_basis": "b", "billing_channel": "anthropic"})
+    framework.write_json(flat / "example.judge.report.json", {"judge_model": "x", "cost_usd": 0.0, "cost_basis": "b", "billing_channel": "anthropic",
+                                                              "max_spend_usd": 0.05})
     assert summary.run_summary(flat, mode="dry_run")["judge_sidecar"]["path"] == "example.judge.report.json"
 
 

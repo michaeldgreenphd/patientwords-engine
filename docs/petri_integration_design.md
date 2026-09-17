@@ -1406,7 +1406,9 @@ dry run observable, which section 14 depends on.
    `provenance.run_manifest.sha256` must equal the manifest's identity
    digest; the execution limits are validated as integers of at least 1;
    and sidecar spend values must be finite and non-negative with a positive
-   ceiling.
+   ceiling. The thirteenth round added two: the chain verifier and the
+   summary bind every artifact to the manifest's own run directory, and the
+   judge sidecar's ceiling is required.
 
 ## Decisions recorded from the owner (2026-09-16)
 

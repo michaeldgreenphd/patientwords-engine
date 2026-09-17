@@ -538,7 +538,8 @@ def _published(run_dir: Path) -> dict:
 
 def _integrity(manifest: dict, run_dir: Path) -> dict:
     chain_ok, chain_msg = verify_chain(run_dir.parent) if (run_dir.parent / CHAIN_FILE).is_file() else (None, "no chain file")
-    return {"manifest_problems": manifest_problems(manifest), "artifact_problems": artifact_problems(manifest, run_dir.parent),
+    return {"manifest_problems": manifest_problems(manifest),
+            "artifact_problems": artifact_problems(manifest, run_dir.parent, manifest_dir=run_dir.name),
             # the check a downloaded run directory can pass on its own (no chain file): cli verify-run
             "run_self_verification": verify_run(run_dir),
             "chain": {"ok": chain_ok, "message": chain_msg},
@@ -615,7 +616,8 @@ def _judge_sidecar(run_dir: Path) -> dict | None:
             raise TypeError(f"{where} is not an object")
         side = {"path": path.name, "judge_model": _member(r, "judge_model", where, (str,)), "cost_usd": _member(r, "cost_usd", where, NUMBER),
                 "cost_basis": _member(r, "cost_basis", where, (str,)), "billing_channel": _member(r, "billing_channel", where, (str,)),
-                "max_spend_usd": _member(r, "max_spend_usd", where, NUMBER) if "max_spend_usd" in r else None,
+                # both judge-sidecar writers emit the ceiling; its absence is a damaged record (Codex, PR #27, thirteenth round)
+                "max_spend_usd": _member(r, "max_spend_usd", where, NUMBER),
                 "planned": r.get("planned"), "cumulative": r.get("cumulative"), "aborted": r.get("aborted"), "truncated": r.get("truncated")}
         _bounded_spend({"cost_usd": side["cost_usd"], "max_spend_usd": side["max_spend_usd"]}, where)
         return side

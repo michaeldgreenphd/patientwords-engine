@@ -44,18 +44,23 @@ ARTIFACT_FILENAMES = {"sanitised_log": "sanitised_log.json", "transcripts": "tra
 JUDGE_REPORT_SUFFIX = ".judge.report.json"
 
 
-def artifact_name_problems(pairs: list[tuple]) -> list[str]:
+def artifact_name_problems(pairs: list[tuple], manifest_dir: str | None = None) -> list[str]:
     """Each recorded artifact path names the file its family's consumers
     open, and no two families share a path (Codex, PR #27, twelfth round:
     `transcripts_path` sealed as `sanitised_log.json` with that file's
-    digest verified, while `transcripts.jsonl` was unbound). `pairs` are
-    `(relative path, digest, family)`; a null or non-string path is another
-    check's problem."""
+    digest verified, while `transcripts.jsonl` was unbound). With
+    `manifest_dir`, every path must also sit in the manifest's own run
+    directory (thirteenth round: a resealed manifest naming another run's
+    files, same basenames and matching digests, verified while the files
+    beside it were unbound). `pairs` are `(relative path, digest, family)`;
+    a null or non-string path is another check's problem."""
     problems: list[str] = []
     seen: dict[str, list[str]] = {}
     for rel, _digest, fam in pairs:
         if not isinstance(rel, str):
             continue
+        if manifest_dir is not None and Path(rel).parent.as_posix() != manifest_dir:
+            problems.append(f"{fam}: {rel} is recorded outside the manifest's directory {manifest_dir}")
         name = Path(rel).name
         expected = ARTIFACT_FILENAMES.get(fam)
         if expected is not None and name != expected:
@@ -149,17 +154,19 @@ def append_chain(data_dir: Path, manifest: dict, manifest_path: Path) -> None:
         fh.write(f"{manifest_path.relative_to(data_dir).as_posix()} {manifest['chain']['manifest_sha256']}\n")
 
 
-def artifact_problems(manifest: dict, data_dir: Path) -> list[str]:
+def artifact_problems(manifest: dict, data_dir: Path, manifest_dir: str | None = None) -> list[str]:
     """Every artifact the manifest names (relative to the runs directory)
     exists and digests to its recorded value; a null path is one not yet
-    written (judgments before judging)."""
+    written (judgments before judging). `manifest_dir` is the manifest's own
+    run directory (its name under `data_dir`); when given, every artifact
+    must be recorded inside it."""
     problems: list[str] = []
     artifacts = manifest.get("artifacts") or {}
     pairs = [(artifacts.get(f"{fam}_path"), artifacts.get(f"{fam}_sha256"), fam) for fam in ARTIFACT_FAMILIES]
     judge = artifacts.get("judge_of_record")
     if isinstance(judge, dict):
         pairs.append((judge.get("report_path"), judge.get("report_sha256"), "judge_of_record.report"))
-    problems.extend(artifact_name_problems(pairs))
+    problems.extend(artifact_name_problems(pairs, manifest_dir))
     for rel, digest, fam in pairs:
         if rel is None:
             continue
@@ -189,7 +196,8 @@ def verify_chain(data_dir: Path) -> tuple[bool, str]:
             return False, f"line {n + 1}: {rel} does not digest to {digest}"
         if manifest["chain"]["prev_sha256"] != prev:
             return False, f"line {n + 1}: {rel} links to {manifest['chain']['prev_sha256']!r}, expected {prev!r}"
-        problems = artifact_problems(manifest, data_dir)
+        # the chain knows where each manifest sits, so its artifacts are bound to that directory
+        problems = artifact_problems(manifest, data_dir, manifest_dir=Path(rel).parent.as_posix())
         if problems:
             return False, f"line {n + 1}: {rel}: " + "; ".join(problems)
         prev = digest

@@ -480,6 +480,23 @@ def _example_manifest_with_artifacts(d: Path) -> dict:
     return base
 
 
+def _second_run_under(d: Path, base: dict, name: str) -> dict:
+    """A second run's manifest body under `d/name`: the example's artifact
+    files copied there and the paths rewritten, because the chain verifier
+    binds every artifact to its manifest's own directory (Codex, PR #27,
+    thirteenth round: a manifest naming another run's files no longer
+    verifies)."""
+    (d / name).mkdir(exist_ok=True)
+    out = json.loads(json.dumps(base))
+    out["run_id"] = "second"
+    for fam in ("sanitised_log", "transcripts", "rule_outcomes"):
+        rel = out["artifacts"][f"{fam}_path"]
+        if rel:
+            (d / name / Path(rel).name).write_bytes((d / rel).read_bytes())
+            out["artifacts"][f"{fam}_path"] = f"{name}/{Path(rel).name}"
+    return out
+
+
 def test_manifest_identity_digest_ignores_record_dependent_fields_and_chain_verifies(tmp_path):
     d = tmp_path / "runs"
     base = _example_manifest_with_artifacts(d)
@@ -494,12 +511,13 @@ def test_manifest_identity_digest_ignores_record_dependent_fields_and_chain_veri
     assert manifest_mod.manifest_digest(changed) != sealed["chain"]["manifest_sha256"]
     changed["run_id"] = "other"
     assert manifest_mod.identity_digest(changed) != sealed["chain"]["identity_sha256"]
-    # a two-manifest chain under one data directory (both name the example run's artifacts)
+    # a two-manifest chain under one data directory; each names its own run's files, because the chain binds every
+    # artifact to its manifest's directory (Codex, PR #27, thirteenth round)
     (d / "b").mkdir()
     first = manifest_mod.seal_manifest(base, manifest_mod.chain_head(d))
     manifest_mod.write_manifest(d / "example" / "manifest.json", first)
     manifest_mod.append_chain(d, first, d / "example" / "manifest.json")
-    second = manifest_mod.seal_manifest(dict(base, run_id="second"), manifest_mod.chain_head(d))
+    second = manifest_mod.seal_manifest(_second_run_under(d, base, "b"), manifest_mod.chain_head(d))
     manifest_mod.write_manifest(d / "b" / "manifest.json", second)
     manifest_mod.append_chain(d, second, d / "b" / "manifest.json")
     assert second["chain"]["prev_sha256"] == first["chain"]["manifest_sha256"]
@@ -561,7 +579,7 @@ def test_bind_judgments_reseals_only_the_chain_head_and_keeps_the_identity(tmp_p
     judgments.write_text('{"conversation_id": "c", "value": "urgent"}\n', encoding="utf-8")
     # once a later manifest links to this one, it is no longer the head and cannot be resealed
     (d / "b").mkdir()
-    second = manifest_mod.seal_manifest(dict(base, run_id="second"), manifest_mod.chain_head(d))
+    second = manifest_mod.seal_manifest(_second_run_under(d, base, "b"), manifest_mod.chain_head(d))
     manifest_mod.write_manifest(d / "b" / "manifest.json", second)
     manifest_mod.append_chain(d, second, d / "b" / "manifest.json")
     with pytest.raises(ValueError, match="not the chain head"):
@@ -1093,7 +1111,7 @@ def test_bind_judgments_writes_the_manifest_before_the_chain_line_and_repairs_an
     # and a run that is no longer the head is named before anything is written
     manifest_mod.write_manifest(run_dir / "manifest.json", sealed)
     (d / "b").mkdir()
-    second = manifest_mod.seal_manifest(dict(base, run_id="second"), manifest_mod.chain_head(d))
+    second = manifest_mod.seal_manifest(_second_run_under(d, base, "b"), manifest_mod.chain_head(d))
     manifest_mod.write_manifest(d / "b" / "manifest.json", second)
     manifest_mod.append_chain(d, second, d / "b" / "manifest.json")
     assert any("not the chain head" in p for p in manifest_mod.reseal_problems(run_dir))
