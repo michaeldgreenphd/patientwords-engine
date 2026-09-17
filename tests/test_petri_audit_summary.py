@@ -147,6 +147,19 @@ def test_judged_outputs_and_unexpected_entries_are_inventoried(run_dir):
         v for v in pub["unexpected"].values() if v is not None)
     text = summary.render_markdown(s)
     assert "| judgments.jsonl |" in text and "| logs/ | directory (UNEXPECTED" in text and "| stray.txt |" in text
+    # files inside a nested directory are inventoried, counted and scanned too (Codex, PR #27, seventh round)
+    nested = run_dir / "nested" / "deeper"
+    nested.mkdir(parents=True)
+    (nested / "leak.json").write_text('{"t": "attachment://nested"}\n', encoding="utf-8")
+    (run_dir / "nested" / "blob.bin").write_bytes(b"\x00" * 7)
+    s = summary.run_summary(run_dir, mode="run")
+    pub = s["published"]
+    assert pub["unexpected"]["nested/deeper/leak.json"] == (nested / "leak.json").stat().st_size
+    assert pub["unexpected"]["nested/blob.bin"] == 7 and "nested/" not in pub["unexpected"], "a non-empty directory lists its files"
+    assert pub["attachment_references"] == 3
+    assert pub["total_bytes"] == sum(pub["files"].values()) + sum(pub["cost_sidecars"].values()) + sum(
+        v for v in pub["unexpected"].values() if v is not None)
+    assert "| nested/deeper/leak.json |" in summary.render_markdown(s)
 
 
 def test_a_missing_transcript_export_is_a_gap_not_a_zero_count(run_dir):
@@ -297,6 +310,38 @@ def test_missing_member_keys_are_gaps_not_values(run_dir):
     assert summary.run_summary(run_dir, mode="dry_run")["structure"]["unavailable_fields"] == {}
 
 
+def test_wrong_member_types_are_gaps_not_values(run_dir):
+    """Codex (PR #27, seventh round): presence alone read `survivor_exported:
+    "false"` as a survivor; the expected type is checked too, and a bool
+    never passes for an int."""
+    base = framework.load_json(run_dir / "manifest.json")
+
+    def damaged(mutate):
+        m = json.loads(json.dumps(base))
+        mutate(m)
+        framework.write_json(run_dir / "manifest.json", m)
+        return summary.run_summary(run_dir, mode="dry_run")
+
+    st = damaged(lambda m: m["trees"][0].__setitem__("survivor_exported", "false"))["structure"]
+    assert st["survivors_exported"] is None and st["unavailable_fields"]["trees"] == "tree 't1' 'survivor_exported' is not bool (got str)"
+    st = damaged(lambda m: m["trees"][0]["branches"][1].__setitem__("branched_from_turn_id", True))["structure"]
+    assert st["branches"] is None and "'branched_from_turn_id' is not int or null (got bool)" in st["unavailable_fields"]["trees"]
+    st = damaged(lambda m: m["trees"][0]["branches"][1].__setitem__("condition_id", 3))["structure"]
+    assert st["conditions"] is None and "'condition_id' is not str or null (got int)" in st["unavailable_fields"]["trees"]
+    st = damaged(lambda m: m["usage"]["by_role"][0].__setitem__("calls", "3"))["structure"]
+    assert st["target_calls"] is None and st["unavailable_fields"]["target_calls"] == "usage.by_role target row 'calls' is not int (got str)"
+    st = damaged(lambda m: m["seeds"][0].__setitem__("claim_grade_eligible", 1))["structure"]
+    assert st["seeds"] is None and "'claim_grade_eligible' is not bool (got int)" in st["unavailable_fields"]["seeds"]
+    st = damaged(lambda m: m["integrity"]["records_refused"].append({"branch_id": "x", "reason": None}))["structure"]
+    assert st["refused"] is None and st["unavailable_fields"]["refused"] == "refusal #0 'reason' is not str (got NoneType)"
+    s = damaged(lambda m: m["usage"]["by_model"][0].__setitem__("input_tokens", "120"))
+    assert s["usage"] == {"unavailable": "usage.by_model row #0 ('mockllm/model') 'input_tokens' is not int or null (got str)"}
+    (run_dir / "sanitised_log.json").write_text(json.dumps({"status": 5}), encoding="utf-8")
+    framework.write_json(run_dir / "manifest.json", base)
+    st = summary.run_summary(run_dir, mode="dry_run")["structure"]
+    assert st["eval_status"] is None and st["unavailable_fields"]["eval_status"] == "sanitised_log.json: sanitised_log.json 'status' is not str (got int)"
+
+
 def test_a_damaged_sanitised_log_is_a_named_gap_not_a_failed_summary(run_dir, capsys):
     """Codex (PR #27, fifth round): the sanitised-log parse sat outside every
     guard, so a truncated file aborted the whole summary."""
@@ -428,6 +473,9 @@ def test_verify_run_checks_a_run_directory_on_its_own(run_dir, tmp_path, capsys)
     m["run_id"] = "rewritten"
     framework.write_json(copy / "manifest.json", m)
     assert any("manifest_sha256 does not match" in p for p in manifest_mod.verify_run(copy))
+    (copy / "manifest.json").write_text("[1, 2]", encoding="utf-8")
+    assert manifest_mod.verify_run(copy) == [f"{copy.name}: manifest.json holds a list, not an object"]
+    assert cli.main(["verify-run", "--run-dir", str(copy)]) == 6
     (copy / "manifest.json").unlink()
     assert manifest_mod.verify_run(copy) == [f"{copy.name}: manifest.json is missing"]
     assert cli.main(["verify-run", "--run-dir", str(copy)]) == 6

@@ -99,17 +99,29 @@ def _dig(obj: Any, *keys: str) -> Any:
     return node
 
 
-def _member(obj: Any, key: str, where: str) -> Any:
-    """A key a collection member must carry. Its value may legitimately be
-    None (a root branch's parent), so presence is what is required; an
-    absent key is a gap in every count that reads it, never a value (Codex,
-    PR #27: `.get()` read a missing survivor flag as False and a missing
-    parent as a root)."""
+NULL = type(None)
+
+
+def _type_names(types: tuple[type, ...]) -> str:
+    return " or ".join("null" if t is NULL else t.__name__ for t in types)
+
+
+def _member(obj: Any, key: str, where: str, types: tuple[type, ...] | None = None) -> Any:
+    """A key a collection member must carry, of the type the count expects.
+    Its value may legitimately be None (a root branch's parent) where the
+    schema allows it, so `types` says which; an absent key, or a value of
+    another type, is a gap in every count that reads it, never a value
+    (Codex, PR #27: `.get()` read a missing survivor flag as False and a
+    missing parent as a root; presence alone read `survivor_exported:
+    "false"` as a survivor). A bool never passes for an int."""
     if not isinstance(obj, dict):
         raise TypeError(f"{where} is not an object")
     if key not in obj:
         raise KeyError(f"{where} lacks {key!r}")
-    return obj[key]
+    value = obj[key]
+    if types is not None and (not isinstance(value, types) or (isinstance(value, bool) and bool not in types)):
+        raise TypeError(f"{where} {key!r} is not {_type_names(types)} (got {type(value).__name__})")
+    return value
 
 
 def _structure(manifest: dict, run_dir: Path) -> dict:
@@ -132,12 +144,12 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
             doc = load_json(sanitised)
             if not isinstance(doc, dict):
                 raise TypeError(f"sanitised_log.json holds a {type(doc).__name__}, not an object")
-            out["eval_status"] = _member(doc, "status", "sanitised_log.json")
+            out["eval_status"] = _member(doc, "status", "sanitised_log.json", (str,))
         except (ValueError, TypeError, OSError, KeyError) as exc:
             unavailable["eval_status"] = f"sanitised_log.json: {_reason(exc)}"
     try:
-        out["seeds"] = [{"seed_id": _member(s, "seed_id", f"seed #{i}"),
-                         "claim_grade_eligible": _member(s, "claim_grade_eligible", f"seed {s.get('seed_id', i)!r}")}
+        out["seeds"] = [{"seed_id": _member(s, "seed_id", f"seed #{i}", (str,)),
+                         "claim_grade_eligible": _member(s, "claim_grade_eligible", f"seed {s.get('seed_id', i)!r}", (bool,))}
                         for i, s in enumerate(_collection(manifest, "seeds"))]
     except (KeyError, TypeError) as exc:
         # a missing seeds collection is a gap, never an empty seed list (Codex, PR #27)
@@ -151,8 +163,8 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
         branches_n = survivors = no_condition = 0
         for i, t in enumerate(trees):
             where = f"tree {t.get('tree_id', i)!r}" if isinstance(t, dict) else f"tree #{i}"
-            seed_id = _member(t, "seed_id", where)
-            survivors += bool(_member(t, "survivor_exported", where))
+            seed_id = _member(t, "seed_id", where, (str,))
+            survivors += _member(t, "survivor_exported", where, (bool,))
             # each tree's own collection is required too (Codex, PR #27): a tree without `branches` is a gap in every
             # branch-derived count, not zero branches
             try:
@@ -162,13 +174,13 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
             for j, b in enumerate(tree_branches):
                 bwhere = f"{where} branch {b.get('branch_id', j)!r}" if isinstance(b, dict) else f"{where} branch #{j}"
                 branches_n += 1
-                condition = _member(b, "condition_id", bwhere)
+                condition = _member(b, "condition_id", bwhere, (str, NULL))
                 if condition is None:
                     no_condition += 1
                 else:
                     cells.add((seed_id, condition))
-                anchor = _member(b, "branched_from_turn_id", bwhere)
-                if _member(b, "parent_branch_id", bwhere) is not None:
+                anchor = _member(b, "branched_from_turn_id", bwhere, (int, NULL))
+                if _member(b, "parent_branch_id", bwhere, (str, NULL)) is not None:
                     anchors.append(anchor)
         out.update(trees=len(trees), branches=branches_n, conditions=len(cells), branches_without_condition_id=no_condition,
                    shared_prefix_branches={"anchored": sum(1 for a in anchors if a is not None),
@@ -180,17 +192,18 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
     try:
         refused = _collection(manifest, "integrity", "records_refused")
         out["refused"] = {"count": len(refused),
-                          "reasons": [f"{_member(r, 'branch_id', f'refusal #{i}')}: {_member(r, 'reason', f'refusal #{i}')}"
+                          "reasons": [f"{_member(r, 'branch_id', f'refusal #{i}', (str,))}: {_member(r, 'reason', f'refusal #{i}', (str,))}"
                                       for i, r in enumerate(refused)]}
     except (KeyError, TypeError) as exc:
         out["refused"] = None
         unavailable["refused"] = _reason(exc)
     try:
-        by_role = {_member(r, "role", f"usage.by_role #{i}"): r for i, r in enumerate(_collection(manifest, "usage", "by_role"))}
+        by_role = {_member(r, "role", f"usage.by_role #{i}", (str,)): r
+                   for i, r in enumerate(_collection(manifest, "usage", "by_role"))}
         if "target" not in by_role:
             raise KeyError("manifest usage.by_role carries no target row")
-        out["target_calls"] = _member(by_role["target"], "calls", "usage.by_role target row")
-        out["target_calls_without_usage"] = _member(by_role["target"], "calls_without_usage", "usage.by_role target row")
+        out["target_calls"] = _member(by_role["target"], "calls", "usage.by_role target row", (int,))
+        out["target_calls_without_usage"] = _member(by_role["target"], "calls_without_usage", "usage.by_role target row", (int,))
     except (KeyError, TypeError) as exc:
         out["target_calls"] = out["target_calls_without_usage"] = None
         unavailable["target_calls"] = _reason(exc)
@@ -219,7 +232,9 @@ def _usage(manifest: dict) -> list[dict] | dict:
             if not isinstance(model, str):
                 raise TypeError(f"{where} model is not a string")
             where = f"{where} ({model!r})"
-            fields = {k: _member(r, k, where) for k in ("calls", "calls_without_usage", "input_tokens", "output_tokens")}
+            fields = {"calls": _member(r, "calls", where, (int,)), "calls_without_usage": _member(r, "calls_without_usage", where, (int,)),
+                      "input_tokens": _member(r, "input_tokens", where, (int, NULL)),
+                      "output_tokens": _member(r, "output_tokens", where, (int, NULL))}
         except (KeyError, TypeError) as exc:
             return {"unavailable": _reason(exc)}
         price = resolve_price(model)
@@ -263,17 +278,21 @@ def _published(run_dir: Path) -> dict:
     sidecars: dict[str, int] = {}
     unexpected: dict[str, int | None] = {}
     refs = 0
-    for p in sorted(run_dir.iterdir()):
+    # every file at any depth (Codex, PR #27: the artifact uploads nested directories recursively, so a file inside
+    # one must be counted and scanned like any other); an empty directory is listed by name
+    for p in sorted(run_dir.rglob("*")):
+        rel = p.relative_to(run_dir).as_posix()
         if p.is_dir():
-            unexpected[p.name + "/"] = None
+            if not any(p.iterdir()):
+                unexpected[rel + "/"] = None
             continue
         size = p.stat().st_size
-        if p.name in PUBLISHED_FILES:
+        if p.parent == run_dir and p.name in PUBLISHED_FILES:
             files[p.name] = size
-        elif p.name.endswith(".report.json"):
+        elif p.parent == run_dir and p.name.endswith(".report.json"):
             sidecars[p.name] = size
         else:
-            unexpected[p.name] = size
+            unexpected[rel] = size
         if p.suffix in TEXT_SUFFIXES:
             refs += p.read_text(encoding="utf-8", errors="replace").count(ATTACHMENT_MARK)
     total = sum(files.values()) + sum(sidecars.values()) + sum(v for v in unexpected.values() if v is not None)

@@ -167,6 +167,9 @@ def verify_run(run_dir: Path) -> list[str]:
         manifest = load_json(mpath)
     except ValueError as exc:
         return [f"{run_dir.name}: manifest.json does not parse ({exc})"]
+    if not isinstance(manifest, dict):
+        # valid JSON that is not an object (Codex, PR #27): a named refusal, never a traceback out of the schema check
+        return [f"{run_dir.name}: manifest.json holds a {type(manifest).__name__}, not an object"]
     problems = [f"manifest: {p}" for p in manifest_problems(manifest)]
     # artifact paths are recorded as `<recorded run directory>/<file>` relative to the runs directory; the files are
     # looked up by basename under the directory given, so a downloaded artifact extracted flat under any folder name
