@@ -1380,7 +1380,14 @@ dry run observable, which section 14 depends on.
    holdout seal before it is printed (`--seal-scan`), because the step is
    `always()` and prints manifest strings the seal never scanned (a refusal
    reason quotes Inspect's sample error), so a summary that would carry a
-   sealed phrase is withheld in full and only the verdict is printed.
+   sealed phrase is withheld in full and only the verdict is printed. Codex's
+   tenth round then found two more gaps of the same family: usage counters
+   are bounded (non-negative, and never more calls without usage than calls)
+   before any provenance label, since a negative `calls_without_usage` read
+   as "nothing missing"; and a `judgments.jsonl` with no judge row (the loop
+   opens the file before its first call, so a judge killed during that call
+   leaves it empty) falls back to the sidecar like an absent file does,
+   instead of omitting the paid judge.
 
 ## Decisions recorded from the owner (2026-09-16)
 

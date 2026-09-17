@@ -616,6 +616,69 @@ def test_a_judge_that_left_only_its_fallback_sidecar_is_reported_from_it(run_dir
     assert "the judge sidecar is unavailable" in judge["note"]
 
 
+def test_a_judgments_file_without_judge_rows_falls_back_to_the_sidecar(run_dir):
+    """Codex (PR #27, tenth round): the judge loop opens judgments.jsonl before
+    its first provider call, so a judge killed during that call leaves an
+    empty file (or rule rows flushed earlier); the file's existence bypassed
+    the sidecar fallback and the paid judge was omitted from the usage table."""
+    def judge_rows():
+        return [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] != "mockllm/model"]
+
+    framework.write_json(run_dir / "example.judge.report.json",
+                         {"judge_model": "claude-haiku-4-5", "cost_usd": 0.01, "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar",
+                          "billing_channel": "anthropic", "aborted": True})
+    (run_dir / "judgments.jsonl").write_text("", encoding="utf-8")
+    judge = judge_rows()
+    assert len(judge) == 1 and judge[0]["model"] == "claude-haiku-4-5" and judge[0]["status"] == summary.USAGE_UNAVAILABLE
+    assert judge[0]["calls"] is None, "no judge row: nothing is counted, the sidecar's ceiling is what is booked"
+    assert judge[0]["note"] == ("judge of record: judgments.jsonl has no judge row (0 non-judge row(s)); the judge sidecar books "
+                                "ceiling_imputed:judge_aborted_without_sidecar")
+    rule = {"method": "rule", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 0, "output_tokens": 0}
+    (run_dir / "judgments.jsonl").write_text(json.dumps(rule) + "\n" + json.dumps(rule) + "\n", encoding="utf-8")
+    judge = judge_rows()
+    assert len(judge) == 1 and "has no judge row (2 non-judge row(s))" in judge[0]["note"]
+    assert "**unavailable**" in summary.render_markdown(summary.run_summary(run_dir, mode="run"))
+    # a file with no judge row and no sidecar is a named gap: something ran the judge and nothing accounts for it
+    (run_dir / "example.judge.report.json").unlink()
+    judge = judge_rows()
+    assert len(judge) == 1 and judge[0]["model"] == "(judge of record)" and judge[0]["note"].endswith("and no judge sidecar exists")
+    # no file and no sidecar: nothing shows a judge ran, so there is no judge row to report
+    (run_dir / "judgments.jsonl").unlink()
+    assert judge_rows() == []
+
+
+def test_negative_usage_counters_are_rejected_before_provenance(run_dir):
+    """Codex (PR #27, tenth round): a schema-damaged manifest with
+    `calls_without_usage: -1` or a negative token count passed the integer
+    checks, `usage_is_missing` tests only `> 0`, and a priced row with
+    negative measurements was labelled provider-measured."""
+    base = framework.load_json(run_dir / "manifest.json")
+
+    def damaged(**counts):
+        m = json.loads(json.dumps(base))
+        m["usage"]["by_model"] = [{"model": "anthropic/claude-haiku-4-5", "calls": 3, "calls_without_usage": 0, "input_tokens": 120,
+                                   "output_tokens": 30, **counts}]
+        framework.write_json(run_dir / "manifest.json", m)
+        return summary.run_summary(run_dir, mode="run")["usage"]
+
+    sound = damaged()
+    assert sound[0]["status"] == summary.USAGE_PROVIDER_MEASURED, "the undamaged priced row is provider-measured"
+    where = "usage.by_model row #0 ('anthropic/claude-haiku-4-5')"
+    assert damaged(calls_without_usage=-1) == {"unavailable": f"{where} 'calls_without_usage' is negative (-1)"}
+    assert damaged(calls=-1) == {"unavailable": f"{where} 'calls' is negative (-1)"}
+    assert damaged(input_tokens=-5) == {"unavailable": f"{where} 'input_tokens' is negative (-5)"}
+    assert damaged(output_tokens=-1) == {"unavailable": f"{where} 'output_tokens' is negative (-1)"}
+    assert damaged(calls_without_usage=4) == {"unavailable": f"{where} 'calls_without_usage' 4 exceeds 'calls' 3"}
+    assert damaged(calls=0, calls_without_usage=0, input_tokens=0, output_tokens=0)[0]["status"] == summary.USAGE_PROVIDER_MEASURED
+    framework.write_json(run_dir / "manifest.json", base)
+    # the same bound holds for judge rows read from judgments.jsonl
+    row = {"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": -1, "output_tokens": 20,
+           "retry_attempts_charged": 0, "provider_attempts": 1}
+    (run_dir / "judgments.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
+    judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "(judge of record)"][0]
+    assert "judgments.jsonl row #0 'input_tokens' is negative (-1)" in judge["note"]
+
+
 def test_sidecars_are_found_by_pattern_after_a_flat_extraction(run_dir, tmp_path):
     """Codex (PR #27, ninth round): the sidecar name was rebuilt from the
     directory name, which a flat extraction does not preserve."""

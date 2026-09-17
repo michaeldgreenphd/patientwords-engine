@@ -241,29 +241,45 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
     return out
 
 
+def _judge_row_from_sidecar(run_dir: Path, what: str) -> list[dict]:
+    """The judge of record reported from its cost sidecar when judgments.jsonl
+    carries no judge row: the file is absent (the judge died before opening
+    it), or it exists empty or with rule rows only, which is exactly what a
+    judge killed during its first provider call leaves, because the loop
+    opens the file before that call (Codex, PR #27, tenth round: that shape
+    bypassed the fallback and omitted the paid judge). The workflow's fallback
+    sidecar books the ceiling; the judge is reported from it, never omitted.
+    No sidecar is a named gap whenever anything shows a judge ran."""
+    from .spend import resolve_registry_price
+
+    side = _judge_sidecar(run_dir)
+    if not side:
+        if what == "no judgments.jsonl":
+            return []                         # nothing shows a judge ran
+        return [{"model": "(judge of record)", "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
+                 "status": USAGE_UNAVAILABLE, "price_source": None, "note": f"judge of record: {what} and no judge sidecar exists"}]
+    if "unavailable" in side:
+        return [{"model": "(judge of record)", "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
+                 "status": USAGE_UNAVAILABLE, "price_source": None,
+                 "note": f"judge of record: {what} and the judge sidecar is unavailable ({side['unavailable']})"}]
+    price = resolve_registry_price(side["judge_model"])
+    zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
+    return [{"model": side["judge_model"], "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
+             "status": USAGE_MOCK if zero else USAGE_UNAVAILABLE, "price_source": price.source,
+             "note": f"judge of record: {what}; the judge sidecar books {side['cost_basis']}"}]
+
+
 def _judge_usage_rows(run_dir: Path) -> list[dict]:
     """One usage row per judge model aggregated from judgments.jsonl, which
     the judge step writes after the manifest's usage table was closed
     (Codex, PR #27: the table omitted every paid judge call). A file that
-    cannot be read is a row that says so, never an omitted judge."""
+    cannot be read is a row that says so, never an omitted judge; a file
+    with no judge row falls back to the sidecar (`_judge_row_from_sidecar`)."""
     from .spend import resolve_registry_price
 
     path = run_dir / "judgments.jsonl"
     if not path.is_file():
-        # a judge that died before its first row leaves only the fallback sidecar the workflow writes (the ceiling
-        # imputed); that judge is reported from it, never omitted (Codex, PR #27)
-        side = _judge_sidecar(run_dir)
-        if not side:
-            return []
-        if "unavailable" in side:
-            return [{"model": "(judge of record)", "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
-                     "status": USAGE_UNAVAILABLE, "price_source": None,
-                     "note": f"judge of record: no judgments.jsonl and the judge sidecar is unavailable ({side['unavailable']})"}]
-        price = resolve_registry_price(side["judge_model"])
-        zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
-        return [{"model": side["judge_model"], "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
-                 "status": USAGE_MOCK if zero else USAGE_UNAVAILABLE, "price_source": price.source,
-                 "note": f"judge of record: no judgments.jsonl; the judge sidecar books {side['cost_basis']}"}]
+        return _judge_row_from_sidecar(run_dir, "no judgments.jsonl")
     try:
         rows = _read_jsonl(path)
         per: dict[str, dict[str, Any]] = {}
@@ -289,11 +305,15 @@ def _judge_usage_rows(run_dir: Path) -> list[dict]:
                 agg["calls_without_usage"] += attempts
             else:
                 agg["calls_without_usage"] += attempts - 1
-                agg["input_tokens"] += _member(j, "input_tokens", where, (int,))
-                agg["output_tokens"] += _member(j, "output_tokens", where, (int,))
+                tokens = {k: _member(j, k, where, (int,)) for k in ("input_tokens", "output_tokens")}
+                _bounded_counts(tokens, where)
+                agg["input_tokens"] += tokens["input_tokens"]
+                agg["output_tokens"] += tokens["output_tokens"]
     except (KeyError, TypeError, ValueError, OSError) as exc:
         return [{"model": "(judge of record)", "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
                  "status": USAGE_UNAVAILABLE, "price_source": None, "note": f"judge of record: judgments.jsonl unreadable ({_reason(exc)})"}]
+    if not per:
+        return _judge_row_from_sidecar(run_dir, f"judgments.jsonl has no judge row ({len(rows)} non-judge row(s))")
     out = []
     for spec, agg in sorted(per.items()):
         price = resolve_registry_price(spec)
@@ -302,6 +322,20 @@ def _judge_usage_rows(run_dir: Path) -> list[dict]:
                     "note": (f"judge of record, aggregated from judgments.jsonl ({rows_per[spec]} judge row(s), "
                              f"{agg['calls']} provider attempt(s))")})
     return out
+
+
+def _bounded_counts(fields: dict[str, Any], where: str) -> None:
+    """Usage counters are non-negative, and a row cannot miss usage on more
+    calls than it made. A valid integer outside those bounds is a named gap,
+    never a labelled row (Codex, PR #27, tenth round: `calls_without_usage:
+    -1` read as "nothing missing" and a priced row with negative counts was
+    labelled provider-measured)."""
+    for key, value in fields.items():
+        if value is not None and value < 0:
+            raise ValueError(f"{where} {key!r} is negative ({value})")
+    calls, without = fields.get("calls"), fields.get("calls_without_usage")
+    if calls is not None and without is not None and without > calls:
+        raise ValueError(f"{where} 'calls_without_usage' {without} exceeds 'calls' {calls}")
 
 
 def _usage(manifest: dict, run_dir: Path | None = None) -> list[dict] | dict:
@@ -318,7 +352,8 @@ def _usage(manifest: dict, run_dir: Path | None = None) -> list[dict] | dict:
             fields = {"calls": _member(r, "calls", where, (int,)), "calls_without_usage": _member(r, "calls_without_usage", where, (int,)),
                       "input_tokens": _member(r, "input_tokens", where, (int, NULL)),
                       "output_tokens": _member(r, "output_tokens", where, (int, NULL))}
-        except (KeyError, TypeError) as exc:
+            _bounded_counts(fields, where)
+        except (KeyError, TypeError, ValueError) as exc:
             return {"unavailable": _reason(exc)}
         price = resolve_price(model)
         zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
