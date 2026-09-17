@@ -253,6 +253,8 @@ def test_a_dry_run_uploads_its_seal_cleared_exports_and_the_summary_reads_the_ru
     for flag in ('--run-dir "data/petri/runs/$RUN_STEM"', '--mode "$MODE"', '--raw-eval-dir "$RUNNER_TEMP/petri-run/logs"',
                  '--seeds "$SEEDS_FILE"', '--params-file "$RUNNER_TEMP/resolved_params.json"', '>> "$GITHUB_STEP_SUMMARY"'):
         assert flag in summary["run"], flag
+    # independent review of PR #27: the step is always(), so what it prints passes the holdout seal first
+    assert '--seal-scan >> "$GITHUB_STEP_SUMMARY"' in summary["run"], "the rendered summary is scanned before it is published"
     assert "run-summary failed" in summary["run"], "a failed summary is reported, never a silent blank"
 
 

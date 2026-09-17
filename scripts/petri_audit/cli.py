@@ -379,10 +379,37 @@ def cmd_verify_run(args: argparse.Namespace) -> int:
     return 0 if not problems else 6
 
 
+def _seal_gate_summary(text: str, mode: str, run_dir: str | None) -> str:
+    """The rendered summary is a publication (the job summary of a public
+    repository), so it passes the holdout seal that every published file
+    passes. The step is `always()`, so it runs after a rejected seal check
+    too, and the text quotes manifest strings the seal never scanned (a
+    refusal reason carries Inspect's sample error); a hit, an unchecked scan
+    or a scan that fails to run withholds the summary in full and prints the
+    verdict alone: a status and a count, never a phrase or a label."""
+    from .seal import scan_strings, sealed_registry
+
+    stem = Path(run_dir).name if run_dir else "no run directory"
+    try:
+        result = scan_strings([text], sealed_registry(), what="rendered run summary")
+    except Exception as exc:  # noqa: BLE001 - fail closed: a summary that was not scanned is not published
+        return (f"## Petri audit ({mode}, {stem}): summary withheld\n\nthe holdout seal scan of the rendered summary "
+                f"did not run ({type(exc).__name__}: {exc}); the summary data is in the run-summary JSON under the "
+                "runner's temp directory, which is not published\n")
+    if result.status == "pass":
+        return text
+    return (f"## Petri audit ({mode}, {stem}): summary withheld\n\nholdout seal scan of the rendered summary: "
+            f"**{result.status}** ({result.detail}); the summary is not published until the seal-check step's "
+            "verdict is understood; its data is in the run-summary JSON under the runner's temp directory, which is "
+            "not published\n")
+
+
 def cmd_run_summary(args: argparse.Namespace) -> int:
     """The job summary (Markdown on stdout, JSON to --json-out): measured
     structure, usage status per model, cost, redaction counts, integrity.
-    Reports its own gaps as `unavailable` and never fails the job."""
+    Reports its own gaps as `unavailable` and never fails the job. With
+    `--seal-scan` the rendered text passes the holdout seal before it is
+    printed (see `_seal_gate_summary`)."""
     from .summary import render_markdown, run_summary
 
     params = load_json(args.params_file) if args.params_file else None
@@ -394,6 +421,8 @@ def cmd_run_summary(args: argparse.Namespace) -> int:
     except Exception as exc:  # noqa: BLE001 - the summary step never fails the job over its own output
         text = (f"## Petri audit ({args.mode})\n\nrender failed: {type(exc).__name__}: {exc}; the summary data follows\n\n"
                 "```json\n" + json.dumps(summary, indent=2, default=str) + "\n```\n")
+    if args.seal_scan:
+        text = _seal_gate_summary(text, args.mode, args.run_dir)
     print(text, end="")
     return 0
 
@@ -513,6 +542,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--seeds", default=None, help="seed file, for the planned judge prompt sizes (no call is made)")
     p.add_argument("--params-file", default=None, help="the parameters the params job resolved, as JSON")
     p.add_argument("--json-out", default=None)
+    p.add_argument("--seal-scan", action="store_true",
+                   help="pass the rendered text through the holdout seal before printing it; a hit or an unchecked scan "
+                        "withholds the summary and prints the verdict alone")
     p.set_defaults(func=cmd_run_summary)
 
     p = sub.add_parser("digest")

@@ -267,21 +267,28 @@ def _judge_usage_rows(run_dir: Path) -> list[dict]:
     try:
         rows = _read_jsonl(path)
         per: dict[str, dict[str, Any]] = {}
+        rows_per: dict[str, int] = {}
         for i, j in enumerate(rows):
             where = f"judgments.jsonl row #{i}"
             if _member(j, "method", where, (str,)) != "judge":
                 continue                      # rule rows are not calls
             spec = _member(j, "judge_model", where, (str,))
             agg = per.setdefault(spec, {"calls": 0, "calls_without_usage": 0, "input_tokens": 0, "output_tokens": 0})
-            # every charged retry was a provider attempt without usage (Codex, PR #27): it counts as a call and as
-            # a call without usage, so a row whose successful attempt followed a charged failure is not
-            # provider-measured in full
+            rows_per[spec] = rows_per.get(spec, 0) + 1
+            # the row records the requests the provider received for it (`provider_attempts`, written by the judge
+            # loop): every charged retry was one without usage (Codex, PR #27), and a row whose retry the ceiling
+            # refused made exactly its charged attempts, not one more (independent review of PR #27: `1 + retries`
+            # counted the refused retry as a request), so the count is read and checked against the retries, never
+            # derived
             retries = _member(j, "retry_attempts_charged", where, (int,))
-            agg["calls"] += 1 + retries
-            agg["calls_without_usage"] += retries
+            attempts = _member(j, "provider_attempts", where, (int,))
+            if retries < 0 or attempts < 1 or not retries <= attempts <= retries + 1:
+                raise ValueError(f"{where} 'provider_attempts' {attempts} does not agree with 'retry_attempts_charged' {retries}")
+            agg["calls"] += attempts
             if _member(j, "usage_missing", where, (bool,)):
-                agg["calls_without_usage"] += 1
+                agg["calls_without_usage"] += attempts
             else:
+                agg["calls_without_usage"] += attempts - 1
                 agg["input_tokens"] += _member(j, "input_tokens", where, (int,))
                 agg["output_tokens"] += _member(j, "output_tokens", where, (int,))
     except (KeyError, TypeError, ValueError, OSError) as exc:
@@ -292,7 +299,8 @@ def _judge_usage_rows(run_dir: Path) -> list[dict]:
         price = resolve_registry_price(spec)
         zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
         out.append({"model": spec, **agg, "status": usage_status(agg, price.source, zero), "price_source": price.source,
-                    "note": f"judge of record, aggregated from judgments.jsonl ({agg['calls']} judge row(s))"})
+                    "note": (f"judge of record, aggregated from judgments.jsonl ({rows_per[spec]} judge row(s), "
+                             f"{agg['calls']} provider attempt(s))")})
     return out
 
 

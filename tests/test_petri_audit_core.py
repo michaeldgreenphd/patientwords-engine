@@ -1361,6 +1361,9 @@ def test_every_provider_retry_is_charged_against_the_judge_ceiling(tmp_path, see
     rows = [r for r in judge_runner.read_jsonl(tmp_path / "j.jsonl") if r["method"] == "judge"]
     assert rows and all(r["retry_attempts_charged"] == 1 for r in rows)
     assert side["retry_attempts_charged"] == len(rows) and side["calls_without_usage"] == len(rows)
+    # independent review of PR #27: the row records the requests the provider received (the charged failure and the
+    # answered retry here), so a reader never derives it from the retries
+    assert all(r["provider_attempts"] == 2 for r in rows)
     worst = judge_runner.estimate_input_tokens(plans[0].prompt) * 1.0 / 1e6 + 300 * 5.0 / 1e6
     assert rows[0]["cost_usd"] > worst, "the failed attempt's worst case is charged on top of the answered call"
     assert side["cost_usd"] == pytest.approx(sum(r["cost_usd"] for r in rows))
@@ -1376,6 +1379,7 @@ def test_every_provider_retry_is_charged_against_the_judge_ceiling(tmp_path, see
     failed = [r for r in judge_runner.read_jsonl(tmp_path / "j2.jsonl") if r["method"] == "judge"]
     assert len(failed) == 1 and failed[0]["retry_attempts_charged"] == 1
     assert failed[0]["judge_error"].startswith("call failed: retry refused by the ceiling after 1 charged attempt")
+    assert failed[0]["provider_attempts"] == 1, "the refused retry was never sent: one request, the one the gate charged"
     # Codex round 9: the refused attempt was charged in the gate and no new request was made, so it is charged once
     assert failed[0]["cost_usd"] == pytest.approx(worst_first) and aborted["overrun_usd"] == 0.0
     assert aborted["retry_attempts_charged"] == 1 and aborted["cost_usd"] == pytest.approx(failed[0]["cost_usd"])

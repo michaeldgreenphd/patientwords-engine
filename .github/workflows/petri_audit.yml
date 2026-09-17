@@ -510,6 +510,10 @@ jobs:
       # measured structure (calls, trees, branches, records, refusals, byte sizes, redaction counts, integrity), the
       # usage status per model labelled provider-measured / mock/non-metered / unavailable, and the cost sidecars.
       # It reads files only, makes no call, and reports its own gaps as `unavailable` rather than failing the job.
+      # The rendered text passes the holdout seal before it reaches the job summary (`--seal-scan`): this step is
+      # always(), so it runs after a rejected seal check too, and the text quotes manifest strings the seal never
+      # scanned (a refusal reason carries Inspect's sample error), so a summary that would print a sealed phrase is
+      # withheld in full and only the verdict is printed. The JSON under $RUNNER_TEMP is not published.
       - name: Job summary
         if: ${{ always() }}
         env:
@@ -522,6 +526,6 @@ jobs:
           if ! python -m scripts.petri_audit.cli run-summary --run-dir "data/petri/runs/$RUN_STEM" --mode "$MODE" \
               --raw-eval-dir "$RUNNER_TEMP/petri-run/logs" --seeds "$SEEDS_FILE" \
               --params-file "$RUNNER_TEMP/resolved_params.json" --json-out "$RUNNER_TEMP/run_summary.json" \
-              >> "$GITHUB_STEP_SUMMARY"; then
+              --seal-scan >> "$GITHUB_STEP_SUMMARY"; then
             echo "## Petri audit ($MODE, $RUN_STEM): run-summary failed; see this step's log" >> "$GITHUB_STEP_SUMMARY"
           fi

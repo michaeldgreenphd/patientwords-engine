@@ -584,6 +584,10 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                        "cost_basis": "imputed_worst_case:call_failed", "cost_usd": round(cost, 8),
                        "max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
                        "retry_attempts_charged": len(retry_charges),
+                       # the requests the provider received for this row: each charged retry followed one, and a refused
+                       # retry was never sent, so the summary reads the count here instead of deriving `retries + 1`
+                       # (independent review of PR #27: that derivation counted the refused retry as a request)
+                       "provider_attempts": len(retry_charges) if gate_refused else len(retry_charges) + 1,
                        "judge_error": (f"call failed: retry refused by the ceiling after {len(retry_charges)} charged "
                                        f"attempt(s): {type(exc).__name__}: {exc}" if gate_refused
                                        else f"call failed: {type(exc).__name__}: {exc}")}
@@ -605,7 +609,8 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                    "usage_missing": reply.usage_missing,
                    "cost_basis": "imputed_worst_case" if reply.usage_missing else "actual_usage",
                    "cost_usd": round(cost, 8), "max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
-                   "retry_attempts_charged": len(retry_charges), "judge_error": error}
+                   "retry_attempts_charged": len(retry_charges), "provider_attempts": len(retry_charges) + 1,
+                   "judge_error": error}
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
             fh.flush()
             counts[row_bucket(row)] += 1

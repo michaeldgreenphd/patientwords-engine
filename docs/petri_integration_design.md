@@ -1289,7 +1289,7 @@ regression test each.
    senders take a `before_retry` hook; the judge charges each failed attempt
    at its worst case through `attempt_gate` and admits another attempt only
    while the ceiling affords one. Rows and the sidecar record
-   `retry_attempts_charged`.
+   `retry_attempts_charged`; rows also record `provider_attempts` (PR #27).
 6. **Only `mode: run` is a paid Petri fire.** `fire_trigger.is_paid_fire`
    exempts preflight and dry_run from the ceiling in the fire path, the
    publish correction and the server-side gate, so the park is never refused
@@ -1370,7 +1370,17 @@ dry run observable, which section 14 depends on.
    structural rows (calls, branches, sizes, redaction counts) become
    measurements after the first dry run. A section the summary cannot
    compute reports `unavailable` with the reason; the step never fails the
-   job over its own output.
+   job over its own output. Two corrections from an independent review of the
+   pull request (Codex's usage limit was reached after its ninth round): judge
+   rows record `provider_attempts`, the requests the provider received for the
+   row (the charged retries plus the answered one, or the charged attempts
+   alone when the ceiling refused the retry, which was never sent), and the
+   usage table reads that count instead of deriving `1 + retries`, which
+   counted a refused retry as a request; and the rendered summary passes the
+   holdout seal before it is printed (`--seal-scan`), because the step is
+   `always()` and prints manifest strings the seal never scanned (a refusal
+   reason quotes Inspect's sample error), so a summary that would carry a
+   sealed phrase is withheld in full and only the verdict is printed.
 
 ## Decisions recorded from the owner (2026-09-16)
 

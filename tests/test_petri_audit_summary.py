@@ -491,9 +491,9 @@ def test_judge_calls_appear_in_the_usage_table(run_dir):
     before the judge step, so every paid judge call was omitted."""
     rows = [{"method": "rule", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 0, "output_tokens": 0},
             {"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 100, "output_tokens": 20,
-             "retry_attempts_charged": 0},
+             "retry_attempts_charged": 0, "provider_attempts": 1},
             {"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 50, "output_tokens": 10,
-             "retry_attempts_charged": 0}]
+             "retry_attempts_charged": 0, "provider_attempts": 1}]
     (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     usage = summary.run_summary(run_dir, mode="run")["usage"]
     judge = [r for r in usage if r.get("note", "").startswith("judge of record")]
@@ -501,12 +501,13 @@ def test_judge_calls_appear_in_the_usage_table(run_dir):
     assert judge[0]["input_tokens"] == 150 and judge[0]["output_tokens"] == 30 and judge[0]["status"] == summary.USAGE_PROVIDER_MEASURED
     assert [r["model"] for r in usage][0] == "mockllm/model", "the target rows stay first"
     rows.append({"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": True, "input_tokens": None, "output_tokens": None,
-                 "retry_attempts_charged": 0})
+                 "retry_attempts_charged": 0, "provider_attempts": 1})
     (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r.get("note", "").startswith("judge of record")][0]
     assert judge["calls"] == 3 and judge["calls_without_usage"] == 1 and judge["status"] == summary.USAGE_UNAVAILABLE
     text = summary.render_markdown(summary.run_summary(run_dir, mode="run"))
-    assert "| claude-haiku-4-5 | 3 | 1 | 150 | 30 | **unavailable** (judge of record, aggregated from judgments.jsonl (3 judge row(s))) |" in text
+    assert ("| claude-haiku-4-5 | 3 | 1 | 150 | 30 | **unavailable** (judge of record, aggregated from judgments.jsonl "
+            "(3 judge row(s), 3 provider attempt(s))) |") in text
     (run_dir / "judgments.jsonl").write_text("{not json\n", encoding="utf-8")
     judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "(judge of record)"][0]
     assert judge["status"] == summary.USAGE_UNAVAILABLE and "judgments.jsonl unreadable" in judge["note"]
@@ -516,15 +517,87 @@ def test_charged_judge_retries_count_as_calls_without_usage(run_dir):
     """Codex (PR #27, ninth round): a successful row after a charged failed
     attempt read as one fully metered call."""
     rows = [{"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 100, "output_tokens": 20,
-             "retry_attempts_charged": 2}]
+             "retry_attempts_charged": 2, "provider_attempts": 3}]
     (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "claude-haiku-4-5"][0]
     assert judge["calls"] == 3 and judge["calls_without_usage"] == 2 and judge["status"] == summary.USAGE_UNAVAILABLE
-    assert judge["input_tokens"] == 100
+    assert judge["input_tokens"] == 100 and judge["note"].endswith("(1 judge row(s), 3 provider attempt(s))")
     rows[0]["retry_attempts_charged"] = "2"
     (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "(judge of record)"][0]
     assert "'retry_attempts_charged' is not int" in judge["note"]
+
+
+def test_a_gate_refused_judge_row_counts_its_charged_attempts_only(run_dir):
+    """Independent review of PR #27: a row whose retry the ceiling refused
+    records one charged attempt and no further request, but the summary
+    derived `1 + retries` and reported two provider attempts, the same
+    numbers as a row that really made two; the note also printed that
+    attempt count as a row count. The row now carries `provider_attempts`
+    and the summary reads it, checking it against the charged retries."""
+    def judge_rows(*rows):
+        (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+        return [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] in ("claude-haiku-4-5", "(judge of record)")][0]
+
+    refused = {"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": True, "input_tokens": None, "output_tokens": None,
+               "retry_attempts_charged": 1, "provider_attempts": 1, "cost_basis": "imputed_worst_case:call_failed",
+               "judge_error": "call failed: retry refused by the ceiling after 1 charged attempt(s): RuntimeError: transient 529"}
+    judge = judge_rows(refused)
+    assert judge["calls"] == 1 and judge["calls_without_usage"] == 1 and judge["status"] == summary.USAGE_UNAVAILABLE
+    assert judge["note"].endswith("(1 judge row(s), 1 provider attempt(s))")
+    exhausted = {**refused, "provider_attempts": 2, "judge_error": "call failed: RuntimeError: transient 529"}
+    judge = judge_rows(exhausted)
+    assert judge["calls"] == 2 and judge["calls_without_usage"] == 2, "a retry the provider received is a second attempt"
+    judge = judge_rows(refused, exhausted)
+    assert judge["calls"] == 3 and judge["calls_without_usage"] == 3 and judge["note"].endswith("(2 judge row(s), 3 provider attempt(s))")
+    # a count that disagrees with the charged retries, or that is absent, is a named gap, never a derived number
+    judge = judge_rows({**refused, "provider_attempts": 3})
+    assert judge["model"] == "(judge of record)" and "'provider_attempts' 3 does not agree with 'retry_attempts_charged' 1" in judge["note"]
+    judge = judge_rows({**refused, "provider_attempts": 0, "retry_attempts_charged": 0})
+    assert judge["model"] == "(judge of record)" and "'provider_attempts' 0 does not agree" in judge["note"]
+    judge = judge_rows({k: v for k, v in refused.items() if k != "provider_attempts"})
+    assert judge["model"] == "(judge of record)" and "judgments.jsonl row #0 lacks 'provider_attempts'" in judge["note"]
+
+
+def test_the_rendered_summary_passes_the_holdout_seal_before_it_is_printed(run_dir, monkeypatch, capsys, tmp_path):
+    """Independent review of PR #27: the summary step is always(), so it runs
+    after a rejected seal check too, and it prints manifest strings the seal
+    never scanned (a refusal reason quotes Inspect's sample error); the job
+    summary of a public repository is a publication like every file the
+    lane commits. With --seal-scan the rendered text passes the same holdout
+    seal, and a hit, an unchecked scan or a scan that fails withholds it."""
+    from scripts.petri_audit import seal
+
+    m = framework.load_json(run_dir / "manifest.json")
+    m["integrity"]["records_refused"].append({"branch_id": "t1:root", "reason": "sample error: quoted holdout stimulus zq"})
+    framework.write_json(run_dir / "manifest.json", m)
+    argv = ["run-summary", "--run-dir", str(run_dir), "--mode", "dry_run", "--json-out", str(tmp_path / "s.json"), "--seal-scan"]
+    monkeypatch.setattr(seal, "sealed_registry", lambda: {"quoted holdout stimulus zq": "batch#3"})
+    assert cli.main(argv) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("## Petri audit (dry_run, example): summary withheld") and "**fail**" in out
+    assert "holdout stimulus" not in out and "batch#3" not in out and "Refusals" not in out, "the verdict alone: no phrase, no label, no data"
+    assert (tmp_path / "s.json").is_file(), "the JSON stays available to the runner; it is not published"
+    monkeypatch.setattr(seal, "sealed_registry", lambda: {})
+    assert cli.main(argv) == 0
+    out = capsys.readouterr().out
+    assert "summary withheld" in out and "**not_run**" in out, "an unchecked summary is not published either"
+    monkeypatch.setattr(seal, "sealed_registry", lambda: (_ for _ in ()).throw(OSError("no dashboard")))
+    assert cli.main(argv) == 0
+    out = capsys.readouterr().out
+    assert "summary withheld" in out and "did not run (OSError: no dashboard)" in out, "a scan that fails to run fails closed"
+    monkeypatch.setattr(seal, "sealed_registry", lambda: {"another phrase": "batch#4"})
+    assert cli.main(argv) == 0
+    out = capsys.readouterr().out
+    assert "summary withheld" not in out and "- t1:root: sample error: quoted holdout stimulus zq" in out, "a clean summary prints in full"
+    # the render-failure fallback dumps the summary data, so it passes the gate too
+    monkeypatch.setattr(seal, "sealed_registry", lambda: {"quoted holdout stimulus zq": "batch#3"})
+    monkeypatch.setattr(summary, "render_markdown", lambda s: (_ for _ in ()).throw(RuntimeError("boom")))
+    assert cli.main(argv) == 0
+    out = capsys.readouterr().out
+    assert "summary withheld" in out and "holdout stimulus" not in out and "boom" not in out
+    assert cli.main(argv[:-1]) == 0, "without the flag the fallback prints as before"
+    assert "render failed: RuntimeError: boom" in capsys.readouterr().out
 
 
 def test_a_judge_that_left_only_its_fallback_sidecar_is_reported_from_it(run_dir):
