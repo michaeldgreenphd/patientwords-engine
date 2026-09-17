@@ -295,7 +295,7 @@ def run_summary(run_dir: Path | str | None, *, mode: str, raw_eval_dir: Path | s
 
 
 def _row(k: Any, v: Any) -> str:
-    return f"| {k} | {v} |"
+    return f"| {k} | {_fmt(v)} |"          # None renders as a dash, never as the word None
 
 
 def _table(title: str, rows: list[tuple[Any, Any]]) -> list[str]:
