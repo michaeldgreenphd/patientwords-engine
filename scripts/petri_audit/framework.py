@@ -26,6 +26,7 @@ SEED_FILE = FRAMEWORK_DIR / "petri_seeds.draft.json"
 MANIFEST_SCHEMA = FRAMEWORK_DIR / "petri_run_manifest.schema.json"
 ENV_LOCK = FRAMEWORK_DIR / "petri_environment.lock.json"
 ADVICE_RUBRIC = ROOT / "data" / "advice_rubric.draft.json"
+ADVICE_RUBRIC_REF = ADVICE_RUBRIC.relative_to(ROOT).as_posix()      # the repository-relative form provenance records
 
 _TYPES: dict[str, type | tuple[type, ...]] = {
     "object": dict,

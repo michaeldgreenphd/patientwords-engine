@@ -83,10 +83,13 @@ ROOT_BRANCH = "root"       # the adapter's reserved id for the root trajectory; 
 
 
 def _string_leaves(obj: Any) -> list[str]:
+    """Every string in a JSON value: leaves and dictionary keys alike, since a
+    JSON-schema property name is a key and reaches the target as text (Codex
+    round 9)."""
     if isinstance(obj, str):
         return [obj]
     if isinstance(obj, dict):
-        return [s for v in obj.values() for s in _string_leaves(v)]
+        return [s for k, v in obj.items() for s in ([k] if isinstance(k, str) else []) + _string_leaves(v)]
     if isinstance(obj, list):
         return [s for v in obj for s in _string_leaves(v)]
     return []
@@ -196,6 +199,12 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
     if ROOT_BRANCH in branch_ids:
         # the root and a branch named root would share a conversation id (Codex round 8)
         problems.append(f"branch id {ROOT_BRANCH!r} is reserved for the root trajectory")
+    # the derived condition id joins arm and variant ids with '__', which is not injective when the ids themselves
+    # carry '__'; two conditions with one id would share a sample id and be conflated after the target spent
+    # (Codex round 9)
+    cond_ids = [c["condition_id"] for c in conditions(seed)]
+    for dup in sorted({c for c in cond_ids if cond_ids.count(c) > 1}):
+        problems.append(f"derived condition id {dup!r} collides: arm and variant ids joined by '__' must stay distinct")
     branches = {b["id"]: b for b in proto["branches"]}
 
     speakers = {a["user_is"] for a in proto["arms"]}

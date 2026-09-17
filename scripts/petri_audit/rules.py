@@ -31,6 +31,8 @@ def rule_outcomes(record: dict, seed: dict) -> dict[str, Any]:
     unknown = 0
     first_tool_turn_pos: int | None = None
     queries: list[str] = []
+    calls_by_id: dict[str, dict] = {}
+    returned_markers: list[str] = []       # markers of results the target actually received, in order
     for pos, t in enumerate(turns):
         if t["role"] == "assistant":
             assistant_index += 1
@@ -49,26 +51,35 @@ def rule_outcomes(record: dict, seed: dict) -> dict[str, Any]:
                 # (round 4: the first call alone dropped later queries; round 5: Inspect's ToolCall holds the parsed
                 # arguments, never the provider's bytes, so the registry defines the outcome over the parsed object)
                 queries.append(json.dumps(c.get("arguments") or {}, sort_keys=True, ensure_ascii=False))
+                if c.get("call_id"):
+                    calls_by_id[c["call_id"]] = c
                 if first_call is None:
                     first_call = c
                     first_call_turn = assistant_index
-        if t["role"] == "tool" and first_tool_turn_pos is None:
-            first_tool_turn_pos = pos
+        if t["role"] == "tool":
+            if first_tool_turn_pos is None:
+                first_tool_turn_pos = pos
+            # a result counts as returned when its call parsed and named a defined tool; the controller's generated
+            # error messages carry no marker (Codex round 9: every declared marker used to count, called or not)
+            call = calls_by_id.get(t.get("tool_call_id"))
+            if call is not None and not call.get("parse_error") and call["name"] in defined and markers.get(call["name"]):
+                returned_markers.append(markers[call["name"]])
     invoked = first_call is not None
     # the registered outcome reads the FINAL assistant text only, never an intermediate tool-calling reply
     final_reply = next((t for t in reversed(turns) if t["role"] == "assistant"), None)
     final_after_result = (first_tool_turn_pos is not None and final_reply is not None
                           and turns.index(final_reply) > first_tool_turn_pos)
     marker_echo: bool | None = None
-    used_markers = [m for tool, m in markers.items() if m]
-    if final_after_result and used_markers:
-        marker_echo = any(m in (final_reply.get("text") or "") for m in used_markers)
-    if not markers:
+    if final_after_result and returned_markers:
+        marker_echo = any(m in (final_reply.get("text") or "") for m in returned_markers)
+    if not any(markers.values()):
         marker_reason = "seed declares no marker"
     elif first_tool_turn_pos is None:
         marker_reason = "no tool result received"
     elif not final_after_result:
         marker_reason = "no reply after the tool result"
+    elif not returned_markers:
+        marker_reason = "no marker-bearing tool result returned"
     else:
         marker_reason = None
     return {

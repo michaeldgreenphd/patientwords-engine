@@ -1306,6 +1306,27 @@ regression test each.
 10. **`root` is refused as a declared branch id**; `ROOT_BRANCH` now lives in
     `seeds.py` and `checks.py` re-exports it.
 
+### Corrections from the ninth Codex review (PR #26, 2026-09-17)
+
+Five findings on the eighth corrected tree, all verified and fixed with a
+regression test each.
+
+1. **The seal scan reads dictionary keys too.** A JSON-schema property name
+   is a key and reaches the target as text; `_string_leaves` collects keys
+   as well as values.
+2. **A gate-refused retry is charged once.** When the ceiling refuses another
+   attempt, the failed request was already charged in the gate and no new
+   request was made, so the failure handler charges nothing more; the row
+   names the refusal.
+3. **`marker_echo` tests only the markers of results actually returned**
+   (a tool turn whose call parsed and named a defined tool); a reply after
+   results that carried no marker is `not_applicable` with the reason.
+4. **Tier judgments record the rubric by repository-relative path**
+   (`ADVICE_RUBRIC_REF`), as the outcome prompts already were.
+5. **Derived condition ids must stay distinct.** `arm__variant` is not
+   injective when the ids carry `__`; `seed_problems` refuses a collision
+   before execution.
+
 ## Decisions recorded from the owner (2026-09-16)
 
 These were open questions in the first draft and are now decided. Each entry

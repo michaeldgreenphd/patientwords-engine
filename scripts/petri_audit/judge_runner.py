@@ -36,6 +36,7 @@ from .checks import ROOT_BRANCH
 from .framework import (
     sha256_file,
     ADVICE_RUBRIC,
+    ADVICE_RUBRIC_REF,
     ROOT,
     canonical_json,
     load_json,
@@ -280,11 +281,11 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
         tier_values = [x["id"] for x in rubric["tiers"]]
         flag_ids = [f["id"] for f in rubric.get("flags", [])]
         if seed["judge"]["advice_tier"]["response_only"]:
-            plans.append(JudgePlan(cid, tid, assistant_index, "tier", "response_only", str(ADVICE_RUBRIC),
+            plans.append(JudgePlan(cid, tid, assistant_index, "tier", "response_only", ADVICE_RUBRIC_REF,
                                    None if text_unavailable else rubric_prompt(rubric, text), rd, None,
                                    "reply text unavailable" if text_unavailable else None, tier_values, flag_ids))
         if seed["judge"]["advice_tier"]["contextual"] and assistant_index >= 2:
-            plans.append(JudgePlan(cid, tid, assistant_index, "tier", "contextual", str(ADVICE_RUBRIC),
+            plans.append(JudgePlan(cid, tid, assistant_index, "tier", "contextual", ADVICE_RUBRIC_REF,
                                    None if text_unavailable else contextual_tier_prompt(rubric, turns, tid), rd,
                                    sha256_text(rendered_context(turns, tid)),
                                    "reply text unavailable" if text_unavailable else None, tier_values, flag_ids))
@@ -553,13 +554,17 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                 counts["stopped_early"] = True
                 break
             retry_charges: list[float] = []
+            gate_refused = False
 
             def attempt_gate(failed_attempts: int, prompt: str = p.prompt) -> bool:
                 # a provider retry follows an attempt the provider may have accepted and charged: it is charged at
                 # its worst case and another attempt is admitted only while the ceiling affords one (Codex round 8)
+                nonlocal gate_refused
                 retry_charges.append(ceiling.record(0, 0, prompt=prompt, usage_missing=True))
                 ceiling.retry_attempts_charged += 1
-                return ceiling.can_afford(prompt)
+                affordable = ceiling.can_afford(prompt)
+                gate_refused = not affordable
+                return affordable
 
             try:
                 reply = client.complete(p.prompt, max_tokens=judge_max_tokens, temperature=TIER_TEMPERATURE,
@@ -567,8 +572,10 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
             except Exception as exc:  # noqa: BLE001 - the provider may have charged a call the client never returned
                 # Codex round 5: a call that raises after the request was accepted is charged its worst case (the bound
                 # can_afford admitted) and written as a null row, so the aborted sidecar agrees with the rows and a
-                # resumed pass retries the key; the exception then propagates to run_judgments
-                cost = ceiling.record(0, 0, prompt=p.prompt, usage_missing=True) + sum(retry_charges)
+                # resumed pass retries the key; the exception then propagates to run_judgments. When the gate refused
+                # the retry, the failed request was already charged there and no new request was made, so nothing
+                # more is charged (Codex round 9: it was charged twice)
+                cost = (0.0 if gate_refused else ceiling.record(0, 0, prompt=p.prompt, usage_missing=True)) + sum(retry_charges)
                 row = {**base, "value": None, "flags": None, "method": "judge",
                        "annotator": f"judge:{client.model_spec}:{p.prompt_file_digest}", "not_applicable_reason": None,
                        "rendered_sha256": sha256_text(p.prompt), "context_sha256": p.context_sha256,
@@ -577,7 +584,9 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                        "cost_basis": "imputed_worst_case:call_failed", "cost_usd": round(cost, 8),
                        "max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
                        "retry_attempts_charged": len(retry_charges),
-                       "judge_error": f"call failed: {type(exc).__name__}: {exc}"}
+                       "judge_error": (f"call failed: retry refused by the ceiling after {len(retry_charges)} charged "
+                                       f"attempt(s): {type(exc).__name__}: {exc}" if gate_refused
+                                       else f"call failed: {type(exc).__name__}: {exc}")}
                 fh.write(json.dumps(row, ensure_ascii=False) + "\n")
                 fh.flush()
                 counts["null"] += 1
