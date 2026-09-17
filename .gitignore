@@ -6,3 +6,8 @@ medlang_out/
 keyword_config.json
 # render-archive zips are uploaded to a Release, never committed (see docs/archiving.md)
 dist/
+
+# Petri lane: raw Inspect logs are execution artifacts held outside the repository (workflow artifact, 90-day
+# retention); only the sanitised export, transcripts, judgments and manifest are committed (docs/petri_integration_design.md)
+*.eval
+data/petri/runs/*/logs/

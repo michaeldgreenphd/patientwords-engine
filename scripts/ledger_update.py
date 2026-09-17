@@ -54,6 +54,9 @@ def parse_args(argv=None):
     parser.add_argument("--pab-dir", default="data/pab",
                         help="PatientAgentBench probe sidecars (exploratory arm); "
                              "their cost_usd folds into the same spend totals")
+    parser.add_argument("--petri-dir", default="data/petri/runs",
+                        help="Petri lane run directories; each <run>/<run>.report.json cost sidecar "
+                             "(engine re-priced from Inspect usage, explicit billing_channel) folds into the same totals")
     parser.add_argument("--dashboard", default="ops/dashboard.json")
     parser.add_argument("--ledger", default=None,
                         help="ledger markdown file (default: lexicographically newest docs/*ledger*.md, "
@@ -345,9 +348,13 @@ def main(argv=None):
     # through a CI trigger, so without this glob the $2/day guard would never
     # see it at all -- the same accounting gap the advice arm hit in July.
     # attribute_tierb's task gate ("pairs") keeps them out of Tier B rows.
+    # Petri lane sidecars (data/petri/runs/<run>/<run>.report.json, 2026-09-16) join
+    # the same fold; they carry an explicit billing_channel because Inspect names
+    # OpenRouter models `openrouter/...`, which the derivation above would not see.
     scan_specs = [(Path(args.simulated_dir), "*.report.json"),
                   (Path(args.advice_dir), "*.report.json"),
                   (Path(args.pab_dir), "*.report.json"),
+                  (Path(args.petri_dir), "*/*.report.json"),
                   (Path(args.trace_dir), "*/mitigation*.report.json")]
     pab_dir = Path(args.pab_dir)
     by_day_ch = spend.setdefault("by_day_by_channel", {})
@@ -404,9 +411,14 @@ def main(argv=None):
     # attribution by construction.
     entries_folded = spend.setdefault("entries_folded", {})
     seen_set = set(entries_seen)
+    petri_dir = Path(args.petri_dir)
     for scan_dir, pattern in scan_specs:
         if not Path(scan_dir).is_dir():
             continue
+        # Petri judge sidecars are cumulative to eight decimals and a resumed retry through a cheap provider can
+        # legitimately add $0.0005 or less; the rounding-noise floor below would drop such a delta for good
+        # (Codex round 7 on PR #26), so every positive Petri delta folds
+        min_delta = 0.0 if Path(scan_dir) == petri_dir else 0.0005
         for path in sorted(Path(scan_dir).glob(pattern)):
             key = sidecar_key(path)
             if key not in seen_set and path.name not in seen_set:
@@ -421,21 +433,31 @@ def main(argv=None):
             if key not in entries_folded:
                 prior = folded_from_ledger(ledger_path, key)
                 entries_folded[key] = prior if prior is not None else current
-            delta = round(current - float(entries_folded[key]), 6)
-            if delta > 0.0005:
+            delta = round(current - float(entries_folded[key]), 8)
+            if delta > min_delta:
                 # book to the sidecar's own run day: a bootstrap can surface
                 # WEEKS-old underbooking, and charging that to today would
                 # poison the daily guard (first live run found $8.06 of July
                 # spend the filename gate had hidden)
                 run_ts = parse_ts(report.get("run_utc") or report.get("run_timestamp"))
                 day = run_ts.astimezone(timezone.utc).date().isoformat() if run_ts else date
-                spend["lifetime_generation_usd"] = round(
-                    float(spend.get("lifetime_generation_usd") or 0.0) + delta, 4)
-                by_day[day] = round(float(by_day.get(day) or 0.0) + delta, 4)
+                lifetime_before = float(spend.get("lifetime_generation_usd") or 0.0)
+                if Path(scan_dir) == petri_dir:
+                    # the accumulators hold four decimals: book what they can represent and advance the folded
+                    # watermark by that amount alone, so a sub-representable delta waits, unfolded, until growth
+                    # makes it representable instead of being discarded (Codex round 8 on PR #26)
+                    booked = round(round(lifetime_before + delta, 4) - lifetime_before, 4)
+                    if booked <= 0:
+                        continue
+                    entries_folded[key] = round(float(entries_folded[key]) + booked, 8)
+                else:
+                    booked = delta
+                    entries_folded[key] = current
+                spend["lifetime_generation_usd"] = round(lifetime_before + booked, 4)
+                by_day[day] = round(float(by_day.get(day) or 0.0) + booked, 4)
                 chan = by_day_ch.setdefault(billing_channel(report, scan_dir == pab_dir), {})
-                chan[day] = round(float(chan.get(day) or 0.0) + delta, 4)
-                entries_folded[key] = current
-                bullets.append(f"- {key} · ${delta:.4f} · delta (cumulative ${current:.4f}, day {day})")
+                chan[day] = round(float(chan.get(day) or 0.0) + booked, 4)
+                bullets.append(f"- {key} · ${booked:.4f} · delta (cumulative ${current:.4f}, day {day})")
 
     if bullets:
         spend["today"] = today_record(date, by_day, by_day_ch)

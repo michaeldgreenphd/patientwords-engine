@@ -28,7 +28,10 @@ except ImportError:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from tierb_split import is_holdout, is_tierb_batch, tierb_start_stamp
 
-SCAN_SUFFIXES = {".json", ".html", ".md", ".csv", ".txt", ".yml"}
+# .jsonl added 2026-09-16 (owner correction 9): the Petri lane publishes
+# transcript, judgment and rule-outcome families as .jsonl, and a scan that
+# skipped them would clear a leak it never read.
+SCAN_SUFFIXES = {".json", ".jsonl", ".html", ".md", ".csv", ".txt", ".yml"}
 
 
 def norm(text: str) -> str:

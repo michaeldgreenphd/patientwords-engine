@@ -330,19 +330,24 @@ COMPAT_RETRIES = 5
 COMPAT_BACKOFF_SECONDS = (2, 4, 8, 16, 32)
 
 
-def _send_anthropic_retrying(client, model, system, user_text, max_tokens, temperature):
+def _send_anthropic_retrying(client, model, system, user_text, max_tokens, temperature, before_retry=None):
     """_send plus transient-status retries, mirroring _send_compat's policy.
 
     The Anthropic path originally had none: pilot 2b died mid-run on a single
     Cloudflare 522 from api.anthropic.com during a translation call after the
     SDK's own quick retries gave up (run 29913634215, 2026-07-22). Honors the
-    error body's retry_after when present (1-120 s cap)."""
+    error body's retry_after when present (1-120 s cap). `before_retry(attempt,
+    status)`, when given, is consulted before each retry and may refuse it by
+    returning False (the Petri judge charges the failed attempt to its spend
+    ceiling there and stops when the ceiling is spent, 2026-09-17)."""
     for attempt in range(COMPAT_RETRIES + 1):
         try:
             return _send(client, model, system, user_text, max_tokens, temperature)
         except Exception as exc:
             status = getattr(exc, "status_code", None)
             if status not in RETRYABLE_STATUSES or attempt >= COMPAT_RETRIES:
+                raise
+            if before_retry is not None and not before_retry(attempt, status):
                 raise
             wait = COMPAT_BACKOFF_SECONDS[min(attempt, len(COMPAT_BACKOFF_SECONDS) - 1)]
             body = getattr(exc, "body", None)
@@ -370,7 +375,7 @@ def _finish_reason(raw) -> str | None:
 
 
 def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
-                 max_tokens: int, temperature: float):
+                 max_tokens: int, temperature: float, before_retry=None):
     """One OpenAI-compatible chat call (OpenAI, Gemini, xAI, DeepSeek, Moonshot,
     OpenRouter, ... all expose this shape). Same return tuple as _send; same
     monkeypatch seam for tests. The provider's key comes from the env var named
@@ -382,7 +387,9 @@ def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
     A success status whose body is not JSON (gateway edges serve HTML error
     pages with a 200; overnight attempt 2 crashed on one 4h19m in, 2026-07-29)
     retries under the same policy. Anything else, or exhaustion, raises: the
-    elicit loop archives what landed and a re-fire resumes past it."""
+    elicit loop archives what landed and a re-fire resumes past it.
+    `before_retry(attempt, status)`, when given, is consulted before each
+    retry and may refuse it by returning False (the Petri judge's ceiling)."""
     try:
         import requests
     except ImportError as exc:  # pragma: no cover
@@ -404,6 +411,9 @@ def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
             timeout=180,
         )
         if resp.status_code in RETRYABLE_STATUSES and attempt < COMPAT_RETRIES:
+            if before_retry is not None and not before_retry(attempt, resp.status_code):
+                resp.raise_for_status()
+                raise RuntimeError(f"transient {resp.status_code} from {base_url} ({model}); retry refused by the caller")
             try:
                 wait = float(resp.headers.get("Retry-After", ""))
             except (TypeError, ValueError):
@@ -418,7 +428,7 @@ def _send_compat(cfg: dict, model: str, system: str | None, user_text: str,
             raw = resp.json()
         except ValueError:
             # a 200 whose body is an HTML error page, not JSON (gateway edge)
-            if attempt < COMPAT_RETRIES:
+            if attempt < COMPAT_RETRIES and (before_retry is None or before_retry(attempt, resp.status_code)):
                 wait = COMPAT_BACKOFF_SECONDS[min(attempt, len(COMPAT_BACKOFF_SECONDS) - 1)]
                 print(f"non-JSON {resp.status_code} body from {base_url} ({model}); "
                       f"retry {attempt + 1}/{COMPAT_RETRIES} in {wait:.0f}s")

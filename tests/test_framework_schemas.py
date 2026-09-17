@@ -1,12 +1,15 @@
 """The framework's data contracts (docs/framework_design.md): the transcript
 import schema, its synthetic example, and the framing-dimensions registry stay
-consistent with each other. A minimal validator for the JSON Schema subset the
-schema uses, so the suite needs no jsonschema dependency."""
+consistent with each other. The minimal validator and the prompt rendering and
+digest helpers live in scripts/petri_audit/framework.py (moved 2026-09-16 so the
+adapter and the judge runner share one implementation); this module imports
+them and keeps the import-time semantic checks."""
 from __future__ import annotations
 
 import hashlib
 import json
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -18,66 +21,18 @@ SCHEMA = FRAMEWORK / "transcript.schema.json"
 EXAMPLE = FRAMEWORK / "example_transcript.jsonl"
 DIMENSIONS = FRAMEWORK / "framing_dimensions.draft.json"
 
-_TYPES = {"object": dict, "array": list, "string": str, "integer": int, "number": (int, float), "null": type(None),
-          "boolean": bool}
+sys.path.insert(0, str(ROOT))
+from scripts.petri_audit.framework import (  # noqa: E402
+    canonical_json,
+    load_prompt,
+    prompt_canonical,
+    prompt_digest,
+    render_judge_prompt,
+    rendered_digest,
+    validate,
+)
 
-
-def validate(instance, schema: dict | bool, path: str = "$") -> list[str]:
-    """Problems found in `instance` against `schema`, for the keywords the
-    transcript schema uses: type, enum, const, required, properties,
-    additionalProperties, items, minItems, minLength, minimum, maximum, pattern,
-    if/then/else, and the boolean schemas (`false` under properties forbids a
-    key)."""
-    if schema is True:
-        return []
-    if schema is False:
-        return [f"{path}: not allowed here"]
-    problems: list[str] = []
-    if "const" in schema and instance != schema["const"]:
-        return [f"{path}: {instance!r} is not {schema['const']!r}"]
-    types = schema.get("type")
-    if types is not None:
-        allowed = [types] if isinstance(types, str) else types
-        ok = any(isinstance(instance, _TYPES[t]) and not (t in ("integer", "number") and isinstance(instance, bool))
-                 for t in allowed)
-        if not ok:
-            return [f"{path}: expected {allowed}, got {type(instance).__name__}"]
-    if "enum" in schema and instance not in schema["enum"]:
-        problems.append(f"{path}: {instance!r} not in {schema['enum']}")
-    if isinstance(instance, str):
-        if "minLength" in schema and len(instance) < schema["minLength"]:
-            problems.append(f"{path}: shorter than {schema['minLength']}")
-        if "pattern" in schema and not re.search(schema["pattern"], instance):
-            problems.append(f"{path}: {instance!r} does not match {schema['pattern']}")
-    if isinstance(instance, (int, float)) and not isinstance(instance, bool):
-        if "minimum" in schema and instance < schema["minimum"]:
-            problems.append(f"{path}: below {schema['minimum']}")
-        if "maximum" in schema and instance > schema["maximum"]:
-            problems.append(f"{path}: above {schema['maximum']}")
-    if isinstance(instance, dict):
-        for key in schema.get("required", []):
-            if key not in instance:
-                problems.append(f"{path}: missing {key!r}")
-        props = schema.get("properties", {})
-        for key, value in instance.items():
-            if key in props:
-                problems.extend(validate(value, props[key], f"{path}.{key}"))
-            elif schema.get("additionalProperties") is False:
-                problems.append(f"{path}: unexpected key {key!r}")
-    if isinstance(instance, list):
-        if "minItems" in schema and len(instance) < schema["minItems"]:
-            problems.append(f"{path}: fewer than {schema['minItems']} items")
-        if "items" in schema:
-            for i, item in enumerate(instance):
-                problems.extend(validate(item, schema["items"], f"{path}[{i}]"))
-    if "if" in schema:
-        if not validate(instance, schema["if"], path):
-            if "then" in schema:
-                problems.extend(f"{p} (required when {schema['if']})" for p in validate(instance, schema["then"], path))
-        elif "else" in schema:
-            problems.extend(f"{p} (unless {schema['if']})" for p in validate(instance, schema["else"], path))
-    return problems
-
+__all__ = ["canonical_json", "load_prompt", "prompt_canonical", "prompt_digest", "render_judge_prompt", "rendered_digest", "validate"]
 
 # Annotator provenance by method (docs/framework_design.md section 3.3).
 ANNOTATOR_SHAPES = {
@@ -90,51 +45,6 @@ ANNOTATOR_HINTS = {
     "judge": "judge:<model_version>:<prompt sha256[:12]>",
     "human": "a role label not beginning with rule: or judge:",
 }
-
-
-def canonical_json(obj) -> str:
-    """The elicit chain's canonical form (scripts/advice_eval.py canonical_json)."""
-    return json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-
-
-_PLACEHOLDER = re.compile(r"\{(values|not_applicable|open|close|turn_text)\}")
-
-
-def render_judge_prompt(prompt: dict, turn_text: str) -> str:
-    """The canonical rendering the prompt file declares (`rendering`): one
-    left-to-right pass over the placeholders, value lines in file order, the
-    delimiters escaped inside the turn, nothing else touched."""
-    open_, close = prompt["turn_delimiters"]["open"], prompt["turn_delimiters"]["close"]
-    escaped = turn_text.replace(open_, "\\" + open_).replace(close, "\\" + close)
-    fills = {"values": "\n".join(f"{k}: {v}" for k, v in prompt["values"].items()),
-             "not_applicable": prompt["not_applicable"]["definition"],
-             "open": open_, "close": close, "turn_text": escaped}
-    return _PLACEHOLDER.sub(lambda m: fills[m.group(1)], prompt["instructions"])
-
-
-def prompt_canonical(prompt: dict) -> str:
-    """The prompt file's order-preserving canonical form: its own key order
-    with whitespace removed. Not `canonical_json`, which sorts keys: the order
-    of `values` is what the judge is sent, so reordering them must change the
-    digest."""
-    return json.dumps(prompt, sort_keys=False, ensure_ascii=False, separators=(",", ":"))
-
-
-def load_prompt(ref: str) -> dict:
-    return json.loads((ROOT / ref).read_text(encoding="utf-8"))
-
-
-def prompt_digest(ref: str) -> str:
-    """The provenance digest a judge annotation must carry: sha256 of the
-    order-preserving canonical form of the dimension's judge_prompt_ref file,
-    first 12 hex."""
-    return hashlib.sha256(prompt_canonical(load_prompt(ref)).encode("utf-8")).hexdigest()[:12]
-
-
-def rendered_digest(ref: str, turn_text: str) -> str:
-    """sha256 of the canonical rendering of the referenced prompt over one turn:
-    what a judge annotation's rendered_sha256 must equal, recomputed at import."""
-    return hashlib.sha256(render_judge_prompt(load_prompt(ref), turn_text).encode("utf-8")).hexdigest()
 
 
 def semantic_problems(record: dict, dimensions: dict) -> list[str]:

@@ -1,0 +1,276 @@
+{
+  "version": "0.2",
+  "_readme": "Allowlist for scripts/petri_audit/sanitizer.py: the projection of a raw Inspect .eval log that may enter the public repository (docs/petri_integration_design.md section 9). Anything not named here is removed and counted in the manifest's redaction report. The raw log is never committed; it is bound to the manifest by sha256 and held under the custody the manifest records. Keys listed under forbidden_keys are refused anywhere in the output, allowlist or not, as a second line of defence. Data, not code: a change here is a new sanitiser allowlist version and a new allowlist digest in every manifest that used it.",
+  "forbidden_keys": [
+    "call",
+    "headers",
+    "base_url",
+    "api_key",
+    "authorization",
+    "extra_body",
+    "extra_headers",
+    "args",
+    "model_args",
+    "aws_access_key_id",
+    "aws_secret_access_key",
+    "aws_session_token",
+    "model_base_url"
+  ],
+  "eval": {
+    "keys": [
+      "eval_id",
+      "run_id",
+      "created",
+      "task",
+      "task_id",
+      "task_version",
+      "task_registry_name",
+      "task_args",
+      "dataset",
+      "model",
+      "model_generate_config",
+      "model_roles",
+      "config",
+      "revision",
+      "packages",
+      "metadata",
+      "scorers",
+      "metrics"
+    ],
+    "model_roles_keys": [
+      "model",
+      "config"
+    ]
+  },
+  "sample": {
+    "keys": [
+      "id",
+      "epoch",
+      "uuid",
+      "input",
+      "target",
+      "metadata",
+      "messages",
+      "events",
+      "timelines",
+      "model_usage",
+      "role_usage",
+      "started_at",
+      "completed_at",
+      "total_time",
+      "working_time",
+      "error",
+      "limit"
+    ]
+  },
+  "message": {
+    "keys": [
+      "id",
+      "role",
+      "content",
+      "source",
+      "tool_calls",
+      "tool_call_id",
+      "function",
+      "error",
+      "metadata",
+      "internal",
+      "model"
+    ]
+  },
+  "config_keys": [
+    "max_tokens",
+    "temperature",
+    "top_p",
+    "top_k",
+    "seed",
+    "stop_seqs",
+    "frequency_penalty",
+    "presence_penalty",
+    "max_retries",
+    "timeout",
+    "system_message",
+    "reasoning_effort",
+    "reasoning_tokens",
+    "reasoning_summary",
+    "reasoning_history",
+    "response_schema",
+    "parallel_tool_calls",
+    "internal_tools",
+    "max_tool_output",
+    "cache_prompt",
+    "num_choices",
+    "best_of",
+    "logprobs",
+    "top_logprobs",
+    "max_connections"
+  ],
+  "events": {
+    "types_kept": [
+      "model",
+      "tool",
+      "anchor",
+      "branch",
+      "info",
+      "span_begin",
+      "span_end",
+      "sample_init",
+      "state",
+      "store",
+      "error",
+      "logger",
+      "sample_limit",
+      "score",
+      "step",
+      "subtask",
+      "input",
+      "compaction",
+      "checkpoint",
+      "approval"
+    ],
+    "keys": {
+      "*": [
+        "uuid",
+        "event",
+        "timestamp",
+        "working_start",
+        "span_id",
+        "pending",
+        "metadata"
+      ],
+      "model": [
+        "model",
+        "role",
+        "input",
+        "tools",
+        "tool_choice",
+        "config",
+        "output",
+        "cache",
+        "error",
+        "retries",
+        "completed",
+        "working_time"
+      ],
+      "tool": [
+        "id",
+        "type",
+        "function",
+        "arguments",
+        "internal",
+        "view",
+        "result",
+        "truncated",
+        "error",
+        "events",
+        "completed",
+        "working_time",
+        "agent",
+        "failed",
+        "message_id"
+      ],
+      "anchor": [
+        "id",
+        "message"
+      ],
+      "branch": [
+        "from_anchor"
+      ],
+      "info": [
+        "source",
+        "data"
+      ],
+      "span_begin": [
+        "id",
+        "parent_id",
+        "type",
+        "name"
+      ],
+      "span_end": [
+        "id"
+      ],
+      "sample_init": [
+        "sample",
+        "state"
+      ],
+      "state": [
+        "changes"
+      ],
+      "store": [
+        "changes"
+      ],
+      "error": [
+        "error"
+      ],
+      "logger": [
+        "message"
+      ],
+      "sample_limit": [
+        "type",
+        "message",
+        "limit"
+      ],
+      "score": [
+        "score",
+        "target",
+        "intermediate"
+      ],
+      "step": [
+        "action",
+        "type",
+        "name"
+      ],
+      "subtask": [
+        "name",
+        "type",
+        "input",
+        "result",
+        "events",
+        "completed",
+        "working_time"
+      ],
+      "input": [
+        "input",
+        "input_ansi"
+      ],
+      "compaction": [
+        "compaction",
+        "messages_before",
+        "messages_after",
+        "tokens_before",
+        "tokens_after"
+      ],
+      "checkpoint": [
+        "name"
+      ],
+      "approval": [
+        "message",
+        "view",
+        "approver",
+        "decision",
+        "modified",
+        "explanation"
+      ]
+    }
+  },
+  "timeline": {
+    "_readme": "Timeline span nodes (inspect_ai TimelineSpan) are projected onto node_keys; a content item whose type is not in content_types_kept is dropped and counted (Codex round 8 on PR #26). `outline` is a derived summary of content and is dropped.",
+    "node_keys": [
+      "type",
+      "id",
+      "name",
+      "span_type",
+      "content",
+      "branches",
+      "branched_from",
+      "description",
+      "utility",
+      "tool_invoked",
+      "agent_result"
+    ],
+    "content_types_kept": [
+      "event",
+      "span"
+    ]
+  }
+}

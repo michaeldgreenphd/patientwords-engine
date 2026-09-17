@@ -62,12 +62,16 @@ TRIGGERS = (
     "model-evaluation",
     "archive-renders",
     "advice-eval",
+    "petri-audit",
     "pab-probe",
 )
 # advice-eval: elicit AND judge spend Anthropic/provider tokens (2026-07-21)
 # pab-probe: patient/assistant/sandbox legs bill the prepaid OpenRouter key and
 # the evaluate stage bills Anthropic (2026-08-04, exploratory arm).
-PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval", "pab-probe"})
+# petri-audit: the target model and the optional judge of record spend provider
+# tokens when mode is `run` (2026-09-16); preflight and dry_run cost nothing but
+# the lane is counted paid so every fire goes through the ceiling.
+PAID_TRIGGERS = frozenset({"scenario-generation", "model-evaluation", "advice-eval", "petri-audit", "pab-probe"})
 # A circuit-trace fire with show_mitigation=true makes Anthropic translation
 # calls (the only paid path outside PAID_TRIGGERS). Its cost has no max_spend
 # param, so the guard imputes a conservative flat commitment per fire.
@@ -105,6 +109,13 @@ PARK_DEFAULTS = {
     "advice-eval": {"stimuli_file": "data/advice/stimuli_20260827T141036Z.json",
                     "models": "anthropic:claude-haiku-4-5", "samples": "1",
                     "max_spend": "0.01", "judge": "false", "commit_outputs": "false"},
+    # petri-audit: mode preflight validates seeds, verifies the environment lock,
+    # prices and bounds the run, and calls no model; a true $0 no-op when re-fired.
+    "petri-audit": {"seeds_file": "docs/framework/petri_seeds.draft.json", "seed_ids": "",
+                    "wave": "1", "target": "mockllm/model", "mode": "preflight", "epochs": "1",
+                    "token_limit": "20000", "max_spend": "0.01", "judge": "false",
+                    "judge_model": "claude-haiku-4-5", "judge_max_spend": "0.01",
+                    "judge_max_tokens": "300", "log_model_api": "true", "commit_outputs": "false"},
     # pab-probe: not parked - its workflow lives on the PAB branch only.
 }
 PARK_NOTE = ("PARK (resting-state rule): cheapest no-op default committed so branch operations "
@@ -115,6 +126,28 @@ PARK_NOTE = ("PARK (resting-state rule): cheapest no-op default committed so bra
 
 def is_mitigation_fire(trigger, params):
     return trigger == "circuit-trace" and str(params.get("show_mitigation", "")).lower() in ("true", "1")
+
+
+def is_paid_fire(trigger, params):
+    """Whether this fire can spend, so the daily ceiling must count it: a
+    PAID_TRIGGERS lane, or a circuit-trace fire with show_mitigation. The one
+    exemption is petri-audit outside `mode: run`: preflight and dry_run make
+    no paid call, and counting them paid refused the lane's park once the
+    ceiling was reached, leaving the last paid configuration at rest where a
+    branch operation could re-fire it (Codex round 8 on PR #26)."""
+    if is_mitigation_fire(trigger, params):
+        return True
+    if trigger not in PAID_TRIGGERS:
+        return False
+    if trigger == "petri-audit" and str(params.get("mode", "preflight")).strip().lower() != "run":
+        return False
+    return True
+
+
+def paid_budget_params(trigger, params):
+    """The params budget_check prices for a paid fire: the fire's own for a
+    PAID_TRIGGERS lane, the flat imputed commitment for a mitigation fire."""
+    return params if trigger in PAID_TRIGGERS else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
 DEFAULT_EXPIRE_HOURS = 8.0
 DEFAULT_SETTLE_MINUTES = 15.0
 DEFAULT_DAILY_CEILING_USD = 2.0
@@ -171,7 +204,10 @@ def fire_lane(trigger: str, params: dict) -> str:
     the OpenRouter key alone (registry: bare ids are Anthropic; provider specs
     starting anthropic: are Anthropic; everything else routes via OpenRouter
     or an OpenRouter-compatible endpoint). Mixed or ambiguous specs stay on
-    the anthropic lane - fail closed."""
+    the anthropic lane - fail closed. petri-audit has its own rule
+    (`_petri_lane`): its target is an Inspect model string, not a registry spec."""
+    if trigger == "petri-audit":
+        return _petri_lane(params)
     if trigger != "advice-eval":
         return "anthropic"
     models = str(params.get("models") or "").strip()
@@ -183,6 +219,104 @@ def fire_lane(trigger: str, params: dict) -> str:
         if provider == "anthropic" or ":" not in spec:
             return "anthropic"
     return "openrouter"
+
+
+PROVIDERS_RELPATH = Path("data") / "advice_providers.json"
+PETRI_BOOLEAN_KEYS = ("judge", "log_model_api", "commit_outputs")
+
+
+def providers_registry(repo: str | Path | None = None) -> dict:
+    """The provider registry (data/advice_providers.json) the judge specs
+    resolve against; {} when the checkout lacks it (every classification then
+    fails closed to the anthropic lane)."""
+    root = Path(repo) if repo else Path(__file__).resolve().parents[1]
+    path = root / PROVIDERS_RELPATH
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def petri_channels(params: dict, registry: dict | None = None) -> tuple[str, str | None]:
+    """(target channel, judge channel or None) of a petri-audit fire. The
+    target is an Inspect model string (`provider/model`, so OpenRouter is
+    `openrouter/vendor/model`); the judge, when on, a registry spec
+    (`provider:model` or a bare Anthropic id) whose channel is the provider
+    registry's `key_env` (OPENROUTER_API_KEY bills OpenRouter: `openai:`,
+    `xai:`, `deepseek:` and `moonshot:` route there too, not only
+    `openrouter:`; Codex round 3). Anything else bills the anthropic lane, the
+    one the $2/day guard bounds (fail closed; the landed sidecars classify
+    identically: scripts/petri_audit/spend.py billing_channel and
+    judge_billing_channel)."""
+    target = str(params.get("target") or "").strip()
+    target_channel = "openrouter" if target.startswith("openrouter/") else "anthropic"
+    if not judge_is_on(params):
+        return target_channel, None
+    judge = str(params.get("judge_model") or "").strip()
+    registry = providers_registry() if registry is None else registry
+    # the advice resolver's own rule: provider:model, a bare provider the registry knows (its consumer default),
+    # else a bare Anthropic model id (Codex round 4)
+    if ":" in judge:
+        provider = judge.split(":", 1)[0]
+    elif isinstance(registry, dict) and isinstance(registry.get(judge), dict):
+        provider = judge
+    else:
+        provider = "anthropic"
+    cfg = registry.get(provider) if isinstance(registry, dict) else None
+    key_env = cfg.get("key_env") if isinstance(cfg, dict) else None
+    return target_channel, ("openrouter" if key_env == "OPENROUTER_API_KEY" else "anthropic")
+
+
+def petri_params_problems(params: dict, registry: dict | None = None) -> list:
+    """The petri-audit invariants every entry point must enforce before a paid
+    step (fire_trigger's fire path, the server-side budget-gate a
+    workflow_dispatch reaches without it): one billing channel per fire, and
+    boolean keys in the one spelling the workflow compares against."""
+    problems = []
+    for key in PETRI_BOOLEAN_KEYS:
+        if key in params:
+            value = params[key]
+            if not (isinstance(value, bool) or str(value) in ("true", "false")):
+                problems.append(f"petri-audit {key} must be true or false (JSON boolean or the exact strings), "
+                                f"got {value!r}: the workflow compares against \"true\" exactly, so any other "
+                                f"spelling silently reads as false")
+    if "judge_max_tokens" in params:
+        # the workflow's params job parses this too; a bad value must never reach a paid step (Codex round 6)
+        try:
+            ok = int(str(params["judge_max_tokens"])) > 0
+        except (TypeError, ValueError):
+            ok = False
+        if not ok:
+            problems.append(f"petri-audit judge_max_tokens must be a positive integer, got {params['judge_max_tokens']!r}")
+    target_channel, judge_channel = petri_channels(params, registry)
+    if judge_channel is not None and judge_channel != target_channel:
+        problems.append(
+            f"petri-audit target {params.get('target')!r} bills the {target_channel} lane but judge "
+            f"{params.get('judge_model')!r} bills the {judge_channel} lane: one fire carries one commitment on "
+            "one account, so a mixed-channel fire is refused; judge on the target's channel or run the judge "
+            "as its own fire")
+    return problems
+
+
+def lane_params_problems(trigger: str, params: dict, registry: dict | None = None) -> list:
+    """Lane-specific invariants beyond the key set; empty for lanes that have none."""
+    if trigger == "petri-audit":
+        return petri_params_problems(params, registry)
+    return []
+
+
+def _petri_lane(params: dict) -> str:
+    """petri-audit (2026-09-16): one lane per fire, so the target and any judge
+    must bill the same channel; validate_params and budget-gate refuse a
+    mixed fire because a single journal entry cannot carry two commitments on
+    two accounts (Codex rounds 2 and 3). A mixed fire that somehow reaches
+    here still fails closed."""
+    target_channel, judge_channel = petri_channels(params)
+    if judge_channel is not None and judge_channel != target_channel:
+        return "anthropic"
+    return target_channel
+
+
 JOURNAL_RELPATH = Path("ops") / "trigger_journal.jsonl"
 DASHBOARD_RELPATH = Path("ops") / "dashboard.json"
 OVERRIDES_RELPATH = Path("ops") / "budget_overrides.json"
@@ -254,6 +388,15 @@ KNOWN_KEYS = {
         "translator_model", "max_spend", "judge", "judge_model", "judge_max_spend",
         "judge_max_tokens", "rubric", "offset", "limit", "commit_outputs",
         "restore_artifact_run_id", "restore_merge_fork", "gen_config",
+    }),
+    # petri_audit.yml `defaults` dict (2026-09-16; tests/test_petri_audit_workflow.py
+    # checks it against the heredoc): seeds_file, seed_ids, wave, target, mode,
+    # epochs, token_limit, max_spend, judge, judge_model, judge_max_spend,
+    # judge_max_tokens, log_model_api, commit_outputs.
+    "petri-audit": frozenset({
+        "seeds_file", "seed_ids", "wave", "target", "mode", "epochs", "token_limit",
+        "max_spend", "judge", "judge_model", "judge_max_spend", "judge_max_tokens",
+        "log_model_api", "commit_outputs",
     }),
     # pab_probe.yml `defaults` dict (verified 2026-08-04 against the params
     # heredoc by tests/test_pab_ci_staged.py): stage, fork_ref, cases_file,
@@ -435,6 +578,9 @@ def validate_params(trigger, params):
             "the workflow's push-path default is false, which measures and then discards "
             "every output when the runner is reclaimed"
         )
+    problems = lane_params_problems(trigger, params)
+    if problems:
+        raise ValueError("; ".join(problems))
 
 
 def parse_max_spend(value):
@@ -989,9 +1135,8 @@ def cmd_fire(args):
     # Mitigation circuit-trace fires are paid too (Anthropic translation calls);
     # they carry no max_spend param, so a flat imputed commitment is used.
     max_spend = None
-    if args.trigger in PAID_TRIGGERS or is_mitigation_fire(args.trigger, params):
-        budget_params = params if args.trigger in PAID_TRIGGERS \
-            else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
+    if is_paid_fire(args.trigger, params):
+        budget_params = paid_budget_params(args.trigger, params)
         dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
         overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
         kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),
@@ -1540,10 +1685,10 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
     fire = mine[0]
     key = (fire.get("trigger"), fire.get("fired_utc"))
     others = [e for e in entries if (e.get("trigger"), e.get("fired_utc")) != key]
-    paid = trigger in PAID_TRIGGERS or is_mitigation_fire(trigger, params)
+    paid = is_paid_fire(trigger, params)
     budget_params = None
     if paid:
-        budget_params = params if trigger in PAID_TRIGGERS else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
+        budget_params = paid_budget_params(trigger, params)
     # Corrections to the fire's own record, applied in one journal-only commit
     # that publishes with the fire:
     # - a fire published long after it was made would carry a stale stamp into
@@ -1743,11 +1888,17 @@ def cmd_budget_gate(args):
     except (OSError, ValueError) as exc:
         print(f"budget-gate: cannot read params ({params_path}): {exc}", file=sys.stderr)
         return 6
-    if args.trigger not in PAID_TRIGGERS and not is_mitigation_fire(args.trigger, params):
+    # lane invariants the fire path enforces in validate_params run here too, because a workflow_dispatch never
+    # passes through fire_trigger (Codex round 3)
+    problems = lane_params_problems(args.trigger, params, providers_registry(repo))
+    if problems:
+        for problem in problems:
+            print(f"budget-gate: REFUSED - {problem}", file=sys.stderr)
+        return 6
+    if not is_paid_fire(args.trigger, params):
         print(f"budget-gate: {args.trigger} is a free fire; clear")
         return 0
-    budget_params = params if args.trigger in PAID_TRIGGERS \
-        else dict(params, max_spend=str(MITIGATION_IMPUTED_USD))
+    budget_params = paid_budget_params(args.trigger, params)
     now = utc_now()
     entries = load_journal(repo / JOURNAL_RELPATH)
     dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
