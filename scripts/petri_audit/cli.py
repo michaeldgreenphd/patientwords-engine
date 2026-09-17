@@ -389,7 +389,12 @@ def cmd_run_summary(args: argparse.Namespace) -> int:
     summary = run_summary(args.run_dir, mode=args.mode, raw_eval_dir=args.raw_eval_dir, seeds_path=args.seeds, params=params)
     if args.json_out:
         write_json(args.json_out, summary)
-    print(render_markdown(summary), end="")
+    try:
+        text = render_markdown(summary)
+    except Exception as exc:  # noqa: BLE001 - the summary step never fails the job over its own output
+        text = (f"## Petri audit ({args.mode})\n\nrender failed: {type(exc).__name__}: {exc}; the summary data follows\n\n"
+                "```json\n" + json.dumps(summary, indent=2, default=str) + "\n```\n")
+    print(text, end="")
     return 0
 
 

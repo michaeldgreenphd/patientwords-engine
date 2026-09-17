@@ -316,6 +316,71 @@ def test_a_damaged_sanitised_log_is_a_named_gap_not_a_failed_summary(run_dir, ca
     assert st["unavailable_fields"]["eval_status"] == "sanitised_log.json is missing from the run directory"
 
 
+def test_nested_metadata_that_is_not_an_object_is_a_dash_not_a_failed_summary(run_dir, capsys):
+    """Codex (PR #27, sixth round): `models.target: null` raised out of the
+    header chain before any guarded section ran."""
+    m = framework.load_json(run_dir / "manifest.json")
+    m["models"]["target"] = None
+    m["execution"] = "damaged"
+    m["artifacts"]["sanitiser"] = None
+    m["spend"] = []
+    framework.write_json(run_dir / "manifest.json", m)
+    s = summary.run_summary(run_dir, mode="dry_run", raw_eval_dir=run_dir.parent.parent / "logs")
+    assert s["manifest"]["target"] is None and s["manifest"]["contract_checks"] is None and s["manifest"]["journal_nonce"] is None
+    assert s["redaction"] is None and s["structure"]["trees"] == 1 and s["structure"]["max_turns"] is None
+    assert s["published"]["files"]["manifest.json"] > 0 and s["raw_eval"]["files"]
+    text = summary.render_markdown(s)
+    assert "Contract checks: unavailable (execution.contract_checks is absent)" in text
+    assert "Sanitiser redaction report: unavailable (absent)" in text and "| target | — |" in text
+    assert cli.main(["run-summary", "--run-dir", str(run_dir), "--mode", "dry_run"]) == 0
+    assert "Contract checks: unavailable" in capsys.readouterr().out
+    # a contract check that is not an object renders as its value, never raises
+    m["execution"] = {"contract_checks": {"holdout_seal": "pass"}}
+    framework.write_json(run_dir / "manifest.json", m)
+    assert "| holdout_seal | pass |" in summary.render_markdown(summary.run_summary(run_dir, mode="dry_run"))
+
+
+def test_cli_run_summary_survives_a_rendering_failure(run_dir, monkeypatch, capsys):
+    """The step never fails the job over its own output: a renderer defect
+    prints the summary data and the error instead of a traceback."""
+    def broken(_s):
+        raise RuntimeError("renderer defect")
+    monkeypatch.setattr(summary, "render_markdown", broken)
+    assert cli.main(["run-summary", "--run-dir", str(run_dir), "--mode", "dry_run"]) == 0
+    out = capsys.readouterr().out
+    assert "render failed: RuntimeError: renderer defect" in out and '"trees": 1' in out
+
+
+def test_the_zero_missing_condition_count_is_rendered(run_dir):
+    """Codex (PR #27, sixth round): a truthiness check dropped the valid zero."""
+    s = summary.run_summary(run_dir, mode="dry_run")
+    assert s["structure"]["branches_without_condition_id"] == 1, "the schema example's root branch has a null condition id"
+    assert "| branches without a condition id | 1 |" in summary.render_markdown(s)
+    m = framework.load_json(run_dir / "manifest.json")
+    m["trees"][0]["branches"][0]["condition_id"] = "root-cond"
+    framework.write_json(run_dir / "manifest.json", m)
+    s = summary.run_summary(run_dir, mode="dry_run")
+    assert s["structure"]["branches_without_condition_id"] == 0
+    assert "| branches without a condition id | 0 |" in summary.render_markdown(s)
+
+
+def test_a_damaged_usage_row_is_never_labelled_provider_measured(run_dir):
+    """Codex (PR #27, sixth round): an absent calls_without_usage read as 0,
+    so a row with token counts and no counters was provider-measured."""
+    m = framework.load_json(run_dir / "manifest.json")
+    m["usage"]["by_model"] = [{"model": "anthropic/claude-haiku-4-5", "input_tokens": 10, "output_tokens": 5, "calls": 1}]
+    framework.write_json(run_dir / "manifest.json", m)
+    s = summary.run_summary(run_dir, mode="run")
+    assert s["usage"] == {"unavailable": "usage.by_model row #0 ('anthropic/claude-haiku-4-5') lacks 'calls_without_usage'"}
+    assert "provider-measured" not in summary.render_markdown(s).split("Usage: unavailable")[1].split("\n")[0]
+    m["usage"]["by_model"] = [{"input_tokens": 10, "output_tokens": 5, "calls": 1, "calls_without_usage": 0}]
+    framework.write_json(run_dir / "manifest.json", m)
+    assert summary.run_summary(run_dir, mode="run")["usage"] == {"unavailable": "usage.by_model row #0 lacks 'model'"}
+    m["usage"]["by_model"] = [{"model": 7, "input_tokens": 10, "output_tokens": 5, "calls": 1, "calls_without_usage": 0}]
+    framework.write_json(run_dir / "manifest.json", m)
+    assert summary.run_summary(run_dir, mode="run")["usage"] == {"unavailable": "usage.by_model row #0 model is not a string"}
+
+
 def test_an_empty_by_model_reports_the_missing_usage_instead_of_no_section(run_dir):
     """Codex (PR #27, fourth round): a run with samples but no target model
     event has an empty by_model while usage_missing_models names the target
@@ -377,6 +442,15 @@ def test_verify_run_checks_a_run_directory_on_its_own(run_dir, tmp_path, capsys)
     m["artifacts"]["transcripts_path"] = "example/nested/transcripts.jsonl"
     framework.write_json(other / "manifest.json", m)
     assert any("is not recorded as <run directory>/<file>" in p for p in manifest_mod.verify_run(other))
+    # special components are refused even when they have two parts (Codex, PR #27, sixth round): `../x`, `/x`,
+    # `./x`, and a backslash inside a component
+    for bad in ("../transcripts.jsonl", "/transcripts.jsonl", "./transcripts.jsonl", "example\\transcripts.jsonl",
+                "..\\transcripts.jsonl", "example/", "/example/transcripts.jsonl"):
+        for fam in ("sanitised_log", "transcripts", "rule_outcomes"):
+            m["artifacts"][f"{fam}_path"] = bad if fam == "transcripts" else f"example/{fam}.jsonl" if fam == "rule_outcomes" else "example/sanitised_log.json"
+        framework.write_json(other / "manifest.json", m)
+        problems = manifest_mod.verify_run(other)
+        assert any(f"transcripts: {bad} is not recorded as <run directory>/<file>" in p for p in problems), (bad, problems)
 
 
 def test_prompt_byte_stats_keep_the_numeric_median():

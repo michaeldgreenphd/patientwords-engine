@@ -183,7 +183,10 @@ def verify_run(run_dir: Path) -> list[str]:
         if rel is None:
             continue
         parts = Path(rel).parts
-        if len(parts) != 2:
+        # exactly two plain components (Codex, PR #27): `../x`, `/x` and `a\\b` also have two parts or one, and would
+        # resolve elsewhere under the chain verifier while hashing a local basename here
+        if (len(parts) != 2 or Path(rel).is_absolute()
+                or any(p in (".", "..", "") or "/" in p or "\\" in p for p in parts)):
             problems.append(f"{fam}: {rel} is not recorded as <run directory>/<file>")
             continue
         recorded_dirs.add(parts[0])

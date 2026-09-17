@@ -85,6 +85,20 @@ def _reason(exc: BaseException) -> str:
     return str(exc.args[0]) if exc.args else str(exc)
 
 
+def _dig(obj: Any, *keys: str) -> Any:
+    """Nested metadata read without raising: None whenever a level is not an
+    object or a key is absent (Codex, PR #27: `models.target: null` raised
+    AttributeError out of the header before any guarded section ran).
+    Header fields are informational, so an absent one is a dash; counted
+    collections go through `_collection` and `_member` instead."""
+    node = obj
+    for key in keys:
+        if not isinstance(node, dict) or key not in node:
+            return None
+        node = node[key]
+    return node
+
+
 def _member(obj: Any, key: str, where: str) -> Any:
     """A key a collection member must carry. Its value may legitimately be
     None (a root branch's parent), so presence is what is required; an
@@ -104,9 +118,9 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
     present, or None with the reason recorded in `unavailable_fields`;
     nothing here is a default."""
     unavailable: dict[str, str] = {}
-    out: dict[str, Any] = {"max_turns": (manifest.get("execution") or {}).get("max_turns"),
-                           "max_tool_rounds_per_turn": (manifest.get("execution") or {}).get("max_tool_rounds_per_turn"),
-                           "epochs": (manifest.get("execution") or {}).get("epochs")}
+    out: dict[str, Any] = {"max_turns": _dig(manifest, "execution", "max_turns"),
+                           "max_tool_rounds_per_turn": _dig(manifest, "execution", "max_tool_rounds_per_turn"),
+                           "epochs": _dig(manifest, "execution", "epochs")}
     # the eval's own status, from the sanitised projection; a file that is missing, does not parse or carries no
     # status is a named gap (Codex, PR #27: the parse used to sit outside every guard)
     sanitised = run_dir / "sanitised_log.json"
@@ -196,12 +210,21 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
 
 def _usage(manifest: dict) -> list[dict] | dict:
     rows = []
-    for r in _collection(manifest, "usage", "by_model"):
-        price = resolve_price(r["model"])
+    for i, r in enumerate(_collection(manifest, "usage", "by_model")):
+        # every key the label reads must be present (Codex, PR #27): `usage_is_missing` reads an absent
+        # calls_without_usage as 0, which labelled a damaged row provider-measured
+        where = f"usage.by_model row #{i}"
+        try:
+            model = _member(r, "model", where)
+            if not isinstance(model, str):
+                raise TypeError(f"{where} model is not a string")
+            where = f"{where} ({model!r})"
+            fields = {k: _member(r, k, where) for k in ("calls", "calls_without_usage", "input_tokens", "output_tokens")}
+        except (KeyError, TypeError) as exc:
+            return {"unavailable": _reason(exc)}
+        price = resolve_price(model)
         zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
-        rows.append({"model": r["model"], "calls": r.get("calls"), "calls_without_usage": r.get("calls_without_usage"),
-                     "input_tokens": r.get("input_tokens"), "output_tokens": r.get("output_tokens"),
-                     "status": usage_status(r, price.source, zero), "price_source": price.source})
+        rows.append({"model": model, **fields, "status": usage_status(r, price.source, zero), "price_source": price.source})
     if not rows:
         # a run with samples but no target model event leaves by_model empty while the adapter names the target in
         # usage_missing_models and the sidecar imputes its ceiling; that state is reported, never an omitted section
@@ -352,14 +375,14 @@ def run_summary(run_dir: Path | str | None, *, mode: str, raw_eval_dir: Path | s
         # a truncated or unreadable manifest is reported by name and the rest still inventoried (Codex, PR #27)
         return without_manifest(f"manifest.json does not parse: {type(exc).__name__}: {exc}")
     out["manifest"] = {"run_id": manifest.get("run_id"), "eval_id": manifest.get("eval_id"),
-                       "claim_grade_eligible": (manifest.get("execution") or {}).get("claim_grade_eligible"),
-                       "contract_checks": (manifest.get("execution") or {}).get("contract_checks"),
-                       "target": (manifest.get("models") or {}).get("target", {}).get("inspect_name"),
-                       "lock_sha256": (manifest.get("harness") or {}).get("environment_lock_sha256"),
-                       "journal_nonce": (manifest.get("spend") or {}).get("journal_nonce")}
+                       "claim_grade_eligible": _dig(manifest, "execution", "claim_grade_eligible"),
+                       "contract_checks": _dig(manifest, "execution", "contract_checks"),
+                       "target": _dig(manifest, "models", "target", "inspect_name"),
+                       "lock_sha256": _dig(manifest, "harness", "environment_lock_sha256"),
+                       "journal_nonce": _dig(manifest, "spend", "journal_nonce")}
     out["structure"] = _guard(_structure, manifest, run_dir)
     out["usage"] = _guard(_usage, manifest)
-    out["redaction"] = ((manifest.get("artifacts") or {}).get("sanitiser") or {}).get("redaction_report")
+    out["redaction"] = _dig(manifest, "artifacts", "sanitiser", "redaction_report")
     out["raw_eval"] = _guard(_raw_eval, manifest, raw_dir)
     out["published"] = _guard(_published, run_dir)
     out["integrity"] = _guard(_integrity, manifest, run_dir)
@@ -392,7 +415,7 @@ def render_markdown(s: dict) -> str:
     lines = [f"## Petri audit ({s.get('mode')})", ""]
     if s.get("note"):
         lines += [s["note"], ""]
-    if s.get("params"):
+    if isinstance(s.get("params"), dict) and s["params"]:
         lines += _table("Parameters resolved by CI", sorted(s["params"].items()))
     lines += _table("Run directory", [("path", s.get("run_dir")), ("exists", s.get("run_dir_exists")),
                                       ("raw .eval present outside the checkout", s.get("raw_eval_present"))])
@@ -403,9 +426,12 @@ def render_markdown(s: dict) -> str:
         lines += _table("Manifest", [("run_id", m.get("run_id")), ("eval_id", m.get("eval_id")), ("target", m.get("target")),
                                      ("claim_grade_eligible", m.get("claim_grade_eligible")),
                                      ("environment lock sha256", m.get("lock_sha256")), ("journal_nonce", _fmt(m.get("journal_nonce")))])
-        checks = m.get("contract_checks") or {}
-        lines += _table("Contract checks", [(k, f"{v.get('status')}" + (f" ({v.get('detail')})" if v.get("detail") else ""))
-                                            for k, v in checks.items()])
+        checks = m.get("contract_checks")
+        if isinstance(checks, dict):
+            lines += _table("Contract checks", [(k, (f"{v.get('status')}" + (f" ({v.get('detail')})" if v.get("detail") else ""))
+                                                    if isinstance(v, dict) else _fmt(v)) for k, v in checks.items()])
+        else:
+            lines += ["Contract checks: unavailable (execution.contract_checks is " + ("absent" if checks is None else "not an object") + ")", ""]
         st = s.get("structure") or {}
         if "unavailable" in st:
             lines += ["Structure: unavailable (" + st["unavailable"] + ")", ""]
@@ -421,7 +447,8 @@ def render_markdown(s: dict) -> str:
                 ("records with schema or pairing problems", (st.get("records") or {}).get("with_problems", "unavailable")),
                 ("records refused by the adapter", (st.get("refused") or {}).get("count") if st.get("refused") is not None else None),
                 ("max turns / tool rounds per turn", f"{st.get('max_turns')} / {st.get('max_tool_rounds_per_turn')}")]
-                + ([("branches without a condition id", st["branches_without_condition_id"])] if st.get("branches_without_condition_id") else []))
+                + ([("branches without a condition id", st["branches_without_condition_id"])]
+                   if st.get("branches_without_condition_id") is not None else []))
             missing = st.get("unavailable_fields") or {}
             if missing:
                 lines += ["Structure fields unavailable (not zero):", ""] + [f"- {k}: {v}" for k, v in missing.items()] + [""]
@@ -444,8 +471,10 @@ def render_markdown(s: dict) -> str:
             lines += ["", "Token counts of a mock/non-metered model are not provider-metered tokens; provider usage exists "
                       "only for a provider-measured row.", ""]
         red = s.get("redaction")
-        if red:
+        if isinstance(red, dict) and red:
             lines += _table("Sanitiser redaction report", [(k, _fmt(v)) for k, v in red.items()])
+        else:
+            lines += ["Sanitiser redaction report: unavailable (" + ("absent" if red is None else "not an object") + ")", ""]
         integ = s.get("integrity") or {}
         if "unavailable" in integ:
             lines += ["Integrity: unavailable (" + integ["unavailable"] + ")", ""]
