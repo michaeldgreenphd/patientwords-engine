@@ -60,7 +60,7 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.petri_audit import checks, cli, framework, judge_runner, sanitizer, seeds  # noqa: E402
 from scripts.petri_audit.adapter import AdapterError, adapt_run, read_records  # noqa: E402
-from scripts.petri_audit.manifest import bind_judgments, manifest_problems, reseal_problems, verify_chain  # noqa: E402
+from scripts.petri_audit.manifest import bind_judgments, manifest_problems, reseal_problems, verify_chain, verify_run  # noqa: E402
 from scripts.petri_audit.task import run_study, study_task  # noqa: E402
 from scripts.petri_audit.transcripts import record_problems  # noqa: E402
 
@@ -197,8 +197,9 @@ def test_run_summary_reports_the_measured_structure_of_the_mock_run(run):
     assert pub["attachment_references"] == 0 and pub["total_bytes"] == sum(pub["files"].values()) + sum(pub["cost_sidecars"].values())
     assert set(pub["files"]) == {"manifest.json", "transcripts.jsonl", "rule_outcomes.jsonl", "sanitised_log.json"}
     assert pub["unexpected"] == {}, "the adapter writes nothing the summary does not know"
-    assert s["integrity"] == {"manifest_problems": [], "artifact_problems": [], "chain": {"ok": True, "message": s["integrity"]["chain"]["message"]},
-                              "attachments_resolved": True}
+    assert s["integrity"] == {"manifest_problems": [], "artifact_problems": [], "run_self_verification": [],
+                              "chain": {"ok": True, "message": s["integrity"]["chain"]["message"]}, "attachments_resolved": True}
+    assert verify_run(run["out1"]) == [] and verify_run(run["out2"]) == []
     jp = s["judge_prompts"]
     assert jp["planned_calls"] > 0 and jp["prompt_bytes"]["min"] <= jp["prompt_bytes"]["median"] <= jp["prompt_bytes"]["max"]
     assert jp["input_bound_tokens_total"] > jp["prompt_bytes"]["total"]

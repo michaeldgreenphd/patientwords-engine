@@ -232,7 +232,12 @@ def test_a_dry_run_uploads_its_seal_cleared_exports_and_the_summary_reads_the_ru
     assert "always()" not in exports["if"], "must depend on every prior step, the seal check and verify-chain included"
     assert str(exports["uses"]).startswith("actions/upload-artifact")
     assert "data/petri/runs/run_${{ github.run_id }}_${{ github.run_attempt }}/" in exports["with"]["path"]
-    assert "data/petri/runs/manifests.chain" in exports["with"]["path"]
+    # Codex (PR #27): the cumulative chain file references every earlier committed run, which the artifact does not
+    # carry, so the run directory is uploaded alone and must verify on its own (verify-run runs before the upload)
+    assert "manifests.chain" not in exports["with"]["path"]
+    seal = _step(workflow, "Holdout seal check")
+    assert 'verify-run --run-dir "data/petri/runs/$RUN_STEM"' in seal["run"] and seal["env"]["RUN_STEM"].startswith("run_${{")
+    assert names.index(seal["name"]) < names.index(exports["name"])
     assert "petri-run/logs" not in exports["with"]["path"], "the raw .eval is never in this artifact"
     assert exports["with"]["if-no-files-found"] == "error" and exports["with"]["retention-days"] == 30
     assert "!data/petri/runs/**/*.eval" in exports["with"]["path"], "a raw log is excluded from the artifact by pattern"

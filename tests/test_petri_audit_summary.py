@@ -79,12 +79,14 @@ def test_summary_reads_the_run_it_is_given_and_labels_usage_by_provenance(run_di
     assert pub["cost_sidecars"] == {"example.report.json": (run_dir / "example.report.json").stat().st_size} and pub["unexpected"] == {}
     assert pub["total_bytes"] == sum(pub["files"].values()) + sum(pub["cost_sidecars"].values()) and pub["attachment_references"] == 0
     assert s["integrity"]["manifest_problems"] == [] and s["integrity"]["artifact_problems"] == [] and s["integrity"]["chain"]["ok"] is True
+    assert s["integrity"]["run_self_verification"] == []
     assert s["sidecar"]["cost_usd"] == 0.0 and s["sidecar"]["billing_channel"] == "anthropic"
     assert s["judge_sidecar"] is None
     assert s["judge_prompts"] == {"unavailable": "no seed file given"}
     assert s["redaction"] == m["artifacts"]["sanitiser"]["redaction_report"]
     text = summary.render_markdown(s)
-    for needle in ("Measured structure", "mock/non-metered", "Sanitised exports", "unresolved attachment:// references | 0",
+    for needle in ("Measured structure", "mock/non-metered", "Run directory contents (byte sizes)", "unresolved attachment:// references | 0",
+                   "verifies on its own (cli verify-run) | `[]`",
                    "Target cost sidecar", "hash chain | True", "Judge cost sidecar: none written."):
         assert needle in text, needle
 
@@ -156,6 +158,79 @@ def test_a_missing_transcript_export_is_a_gap_not_a_zero_count(run_dir):
     assert any("transcripts" in p for p in s["integrity"]["artifact_problems"])
     text = summary.render_markdown(s)
     assert "| records exported | unavailable: transcripts.jsonl is missing" in text
+
+
+def test_partial_exports_are_inventoried_when_no_manifest_exists(run_dir):
+    """Codex (PR #27): an adaptation that failed after writing the record
+    families but before the manifest left files the early return never
+    inventoried, attachment references included."""
+    (run_dir / "manifest.json").unlink()
+    (run_dir / "rule_outcomes.jsonl").write_text('{"text": "attachment://deadbeef"}\n', encoding="utf-8")
+    s = summary.run_summary(run_dir, mode="dry_run")
+    assert s["manifest"] is None and s["run_dir_exists"] is True
+    pub = s["published"]
+    assert set(pub["files"]) == {"transcripts.jsonl", "rule_outcomes.jsonl", "sanitised_log.json"}
+    assert pub["attachment_references"] == 1 and "example.report.json" in pub["cost_sidecars"]
+    text = summary.render_markdown(s)
+    assert "No manifest" in text and "no manifest: partial or failed adaptation" in text and "| rule_outcomes.jsonl |" in text
+    assert summary.run_summary(run_dir.parent / "absent", mode="dry_run")["published"] is None
+
+
+def test_missing_manifest_collections_are_unavailable_not_zero(run_dir):
+    """Codex (PR #27): `or []` fallbacks turned a manifest without `trees`,
+    `integrity.records_refused` or `usage.by_role` into plausible zero
+    counts."""
+    m = framework.load_json(run_dir / "manifest.json")
+    del m["trees"]
+    del m["integrity"]["records_refused"]
+    m["usage"]["by_role"] = [{"role": "auditor", "calls": 3}]
+    del m["usage"]["by_model"]
+    framework.write_json(run_dir / "manifest.json", m)
+    s = summary.run_summary(run_dir, mode="dry_run")
+    st = s["structure"]
+    assert st["trees"] is None and st["branches"] is None and st["conditions"] is None and st["survivors_exported"] is None
+    assert st["refused"] is None and st["target_calls"] is None
+    assert st["unavailable_fields"] == {"trees": "manifest lacks 'trees'",
+                                        "refused": "manifest lacks 'integrity.records_refused'",
+                                        "target_calls": "manifest usage.by_role carries no target row"}
+    assert st["records"]["count"] == len((run_dir / "transcripts.jsonl").read_text(encoding="utf-8").splitlines()), "the transcript file is intact, so its count stands"
+    assert s["usage"] == {"unavailable": "KeyError: \"manifest lacks 'usage.by_model'\""}
+    text = summary.render_markdown(s)
+    assert "Structure fields unavailable (not zero):" in text and "- trees: manifest lacks 'trees'" in text
+    assert "| trees (samples) | — |" in text and "Usage: unavailable" in text
+    assert s["integrity"]["manifest_problems"], "the damaged manifest is also reported by the schema check"
+
+
+def test_verify_run_checks_a_run_directory_on_its_own(run_dir, tmp_path, capsys):
+    """Codex (PR #27): the exports artifact carried the cumulative chain
+    file, which names every earlier committed run; a downloaded artifact
+    could never pass verify-chain. verify-run needs no chain file."""
+    assert manifest_mod.verify_run(run_dir) == []
+    # the same directory copied elsewhere, without the chain file, verifies identically
+    import shutil
+    copy = tmp_path / "download" / run_dir.name
+    shutil.copytree(run_dir, copy)
+    assert not (copy.parent / manifest_mod.CHAIN_FILE).exists()
+    assert manifest_mod.verify_run(copy) == []
+    assert cli.main(["verify-run", "--run-dir", str(copy)]) == 0
+    assert "verifies on its own" in capsys.readouterr().out
+    # a tampered artifact, a tampered manifest and a missing manifest all fail by name
+    (copy / "transcripts.jsonl").write_text("edited\n", encoding="utf-8")
+    assert any("transcripts" in p and "does not digest" in p for p in manifest_mod.verify_run(copy))
+    m = framework.load_json(copy / "manifest.json")
+    m["run_id"] = "rewritten"
+    framework.write_json(copy / "manifest.json", m)
+    assert any("manifest_sha256 does not match" in p for p in manifest_mod.verify_run(copy))
+    (copy / "manifest.json").unlink()
+    assert manifest_mod.verify_run(copy) == [f"{copy.name}: manifest.json is missing"]
+    assert cli.main(["verify-run", "--run-dir", str(copy)]) == 6
+    # an artifact recorded outside the run directory is refused, whatever its digest
+    m = framework.load_json(run_dir / "manifest.json")
+    m["artifacts"]["transcripts_path"] = "elsewhere/transcripts.jsonl"
+    other = tmp_path / "runs2" / run_dir.name
+    other.mkdir(parents=True)
+    framework.write_json(other / "manifest.json", m)
+    assert any("outside this run directory" in p for p in manifest_mod.verify_run(other))
 
 
 def test_prompt_byte_stats_keep_the_numeric_median():

@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from .framework import OUTCOME_REGISTRY, load_json, sha256_file
-from .manifest import CHAIN_FILE, artifact_problems, manifest_problems, verify_chain
+from .manifest import CHAIN_FILE, artifact_problems, manifest_problems, verify_chain, verify_run
 from .spend import resolve_price, usage_is_missing
 from .transcripts import record_problems
 
@@ -66,45 +66,80 @@ def _read_jsonl(path: Path) -> list[dict]:
     return [json.loads(ln) for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
 
 
+def _collection(manifest: dict, *path: str) -> list:
+    """A list the manifest must carry at `path`; a missing or mistyped one
+    raises, so the caller marks the fields that depend on it unavailable
+    instead of counting an absent collection as zero (Codex, PR #27)."""
+    node: Any = manifest
+    for key in path:
+        if not isinstance(node, dict) or key not in node:
+            raise KeyError(f"manifest lacks {'.'.join(path)!r}")
+        node = node[key]
+    if not isinstance(node, list):
+        raise TypeError(f"manifest {'.'.join(path)!r} is not a list")
+    return node
+
+
+def _reason(exc: BaseException) -> str:
+    """The message alone (str(KeyError(...)) wraps it in quotes)."""
+    return str(exc.args[0]) if exc.args else str(exc)
+
+
 def _structure(manifest: dict, run_dir: Path, eval_status: str | None) -> dict:
-    trees = manifest.get("trees") or []
-    branches = [b for t in trees for b in t.get("branches") or []]
-    child = [b for b in branches if b.get("parent_branch_id") is not None]
-    refused = (manifest.get("integrity") or {}).get("records_refused") or []
-    by_role = {r["role"]: r for r in (manifest.get("usage") or {}).get("by_role") or []}
-    target = by_role.get("target") or {}
+    """The measured structure. Every field is either a value read from a
+    collection the manifest carries or None with the reason recorded in
+    `unavailable_fields`; nothing here is a default."""
+    unavailable: dict[str, str] = {}
+    out: dict[str, Any] = {"eval_status": eval_status,
+                           "seeds": [{"seed_id": s["seed_id"], "claim_grade_eligible": s.get("claim_grade_eligible")}
+                                     for s in manifest.get("seeds") or []],
+                           "max_turns": (manifest.get("execution") or {}).get("max_turns"),
+                           "max_tool_rounds_per_turn": (manifest.get("execution") or {}).get("max_tool_rounds_per_turn"),
+                           "epochs": (manifest.get("execution") or {}).get("epochs")}
+    tree_fields = ("trees", "branches", "conditions", "shared_prefix_branches", "survivors_exported")
+    try:
+        trees = _collection(manifest, "trees")
+        branches = [b for t in trees for b in t.get("branches") or []]
+        child = [b for b in branches if b.get("parent_branch_id") is not None]
+        out.update(trees=len(trees), branches=len(branches), conditions=len({b.get("condition_id") for b in branches}),
+                   shared_prefix_branches={"anchored": sum(1 for b in child if b.get("branched_from_turn_id") is not None),
+                                           "without_resolved_anchor": sum(1 for b in child if b.get("branched_from_turn_id") is None)},
+                   survivors_exported=sum(1 for t in trees if t.get("survivor_exported")))
+    except (KeyError, TypeError) as exc:
+        out.update({f: None for f in tree_fields})
+        unavailable["trees"] = _reason(exc)
+    try:
+        refused = _collection(manifest, "integrity", "records_refused")
+        out["refused"] = {"count": len(refused), "reasons": [f"{r.get('branch_id')}: {r.get('reason')}" for r in refused]}
+    except (KeyError, TypeError) as exc:
+        out["refused"] = None
+        unavailable["refused"] = _reason(exc)
+    try:
+        by_role = {r.get("role"): r for r in _collection(manifest, "usage", "by_role")}
+        if "target" not in by_role:
+            raise KeyError("manifest usage.by_role carries no target row")
+        out["target_calls"] = by_role["target"].get("calls")
+        out["target_calls_without_usage"] = by_role["target"].get("calls_without_usage")
+    except (KeyError, TypeError) as exc:
+        out["target_calls"] = out["target_calls_without_usage"] = None
+        unavailable["target_calls"] = _reason(exc)
     transcripts_path = run_dir / "transcripts.jsonl"
     if transcripts_path.is_file():
         records = _read_jsonl(transcripts_path)
         problems = {r["conversation_id"]: record_problems(r) for r in records}
         bad = {k: v for k, v in problems.items() if v}
-        records_out: dict[str, Any] = {"count": len(records), "with_problems": len(bad),
-                                       "problems": [f"{k[:12]}: {'; '.join(v[:3])}" for k, v in list(bad.items())[:5]]}
+        out["records"] = {"count": len(records), "with_problems": len(bad),
+                          "problems": [f"{k[:12]}: {'; '.join(v[:3])}" for k, v in list(bad.items())[:5]]}
     else:
         # a missing export is a gap, never a count of zero (Codex, PR #27); the manifest-derived counts stand
-        records_out = {"unavailable": "transcripts.jsonl is missing from the run directory"}
-    return {
-        "eval_status": eval_status,
-        "seeds": [{"seed_id": s["seed_id"], "claim_grade_eligible": s.get("claim_grade_eligible")} for s in manifest.get("seeds") or []],
-        "trees": len(trees),
-        "branches": len(branches),
-        "conditions": len({b.get("condition_id") for b in branches}),
-        "shared_prefix_branches": {"anchored": sum(1 for b in child if b.get("branched_from_turn_id") is not None),
-                                   "without_resolved_anchor": sum(1 for b in child if b.get("branched_from_turn_id") is None)},
-        "survivors_exported": sum(1 for t in trees if t.get("survivor_exported")),
-        "records": records_out,
-        "refused": {"count": len(refused), "reasons": [f"{r.get('branch_id')}: {r.get('reason')}" for r in refused]},
-        "target_calls": target.get("calls"),
-        "target_calls_without_usage": target.get("calls_without_usage"),
-        "max_turns": (manifest.get("execution") or {}).get("max_turns"),
-        "max_tool_rounds_per_turn": (manifest.get("execution") or {}).get("max_tool_rounds_per_turn"),
-        "epochs": (manifest.get("execution") or {}).get("epochs"),
-    }
+        out["records"] = {"unavailable": "transcripts.jsonl is missing from the run directory"}
+    out["unavailable_fields"] = unavailable
+    return out
 
 
-def _usage(manifest: dict) -> list[dict]:
+def _usage(manifest: dict) -> list[dict] | dict:
     rows = []
-    for r in (manifest.get("usage") or {}).get("by_model") or []:
+    for r in _collection(manifest, "usage", "by_model"):
         price = resolve_price(r["model"])
         zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
         rows.append({"model": r["model"], "calls": r.get("calls"), "calls_without_usage": r.get("calls_without_usage"),
@@ -156,6 +191,8 @@ def _published(run_dir: Path) -> dict:
 def _integrity(manifest: dict, run_dir: Path) -> dict:
     chain_ok, chain_msg = verify_chain(run_dir.parent) if (run_dir.parent / CHAIN_FILE).is_file() else (None, "no chain file")
     return {"manifest_problems": manifest_problems(manifest), "artifact_problems": artifact_problems(manifest, run_dir.parent),
+            # the check a downloaded run directory can pass on its own (no chain file): cli verify-run
+            "run_self_verification": verify_run(run_dir),
             "chain": {"ok": chain_ok, "message": chain_msg},
             "attachments_resolved": (manifest.get("integrity") or {}).get("attachments_resolved")}
 
@@ -223,9 +260,13 @@ def run_summary(run_dir: Path | str | None, *, mode: str, raw_eval_dir: Path | s
                        "run directory or raw log should exist")
     manifest_path = run_dir / "manifest.json" if run_dir else None
     if manifest_path is None or not manifest_path.is_file():
+        # no manifest: whatever the run directory holds (a partial adaptation, a sidecar) is still inventoried
+        # (Codex, PR #27); a dry run that failed before its manifest leaves exactly this shape behind
         out["manifest"] = None
-        out["sidecar"] = _guard(_sidecar, run_dir) if run_dir and run_dir.is_dir() else None
-        out["judge_sidecar"] = _guard(_judge_sidecar, run_dir) if run_dir and run_dir.is_dir() else None
+        present = bool(run_dir and run_dir.is_dir())
+        out["published"] = _guard(_published, run_dir) if present else None
+        out["sidecar"] = _guard(_sidecar, run_dir) if present else None
+        out["judge_sidecar"] = _guard(_judge_sidecar, run_dir) if present else None
         out["raw_eval"] = _guard(_raw_eval, {}, raw_dir)
         return out
     manifest = load_json(manifest_path)
@@ -299,8 +340,11 @@ def render_markdown(s: dict) -> str:
                 ("target calls without a usage block", st.get("target_calls_without_usage")),
                 ("records exported", (st.get("records") or {}).get("count", "unavailable: " + str((st.get("records") or {}).get("unavailable")))),
                 ("records with schema or pairing problems", (st.get("records") or {}).get("with_problems", "unavailable")),
-                ("records refused by the adapter", (st.get("refused") or {}).get("count")),
+                ("records refused by the adapter", (st.get("refused") or {}).get("count") if st.get("refused") is not None else None),
                 ("max turns / tool rounds per turn", f"{st.get('max_turns')} / {st.get('max_tool_rounds_per_turn')}")])
+            missing = st.get("unavailable_fields") or {}
+            if missing:
+                lines += ["Structure fields unavailable (not zero):", ""] + [f"- {k}: {v}" for k, v in missing.items()] + [""]
             reasons = (st.get("refused") or {}).get("reasons") or []
             if reasons:
                 lines += ["Refusals:", ""] + [f"- {r}" for r in reasons] + [""]
@@ -330,22 +374,13 @@ def render_markdown(s: dict) -> str:
         if raw.get("unavailable"):
             rows.append(("unavailable", raw["unavailable"]))
         lines += _table("Raw .eval (private artifact, never committed)", rows)
-        pub = s.get("published") or {}
-        if "unavailable" in pub:
-            lines += ["Published exports: unavailable (" + pub["unavailable"] + ")", ""]
-        else:
-            rows = [(k, f"{v} bytes") for k, v in (pub.get("files") or {}).items()]
-            rows += [(k, f"{v} bytes (cost sidecar)") for k, v in (pub.get("cost_sidecars") or {}).items()]
-            rows += [(k, ("directory" if v is None else f"{v} bytes") + " (UNEXPECTED: not a file the lane writes)")
-                     for k, v in (pub.get("unexpected") or {}).items()]
-            rows += [("total", f"{pub.get('total_bytes')} bytes"), ("unresolved attachment:// references", pub.get("attachment_references"))]
-            lines += _table("Sanitised exports (byte sizes)", rows)
         integ = s.get("integrity") or {}
         if "unavailable" in integ:
             lines += ["Integrity: unavailable (" + integ["unavailable"] + ")", ""]
         else:
             lines += _table("Integrity", [("manifest schema problems", _fmt(integ.get("manifest_problems"))),
                                           ("artifact digest problems", _fmt(integ.get("artifact_problems"))),
+                                          ("run directory verifies on its own (cli verify-run)", _fmt(integ.get("run_self_verification"))),
                                           ("hash chain", f"{(integ.get('chain') or {}).get('ok')} ({(integ.get('chain') or {}).get('message')})"),
                                           ("attachments resolved (manifest)", integ.get("attachments_resolved"))])
         jp = s.get("judge_prompts") or {}
@@ -356,6 +391,16 @@ def render_markdown(s: dict) -> str:
                 ("planned calls", jp.get("planned_calls")), ("not applicable", jp.get("not_applicable")),
                 ("prompt UTF-8 bytes (min / median / max / total)", _fmt(jp.get("prompt_bytes"))),
                 ("input bound, tokens, summed over calls (bytes + framing allowance)", jp.get("input_bound_tokens_total"))])
+    pub = s.get("published")
+    if isinstance(pub, dict) and "unavailable" in pub:
+        lines += ["Run directory contents: unavailable (" + pub["unavailable"] + ")", ""]
+    elif pub:
+        rows = [(k, f"{v} bytes") for k, v in (pub.get("files") or {}).items()]
+        rows += [(k, f"{v} bytes (cost sidecar)") for k, v in (pub.get("cost_sidecars") or {}).items()]
+        rows += [(k, ("directory" if v is None else f"{v} bytes") + " (UNEXPECTED: not a file the lane writes)")
+                 for k, v in (pub.get("unexpected") or {}).items()]
+        rows += [("total", f"{pub.get('total_bytes')} bytes"), ("unresolved attachment:// references", pub.get("attachment_references"))]
+        lines += _table("Run directory contents (byte sizes)" + ("" if m else ", no manifest: partial or failed adaptation"), rows)
     for label, key in (("Target cost sidecar", "sidecar"), ("Judge cost sidecar", "judge_sidecar")):
         sc = s.get(key)
         if isinstance(sc, dict) and "unavailable" in sc:

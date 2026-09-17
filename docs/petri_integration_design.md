@@ -1346,10 +1346,15 @@ dry run observable, which section 14 depends on.
    final reply". `RULE_VERSION` is `3` and the registry definition says so; no
    rule outcome under version 1 or 2 was ever published.
 2. **The dry run reports what it measured.** A `dry_run` uploads its
-   seal-cleared run directory and the chain file as a 30-day workflow
-   artifact (a step without `always()`, after the seal check and
-   `verify-chain`, so a rejected export is never uploaded; the raw `.eval`
-   stays outside the checkout and outside that artifact), and the job summary
+   seal-cleared run directory as a 30-day workflow artifact (a step without
+   `always()`, after the seal check, `verify-chain`, `verify-run` and the
+   raw-log refusal, so a rejected export is never uploaded; the raw `.eval`
+   stays outside the checkout and outside that artifact, and `*.eval` is
+   excluded from its path). The run directory verifies on its own with
+   `cli verify-run` (the manifest's chain block and every artifact it
+   names), which is what a downloader checks; the cumulative chain file is
+   not in the artifact because it references every earlier committed run.
+   The job summary
    is rendered by `scripts/petri_audit/summary.py` (`cli run-summary`): the
    parameters CI resolved, target calls, trees, conditions, branches and
    shared-prefix anchors, records exported and refused with reasons, the raw

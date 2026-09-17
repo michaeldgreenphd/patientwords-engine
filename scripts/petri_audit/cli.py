@@ -14,6 +14,7 @@ same checks and calls nothing.
     python -m scripts.petri_audit.cli judge-spend-report --run-dir DIR --judge-model SPEC --judge-max-spend USD
     python -m scripts.petri_audit.cli analyze --run-dir DIR
     python -m scripts.petri_audit.cli verify-chain --data-dir DIR
+    python -m scripts.petri_audit.cli verify-run --run-dir DIR
     python -m scripts.petri_audit.cli run-summary --run-dir DIR --mode MODE [--raw-eval-dir DIR] [--seeds FILE] [...]
 
 Python 3.11 can run everything except `run` and `adapt`, which import the
@@ -30,7 +31,7 @@ from pathlib import Path
 
 from .envlock import load_lock, report_lines, verify_lock
 from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, sha256_file, write_json
-from .manifest import bind_judgments, reseal_problems, verify_chain
+from .manifest import bind_judgments, reseal_problems, verify_chain, verify_run
 from .seal import sealed_registry, seed_texts_against_registry
 from .seeds import conditions, load_seed_file, select_seeds, target_visible_strings, validate_seed
 from .spend import (
@@ -368,6 +369,16 @@ def cmd_verify_chain(args: argparse.Namespace) -> int:
     return 0 if ok else 6
 
 
+def cmd_verify_run(args: argparse.Namespace) -> int:
+    """One run directory on its own (no chain file): the check a downloaded
+    dry-run exports artifact can pass."""
+    problems = verify_run(Path(args.run_dir))
+    for p in problems:
+        print(p, file=sys.stderr)
+    print(f"{args.run_dir}: " + ("run directory verifies on its own" if not problems else f"{len(problems)} problem(s)"))
+    return 0 if not problems else 6
+
+
 def cmd_run_summary(args: argparse.Namespace) -> int:
     """The job summary (Markdown on stdout, JSON to --json-out): measured
     structure, usage status per model, cost, redaction counts, integrity.
@@ -485,6 +496,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("verify-chain")
     p.add_argument("--data-dir", default=str(DEFAULT_RUNS_DIR))
     p.set_defaults(func=cmd_verify_chain)
+
+    p = sub.add_parser("verify-run")
+    p.add_argument("--run-dir", required=True)
+    p.set_defaults(func=cmd_verify_run)
 
     p = sub.add_parser("run-summary")
     p.add_argument("--run-dir", default=None, help="the adapted run directory (absent under preflight)")

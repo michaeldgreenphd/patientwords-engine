@@ -362,9 +362,14 @@ jobs:
 
       - name: Holdout seal check over every publishable Petri output (fails closed)
         if: ${{ needs.params.outputs.mode != 'preflight' }}
+        env:
+          RUN_STEM: run_${{ github.run_id }}_${{ github.run_attempt }}
         run: |
           python scripts/seal_check.py --site "$RUNNER_TEMP/no-site" --extra data/petri/runs
           python -m scripts.petri_audit.cli verify-chain --data-dir data/petri/runs
+          # the run directory alone must verify (manifest digests and every artifact it names), because that is
+          # what the dry-run exports artifact carries and what a downloader can check without the chain file
+          python -m scripts.petri_audit.cli verify-run --run-dir "data/petri/runs/$RUN_STEM"
 
       # Runs BEFORE the exports upload below (Codex, PR #27): an artifact cannot be retracted once created, so a raw
       # log inside the checkout must fail the job before any directory under data/petri is uploaded.
@@ -377,10 +382,13 @@ jobs:
           fi
 
       # Dry-run exports are never committed (mockllm output is not a measurement), but they are the evidence the
-      # pilot's structural questions are answered from (design memo section 14), so the seal-cleared run directory and
-      # the chain file are uploaded as a short-lived artifact. Deliberately NOT always(): this step runs only when
-      # every step before it succeeded, the seal check, verify-chain and the raw-log refusal included, so a rejected
-      # export or a run directory holding a raw log is never uploaded; *.eval is excluded from the path as well.
+      # pilot's structural questions are answered from (design memo section 14), so the seal-cleared run directory
+      # is uploaded as a short-lived artifact. Deliberately NOT always(): this step runs only when every step before
+      # it succeeded, the seal check, verify-chain, verify-run and the raw-log refusal included, so a rejected export
+      # or a run directory holding a raw log is never uploaded; *.eval is excluded from the path as well. The run
+      # directory verifies on its own (`cli verify-run`: the manifest's chain block and every artifact it names); the
+      # cumulative chain file is NOT included, since it references every earlier committed run the artifact does not
+      # carry (Codex, PR #27).
       - name: Upload the seal-cleared sanitised exports of a dry run (never committed)
         if: ${{ needs.params.outputs.mode == 'dry_run' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -388,7 +396,6 @@ jobs:
           name: petri-audit-dry-run-exports-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             data/petri/runs/run_${{ github.run_id }}_${{ github.run_attempt }}/
-            data/petri/runs/manifests.chain
             !data/petri/runs/**/*.eval
           retention-days: 30
           if-no-files-found: error

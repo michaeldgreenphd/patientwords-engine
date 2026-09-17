@@ -149,6 +149,32 @@ def verify_chain(data_dir: Path) -> tuple[bool, str]:
     return True, f"chain intact ({prev})"
 
 
+def verify_run(run_dir: Path) -> list[str]:
+    """Every problem with ONE run directory taken on its own: the manifest
+    exists and validates, its chain block digests to its body (identity and
+    manifest digests), and every artifact it names exists beside it and
+    digests to its recorded value. Needs no chain file, so a downloaded run
+    directory (the dry-run exports artifact) verifies exactly like the
+    committed one; the link to the previous run is the manifest's own
+    `chain.prev_sha256`, which only the full chain can check (Codex, PR #27:
+    the cumulative chain file in the artifact referenced runs the artifact
+    did not carry)."""
+    run_dir = Path(run_dir)
+    mpath = run_dir / "manifest.json"
+    if not mpath.is_file():
+        return [f"{run_dir.name}: manifest.json is missing"]
+    try:
+        manifest = load_json(mpath)
+    except ValueError as exc:
+        return [f"{run_dir.name}: manifest.json does not parse ({exc})"]
+    problems = [f"manifest: {p}" for p in manifest_problems(manifest)]
+    for rel in (a for fam in ARTIFACT_FAMILIES for a in [(manifest.get("artifacts") or {}).get(f"{fam}_path")] if a):
+        if Path(rel).parts[:1] != (run_dir.name,):
+            problems.append(f"artifact {rel} is recorded outside this run directory")
+    problems.extend(artifact_problems(manifest, run_dir.parent))
+    return problems
+
+
 def replace_chain_head(data_dir: Path, manifest_path: Path, old_digest: str, new_digest: str) -> None:
     """Rewrite the chain's last line for a manifest being resealed. Only the
     head may be resealed: a later manifest links to this one's digest, and
