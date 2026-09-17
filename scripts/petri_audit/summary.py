@@ -210,10 +210,30 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
     transcripts_path = run_dir / "transcripts.jsonl"
     if transcripts_path.is_file():
         records = _read_jsonl(transcripts_path)
-        problems = {r["conversation_id"]: record_problems(r) for r in records}
-        bad = {k: v for k, v in problems.items() if v}
-        out["records"] = {"count": len(records), "with_problems": len(bad),
-                          "problems": [f"{k[:12]}: {'; '.join(v[:3])}" for k, v in list(bad.items())[:5]]}
+        # ids are unique across the file by contract; a duplicate (identical or conflicting) is a problem of its own
+        # and never hides the first record's diagnostics (Codex, PR #27)
+        seen: dict[Any, dict] = {}
+        bad = 0
+        details: list[str] = []
+        for i, r in enumerate(records):
+            if isinstance(r, dict):
+                try:
+                    probs = list(record_problems(r))
+                except Exception as exc:  # noqa: BLE001 - a record the validator cannot even read is its own problem
+                    probs = [f"record cannot be validated: {type(exc).__name__}: {exc}"]
+            else:
+                probs = ["not an object"]
+            cid = r.get("conversation_id") if isinstance(r, dict) else None
+            if cid is None:
+                probs.append("no conversation_id")
+            elif cid in seen:
+                probs.append("duplicate conversation_id (" + ("identical record" if seen[cid] == r else "conflicting record") + ")")
+            else:
+                seen[cid] = r
+            if probs:
+                bad += 1
+                details.append(f"record #{i} ({str(cid)[:12]}): {'; '.join(probs[:3])}")
+        out["records"] = {"count": len(records), "unique_conversation_ids": len(seen), "with_problems": bad, "problems": details[:5]}
     else:
         # a missing export is a gap, never a count of zero (Codex, PR #27); the manifest-derived counts stand
         out["records"] = {"unavailable": "transcripts.jsonl is missing from the run directory"}
@@ -230,21 +250,40 @@ def _judge_usage_rows(run_dir: Path) -> list[dict]:
 
     path = run_dir / "judgments.jsonl"
     if not path.is_file():
-        return []
+        # a judge that died before its first row leaves only the fallback sidecar the workflow writes (the ceiling
+        # imputed); that judge is reported from it, never omitted (Codex, PR #27)
+        side = _judge_sidecar(run_dir)
+        if not side:
+            return []
+        if "unavailable" in side:
+            return [{"model": "(judge of record)", "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
+                     "status": USAGE_UNAVAILABLE, "price_source": None,
+                     "note": f"judge of record: no judgments.jsonl and the judge sidecar is unavailable ({side['unavailable']})"}]
+        price = resolve_registry_price(side["judge_model"])
+        zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
+        return [{"model": side["judge_model"], "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
+                 "status": USAGE_MOCK if zero else USAGE_UNAVAILABLE, "price_source": price.source,
+                 "note": f"judge of record: no judgments.jsonl; the judge sidecar books {side['cost_basis']}"}]
     try:
         rows = _read_jsonl(path)
         per: dict[str, dict[str, Any]] = {}
         for i, j in enumerate(rows):
-            if _member(j, "method", f"judgments.jsonl row #{i}", (str,)) != "judge":
+            where = f"judgments.jsonl row #{i}"
+            if _member(j, "method", where, (str,)) != "judge":
                 continue                      # rule rows are not calls
-            spec = _member(j, "judge_model", f"judgments.jsonl row #{i}", (str,))
+            spec = _member(j, "judge_model", where, (str,))
             agg = per.setdefault(spec, {"calls": 0, "calls_without_usage": 0, "input_tokens": 0, "output_tokens": 0})
-            agg["calls"] += 1
-            if _member(j, "usage_missing", f"judgments.jsonl row #{i}", (bool,)):
+            # every charged retry was a provider attempt without usage (Codex, PR #27): it counts as a call and as
+            # a call without usage, so a row whose successful attempt followed a charged failure is not
+            # provider-measured in full
+            retries = _member(j, "retry_attempts_charged", where, (int,))
+            agg["calls"] += 1 + retries
+            agg["calls_without_usage"] += retries
+            if _member(j, "usage_missing", where, (bool,)):
                 agg["calls_without_usage"] += 1
             else:
-                agg["input_tokens"] += _member(j, "input_tokens", f"judgments.jsonl row #{i}", (int,))
-                agg["output_tokens"] += _member(j, "output_tokens", f"judgments.jsonl row #{i}", (int,))
+                agg["input_tokens"] += _member(j, "input_tokens", where, (int,))
+                agg["output_tokens"] += _member(j, "output_tokens", where, (int,))
     except (KeyError, TypeError, ValueError, OSError) as exc:
         return [{"model": "(judge of record)", "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
                  "status": USAGE_UNAVAILABLE, "price_source": None, "note": f"judge of record: judgments.jsonl unreadable ({_reason(exc)})"}]
@@ -350,13 +389,26 @@ def _integrity(manifest: dict, run_dir: Path) -> dict:
 NUMBER = (int, float)
 
 
+def _sidecar_files(run_dir: Path, *, judge: bool) -> list[Path]:
+    """The cost sidecars directly inside the run directory, by filename
+    pattern: `*.judge.report.json` for the judge, every other
+    `*.report.json` for the target."""
+    return sorted(p for p in run_dir.glob("*.report.json")
+                  if p.is_file() and (p.name.endswith(".judge.report.json") == judge))
+
+
 def _sidecar(run_dir: Path) -> dict | None:
     """The target cost sidecar the ledger folds. Its spend fields are required
     and typed (Codex, PR #27): a sidecar missing `cost_usd` is an
     unavailable spend record, never a table with a dash in it."""
-    path = run_dir / f"{run_dir.name}.report.json"
-    if not path.is_file():
+    # located by pattern (Codex, PR #27): a flat artifact extraction keeps the sidecar's original name under a
+    # directory of the downloader's choosing, so the directory name never reconstructs it
+    found = _sidecar_files(run_dir, judge=False)
+    if not found:
         return None
+    if len(found) > 1:
+        return {"path": ", ".join(p.name for p in found), "unavailable": f"{len(found)} target cost sidecars in the run directory"}
+    path = found[0]
     r = load_json(path)
     where = path.name
     try:
@@ -371,9 +423,12 @@ def _sidecar(run_dir: Path) -> dict | None:
 
 
 def _judge_sidecar(run_dir: Path) -> dict | None:
-    path = run_dir / f"{run_dir.name}.judge.report.json"
-    if not path.is_file():
+    found = _sidecar_files(run_dir, judge=True)
+    if not found:
         return None
+    if len(found) > 1:
+        return {"path": ", ".join(p.name for p in found), "unavailable": f"{len(found)} judge cost sidecars in the run directory"}
+    path = found[0]
     r = load_json(path)
     where = path.name
     try:
@@ -398,16 +453,20 @@ def _judge_prompts(manifest: dict, run_dir: Path, seeds_path: Path | str | None)
     from .judge_runner import estimate_input_tokens, load_rubric, plan_run
     from .seeds import load_seed_file
 
-    # the inputs must be the run's own (Codex, PR #27): a paid run's commit steps pull the branch before the summary,
-    # so the checkout can have moved past the commit the run recorded. The engine commit is compared when the
-    # manifest records one, the outcome registry is compared by digest, and plan_run refuses seed drift itself;
-    # the rubric is not recorded in the manifest, so its digest is reported rather than checked
+    # the inputs must be the run's own (Codex, PR #27). A paid run's own commit steps move HEAD past the recorded
+    # engine commit even when no input changed, so HEAD is never compared with the sha: each input file in the
+    # checkout is compared blob-by-blob with the same path at the recorded commit (git show <sha>:<path>). When git
+    # cannot serve the commit (the all-zero placeholder, a shallow checkout), the registry is still checked against
+    # the manifest's digest and plan_run refuses seed drift by the recorded seed digests; the rubric, which the
+    # manifest does not record, is then reported unverified rather than assumed
     engine_sha = _dig(manifest, "adapter", "engine_sha")
-    head = _checkout_head()
-    sha_checked = isinstance(engine_sha, str) and engine_sha != "0" * 40 and head is not None
-    if sha_checked and head != engine_sha:
-        return {"unavailable": f"the checkout ({head[:12]}) is not the run's engine commit ({engine_sha[:12]}); the seeds, "
-                               "registry and rubric may differ from the run's"}
+    pinned = isinstance(engine_sha, str) and engine_sha != "0" * 40
+    verified = {name: (_blob_matches(engine_sha, path) if pinned else None)
+                for name, path in (("seeds", Path(seeds_path)), ("outcome_registry", OUTCOME_REGISTRY), ("rubric", ADVICE_RUBRIC))}
+    differing = [name for name, ok in verified.items() if ok is False]
+    if differing:
+        return {"unavailable": f"{', '.join(differing)} in the checkout differ from the run's engine commit "
+                               f"{engine_sha[:12]}; the statistics would describe prompts the run never used"}
     registry_sha = sha256_file(OUTCOME_REGISTRY)
     if _dig(manifest, "framework", "outcome_registry_sha256") != registry_sha:
         return {"unavailable": "the outcome registry in the checkout does not digest to the manifest's outcome_registry_sha256"}
@@ -418,20 +477,24 @@ def _judge_prompts(manifest: dict, run_dir: Path, seeds_path: Path | str | None)
     return {"planned_calls": len(sizes), "not_applicable": sum(1 for p in plans if p.prompt is None),
             "prompt_bytes": byte_stats(sizes),
             "input_bound_tokens_total": sum(estimate_input_tokens(p.prompt) for p in plans if p.prompt is not None),
-            "inputs": {"engine_sha": engine_sha, "checkout_head": head, "engine_sha_checked": sha_checked,
+            "inputs": {"engine_sha": engine_sha, "verified_against_engine_commit": verified,
                        "outcome_registry_sha256": registry_sha, "seeds_checked_by_digest": True,
                        "rubric_sha256": sha256_file(ADVICE_RUBRIC), "rubric_pinned_by_manifest": False}}
 
 
-def _checkout_head() -> str | None:
-    """The engine checkout's HEAD, or None when git cannot say."""
+def _blob_matches(sha: str, path: Path) -> bool | None:
+    """Whether the file at `path` in the checkout is byte-identical to the
+    same path at commit `sha` (git show <sha>:<path>); None when git cannot
+    say (unknown commit, a path outside the repository, no git)."""
+    import hashlib
     import subprocess
 
     try:
-        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True)
-    except (OSError, subprocess.CalledProcessError):
+        rel = Path(path).resolve().relative_to(ROOT.resolve()).as_posix()
+        out = subprocess.run(["git", "show", f"{sha}:{rel}"], cwd=ROOT, capture_output=True, check=True)
+    except (OSError, ValueError, subprocess.CalledProcessError):
         return None
-    return out.stdout.strip() or None
+    return hashlib.sha256(out.stdout).hexdigest() == sha256_file(path)
 
 
 def byte_stats(sizes: list[int]) -> dict[str, int | float] | None:

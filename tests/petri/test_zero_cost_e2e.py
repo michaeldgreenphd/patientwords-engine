@@ -186,6 +186,7 @@ def test_run_summary_reports_the_measured_structure_of_the_mock_run(run):
     st = s["structure"]
     assert st["trees"] == len(m["trees"]) and st["branches"] == sum(len(t["branches"]) for t in m["trees"])
     assert st["records"]["count"] == len(run["r1"].records) and st["records"]["with_problems"] == 0
+    assert st["records"]["unique_conversation_ids"] == st["records"]["count"]
     assert st["refused"]["count"] == 0 and st["survivors_exported"] == len(m["trees"])
     cells = {(t["seed_id"], b["condition_id"]) for t in m["trees"] for b in t["branches"]}
     labels = {b["condition_id"] for t in m["trees"] for b in t["branches"]}
@@ -207,7 +208,8 @@ def test_run_summary_reports_the_measured_structure_of_the_mock_run(run):
     jp = s["judge_prompts"]
     assert jp["planned_calls"] > 0 and jp["prompt_bytes"]["min"] <= jp["prompt_bytes"]["median"] <= jp["prompt_bytes"]["max"]
     assert jp["input_bound_tokens_total"] > jp["prompt_bytes"]["total"]
-    assert jp["inputs"]["engine_sha_checked"] is False, "the placeholder engine sha is not compared"
+    assert jp["inputs"]["verified_against_engine_commit"] == {"seeds": None, "outcome_registry": None, "rubric": None}, (
+        "the placeholder engine sha cannot be compared")
     assert jp["inputs"]["outcome_registry_sha256"] == m["framework"]["outcome_registry_sha256"]
     assert s["sidecar"] is None, "adapt_run wrote no sidecar here; the CLI's --report does"
     text = summary.render_markdown(s)

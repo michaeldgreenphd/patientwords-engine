@@ -462,29 +462,46 @@ def test_judge_prompt_statistics_come_only_from_the_run_s_pinned_inputs(run_dir,
     m["framework"]["outcome_registry_sha256"] = framework.sha256_file(framework.OUTCOME_REGISTRY)
     m["adapter"]["engine_sha"] = "a" * 40
     framework.write_json(run_dir / "manifest.json", m)
-    monkeypatch.setattr(summary, "_checkout_head", lambda: "b" * 40)
+    # the comparison is blob-by-blob at the recorded commit, never HEAD against the sha (Codex, PR #27, ninth
+    # round: a paid run's own commit steps move HEAD before the summary)
+    monkeypatch.setattr(summary, "_blob_matches", lambda sha, path: path != framework.ADVICE_RUBRIC)
     jp = summary.run_summary(run_dir, mode="run", seeds_path=framework.SEED_FILE)["judge_prompts"]
-    assert jp["unavailable"].startswith("the checkout (bbbbbbbbbbbb) is not the run's engine commit (aaaaaaaaaaaa)")
-    # the placeholder engine sha (unknown) is not compared, and the section says so
-    m["adapter"]["engine_sha"] = "0" * 40
-    framework.write_json(run_dir / "manifest.json", m)
+    assert jp["unavailable"].startswith("rubric in the checkout differ from the run's engine commit aaaaaaaaaaaa")
+    monkeypatch.setattr(summary, "_blob_matches", lambda sha, path: None)
     jp = summary.run_summary(run_dir, mode="run", seeds_path=framework.SEED_FILE)["judge_prompts"]
-    assert "unavailable" in jp or jp["inputs"]["engine_sha_checked"] is False
+    assert "unavailable" in jp or jp["inputs"]["verified_against_engine_commit"] == {"seeds": None, "outcome_registry": None, "rubric": None}
+
+
+def test_blob_matches_reads_the_file_at_the_recorded_commit(tmp_path):
+    import subprocess
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
+    assert summary._blob_matches(head, framework.OUTCOME_REGISTRY) is True, "the checkout matches its own HEAD"
+    assert summary._blob_matches("0" * 40, framework.OUTCOME_REGISTRY) is None, "an unknown commit cannot be compared"
+    assert summary._blob_matches(head, tmp_path / "outside.json") is None, "a path outside the repository cannot be compared"
+    copy = ROOT / "docs" / "framework" / "_blob_probe.tmp.json"
+    try:
+        copy.write_text("{}", encoding="utf-8")
+        assert summary._blob_matches(head, copy) is None, "a file the commit does not carry cannot be compared"
+    finally:
+        copy.unlink()
 
 
 def test_judge_calls_appear_in_the_usage_table(run_dir):
     """Codex (PR #27, eighth round): the manifest's usage table is closed
     before the judge step, so every paid judge call was omitted."""
     rows = [{"method": "rule", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 0, "output_tokens": 0},
-            {"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 100, "output_tokens": 20},
-            {"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 50, "output_tokens": 10}]
+            {"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 100, "output_tokens": 20,
+             "retry_attempts_charged": 0},
+            {"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 50, "output_tokens": 10,
+             "retry_attempts_charged": 0}]
     (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     usage = summary.run_summary(run_dir, mode="run")["usage"]
     judge = [r for r in usage if r.get("note", "").startswith("judge of record")]
     assert len(judge) == 1 and judge[0]["model"] == "claude-haiku-4-5" and judge[0]["calls"] == 2, "rule rows are not calls"
     assert judge[0]["input_tokens"] == 150 and judge[0]["output_tokens"] == 30 and judge[0]["status"] == summary.USAGE_PROVIDER_MEASURED
     assert [r["model"] for r in usage][0] == "mockllm/model", "the target rows stay first"
-    rows.append({"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": True, "input_tokens": None, "output_tokens": None})
+    rows.append({"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": True, "input_tokens": None, "output_tokens": None,
+                 "retry_attempts_charged": 0})
     (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r.get("note", "").startswith("judge of record")][0]
     assert judge["calls"] == 3 and judge["calls_without_usage"] == 1 and judge["status"] == summary.USAGE_UNAVAILABLE
@@ -493,6 +510,71 @@ def test_judge_calls_appear_in_the_usage_table(run_dir):
     (run_dir / "judgments.jsonl").write_text("{not json\n", encoding="utf-8")
     judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "(judge of record)"][0]
     assert judge["status"] == summary.USAGE_UNAVAILABLE and "judgments.jsonl unreadable" in judge["note"]
+
+
+def test_charged_judge_retries_count_as_calls_without_usage(run_dir):
+    """Codex (PR #27, ninth round): a successful row after a charged failed
+    attempt read as one fully metered call."""
+    rows = [{"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 100, "output_tokens": 20,
+             "retry_attempts_charged": 2}]
+    (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "claude-haiku-4-5"][0]
+    assert judge["calls"] == 3 and judge["calls_without_usage"] == 2 and judge["status"] == summary.USAGE_UNAVAILABLE
+    assert judge["input_tokens"] == 100
+    rows[0]["retry_attempts_charged"] = "2"
+    (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "(judge of record)"][0]
+    assert "'retry_attempts_charged' is not int" in judge["note"]
+
+
+def test_a_judge_that_left_only_its_fallback_sidecar_is_reported_from_it(run_dir):
+    """Codex (PR #27, ninth round): a judge that died before its first row
+    leaves the workflow's fallback sidecar and no judgments.jsonl; that
+    judge was omitted from the usage table."""
+    framework.write_json(run_dir / "example.judge.report.json",
+                         {"judge_model": "claude-haiku-4-5", "cost_usd": 0.01, "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar",
+                          "billing_channel": "anthropic", "aborted": True})
+    usage = summary.run_summary(run_dir, mode="run")["usage"]
+    judge = [r for r in usage if r["model"] == "claude-haiku-4-5"]
+    assert len(judge) == 1 and judge[0]["status"] == summary.USAGE_UNAVAILABLE and judge[0]["calls"] is None
+    assert judge[0]["note"] == "judge of record: no judgments.jsonl; the judge sidecar books ceiling_imputed:judge_aborted_without_sidecar"
+    (run_dir / "example.judge.report.json").write_text("[]", encoding="utf-8")
+    judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "(judge of record)"][0]
+    assert "the judge sidecar is unavailable" in judge["note"]
+
+
+def test_sidecars_are_found_by_pattern_after_a_flat_extraction(run_dir, tmp_path):
+    """Codex (PR #27, ninth round): the sidecar name was rebuilt from the
+    directory name, which a flat extraction does not preserve."""
+    import shutil
+    flat = tmp_path / "artifact-777"
+    shutil.copytree(run_dir, flat)
+    s = summary.run_summary(flat, mode="dry_run")
+    assert s["sidecar"]["path"] == "example.report.json" and s["sidecar"]["cost_usd"] == 0.0
+    framework.write_json(flat / "other.report.json", {"cost_usd": 0.0})
+    s = summary.run_summary(flat, mode="dry_run")
+    assert s["sidecar"]["unavailable"] == "2 target cost sidecars in the run directory"
+    framework.write_json(flat / "example.judge.report.json", {"judge_model": "x", "cost_usd": 0.0, "cost_basis": "b", "billing_channel": "anthropic"})
+    assert summary.run_summary(flat, mode="dry_run")["judge_sidecar"]["path"] == "example.judge.report.json"
+
+
+def test_duplicate_conversation_ids_are_reported(run_dir):
+    """Codex (PR #27, ninth round): a duplicate id overwrote the first
+    record's diagnostics and counted as a clean record."""
+    lines = (run_dir / "transcripts.jsonl").read_text(encoding="utf-8").splitlines()
+    (run_dir / "transcripts.jsonl").write_text("\n".join(lines + [lines[0]]) + "\n", encoding="utf-8")
+    rec = summary.run_summary(run_dir, mode="dry_run")["structure"]["records"]
+    assert rec["count"] == len(lines) + 1 and rec["unique_conversation_ids"] == len(lines) and rec["with_problems"] == 1
+    assert rec["problems"] == [f"record #{len(lines)} ({json.loads(lines[0])['conversation_id'][:12]}): duplicate conversation_id (identical record)"]
+    conflicting = json.loads(lines[0])
+    conflicting["turns"][0]["text"] = "edited"
+    (run_dir / "transcripts.jsonl").write_text("\n".join(lines + [json.dumps(conflicting)]) + "\n", encoding="utf-8")
+    rec = summary.run_summary(run_dir, mode="dry_run")["structure"]["records"]
+    assert rec["with_problems"] == 1 and "duplicate conversation_id (conflicting record)" in rec["problems"][0]
+    assert "text_sha256" in rec["problems"][0], "the record's own diagnostics are kept beside the duplicate"
+    (run_dir / "transcripts.jsonl").write_text('{"turns": []}\n', encoding="utf-8")
+    rec = summary.run_summary(run_dir, mode="dry_run")["structure"]["records"]
+    assert rec["with_problems"] == 1 and "no conversation_id" in rec["problems"][0]
 
 
 def test_an_empty_by_model_reports_the_missing_usage_instead_of_no_section(run_dir):
