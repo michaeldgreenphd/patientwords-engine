@@ -460,7 +460,8 @@ def test_incomplete_cost_sidecars_are_unavailable_not_tables_with_dashes(run_dir
     s = summary.run_summary(run_dir, mode="run")
     assert s["judge_sidecar"] == {"path": "example.judge.report.json", "unavailable": "example.judge.report.json lacks 'cost_usd'"}
     framework.write_json(judge_side, {"judge_model": "claude-haiku-4-5", "cost_usd": 0.01, "cost_basis": "x", "billing_channel": "anthropic",
-                                      "max_spend_usd": 0.05, "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0})
+                                      "max_spend_usd": 0.05, "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0,
+                                      "judgments_sha256": None})
     assert summary.run_summary(run_dir, mode="run")["judge_sidecar"]["cost_usd"] == 0.01
 
 
@@ -620,7 +621,8 @@ def test_a_judge_that_left_only_its_fallback_sidecar_is_reported_from_it(run_dir
     judge was omitted from the usage table."""
     framework.write_json(run_dir / "example.judge.report.json",
                          {"judge_model": "claude-haiku-4-5", "cost_usd": 0.01, "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar",
-                          "billing_channel": "anthropic", "aborted": True, "max_spend_usd": 0.05, "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0})
+                          "billing_channel": "anthropic", "aborted": True, "max_spend_usd": 0.05, "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0,
+                          "judgments_sha256": None})
     usage = summary.run_summary(run_dir, mode="run")["usage"]
     judge = [r for r in usage if r["model"] == "claude-haiku-4-5"]
     assert len(judge) == 1 and judge[0]["status"] == summary.USAGE_UNAVAILABLE and judge[0]["calls"] is None
@@ -640,7 +642,8 @@ def test_a_judgments_file_without_judge_rows_falls_back_to_the_sidecar(run_dir):
 
     framework.write_json(run_dir / "example.judge.report.json",
                          {"judge_model": "claude-haiku-4-5", "cost_usd": 0.01, "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar",
-                          "billing_channel": "anthropic", "aborted": True, "max_spend_usd": 0.05, "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0})
+                          "billing_channel": "anthropic", "aborted": True, "max_spend_usd": 0.05, "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0,
+                          "judgments_sha256": None})
     (run_dir / "judgments.jsonl").write_text("", encoding="utf-8")
     judge = judge_rows()
     assert len(judge) == 1 and judge[0]["model"] == "claude-haiku-4-5" and judge[0]["status"] == summary.USAGE_UNAVAILABLE
@@ -949,7 +952,8 @@ def test_usage_provenance_is_bound_to_the_run_s_pricing_pin(run_dir, tmp_path):
     (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     framework.write_json(run_dir / "example.judge.report.json",
                          {"judge_model": "claude-haiku-4-5", "cost_usd": 0.0, "cost_basis": "cumulative_from_records", "billing_channel": "anthropic",
-                          "max_spend_usd": 0.05, "price_source": "pinned:test", "input_per_mtok": 0.0, "output_per_mtok": 0.0})
+                          "max_spend_usd": 0.05, "price_source": "pinned:test", "input_per_mtok": 0.0, "output_per_mtok": 0.0,
+                          "judgments_sha256": framework.sha256_file(run_dir / "judgments.jsonl")})
     judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "claude-haiku-4-5"][0]
     assert judge["status"] == summary.USAGE_MOCK and judge["price_source"] == "pinned:test"
     (run_dir / "judgments.jsonl").unlink()
@@ -981,7 +985,8 @@ def test_judge_rows_survive_a_target_pricing_pin_mismatch(run_dir):
     (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     framework.write_json(run_dir / "example.judge.report.json",
                          {"judge_model": "claude-haiku-4-5", "cost_usd": 0.0, "cost_basis": "cumulative_from_records", "billing_channel": "anthropic",
-                          "max_spend_usd": 0.05, "price_source": "pinned:test", "input_per_mtok": 0.0, "output_per_mtok": 0.0})
+                          "max_spend_usd": 0.05, "price_source": "pinned:test", "input_per_mtok": 0.0, "output_per_mtok": 0.0,
+                          "judgments_sha256": framework.sha256_file(run_dir / "judgments.jsonl")})
     m = framework.load_json(run_dir / "manifest.json")
     m["usage"]["pricing_source_sha256"] = "f" * 64
     framework.write_json(run_dir / "manifest.json", m)
@@ -1149,7 +1154,7 @@ def test_sidecar_spend_values_are_bounded(run_dir):
     assert summary.run_summary(run_dir, mode="dry_run")["sidecar"]["unavailable"] == "example.report.json 'cost_usd' is not finite (inf)"
     assert target()["cost_usd"] == 0.0, "the sound sidecar still reads"
     judge = {"judge_model": "claude-haiku-4-5", "cost_usd": -0.5, "cost_basis": "b", "billing_channel": "anthropic", "max_spend_usd": 0.05,
-             "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0}
+             "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0, "judgments_sha256": None}
     framework.write_json(run_dir / "example.judge.report.json", judge)
     assert summary.run_summary(run_dir, mode="dry_run")["judge_sidecar"]["unavailable"] == "example.judge.report.json 'cost_usd' is negative (-0.5)"
     framework.write_json(run_dir / "example.judge.report.json", {**judge, "cost_usd": 0.0, "max_spend_usd": 0})
@@ -1180,7 +1185,8 @@ def test_sidecars_are_found_by_pattern_after_a_flat_extraction(run_dir, tmp_path
     s = summary.run_summary(flat, mode="dry_run")
     assert s["sidecar"]["unavailable"] == "2 target cost sidecars in the run directory"
     framework.write_json(flat / "example.judge.report.json", {"judge_model": "x", "cost_usd": 0.0, "cost_basis": "b", "billing_channel": "anthropic",
-                                                              "max_spend_usd": 0.05, "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0})
+                                                              "max_spend_usd": 0.05, "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0,
+                                                              "judgments_sha256": None})
     assert summary.run_summary(flat, mode="dry_run")["judge_sidecar"]["path"] == "example.judge.report.json"
 
 
@@ -1337,7 +1343,8 @@ def test_a_no_manifest_judge_is_never_priced_from_an_unchecked_registry(tmp_path
     # the judge sidecar's recorded price still labels the row: it is the run's own record, not the registry
     framework.write_json(run_dir / "run_x.judge.report.json",
                          {"judge_model": "claude-haiku-4-5", "cost_usd": 0.0002, "cost_basis": "cumulative_from_records", "billing_channel": "anthropic",
-                          "max_spend_usd": 0.05, "price_source": "pinned:test", "input_per_mtok": 1.0, "output_per_mtok": 5.0})
+                          "max_spend_usd": 0.05, "price_source": "pinned:test", "input_per_mtok": 1.0, "output_per_mtok": 5.0,
+                          "judgments_sha256": framework.sha256_file(run_dir / "judgments.jsonl")})
     judge = summary.run_summary(run_dir, mode="run")["usage"][1]
     assert judge["status"] == summary.USAGE_PROVIDER_MEASURED and judge["price_source"] == "pinned:test"
     # a damaged sidecar records nothing usable: back to the counts without a label
@@ -1379,17 +1386,23 @@ def test_judgment_rows_are_reconciled_with_the_judge_sidecar_s_model(run_dir):
     usage table attributed the judge to a model the cost record does not
     name. The judge loop uses one spec per run and a resumed pass must keep
     it, so the disagreement is a named gap on the row."""
-    def judge_rows(*rows):
+    def judge_rows(*rows, sidecar=True):
         (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+        side = run_dir / "example.judge.report.json"
+        if sidecar:
+            # the sidecar as the loop leaves it: written after its last row, recording the file's digest
+            framework.write_json(side, {"judge_model": "claude-haiku-4-5", "cost_usd": 0.0002, "cost_basis": "cumulative_from_records",
+                                        "billing_channel": "anthropic", "max_spend_usd": 0.05, "price_source": "pinned:test",
+                                        "input_per_mtok": 1.0, "output_per_mtok": 5.0,
+                                        "judgments_sha256": framework.sha256_file(run_dir / "judgments.jsonl")})
+        elif side.is_file():
+            side.unlink()
         return [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] != "mockllm/model"]
 
     def row(spec):
         return {"method": "judge", "judge_model": spec, "usage_missing": False, "input_tokens": 100, "output_tokens": 20,
                 "retry_attempts_charged": 0, "provider_attempts": 1}
 
-    framework.write_json(run_dir / "example.judge.report.json",
-                         {"judge_model": "claude-haiku-4-5", "cost_usd": 0.0002, "cost_basis": "cumulative_from_records", "billing_channel": "anthropic",
-                          "max_spend_usd": 0.05, "price_source": "pinned:test", "input_per_mtok": 1.0, "output_per_mtok": 5.0})
     agreed = judge_rows(row("claude-haiku-4-5"))
     assert len(agreed) == 1 and agreed[0]["status"] == summary.USAGE_PROVIDER_MEASURED and agreed[0]["price_source"] == "pinned:test"
     other = judge_rows(row("claude-sonnet-4-5"))
@@ -1402,8 +1415,7 @@ def test_judgment_rows_are_reconciled_with_the_judge_sidecar_s_model(run_dir):
         [("claude-haiku-4-5", summary.USAGE_UNAVAILABLE, None, 1), ("claude-sonnet-4-5", summary.USAGE_UNAVAILABLE, None, 1)]
     assert all(r["note"].endswith("; judgments.jsonl names 2 judge models (claude-haiku-4-5, claude-sonnet-4-5); one judge of record per run")
                for r in two)
-    (run_dir / "example.judge.report.json").unlink()
-    assert judge_rows(row("claude-haiku-4-5"), row("claude-sonnet-4-5"))[1]["status"] == summary.USAGE_UNAVAILABLE
+    assert judge_rows(row("claude-haiku-4-5"), row("claude-sonnet-4-5"), sidecar=False)[1]["status"] == summary.USAGE_UNAVAILABLE
 
 
 def test_judge_token_totals_are_absent_until_a_row_carries_usage(run_dir):
@@ -1470,7 +1482,8 @@ def test_rows_beside_a_fallback_written_judge_sidecar_are_partial_evidence(run_d
     (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     fallback = {"judge_model": "claude-haiku-4-5", "cost_usd": 0.05, "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar",
                 "billing_channel": "anthropic", "aborted": True, "abort_error": None, "max_spend_usd": 0.05,
-                "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0}
+                "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0,
+                "judgments_sha256": framework.sha256_file(run_dir / "judgments.jsonl")}
     framework.write_json(run_dir / "example.judge.report.json", fallback)
     judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "claude-haiku-4-5"][0]
     assert judge["calls"] == 2 and judge["input_tokens"] == 200, "the surviving rows are kept as partial evidence"
@@ -1483,7 +1496,9 @@ def test_rows_beside_a_fallback_written_judge_sidecar_are_partial_evidence(run_d
     framework.write_json(run_dir / "example.judge.report.json",
                          {**fallback, "cost_usd": 0.0, "cost_basis": "engine_repriced_from_inspect_model_usage", "input_per_mtok": 0.0, "output_per_mtok": 0.0})
     judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "claude-haiku-4-5"][0]
-    assert judge["status"] == summary.USAGE_UNAVAILABLE and judge["calls"] == 2 and "partial evidence" in judge["note"]
+    # a zero-price judge is non-metered whatever survived, the label the same sidecar gets with no rows at all; the note
+    # still carries the incompleteness (independent review of efaf1154)
+    assert judge["status"] == summary.USAGE_MOCK and judge["calls"] == 2 and "partial evidence" in judge["note"]
     # the loop's own sidecar accounts for every row it wrote (a failed call is written as a null row before the abort)
     framework.write_json(run_dir / "example.judge.report.json", {**fallback, "cost_basis": JUDGE_LOOP_COST_BASIS, "aborted": False})
     judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "claude-haiku-4-5"][0]
@@ -1524,3 +1539,71 @@ def test_role_and_model_usage_totals_are_reconciled(run_dir):
     # a malformed by_model row withholds the structure's target calls too: the totals cannot be reconciled
     s = damaged(lambda m: m["usage"]["by_model"][0].pop("calls_without_usage"))
     assert s["structure"]["unavailable_fields"]["target_calls"] == "usage.by_model row #0 lacks 'calls_without_usage'"
+
+
+def test_rows_past_the_judge_sidecar_s_recorded_digest_are_partial_evidence(run_dir):
+    """Independent review of efaf1154 (PR #27): the partial-evidence check
+    keyed on the cost basis alone, so the loop's own sidecar from a first
+    pass, left in place by a resumed pass that appended rows and died
+    mid-call (the workflow's fallback then finds a sidecar and writes none),
+    labelled the rows provider-measured with too few calls. Both writers
+    record `judgments_sha256` as they leave the file; the chain verifier
+    already refuses rows past it, and the summary now binds to it too."""
+    row = {"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 100, "output_tokens": 20,
+           "retry_attempts_charged": 0, "provider_attempts": 1}
+    judgments = run_dir / "judgments.jsonl"
+    judgments.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    side = {"judge_model": "claude-haiku-4-5", "cost_usd": 0.0002, "cost_basis": "cumulative_from_records", "billing_channel": "anthropic",
+            "max_spend_usd": 0.05, "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0,
+            "judgments_sha256": framework.sha256_file(judgments)}
+    framework.write_json(run_dir / "example.judge.report.json", side)
+
+    def judge():
+        return [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "claude-haiku-4-5"][0]
+
+    assert judge()["status"] == summary.USAGE_PROVIDER_MEASURED and judge()["calls"] == 1, "the sidecar describes the file: bound"
+    with open(judgments, "a", encoding="utf-8") as fh:
+        fh.write(json.dumps(row) + "\n")                    # a second pass appended a row and left no sidecar of its own
+    j = judge()
+    assert j["calls"] == 2 and j["input_tokens"] == 200 and j["status"] == summary.USAGE_UNAVAILABLE and j["price_source"] == "registry:anthropic"
+    assert f"the judge sidecar records digest {side['judgments_sha256'][:12]} for judgments.jsonl, which digests to " in j["note"]
+    assert j["note"].endswith("rows were written after the sidecar by an invocation that left none of its own, so a call in flight has no "
+                              "row and the rows are partial evidence")
+    framework.write_json(run_dir / "example.judge.report.json", {**side, "judgments_sha256": None})
+    j = judge()
+    assert j["status"] == summary.USAGE_UNAVAILABLE and "the judge sidecar records no digest for judgments.jsonl" in j["note"]
+    # the digest is required of every judge sidecar, as both writers emit it; without it the sidecar is unreadable
+    framework.write_json(run_dir / "example.judge.report.json", {k: v for k, v in side.items() if k != "judgments_sha256"})
+    s = summary.run_summary(run_dir, mode="run")
+    assert s["judge_sidecar"]["unavailable"] == "example.judge.report.json lacks 'judgments_sha256'"
+    assert [r for r in s["usage"] if r["model"] == "claude-haiku-4-5"][0]["status"] == summary.USAGE_UNAVAILABLE
+
+
+def test_rows_beside_an_unreadable_judge_sidecar_get_no_label(run_dir):
+    """Independent review of efaf1154 (PR #27): the partial-evidence and
+    model checks were gated on the sidecar being readable, so a truncated
+    or incomplete judge sidecar (the fallback is written non-atomically in
+    an always() step) beside judgment rows fell through to the registry
+    and labelled them provider-measured, while the same sidecar with no
+    rows yields an unavailable row: more evidence got a stronger label."""
+    rows = [{"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 100, "output_tokens": 20,
+             "retry_attempts_charged": 0, "provider_attempts": 1}] * 2
+    (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+
+    def judge():
+        return [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] in ("claude-haiku-4-5", "(judge of record)")][0]
+
+    (run_dir / "example.judge.report.json").write_text('{"judge_model": "claude-haiku-4-5", "cost_usd": 0.0', encoding="utf-8")
+    j = judge()
+    assert j["model"] == "claude-haiku-4-5" and j["calls"] == 2 and j["input_tokens"] == 200, "the counts stand"
+    assert j["status"] == summary.USAGE_UNAVAILABLE and j["price_source"] is None
+    assert "; the judge sidecar is unavailable (Expecting" in j["note"]
+    framework.write_json(run_dir / "example.judge.report.json",
+                         {"judge_model": "claude-haiku-4-5", "cost_usd": 0.05, "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar",
+                          "billing_channel": "anthropic", "max_spend_usd": 0.05, "input_per_mtok": 1.0, "output_per_mtok": 5.0, "judgments_sha256": None})
+    j = judge()
+    assert j["status"] == summary.USAGE_UNAVAILABLE and j["price_source"] is None
+    assert j["note"].endswith("; the judge sidecar is unavailable (example.judge.report.json lacks 'price_source')")
+    # the same sidecar with no rows is the same verdict from the other path
+    (run_dir / "judgments.jsonl").unlink()
+    assert judge()["model"] == "(judge of record)" and "the judge sidecar is unavailable" in judge()["note"]

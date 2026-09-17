@@ -431,10 +431,24 @@ def _judge_usage_rows(run_dir: Path, judge_started: Path | str | None = None, re
     # the surviving rows are partial evidence, reported with their counts and their recorded price but no provenance
     # label (Codex, PR #27, seventeenth round: a judge killed after flushing rows was labelled provider-measured with too
     # few calls)
+    # a judge sidecar that exists but cannot be read leaves the rows unauthenticated and unpriced: they keep their counts
+    # and get no label, as the same sidecar yields with no judge row at all (`_judge_row_from_sidecar`); pricing them from
+    # the registry gave more evidence a stronger label than less (independent review of efaf1154)
+    unreadable = f"the judge sidecar is unavailable ({side['unavailable']})" if side and "unavailable" in side else None
     incomplete = None
     if recorded is not None and side["cost_basis"] != JUDGE_LOOP_COST_BASIS:
         incomplete = (f"the judge sidecar books {side['cost_basis']}, not the judge loop's own {JUDGE_LOOP_COST_BASIS}: the loop "
                       f"died before writing its sidecar, so a call in flight has no row and the rows are partial evidence")
+    elif recorded is not None and side["judgments_sha256"] != (current := sha256_file(path)):
+        # the loop's own sidecar describes the file as it left it; rows past that digest were written by an invocation
+        # that left no sidecar of its own (a resumed pass that died mid-call leaves the first pass's sidecar in place,
+        # and the workflow's fallback then finds a sidecar and writes none), so the same call-in-flight gap applies
+        # (independent review of efaf1154; the chain verifier refuses the same rows as unauthenticated)
+        described = (f"records digest {side['judgments_sha256'][:12]}" if isinstance(side["judgments_sha256"], str)
+                     else "records no digest")
+        incomplete = (f"the judge sidecar {described} for judgments.jsonl, which digests to {current[:12]}: rows were written after "
+                      f"the sidecar by an invocation that left none of its own, so a call in flight has no row and the rows are "
+                      f"partial evidence")
     out = []
     for spec, agg in sorted(per.items()):
         note = f"judge of record, aggregated from judgments.jsonl ({rows_per[spec]} judge row(s), {agg['calls']} provider attempt(s))"
@@ -445,9 +459,16 @@ def _judge_usage_rows(run_dir: Path, judge_started: Path | str | None = None, re
         if disagreement is not None:
             out.append({"model": spec, **agg, "status": USAGE_UNAVAILABLE, "price_source": None, "note": f"{note}; {disagreement}"})
             continue
+        if unreadable is not None:
+            out.append({"model": spec, **agg, "status": USAGE_UNAVAILABLE, "price_source": None, "note": f"{note}; {unreadable}"})
+            continue
         price = _pinned_judge_price(side, spec)
         if incomplete is not None:
-            out.append({"model": spec, **agg, "status": USAGE_UNAVAILABLE, "price_source": price.source, "note": f"{note}; {incomplete}"})
+            # a zero-price judge is non-metered whatever survived, as the sidecar-only path labels it; the label is a
+            # property of the price, the note carries the incompleteness (independent review of efaf1154)
+            zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
+            out.append({"model": spec, **agg, "status": USAGE_MOCK if zero else USAGE_UNAVAILABLE, "price_source": price.source,
+                        "note": f"{note}; {incomplete}"})
             continue
         if price is None and registry_note is None:
             price = resolve_registry_price(spec)         # the registry matched the manifest's pin, or no pin exists to check
@@ -795,6 +816,10 @@ def _judge_sidecar(run_dir: Path) -> dict | None:
                 "max_spend_usd": _member(r, "max_spend_usd", where, NUMBER),
                 "price_source": _member(r, "price_source", where, (str,)),
                 "input_per_mtok": _member(r, "input_per_mtok", where, NUMBER), "output_per_mtok": _member(r, "output_per_mtok", where, NUMBER),
+                # both writers record the digest of judgments.jsonl as they left it (None when the file did not exist),
+                # which is what binds the rows to the sidecar (independent review of efaf1154: the chain verifier's
+                # `_unbound_rows_problems` reads it; the summary did not)
+                "judgments_sha256": _member(r, "judgments_sha256", where, (str, NULL)),
                 "planned": r.get("planned"), "cumulative": r.get("cumulative"), "aborted": r.get("aborted"), "truncated": r.get("truncated")}
         _bounded_spend({"cost_usd": side["cost_usd"], "max_spend_usd": side["max_spend_usd"], "input_per_mtok": side["input_per_mtok"],
                         "output_per_mtok": side["output_per_mtok"]}, where, positive_ceiling=True)

@@ -1431,7 +1431,13 @@ dry run observable, which section 14 depends on.
    judge sidecar the workflow's fallback wrote (any basis but the loop's own
    `cumulative_from_records`) are partial evidence, reported with their
    counts and no label; and `usage.by_role` and `usage.by_model` must sum to
-   the same calls and calls without usage before either is published.
+   the same calls and calls without usage before either is published. An
+   independent review of that head, run while Codex was out of usage, found
+   three more: the judge rows are bound to the sidecar's recorded
+   `judgments_sha256` (rows past it are partial evidence, the state a
+   resumed pass that died mid-call leaves); rows beside a judge sidecar that
+   cannot be read get no label rather than a registry price; and a
+   zero-price judge stays non-metered whatever survived.
 
 ## Decisions recorded from the owner (2026-09-16)
 
