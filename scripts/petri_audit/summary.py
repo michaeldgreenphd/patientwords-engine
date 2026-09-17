@@ -32,7 +32,7 @@ from typing import Any
 
 from .framework import MANIFEST_SCHEMA, OUTCOME_REGISTRY, ROOT, load_json, sha256_file
 from .manifest import CHAIN_FILE, artifact_problems, manifest_problems, verify_chain, verify_run
-from .spend import resolve_price, usage_is_missing
+from .spend import Price, pricing_source_digest, resolve_price, usage_is_missing
 from .transcripts import record_problems
 
 ATTACHMENT_MARK = "attachment://"
@@ -308,6 +308,21 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
     return out
 
 
+def _pinned_judge_price(run_dir: Path, spec: str) -> Price:
+    """The judge's price as the run recorded it: the judge sidecar carries
+    the source and the rates every judged call was charged at, so the label
+    never depends on the registry the summary happens to run against
+    (Codex, PR #27, fourteenth round). Without a readable sidecar for that
+    judge, the registry resolves it; in the manifest path that registry has
+    already been checked against the manifest's pricing pin."""
+    from .spend import resolve_registry_price
+
+    side = _judge_sidecar(run_dir)
+    if side and "unavailable" not in side and side["judge_model"] == spec:
+        return Price(float(side["input_per_mtok"]), float(side["output_per_mtok"]), side["price_source"])
+    return resolve_registry_price(spec)
+
+
 def _judge_row_from_sidecar(run_dir: Path, what: str, judge_started: Path | str | None = None) -> list[dict]:
     """The judge of record reported from its cost sidecar when judgments.jsonl
     carries no judge row: the file is absent (the judge died before opening
@@ -321,8 +336,6 @@ def _judge_row_from_sidecar(run_dir: Path, what: str, judge_started: Path | str 
     invoked) is such evidence: a judge that died before opening its file,
     whose fallback sidecar was never written either, is reported from the
     marker (Codex, PR #27, eleventh round)."""
-    from .spend import resolve_registry_price
-
     side = _judge_sidecar(run_dir)
     if not side:
         started = judge_started is not None and Path(judge_started).is_file()
@@ -335,10 +348,9 @@ def _judge_row_from_sidecar(run_dir: Path, what: str, judge_started: Path | str 
         return [{"model": "(judge of record)", "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
                  "status": USAGE_UNAVAILABLE, "price_source": None,
                  "note": f"judge of record: {what} and the judge sidecar is unavailable ({side['unavailable']})"}]
-    price = resolve_registry_price(side["judge_model"])
-    zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
+    zero = side["input_per_mtok"] == 0 and side["output_per_mtok"] == 0      # the rates the run recorded, never re-resolved
     return [{"model": side["judge_model"], "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
-             "status": USAGE_MOCK if zero else USAGE_UNAVAILABLE, "price_source": price.source,
+             "status": USAGE_MOCK if zero else USAGE_UNAVAILABLE, "price_source": side["price_source"],
              "note": f"judge of record: {what}; the judge sidecar books {side['cost_basis']}"}]
 
 
@@ -348,8 +360,6 @@ def _judge_usage_rows(run_dir: Path, judge_started: Path | str | None = None) ->
     (Codex, PR #27: the table omitted every paid judge call). A file that
     cannot be read is a row that says so, never an omitted judge; a file
     with no judge row falls back to the sidecar (`_judge_row_from_sidecar`)."""
-    from .spend import resolve_registry_price
-
     path = run_dir / "judgments.jsonl"
     if not path.is_file():
         return _judge_row_from_sidecar(run_dir, "no judgments.jsonl", judge_started)
@@ -394,7 +404,7 @@ def _judge_usage_rows(run_dir: Path, judge_started: Path | str | None = None) ->
         return _judge_row_from_sidecar(run_dir, f"judgments.jsonl has no judge row ({len(rows)} non-judge row(s))", judge_started)
     out = []
     for spec, agg in sorted(per.items()):
-        price = resolve_registry_price(spec)
+        price = _pinned_judge_price(run_dir, spec)
         zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
         out.append({"model": spec, **agg, "status": usage_status(agg, price.source, zero), "price_source": price.source,
                     "note": (f"judge of record, aggregated from judgments.jsonl ({rows_per[spec]} judge row(s), "
@@ -416,12 +426,14 @@ def _bounded_counts(fields: dict[str, Any], where: str) -> None:
         raise ValueError(f"{where} 'calls_without_usage' {without} exceeds 'calls' {calls}")
 
 
-def _usage_row(r: Any, where: str) -> dict:
+def _usage_row(r: Any, where: str, price: Price | None = None) -> dict:
     """One usage row from a per-model record (the manifest's `usage.by_model`
     or the fallback sidecar's `models`): every key the label reads present
     and typed (Codex, PR #27: `usage_is_missing` reads an absent
     calls_without_usage as 0, which labelled a damaged row provider-measured),
-    the counters bounded, then the provenance label."""
+    the counters bounded, then the provenance label. `price` is the price the
+    run recorded for the row; without one the registry resolves it, which the
+    caller has checked against the manifest's pricing pin."""
     model = _member(r, "model", where)
     if not isinstance(model, str):
         raise TypeError(f"{where} model is not a string")
@@ -430,7 +442,7 @@ def _usage_row(r: Any, where: str) -> dict:
               "input_tokens": _member(r, "input_tokens", where, (int, NULL)),
               "output_tokens": _member(r, "output_tokens", where, (int, NULL))}
     _bounded_counts(fields, where)
-    price = resolve_price(model)
+    price = price if price is not None else resolve_price(model)
     zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
     return {"model": model, **fields, "status": usage_status(r, price.source, zero), "price_source": price.source}
 
@@ -456,7 +468,13 @@ def _usage_without_manifest(run_dir: Path, judge_started: Path | str | None = No
         models = r.get("models")
         if not isinstance(models, list):
             raise KeyError(f"{where} lacks a 'models' list")
-        rows = [_usage_row(m, f"{where} models #{i}") for i, m in enumerate(models)]
+        rows = []
+        for i, m in enumerate(models):
+            mwhere = f"{where} models #{i}"
+            # the sidecar's rows retain the source and rates the run was priced at (Codex, PR #27, fourteenth round)
+            pinned = Price(float(_member(m, "input_per_mtok", mwhere, NUMBER)), float(_member(m, "output_per_mtok", mwhere, NUMBER)),
+                           _member(m, "price_source", mwhere, (str,)))
+            rows.append(_usage_row(m, mwhere, pinned))
     except (KeyError, TypeError, ValueError, OSError) as exc:
         return {"unavailable": _reason(exc)}
     if not rows:
@@ -468,12 +486,38 @@ def _usage_without_manifest(run_dir: Path, judge_started: Path | str | None = No
 
 
 def _usage(manifest: dict, run_dir: Path | None = None, judge_started: Path | str | None = None) -> list[dict] | dict:
+    # the manifest's rows carry no price; the registry the summary runs against must be the one the run was priced
+    # with (the manifest pins its digest), or every label would rest on a source the run never used (Codex, PR #27,
+    # fourteenth round: the paid run's own commit steps pull main before the summary)
+    pin = _dig(manifest, "usage", "pricing_source_sha256")
+    if not (isinstance(pin, str) and len(pin) == 64):
+        return {"unavailable": "manifest carries no pricing digest (usage.pricing_source_sha256); no price source can be attributed"}
+    current = pricing_source_digest()
+    if current != pin:
+        return {"unavailable": f"the pricing registry differs from the run's pin (pinned {pin[:12]}, current {current[:12]}); "
+                               "no price source can be attributed"}
     rows = []
+    observed_missing: set[str] = set()
     for i, r in enumerate(_collection(manifest, "usage", "by_model")):
         try:
             rows.append(_usage_row(r, f"usage.by_model row #{i}"))
+            if usage_is_missing(r):
+                observed_missing.add(rows[-1]["model"])
         except (KeyError, TypeError, ValueError) as exc:
             return {"unavailable": _reason(exc)}
+    if rows:
+        # the adapter derives `usage_missing_models` from the same rows; the two representations must agree, or an
+        # adapter regression could seal a row labelled provider-measured beside a declaration that imputes the ceiling
+        # (Codex, PR #27, fourteenth round)
+        try:
+            declared = _collection(manifest, "usage", "usage_missing_models")
+            if not all(isinstance(m, str) for m in declared):
+                raise TypeError("usage.usage_missing_models carries a non-string entry")
+        except (KeyError, TypeError) as exc:
+            return {"unavailable": _reason(exc)}
+        if sorted(set(declared)) != sorted(observed_missing):
+            return {"unavailable": f"usage_missing_models names {sorted(set(declared))} but the by_model rows with missing usage "
+                                   f"are {sorted(observed_missing)}"}
     if not rows:
         # a run with samples but no target model event leaves by_model empty while the adapter names the target in
         # usage_missing_models and the sidecar imputes its ceiling; that state is reported, never an omitted section
@@ -549,11 +593,14 @@ def _integrity(manifest: dict, run_dir: Path) -> dict:
 NUMBER = (int, float)
 
 
-def _bounded_spend(fields: dict[str, Any], where: str) -> None:
-    """Spend values are finite and non-negative, and a ceiling is positive.
-    A sidecar may be the only spend evidence a failed run leaves, so a value
-    outside those bounds is a named gap, never a spend record (Codex, PR #27,
-    twelfth round: `cost_usd: -1` rendered as one)."""
+def _bounded_spend(fields: dict[str, Any], where: str, *, positive_ceiling: bool) -> None:
+    """Spend values are finite and non-negative. A judge ceiling is positive
+    (`SpendCeiling` refuses zero); a target ceiling may be zero, because a
+    zero-priced dry run is admitted under `max_spend: "0"` and its sidecar
+    records that ceiling (Codex, PR #27, fourteenth round). A sidecar may be
+    the only spend evidence a failed run leaves, so a value outside those
+    bounds is a named gap, never a spend record (twelfth round: `cost_usd:
+    -1` rendered as one)."""
     for key, value in fields.items():
         if value is None:
             continue
@@ -561,7 +608,7 @@ def _bounded_spend(fields: dict[str, Any], where: str) -> None:
             raise ValueError(f"{where} {key!r} is not finite ({value})")
         if value < 0:
             raise ValueError(f"{where} {key!r} is negative ({value})")
-        if key == "max_spend_usd" and value == 0:
+        if key == "max_spend_usd" and positive_ceiling and value == 0:
             raise ValueError(f"{where} {key!r} is not a positive ceiling ({value})")
 
 
@@ -596,7 +643,7 @@ def _sidecar(run_dir: Path) -> dict | None:
                 "billing_channel": _member(r, "billing_channel", where, (str,)),
                 "usage_missing_models": _member(r, "usage_missing_models", where, (list,)),
                 "max_spend_usd": _member(r, "max_spend_usd", where, NUMBER), "spend_report_reason": r.get("spend_report_reason")}
-        _bounded_spend({"cost_usd": side["cost_usd"], "max_spend_usd": side["max_spend_usd"]}, where)
+        _bounded_spend({"cost_usd": side["cost_usd"], "max_spend_usd": side["max_spend_usd"]}, where, positive_ceiling=False)
         return side
     except (KeyError, TypeError, ValueError, OSError) as exc:
         return {"path": path.name, "unavailable": _reason(exc)}
@@ -616,10 +663,13 @@ def _judge_sidecar(run_dir: Path) -> dict | None:
             raise TypeError(f"{where} is not an object")
         side = {"path": path.name, "judge_model": _member(r, "judge_model", where, (str,)), "cost_usd": _member(r, "cost_usd", where, NUMBER),
                 "cost_basis": _member(r, "cost_basis", where, (str,)), "billing_channel": _member(r, "billing_channel", where, (str,)),
-                # both judge-sidecar writers emit the ceiling; its absence is a damaged record (Codex, PR #27, thirteenth round)
+                # both judge-sidecar writers emit the ceiling and the price they charged at; their absence is a damaged
+                # record (Codex, PR #27, thirteenth and fourteenth rounds)
                 "max_spend_usd": _member(r, "max_spend_usd", where, NUMBER),
+                "price_source": _member(r, "price_source", where, (str,)),
+                "input_per_mtok": _member(r, "input_per_mtok", where, NUMBER), "output_per_mtok": _member(r, "output_per_mtok", where, NUMBER),
                 "planned": r.get("planned"), "cumulative": r.get("cumulative"), "aborted": r.get("aborted"), "truncated": r.get("truncated")}
-        _bounded_spend({"cost_usd": side["cost_usd"], "max_spend_usd": side["max_spend_usd"]}, where)
+        _bounded_spend({"cost_usd": side["cost_usd"], "max_spend_usd": side["max_spend_usd"]}, where, positive_ceiling=True)
         return side
     except (KeyError, TypeError, ValueError, OSError) as exc:
         return {"path": path.name, "unavailable": _reason(exc)}

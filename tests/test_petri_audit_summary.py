@@ -12,7 +12,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from scripts.petri_audit import cli, framework, summary, transcripts  # noqa: E402
+from scripts.petri_audit import cli, framework, spend, summary, transcripts  # noqa: E402
 from scripts.petri_audit import manifest as manifest_mod  # noqa: E402
 
 
@@ -45,6 +45,8 @@ def run_dir(tmp_path) -> Path:
     raw.mkdir()
     (raw / "run.eval").write_bytes(b"raw log bytes")
     base["artifacts"]["raw_eval_log_sha256"] = framework.sha256_file(raw / "run.eval")
+    # the run is priced with this checkout's registry, and the manifest pins its digest as the adapter does
+    base["usage"]["pricing_source_sha256"] = spend.pricing_source_digest()
     # the records are bound to the manifest's identity digest exactly as the adapter binds them: the identity excludes
     # the record-dependent digests, so it is known before the records are written
     identity = manifest_mod.identity_digest(base)
@@ -458,7 +460,7 @@ def test_incomplete_cost_sidecars_are_unavailable_not_tables_with_dashes(run_dir
     s = summary.run_summary(run_dir, mode="run")
     assert s["judge_sidecar"] == {"path": "example.judge.report.json", "unavailable": "example.judge.report.json lacks 'cost_usd'"}
     framework.write_json(judge_side, {"judge_model": "claude-haiku-4-5", "cost_usd": 0.01, "cost_basis": "x", "billing_channel": "anthropic",
-                                      "max_spend_usd": 0.05})
+                                      "max_spend_usd": 0.05, "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0})
     assert summary.run_summary(run_dir, mode="run")["judge_sidecar"]["cost_usd"] == 0.01
 
 
@@ -617,7 +619,7 @@ def test_a_judge_that_left_only_its_fallback_sidecar_is_reported_from_it(run_dir
     judge was omitted from the usage table."""
     framework.write_json(run_dir / "example.judge.report.json",
                          {"judge_model": "claude-haiku-4-5", "cost_usd": 0.01, "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar",
-                          "billing_channel": "anthropic", "aborted": True, "max_spend_usd": 0.05})
+                          "billing_channel": "anthropic", "aborted": True, "max_spend_usd": 0.05, "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0})
     usage = summary.run_summary(run_dir, mode="run")["usage"]
     judge = [r for r in usage if r["model"] == "claude-haiku-4-5"]
     assert len(judge) == 1 and judge[0]["status"] == summary.USAGE_UNAVAILABLE and judge[0]["calls"] is None
@@ -637,7 +639,7 @@ def test_a_judgments_file_without_judge_rows_falls_back_to_the_sidecar(run_dir):
 
     framework.write_json(run_dir / "example.judge.report.json",
                          {"judge_model": "claude-haiku-4-5", "cost_usd": 0.01, "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar",
-                          "billing_channel": "anthropic", "aborted": True, "max_spend_usd": 0.05})
+                          "billing_channel": "anthropic", "aborted": True, "max_spend_usd": 0.05, "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0})
     (run_dir / "judgments.jsonl").write_text("", encoding="utf-8")
     judge = judge_rows()
     assert len(judge) == 1 and judge[0]["model"] == "claude-haiku-4-5" and judge[0]["status"] == summary.USAGE_UNAVAILABLE
@@ -910,6 +912,82 @@ def test_artifacts_are_bound_to_the_manifest_s_directory(run_dir, tmp_path):
     assert manifest_mod.verify_run(run_dir) == [] and manifest_mod.verify_chain(run_dir.parent)[0] is True, "the sound layout is unchanged"
 
 
+def test_usage_provenance_is_bound_to_the_run_s_pricing_pin(run_dir, tmp_path):
+    """Codex (PR #27, fourteenth round): the labels and price sources were
+    resolved from whatever registry the summary ran against, although the
+    manifest pins the digest of the registry the run was priced with and
+    the sidecars retain the rates every call was charged at."""
+    from scripts.petri_audit.spend import write_report_sidecar
+
+    base = framework.load_json(run_dir / "manifest.json")
+    assert base["usage"]["pricing_source_sha256"] == spend.pricing_source_digest()
+    assert summary.run_summary(run_dir, mode="dry_run")["usage"][0]["status"] == summary.USAGE_MOCK
+
+    def pinned(value):
+        m = json.loads(json.dumps(base))
+        m["usage"]["pricing_source_sha256"] = value
+        framework.write_json(run_dir / "manifest.json", m)
+        return summary.run_summary(run_dir, mode="run")["usage"]
+
+    u = pinned("f" * 64)
+    assert u["unavailable"].startswith("the pricing registry differs from the run's pin (pinned ffffffffffff, current ")
+    assert pinned(None) == {"unavailable": "manifest carries no pricing digest (usage.pricing_source_sha256); no price source can be attributed"}
+    framework.write_json(run_dir / "manifest.json", base)
+    # the judge of record is priced from its sidecar's recorded rates, never re-resolved: zero rates under a pinned
+    # source label the judge non-metered even though the registry prices that model
+    rows = [{"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 100, "output_tokens": 20,
+             "retry_attempts_charged": 0, "provider_attempts": 1}]
+    (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    framework.write_json(run_dir / "example.judge.report.json",
+                         {"judge_model": "claude-haiku-4-5", "cost_usd": 0.0, "cost_basis": "cumulative_from_records", "billing_channel": "anthropic",
+                          "max_spend_usd": 0.05, "price_source": "pinned:test", "input_per_mtok": 0.0, "output_per_mtok": 0.0})
+    judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "claude-haiku-4-5"][0]
+    assert judge["status"] == summary.USAGE_MOCK and judge["price_source"] == "pinned:test"
+    (run_dir / "judgments.jsonl").unlink()
+    judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "claude-haiku-4-5"][0]
+    assert judge["status"] == summary.USAGE_MOCK and judge["price_source"] == "pinned:test", "the sidecar-only row uses the same rates"
+    # the no-manifest table takes each row's recorded source and rates from the fallback sidecar
+    bare = tmp_path / "run_x"
+    bare.mkdir()
+    write_report_sidecar(bare / "run_x.report.json", run_id="run_x", eval_id="e", target="anthropic/claude-haiku-4-5",
+                         model_usage={"anthropic/claude-haiku-4-5": {"input_tokens": 10, "output_tokens": 5, "calls": 1, "calls_without_usage": 0}},
+                         max_spend_usd=0.05, judge_max_spend_usd=None, run_utc="2026-09-17T00:00:00Z")
+    side = framework.load_json(bare / "run_x.report.json")
+    side["models"][0].update({"price_source": "pinned:test", "input_per_mtok": 0.0, "output_per_mtok": 0.0})
+    framework.write_json(bare / "run_x.report.json", side)
+    row = summary.run_summary(bare, mode="run")["usage"][0]
+    assert row["status"] == summary.USAGE_MOCK and row["price_source"] == "pinned:test"
+    del side["models"][0]["price_source"]
+    framework.write_json(bare / "run_x.report.json", side)
+    assert summary.run_summary(bare, mode="run")["usage"] == {"unavailable": "run_x.report.json models #0 lacks 'price_source'"}
+
+
+def test_usage_rows_are_reconciled_with_the_missing_model_list(run_dir):
+    """Codex (PR #27, fourteenth round): a by_model row with usage beside a
+    `usage_missing_models` entry naming the same model was labelled
+    provider-measured while the sidecar imputed the ceiling from the
+    declaration; the adapter derives the list from the rows, so they agree."""
+    base = framework.load_json(run_dir / "manifest.json")
+
+    def damaged(rows=None, declared=None):
+        m = json.loads(json.dumps(base))
+        if rows is not None:
+            m["usage"]["by_model"] = rows
+        if declared is not None:
+            m["usage"]["usage_missing_models"] = declared
+        framework.write_json(run_dir / "manifest.json", m)
+        return summary.run_summary(run_dir, mode="run")["usage"]
+
+    assert damaged()[0]["status"] == summary.USAGE_MOCK
+    assert damaged(declared=["mockllm/model"]) == \
+        {"unavailable": "usage_missing_models names ['mockllm/model'] but the by_model rows with missing usage are []"}
+    missing_row = dict(base["usage"]["by_model"][0], calls_without_usage=1)
+    assert damaged(rows=[missing_row], declared=[]) == \
+        {"unavailable": "usage_missing_models names [] but the by_model rows with missing usage are ['mockllm/model']"}
+    assert damaged(rows=[missing_row], declared=["mockllm/model"])[0]["status"] == summary.USAGE_MOCK, "consistent: labelled"
+    assert damaged(declared=[7]) == {"unavailable": "usage.usage_missing_models carries a non-string entry"}
+
+
 def test_duplicate_branch_conversation_ids_are_reported(run_dir):
     """Codex (PR #27, twelfth round): two manifest branches sharing a
     conversation_id collapsed in the set comparison, so a single record
@@ -989,12 +1067,15 @@ def test_sidecar_spend_values_are_bounded(run_dir):
         return summary.run_summary(run_dir, mode="dry_run")["sidecar"]
 
     assert target(cost_usd=-1)["unavailable"] == "example.report.json 'cost_usd' is negative (-1)"
-    assert target(max_spend_usd=0)["unavailable"] == "example.report.json 'max_spend_usd' is not a positive ceiling (0)"
+    # Codex (PR #27, fourteenth round): a zero-priced dry run is admitted under `max_spend: "0"` and its sidecar records
+    # that ceiling, so a zero target ceiling is a valid record; only a negative one is refused
+    assert target(max_spend_usd=0)["max_spend_usd"] == 0 and "unavailable" not in target(max_spend_usd=0)
     assert target(max_spend_usd=-0.01)["unavailable"] == "example.report.json 'max_spend_usd' is negative (-0.01)"
     (run_dir / "example.report.json").write_text(json.dumps(side).replace('"cost_usd": 0.0', '"cost_usd": Infinity'), encoding="utf-8")
     assert summary.run_summary(run_dir, mode="dry_run")["sidecar"]["unavailable"] == "example.report.json 'cost_usd' is not finite (inf)"
     assert target()["cost_usd"] == 0.0, "the sound sidecar still reads"
-    judge = {"judge_model": "claude-haiku-4-5", "cost_usd": -0.5, "cost_basis": "b", "billing_channel": "anthropic", "max_spend_usd": 0.05}
+    judge = {"judge_model": "claude-haiku-4-5", "cost_usd": -0.5, "cost_basis": "b", "billing_channel": "anthropic", "max_spend_usd": 0.05,
+             "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0}
     framework.write_json(run_dir / "example.judge.report.json", judge)
     assert summary.run_summary(run_dir, mode="dry_run")["judge_sidecar"]["unavailable"] == "example.judge.report.json 'cost_usd' is negative (-0.5)"
     framework.write_json(run_dir / "example.judge.report.json", {**judge, "cost_usd": 0.0, "max_spend_usd": 0})
@@ -1003,6 +1084,8 @@ def test_sidecar_spend_values_are_bounded(run_dir):
     # Codex (PR #27, thirteenth round): both judge-sidecar writers emit the ceiling, so a sidecar without it is damaged
     framework.write_json(run_dir / "example.judge.report.json", {k: v for k, v in judge.items() if k != "max_spend_usd"} | {"cost_usd": 0.0})
     assert summary.run_summary(run_dir, mode="dry_run")["judge_sidecar"]["unavailable"] == "example.judge.report.json lacks 'max_spend_usd'"
+    framework.write_json(run_dir / "example.judge.report.json", {k: v for k, v in judge.items() if k != "input_per_mtok"} | {"cost_usd": 0.0})
+    assert summary.run_summary(run_dir, mode="dry_run")["judge_sidecar"]["unavailable"] == "example.judge.report.json lacks 'input_per_mtok'"
 
 
 def test_sidecars_are_found_by_pattern_after_a_flat_extraction(run_dir, tmp_path):
@@ -1017,7 +1100,7 @@ def test_sidecars_are_found_by_pattern_after_a_flat_extraction(run_dir, tmp_path
     s = summary.run_summary(flat, mode="dry_run")
     assert s["sidecar"]["unavailable"] == "2 target cost sidecars in the run directory"
     framework.write_json(flat / "example.judge.report.json", {"judge_model": "x", "cost_usd": 0.0, "cost_basis": "b", "billing_channel": "anthropic",
-                                                              "max_spend_usd": 0.05})
+                                                              "max_spend_usd": 0.05, "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0})
     assert summary.run_summary(flat, mode="dry_run")["judge_sidecar"]["path"] == "example.judge.report.json"
 
 

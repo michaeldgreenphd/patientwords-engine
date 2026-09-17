@@ -1408,7 +1408,14 @@ dry run observable, which section 14 depends on.
    and sidecar spend values must be finite and non-negative with a positive
    ceiling. The thirteenth round added two: the chain verifier and the
    summary bind every artifact to the manifest's own run directory, and the
-   judge sidecar's ceiling is required.
+   judge sidecar's ceiling is required. The fourteenth round added three:
+   every price the summary labels with comes from the run's own record (the
+   sidecars' recorded source and rates) or from a registry whose digest
+   equals the manifest's `pricing_source_sha256`, never from whatever
+   registry the summary runs against; the by-model rows are reconciled with
+   `usage_missing_models`; and a target sidecar may record a zero ceiling
+   (a zero-priced dry run is admitted under `max_spend: "0"`), while a judge
+   ceiling stays positive.
 
 ## Decisions recorded from the owner (2026-09-16)
 
