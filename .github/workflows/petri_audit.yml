@@ -526,6 +526,6 @@ jobs:
           if ! python -m scripts.petri_audit.cli run-summary --run-dir "data/petri/runs/$RUN_STEM" --mode "$MODE" \
               --raw-eval-dir "$RUNNER_TEMP/petri-run/logs" --seeds "$SEEDS_FILE" \
               --params-file "$RUNNER_TEMP/resolved_params.json" --json-out "$RUNNER_TEMP/run_summary.json" \
-              --seal-scan >> "$GITHUB_STEP_SUMMARY"; then
+              --judge-started-marker "$RUNNER_TEMP/petri-run/judge_started" --seal-scan >> "$GITHUB_STEP_SUMMARY"; then
             echo "## Petri audit ($MODE, $RUN_STEM): run-summary failed; see this step's log" >> "$GITHUB_STEP_SUMMARY"
           fi

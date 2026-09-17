@@ -413,7 +413,8 @@ def cmd_run_summary(args: argparse.Namespace) -> int:
     from .summary import render_markdown, run_summary
 
     params = load_json(args.params_file) if args.params_file else None
-    summary = run_summary(args.run_dir, mode=args.mode, raw_eval_dir=args.raw_eval_dir, seeds_path=args.seeds, params=params)
+    summary = run_summary(args.run_dir, mode=args.mode, raw_eval_dir=args.raw_eval_dir, seeds_path=args.seeds, params=params,
+                          judge_started=args.judge_started_marker)
     if args.json_out:
         write_json(args.json_out, summary)
     try:
@@ -542,6 +543,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--seeds", default=None, help="seed file, for the planned judge prompt sizes (no call is made)")
     p.add_argument("--params-file", default=None, help="the parameters the params job resolved, as JSON")
     p.add_argument("--json-out", default=None)
+    p.add_argument("--judge-started-marker", default=None,
+                   help="the workflow's judge-start marker file; when it exists, a judge that left no file is still reported")
     p.add_argument("--seal-scan", action="store_true",
                    help="pass the rendered text through the holdout seal before printing it; a hit or an unchecked scan "
                         "withholds the summary and prints the verdict alone")

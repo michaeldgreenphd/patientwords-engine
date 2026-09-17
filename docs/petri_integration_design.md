@@ -1387,7 +1387,17 @@ dry run observable, which section 14 depends on.
    as "nothing missing"; and a `judgments.jsonl` with no judge row (the loop
    opens the file before its first call, so a judge killed during that call
    leaves it empty) falls back to the sidecar like an absent file does,
-   instead of omitting the paid judge.
+   instead of omitting the paid judge. The eleventh round found eight more:
+   the by-role target counters are bounded and a repeated role is a gap;
+   the export's record ids are compared with the manifest's branch ids
+   (equal by the adapter's contract) and both differences are reported; the
+   contract-check block and the redaction report are validated against the
+   schema's closed sets before they are rendered; a judgment row whose
+   `method` is neither `judge` nor `rule` is a named gap; a sidecar that
+   does not parse is that section's gap rather than an exception that takes
+   the target usage with it; and the workflow passes its judge-start marker
+   (`--judge-started-marker`) so a judge that died before writing anything is
+   still reported.
 
 ## Decisions recorded from the owner (2026-09-16)
 

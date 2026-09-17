@@ -255,6 +255,8 @@ def test_a_dry_run_uploads_its_seal_cleared_exports_and_the_summary_reads_the_ru
         assert flag in summary["run"], flag
     # independent review of PR #27: the step is always(), so what it prints passes the holdout seal first
     assert '--seal-scan >> "$GITHUB_STEP_SUMMARY"' in summary["run"], "the rendered summary is scanned before it is published"
+    # Codex (PR #27, eleventh round): the judge-start marker is evidence the summary must see
+    assert '--judge-started-marker "$RUNNER_TEMP/petri-run/judge_started"' in summary["run"]
     assert "run-summary failed" in summary["run"], "a failed summary is reported, never a silent blank"
 
 

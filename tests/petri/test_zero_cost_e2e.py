@@ -187,6 +187,9 @@ def test_run_summary_reports_the_measured_structure_of_the_mock_run(run):
     assert st["trees"] == len(m["trees"]) and st["branches"] == sum(len(t["branches"]) for t in m["trees"])
     assert st["records"]["count"] == len(run["r1"].records) and st["records"]["with_problems"] == 0
     assert st["records"]["unique_conversation_ids"] == st["records"]["count"]
+    assert st["records"]["id_match"] == {"records_not_in_manifest": 0, "branches_without_record": 0}
+    assert s["manifest"]["contract_checks"] == m["execution"]["contract_checks"], "the real block passes the closed-set check"
+    assert s["redaction"] == m["artifacts"]["sanitiser"]["redaction_report"]
     assert st["refused"]["count"] == 0 and st["survivors_exported"] == len(m["trees"])
     cells = {(t["seed_id"], b["condition_id"]) for t in m["trees"] for b in t["branches"]}
     labels = {b["condition_id"] for t in m["trees"] for b in t["branches"]}

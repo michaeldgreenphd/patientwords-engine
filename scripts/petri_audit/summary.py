@@ -25,10 +25,11 @@ from __future__ import annotations
 
 import json
 import statistics
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from .framework import OUTCOME_REGISTRY, ROOT, load_json, sha256_file
+from .framework import MANIFEST_SCHEMA, OUTCOME_REGISTRY, ROOT, load_json, sha256_file
 from .manifest import CHAIN_FILE, artifact_problems, manifest_problems, verify_chain, verify_run
 from .spend import resolve_price, usage_is_missing
 from .transcripts import record_problems
@@ -42,6 +43,13 @@ TEXT_SUFFIXES = (".json", ".jsonl")
 USAGE_PROVIDER_MEASURED = "provider-measured"
 USAGE_MOCK = "mock/non-metered"
 USAGE_UNAVAILABLE = "unavailable"
+
+
+@lru_cache(maxsize=1)
+def _schema() -> dict:
+    """The manifest schema, read once: the closed field sets the summary
+    validates against are the schema's, never a second copy kept here."""
+    return load_json(MANIFEST_SCHEMA)
 
 
 def _guard(fn, *args, **kwargs) -> Any:
@@ -160,6 +168,7 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
         trees = _collection(manifest, "trees")
         cells: set[tuple[Any, Any]] = set()       # (seed_id, condition_id): condition ids repeat across seeds
         anchors: list[Any] = []
+        branch_ids: set[str] | None = set()       # every branch the manifest records has an exported record, by contract
         branches_n = survivors = no_condition = 0
         for i, t in enumerate(trees):
             where = f"tree {t.get('tree_id', i)!r}" if isinstance(t, dict) else f"tree #{i}"
@@ -174,6 +183,7 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
             for j, b in enumerate(tree_branches):
                 bwhere = f"{where} branch {b.get('branch_id', j)!r}" if isinstance(b, dict) else f"{where} branch #{j}"
                 branches_n += 1
+                branch_ids.add(_member(b, "conversation_id", bwhere, (str,)))
                 condition = _member(b, "condition_id", bwhere, (str, NULL))
                 if condition is None:
                     no_condition += 1
@@ -189,6 +199,7 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
     except (KeyError, TypeError) as exc:
         out.update({f: None for f in tree_fields})
         unavailable["trees"] = _reason(exc)
+        branch_ids = None
     try:
         refused = _collection(manifest, "integrity", "records_refused")
         out["refused"] = {"count": len(refused),
@@ -198,13 +209,21 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
         out["refused"] = None
         unavailable["refused"] = _reason(exc)
     try:
-        by_role = {_member(r, "role", f"usage.by_role #{i}", (str,)): r
-                   for i, r in enumerate(_collection(manifest, "usage", "by_role"))}
+        by_role: dict[str, dict] = {}
+        for i, r in enumerate(_collection(manifest, "usage", "by_role")):
+            role = _member(r, "role", f"usage.by_role #{i}", (str,))
+            # the schema does not make roles unique; a repeated role is a gap, never the last row by list order
+            # (Codex, PR #27, eleventh round)
+            if role in by_role:
+                raise ValueError(f"usage.by_role carries more than one {role!r} row (#{i} repeats an earlier one)")
+            by_role[role] = r
         if "target" not in by_role:
             raise KeyError("manifest usage.by_role carries no target row")
-        out["target_calls"] = _member(by_role["target"], "calls", "usage.by_role target row", (int,))
-        out["target_calls_without_usage"] = _member(by_role["target"], "calls_without_usage", "usage.by_role target row", (int,))
-    except (KeyError, TypeError) as exc:
+        counts = {"calls": _member(by_role["target"], "calls", "usage.by_role target row", (int,)),
+                  "calls_without_usage": _member(by_role["target"], "calls_without_usage", "usage.by_role target row", (int,))}
+        _bounded_counts(counts, "usage.by_role target row")
+        out["target_calls"], out["target_calls_without_usage"] = counts["calls"], counts["calls_without_usage"]
+    except (KeyError, TypeError, ValueError) as exc:
         out["target_calls"] = out["target_calls_without_usage"] = None
         unavailable["target_calls"] = _reason(exc)
     transcripts_path = run_dir / "transcripts.jsonl"
@@ -233,7 +252,21 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
             if probs:
                 bad += 1
                 details.append(f"record #{i} ({str(cid)[:12]}): {'; '.join(probs[:3])}")
-        out["records"] = {"count": len(records), "unique_conversation_ids": len(seen), "with_problems": bad, "problems": details[:5]}
+        # the export's id set must equal the manifest's branch ids: the adapter lists a branch only after exporting its
+        # record, so a record the manifest does not name, or a branch without a record, is a sealed mismatch that no
+        # per-record check and no digest detects (Codex, PR #27, eleventh round)
+        if branch_ids is None:
+            id_match: dict[str, Any] = {"unavailable": "manifest branches unavailable"}
+        else:
+            not_in_manifest = sorted(str(c) for c in set(seen) - branch_ids)
+            without_record = sorted(branch_ids - set(seen))
+            id_match = {"records_not_in_manifest": len(not_in_manifest), "branches_without_record": len(without_record)}
+            if not_in_manifest:
+                details.append(f"record ids the manifest names no branch for: {', '.join(c[:12] for c in not_in_manifest[:3])}")
+            if without_record:
+                details.append(f"manifest branches with no exported record: {', '.join(c[:12] for c in without_record[:3])}")
+        out["records"] = {"count": len(records), "unique_conversation_ids": len(seen), "with_problems": bad, "id_match": id_match,
+                          "problems": details[:6]}
     else:
         # a missing export is a gap, never a count of zero (Codex, PR #27); the manifest-derived counts stand
         out["records"] = {"unavailable": "transcripts.jsonl is missing from the run directory"}
@@ -241,7 +274,7 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
     return out
 
 
-def _judge_row_from_sidecar(run_dir: Path, what: str) -> list[dict]:
+def _judge_row_from_sidecar(run_dir: Path, what: str, judge_started: Path | str | None = None) -> list[dict]:
     """The judge of record reported from its cost sidecar when judgments.jsonl
     carries no judge row: the file is absent (the judge died before opening
     it), or it exists empty or with rule rows only, which is exactly what a
@@ -249,15 +282,21 @@ def _judge_row_from_sidecar(run_dir: Path, what: str) -> list[dict]:
     opens the file before that call (Codex, PR #27, tenth round: that shape
     bypassed the fallback and omitted the paid judge). The workflow's fallback
     sidecar books the ceiling; the judge is reported from it, never omitted.
-    No sidecar is a named gap whenever anything shows a judge ran."""
+    No sidecar is a named gap whenever anything shows a judge ran, and the
+    workflow's judge-start marker (`judge_started`, set before the judge is
+    invoked) is such evidence: a judge that died before opening its file,
+    whose fallback sidecar was never written either, is reported from the
+    marker (Codex, PR #27, eleventh round)."""
     from .spend import resolve_registry_price
 
     side = _judge_sidecar(run_dir)
     if not side:
-        if what == "no judgments.jsonl":
+        started = judge_started is not None and Path(judge_started).is_file()
+        if what == "no judgments.jsonl" and not started:
             return []                         # nothing shows a judge ran
+        evidence = f"{what}, the judge-start marker is set" if started else what
         return [{"model": "(judge of record)", "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
-                 "status": USAGE_UNAVAILABLE, "price_source": None, "note": f"judge of record: {what} and no judge sidecar exists"}]
+                 "status": USAGE_UNAVAILABLE, "price_source": None, "note": f"judge of record: {evidence}, and no judge sidecar exists"}]
     if "unavailable" in side:
         return [{"model": "(judge of record)", "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
                  "status": USAGE_UNAVAILABLE, "price_source": None,
@@ -269,7 +308,7 @@ def _judge_row_from_sidecar(run_dir: Path, what: str) -> list[dict]:
              "note": f"judge of record: {what}; the judge sidecar books {side['cost_basis']}"}]
 
 
-def _judge_usage_rows(run_dir: Path) -> list[dict]:
+def _judge_usage_rows(run_dir: Path, judge_started: Path | str | None = None) -> list[dict]:
     """One usage row per judge model aggregated from judgments.jsonl, which
     the judge step writes after the manifest's usage table was closed
     (Codex, PR #27: the table omitted every paid judge call). A file that
@@ -279,15 +318,20 @@ def _judge_usage_rows(run_dir: Path) -> list[dict]:
 
     path = run_dir / "judgments.jsonl"
     if not path.is_file():
-        return _judge_row_from_sidecar(run_dir, "no judgments.jsonl")
+        return _judge_row_from_sidecar(run_dir, "no judgments.jsonl", judge_started)
     try:
         rows = _read_jsonl(path)
         per: dict[str, dict[str, Any]] = {}
         rows_per: dict[str, int] = {}
         for i, j in enumerate(rows):
             where = f"judgments.jsonl row #{i}"
-            if _member(j, "method", where, (str,)) != "judge":
+            method = _member(j, "method", where, (str,))
+            if method == "rule":
                 continue                      # rule rows are not calls
+            if method != "judge":
+                # only the known non-call method is skipped; any other value is a row whose attempts and tokens would
+                # otherwise vanish from the table (Codex, PR #27, eleventh round)
+                raise ValueError(f"{where} 'method' {method!r} is neither 'judge' nor 'rule'")
             spec = _member(j, "judge_model", where, (str,))
             agg = per.setdefault(spec, {"calls": 0, "calls_without_usage": 0, "input_tokens": 0, "output_tokens": 0})
             rows_per[spec] = rows_per.get(spec, 0) + 1
@@ -313,7 +357,7 @@ def _judge_usage_rows(run_dir: Path) -> list[dict]:
         return [{"model": "(judge of record)", "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
                  "status": USAGE_UNAVAILABLE, "price_source": None, "note": f"judge of record: judgments.jsonl unreadable ({_reason(exc)})"}]
     if not per:
-        return _judge_row_from_sidecar(run_dir, f"judgments.jsonl has no judge row ({len(rows)} non-judge row(s))")
+        return _judge_row_from_sidecar(run_dir, f"judgments.jsonl has no judge row ({len(rows)} non-judge row(s))", judge_started)
     out = []
     for spec, agg in sorted(per.items()):
         price = resolve_registry_price(spec)
@@ -338,7 +382,7 @@ def _bounded_counts(fields: dict[str, Any], where: str) -> None:
         raise ValueError(f"{where} 'calls_without_usage' {without} exceeds 'calls' {calls}")
 
 
-def _usage(manifest: dict, run_dir: Path | None = None) -> list[dict] | dict:
+def _usage(manifest: dict, run_dir: Path | None = None, judge_started: Path | str | None = None) -> list[dict] | dict:
     rows = []
     for i, r in enumerate(_collection(manifest, "usage", "by_model")):
         # every key the label reads must be present (Codex, PR #27): `usage_is_missing` reads an absent
@@ -372,7 +416,7 @@ def _usage(manifest: dict, run_dir: Path | None = None) -> list[dict] | dict:
                          "status": USAGE_MOCK if zero else USAGE_UNAVAILABLE, "price_source": price.source,
                          "note": "no usage row recorded (no model event); named in usage_missing_models"})
     if run_dir is not None:
-        rows.extend(_judge_usage_rows(run_dir))
+        rows.extend(_judge_usage_rows(run_dir, judge_started))
     return rows
 
 
@@ -452,16 +496,18 @@ def _sidecar(run_dir: Path) -> dict | None:
     if len(found) > 1:
         return {"path": ", ".join(p.name for p in found), "unavailable": f"{len(found)} target cost sidecars in the run directory"}
     path = found[0]
-    r = load_json(path)
     where = path.name
     try:
+        # a sidecar the non-atomic write left truncated is this section's gap, never an exception that takes the
+        # target usage with it (Codex, PR #27, eleventh round)
+        r = load_json(path)
         if not isinstance(r, dict):
             raise TypeError(f"{where} is not an object")
         return {"path": path.name, "cost_usd": _member(r, "cost_usd", where, NUMBER), "cost_basis": _member(r, "cost_basis", where, (str,)),
                 "billing_channel": _member(r, "billing_channel", where, (str,)),
                 "usage_missing_models": _member(r, "usage_missing_models", where, (list,)),
                 "max_spend_usd": _member(r, "max_spend_usd", where, NUMBER), "spend_report_reason": r.get("spend_report_reason")}
-    except (KeyError, TypeError) as exc:
+    except (KeyError, TypeError, ValueError, OSError) as exc:
         return {"path": path.name, "unavailable": _reason(exc)}
 
 
@@ -472,15 +518,15 @@ def _judge_sidecar(run_dir: Path) -> dict | None:
     if len(found) > 1:
         return {"path": ", ".join(p.name for p in found), "unavailable": f"{len(found)} judge cost sidecars in the run directory"}
     path = found[0]
-    r = load_json(path)
     where = path.name
     try:
+        r = load_json(path)
         if not isinstance(r, dict):
             raise TypeError(f"{where} is not an object")
         return {"path": path.name, "judge_model": _member(r, "judge_model", where, (str,)), "cost_usd": _member(r, "cost_usd", where, NUMBER),
                 "cost_basis": _member(r, "cost_basis", where, (str,)), "billing_channel": _member(r, "billing_channel", where, (str,)),
                 "planned": r.get("planned"), "cumulative": r.get("cumulative"), "aborted": r.get("aborted"), "truncated": r.get("truncated")}
-    except (KeyError, TypeError) as exc:
+    except (KeyError, TypeError, ValueError, OSError) as exc:
         return {"path": path.name, "unavailable": _reason(exc)}
 
 
@@ -550,9 +596,96 @@ def byte_stats(sizes: list[int]) -> dict[str, int | float] | None:
     return {"min": min(sizes), "median": statistics.median(sizes), "max": max(sizes), "total": sum(sizes)}
 
 
+def _closed_object(value: Any, spec: dict, where: str) -> None:
+    """`value` against a schema fragment of the shape the manifest uses for
+    its reported blocks: an object with `required` keys, no additional
+    properties, and members typed integer (with a minimum), boolean (with an
+    optional const) or object-of-integers. Raises the same exceptions the
+    member checks raise; the caller turns them into an `unavailable`."""
+    if not isinstance(value, dict):
+        raise TypeError(f"{where} is not an object")
+    missing = [k for k in spec.get("required", []) if k not in value]
+    if missing:
+        raise KeyError(f"{where} lacks {', '.join(repr(k) for k in missing)}")
+    unknown = sorted(set(value) - set(spec.get("properties", {})))
+    if unknown and spec.get("additionalProperties") is False:
+        raise KeyError(f"{where} carries unknown key(s) {', '.join(repr(k) for k in unknown)}")
+    for key, prop in spec.get("properties", {}).items():
+        if key not in value:
+            continue
+        v, kw = value[key], f"{where} {key!r}"
+        kind = prop.get("type")
+        if kind == "integer":
+            if isinstance(v, bool) or not isinstance(v, int):
+                raise TypeError(f"{kw} is not int (got {type(v).__name__})")
+            if v < prop.get("minimum", 0):
+                raise ValueError(f"{kw} is negative ({v})")
+        elif kind == "boolean":
+            if not isinstance(v, bool):
+                raise TypeError(f"{kw} is not bool (got {type(v).__name__})")
+            if "const" in prop and v != prop["const"]:
+                raise ValueError(f"{kw} must be {prop['const']} (got {v})")
+        elif kind == "object" and prop.get("additionalProperties", {}).get("type") == "integer":
+            if not isinstance(v, dict):
+                raise TypeError(f"{kw} is not an object (got {type(v).__name__})")
+            for k2, v2 in v.items():
+                if isinstance(v2, bool) or not isinstance(v2, int):
+                    raise TypeError(f"{kw}[{k2!r}] is not int (got {type(v2).__name__})")
+                if v2 < prop["additionalProperties"].get("minimum", 0):
+                    raise ValueError(f"{kw}[{k2!r}] is negative ({v2})")
+
+
+def _contract_checks(manifest: dict) -> dict | None:
+    """`execution.contract_checks` validated against the schema's closed set
+    before it is rendered: every required check present, no unknown check,
+    each a `status` from the schema's enum with a string-or-null `detail`
+    (Codex, PR #27, eleventh round: a table missing `holdout_seal` rendered
+    as a complete table). None when absent; `unavailable` with the reason
+    when present and malformed."""
+    checks = _dig(manifest, "execution", "contract_checks")
+    if checks is None:
+        return None
+    where = "execution.contract_checks"
+    try:
+        _closed_object(checks, _schema()["properties"]["execution"]["properties"]["contract_checks"], where)
+        statuses = _schema()["$defs"]["check"]["properties"]["status"]["enum"]
+        for name, c in checks.items():
+            cw = f"{where}.{name}"
+            status = _member(c, "status", cw, (str,))
+            if status not in statuses:
+                raise ValueError(f"{cw} 'status' {status!r} is not one of {statuses}")
+            _member(c, "detail", cw, (str, NULL))
+            extra = sorted(set(c) - {"status", "detail"})
+            if extra:
+                raise KeyError(f"{cw} carries unknown key(s) {', '.join(repr(k) for k in extra)}")
+    except (KeyError, TypeError, ValueError) as exc:
+        return {"unavailable": _reason(exc)}
+    return checks
+
+
+def _redaction(manifest: dict) -> dict | None:
+    """`artifacts.sanitiser.redaction_report` validated against the schema's
+    closed set (every counter present and non-negative, the booleans typed
+    with their consts, the by-type maps integer-valued) before it is rendered
+    as a measurement (Codex, PR #27, eleventh round: a report missing a
+    counter rendered with the field silently absent). None when absent."""
+    report = _dig(manifest, "artifacts", "sanitiser", "redaction_report")
+    if report is None:
+        return None
+    spec = _schema()["properties"]["artifacts"]["properties"]["sanitiser"]["properties"]["redaction_report"]
+    try:
+        _closed_object(report, spec, "artifacts.sanitiser.redaction_report")
+    except (KeyError, TypeError, ValueError) as exc:
+        return {"unavailable": _reason(exc)}
+    return report
+
+
 def run_summary(run_dir: Path | str | None, *, mode: str, raw_eval_dir: Path | str | None = None,
-                seeds_path: Path | str | None = None, params: dict | None = None) -> dict:
-    """Everything the summary reports, as data; `render_markdown` renders it."""
+                seeds_path: Path | str | None = None, params: dict | None = None,
+                judge_started: Path | str | None = None) -> dict:
+    """Everything the summary reports, as data; `render_markdown` renders it.
+    `judge_started` is the workflow's judge-start marker file, evidence that
+    a judge was invoked even when it left no file behind."""
     run_dir = Path(run_dir) if run_dir else None
     raw_dir = Path(raw_eval_dir) if raw_eval_dir else None
     out: dict[str, Any] = {"mode": mode, "params": params, "run_dir": str(run_dir) if run_dir else None,
@@ -586,13 +719,13 @@ def run_summary(run_dir: Path | str | None, *, mode: str, raw_eval_dir: Path | s
         return without_manifest(f"manifest.json does not parse: {type(exc).__name__}: {exc}")
     out["manifest"] = {"run_id": manifest.get("run_id"), "eval_id": manifest.get("eval_id"),
                        "claim_grade_eligible": _dig(manifest, "execution", "claim_grade_eligible"),
-                       "contract_checks": _dig(manifest, "execution", "contract_checks"),
+                       "contract_checks": _guard(_contract_checks, manifest),
                        "target": _dig(manifest, "models", "target", "inspect_name"),
                        "lock_sha256": _dig(manifest, "harness", "environment_lock_sha256"),
                        "journal_nonce": _dig(manifest, "spend", "journal_nonce")}
     out["structure"] = _guard(_structure, manifest, run_dir)
-    out["usage"] = _guard(_usage, manifest, run_dir)
-    out["redaction"] = _dig(manifest, "artifacts", "sanitiser", "redaction_report")
+    out["usage"] = _guard(_usage, manifest, run_dir, judge_started)
+    out["redaction"] = _guard(_redaction, manifest)
     out["raw_eval"] = _guard(_raw_eval, manifest, raw_dir)
     out["published"] = _guard(_published, run_dir)
     out["integrity"] = _guard(_integrity, manifest, run_dir)
@@ -637,11 +770,13 @@ def render_markdown(s: dict) -> str:
                                      ("claim_grade_eligible", m.get("claim_grade_eligible")),
                                      ("environment lock sha256", m.get("lock_sha256")), ("journal_nonce", _fmt(m.get("journal_nonce")))])
         checks = m.get("contract_checks")
-        if isinstance(checks, dict):
-            lines += _table("Contract checks", [(k, (f"{v.get('status')}" + (f" ({v.get('detail')})" if v.get("detail") else ""))
-                                                    if isinstance(v, dict) else _fmt(v)) for k, v in checks.items()])
+        if checks is None:
+            lines += ["Contract checks: unavailable (execution.contract_checks is absent)", ""]
+        elif not isinstance(checks, dict) or "unavailable" in checks:
+            lines += ["Contract checks: unavailable (" + str(checks.get("unavailable") if isinstance(checks, dict) else checks) + ")", ""]
         else:
-            lines += ["Contract checks: unavailable (execution.contract_checks is " + ("absent" if checks is None else "not an object") + ")", ""]
+            lines += _table("Contract checks", [(k, f"{v.get('status')}" + (f" ({v.get('detail')})" if v.get("detail") else ""))
+                                                for k, v in checks.items()])
         st = s.get("structure") or {}
         if "unavailable" in st:
             lines += ["Structure: unavailable (" + st["unavailable"] + ")", ""]
@@ -655,6 +790,8 @@ def render_markdown(s: dict) -> str:
                 ("target calls without a usage block", st.get("target_calls_without_usage")),
                 ("records exported", (st.get("records") or {}).get("count", "unavailable: " + str((st.get("records") or {}).get("unavailable")))),
                 ("records with schema or pairing problems", (st.get("records") or {}).get("with_problems", "unavailable")),
+                ("records vs manifest branches (not in manifest / without record)",
+                 _fmt((st.get("records") or {}).get("id_match", "unavailable"))),
                 ("records refused by the adapter", (st.get("refused") or {}).get("count") if st.get("refused") is not None else None),
                 ("max turns / tool rounds per turn", f"{st.get('max_turns')} / {st.get('max_tool_rounds_per_turn')}")]
                 + ([("branches without a condition id", st["branches_without_condition_id"])]
@@ -681,10 +818,12 @@ def render_markdown(s: dict) -> str:
             lines += ["", "Token counts of a mock/non-metered model are not provider-metered tokens; provider usage exists "
                       "only for a provider-measured row.", ""]
         red = s.get("redaction")
-        if isinstance(red, dict) and red:
-            lines += _table("Sanitiser redaction report", [(k, _fmt(v)) for k, v in red.items()])
+        if red is None:
+            lines += ["Sanitiser redaction report: unavailable (absent)", ""]
+        elif not isinstance(red, dict) or "unavailable" in red:
+            lines += ["Sanitiser redaction report: unavailable (" + str(red.get("unavailable") if isinstance(red, dict) else red) + ")", ""]
         else:
-            lines += ["Sanitiser redaction report: unavailable (" + ("absent" if red is None else "not an object") + ")", ""]
+            lines += _table("Sanitiser redaction report", [(k, _fmt(v)) for k, v in red.items()])
         integ = s.get("integrity") or {}
         if "unavailable" in integ:
             lines += ["Integrity: unavailable (" + integ["unavailable"] + ")", ""]

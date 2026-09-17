@@ -86,6 +86,8 @@ def test_summary_reads_the_run_it_is_given_and_labels_usage_by_provenance(run_di
     assert s["judge_sidecar"] is None
     assert s["judge_prompts"] == {"unavailable": "no seed file given"}
     assert s["redaction"] == m["artifacts"]["sanitiser"]["redaction_report"]
+    assert st["records"]["id_match"] == {"records_not_in_manifest": 0, "branches_without_record": 0}
+    assert s["manifest"]["contract_checks"] == m["execution"]["contract_checks"]
     text = summary.render_markdown(s)
     for needle in ("Measured structure", "mock/non-metered", "Run directory contents (byte sizes)", "unresolved attachment:// references | 0",
                    "verifies on its own (cli verify-run) | `[]`",
@@ -379,10 +381,12 @@ def test_nested_metadata_that_is_not_an_object_is_a_dash_not_a_failed_summary(ru
     assert "Sanitiser redaction report: unavailable (absent)" in text and "| target | — |" in text
     assert cli.main(["run-summary", "--run-dir", str(run_dir), "--mode", "dry_run"]) == 0
     assert "Contract checks: unavailable" in capsys.readouterr().out
-    # a contract check that is not an object renders as its value, never raises
+    # a contract-check block that is not the schema's closed set is unavailable by name, never a partial table
+    # (Codex, PR #27, eleventh round)
     m["execution"] = {"contract_checks": {"holdout_seal": "pass"}}
     framework.write_json(run_dir / "manifest.json", m)
-    assert "| holdout_seal | pass |" in summary.render_markdown(summary.run_summary(run_dir, mode="dry_run"))
+    text = summary.render_markdown(summary.run_summary(run_dir, mode="dry_run"))
+    assert "Contract checks: unavailable (execution.contract_checks lacks 'stimulus_digest_identity'" in text
 
 
 def test_cli_run_summary_survives_a_rendering_failure(run_dir, monkeypatch, capsys):
@@ -677,6 +681,148 @@ def test_negative_usage_counters_are_rejected_before_provenance(run_dir):
     (run_dir / "judgments.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
     judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "(judge of record)"][0]
     assert "judgments.jsonl row #0 'input_tokens' is negative (-1)" in judge["note"]
+
+
+def test_a_judge_that_started_and_left_nothing_is_reported_from_its_marker(run_dir, tmp_path, capsys):
+    """Codex (PR #27, eleventh round): a judge that died before opening
+    judgments.jsonl, whose fallback sidecar was never written either, left no
+    file, and the summary read the absence of both as proof that no judge
+    ran; the workflow's judge-start marker is the evidence it ignored."""
+    marker = tmp_path / "petri-run" / "judge_started"
+    assert [r for r in summary.run_summary(run_dir, mode="run", judge_started=marker)["usage"] if r["model"] != "mockllm/model"] == [], \
+        "no marker, no files: nothing shows a judge ran"
+    marker.parent.mkdir()
+    marker.write_text("", encoding="utf-8")
+    judge = [r for r in summary.run_summary(run_dir, mode="run", judge_started=marker)["usage"] if r["model"] != "mockllm/model"]
+    assert len(judge) == 1 and judge[0]["model"] == "(judge of record)" and judge[0]["status"] == summary.USAGE_UNAVAILABLE
+    assert judge[0]["note"] == "judge of record: no judgments.jsonl, the judge-start marker is set, and no judge sidecar exists"
+    assert cli.main(["run-summary", "--run-dir", str(run_dir), "--mode", "run", "--judge-started-marker", str(marker)]) == 0
+    assert "the judge-start marker is set" in capsys.readouterr().out
+
+
+def test_by_role_counters_are_bounded_and_roles_unique(run_dir):
+    """Codex (PR #27, eleventh round): `_bounded_counts` covered by_model and
+    the judge rows but not the by_role target row the structure table reads,
+    and a repeated `role` was silently the last row by list order."""
+    base = framework.load_json(run_dir / "manifest.json")
+
+    def damaged(mutate):
+        m = json.loads(json.dumps(base))
+        mutate(m)
+        framework.write_json(run_dir / "manifest.json", m)
+        return summary.run_summary(run_dir, mode="dry_run")["structure"]
+
+    st = damaged(lambda m: m["usage"]["by_role"][0].__setitem__("calls", -1))
+    assert st["target_calls"] is None and st["unavailable_fields"]["target_calls"] == "usage.by_role target row 'calls' is negative (-1)"
+    st = damaged(lambda m: m["usage"]["by_role"][0].__setitem__("calls_without_usage", 9))
+    assert st["target_calls"] is None and "'calls_without_usage' 9 exceeds 'calls'" in st["unavailable_fields"]["target_calls"]
+    st = damaged(lambda m: m["usage"]["by_role"].append({**m["usage"]["by_role"][0], "calls": 99}))
+    assert st["target_calls"] is None
+    assert st["unavailable_fields"]["target_calls"] == "usage.by_role carries more than one 'target' row (#1 repeats an earlier one)"
+
+
+def test_transcript_ids_are_matched_to_the_manifest_branches(run_dir):
+    """Codex (PR #27, eleventh round): schema-valid records with ids the
+    manifest's branches do not carry passed every per-record check and
+    reported the expected count with no problem, while an analysis would
+    join the wrong trajectories; the adapter lists a branch only after
+    exporting its record, so the two id sets must be equal."""
+    records = [json.loads(ln) for ln in (run_dir / "transcripts.jsonl").read_text(encoding="utf-8").splitlines()]
+    records[0]["conversation_id"] = "x" * 64
+    (run_dir / "transcripts.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
+    st = summary.run_summary(run_dir, mode="dry_run")["structure"]
+    assert st["records"]["id_match"] == {"records_not_in_manifest": 1, "branches_without_record": 1}
+    assert any(p.startswith("record ids the manifest names no branch for: xxxxxxxxxxxx") for p in st["records"]["problems"])
+    assert any(p.startswith("manifest branches with no exported record: ") for p in st["records"]["problems"])
+    assert "| records vs manifest branches (not in manifest / without record) | " in summary.render_markdown(summary.run_summary(run_dir, mode="dry_run"))
+    m = framework.load_json(run_dir / "manifest.json")
+    del m["trees"]
+    framework.write_json(run_dir / "manifest.json", m)
+    st = summary.run_summary(run_dir, mode="dry_run")["structure"]
+    assert st["records"]["id_match"] == {"unavailable": "manifest branches unavailable"}, "no branch set to compare with is a gap, not zero"
+
+
+def test_the_redaction_report_is_validated_before_it_is_rendered(run_dir):
+    """Codex (PR #27, eleventh round): a nonempty report missing a required
+    counter, carrying a negative count or a mistyped boolean rendered as an
+    ordinary measured table; the schema's closed set is enforced first."""
+    base = framework.load_json(run_dir / "manifest.json")
+
+    def damaged(mutate):
+        m = json.loads(json.dumps(base))
+        mutate(m["artifacts"]["sanitiser"]["redaction_report"])
+        framework.write_json(run_dir / "manifest.json", m)
+        s = summary.run_summary(run_dir, mode="dry_run")
+        return s["redaction"], summary.render_markdown(s)
+
+    where = "artifacts.sanitiser.redaction_report"
+    red, text = damaged(lambda r: r.pop("fields_removed"))
+    assert red == {"unavailable": f"{where} lacks 'fields_removed'"} and f"Sanitiser redaction report: unavailable ({where} lacks" in text
+    red, _ = damaged(lambda r: r.__setitem__("events_kept", -1))
+    assert red == {"unavailable": f"{where} 'events_kept' is negative (-1)"}
+    red, _ = damaged(lambda r: r.__setitem__("request_bodies_kept", "yes"))
+    assert red == {"unavailable": f"{where} 'request_bodies_kept' is not bool (got str)"}
+    red, _ = damaged(lambda r: r.__setitem__("headers_kept", True))
+    assert red == {"unavailable": f"{where} 'headers_kept' must be False (got True)"}
+    red, _ = damaged(lambda r: r.__setitem__("events_dropped_by_type", {"model": -2}))
+    assert red == {"unavailable": f"{where} 'events_dropped_by_type'['model'] is negative (-2)"}
+    red, _ = damaged(lambda r: r.__setitem__("extra", 1))
+    assert red == {"unavailable": f"{where} carries unknown key(s) 'extra'"}
+    red, _ = damaged(lambda r: r.__setitem__("samples", True))
+    assert red == {"unavailable": f"{where} 'samples' is not int (got bool)"}
+    red, text = damaged(lambda r: None)
+    assert red == base["artifacts"]["sanitiser"]["redaction_report"] and "| fields_removed | 0 |" in text
+
+
+def test_an_unknown_judgment_method_is_a_named_gap(run_dir):
+    """Codex (PR #27, eleventh round): a row with `method: "judeg"` was
+    skipped like a rule row, and its attempts and tokens vanished from a
+    table that still carried a normal provenance status."""
+    rows = [{"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 100, "output_tokens": 20,
+             "retry_attempts_charged": 0, "provider_attempts": 1},
+            {"method": "judeg", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 100, "output_tokens": 20,
+             "retry_attempts_charged": 0, "provider_attempts": 1}]
+    (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] != "mockllm/model"]
+    assert len(judge) == 1 and judge[0]["model"] == "(judge of record)" and judge[0]["status"] == summary.USAGE_UNAVAILABLE
+    assert "judgments.jsonl row #1 'method' 'judeg' is neither 'judge' nor 'rule'" in judge[0]["note"]
+
+
+def test_every_contract_check_is_required_before_the_table_renders(run_dir):
+    """Codex (PR #27, eleventh round): a nonempty block missing a required
+    check rendered the remaining checks as a complete table."""
+    base = framework.load_json(run_dir / "manifest.json")
+
+    def damaged(mutate):
+        m = json.loads(json.dumps(base))
+        mutate(m["execution"]["contract_checks"])
+        framework.write_json(run_dir / "manifest.json", m)
+        return summary.run_summary(run_dir, mode="dry_run")["manifest"]["contract_checks"]
+
+    where = "execution.contract_checks"
+    assert damaged(lambda c: c.pop("holdout_seal")) == {"unavailable": f"{where} lacks 'holdout_seal'"}
+    assert damaged(lambda c: c.__setitem__("extra_check", {"status": "pass", "detail": None})) == {"unavailable": f"{where} carries unknown key(s) 'extra_check'"}
+    assert damaged(lambda c: c["holdout_seal"].__setitem__("status", "ok")) == \
+        {"unavailable": f"{where}.holdout_seal 'status' 'ok' is not one of ['pass', 'fail', 'not_applicable', 'not_run']"}
+    assert damaged(lambda c: c["no_cache"].pop("detail")) == {"unavailable": f"{where}.no_cache lacks 'detail'"}
+    assert damaged(lambda c: c.__setitem__("no_prefill", "pass")) == {"unavailable": f"{where}.no_prefill is not an object"}
+    assert damaged(lambda c: None) == base["execution"]["contract_checks"]
+    text = summary.render_markdown(summary.run_summary(run_dir, mode="dry_run"))
+    assert "| holdout_seal | " in text
+
+
+def test_a_truncated_judge_sidecar_never_hides_the_target_usage(run_dir):
+    """Codex (PR #27, eleventh round): a judge sidecar the non-atomic write
+    left as invalid JSON raised out of the fallback, and the guard replaced
+    the whole usage section, target rows included."""
+    (run_dir / "example.judge.report.json").write_text('{"judge_model": "claude-haiku-4-5", "cost_usd": 0.0', encoding="utf-8")
+    usage = summary.run_summary(run_dir, mode="run")["usage"]
+    assert isinstance(usage, list) and usage[0]["model"] == "mockllm/model", "the target usage survives"
+    judge = [r for r in usage if r["model"] == "(judge of record)"]
+    assert len(judge) == 1 and "the judge sidecar is unavailable (Expecting" in judge[0]["note"]
+    (run_dir / "example.report.json").write_text("{", encoding="utf-8")
+    s = summary.run_summary(run_dir, mode="run")
+    assert s["sidecar"]["path"] == "example.report.json" and s["sidecar"]["unavailable"].startswith("Expecting")
 
 
 def test_sidecars_are_found_by_pattern_after_a_flat_extraction(run_dir, tmp_path):
