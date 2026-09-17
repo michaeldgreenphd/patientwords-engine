@@ -34,7 +34,11 @@ from .spend import resolve_price, usage_is_missing
 from .transcripts import record_problems
 
 ATTACHMENT_MARK = "attachment://"
-PUBLISHED_FILES = ("manifest.json", "transcripts.jsonl", "rule_outcomes.jsonl", "sanitised_log.json")
+# every file the lane can write into a run directory and commit; anything else found there is inventoried as
+# unexpected, never skipped (Codex, PR #27: a fixed tuple omitted the judged run's judgments and analysis rows)
+PUBLISHED_FILES = ("manifest.json", "transcripts.jsonl", "rule_outcomes.jsonl", "sanitised_log.json",
+                   "judgments.jsonl", "analysis_rows.jsonl")
+TEXT_SUFFIXES = (".json", ".jsonl")
 USAGE_PROVIDER_MEASURED = "provider-measured"
 USAGE_MOCK = "mock/non-metered"
 USAGE_UNAVAILABLE = "unavailable"
@@ -69,9 +73,16 @@ def _structure(manifest: dict, run_dir: Path, eval_status: str | None) -> dict:
     refused = (manifest.get("integrity") or {}).get("records_refused") or []
     by_role = {r["role"]: r for r in (manifest.get("usage") or {}).get("by_role") or []}
     target = by_role.get("target") or {}
-    records = _read_jsonl(run_dir / "transcripts.jsonl") if (run_dir / "transcripts.jsonl").is_file() else []
-    problems = {r["conversation_id"]: record_problems(r) for r in records}
-    bad = {k: v for k, v in problems.items() if v}
+    transcripts_path = run_dir / "transcripts.jsonl"
+    if transcripts_path.is_file():
+        records = _read_jsonl(transcripts_path)
+        problems = {r["conversation_id"]: record_problems(r) for r in records}
+        bad = {k: v for k, v in problems.items() if v}
+        records_out: dict[str, Any] = {"count": len(records), "with_problems": len(bad),
+                                       "problems": [f"{k[:12]}: {'; '.join(v[:3])}" for k, v in list(bad.items())[:5]]}
+    else:
+        # a missing export is a gap, never a count of zero (Codex, PR #27); the manifest-derived counts stand
+        records_out = {"unavailable": "transcripts.jsonl is missing from the run directory"}
     return {
         "eval_status": eval_status,
         "seeds": [{"seed_id": s["seed_id"], "claim_grade_eligible": s.get("claim_grade_eligible")} for s in manifest.get("seeds") or []],
@@ -81,8 +92,7 @@ def _structure(manifest: dict, run_dir: Path, eval_status: str | None) -> dict:
         "shared_prefix_branches": {"anchored": sum(1 for b in child if b.get("branched_from_turn_id") is not None),
                                    "without_resolved_anchor": sum(1 for b in child if b.get("branched_from_turn_id") is None)},
         "survivors_exported": sum(1 for t in trees if t.get("survivor_exported")),
-        "records": {"count": len(records), "with_problems": len(bad),
-                    "problems": [f"{k[:12]}: {'; '.join(v[:3])}" for k, v in list(bad.items())[:5]]},
+        "records": records_out,
         "refused": {"count": len(refused), "reasons": [f"{r.get('branch_id')}: {r.get('reason')}" for r in refused]},
         "target_calls": target.get("calls"),
         "target_calls_without_usage": target.get("calls_without_usage"),
@@ -117,12 +127,29 @@ def _raw_eval(manifest: dict, raw_eval_dir: Path | None) -> dict:
 
 
 def _published(run_dir: Path) -> dict:
-    sizes = {name: (run_dir / name).stat().st_size for name in PUBLISHED_FILES if (run_dir / name).is_file()}
-    sidecars = {p.name: p.stat().st_size for p in sorted(run_dir.glob("*.report.json"))}
+    """Every entry of the run directory, by kind: the published families
+    present, the cost sidecars, and anything else (a directory, a stray
+    file), which is inventoried by name rather than skipped. The attachment
+    scan covers every JSON or JSONL file found, whatever its kind."""
+    files: dict[str, int] = {}
+    sidecars: dict[str, int] = {}
+    unexpected: dict[str, int | None] = {}
     refs = 0
-    for name in sizes:
-        refs += (run_dir / name).read_text(encoding="utf-8").count(ATTACHMENT_MARK)
-    return {"files": sizes, "cost_sidecars": sidecars, "total_bytes": sum(sizes.values()) + sum(sidecars.values()),
+    for p in sorted(run_dir.iterdir()):
+        if p.is_dir():
+            unexpected[p.name + "/"] = None
+            continue
+        size = p.stat().st_size
+        if p.name in PUBLISHED_FILES:
+            files[p.name] = size
+        elif p.name.endswith(".report.json"):
+            sidecars[p.name] = size
+        else:
+            unexpected[p.name] = size
+        if p.suffix in TEXT_SUFFIXES:
+            refs += p.read_text(encoding="utf-8", errors="replace").count(ATTACHMENT_MARK)
+    total = sum(files.values()) + sum(sidecars.values()) + sum(v for v in unexpected.values() if v is not None)
+    return {"files": files, "cost_sidecars": sidecars, "unexpected": unexpected, "total_bytes": total,
             "attachment_references": refs}
 
 
@@ -167,11 +194,20 @@ def _judge_prompts(manifest: dict, run_dir: Path, seeds_path: Path | str | None)
     records = _read_jsonl(run_dir / "transcripts.jsonl")
     seed_set = load_seed_file(seeds_path)
     plans = plan_run(records, manifest, seed_set.seeds, outcomes=load_json(OUTCOME_REGISTRY), rubric=load_rubric())
-    sizes = sorted(len(p.prompt.encode("utf-8")) for p in plans if p.prompt is not None)
+    sizes = [len(p.prompt.encode("utf-8")) for p in plans if p.prompt is not None]
     return {"planned_calls": len(sizes), "not_applicable": sum(1 for p in plans if p.prompt is None),
-            "prompt_bytes": ({"min": sizes[0], "median": int(statistics.median(sizes)), "max": sizes[-1], "total": sum(sizes)}
-                             if sizes else None),
+            "prompt_bytes": byte_stats(sizes),
             "input_bound_tokens_total": sum(estimate_input_tokens(p.prompt) for p in plans if p.prompt is not None)}
+
+
+def byte_stats(sizes: list[int]) -> dict[str, int | float] | None:
+    """min / median / max / total of byte counts; the median is the numeric
+    median as `statistics.median` returns it (a half-byte value for an even
+    count with middle values of different parity), never truncated (Codex,
+    PR #27)."""
+    if not sizes:
+        return None
+    return {"min": min(sizes), "median": statistics.median(sizes), "max": max(sizes), "total": sum(sizes)}
 
 
 def run_summary(run_dir: Path | str | None, *, mode: str, raw_eval_dir: Path | str | None = None,
@@ -261,8 +297,8 @@ def render_markdown(s: dict) -> str:
                 ("shared-prefix branches", _fmt(st.get("shared_prefix_branches"))), ("survivors exported", st.get("survivors_exported")),
                 ("target calls (generates)", st.get("target_calls")),
                 ("target calls without a usage block", st.get("target_calls_without_usage")),
-                ("records exported", (st.get("records") or {}).get("count")),
-                ("records with schema or pairing problems", (st.get("records") or {}).get("with_problems")),
+                ("records exported", (st.get("records") or {}).get("count", "unavailable: " + str((st.get("records") or {}).get("unavailable")))),
+                ("records with schema or pairing problems", (st.get("records") or {}).get("with_problems", "unavailable")),
                 ("records refused by the adapter", (st.get("refused") or {}).get("count")),
                 ("max turns / tool rounds per turn", f"{st.get('max_turns')} / {st.get('max_tool_rounds_per_turn')}")])
             reasons = (st.get("refused") or {}).get("reasons") or []
@@ -300,6 +336,8 @@ def render_markdown(s: dict) -> str:
         else:
             rows = [(k, f"{v} bytes") for k, v in (pub.get("files") or {}).items()]
             rows += [(k, f"{v} bytes (cost sidecar)") for k, v in (pub.get("cost_sidecars") or {}).items()]
+            rows += [(k, ("directory" if v is None else f"{v} bytes") + " (UNEXPECTED: not a file the lane writes)")
+                     for k, v in (pub.get("unexpected") or {}).items()]
             rows += [("total", f"{pub.get('total_bytes')} bytes"), ("unresolved attachment:// references", pub.get("attachment_references"))]
             lines += _table("Sanitised exports (byte sizes)", rows)
         integ = s.get("integrity") or {}

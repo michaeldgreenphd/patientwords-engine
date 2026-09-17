@@ -195,7 +195,8 @@ def test_run_summary_reports_the_measured_structure_of_the_mock_run(run):
     assert s["raw_eval"]["files"][0]["bytes"] == run["eval_path"].stat().st_size
     pub = s["published"]
     assert pub["attachment_references"] == 0 and pub["total_bytes"] == sum(pub["files"].values()) + sum(pub["cost_sidecars"].values())
-    assert set(pub["files"]) == set(summary.PUBLISHED_FILES)
+    assert set(pub["files"]) == {"manifest.json", "transcripts.jsonl", "rule_outcomes.jsonl", "sanitised_log.json"}
+    assert pub["unexpected"] == {}, "the adapter writes nothing the summary does not know"
     assert s["integrity"] == {"manifest_problems": [], "artifact_problems": [], "chain": {"ok": True, "message": s["integrity"]["chain"]["message"]},
                               "attachments_resolved": True}
     jp = s["judge_prompts"]

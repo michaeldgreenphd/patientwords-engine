@@ -235,8 +235,11 @@ def test_a_dry_run_uploads_its_seal_cleared_exports_and_the_summary_reads_the_ru
     assert "data/petri/runs/manifests.chain" in exports["with"]["path"]
     assert "petri-run/logs" not in exports["with"]["path"], "the raw .eval is never in this artifact"
     assert exports["with"]["if-no-files-found"] == "error" and exports["with"]["retention-days"] == 30
+    assert "!data/petri/runs/**/*.eval" in exports["with"]["path"], "a raw log is excluded from the artifact by pattern"
     assert names.index("Holdout seal check over every publishable Petri output (fails closed)") < names.index(exports["name"])
-    assert names.index(exports["name"]) < names.index("Refuse to publish a raw log (belt and braces)")
+    # Codex (PR #27): an artifact cannot be retracted, so the raw-log refusal must run before the upload, and the
+    # upload (no always()) then never runs after that refusal failed the job
+    assert names.index("Refuse to publish a raw log (belt and braces)") < names.index(exports["name"])
     # the summary step reads the run through the CLI, with the resolved params, the raw log location and the seeds
     summary = _step(workflow, "Job summary")
     assert "always()" in summary["if"] and "run-summary" in summary["run"]

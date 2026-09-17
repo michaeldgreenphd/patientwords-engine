@@ -75,7 +75,8 @@ def test_summary_reads_the_run_it_is_given_and_labels_usage_by_provenance(run_di
     assert s["raw_eval"]["files"][0]["bytes"] == len(b"raw log bytes") and s["raw_eval"]["files"][0]["matches_manifest"] is True
     # published bytes and the attachment scan
     pub = s["published"]
-    assert set(pub["files"]) == set(summary.PUBLISHED_FILES) and pub["cost_sidecars"] == {"example.report.json": (run_dir / "example.report.json").stat().st_size}
+    assert set(pub["files"]) == {"manifest.json", "transcripts.jsonl", "rule_outcomes.jsonl", "sanitised_log.json"}
+    assert pub["cost_sidecars"] == {"example.report.json": (run_dir / "example.report.json").stat().st_size} and pub["unexpected"] == {}
     assert pub["total_bytes"] == sum(pub["files"].values()) + sum(pub["cost_sidecars"].values()) and pub["attachment_references"] == 0
     assert s["integrity"]["manifest_problems"] == [] and s["integrity"]["artifact_problems"] == [] and s["integrity"]["chain"]["ok"] is True
     assert s["sidecar"]["cost_usd"] == 0.0 and s["sidecar"]["billing_channel"] == "anthropic"
@@ -121,6 +122,48 @@ def test_attachment_references_in_a_published_file_are_counted(run_dir):
     (run_dir / "rule_outcomes.jsonl").write_text('{"text": "attachment://deadbeef"}\n', encoding="utf-8")
     s = summary.run_summary(run_dir, mode="dry_run")
     assert s["published"]["attachment_references"] == 1
+
+
+def test_judged_outputs_and_unexpected_entries_are_inventoried(run_dir):
+    """Codex (PR #27): a fixed tuple omitted the judged run's judgments.jsonl
+    and analysis_rows.jsonl from the sizes, the total and the attachment
+    scan; anything else in the run directory is now listed as unexpected."""
+    (run_dir / "judgments.jsonl").write_text('{"key": "x"}\n', encoding="utf-8")
+    (run_dir / "analysis_rows.jsonl").write_text('{"row": "attachment://beef"}\n', encoding="utf-8")
+    (run_dir / "stray.txt").write_text("attachment://not-scanned-not-json\n", encoding="utf-8")
+    (run_dir / "stray.json").write_text('{"x": "attachment://scanned"}\n', encoding="utf-8")
+    (run_dir / "logs").mkdir()
+    s = summary.run_summary(run_dir, mode="run")
+    pub = s["published"]
+    assert set(pub["files"]) == set(summary.PUBLISHED_FILES)
+    assert pub["unexpected"] == {"logs/": None, "stray.json": (run_dir / "stray.json").stat().st_size,
+                                 "stray.txt": (run_dir / "stray.txt").stat().st_size}
+    assert pub["attachment_references"] == 2, "every JSON/JSONL file is scanned, the unexpected one included"
+    assert pub["total_bytes"] == sum(pub["files"].values()) + sum(pub["cost_sidecars"].values()) + sum(
+        v for v in pub["unexpected"].values() if v is not None)
+    text = summary.render_markdown(s)
+    assert "| judgments.jsonl |" in text and "| logs/ | directory (UNEXPECTED" in text and "| stray.txt |" in text
+
+
+def test_a_missing_transcript_export_is_a_gap_not_a_zero_count(run_dir):
+    """Codex (PR #27): an absent transcripts.jsonl read as zero records
+    exported, a plausible false measurement."""
+    (run_dir / "transcripts.jsonl").unlink()
+    s = summary.run_summary(run_dir, mode="dry_run")
+    st = s["structure"]
+    assert st["records"] == {"unavailable": "transcripts.jsonl is missing from the run directory"}
+    assert "count" not in st["records"] and st["trees"] == 1, "the manifest-derived counts stand"
+    assert any("transcripts" in p for p in s["integrity"]["artifact_problems"])
+    text = summary.render_markdown(s)
+    assert "| records exported | unavailable: transcripts.jsonl is missing" in text
+
+
+def test_prompt_byte_stats_keep_the_numeric_median():
+    """Codex (PR #27): `int(statistics.median(...))` truncated the half-byte
+    median of an even count with middle values of different parity."""
+    assert summary.byte_stats([1, 2]) == {"min": 1, "median": 1.5, "max": 2, "total": 3}
+    assert summary.byte_stats([3, 1, 2]) == {"min": 1, "median": 2, "max": 3, "total": 6}
+    assert summary.byte_stats([]) is None
 
 
 def test_cli_run_summary_prints_markdown_writes_json_and_never_fails(run_dir, tmp_path, capsys):
