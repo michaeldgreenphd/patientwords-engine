@@ -1327,6 +1327,46 @@ regression test each.
    injective when the ids carry `__`; `seed_problems` refuses a collision
    before execution.
 
+### Tenth pass and dry-run observability (main, 2026-09-17)
+
+PR #26 merged with its last commit unreviewed (Codex's usage limit). The
+owner's independent tenth pass found one defect, verified against `main`
+and fixed with a regression test; the same pull request makes the zero-cost
+dry run observable, which section 14 depends on.
+
+1. **`marker_echo` tested the final reply against markers it had not yet
+   received.** `returned_markers` carried no position, and the only ordering
+   test was that the final reply came after the *first* tool result, so a
+   marker-bearing result delivered after the final reply (a transcript that
+   ends on a tool turn, as a truncated tool loop does) was tested against a
+   reply that had never seen it. Each returned marker now carries the
+   transcript position of its tool turn, and the final reply is tested only
+   against markers delivered before it; a reply with none before it is
+   `not_applicable` with the reason "no marker-bearing tool result before the
+   final reply". `RULE_VERSION` is `3` and the registry definition says so; no
+   rule outcome under version 1 or 2 was ever published.
+2. **The dry run reports what it measured.** A `dry_run` uploads its
+   seal-cleared run directory and the chain file as a 30-day workflow
+   artifact (a step without `always()`, after the seal check and
+   `verify-chain`, so a rejected export is never uploaded; the raw `.eval`
+   stays outside the checkout and outside that artifact), and the job summary
+   is rendered by `scripts/petri_audit/summary.py` (`cli run-summary`): the
+   parameters CI resolved, target calls, trees, conditions, branches and
+   shared-prefix anchors, records exported and refused with reasons, the raw
+   log's byte size and digest match, every published file's byte size, the
+   count of unresolved `attachment://` references, the sanitiser's redaction
+   report, the contract-check statuses, the manifest, artifact and chain
+   verdicts, the planned judge prompts' UTF-8 byte distribution (planned
+   from the exports; no call), the cost sidecars, and a usage status per
+   model labelled `provider-measured`, `mock/non-metered` or `unavailable`.
+   The label is the point: a mock target's token counts are never called
+   provider-measured tokens, so section 14's provider-token and dollar rows
+   stay estimates until a real provider call returns usage, while its
+   structural rows (calls, branches, sizes, redaction counts) become
+   measurements after the first dry run. A section the summary cannot
+   compute reports `unavailable` with the reason; the step never fails the
+   job over its own output.
+
 ## Decisions recorded from the owner (2026-09-16)
 
 These were open questions in the first draft and are now decided. Each entry

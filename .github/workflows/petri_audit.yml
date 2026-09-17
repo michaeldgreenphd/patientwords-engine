@@ -366,6 +366,22 @@ jobs:
           python scripts/seal_check.py --site "$RUNNER_TEMP/no-site" --extra data/petri/runs
           python -m scripts.petri_audit.cli verify-chain --data-dir data/petri/runs
 
+      # Dry-run exports are never committed (mockllm output is not a measurement), but they are the evidence the
+      # pilot's structural questions are answered from (design memo section 14), so the seal-cleared run directory and
+      # the chain file are uploaded as a short-lived artifact. Deliberately NOT always(): this step runs only when
+      # every step before it succeeded, the seal check and verify-chain included, so a rejected export is never
+      # uploaded. The raw .eval stays outside the checkout and is not in this path.
+      - name: Upload the seal-cleared sanitised exports of a dry run (never committed)
+        if: ${{ needs.params.outputs.mode == 'dry_run' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: petri-audit-dry-run-exports-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            data/petri/runs/run_${{ github.run_id }}_${{ github.run_attempt }}/
+            data/petri/runs/manifests.chain
+          retention-days: 30
+          if-no-files-found: error
+
       - name: Refuse to publish a raw log (belt and braces)
         if: ${{ always() }}
         run: |
@@ -480,28 +496,22 @@ jobs:
           done
           exit 1
 
+      # The summary reports what the run wrote (scripts/petri_audit/summary.py): the parameters CI resolved, the
+      # measured structure (calls, trees, branches, records, refusals, byte sizes, redaction counts, integrity), the
+      # usage status per model labelled provider-measured / mock/non-metered / unavailable, and the cost sidecars.
+      # It reads files only, makes no call, and reports its own gaps as `unavailable` rather than failing the job.
       - name: Job summary
         if: ${{ always() }}
         env:
           RUN_STEM: run_${{ github.run_id }}_${{ github.run_attempt }}
           MODE: ${{ needs.params.outputs.mode }}
+          SEEDS_FILE: ${{ needs.params.outputs.seeds_file }}
+          RESOLVED_PARAMS: ${{ toJSON(needs.params.outputs) }}
         run: |
-          {
-            echo "## Petri audit ($MODE, $RUN_STEM)"
-            echo '```'
-            if [ -f "data/petri/runs/$RUN_STEM/manifest.json" ]; then
-              python - <<'EOF'
-          import json, os
-          m = json.load(open(f"data/petri/runs/{os.environ['RUN_STEM']}/manifest.json", encoding="utf-8"))
-          print("claim_grade_eligible:", m["execution"]["claim_grade_eligible"])
-          for k, v in m["execution"]["contract_checks"].items():
-              print(f"{k}: {v['status']}" + (f" ({v['detail']})" if v["detail"] else ""))
-          print("records refused:", len(m["integrity"]["records_refused"]))
-          print("raw eval sha256:", m["artifacts"]["raw_eval_log_sha256"])
-          EOF
-            fi
-            for f in data/petri/runs/$RUN_STEM/*.report.json; do
-              if [ -f "$f" ]; then cat "$f"; fi
-            done
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          printf '%s' "$RESOLVED_PARAMS" > "$RUNNER_TEMP/resolved_params.json"
+          if ! python -m scripts.petri_audit.cli run-summary --run-dir "data/petri/runs/$RUN_STEM" --mode "$MODE" \
+              --raw-eval-dir "$RUNNER_TEMP/petri-run/logs" --seeds "$SEEDS_FILE" \
+              --params-file "$RUNNER_TEMP/resolved_params.json" --json-out "$RUNNER_TEMP/run_summary.json" \
+              >> "$GITHUB_STEP_SUMMARY"; then
+            echo "## Petri audit ($MODE, $RUN_STEM): run-summary failed; see this step's log" >> "$GITHUB_STEP_SUMMARY"
+          fi

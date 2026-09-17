@@ -172,6 +172,42 @@ def test_raw_digest_sanitised_export_and_no_unresolved_attachment(run):
     assert m["artifacts"]["sanitised_log_sha256"] == framework.sha256_file(run["out1"] / "sanitised_log.json")
 
 
+def test_run_summary_reports_the_measured_structure_of_the_mock_run(run):
+    """Tenth-pass review (2026-09-17): the dry run's structural measurements
+    (calls, trees, branches, records, byte sizes, redaction counts, judge
+    prompt sizes) are what the pilot design waits on; the summary reads them
+    from the exports, labels the mock usage as non-metered and reports a
+    cost of exactly zero."""
+    from scripts.petri_audit import summary
+
+    m = run["r1"].manifest
+    s = summary.run_summary(run["out1"], mode="dry_run", raw_eval_dir=run["eval_path"].parent, seeds_path=seeds.SEED_FILE,
+                            params={"mode": "dry_run", "target": "mockllm/model"})
+    st = s["structure"]
+    assert st["trees"] == len(m["trees"]) and st["branches"] == sum(len(t["branches"]) for t in m["trees"])
+    assert st["records"]["count"] == len(run["r1"].records) and st["records"]["with_problems"] == 0
+    assert st["refused"]["count"] == 0 and st["survivors_exported"] == len(m["trees"])
+    assert st["shared_prefix_branches"]["anchored"] > 0 and st["shared_prefix_branches"]["without_resolved_anchor"] == 0
+    assert st["target_calls"] == next(r for r in m["usage"]["by_role"] if r["role"] == "target")["calls"] > 0
+    assert st["eval_status"] == "success"
+    assert [(r["model"], r["status"]) for r in s["usage"]] == [("mockllm/model", summary.USAGE_MOCK)]
+    assert s["raw_eval"]["files"] and s["raw_eval"]["files"][0]["matches_manifest"] is True
+    assert s["raw_eval"]["files"][0]["bytes"] == run["eval_path"].stat().st_size
+    pub = s["published"]
+    assert pub["attachment_references"] == 0 and pub["total_bytes"] == sum(pub["files"].values()) + sum(pub["cost_sidecars"].values())
+    assert set(pub["files"]) == set(summary.PUBLISHED_FILES)
+    assert s["integrity"] == {"manifest_problems": [], "artifact_problems": [], "chain": {"ok": True, "message": s["integrity"]["chain"]["message"]},
+                              "attachments_resolved": True}
+    jp = s["judge_prompts"]
+    assert jp["planned_calls"] > 0 and jp["prompt_bytes"]["min"] <= jp["prompt_bytes"]["median"] <= jp["prompt_bytes"]["max"]
+    assert jp["input_bound_tokens_total"] > jp["prompt_bytes"]["total"]
+    assert s["sidecar"] is None, "adapt_run wrote no sidecar here; the CLI's --report does"
+    text = summary.render_markdown(s)
+    row = next(ln for ln in text.splitlines() if ln.startswith("| mockllm/model |"))
+    assert "**mock/non-metered**" in row and "provider-measured" not in row
+    assert "not provider-metered tokens" in text
+
+
 def test_manifest_validates_chains_and_binds_every_record(run):
     m = run["r1"].manifest
     assert manifest_problems(m) == []

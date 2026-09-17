@@ -14,6 +14,7 @@ same checks and calls nothing.
     python -m scripts.petri_audit.cli judge-spend-report --run-dir DIR --judge-model SPEC --judge-max-spend USD
     python -m scripts.petri_audit.cli analyze --run-dir DIR
     python -m scripts.petri_audit.cli verify-chain --data-dir DIR
+    python -m scripts.petri_audit.cli run-summary --run-dir DIR --mode MODE [--raw-eval-dir DIR] [--seeds FILE] [...]
 
 Python 3.11 can run everything except `run` and `adapt`, which import the
 harness and are 3.12 only.
@@ -367,6 +368,20 @@ def cmd_verify_chain(args: argparse.Namespace) -> int:
     return 0 if ok else 6
 
 
+def cmd_run_summary(args: argparse.Namespace) -> int:
+    """The job summary (Markdown on stdout, JSON to --json-out): measured
+    structure, usage status per model, cost, redaction counts, integrity.
+    Reports its own gaps as `unavailable` and never fails the job."""
+    from .summary import render_markdown, run_summary
+
+    params = load_json(args.params_file) if args.params_file else None
+    summary = run_summary(args.run_dir, mode=args.mode, raw_eval_dir=args.raw_eval_dir, seeds_path=args.seeds, params=params)
+    if args.json_out:
+        write_json(args.json_out, summary)
+    print(render_markdown(summary), end="")
+    return 0
+
+
 def cmd_digest(args: argparse.Namespace) -> int:
     for p in args.paths:
         print(f"{sha256_file(p)}  {p}")
@@ -470,6 +485,15 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("verify-chain")
     p.add_argument("--data-dir", default=str(DEFAULT_RUNS_DIR))
     p.set_defaults(func=cmd_verify_chain)
+
+    p = sub.add_parser("run-summary")
+    p.add_argument("--run-dir", default=None, help="the adapted run directory (absent under preflight)")
+    p.add_argument("--mode", required=True, choices=["preflight", "dry_run", "run"])
+    p.add_argument("--raw-eval-dir", default=None, help="where the run step wrote the raw .eval (outside the checkout)")
+    p.add_argument("--seeds", default=None, help="seed file, for the planned judge prompt sizes (no call is made)")
+    p.add_argument("--params-file", default=None, help="the parameters the params job resolved, as JSON")
+    p.add_argument("--json-out", default=None)
+    p.set_defaults(func=cmd_run_summary)
 
     p = sub.add_parser("digest")
     p.add_argument("paths", nargs="+")
