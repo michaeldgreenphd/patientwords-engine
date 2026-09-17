@@ -187,7 +187,8 @@ def test_run_summary_reports_the_measured_structure_of_the_mock_run(run):
     assert st["trees"] == len(m["trees"]) and st["branches"] == sum(len(t["branches"]) for t in m["trees"])
     assert st["records"]["count"] == len(run["r1"].records) and st["records"]["with_problems"] == 0
     assert st["records"]["unique_conversation_ids"] == st["records"]["count"]
-    assert st["records"]["id_match"] == {"records_not_in_manifest": 0, "branches_without_record": 0}
+    assert st["records"]["id_match"] == {"records_not_in_manifest": 0, "branches_without_record": 0, "duplicate_branch_ids": 0}
+    assert st["records"]["provenance_mismatches"] == 0, "every exported record names this manifest's identity"
     assert s["manifest"]["contract_checks"] == m["execution"]["contract_checks"], "the real block passes the closed-set check"
     assert s["redaction"] == m["artifacts"]["sanitiser"]["redaction_report"]
     assert st["refused"]["count"] == 0 and st["survivors_exported"] == len(m["trees"])
@@ -466,7 +467,7 @@ def test_judging_binds_the_judgments_into_the_manifest_and_verify_chain_covers_t
     side = judge_runner.run_judgments(plans, client, out_path=judgments, ceiling=judge_runner.SpendCeiling(1.0, 0.0, 0.0, 300),
                                       judge_max_tokens=300, labels=judge_runner.labels_from_manifest(before),
                                       now_fn=lambda: "2026-09-16T00:00:00Z", sidecar_extra={"billing_channel": "anthropic"})
-    sealed = bind_judgments(out, judgments_path=judgments, report_path=judgments.with_suffix(".report.json"),
+    sealed = bind_judgments(out, judgments_path=judgments, report_path=judgments.with_name("judgments.judge.report.json"),
                             judge_of_record={"judge_model": "mockllm/judge", "billing_channel": "anthropic", "price_source": "zero",
                                              "judged_utc": side["run_utc"], "cost_usd": side["cost_usd"], "truncated": side["truncated"],
                                              "planned": side["planned"], "judged": side["judged"], "null": side["null"],

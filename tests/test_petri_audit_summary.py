@@ -16,7 +16,7 @@ from scripts.petri_audit import cli, framework, summary, transcripts  # noqa: E4
 from scripts.petri_audit import manifest as manifest_mod  # noqa: E402
 
 
-def _record(conversation_id: str) -> dict:
+def _record(conversation_id: str, manifest_sha: str) -> dict:
     messages = [{"role": "user", "text": "u", "id": "m1"},
                 {"role": "assistant", "text": "", "id": "m2",
                  "tool_calls": [{"call_id": "c1", "name": "lookup", "arguments": {"query": "q"}, "parse_error": None}]},
@@ -25,7 +25,7 @@ def _record(conversation_id: str) -> dict:
     return transcripts.build_record(messages, conversation_id=conversation_id, source_system="inspect_petri",
                                     source_model="mockllm/model", model_version="mockllm", captured_utc="2026-09-16T00:00:00Z",
                                     user_is="unknown", import_utc="2026-09-16T00:00:00Z", importer_sha=None,
-                                    run_manifest_sha256="a" * 64, run_manifest_ref=None)
+                                    run_manifest_sha256=manifest_sha, run_manifest_ref=None)
 
 
 @pytest.fixture
@@ -38,16 +38,21 @@ def run_dir(tmp_path) -> Path:
     d = runs / "example"
     d.mkdir(parents=True)
     conv_ids = [b["conversation_id"] for t in base["trees"] for b in t["branches"]]
-    (d / "transcripts.jsonl").write_text("".join(json.dumps(_record(c)) + "\n" for c in conv_ids), encoding="utf-8")
     (d / "rule_outcomes.jsonl").write_text("{}\n", encoding="utf-8")
     (d / "sanitised_log.json").write_text(json.dumps({"status": "success", "samples": []}), encoding="utf-8")
-    for fam in ("sanitised_log", "transcripts", "rule_outcomes"):
-        base["artifacts"][f"{fam}_sha256"] = framework.sha256_file(runs / base["artifacts"][f"{fam}_path"])
+    base["artifacts"]["sanitised_log_sha256"] = framework.sha256_file(d / "sanitised_log.json")
     raw = tmp_path / "logs"
     raw.mkdir()
     (raw / "run.eval").write_bytes(b"raw log bytes")
     base["artifacts"]["raw_eval_log_sha256"] = framework.sha256_file(raw / "run.eval")
+    # the records are bound to the manifest's identity digest exactly as the adapter binds them: the identity excludes
+    # the record-dependent digests, so it is known before the records are written
+    identity = manifest_mod.identity_digest(base)
+    (d / "transcripts.jsonl").write_text("".join(json.dumps(_record(c, identity)) + "\n" for c in conv_ids), encoding="utf-8")
+    for fam in ("transcripts", "rule_outcomes"):
+        base["artifacts"][f"{fam}_sha256"] = framework.sha256_file(runs / base["artifacts"][f"{fam}_path"])
     sealed = manifest_mod.seal_manifest(base, None)
+    assert sealed["chain"]["identity_sha256"] == identity
     assert manifest_mod.manifest_problems(sealed) == []
     manifest_mod.write_manifest(d / "manifest.json", sealed)
     manifest_mod.append_chain(runs, sealed, d / "manifest.json")
@@ -86,7 +91,8 @@ def test_summary_reads_the_run_it_is_given_and_labels_usage_by_provenance(run_di
     assert s["judge_sidecar"] is None
     assert s["judge_prompts"] == {"unavailable": "no seed file given"}
     assert s["redaction"] == m["artifacts"]["sanitiser"]["redaction_report"]
-    assert st["records"]["id_match"] == {"records_not_in_manifest": 0, "branches_without_record": 0}
+    assert st["records"]["id_match"] == {"records_not_in_manifest": 0, "branches_without_record": 0, "duplicate_branch_ids": 0}
+    assert st["records"]["provenance_mismatches"] == 0
     assert s["manifest"]["contract_checks"] == m["execution"]["contract_checks"]
     text = summary.render_markdown(s)
     for needle in ("Measured structure", "mock/non-metered", "Run directory contents (byte sizes)", "unresolved attachment:// references | 0",
@@ -731,7 +737,7 @@ def test_transcript_ids_are_matched_to_the_manifest_branches(run_dir):
     records[0]["conversation_id"] = "x" * 64
     (run_dir / "transcripts.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
     st = summary.run_summary(run_dir, mode="dry_run")["structure"]
-    assert st["records"]["id_match"] == {"records_not_in_manifest": 1, "branches_without_record": 1}
+    assert st["records"]["id_match"] == {"records_not_in_manifest": 1, "branches_without_record": 1, "duplicate_branch_ids": 0}
     assert any(p.startswith("record ids the manifest names no branch for: xxxxxxxxxxxx") for p in st["records"]["problems"])
     assert any(p.startswith("manifest branches with no exported record: ") for p in st["records"]["problems"])
     assert "| records vs manifest branches (not in manifest / without record) | " in summary.render_markdown(summary.run_summary(run_dir, mode="dry_run"))
@@ -823,6 +829,152 @@ def test_a_truncated_judge_sidecar_never_hides_the_target_usage(run_dir):
     (run_dir / "example.report.json").write_text("{", encoding="utf-8")
     s = summary.run_summary(run_dir, mode="run")
     assert s["sidecar"]["path"] == "example.report.json" and s["sidecar"]["unavailable"].startswith("Expecting")
+
+
+def test_the_no_manifest_summary_reports_usage_from_the_fallback_sidecar(tmp_path):
+    """Codex (PR #27, twelfth round): a run that failed before its manifest
+    leaves the workflow's fallback sidecar, whose `models` rows are the only
+    per-model usage evidence, but the no-manifest summary showed a cost and
+    no usage table at all."""
+    from scripts.petri_audit.spend import write_report_sidecar
+
+    run_dir = tmp_path / "run_x"
+    run_dir.mkdir()
+    s = summary.run_summary(run_dir, mode="run")
+    assert s["manifest"] is None and s["usage"] == {"unavailable": "no manifest and no target cost sidecar: no usage evidence exists"}
+    assert "Usage: unavailable (no manifest and no target cost sidecar" in summary.render_markdown(s)
+    write_report_sidecar(run_dir / "run_x.report.json", run_id="run_x", eval_id="e", target="anthropic/claude-haiku-4-5",
+                         model_usage={"anthropic/claude-haiku-4-5": {"input_tokens": None, "output_tokens": None, "calls": 2,
+                                                                     "calls_without_usage": 2}},
+                         max_spend_usd=0.05, judge_max_spend_usd=None, run_utc="2026-09-17T00:00:00Z")
+    s = summary.run_summary(run_dir, mode="run")
+    assert s["manifest"] is None and s["sidecar"]["cost_basis"] == "ceiling_imputed:usage_missing"
+    assert [(r["model"], r["status"], r["calls"], r["calls_without_usage"]) for r in s["usage"]] == \
+        [("anthropic/claude-haiku-4-5", summary.USAGE_UNAVAILABLE, 2, 2)]
+    assert s["usage"][0]["note"] == "from the fallback sidecar run_x.report.json (no manifest)"
+    text = summary.render_markdown(s)
+    assert "No manifest (no adapted run)." in text and "| anthropic/claude-haiku-4-5 | 2 | 2 | — | — | **unavailable** (from the fallback" in text
+    # the rows pass the same checks as the manifest's rows: a damaged row is a named gap, never a table
+    side = framework.load_json(run_dir / "run_x.report.json")
+    side["models"][0]["calls"] = -1
+    framework.write_json(run_dir / "run_x.report.json", side)
+    assert summary.run_summary(run_dir, mode="run")["usage"] == \
+        {"unavailable": "run_x.report.json models #0 ('anthropic/claude-haiku-4-5') 'calls' is negative (-1)"}
+    del side["models"]
+    framework.write_json(run_dir / "run_x.report.json", side)
+    assert summary.run_summary(run_dir, mode="run")["usage"] == {"unavailable": "run_x.report.json lacks a 'models' list"}
+    assert summary.run_summary(None, mode="run")["usage"] == {"unavailable": "no run directory: no usage evidence exists"}
+
+
+def test_artifact_families_are_bound_to_their_consumed_filenames(run_dir):
+    """Codex (PR #27, twelfth round): `transcripts_path` sealed as
+    `example/sanitised_log.json` with that file's digest verified while the
+    `transcripts.jsonl` every consumer opens stayed unbound; the schema
+    accepts any string path, so both verifiers now require the family's
+    filename and unique paths."""
+    m = framework.load_json(run_dir / "manifest.json")
+    assert manifest_mod.verify_run(run_dir) == [] and manifest_mod.artifact_problems(m, run_dir.parent) == []
+    m["artifacts"]["transcripts_path"] = m["artifacts"]["sanitised_log_path"]
+    m["artifacts"]["transcripts_sha256"] = m["artifacts"]["sanitised_log_sha256"]
+    framework.write_json(run_dir / "manifest.json", m)
+    for problems in (manifest_mod.verify_run(run_dir), manifest_mod.artifact_problems(m, run_dir.parent)):
+        assert "transcripts: recorded as sanitised_log.json, expected transcripts.jsonl" in problems
+        assert "artifact path example/sanitised_log.json is recorded for more than one family: sanitised_log, transcripts" in problems
+    assert manifest_mod.artifact_name_problems([("example/x.report.json", "d", "judge_of_record.report")]) == \
+        ["judge_of_record.report: recorded as x.report.json, expected *.judge.report.json"]
+    assert manifest_mod.artifact_name_problems([("example/example.judge.report.json", "d", "judge_of_record.report"), (None, None, "judgments")]) == []
+
+
+def test_duplicate_branch_conversation_ids_are_reported(run_dir):
+    """Codex (PR #27, twelfth round): two manifest branches sharing a
+    conversation_id collapsed in the set comparison, so a single record
+    could read as a clean match while the branches cannot be paired."""
+    m = framework.load_json(run_dir / "manifest.json")
+    branches = [b for t in m["trees"] for b in t["branches"]]
+    first, second = branches[0]["conversation_id"], branches[1]["conversation_id"]
+    branches[1]["conversation_id"] = first
+    framework.write_json(run_dir / "manifest.json", m)
+    st = summary.run_summary(run_dir, mode="dry_run")["structure"]
+    assert st["records"]["id_match"] == {"records_not_in_manifest": 1, "branches_without_record": 0, "duplicate_branch_ids": 1}
+    assert any(p.startswith(f"manifest branches sharing a conversation_id: {first[:12]}") for p in st["records"]["problems"])
+    records = [json.loads(ln) for ln in (run_dir / "transcripts.jsonl").read_text(encoding="utf-8").splitlines()]
+    kept = [r for r in records if r["conversation_id"] != second]
+    (run_dir / "transcripts.jsonl").write_text("".join(json.dumps(r) + "\n" for r in kept), encoding="utf-8")
+    st = summary.run_summary(run_dir, mode="dry_run")["structure"]
+    assert st["records"]["id_match"] == {"records_not_in_manifest": 0, "branches_without_record": 0, "duplicate_branch_ids": 1}, \
+        "both sides agree as sets; only the duplicate count says the pairing is broken"
+
+
+def test_records_must_name_the_manifest_identity(run_dir):
+    """Codex (PR #27, twelfth round): records carrying a valid but wrong
+    `provenance.run_manifest.sha256` passed every check, so the summary
+    reported zero problems for records bound to another run."""
+    m = framework.load_json(run_dir / "manifest.json")
+    records = [json.loads(ln) for ln in (run_dir / "transcripts.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert all(r["provenance"]["run_manifest"]["sha256"] == m["chain"]["identity_sha256"] for r in records)
+    records[0]["provenance"]["run_manifest"]["sha256"] = "b" * 64
+    records[1]["provenance"]["run_manifest"] = None
+    (run_dir / "transcripts.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
+    st = summary.run_summary(run_dir, mode="dry_run")["structure"]
+    assert st["records"]["provenance_mismatches"] == 2 and st["records"]["with_problems"] == 2
+    assert any("provenance names a different manifest identity (bbbbbbbbbbbb)" in p for p in st["records"]["problems"])
+    assert any("provenance names no manifest identity" in p for p in st["records"]["problems"])
+    assert "| records naming a different manifest identity | 2 |" in summary.render_markdown(summary.run_summary(run_dir, mode="dry_run"))
+    del m["chain"]
+    framework.write_json(run_dir / "manifest.json", m)
+    st = summary.run_summary(run_dir, mode="dry_run")["structure"]
+    assert st["records"]["provenance_mismatches"] == {"unavailable": "manifest carries no identity digest"}, "unknown identity: not passed"
+
+
+def test_execution_limits_are_validated_before_rendering(run_dir):
+    """Codex (PR #27, twelfth round): `epochs: -1` or `max_turns: "ten"` were
+    published in the structure table as ordinary design measurements."""
+    base = framework.load_json(run_dir / "manifest.json")
+
+    def damaged(mutate):
+        m = json.loads(json.dumps(base))
+        mutate(m["execution"])
+        framework.write_json(run_dir / "manifest.json", m)
+        s = summary.run_summary(run_dir, mode="dry_run")
+        return s["structure"], summary.render_markdown(s)
+
+    st, text = damaged(lambda e: e.__setitem__("epochs", -1))
+    assert st["epochs"] is None and st["unavailable_fields"]["epochs"] == "execution 'epochs' is below 1 (-1)" and "| epochs | — |" in text
+    st, text = damaged(lambda e: e.__setitem__("max_turns", "ten"))
+    assert st["max_turns"] is None and st["unavailable_fields"]["max_turns"] == "execution 'max_turns' is not int (got str)"
+    assert "| max turns / tool rounds per turn | — / " in text
+    st, _ = damaged(lambda e: e.pop("max_tool_rounds_per_turn"))
+    assert st["max_tool_rounds_per_turn"] is None
+    assert st["unavailable_fields"]["max_tool_rounds_per_turn"] == "execution lacks 'max_tool_rounds_per_turn'"
+    st, _ = damaged(lambda e: e.__setitem__("epochs", True))
+    assert st["epochs"] is None and st["unavailable_fields"]["epochs"] == "execution 'epochs' is not int (got bool)"
+    st, _ = damaged(lambda e: None)
+    assert st["epochs"] == base["execution"]["epochs"] and st["unavailable_fields"] == {}
+
+
+def test_sidecar_spend_values_are_bounded(run_dir):
+    """Codex (PR #27, twelfth round): a sidecar with `cost_usd: -1` or a
+    non-positive ceiling passed the numeric type checks and rendered as an
+    ordinary spend record; a sidecar may be the only spend evidence a failed
+    run leaves."""
+    side = framework.load_json(run_dir / "example.report.json")
+
+    def target(**over):
+        framework.write_json(run_dir / "example.report.json", {**side, **over})
+        return summary.run_summary(run_dir, mode="dry_run")["sidecar"]
+
+    assert target(cost_usd=-1)["unavailable"] == "example.report.json 'cost_usd' is negative (-1)"
+    assert target(max_spend_usd=0)["unavailable"] == "example.report.json 'max_spend_usd' is not a positive ceiling (0)"
+    assert target(max_spend_usd=-0.01)["unavailable"] == "example.report.json 'max_spend_usd' is negative (-0.01)"
+    (run_dir / "example.report.json").write_text(json.dumps(side).replace('"cost_usd": 0.0', '"cost_usd": Infinity'), encoding="utf-8")
+    assert summary.run_summary(run_dir, mode="dry_run")["sidecar"]["unavailable"] == "example.report.json 'cost_usd' is not finite (inf)"
+    assert target()["cost_usd"] == 0.0, "the sound sidecar still reads"
+    judge = {"judge_model": "claude-haiku-4-5", "cost_usd": -0.5, "cost_basis": "b", "billing_channel": "anthropic"}
+    framework.write_json(run_dir / "example.judge.report.json", judge)
+    assert summary.run_summary(run_dir, mode="dry_run")["judge_sidecar"]["unavailable"] == "example.judge.report.json 'cost_usd' is negative (-0.5)"
+    framework.write_json(run_dir / "example.judge.report.json", {**judge, "cost_usd": 0.0, "max_spend_usd": 0})
+    assert summary.run_summary(run_dir, mode="dry_run")["judge_sidecar"]["unavailable"] == \
+        "example.judge.report.json 'max_spend_usd' is not a positive ceiling (0)"
 
 
 def test_sidecars_are_found_by_pattern_after_a_flat_extraction(run_dir, tmp_path):

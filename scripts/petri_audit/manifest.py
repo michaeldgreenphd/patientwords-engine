@@ -37,6 +37,36 @@ CHAIN_FILE = "manifests.chain"           # one manifest digest per line, append-
 RECORD_DEPENDENT_FIELDS = ("transcripts_sha256", "rule_outcomes_sha256", "judgments_path", "judgments_sha256",
                            "judge_of_record")
 ARTIFACT_FAMILIES = ("sanitised_log", "transcripts", "rule_outcomes", "judgments")
+# the filename each family's consumers open by name (the adapter writes them, the judge, the analysis and the summary
+# read them); a manifest binding a family to any other file would verify while the consumed file stayed unbound
+ARTIFACT_FILENAMES = {"sanitised_log": "sanitised_log.json", "transcripts": "transcripts.jsonl",
+                      "rule_outcomes": "rule_outcomes.jsonl", "judgments": "judgments.jsonl"}
+JUDGE_REPORT_SUFFIX = ".judge.report.json"
+
+
+def artifact_name_problems(pairs: list[tuple]) -> list[str]:
+    """Each recorded artifact path names the file its family's consumers
+    open, and no two families share a path (Codex, PR #27, twelfth round:
+    `transcripts_path` sealed as `sanitised_log.json` with that file's
+    digest verified, while `transcripts.jsonl` was unbound). `pairs` are
+    `(relative path, digest, family)`; a null or non-string path is another
+    check's problem."""
+    problems: list[str] = []
+    seen: dict[str, list[str]] = {}
+    for rel, _digest, fam in pairs:
+        if not isinstance(rel, str):
+            continue
+        name = Path(rel).name
+        expected = ARTIFACT_FILENAMES.get(fam)
+        if expected is not None and name != expected:
+            problems.append(f"{fam}: recorded as {name}, expected {expected}")
+        elif expected is None and not name.endswith(JUDGE_REPORT_SUFFIX):
+            problems.append(f"{fam}: recorded as {name}, expected *{JUDGE_REPORT_SUFFIX}")
+        seen.setdefault(rel, []).append(fam)
+    for rel, fams in seen.items():
+        if len(fams) > 1:
+            problems.append(f"artifact path {rel} is recorded for more than one family: {', '.join(fams)}")
+    return problems
 
 
 def identity_digest(manifest: dict) -> str:
@@ -129,6 +159,7 @@ def artifact_problems(manifest: dict, data_dir: Path) -> list[str]:
     judge = artifacts.get("judge_of_record")
     if isinstance(judge, dict):
         pairs.append((judge.get("report_path"), judge.get("report_sha256"), "judge_of_record.report"))
+    problems.extend(artifact_name_problems(pairs))
     for rel, digest, fam in pairs:
         if rel is None:
             continue
@@ -199,6 +230,7 @@ def verify_run(run_dir: Path) -> list[str]:
     judge = artifacts.get("judge_of_record")
     if isinstance(judge, dict):
         pairs.append((judge.get("report_path"), judge.get("report_sha256"), "judge_of_record.report"))
+    problems.extend(artifact_name_problems(pairs))
     recorded_dirs: set[str] = set()
     for rel, digest, fam in pairs:
         if rel is None:

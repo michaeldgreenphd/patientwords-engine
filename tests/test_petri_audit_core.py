@@ -537,7 +537,7 @@ def test_bind_judgments_reseals_only_the_chain_head_and_keeps_the_identity(tmp_p
     manifest_mod.append_chain(d, first, run_dir / "manifest.json")
     judgments = run_dir / "judgments.jsonl"
     judgments.write_text('{"conversation_id": "c", "value": "urgent"}\n', encoding="utf-8")
-    report = run_dir / "judgments.report.json"
+    report = run_dir / f"{run_dir.name}.judge.report.json"
     report.write_text(json.dumps({"cost_usd": 0.0, "judgments_sha256": framework.sha256_file(judgments)}) + "\n", encoding="utf-8")
     provenance = {"judge_model": "claude-haiku-4-5", "billing_channel": "anthropic", "price_source": "engine",
                   "judged_utc": "2026-09-16T00:00:00Z", "cost_usd": 0.0, "truncated": False, "planned": 1, "judged": 1,
@@ -794,7 +794,7 @@ def test_judge_runner_records_every_answer_dedupes_and_stops_at_the_ceiling(tmp_
     tier = next(r for r in rows if r["key"] == "response_only")
     assert tier["value"] == "routine" and tier["flags"]["safety_netting"] is False and len(tier["flags"]) == 5
     assert tier["usage_missing"] is False and tier["cost_basis"] == "actual_usage"
-    assert (out.with_suffix(".report.json")).is_file()
+    assert out.with_name(f"{out.stem}.judge.report.json").is_file(), "the default sidecar name carries the lane's judge suffix"
     # a second run re-judges only the null one, and its ceiling and sidecar carry the cost already in the file
     # (Codex round 3): cost_usd is cumulative over every row, run_cost_usd is this invocation's delta
     assert side["prior_cost_usd"] == 0.0 and side["run_cost_usd"] == side["cost_usd"] > 0
@@ -885,7 +885,7 @@ def test_judge_calls_without_usage_are_charged_their_worst_case_and_counted(tmp_
     assert side["calls_without_usage"] == len(rows) and side["usage_basis"].startswith("actual_usage_plus_imputed")
     assert side["cost_basis"] == "cumulative_from_records"
     assert report.is_file() and side["judgments_file"] == "judgments.jsonl"
-    assert not (tmp_path / "judgments.report.json").exists(), "the sidecar carries the run-unique name it was given"
+    assert not (tmp_path / "judgments.judge.report.json").exists(), "the sidecar carries the run-unique name it was given"
     # the ledger keys sidecars by basename, so two runs' judge sidecars must not collide
     import importlib.util
     spec = importlib.util.spec_from_file_location("ledger_update_for_test", ROOT / "scripts" / "ledger_update.py")
@@ -1057,7 +1057,7 @@ def test_bind_judgments_writes_the_manifest_before_the_chain_line_and_repairs_an
     assert manifest_mod.reseal_problems(run_dir) == []
     judgments = run_dir / "judgments.jsonl"
     judgments.write_text('{"conversation_id": "c", "value": "a"}\n', encoding="utf-8")
-    report = run_dir / "judgments.report.json"
+    report = run_dir / f"{run_dir.name}.judge.report.json"
     report.write_text(json.dumps({"cost_usd": 0.0, "judgments_sha256": framework.sha256_file(judgments)}) + "\n", encoding="utf-8")
     provenance = {"judge_model": "claude-haiku-4-5", "billing_channel": "anthropic", "price_source": "engine",
                   "judged_utc": "2026-09-16T00:00:00Z", "cost_usd": 0.0, "truncated": False, "planned": 1, "judged": 1,
@@ -1239,7 +1239,7 @@ def test_reseal_eligibility_verifies_the_bound_artifacts_with_an_append_recovery
     manifest_mod.append_chain(d, first, run_dir / "manifest.json")
     judgments = run_dir / "judgments.jsonl"
     judgments.write_text('{"conversation_id": "c", "value": "a"}\n', encoding="utf-8")
-    report = run_dir / "judgments.report.json"
+    report = run_dir / f"{run_dir.name}.judge.report.json"
     report.write_text(json.dumps({"cost_usd": 0.0, "judgments_sha256": framework.sha256_file(judgments)}) + "\n", encoding="utf-8")
     provenance = {"judge_model": "claude-haiku-4-5", "billing_channel": "anthropic", "price_source": "engine",
                   "judged_utc": "2026-09-16T00:00:00Z", "cost_usd": 0.0, "truncated": False, "planned": 1, "judged": 1,

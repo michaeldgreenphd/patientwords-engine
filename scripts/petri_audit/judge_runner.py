@@ -465,7 +465,9 @@ def run_judgments(plans: list[JudgePlan], client: JudgeClient, *, out_path: Path
     except Exception as exc:  # noqa: BLE001 - the sidecar must record whatever was charged before the failure
         abort_error = f"{type(exc).__name__}: {exc}"
     sidecar = _sidecar(out_path, client, ceiling, counts, now_fn, sidecar_extra, abort_error, judge_max_tokens)
-    report_path = report_path or out_path.with_suffix(".report.json")
+    # the default carries the lane's judge suffix: the manifest verifiers require it and the summary locates the judge
+    # sidecar by it, so a default name that lacked it could not be bound (Codex, PR #27, twelfth round)
+    report_path = report_path or out_path.with_name(f"{out_path.stem}.judge.report.json")
     report_path.write_text(json.dumps(sidecar, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     if abort_error is not None:
         raise JudgeAborted(abort_error, sidecar)

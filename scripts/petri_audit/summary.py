@@ -24,6 +24,7 @@ over its own output.
 from __future__ import annotations
 
 import json
+import math
 import statistics
 from functools import lru_cache
 from pathlib import Path
@@ -138,9 +139,19 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
     present, or None with the reason recorded in `unavailable_fields`;
     nothing here is a default."""
     unavailable: dict[str, str] = {}
-    out: dict[str, Any] = {"max_turns": _dig(manifest, "execution", "max_turns"),
-                           "max_tool_rounds_per_turn": _dig(manifest, "execution", "max_tool_rounds_per_turn"),
-                           "epochs": _dig(manifest, "execution", "epochs")}
+    out: dict[str, Any] = {}
+    # the execution limits are design measurements the table publishes; the schema makes each an integer of at
+    # least 1, so any other value is a named gap, never a rendered number (Codex, PR #27, twelfth round)
+    execution = manifest.get("execution")
+    for key in ("max_turns", "max_tool_rounds_per_turn", "epochs"):
+        try:
+            value = _member({} if execution is None else execution, key, "execution", (int,))
+            if value < 1:
+                raise ValueError(f"execution {key!r} is below 1 ({value})")
+            out[key] = value
+        except (KeyError, TypeError, ValueError) as exc:
+            out[key] = None
+            unavailable[key] = _reason(exc)
     # the eval's own status, from the sanitised projection; a file that is missing, does not parse or carries no
     # status is a named gap (Codex, PR #27: the parse used to sit outside every guard)
     sanitised = run_dir / "sanitised_log.json"
@@ -164,6 +175,7 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
         out["seeds"] = None
         unavailable["seeds"] = _reason(exc)
     tree_fields = ("trees", "branches", "conditions", "branches_without_condition_id", "shared_prefix_branches", "survivors_exported")
+    duplicate_branch_ids: list[str] = []          # a repeated id collapses in the set below; it is reported on its own
     try:
         trees = _collection(manifest, "trees")
         cells: set[tuple[Any, Any]] = set()       # (seed_id, condition_id): condition ids repeat across seeds
@@ -183,7 +195,10 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
             for j, b in enumerate(tree_branches):
                 bwhere = f"{where} branch {b.get('branch_id', j)!r}" if isinstance(b, dict) else f"{where} branch #{j}"
                 branches_n += 1
-                branch_ids.add(_member(b, "conversation_id", bwhere, (str,)))
+                cid = _member(b, "conversation_id", bwhere, (str,))
+                if cid in branch_ids:
+                    duplicate_branch_ids.append(cid)
+                branch_ids.add(cid)
                 condition = _member(b, "condition_id", bwhere, (str, NULL))
                 if condition is None:
                     no_condition += 1
@@ -234,6 +249,12 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
         seen: dict[Any, dict] = {}
         bad = 0
         details: list[str] = []
+        # every record names the manifest it was bound to (`provenance.run_manifest.sha256` is the identity digest the
+        # adapter binds before export); one naming another identity is a pairing problem no digest can see (Codex,
+        # PR #27, twelfth round); a manifest without an identity leaves the check unavailable, never passed
+        identity = _dig(manifest, "chain", "identity_sha256")
+        identity = identity if isinstance(identity, str) and len(identity) == 64 else None
+        mismatched = 0
         for i, r in enumerate(records):
             if isinstance(r, dict):
                 try:
@@ -242,6 +263,12 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
                     probs = [f"record cannot be validated: {type(exc).__name__}: {exc}"]
             else:
                 probs = ["not an object"]
+            if identity is not None:
+                sha = _dig(r, "provenance", "run_manifest", "sha256")
+                if sha != identity:
+                    probs.append("provenance names " + ("no manifest identity" if sha is None
+                                                        else f"a different manifest identity ({str(sha)[:12]})"))
+                    mismatched += 1
             cid = r.get("conversation_id") if isinstance(r, dict) else None
             if cid is None:
                 probs.append("no conversation_id")
@@ -260,13 +287,20 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
         else:
             not_in_manifest = sorted(str(c) for c in set(seen) - branch_ids)
             without_record = sorted(branch_ids - set(seen))
-            id_match = {"records_not_in_manifest": len(not_in_manifest), "branches_without_record": len(without_record)}
+            id_match = {"records_not_in_manifest": len(not_in_manifest), "branches_without_record": len(without_record),
+                        "duplicate_branch_ids": len(duplicate_branch_ids)}
             if not_in_manifest:
                 details.append(f"record ids the manifest names no branch for: {', '.join(c[:12] for c in not_in_manifest[:3])}")
             if without_record:
                 details.append(f"manifest branches with no exported record: {', '.join(c[:12] for c in without_record[:3])}")
+            if duplicate_branch_ids:
+                # two branches sharing an id cannot be paired independently, and the set comparison alone would still
+                # read as a clean match (Codex, PR #27, twelfth round)
+                details.append("manifest branches sharing a conversation_id: "
+                               + ", ".join(c[:12] for c in sorted(set(duplicate_branch_ids))[:3]))
+        provenance: Any = mismatched if identity is not None else {"unavailable": "manifest carries no identity digest"}
         out["records"] = {"count": len(records), "unique_conversation_ids": len(seen), "with_problems": bad, "id_match": id_match,
-                          "problems": details[:6]}
+                          "provenance_mismatches": provenance, "problems": details[:8]}
     else:
         # a missing export is a gap, never a count of zero (Codex, PR #27); the manifest-derived counts stand
         out["records"] = {"unavailable": "transcripts.jsonl is missing from the run directory"}
@@ -382,26 +416,64 @@ def _bounded_counts(fields: dict[str, Any], where: str) -> None:
         raise ValueError(f"{where} 'calls_without_usage' {without} exceeds 'calls' {calls}")
 
 
+def _usage_row(r: Any, where: str) -> dict:
+    """One usage row from a per-model record (the manifest's `usage.by_model`
+    or the fallback sidecar's `models`): every key the label reads present
+    and typed (Codex, PR #27: `usage_is_missing` reads an absent
+    calls_without_usage as 0, which labelled a damaged row provider-measured),
+    the counters bounded, then the provenance label."""
+    model = _member(r, "model", where)
+    if not isinstance(model, str):
+        raise TypeError(f"{where} model is not a string")
+    where = f"{where} ({model!r})"
+    fields = {"calls": _member(r, "calls", where, (int,)), "calls_without_usage": _member(r, "calls_without_usage", where, (int,)),
+              "input_tokens": _member(r, "input_tokens", where, (int, NULL)),
+              "output_tokens": _member(r, "output_tokens", where, (int, NULL))}
+    _bounded_counts(fields, where)
+    price = resolve_price(model)
+    zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
+    return {"model": model, **fields, "status": usage_status(r, price.source, zero), "price_source": price.source}
+
+
+def _usage_without_manifest(run_dir: Path, judge_started: Path | str | None = None) -> list[dict] | dict:
+    """The usage table when no manifest exists. The fallback target sidecar
+    the workflow writes for an attempted run carries the only per-model
+    evidence (`models` rows), so the table is derived from it with the same
+    checks and labels as the manifest's rows (Codex, PR #27, twelfth round:
+    the no-manifest summary showed a cost and no usage at all). No sidecar,
+    or one without model rows, is a named gap."""
+    found = _sidecar_files(run_dir, judge=False)
+    if not found:
+        return {"unavailable": "no manifest and no target cost sidecar: no usage evidence exists"}
+    if len(found) > 1:
+        return {"unavailable": f"{len(found)} target cost sidecars in the run directory"}
+    path = found[0]
+    where = path.name
+    try:
+        r = load_json(path)
+        if not isinstance(r, dict):
+            raise TypeError(f"{where} is not an object")
+        models = r.get("models")
+        if not isinstance(models, list):
+            raise KeyError(f"{where} lacks a 'models' list")
+        rows = [_usage_row(m, f"{where} models #{i}") for i, m in enumerate(models)]
+    except (KeyError, TypeError, ValueError, OSError) as exc:
+        return {"unavailable": _reason(exc)}
+    if not rows:
+        return {"unavailable": f"{where} carries no model row"}
+    for row in rows:
+        row["note"] = f"from the fallback sidecar {where} (no manifest)"
+    rows.extend(_judge_usage_rows(run_dir, judge_started))
+    return rows
+
+
 def _usage(manifest: dict, run_dir: Path | None = None, judge_started: Path | str | None = None) -> list[dict] | dict:
     rows = []
     for i, r in enumerate(_collection(manifest, "usage", "by_model")):
-        # every key the label reads must be present (Codex, PR #27): `usage_is_missing` reads an absent
-        # calls_without_usage as 0, which labelled a damaged row provider-measured
-        where = f"usage.by_model row #{i}"
         try:
-            model = _member(r, "model", where)
-            if not isinstance(model, str):
-                raise TypeError(f"{where} model is not a string")
-            where = f"{where} ({model!r})"
-            fields = {"calls": _member(r, "calls", where, (int,)), "calls_without_usage": _member(r, "calls_without_usage", where, (int,)),
-                      "input_tokens": _member(r, "input_tokens", where, (int, NULL)),
-                      "output_tokens": _member(r, "output_tokens", where, (int, NULL))}
-            _bounded_counts(fields, where)
+            rows.append(_usage_row(r, f"usage.by_model row #{i}"))
         except (KeyError, TypeError, ValueError) as exc:
             return {"unavailable": _reason(exc)}
-        price = resolve_price(model)
-        zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
-        rows.append({"model": model, **fields, "status": usage_status(r, price.source, zero), "price_source": price.source})
     if not rows:
         # a run with samples but no target model event leaves by_model empty while the adapter names the target in
         # usage_missing_models and the sidecar imputes its ceiling; that state is reported, never an omitted section
@@ -476,6 +548,22 @@ def _integrity(manifest: dict, run_dir: Path) -> dict:
 NUMBER = (int, float)
 
 
+def _bounded_spend(fields: dict[str, Any], where: str) -> None:
+    """Spend values are finite and non-negative, and a ceiling is positive.
+    A sidecar may be the only spend evidence a failed run leaves, so a value
+    outside those bounds is a named gap, never a spend record (Codex, PR #27,
+    twelfth round: `cost_usd: -1` rendered as one)."""
+    for key, value in fields.items():
+        if value is None:
+            continue
+        if not math.isfinite(value):
+            raise ValueError(f"{where} {key!r} is not finite ({value})")
+        if value < 0:
+            raise ValueError(f"{where} {key!r} is negative ({value})")
+        if key == "max_spend_usd" and value == 0:
+            raise ValueError(f"{where} {key!r} is not a positive ceiling ({value})")
+
+
 def _sidecar_files(run_dir: Path, *, judge: bool) -> list[Path]:
     """The cost sidecars directly inside the run directory, by filename
     pattern: `*.judge.report.json` for the judge, every other
@@ -503,10 +591,12 @@ def _sidecar(run_dir: Path) -> dict | None:
         r = load_json(path)
         if not isinstance(r, dict):
             raise TypeError(f"{where} is not an object")
-        return {"path": path.name, "cost_usd": _member(r, "cost_usd", where, NUMBER), "cost_basis": _member(r, "cost_basis", where, (str,)),
+        side = {"path": path.name, "cost_usd": _member(r, "cost_usd", where, NUMBER), "cost_basis": _member(r, "cost_basis", where, (str,)),
                 "billing_channel": _member(r, "billing_channel", where, (str,)),
                 "usage_missing_models": _member(r, "usage_missing_models", where, (list,)),
                 "max_spend_usd": _member(r, "max_spend_usd", where, NUMBER), "spend_report_reason": r.get("spend_report_reason")}
+        _bounded_spend({"cost_usd": side["cost_usd"], "max_spend_usd": side["max_spend_usd"]}, where)
+        return side
     except (KeyError, TypeError, ValueError, OSError) as exc:
         return {"path": path.name, "unavailable": _reason(exc)}
 
@@ -523,9 +613,12 @@ def _judge_sidecar(run_dir: Path) -> dict | None:
         r = load_json(path)
         if not isinstance(r, dict):
             raise TypeError(f"{where} is not an object")
-        return {"path": path.name, "judge_model": _member(r, "judge_model", where, (str,)), "cost_usd": _member(r, "cost_usd", where, NUMBER),
+        side = {"path": path.name, "judge_model": _member(r, "judge_model", where, (str,)), "cost_usd": _member(r, "cost_usd", where, NUMBER),
                 "cost_basis": _member(r, "cost_basis", where, (str,)), "billing_channel": _member(r, "billing_channel", where, (str,)),
+                "max_spend_usd": _member(r, "max_spend_usd", where, NUMBER) if "max_spend_usd" in r else None,
                 "planned": r.get("planned"), "cumulative": r.get("cumulative"), "aborted": r.get("aborted"), "truncated": r.get("truncated")}
+        _bounded_spend({"cost_usd": side["cost_usd"], "max_spend_usd": side["max_spend_usd"]}, where)
+        return side
     except (KeyError, TypeError, ValueError, OSError) as exc:
         return {"path": path.name, "unavailable": _reason(exc)}
 
@@ -705,6 +798,9 @@ def run_summary(run_dir: Path | str | None, *, mode: str, raw_eval_dir: Path | s
         out["published"] = _guard(_published, run_dir) if present else None
         out["sidecar"] = _guard(_sidecar, run_dir) if present else None
         out["judge_sidecar"] = _guard(_judge_sidecar, run_dir) if present else None
+        # the usage evidence a failed run leaves is its fallback sidecar's model rows (Codex, PR #27, twelfth round)
+        out["usage"] = (_guard(_usage_without_manifest, run_dir, judge_started) if present
+                        else {"unavailable": "no run directory: no usage evidence exists"})
         out["raw_eval"] = _guard(_raw_eval, {}, raw_dir)
         return out
 
@@ -754,6 +850,22 @@ def _fmt(v: Any) -> str:
     return str(v)
 
 
+def _usage_lines(usage: Any) -> list[str]:
+    """The usage table, rendered the same with or without a manifest."""
+    if isinstance(usage, dict) and "unavailable" in usage:
+        return ["Usage: unavailable (" + usage["unavailable"] + ")", ""]
+    if not usage:
+        return []
+    lines = ["**Usage status per model** (provider-measured / mock/non-metered / unavailable)", "",
+             "| model | calls | calls without usage | input tokens | output tokens | status | price source |",
+             "|---|---|---|---|---|---|---|"]
+    lines += [f"| {r['model']} | {_fmt(r['calls'])} | {_fmt(r['calls_without_usage'])} | {_fmt(r['input_tokens'])} | "
+              f"{_fmt(r['output_tokens'])} | **{r['status']}**" + (f" ({r['note']})" if r.get("note") else "")
+              + f" | {r['price_source']} |" for r in usage]
+    return lines + ["", "Token counts of a mock/non-metered model are not provider-metered tokens; provider usage exists "
+                    "only for a provider-measured row.", ""]
+
+
 def render_markdown(s: dict) -> str:
     lines = [f"## Petri audit ({s.get('mode')})", ""]
     if s.get("note"):
@@ -765,6 +877,7 @@ def render_markdown(s: dict) -> str:
     m = s.get("manifest")
     if not m:
         lines += ["No manifest (" + (s.get("manifest_error") or "no adapted run") + ").", ""]
+        lines += _usage_lines(s.get("usage"))
     else:
         lines += _table("Manifest", [("run_id", m.get("run_id")), ("eval_id", m.get("eval_id")), ("target", m.get("target")),
                                      ("claim_grade_eligible", m.get("claim_grade_eligible")),
@@ -793,7 +906,8 @@ def render_markdown(s: dict) -> str:
                 ("records vs manifest branches (not in manifest / without record)",
                  _fmt((st.get("records") or {}).get("id_match", "unavailable"))),
                 ("records refused by the adapter", (st.get("refused") or {}).get("count") if st.get("refused") is not None else None),
-                ("max turns / tool rounds per turn", f"{st.get('max_turns')} / {st.get('max_tool_rounds_per_turn')}")]
+                ("records naming a different manifest identity", _fmt((st.get("records") or {}).get("provenance_mismatches", "unavailable"))),
+                ("max turns / tool rounds per turn", f"{_fmt(st.get('max_turns'))} / {_fmt(st.get('max_tool_rounds_per_turn'))}")]
                 + ([("branches without a condition id", st["branches_without_condition_id"])]
                    if st.get("branches_without_condition_id") is not None else []))
             missing = st.get("unavailable_fields") or {}
@@ -805,18 +919,7 @@ def render_markdown(s: dict) -> str:
             probs = (st.get("records") or {}).get("problems") or []
             if probs:
                 lines += ["Record problems:", ""] + [f"- {p}" for p in probs] + [""]
-        usage = s.get("usage")
-        if isinstance(usage, dict) and "unavailable" in usage:
-            lines += ["Usage: unavailable (" + usage["unavailable"] + ")", ""]
-        elif usage:
-            lines += ["**Usage status per model** (provider-measured / mock/non-metered / unavailable)", "",
-                      "| model | calls | calls without usage | input tokens | output tokens | status | price source |",
-                      "|---|---|---|---|---|---|---|"]
-            lines += [f"| {r['model']} | {_fmt(r['calls'])} | {_fmt(r['calls_without_usage'])} | {_fmt(r['input_tokens'])} | "
-                      f"{_fmt(r['output_tokens'])} | **{r['status']}**" + (f" ({r['note']})" if r.get("note") else "")
-                      + f" | {r['price_source']} |" for r in usage]
-            lines += ["", "Token counts of a mock/non-metered model are not provider-metered tokens; provider usage exists "
-                      "only for a provider-measured row.", ""]
+        lines += _usage_lines(s.get("usage"))
         red = s.get("redaction")
         if red is None:
             lines += ["Sanitiser redaction report: unavailable (absent)", ""]

@@ -1397,7 +1397,16 @@ dry run observable, which section 14 depends on.
    does not parse is that section's gap rather than an exception that takes
    the target usage with it; and the workflow passes its judge-start marker
    (`--judge-started-marker`) so a judge that died before writing anything is
-   still reported.
+   still reported. The twelfth round found six more: the no-manifest summary
+   derives its usage table from the fallback sidecar's model rows (the only
+   per-model evidence a failed run leaves) with the same checks; each
+   artifact family is bound to the filename its consumers open and no two
+   families may share a path (both verifiers); a repeated branch
+   `conversation_id` is reported beside the id comparison; each record's
+   `provenance.run_manifest.sha256` must equal the manifest's identity
+   digest; the execution limits are validated as integers of at least 1;
+   and sidecar spend values must be finite and non-negative with a positive
+   ceiling.
 
 ## Decisions recorded from the owner (2026-09-16)
 
