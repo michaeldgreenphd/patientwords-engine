@@ -930,8 +930,13 @@ def test_usage_provenance_is_bound_to_the_run_s_pricing_pin(run_dir, tmp_path):
         return summary.run_summary(run_dir, mode="run")["usage"]
 
     u = pinned("f" * 64)
-    assert u["unavailable"].startswith("the pricing registry differs from the run's pin (pinned ffffffffffff, current ")
-    assert pinned(None) == {"unavailable": "manifest carries no pricing digest (usage.pricing_source_sha256); no price source can be attributed"}
+    assert u[0]["model"] == "mockllm/model" and u[0]["calls"] == base["usage"]["by_model"][0]["calls"], "the counts are measured"
+    assert u[0]["status"] == summary.USAGE_UNAVAILABLE and u[0]["price_source"] is None
+    assert u[0]["note"].startswith("price source not attributable: the pricing registry differs from the run's pin (pinned ffffffffffff, current ")
+    u = pinned(None)
+    assert u[0]["status"] == summary.USAGE_UNAVAILABLE and u[0]["price_source"] is None
+    assert u[0]["note"] == "price source not attributable: manifest carries no pricing digest (usage.pricing_source_sha256)"
+    assert "| mockllm/model | 3 | 0 | 120 | 90 | **unavailable** (price source not attributable" in summary.render_markdown(summary.run_summary(run_dir, mode="run"))
     framework.write_json(run_dir / "manifest.json", base)
     # the judge of record is priced from its sidecar's recorded rates, never re-resolved: zero rates under a pinned
     # source label the judge non-metered even though the registry prices that model
@@ -960,6 +965,69 @@ def test_usage_provenance_is_bound_to_the_run_s_pricing_pin(run_dir, tmp_path):
     del side["models"][0]["price_source"]
     framework.write_json(bare / "run_x.report.json", side)
     assert summary.run_summary(bare, mode="run")["usage"] == {"unavailable": "run_x.report.json models #0 lacks 'price_source'"}
+
+
+def test_judge_rows_survive_a_target_pricing_pin_mismatch(run_dir):
+    """Codex (PR #27, fifteenth round): a target pricing-pin mismatch replaced
+    the whole usage section, judge rows included, although the judge sidecar
+    pins the judge's price on its own; and a judge without a sidecar cannot
+    be priced from a registry that failed the pin."""
+    rows = [{"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 100, "output_tokens": 20,
+             "retry_attempts_charged": 0, "provider_attempts": 1}]
+    (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    framework.write_json(run_dir / "example.judge.report.json",
+                         {"judge_model": "claude-haiku-4-5", "cost_usd": 0.0, "cost_basis": "cumulative_from_records", "billing_channel": "anthropic",
+                          "max_spend_usd": 0.05, "price_source": "pinned:test", "input_per_mtok": 0.0, "output_per_mtok": 0.0})
+    m = framework.load_json(run_dir / "manifest.json")
+    m["usage"]["pricing_source_sha256"] = "f" * 64
+    framework.write_json(run_dir / "manifest.json", m)
+    usage = summary.run_summary(run_dir, mode="run")["usage"]
+    assert [r["model"] for r in usage] == ["mockllm/model", "claude-haiku-4-5"]
+    assert usage[0]["status"] == summary.USAGE_UNAVAILABLE and usage[0]["price_source"] is None, "the target label is withheld"
+    assert usage[1]["status"] == summary.USAGE_MOCK and usage[1]["price_source"] == "pinned:test" and usage[1]["calls"] == 1, \
+        "the judge row stands on its sidecar's pinned rates"
+    (run_dir / "example.judge.report.json").unlink()
+    usage = summary.run_summary(run_dir, mode="run")["usage"]
+    assert usage[1]["model"] == "claude-haiku-4-5" and usage[1]["calls"] == 1 and usage[1]["status"] == summary.USAGE_UNAVAILABLE
+    assert usage[1]["price_source"] is None and "price source not attributable: the pricing registry differs" in usage[1]["note"], \
+        "no recorded price and an unattributable registry: the counts stand, the label does not"
+
+
+def test_fallback_rows_are_reconciled_with_their_missing_usage_declarations(tmp_path):
+    """Codex (PR #27, fifteenth round): the no-manifest table read only the
+    counters, so a sidecar row with complete counters beside
+    `usage_missing: true` and a model named in `usage_missing_models` was
+    labelled provider-measured while the same sidecar imputed the ceiling."""
+    from scripts.petri_audit.spend import write_report_sidecar
+
+    run_dir = tmp_path / "run_x"
+    run_dir.mkdir()
+    write_report_sidecar(run_dir / "run_x.report.json", run_id="run_x", eval_id="e", target="anthropic/claude-haiku-4-5",
+                         model_usage={"anthropic/claude-haiku-4-5": {"input_tokens": None, "output_tokens": None, "calls": 2,
+                                                                     "calls_without_usage": 2}},
+                         max_spend_usd=0.05, judge_max_spend_usd=None, run_utc="2026-09-17T00:00:00Z")
+    sound = framework.load_json(run_dir / "run_x.report.json")
+    assert sound["usage_missing_models"] == ["anthropic/claude-haiku-4-5"] and sound["models"][0]["usage_missing"] is True
+    assert summary.run_summary(run_dir, mode="run")["usage"][0]["status"] == summary.USAGE_UNAVAILABLE
+
+    def damaged(mutate):
+        side = json.loads(json.dumps(sound))
+        mutate(side)
+        framework.write_json(run_dir / "run_x.report.json", side)
+        return summary.run_summary(run_dir, mode="run")["usage"]
+
+    where = "run_x.report.json models #0"
+    complete = {"input_tokens": 10, "output_tokens": 5, "calls": 2, "calls_without_usage": 0}
+    assert damaged(lambda s: s["models"][0].update(complete)) == {"unavailable": f"{where} 'usage_missing' True disagrees with its counters"}
+    assert damaged(lambda s: s["models"][0].update(usage_missing=False)) == \
+        {"unavailable": f"{where} 'usage_missing' False disagrees with its counters"}
+    assert damaged(lambda s: s.__setitem__("usage_missing_models", [])) == \
+        {"unavailable": "run_x.report.json usage_missing_models names [] but the rows with missing usage are ['anthropic/claude-haiku-4-5']"}
+    assert damaged(lambda s: s.__setitem__("usage_missing_models", "x")) == \
+        {"unavailable": "run_x.report.json 'usage_missing_models' is not a list of strings"}
+    assert damaged(lambda s: (s["models"][0].update(complete, usage_missing=False), s.__setitem__("usage_missing_models", [])))[0]["status"] \
+        == summary.USAGE_PROVIDER_MEASURED, "consistent: labelled"
+    assert damaged(lambda s: s["models"][0].__setitem__("input_per_mtok", -1)) == {"unavailable": f"{where} 'input_per_mtok' is negative (-1)"}
 
 
 def test_usage_rows_are_reconciled_with_the_missing_model_list(run_dir):
@@ -1086,6 +1154,12 @@ def test_sidecar_spend_values_are_bounded(run_dir):
     assert summary.run_summary(run_dir, mode="dry_run")["judge_sidecar"]["unavailable"] == "example.judge.report.json lacks 'max_spend_usd'"
     framework.write_json(run_dir / "example.judge.report.json", {k: v for k, v in judge.items() if k != "input_per_mtok"} | {"cost_usd": 0.0})
     assert summary.run_summary(run_dir, mode="dry_run")["judge_sidecar"]["unavailable"] == "example.judge.report.json lacks 'input_per_mtok'"
+    # Codex (PR #27, fifteenth round): the recorded rates label paid usage, so they are bounded like the spend values
+    framework.write_json(run_dir / "example.judge.report.json", {**judge, "cost_usd": 0.0, "output_per_mtok": -5.0})
+    assert summary.run_summary(run_dir, mode="dry_run")["judge_sidecar"]["unavailable"] == "example.judge.report.json 'output_per_mtok' is negative (-5.0)"
+    (run_dir / "example.judge.report.json").write_text(json.dumps({**judge, "cost_usd": 0.0}).replace('"input_per_mtok": 1.0', '"input_per_mtok": Infinity'),
+                                                        encoding="utf-8")
+    assert summary.run_summary(run_dir, mode="dry_run")["judge_sidecar"]["unavailable"] == "example.judge.report.json 'input_per_mtok' is not finite (inf)"
 
 
 def test_sidecars_are_found_by_pattern_after_a_flat_extraction(run_dir, tmp_path):

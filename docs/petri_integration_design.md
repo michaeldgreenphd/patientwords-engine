@@ -1415,7 +1415,11 @@ dry run observable, which section 14 depends on.
    registry the summary runs against; the by-model rows are reconciled with
    `usage_missing_models`; and a target sidecar may record a zero ceiling
    (a zero-priced dry run is admitted under `max_spend: "0"`), while a judge
-   ceiling stays positive.
+   ceiling stays positive. The fifteenth round refined that: an
+   unattributable registry withholds the labels, not the section (the
+   counts stand and the judge rows keep their sidecar-pinned price); the
+   fallback sidecar's rows are reconciled with their own `usage_missing`
+   flag and the sidecar's list; and recorded rates are bounded like spend.
 
 ## Decisions recorded from the owner (2026-09-16)
 

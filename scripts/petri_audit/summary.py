@@ -308,19 +308,18 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
     return out
 
 
-def _pinned_judge_price(run_dir: Path, spec: str) -> Price:
+def _pinned_judge_price(run_dir: Path, spec: str) -> Price | None:
     """The judge's price as the run recorded it: the judge sidecar carries
     the source and the rates every judged call was charged at, so the label
     never depends on the registry the summary happens to run against
-    (Codex, PR #27, fourteenth round). Without a readable sidecar for that
-    judge, the registry resolves it; in the manifest path that registry has
-    already been checked against the manifest's pricing pin."""
-    from .spend import resolve_registry_price
-
+    (Codex, PR #27, fourteenth round). None when no readable sidecar names
+    that judge; the caller then resolves the registry only when it has been
+    checked against the manifest's pricing pin (fifteenth round: a target
+    pin mismatch must not erase judge rows the sidecar pins on its own)."""
     side = _judge_sidecar(run_dir)
     if side and "unavailable" not in side and side["judge_model"] == spec:
         return Price(float(side["input_per_mtok"]), float(side["output_per_mtok"]), side["price_source"])
-    return resolve_registry_price(spec)
+    return None
 
 
 def _judge_row_from_sidecar(run_dir: Path, what: str, judge_started: Path | str | None = None) -> list[dict]:
@@ -354,7 +353,7 @@ def _judge_row_from_sidecar(run_dir: Path, what: str, judge_started: Path | str 
              "note": f"judge of record: {what}; the judge sidecar books {side['cost_basis']}"}]
 
 
-def _judge_usage_rows(run_dir: Path, judge_started: Path | str | None = None) -> list[dict]:
+def _judge_usage_rows(run_dir: Path, judge_started: Path | str | None = None, registry_note: str | None = None) -> list[dict]:
     """One usage row per judge model aggregated from judgments.jsonl, which
     the judge step writes after the manifest's usage table was closed
     (Codex, PR #27: the table omitted every paid judge call). A file that
@@ -402,13 +401,21 @@ def _judge_usage_rows(run_dir: Path, judge_started: Path | str | None = None) ->
                  "status": USAGE_UNAVAILABLE, "price_source": None, "note": f"judge of record: judgments.jsonl unreadable ({_reason(exc)})"}]
     if not per:
         return _judge_row_from_sidecar(run_dir, f"judgments.jsonl has no judge row ({len(rows)} non-judge row(s))", judge_started)
+    from .spend import resolve_registry_price
+
     out = []
     for spec, agg in sorted(per.items()):
+        note = f"judge of record, aggregated from judgments.jsonl ({rows_per[spec]} judge row(s), {agg['calls']} provider attempt(s))"
         price = _pinned_judge_price(run_dir, spec)
+        if price is None and registry_note is None:
+            price = resolve_registry_price(spec)         # the registry matched the manifest's pin, or no pin exists to check
+        if price is None:
+            # the run recorded no price for this judge and the registry cannot be attributed: the counts stand, the
+            # label does not (Codex, PR #27, fifteenth round)
+            out.append({"model": spec, **agg, "status": USAGE_UNAVAILABLE, "price_source": None, "note": f"{note}; {registry_note}"})
+            continue
         zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
-        out.append({"model": spec, **agg, "status": usage_status(agg, price.source, zero), "price_source": price.source,
-                    "note": (f"judge of record, aggregated from judgments.jsonl ({rows_per[spec]} judge row(s), "
-                             f"{agg['calls']} provider attempt(s))")})
+        out.append({"model": spec, **agg, "status": usage_status(agg, price.source, zero), "price_source": price.source, "note": note})
     return out
 
 
@@ -426,7 +433,7 @@ def _bounded_counts(fields: dict[str, Any], where: str) -> None:
         raise ValueError(f"{where} 'calls_without_usage' {without} exceeds 'calls' {calls}")
 
 
-def _usage_row(r: Any, where: str, price: Price | None = None) -> dict:
+def _usage_row(r: Any, where: str, price: Price | None = None, unattributable: str | None = None) -> dict:
     """One usage row from a per-model record (the manifest's `usage.by_model`
     or the fallback sidecar's `models`): every key the label reads present
     and typed (Codex, PR #27: `usage_is_missing` reads an absent
@@ -442,6 +449,10 @@ def _usage_row(r: Any, where: str, price: Price | None = None) -> dict:
               "input_tokens": _member(r, "input_tokens", where, (int, NULL)),
               "output_tokens": _member(r, "output_tokens", where, (int, NULL))}
     _bounded_counts(fields, where)
+    if price is None and unattributable is not None:
+        # the counts are measured; the label needs a price source the run never recorded and the registry cannot
+        # supply (Codex, PR #27, fifteenth round: the whole section used to vanish, judge rows included)
+        return {"model": model, **fields, "status": USAGE_UNAVAILABLE, "price_source": None, "note": unattributable}
     price = price if price is not None else resolve_price(model)
     zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
     return {"model": model, **fields, "status": usage_status(r, price.source, zero), "price_source": price.source}
@@ -469,12 +480,31 @@ def _usage_without_manifest(run_dir: Path, judge_started: Path | str | None = No
         if not isinstance(models, list):
             raise KeyError(f"{where} lacks a 'models' list")
         rows = []
+        observed_missing: set[str] = set()
         for i, m in enumerate(models):
             mwhere = f"{where} models #{i}"
-            # the sidecar's rows retain the source and rates the run was priced at (Codex, PR #27, fourteenth round)
-            pinned = Price(float(_member(m, "input_per_mtok", mwhere, NUMBER)), float(_member(m, "output_per_mtok", mwhere, NUMBER)),
-                           _member(m, "price_source", mwhere, (str,)))
-            rows.append(_usage_row(m, mwhere, pinned))
+            # the sidecar's rows retain the source and rates the run was priced at (Codex, PR #27, fourteenth round);
+            # the rates are finite and non-negative or the row is a damaged record (fifteenth round)
+            rates = {"input_per_mtok": _member(m, "input_per_mtok", mwhere, NUMBER),
+                     "output_per_mtok": _member(m, "output_per_mtok", mwhere, NUMBER)}
+            _bounded_spend(rates, mwhere, positive_ceiling=False)
+            pinned = Price(float(rates["input_per_mtok"]), float(rates["output_per_mtok"]), _member(m, "price_source", mwhere, (str,)))
+            row = _usage_row(m, mwhere, pinned)
+            # the writer derives the row's `usage_missing` flag and the sidecar's `usage_missing_models` from the same
+            # counters; a disagreement is a damaged record, never a provider-measured label beside an imputed ceiling
+            # (Codex, PR #27, fifteenth round)
+            flag = _member(m, "usage_missing", mwhere, (bool,))
+            if flag != usage_is_missing(m):
+                raise ValueError(f"{mwhere} 'usage_missing' {flag} disagrees with its counters")
+            if flag:
+                observed_missing.add(row["model"])
+            rows.append(row)
+        declared = r.get("usage_missing_models")
+        if not isinstance(declared, list) or not all(isinstance(x, str) for x in declared):
+            raise TypeError(f"{where} 'usage_missing_models' is not a list of strings")
+        if sorted(set(declared)) != sorted(observed_missing):
+            raise ValueError(f"{where} usage_missing_models names {sorted(set(declared))} but the rows with missing usage are "
+                             f"{sorted(observed_missing)}")
     except (KeyError, TypeError, ValueError, OSError) as exc:
         return {"unavailable": _reason(exc)}
     if not rows:
@@ -491,16 +521,18 @@ def _usage(manifest: dict, run_dir: Path | None = None, judge_started: Path | st
     # fourteenth round: the paid run's own commit steps pull main before the summary)
     pin = _dig(manifest, "usage", "pricing_source_sha256")
     if not (isinstance(pin, str) and len(pin) == 64):
-        return {"unavailable": "manifest carries no pricing digest (usage.pricing_source_sha256); no price source can be attributed"}
-    current = pricing_source_digest()
-    if current != pin:
-        return {"unavailable": f"the pricing registry differs from the run's pin (pinned {pin[:12]}, current {current[:12]}); "
-                               "no price source can be attributed"}
+        registry_note: str | None = "price source not attributable: manifest carries no pricing digest (usage.pricing_source_sha256)"
+    else:
+        current = pricing_source_digest()
+        registry_note = None if current == pin else (f"price source not attributable: the pricing registry differs from the run's pin "
+                                                      f"(pinned {pin[:12]}, current {current[:12]})")
+    # an unattributable registry withholds the labels, not the section: the counts are measured, and the judge rows are
+    # pinned by their own sidecar (Codex, PR #27, fifteenth round)
     rows = []
     observed_missing: set[str] = set()
     for i, r in enumerate(_collection(manifest, "usage", "by_model")):
         try:
-            rows.append(_usage_row(r, f"usage.by_model row #{i}"))
+            rows.append(_usage_row(r, f"usage.by_model row #{i}", unattributable=registry_note))
             if usage_is_missing(r):
                 observed_missing.add(rows[-1]["model"])
         except (KeyError, TypeError, ValueError) as exc:
@@ -526,13 +558,17 @@ def _usage(manifest: dict, run_dir: Path | None = None, judge_started: Path | st
         if not isinstance(missing, list) or not missing:
             return {"unavailable": "usage.by_model is empty and usage_missing_models names no model"}
         for model in missing:
+            note = "no usage row recorded (no model event); named in usage_missing_models"
+            if registry_note is not None:
+                rows.append({"model": model, "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
+                             "status": USAGE_UNAVAILABLE, "price_source": None, "note": f"{note}; {registry_note}"})
+                continue
             price = resolve_price(model)
             zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
             rows.append({"model": model, "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
-                         "status": USAGE_MOCK if zero else USAGE_UNAVAILABLE, "price_source": price.source,
-                         "note": "no usage row recorded (no model event); named in usage_missing_models"})
+                         "status": USAGE_MOCK if zero else USAGE_UNAVAILABLE, "price_source": price.source, "note": note})
     if run_dir is not None:
-        rows.extend(_judge_usage_rows(run_dir, judge_started))
+        rows.extend(_judge_usage_rows(run_dir, judge_started, registry_note))
     return rows
 
 
@@ -669,7 +705,8 @@ def _judge_sidecar(run_dir: Path) -> dict | None:
                 "price_source": _member(r, "price_source", where, (str,)),
                 "input_per_mtok": _member(r, "input_per_mtok", where, NUMBER), "output_per_mtok": _member(r, "output_per_mtok", where, NUMBER),
                 "planned": r.get("planned"), "cumulative": r.get("cumulative"), "aborted": r.get("aborted"), "truncated": r.get("truncated")}
-        _bounded_spend({"cost_usd": side["cost_usd"], "max_spend_usd": side["max_spend_usd"]}, where, positive_ceiling=True)
+        _bounded_spend({"cost_usd": side["cost_usd"], "max_spend_usd": side["max_spend_usd"], "input_per_mtok": side["input_per_mtok"],
+                        "output_per_mtok": side["output_per_mtok"]}, where, positive_ceiling=True)
         return side
     except (KeyError, TypeError, ValueError, OSError) as exc:
         return {"path": path.name, "unavailable": _reason(exc)}
@@ -913,7 +950,7 @@ def _usage_lines(usage: Any) -> list[str]:
              "|---|---|---|---|---|---|---|"]
     lines += [f"| {r['model']} | {_fmt(r['calls'])} | {_fmt(r['calls_without_usage'])} | {_fmt(r['input_tokens'])} | "
               f"{_fmt(r['output_tokens'])} | **{r['status']}**" + (f" ({r['note']})" if r.get("note") else "")
-              + f" | {r['price_source']} |" for r in usage]
+              + f" | {_fmt(r['price_source'])} |" for r in usage]
     return lines + ["", "Token counts of a mock/non-metered model are not provider-metered tokens; provider usage exists "
                     "only for a provider-measured row.", ""]
 
