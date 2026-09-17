@@ -1425,7 +1425,13 @@ dry run observable, which section 14 depends on.
    and gets no label; a repeated model row (fallback sidecar or manifest) is
    a named gap; judgment rows must name the judge the sidecar records, and
    one judge per run; and judge token totals stay absent until a row
-   carried usage, with the coverage stated when it is partial.
+   carried usage, with the coverage stated when it is partial. The
+   seventeenth round added three: a judgment row with usage must record
+   exactly one answered request after its charged retries; rows beside a
+   judge sidecar the workflow's fallback wrote (any basis but the loop's own
+   `cumulative_from_records`) are partial evidence, reported with their
+   counts and no label; and `usage.by_role` and `usage.by_model` must sum to
+   the same calls and calls without usage before either is published.
 
 ## Decisions recorded from the owner (2026-09-16)
 

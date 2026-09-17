@@ -668,10 +668,12 @@ def test_negative_usage_counters_are_rejected_before_provenance(run_dir):
     negative measurements was labelled provider-measured."""
     base = framework.load_json(run_dir / "manifest.json")
 
-    def damaged(**counts):
+    def damaged(role=None, **counts):
         m = json.loads(json.dumps(base))
         m["usage"]["by_model"] = [{"model": "anthropic/claude-haiku-4-5", "calls": 3, "calls_without_usage": 0, "input_tokens": 120,
                                    "output_tokens": 30, **counts}]
+        if role is not None:
+            m["usage"]["by_role"][0].update(role)          # the same events feed by_role
         framework.write_json(run_dir / "manifest.json", m)
         return summary.run_summary(run_dir, mode="run")["usage"]
 
@@ -683,7 +685,8 @@ def test_negative_usage_counters_are_rejected_before_provenance(run_dir):
     assert damaged(input_tokens=-5) == {"unavailable": f"{where} 'input_tokens' is negative (-5)"}
     assert damaged(output_tokens=-1) == {"unavailable": f"{where} 'output_tokens' is negative (-1)"}
     assert damaged(calls_without_usage=4) == {"unavailable": f"{where} 'calls_without_usage' 4 exceeds 'calls' 3"}
-    assert damaged(calls=0, calls_without_usage=0, input_tokens=0, output_tokens=0)[0]["status"] == summary.USAGE_PROVIDER_MEASURED
+    assert damaged(role={"calls": 0, "calls_without_usage": 0}, calls=0, calls_without_usage=0, input_tokens=0, output_tokens=0)[0]["status"] \
+        == summary.USAGE_PROVIDER_MEASURED
     framework.write_json(run_dir / "manifest.json", base)
     # the same bound holds for judge rows read from judgments.jsonl
     row = {"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": -1, "output_tokens": 20,
@@ -1038,12 +1041,14 @@ def test_usage_rows_are_reconciled_with_the_missing_model_list(run_dir):
     declaration; the adapter derives the list from the rows, so they agree."""
     base = framework.load_json(run_dir / "manifest.json")
 
-    def damaged(rows=None, declared=None):
+    def damaged(rows=None, declared=None, role_missing=None):
         m = json.loads(json.dumps(base))
         if rows is not None:
             m["usage"]["by_model"] = rows
         if declared is not None:
             m["usage"]["usage_missing_models"] = declared
+        if role_missing is not None:
+            m["usage"]["by_role"][0]["calls_without_usage"] = role_missing      # the same events feed by_role
         framework.write_json(run_dir / "manifest.json", m)
         return summary.run_summary(run_dir, mode="run")["usage"]
 
@@ -1051,9 +1056,9 @@ def test_usage_rows_are_reconciled_with_the_missing_model_list(run_dir):
     assert damaged(declared=["mockllm/model"]) == \
         {"unavailable": "usage_missing_models names ['mockllm/model'] but the by_model rows with missing usage are []"}
     missing_row = dict(base["usage"]["by_model"][0], calls_without_usage=1)
-    assert damaged(rows=[missing_row], declared=[]) == \
+    assert damaged(rows=[missing_row], declared=[], role_missing=1) == \
         {"unavailable": "usage_missing_models names [] but the by_model rows with missing usage are ['mockllm/model']"}
-    assert damaged(rows=[missing_row], declared=["mockllm/model"])[0]["status"] == summary.USAGE_MOCK, "consistent: labelled"
+    assert damaged(rows=[missing_row], declared=["mockllm/model"], role_missing=1)[0]["status"] == summary.USAGE_MOCK, "consistent: labelled"
     assert damaged(declared=[7]) == {"unavailable": "usage.usage_missing_models carries a non-string entry"}
 
 
@@ -1205,6 +1210,7 @@ def test_an_empty_by_model_reports_the_missing_usage_instead_of_no_section(run_d
     m = framework.load_json(run_dir / "manifest.json")
     m["usage"]["by_model"] = []
     m["usage"]["usage_missing_models"] = ["anthropic/claude-haiku-4-5"]
+    m["usage"]["by_role"][0].update(calls=0, calls_without_usage=0)        # no target model event: no calls on either side
     framework.write_json(run_dir / "manifest.json", m)
     s = summary.run_summary(run_dir, mode="run")
     assert len(s["usage"]) == 1 and s["usage"][0]["model"] == "anthropic/claude-haiku-4-5"
@@ -1424,3 +1430,97 @@ def test_judge_token_totals_are_absent_until_a_row_carries_usage(run_dir):
     assert judge["note"].endswith("tokens metered on 1 of 2 judge row(s)") and "| claude-haiku-4-5 | 2 | 1 | 100 | 20 | **unavailable**" in text
     judge, text = judge_rows(metered, metered)
     assert judge["input_tokens"] == 200 and "tokens metered" not in judge["note"] and judge["status"] == summary.USAGE_PROVIDER_MEASURED
+
+
+def test_a_judge_row_with_usage_was_answered_by_exactly_one_request(run_dir):
+    """Codex (PR #27, seventeenth round): the attempt check admitted a row
+    with `usage_missing: false` and equal attempt and retry counts, the
+    shape the judge loop writes only for a failed row whose retry the
+    ceiling refused; `attempts - 1` then booked zero calls without usage
+    and the row counted as metered."""
+    def judge_rows(*rows):
+        (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+        return [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] in ("claude-haiku-4-5", "(judge of record)")][0]
+
+    metered = {"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 100, "output_tokens": 20,
+               "retry_attempts_charged": 1, "provider_attempts": 2}
+    judge = judge_rows(metered)
+    assert judge["calls"] == 2 and judge["calls_without_usage"] == 1 and judge["input_tokens"] == 100, "one charged retry, one answered request"
+    judge = judge_rows({**metered, "provider_attempts": 1})
+    assert judge["model"] == "(judge of record)" and judge["calls"] is None
+    assert ("judgments.jsonl row #0 'provider_attempts' 1 does not agree with 'retry_attempts_charged' 1 on a row with usage "
+            "(one answered request after the charged retries)") in judge["note"]
+    judge = judge_rows({**metered, "provider_attempts": 3})
+    assert judge["model"] == "(judge of record)" and "'provider_attempts' 3 does not agree with 'retry_attempts_charged' 1" in judge["note"]
+    # equality remains the shape of a failed row whose retry the ceiling refused
+    judge = judge_rows({**metered, "usage_missing": True, "input_tokens": None, "output_tokens": None, "provider_attempts": 1})
+    assert judge["calls"] == 1 and judge["calls_without_usage"] == 1 and judge["status"] == summary.USAGE_UNAVAILABLE
+
+
+def test_rows_beside_a_fallback_written_judge_sidecar_are_partial_evidence(run_dir):
+    """Codex (PR #27, seventeenth round): a judge killed after flushing rows
+    but during a later call leaves judgments.jsonl and the workflow's
+    fallback sidecar (`ceiling_imputed:judge_aborted_without_sidecar`), the
+    last call unaccounted for; the summary priced the surviving rows and
+    labelled the judge provider-measured with too few calls."""
+    from scripts.petri_audit.judge_runner import JUDGE_LOOP_COST_BASIS
+
+    rows = [{"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 100, "output_tokens": 20,
+             "retry_attempts_charged": 0, "provider_attempts": 1}] * 2
+    (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    fallback = {"judge_model": "claude-haiku-4-5", "cost_usd": 0.05, "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar",
+                "billing_channel": "anthropic", "aborted": True, "abort_error": None, "max_spend_usd": 0.05,
+                "price_source": "registry:anthropic", "input_per_mtok": 1.0, "output_per_mtok": 5.0}
+    framework.write_json(run_dir / "example.judge.report.json", fallback)
+    judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "claude-haiku-4-5"][0]
+    assert judge["calls"] == 2 and judge["input_tokens"] == 200, "the surviving rows are kept as partial evidence"
+    assert judge["status"] == summary.USAGE_UNAVAILABLE and judge["price_source"] == "registry:anthropic"
+    assert judge["note"].endswith("; the judge sidecar books ceiling_imputed:judge_aborted_without_sidecar, not the judge loop's own "
+                                  "cumulative_from_records: the loop died before writing its sidecar, so a call in flight has no row and "
+                                  "the rows are partial evidence")
+    assert "| claude-haiku-4-5 | 2 | 0 | 200 | 40 | **unavailable**" in summary.render_markdown(summary.run_summary(run_dir, mode="run"))
+    # the zero-price fallback (engine_repriced_from_inspect_model_usage) is the same shape: the loop never wrote its own
+    framework.write_json(run_dir / "example.judge.report.json",
+                         {**fallback, "cost_usd": 0.0, "cost_basis": "engine_repriced_from_inspect_model_usage", "input_per_mtok": 0.0, "output_per_mtok": 0.0})
+    judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "claude-haiku-4-5"][0]
+    assert judge["status"] == summary.USAGE_UNAVAILABLE and judge["calls"] == 2 and "partial evidence" in judge["note"]
+    # the loop's own sidecar accounts for every row it wrote (a failed call is written as a null row before the abort)
+    framework.write_json(run_dir / "example.judge.report.json", {**fallback, "cost_basis": JUDGE_LOOP_COST_BASIS, "aborted": False})
+    judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "claude-haiku-4-5"][0]
+    assert judge["status"] == summary.USAGE_PROVIDER_MEASURED and judge["calls"] == 2 and "partial evidence" not in judge["note"]
+
+
+def test_role_and_model_usage_totals_are_reconciled(run_dir):
+    """Codex (PR #27, seventeenth round): a by_role target row with four
+    calls beside by_model rows summing to three passed the schema, and the
+    structure table showed four calls while the usage table labelled three
+    provider-measured; the adapter derives both from the same target model
+    events, so a disagreement withholds both."""
+    base = framework.load_json(run_dir / "manifest.json")
+
+    def damaged(mutate):
+        m = json.loads(json.dumps(base))
+        mutate(m)
+        framework.write_json(run_dir / "manifest.json", m)
+        return summary.run_summary(run_dir, mode="run")
+
+    s = damaged(lambda m: m["usage"]["by_role"][0].__setitem__("calls", 4))
+    reason = "usage.by_role sums to 4 call(s) (0 without usage) but usage.by_model sums to 3 (0 without usage)"
+    assert s["structure"]["target_calls"] is None and s["structure"]["unavailable_fields"]["target_calls"] == reason
+    assert s["usage"] == {"unavailable": reason}
+    text = summary.render_markdown(s)
+    assert f"Usage: unavailable ({reason})" in text and "| target calls (generates) | — |" in text
+    s = damaged(lambda m: m["usage"]["by_model"][0].__setitem__("calls_without_usage", 1))
+    assert s["usage"] == {"unavailable": "usage_missing_models names [] but the by_model rows with missing usage are ['mockllm/model']"}
+    s = damaged(lambda m: (m["usage"]["by_model"][0].__setitem__("calls_without_usage", 1), m["usage"]["usage_missing_models"].append("mockllm/model")))
+    reason = "usage.by_role sums to 3 call(s) (0 without usage) but usage.by_model sums to 3 (1 without usage)"
+    assert s["structure"]["unavailable_fields"]["target_calls"] == reason and s["usage"] == {"unavailable": reason}
+    # every role counts: the adapter increments one row in each bucket per event, so an auditor row with calls is an event
+    # by_model does not carry
+    s = damaged(lambda m: m["usage"]["by_role"].append({**m["usage"]["by_role"][0], "role": "auditor", "calls": 1, "calls_without_usage": 0}))
+    assert s["usage"] == {"unavailable": "usage.by_role sums to 4 call(s) (0 without usage) but usage.by_model sums to 3 (0 without usage)"}
+    s = damaged(lambda m: m["usage"]["by_role"].append({**m["usage"]["by_role"][0], "role": "auditor", "calls": 0, "calls_without_usage": 0}))
+    assert s["structure"]["target_calls"] == 3 and s["usage"][0]["status"] == summary.USAGE_MOCK, "consistent: both published"
+    # a malformed by_model row withholds the structure's target calls too: the totals cannot be reconciled
+    s = damaged(lambda m: m["usage"]["by_model"][0].pop("calls_without_usage"))
+    assert s["structure"]["unavailable_fields"]["target_calls"] == "usage.by_model row #0 lacks 'calls_without_usage'"

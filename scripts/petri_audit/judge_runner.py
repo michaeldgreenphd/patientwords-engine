@@ -510,6 +510,11 @@ def cumulative_counts(rows: list[dict]) -> dict[str, int]:
     return out
 
 
+# the cost basis of the sidecar the judge loop itself writes; any other basis on a judge sidecar was written by the
+# workflow's fallback after the loop died without writing its own (the summary reads this to tell the two apart)
+JUDGE_LOOP_COST_BASIS = "cumulative_from_records"
+
+
 def _sidecar(out_path: Path, client: JudgeClient, ceiling: SpendCeiling, counts: dict, now_fn: Callable[[], str],
              sidecar_extra: dict | None, abort_error: str | None, judge_max_tokens: int | None = None) -> dict:
     rows = read_jsonl(out_path)
@@ -521,7 +526,7 @@ def _sidecar(out_path: Path, client: JudgeClient, ceiling: SpendCeiling, counts:
             # cumulative over every row in the file (cost_basis the ledger knows: it books run_cost_usd to the day
             # on first sight and each later growth as a delta), never this invocation alone
             "cost_usd": round(ceiling.spent, 8), "run_cost_usd": round(ceiling.spent - ceiling.prior_spent, 8),
-            "prior_cost_usd": round(ceiling.prior_spent, 8), "cost_basis": "cumulative_from_records",
+            "prior_cost_usd": round(ceiling.prior_spent, 8), "cost_basis": JUDGE_LOOP_COST_BASIS,
             "max_spend_usd": ceiling.max_spend, "truncated": ceiling.truncated,
             "overrun_usd": ceiling.overrun_usd, "input_token_estimator": INPUT_TOKEN_ESTIMATOR,
             "largest_input_estimate": ceiling.largest_estimate,

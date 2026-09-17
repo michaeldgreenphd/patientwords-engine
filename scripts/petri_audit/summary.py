@@ -237,6 +237,9 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
         counts = {"calls": _member(by_role["target"], "calls", "usage.by_role target row", (int,)),
                   "calls_without_usage": _member(by_role["target"], "calls_without_usage", "usage.by_role target row", (int,))}
         _bounded_counts(counts, "usage.by_role target row")
+        problem = _usage_totals_problem(manifest)
+        if problem:
+            raise ValueError(problem)
         out["target_calls"], out["target_calls_without_usage"] = counts["calls"], counts["calls_without_usage"]
     except (KeyError, TypeError, ValueError) as exc:
         out["target_calls"] = out["target_calls_without_usage"] = None
@@ -389,10 +392,15 @@ def _judge_usage_rows(run_dir: Path, judge_started: Path | str | None = None, re
             # derived
             retries = _member(j, "retry_attempts_charged", where, (int,))
             attempts = _member(j, "provider_attempts", where, (int,))
-            if retries < 0 or attempts < 1 or not retries <= attempts <= retries + 1:
-                raise ValueError(f"{where} 'provider_attempts' {attempts} does not agree with 'retry_attempts_charged' {retries}")
+            missing = _member(j, "usage_missing", where, (bool,))
+            # a row with usage was answered by exactly one request after its charged retries, the judge loop's only
+            # shape for it; equal counts are the shape of a failed row whose retry the ceiling refused, so a row with
+            # usage and equal counts is a damaged record, never a metered call (Codex, PR #27, seventeenth round)
+            if retries < 0 or attempts < 1 or not retries <= attempts <= retries + 1 or (not missing and attempts != retries + 1):
+                raise ValueError(f"{where} 'provider_attempts' {attempts} does not agree with 'retry_attempts_charged' {retries}"
+                                 + ("" if missing else " on a row with usage (one answered request after the charged retries)"))
             agg["calls"] += attempts
-            if _member(j, "usage_missing", where, (bool,)):
+            if missing:
                 agg["calls_without_usage"] += attempts
             else:
                 agg["calls_without_usage"] += attempts - 1
@@ -406,6 +414,7 @@ def _judge_usage_rows(run_dir: Path, judge_started: Path | str | None = None, re
                  "status": USAGE_UNAVAILABLE, "price_source": None, "note": f"judge of record: judgments.jsonl unreadable ({_reason(exc)})"}]
     if not per:
         return _judge_row_from_sidecar(run_dir, f"judgments.jsonl has no judge row ({len(rows)} non-judge row(s))", judge_started)
+    from .judge_runner import JUDGE_LOOP_COST_BASIS
     from .spend import resolve_registry_price
 
     # one judge of record per run: the judge loop judges every row with one spec and a resumed pass must use that exact
@@ -417,6 +426,15 @@ def _judge_usage_rows(run_dir: Path, judge_started: Path | str | None = None, re
     disagreement = None
     if len(per) > 1:
         disagreement = f"judgments.jsonl names {len(per)} judge models ({', '.join(sorted(per))}); one judge of record per run"
+    # the judge loop's own sidecar books `cumulative_from_records`; any other basis on a judge sidecar was written by the
+    # workflow's fallback after the loop died without writing its own, so the call in flight when it died has no row:
+    # the surviving rows are partial evidence, reported with their counts and their recorded price but no provenance
+    # label (Codex, PR #27, seventeenth round: a judge killed after flushing rows was labelled provider-measured with too
+    # few calls)
+    incomplete = None
+    if recorded is not None and side["cost_basis"] != JUDGE_LOOP_COST_BASIS:
+        incomplete = (f"the judge sidecar books {side['cost_basis']}, not the judge loop's own {JUDGE_LOOP_COST_BASIS}: the loop "
+                      f"died before writing its sidecar, so a call in flight has no row and the rows are partial evidence")
     out = []
     for spec, agg in sorted(per.items()):
         note = f"judge of record, aggregated from judgments.jsonl ({rows_per[spec]} judge row(s), {agg['calls']} provider attempt(s))"
@@ -428,6 +446,9 @@ def _judge_usage_rows(run_dir: Path, judge_started: Path | str | None = None, re
             out.append({"model": spec, **agg, "status": USAGE_UNAVAILABLE, "price_source": None, "note": f"{note}; {disagreement}"})
             continue
         price = _pinned_judge_price(side, spec)
+        if incomplete is not None:
+            out.append({"model": spec, **agg, "status": USAGE_UNAVAILABLE, "price_source": price.source, "note": f"{note}; {incomplete}"})
+            continue
         if price is None and registry_note is None:
             price = resolve_registry_price(spec)         # the registry matched the manifest's pin, or no pin exists to check
         if price is None:
@@ -438,6 +459,30 @@ def _judge_usage_rows(run_dir: Path, judge_started: Path | str | None = None, re
         zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
         out.append({"model": spec, **agg, "status": usage_status(agg, price.source, zero), "price_source": price.source, "note": note})
     return out
+
+
+def _usage_totals_problem(manifest: dict) -> str | None:
+    """The adapter derives `usage.by_role` and `usage.by_model` from the same
+    target model events, one increment per event in each, so their summed
+    calls and calls without usage agree; the structure table publishes the
+    by_role target row and the usage table the by_model rows, so a
+    disagreement (an event dropped or counted twice on one side) withholds
+    both (Codex, PR #27, seventeenth round). A malformed row raises like
+    every other member check."""
+    totals: dict[str, dict[str, int]] = {}
+    for name in ("by_role", "by_model"):
+        sums = {"calls": 0, "calls_without_usage": 0}
+        for i, r in enumerate(_collection(manifest, "usage", name)):
+            where = f"usage.{name} row #{i}"
+            counts = {k: _member(r, k, where, (int,)) for k in sums}
+            _bounded_counts(counts, where)
+            for k in sums:
+                sums[k] += counts[k]
+        totals[name] = sums
+    if totals["by_role"] != totals["by_model"]:
+        return (f"usage.by_role sums to {totals['by_role']['calls']} call(s) ({totals['by_role']['calls_without_usage']} without usage) "
+                f"but usage.by_model sums to {totals['by_model']['calls']} ({totals['by_model']['calls_without_usage']} without usage)")
+    return None
 
 
 def _bounded_counts(fields: dict[str, Any], where: str) -> None:
@@ -588,6 +633,14 @@ def _usage(manifest: dict, run_dir: Path | None = None, judge_started: Path | st
         if sorted(set(declared)) != sorted(observed_missing):
             return {"unavailable": f"usage_missing_models names {sorted(set(declared))} but the by_model rows with missing usage "
                                    f"are {sorted(observed_missing)}"}
+    # both representations come from the same target model events; the structure table publishes by_role and this table
+    # by_model, so they are reconciled before either is published (Codex, PR #27, seventeenth round)
+    try:
+        problem = _usage_totals_problem(manifest)
+    except (KeyError, TypeError, ValueError) as exc:
+        return {"unavailable": _reason(exc)}
+    if problem:
+        return {"unavailable": problem}
     if not rows:
         # a run with samples but no target model event leaves by_model empty while the adapter names the target in
         # usage_missing_models and the sidecar imputes its ceiling; that state is reported, never an omitted section
