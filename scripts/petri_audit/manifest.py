@@ -66,9 +66,25 @@ def seal_manifest(manifest: dict, prev_sha256: str | None) -> dict:
 
 
 def manifest_problems(manifest: dict, schema: dict | None = None) -> list[str]:
+    """Schema problems plus the two digest checks. A `chain` or `artifacts`
+    value that is not an object is reported as a problem rather than raised
+    from the digest helpers, which assume objects (Codex, PR #27: a
+    downloaded manifest with `chain: [1]` produced a traceback instead of a
+    verdict)."""
     schema = schema or load_json(MANIFEST_SCHEMA)
-    problems = validate_with_refs(manifest, schema)
-    chain = manifest.get("chain") or {}
+    try:
+        problems = list(validate_with_refs(manifest, schema))
+    except Exception as exc:  # noqa: BLE001 - a validator failure is itself a named problem, never a crash
+        problems = [f"schema validation failed: {type(exc).__name__}: {exc}"]
+    chain = manifest.get("chain")
+    artifacts = manifest.get("artifacts")
+    if chain is not None and not isinstance(chain, dict):
+        problems.append("chain is not an object; digests cannot be checked")
+        return problems
+    if artifacts is not None and not isinstance(artifacts, dict):
+        problems.append("artifacts is not an object; digests cannot be checked")
+        return problems
+    chain = chain or {}
     if chain.get("identity_sha256") != identity_digest(manifest):
         problems.append("chain.identity_sha256 does not match the manifest body")
     if chain.get("manifest_sha256") != manifest_digest(manifest):
@@ -176,7 +192,9 @@ def verify_run(run_dir: Path) -> list[str]:
     # verifies exactly like the committed layout (Codex, PR #27: upload-artifact roots the archive at the run
     # directory, so the extraction carries no enclosing directory); every path must still share one recorded
     # directory and name a file directly inside it
-    artifacts = manifest.get("artifacts") or {}
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, dict):
+        return problems + [f"artifacts is {'absent' if artifacts is None else 'not an object'}; no artifact can be verified"]
     pairs = [(artifacts.get(f"{fam}_path"), artifacts.get(f"{fam}_sha256"), fam) for fam in ARTIFACT_FAMILIES]
     judge = artifacts.get("judge_of_record")
     if isinstance(judge, dict):
@@ -184,6 +202,9 @@ def verify_run(run_dir: Path) -> list[str]:
     recorded_dirs: set[str] = set()
     for rel, digest, fam in pairs:
         if rel is None:
+            continue
+        if not isinstance(rel, str):
+            problems.append(f"{fam}: path is not a string")
             continue
         parts = Path(rel).parts
         # exactly two plain components (Codex, PR #27): `../x`, `/x` and `a\\b` also have two parts or one, and would

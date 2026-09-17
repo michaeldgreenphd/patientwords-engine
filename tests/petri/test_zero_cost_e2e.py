@@ -207,6 +207,8 @@ def test_run_summary_reports_the_measured_structure_of_the_mock_run(run):
     jp = s["judge_prompts"]
     assert jp["planned_calls"] > 0 and jp["prompt_bytes"]["min"] <= jp["prompt_bytes"]["median"] <= jp["prompt_bytes"]["max"]
     assert jp["input_bound_tokens_total"] > jp["prompt_bytes"]["total"]
+    assert jp["inputs"]["engine_sha_checked"] is False, "the placeholder engine sha is not compared"
+    assert jp["inputs"]["outcome_registry_sha256"] == m["framework"]["outcome_registry_sha256"]
     assert s["sidecar"] is None, "adapt_run wrote no sidecar here; the CLI's --report does"
     text = summary.render_markdown(s)
     row = next(ln for ln in text.splitlines() if ln.startswith("| mockllm/model |"))

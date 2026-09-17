@@ -426,6 +426,75 @@ def test_a_damaged_usage_row_is_never_labelled_provider_measured(run_dir):
     assert summary.run_summary(run_dir, mode="run")["usage"] == {"unavailable": "usage.by_model row #0 model is not a string"}
 
 
+def test_incomplete_cost_sidecars_are_unavailable_not_tables_with_dashes(run_dir):
+    """Codex (PR #27, eighth round)."""
+    side = run_dir / "example.report.json"
+    good = framework.load_json(side)
+    del good["cost_usd"]
+    framework.write_json(side, good)
+    s = summary.run_summary(run_dir, mode="run")
+    assert s["sidecar"] == {"path": "example.report.json", "unavailable": "example.report.json lacks 'cost_usd'"}
+    assert "Target cost sidecar: unavailable (example.report.json lacks 'cost_usd')" in summary.render_markdown(s)
+    good["cost_usd"] = "0.0"
+    framework.write_json(side, good)
+    assert summary.run_summary(run_dir, mode="run")["sidecar"]["unavailable"] == "example.report.json 'cost_usd' is not int or float (got str)"
+    good["cost_usd"] = True
+    framework.write_json(side, good)
+    assert "is not int or float (got bool)" in summary.run_summary(run_dir, mode="run")["sidecar"]["unavailable"]
+    side.write_text("[]", encoding="utf-8")
+    assert summary.run_summary(run_dir, mode="run")["sidecar"]["unavailable"] == "example.report.json is not an object"
+    judge_side = run_dir / "example.judge.report.json"
+    framework.write_json(judge_side, {"judge_model": "claude-haiku-4-5", "cost_basis": "x", "billing_channel": "anthropic"})
+    s = summary.run_summary(run_dir, mode="run")
+    assert s["judge_sidecar"] == {"path": "example.judge.report.json", "unavailable": "example.judge.report.json lacks 'cost_usd'"}
+    framework.write_json(judge_side, {"judge_model": "claude-haiku-4-5", "cost_usd": 0.01, "cost_basis": "x", "billing_channel": "anthropic"})
+    assert summary.run_summary(run_dir, mode="run")["judge_sidecar"]["cost_usd"] == 0.01
+
+
+def test_judge_prompt_statistics_come_only_from_the_run_s_pinned_inputs(run_dir, monkeypatch):
+    """Codex (PR #27, eighth round): a paid run's commit steps pull the branch
+    before the summary, so the checkout can differ from the run's inputs."""
+    m = framework.load_json(run_dir / "manifest.json")
+    m["framework"]["outcome_registry_sha256"] = "f" * 64
+    framework.write_json(run_dir / "manifest.json", m)
+    jp = summary.run_summary(run_dir, mode="run", seeds_path=framework.SEED_FILE)["judge_prompts"]
+    assert jp == {"unavailable": "the outcome registry in the checkout does not digest to the manifest's outcome_registry_sha256"}
+    m["framework"]["outcome_registry_sha256"] = framework.sha256_file(framework.OUTCOME_REGISTRY)
+    m["adapter"]["engine_sha"] = "a" * 40
+    framework.write_json(run_dir / "manifest.json", m)
+    monkeypatch.setattr(summary, "_checkout_head", lambda: "b" * 40)
+    jp = summary.run_summary(run_dir, mode="run", seeds_path=framework.SEED_FILE)["judge_prompts"]
+    assert jp["unavailable"].startswith("the checkout (bbbbbbbbbbbb) is not the run's engine commit (aaaaaaaaaaaa)")
+    # the placeholder engine sha (unknown) is not compared, and the section says so
+    m["adapter"]["engine_sha"] = "0" * 40
+    framework.write_json(run_dir / "manifest.json", m)
+    jp = summary.run_summary(run_dir, mode="run", seeds_path=framework.SEED_FILE)["judge_prompts"]
+    assert "unavailable" in jp or jp["inputs"]["engine_sha_checked"] is False
+
+
+def test_judge_calls_appear_in_the_usage_table(run_dir):
+    """Codex (PR #27, eighth round): the manifest's usage table is closed
+    before the judge step, so every paid judge call was omitted."""
+    rows = [{"method": "rule", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 0, "output_tokens": 0},
+            {"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 100, "output_tokens": 20},
+            {"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 50, "output_tokens": 10}]
+    (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    usage = summary.run_summary(run_dir, mode="run")["usage"]
+    judge = [r for r in usage if r.get("note", "").startswith("judge of record")]
+    assert len(judge) == 1 and judge[0]["model"] == "claude-haiku-4-5" and judge[0]["calls"] == 2, "rule rows are not calls"
+    assert judge[0]["input_tokens"] == 150 and judge[0]["output_tokens"] == 30 and judge[0]["status"] == summary.USAGE_PROVIDER_MEASURED
+    assert [r["model"] for r in usage][0] == "mockllm/model", "the target rows stay first"
+    rows.append({"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": True, "input_tokens": None, "output_tokens": None})
+    (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r.get("note", "").startswith("judge of record")][0]
+    assert judge["calls"] == 3 and judge["calls_without_usage"] == 1 and judge["status"] == summary.USAGE_UNAVAILABLE
+    text = summary.render_markdown(summary.run_summary(run_dir, mode="run"))
+    assert "| claude-haiku-4-5 | 3 | 1 | 150 | 30 | **unavailable** (judge of record, aggregated from judgments.jsonl (3 judge row(s))) |" in text
+    (run_dir / "judgments.jsonl").write_text("{not json\n", encoding="utf-8")
+    judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "(judge of record)"][0]
+    assert judge["status"] == summary.USAGE_UNAVAILABLE and "judgments.jsonl unreadable" in judge["note"]
+
+
 def test_an_empty_by_model_reports_the_missing_usage_instead_of_no_section(run_dir):
     """Codex (PR #27, fourth round): a run with samples but no target model
     event has an empty by_model while usage_missing_models names the target
@@ -476,6 +545,17 @@ def test_verify_run_checks_a_run_directory_on_its_own(run_dir, tmp_path, capsys)
     (copy / "manifest.json").write_text("[1, 2]", encoding="utf-8")
     assert manifest_mod.verify_run(copy) == [f"{copy.name}: manifest.json holds a list, not an object"]
     assert cli.main(["verify-run", "--run-dir", str(copy)]) == 6
+    # malformed nested objects are problems, never a traceback (Codex, PR #27, eighth round)
+    good = framework.load_json(run_dir / "manifest.json")
+    for field, bad in (("chain", [1]), ("artifacts", [1]), ("artifacts", {"transcripts_path": 7, "transcripts_sha256": "x"})):
+        m = json.loads(json.dumps(good))
+        m[field] = bad
+        framework.write_json(copy / "manifest.json", m)
+        problems = manifest_mod.verify_run(copy)
+        assert problems and all(isinstance(p, str) for p in problems), (field, bad)
+        assert cli.main(["verify-run", "--run-dir", str(copy)]) == 6
+    assert any("chain is not an object" in p for p in manifest_mod.manifest_problems(dict(good, chain=[1])))
+    assert any("artifacts is not an object" in p for p in manifest_mod.manifest_problems(dict(good, artifacts=[1])))
     (copy / "manifest.json").unlink()
     assert manifest_mod.verify_run(copy) == [f"{copy.name}: manifest.json is missing"]
     assert cli.main(["verify-run", "--run-dir", str(copy)]) == 6

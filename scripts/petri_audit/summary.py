@@ -28,7 +28,7 @@ import statistics
 from pathlib import Path
 from typing import Any
 
-from .framework import OUTCOME_REGISTRY, load_json, sha256_file
+from .framework import OUTCOME_REGISTRY, ROOT, load_json, sha256_file
 from .manifest import CHAIN_FILE, artifact_problems, manifest_problems, verify_chain, verify_run
 from .spend import resolve_price, usage_is_missing
 from .transcripts import record_problems
@@ -221,7 +221,43 @@ def _structure(manifest: dict, run_dir: Path) -> dict:
     return out
 
 
-def _usage(manifest: dict) -> list[dict] | dict:
+def _judge_usage_rows(run_dir: Path) -> list[dict]:
+    """One usage row per judge model aggregated from judgments.jsonl, which
+    the judge step writes after the manifest's usage table was closed
+    (Codex, PR #27: the table omitted every paid judge call). A file that
+    cannot be read is a row that says so, never an omitted judge."""
+    from .spend import resolve_registry_price
+
+    path = run_dir / "judgments.jsonl"
+    if not path.is_file():
+        return []
+    try:
+        rows = _read_jsonl(path)
+        per: dict[str, dict[str, Any]] = {}
+        for i, j in enumerate(rows):
+            if _member(j, "method", f"judgments.jsonl row #{i}", (str,)) != "judge":
+                continue                      # rule rows are not calls
+            spec = _member(j, "judge_model", f"judgments.jsonl row #{i}", (str,))
+            agg = per.setdefault(spec, {"calls": 0, "calls_without_usage": 0, "input_tokens": 0, "output_tokens": 0})
+            agg["calls"] += 1
+            if _member(j, "usage_missing", f"judgments.jsonl row #{i}", (bool,)):
+                agg["calls_without_usage"] += 1
+            else:
+                agg["input_tokens"] += _member(j, "input_tokens", f"judgments.jsonl row #{i}", (int,))
+                agg["output_tokens"] += _member(j, "output_tokens", f"judgments.jsonl row #{i}", (int,))
+    except (KeyError, TypeError, ValueError, OSError) as exc:
+        return [{"model": "(judge of record)", "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
+                 "status": USAGE_UNAVAILABLE, "price_source": None, "note": f"judge of record: judgments.jsonl unreadable ({_reason(exc)})"}]
+    out = []
+    for spec, agg in sorted(per.items()):
+        price = resolve_registry_price(spec)
+        zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
+        out.append({"model": spec, **agg, "status": usage_status(agg, price.source, zero), "price_source": price.source,
+                    "note": f"judge of record, aggregated from judgments.jsonl ({agg['calls']} judge row(s))"})
+    return out
+
+
+def _usage(manifest: dict, run_dir: Path | None = None) -> list[dict] | dict:
     rows = []
     for i, r in enumerate(_collection(manifest, "usage", "by_model")):
         # every key the label reads must be present (Codex, PR #27): `usage_is_missing` reads an absent
@@ -253,6 +289,8 @@ def _usage(manifest: dict) -> list[dict] | dict:
             rows.append({"model": model, "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
                          "status": USAGE_MOCK if zero else USAGE_UNAVAILABLE, "price_source": price.source,
                          "note": "no usage row recorded (no model event); named in usage_missing_models"})
+    if run_dir is not None:
+        rows.extend(_judge_usage_rows(run_dir))
     return rows
 
 
@@ -309,14 +347,27 @@ def _integrity(manifest: dict, run_dir: Path) -> dict:
             "attachments_resolved": (manifest.get("integrity") or {}).get("attachments_resolved")}
 
 
+NUMBER = (int, float)
+
+
 def _sidecar(run_dir: Path) -> dict | None:
+    """The target cost sidecar the ledger folds. Its spend fields are required
+    and typed (Codex, PR #27): a sidecar missing `cost_usd` is an
+    unavailable spend record, never a table with a dash in it."""
     path = run_dir / f"{run_dir.name}.report.json"
     if not path.is_file():
         return None
     r = load_json(path)
-    return {"path": path.name, "cost_usd": r.get("cost_usd"), "cost_basis": r.get("cost_basis"),
-            "billing_channel": r.get("billing_channel"), "usage_missing_models": r.get("usage_missing_models"),
-            "max_spend_usd": r.get("max_spend_usd"), "spend_report_reason": r.get("spend_report_reason")}
+    where = path.name
+    try:
+        if not isinstance(r, dict):
+            raise TypeError(f"{where} is not an object")
+        return {"path": path.name, "cost_usd": _member(r, "cost_usd", where, NUMBER), "cost_basis": _member(r, "cost_basis", where, (str,)),
+                "billing_channel": _member(r, "billing_channel", where, (str,)),
+                "usage_missing_models": _member(r, "usage_missing_models", where, (list,)),
+                "max_spend_usd": _member(r, "max_spend_usd", where, NUMBER), "spend_report_reason": r.get("spend_report_reason")}
+    except (KeyError, TypeError) as exc:
+        return {"path": path.name, "unavailable": _reason(exc)}
 
 
 def _judge_sidecar(run_dir: Path) -> dict | None:
@@ -324,9 +375,15 @@ def _judge_sidecar(run_dir: Path) -> dict | None:
     if not path.is_file():
         return None
     r = load_json(path)
-    return {"path": path.name, "cost_usd": r.get("cost_usd"), "cost_basis": r.get("cost_basis"),
-            "billing_channel": r.get("billing_channel"), "planned": r.get("planned"), "cumulative": r.get("cumulative"),
-            "aborted": r.get("aborted"), "truncated": r.get("truncated")}
+    where = path.name
+    try:
+        if not isinstance(r, dict):
+            raise TypeError(f"{where} is not an object")
+        return {"path": path.name, "judge_model": _member(r, "judge_model", where, (str,)), "cost_usd": _member(r, "cost_usd", where, NUMBER),
+                "cost_basis": _member(r, "cost_basis", where, (str,)), "billing_channel": _member(r, "billing_channel", where, (str,)),
+                "planned": r.get("planned"), "cumulative": r.get("cumulative"), "aborted": r.get("aborted"), "truncated": r.get("truncated")}
+    except (KeyError, TypeError) as exc:
+        return {"path": path.name, "unavailable": _reason(exc)}
 
 
 def _judge_prompts(manifest: dict, run_dir: Path, seeds_path: Path | str | None) -> dict:
@@ -337,16 +394,44 @@ def _judge_prompts(manifest: dict, run_dir: Path, seeds_path: Path | str | None)
     it says nothing about dollars."""
     if seeds_path is None:
         return {"unavailable": "no seed file given"}
+    from .framework import ADVICE_RUBRIC
     from .judge_runner import estimate_input_tokens, load_rubric, plan_run
     from .seeds import load_seed_file
 
+    # the inputs must be the run's own (Codex, PR #27): a paid run's commit steps pull the branch before the summary,
+    # so the checkout can have moved past the commit the run recorded. The engine commit is compared when the
+    # manifest records one, the outcome registry is compared by digest, and plan_run refuses seed drift itself;
+    # the rubric is not recorded in the manifest, so its digest is reported rather than checked
+    engine_sha = _dig(manifest, "adapter", "engine_sha")
+    head = _checkout_head()
+    sha_checked = isinstance(engine_sha, str) and engine_sha != "0" * 40 and head is not None
+    if sha_checked and head != engine_sha:
+        return {"unavailable": f"the checkout ({head[:12]}) is not the run's engine commit ({engine_sha[:12]}); the seeds, "
+                               "registry and rubric may differ from the run's"}
+    registry_sha = sha256_file(OUTCOME_REGISTRY)
+    if _dig(manifest, "framework", "outcome_registry_sha256") != registry_sha:
+        return {"unavailable": "the outcome registry in the checkout does not digest to the manifest's outcome_registry_sha256"}
     records = _read_jsonl(run_dir / "transcripts.jsonl")
     seed_set = load_seed_file(seeds_path)
     plans = plan_run(records, manifest, seed_set.seeds, outcomes=load_json(OUTCOME_REGISTRY), rubric=load_rubric())
     sizes = [len(p.prompt.encode("utf-8")) for p in plans if p.prompt is not None]
     return {"planned_calls": len(sizes), "not_applicable": sum(1 for p in plans if p.prompt is None),
             "prompt_bytes": byte_stats(sizes),
-            "input_bound_tokens_total": sum(estimate_input_tokens(p.prompt) for p in plans if p.prompt is not None)}
+            "input_bound_tokens_total": sum(estimate_input_tokens(p.prompt) for p in plans if p.prompt is not None),
+            "inputs": {"engine_sha": engine_sha, "checkout_head": head, "engine_sha_checked": sha_checked,
+                       "outcome_registry_sha256": registry_sha, "seeds_checked_by_digest": True,
+                       "rubric_sha256": sha256_file(ADVICE_RUBRIC), "rubric_pinned_by_manifest": False}}
+
+
+def _checkout_head() -> str | None:
+    """The engine checkout's HEAD, or None when git cannot say."""
+    import subprocess
+
+    try:
+        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True)
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return out.stdout.strip() or None
 
 
 def byte_stats(sizes: list[int]) -> dict[str, int | float] | None:
@@ -400,7 +485,7 @@ def run_summary(run_dir: Path | str | None, *, mode: str, raw_eval_dir: Path | s
                        "lock_sha256": _dig(manifest, "harness", "environment_lock_sha256"),
                        "journal_nonce": _dig(manifest, "spend", "journal_nonce")}
     out["structure"] = _guard(_structure, manifest, run_dir)
-    out["usage"] = _guard(_usage, manifest)
+    out["usage"] = _guard(_usage, manifest, run_dir)
     out["redaction"] = _dig(manifest, "artifacts", "sanitiser", "redaction_report")
     out["raw_eval"] = _guard(_raw_eval, manifest, raw_dir)
     out["published"] = _guard(_published, run_dir)
@@ -510,7 +595,8 @@ def render_markdown(s: dict) -> str:
             lines += _table("Judge prompts the judge of record would receive (planned from the exports; no call made)", [
                 ("planned calls", jp.get("planned_calls")), ("not applicable", jp.get("not_applicable")),
                 ("prompt UTF-8 bytes (min / median / max / total)", _fmt(jp.get("prompt_bytes"))),
-                ("input bound, tokens, summed over calls (bytes + framing allowance)", jp.get("input_bound_tokens_total"))])
+                ("input bound, tokens, summed over calls (bytes + framing allowance)", jp.get("input_bound_tokens_total")),
+                ("inputs used (pinned to the run where the manifest records them)", _fmt(jp.get("inputs")))])
     # the raw log's measurements are rendered whether or not a manifest exists: a failed adaptation is exactly when
     # they are needed (Codex, PR #27)
     raw = s.get("raw_eval") or {}
