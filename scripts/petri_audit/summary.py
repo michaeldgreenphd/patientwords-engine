@@ -91,11 +91,16 @@ def _structure(manifest: dict, run_dir: Path, eval_status: str | None) -> dict:
     `unavailable_fields`; nothing here is a default."""
     unavailable: dict[str, str] = {}
     out: dict[str, Any] = {"eval_status": eval_status,
-                           "seeds": [{"seed_id": s["seed_id"], "claim_grade_eligible": s.get("claim_grade_eligible")}
-                                     for s in manifest.get("seeds") or []],
                            "max_turns": (manifest.get("execution") or {}).get("max_turns"),
                            "max_tool_rounds_per_turn": (manifest.get("execution") or {}).get("max_tool_rounds_per_turn"),
                            "epochs": (manifest.get("execution") or {}).get("epochs")}
+    try:
+        out["seeds"] = [{"seed_id": s.get("seed_id"), "claim_grade_eligible": s.get("claim_grade_eligible")}
+                        for s in _collection(manifest, "seeds")]
+    except (KeyError, TypeError) as exc:
+        # a missing seeds collection is a gap, never an empty seed list (Codex, PR #27)
+        out["seeds"] = None
+        unavailable["seeds"] = _reason(exc)
     tree_fields = ("trees", "branches", "conditions", "shared_prefix_branches", "survivors_exported")
     try:
         trees = _collection(manifest, "trees")
@@ -152,6 +157,19 @@ def _usage(manifest: dict) -> list[dict] | dict:
         rows.append({"model": r["model"], "calls": r.get("calls"), "calls_without_usage": r.get("calls_without_usage"),
                      "input_tokens": r.get("input_tokens"), "output_tokens": r.get("output_tokens"),
                      "status": usage_status(r, price.source, zero), "price_source": price.source})
+    if not rows:
+        # a run with samples but no target model event leaves by_model empty while the adapter names the target in
+        # usage_missing_models and the sidecar imputes its ceiling; that state is reported, never an omitted section
+        # (Codex, PR #27)
+        missing = (manifest.get("usage") or {}).get("usage_missing_models")
+        if not isinstance(missing, list) or not missing:
+            return {"unavailable": "usage.by_model is empty and usage_missing_models names no model"}
+        for model in missing:
+            price = resolve_price(model)
+            zero = price.input_per_mtok == 0 and price.output_per_mtok == 0
+            rows.append({"model": model, "calls": None, "calls_without_usage": None, "input_tokens": None, "output_tokens": None,
+                         "status": USAGE_MOCK if zero else USAGE_UNAVAILABLE, "price_source": price.source,
+                         "note": "no usage row recorded (no model event); named in usage_missing_models"})
     return rows
 
 
@@ -266,17 +284,28 @@ def run_summary(run_dir: Path | str | None, *, mode: str, raw_eval_dir: Path | s
         out["note"] = ("preflight: the run, adapt and judge steps are gated off by mode, so no model is called and no "
                        "run directory or raw log should exist")
     manifest_path = run_dir / "manifest.json" if run_dir else None
-    if manifest_path is None or not manifest_path.is_file():
-        # no manifest: whatever the run directory holds (a partial adaptation, a sidecar) is still inventoried
-        # (Codex, PR #27); a dry run that failed before its manifest leaves exactly this shape behind
+
+    def without_manifest(reason: str | None) -> dict:
+        # no usable manifest: whatever the run directory holds (a partial adaptation, a sidecar) and the raw log are
+        # still inventoried (Codex, PR #27); a dry run that failed before or during its manifest leaves this shape
         out["manifest"] = None
+        out["manifest_error"] = reason
         present = bool(run_dir and run_dir.is_dir())
         out["published"] = _guard(_published, run_dir) if present else None
         out["sidecar"] = _guard(_sidecar, run_dir) if present else None
         out["judge_sidecar"] = _guard(_judge_sidecar, run_dir) if present else None
         out["raw_eval"] = _guard(_raw_eval, {}, raw_dir)
         return out
-    manifest = load_json(manifest_path)
+
+    if manifest_path is None or not manifest_path.is_file():
+        return without_manifest(None)
+    try:
+        manifest = load_json(manifest_path)
+        if not isinstance(manifest, dict):
+            raise TypeError(f"manifest.json holds a {type(manifest).__name__}, not an object")
+    except (ValueError, TypeError, OSError) as exc:
+        # a truncated or unreadable manifest is reported by name and the rest still inventoried (Codex, PR #27)
+        return without_manifest(f"manifest.json does not parse: {type(exc).__name__}: {exc}")
     sanitised = run_dir / "sanitised_log.json"
     # the eval's own status, from the sanitised projection (the manifest is left untouched: its digests are checked below)
     eval_status = load_json(sanitised).get("status") if sanitised.is_file() else None
@@ -327,7 +356,7 @@ def render_markdown(s: dict) -> str:
                                       ("raw .eval present outside the checkout", s.get("raw_eval_present"))])
     m = s.get("manifest")
     if not m:
-        lines += ["No manifest (no adapted run).", ""]
+        lines += ["No manifest (" + (s.get("manifest_error") or "no adapted run") + ").", ""]
     else:
         lines += _table("Manifest", [("run_id", m.get("run_id")), ("eval_id", m.get("eval_id")), ("target", m.get("target")),
                                      ("claim_grade_eligible", m.get("claim_grade_eligible")),
@@ -366,21 +395,13 @@ def render_markdown(s: dict) -> str:
                       "| model | calls | calls without usage | input tokens | output tokens | status | price source |",
                       "|---|---|---|---|---|---|---|"]
             lines += [f"| {r['model']} | {_fmt(r['calls'])} | {_fmt(r['calls_without_usage'])} | {_fmt(r['input_tokens'])} | "
-                      f"{_fmt(r['output_tokens'])} | **{r['status']}** | {r['price_source']} |" for r in usage]
+                      f"{_fmt(r['output_tokens'])} | **{r['status']}**" + (f" ({r['note']})" if r.get("note") else "")
+                      + f" | {r['price_source']} |" for r in usage]
             lines += ["", "Token counts of a mock/non-metered model are not provider-metered tokens; provider usage exists "
                       "only for a provider-measured row.", ""]
         red = s.get("redaction")
         if red:
             lines += _table("Sanitiser redaction report", [(k, _fmt(v)) for k, v in red.items()])
-        raw = s.get("raw_eval") or {}
-        rows = [("recorded sha256", raw.get("recorded_sha256"))]
-        for f in raw.get("files") or []:
-            rows.append((f["name"], f"{f['bytes']} bytes, sha256 {f['sha256'][:12]}…, matches manifest: {f['matches_manifest']}"))
-        if raw.get("note"):
-            rows.append(("note", raw["note"]))
-        if raw.get("unavailable"):
-            rows.append(("unavailable", raw["unavailable"]))
-        lines += _table("Raw .eval (private artifact, never committed)", rows)
         integ = s.get("integrity") or {}
         if "unavailable" in integ:
             lines += ["Integrity: unavailable (" + integ["unavailable"] + ")", ""]
@@ -398,6 +419,17 @@ def render_markdown(s: dict) -> str:
                 ("planned calls", jp.get("planned_calls")), ("not applicable", jp.get("not_applicable")),
                 ("prompt UTF-8 bytes (min / median / max / total)", _fmt(jp.get("prompt_bytes"))),
                 ("input bound, tokens, summed over calls (bytes + framing allowance)", jp.get("input_bound_tokens_total"))])
+    # the raw log's measurements are rendered whether or not a manifest exists: a failed adaptation is exactly when
+    # they are needed (Codex, PR #27)
+    raw = s.get("raw_eval") or {}
+    rows = [("recorded sha256 (manifest)", raw.get("recorded_sha256"))]
+    for f in raw.get("files") or []:
+        rows.append((f["name"], f"{f['bytes']} bytes, sha256 {f['sha256'][:12]}…, matches manifest: {f['matches_manifest']}"))
+    if raw.get("note"):
+        rows.append(("note", raw["note"]))
+    if raw.get("unavailable"):
+        rows.append(("unavailable", raw["unavailable"]))
+    lines += _table("Raw .eval (private artifact, never committed)", rows)
     pub = s.get("published")
     if isinstance(pub, dict) and "unavailable" in pub:
         lines += ["Run directory contents: unavailable (" + pub["unavailable"] + ")", ""]

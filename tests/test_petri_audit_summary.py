@@ -172,8 +172,29 @@ def test_partial_exports_are_inventoried_when_no_manifest_exists(run_dir):
     assert set(pub["files"]) == {"transcripts.jsonl", "rule_outcomes.jsonl", "sanitised_log.json"}
     assert pub["attachment_references"] == 1 and "example.report.json" in pub["cost_sidecars"]
     text = summary.render_markdown(s)
-    assert "No manifest" in text and "no manifest: partial or failed adaptation" in text and "| rule_outcomes.jsonl |" in text
+    assert "No manifest (no adapted run)" in text and "no manifest: partial or failed adaptation" in text and "| rule_outcomes.jsonl |" in text
     assert summary.run_summary(run_dir.parent / "absent", mode="dry_run")["published"] is None
+    # the raw log's measurements are rendered without a manifest too (Codex, PR #27, fourth round)
+    s = summary.run_summary(run_dir, mode="dry_run", raw_eval_dir=run_dir.parent.parent / "logs")
+    assert s["raw_eval"]["files"][0]["bytes"] == len(b"raw log bytes") and s["raw_eval"]["files"][0]["matches_manifest"] is None
+    text = summary.render_markdown(s)
+    assert "Raw .eval (private artifact, never committed)" in text and "| run.eval | 13 bytes, sha256 " in text
+
+
+def test_a_malformed_manifest_is_reported_and_the_rest_still_inventoried(run_dir, tmp_path, capsys):
+    """Codex (PR #27, fourth round): a truncated manifest.json raised out of
+    run_summary, so the step printed only its generic failure line."""
+    (run_dir / "manifest.json").write_text('{"run_id": "trunc', encoding="utf-8")
+    s = summary.run_summary(run_dir, mode="dry_run", raw_eval_dir=run_dir.parent.parent / "logs")
+    assert s["manifest"] is None and s["manifest_error"].startswith("manifest.json does not parse: JSONDecodeError")
+    assert "manifest.json" in s["published"]["files"] and "example.report.json" in s["published"]["cost_sidecars"]
+    assert s["raw_eval"]["files"][0]["bytes"] == len(b"raw log bytes")
+    text = summary.render_markdown(s)
+    assert "No manifest (manifest.json does not parse: JSONDecodeError" in text
+    assert cli.main(["run-summary", "--run-dir", str(run_dir), "--mode", "dry_run"]) == 0
+    assert "does not parse" in capsys.readouterr().out
+    (run_dir / "manifest.json").write_text("[1, 2]", encoding="utf-8")
+    assert "holds a list, not an object" in summary.run_summary(run_dir, mode="dry_run")["manifest_error"]
 
 
 def test_missing_manifest_collections_are_unavailable_not_zero(run_dir):
@@ -214,6 +235,38 @@ def test_a_tree_without_its_branches_collection_is_a_gap_not_zero_branches(run_d
     framework.write_json(run_dir / "manifest.json", m)
     st = summary.run_summary(run_dir, mode="dry_run")["structure"]
     assert st["branches"] is None and "is not a list" in st["unavailable_fields"]["trees"]
+
+
+def test_a_missing_seeds_collection_is_a_gap_not_an_empty_list(run_dir):
+    """Codex (PR #27, fourth round)."""
+    m = framework.load_json(run_dir / "manifest.json")
+    del m["seeds"]
+    framework.write_json(run_dir / "manifest.json", m)
+    st = summary.run_summary(run_dir, mode="dry_run")["structure"]
+    assert st["seeds"] is None and st["unavailable_fields"] == {"seeds": "manifest lacks 'seeds'"}
+    assert st["trees"] == 1, "the other collections still count"
+    assert "| seeds | — |" in summary.render_markdown(summary.run_summary(run_dir, mode="dry_run"))
+
+
+def test_an_empty_by_model_reports_the_missing_usage_instead_of_no_section(run_dir):
+    """Codex (PR #27, fourth round): a run with samples but no target model
+    event has an empty by_model while usage_missing_models names the target
+    and the sidecar imputes the ceiling; the usage section was omitted."""
+    m = framework.load_json(run_dir / "manifest.json")
+    m["usage"]["by_model"] = []
+    m["usage"]["usage_missing_models"] = ["anthropic/claude-haiku-4-5"]
+    framework.write_json(run_dir / "manifest.json", m)
+    s = summary.run_summary(run_dir, mode="run")
+    assert len(s["usage"]) == 1 and s["usage"][0]["model"] == "anthropic/claude-haiku-4-5"
+    assert s["usage"][0]["status"] == summary.USAGE_UNAVAILABLE and s["usage"][0]["calls"] is None
+    assert "no usage row recorded" in s["usage"][0]["note"]
+    text = summary.render_markdown(s)
+    assert "| anthropic/claude-haiku-4-5 | — | — | — | — | **unavailable** (no usage row recorded" in text
+    m["usage"]["usage_missing_models"] = []
+    framework.write_json(run_dir / "manifest.json", m)
+    s = summary.run_summary(run_dir, mode="run")
+    assert s["usage"] == {"unavailable": "usage.by_model is empty and usage_missing_models names no model"}
+    assert "Usage: unavailable (usage.by_model is empty" in summary.render_markdown(s)
 
 
 def test_verify_run_checks_a_run_directory_on_its_own(run_dir, tmp_path, capsys):
