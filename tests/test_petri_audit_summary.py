@@ -520,7 +520,7 @@ def test_judge_calls_appear_in_the_usage_table(run_dir):
     assert judge["calls"] == 3 and judge["calls_without_usage"] == 1 and judge["status"] == summary.USAGE_UNAVAILABLE
     text = summary.render_markdown(summary.run_summary(run_dir, mode="run"))
     assert ("| claude-haiku-4-5 | 3 | 1 | 150 | 30 | **unavailable** (judge of record, aggregated from judgments.jsonl "
-            "(3 judge row(s), 3 provider attempt(s))) |") in text
+            "(3 judge row(s), 3 provider attempt(s)); tokens metered on 2 of 3 judge row(s)) |") in text
     (run_dir / "judgments.jsonl").write_text("{not json\n", encoding="utf-8")
     judge = [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] == "(judge of record)"][0]
     assert judge["status"] == summary.USAGE_UNAVAILABLE and "judgments.jsonl unreadable" in judge["note"]
@@ -557,12 +557,13 @@ def test_a_gate_refused_judge_row_counts_its_charged_attempts_only(run_dir):
                "judge_error": "call failed: retry refused by the ceiling after 1 charged attempt(s): RuntimeError: transient 529"}
     judge = judge_rows(refused)
     assert judge["calls"] == 1 and judge["calls_without_usage"] == 1 and judge["status"] == summary.USAGE_UNAVAILABLE
-    assert judge["note"].endswith("(1 judge row(s), 1 provider attempt(s))")
+    assert judge["note"].endswith("(1 judge row(s), 1 provider attempt(s)); tokens metered on 0 of 1 judge row(s)")
     exhausted = {**refused, "provider_attempts": 2, "judge_error": "call failed: RuntimeError: transient 529"}
     judge = judge_rows(exhausted)
     assert judge["calls"] == 2 and judge["calls_without_usage"] == 2, "a retry the provider received is a second attempt"
     judge = judge_rows(refused, exhausted)
-    assert judge["calls"] == 3 and judge["calls_without_usage"] == 3 and judge["note"].endswith("(2 judge row(s), 3 provider attempt(s))")
+    assert judge["calls"] == 3 and judge["calls_without_usage"] == 3
+    assert judge["note"].endswith("(2 judge row(s), 3 provider attempt(s)); tokens metered on 0 of 2 judge row(s)")
     # a count that disagrees with the charged retries, or that is absent, is a named gap, never a derived number
     judge = judge_rows({**refused, "provider_attempts": 3})
     assert judge["model"] == "(judge of record)" and "'provider_attempts' 3 does not agree with 'retry_attempts_charged' 1" in judge["note"]
@@ -1304,3 +1305,122 @@ def test_cli_run_summary_prints_markdown_writes_json_and_never_fails(run_dir, tm
     # an absent run directory under mode run is still a summary, not a failure
     assert cli.main(["run-summary", "--run-dir", str(tmp_path / "missing"), "--mode", "run"]) == 0
     assert "No manifest" in capsys.readouterr().out
+
+
+def test_a_no_manifest_judge_is_never_priced_from_an_unchecked_registry(tmp_path):
+    """Codex (PR #27, sixteenth round): with no manifest there is no pricing
+    digest to check the registry against, yet the no-manifest path passed no
+    registry note, so a judge whose sidecar was absent or damaged was priced
+    from the current registry and labelled provider-measured."""
+    from scripts.petri_audit.spend import write_report_sidecar
+
+    run_dir = tmp_path / "run_x"
+    run_dir.mkdir()
+    write_report_sidecar(run_dir / "run_x.report.json", run_id="run_x", eval_id="e", target="anthropic/claude-haiku-4-5",
+                         model_usage={"anthropic/claude-haiku-4-5": {"input_tokens": 10, "output_tokens": 5, "calls": 1, "calls_without_usage": 0}},
+                         max_spend_usd=0.05, judge_max_spend_usd=None, run_utc="2026-09-17T00:00:00Z")
+    row = {"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": False, "input_tokens": 100, "output_tokens": 20,
+           "retry_attempts_charged": 0, "provider_attempts": 1}
+    (run_dir / "judgments.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
+    usage = summary.run_summary(run_dir, mode="run")["usage"]
+    assert [r["model"] for r in usage] == ["anthropic/claude-haiku-4-5", "claude-haiku-4-5"]
+    judge = usage[1]
+    assert judge["calls"] == 1 and judge["input_tokens"] == 100 and judge["output_tokens"] == 20, "the counts stand"
+    assert judge["status"] == summary.USAGE_UNAVAILABLE and judge["price_source"] is None
+    assert judge["note"].endswith("; price source not attributable: no manifest pins the pricing registry (usage.pricing_source_sha256)")
+    # the judge sidecar's recorded price still labels the row: it is the run's own record, not the registry
+    framework.write_json(run_dir / "run_x.judge.report.json",
+                         {"judge_model": "claude-haiku-4-5", "cost_usd": 0.0002, "cost_basis": "cumulative_from_records", "billing_channel": "anthropic",
+                          "max_spend_usd": 0.05, "price_source": "pinned:test", "input_per_mtok": 1.0, "output_per_mtok": 5.0})
+    judge = summary.run_summary(run_dir, mode="run")["usage"][1]
+    assert judge["status"] == summary.USAGE_PROVIDER_MEASURED and judge["price_source"] == "pinned:test"
+    # a damaged sidecar records nothing usable: back to the counts without a label
+    (run_dir / "run_x.judge.report.json").write_text("[]", encoding="utf-8")
+    judge = summary.run_summary(run_dir, mode="run")["usage"][1]
+    assert judge["status"] == summary.USAGE_UNAVAILABLE and judge["price_source"] is None and judge["calls"] == 1
+
+
+def test_a_repeated_model_row_is_a_gap_not_two_labels(run_dir, tmp_path):
+    """Codex (PR #27, sixteenth round): two fallback rows for one model, one
+    complete and one missing usage, beside a list naming the model once,
+    passed the set comparison and rendered a provider-measured row and an
+    unavailable row for the same model; both writers derive their rows from a
+    model-keyed mapping, so a repeat is an unexpected format."""
+    from scripts.petri_audit.spend import write_report_sidecar
+
+    flat = tmp_path / "run_x"
+    flat.mkdir()
+    write_report_sidecar(flat / "run_x.report.json", run_id="run_x", eval_id="e", target="anthropic/claude-haiku-4-5",
+                         model_usage={"anthropic/claude-haiku-4-5": {"input_tokens": None, "output_tokens": None, "calls": 2,
+                                                                     "calls_without_usage": 2}},
+                         max_spend_usd=0.05, judge_max_spend_usd=None, run_utc="2026-09-17T00:00:00Z")
+    side = framework.load_json(flat / "run_x.report.json")
+    complete = {**side["models"][0], "input_tokens": 10, "output_tokens": 5, "calls": 1, "calls_without_usage": 0, "usage_missing": False}
+    side["models"] = [complete, side["models"][0]]
+    framework.write_json(flat / "run_x.report.json", side)
+    assert summary.run_summary(flat, mode="run")["usage"] == {"unavailable": "run_x.report.json models #1 repeats model 'anthropic/claude-haiku-4-5'"}
+    # the manifest's by_model rows follow the same rule
+    m = framework.load_json(run_dir / "manifest.json")
+    m["usage"]["by_model"] = [m["usage"]["by_model"][0], {**m["usage"]["by_model"][0], "input_tokens": 1, "output_tokens": 1, "calls_without_usage": 0}]
+    framework.write_json(run_dir / "manifest.json", m)
+    assert summary.run_summary(run_dir, mode="run")["usage"] == {"unavailable": "usage.by_model row #1 repeats model 'mockllm/model'"}
+
+
+def test_judgment_rows_are_reconciled_with_the_judge_sidecar_s_model(run_dir):
+    """Codex (PR #27, sixteenth round): judgments.jsonl naming model B beside
+    a judge sidecar naming model A made `_pinned_judge_price` return None,
+    and the registry then priced B and labelled it provider-measured, so the
+    usage table attributed the judge to a model the cost record does not
+    name. The judge loop uses one spec per run and a resumed pass must keep
+    it, so the disagreement is a named gap on the row."""
+    def judge_rows(*rows):
+        (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+        return [r for r in summary.run_summary(run_dir, mode="run")["usage"] if r["model"] != "mockllm/model"]
+
+    def row(spec):
+        return {"method": "judge", "judge_model": spec, "usage_missing": False, "input_tokens": 100, "output_tokens": 20,
+                "retry_attempts_charged": 0, "provider_attempts": 1}
+
+    framework.write_json(run_dir / "example.judge.report.json",
+                         {"judge_model": "claude-haiku-4-5", "cost_usd": 0.0002, "cost_basis": "cumulative_from_records", "billing_channel": "anthropic",
+                          "max_spend_usd": 0.05, "price_source": "pinned:test", "input_per_mtok": 1.0, "output_per_mtok": 5.0})
+    agreed = judge_rows(row("claude-haiku-4-5"))
+    assert len(agreed) == 1 and agreed[0]["status"] == summary.USAGE_PROVIDER_MEASURED and agreed[0]["price_source"] == "pinned:test"
+    other = judge_rows(row("claude-sonnet-4-5"))
+    assert len(other) == 1 and other[0]["model"] == "claude-sonnet-4-5" and other[0]["calls"] == 1 and other[0]["input_tokens"] == 100
+    assert other[0]["status"] == summary.USAGE_UNAVAILABLE and other[0]["price_source"] is None
+    assert other[0]["note"].endswith("; judge model disagrees with the judge sidecar (example.judge.report.json records 'claude-haiku-4-5')")
+    # a file naming two judge models is the same unexpected state whichever the sidecar names
+    two = judge_rows(row("claude-haiku-4-5"), row("claude-sonnet-4-5"))
+    assert [(r["model"], r["status"], r["price_source"], r["calls"]) for r in two] == \
+        [("claude-haiku-4-5", summary.USAGE_UNAVAILABLE, None, 1), ("claude-sonnet-4-5", summary.USAGE_UNAVAILABLE, None, 1)]
+    assert all(r["note"].endswith("; judgments.jsonl names 2 judge models (claude-haiku-4-5, claude-sonnet-4-5); one judge of record per run")
+               for r in two)
+    (run_dir / "example.judge.report.json").unlink()
+    assert judge_rows(row("claude-haiku-4-5"), row("claude-sonnet-4-5"))[1]["status"] == summary.USAGE_UNAVAILABLE
+
+
+def test_judge_token_totals_are_absent_until_a_row_carries_usage(run_dir):
+    """Codex (PR #27, sixteenth round): the aggregate started both token
+    totals at zero and never touched them for a row without usage, so a
+    judge whose every attempt returned no usage block rendered 0/0 as if
+    measured."""
+    def judge_rows(*rows):
+        (run_dir / "judgments.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+        s = summary.run_summary(run_dir, mode="run")
+        return [r for r in s["usage"] if r["model"] == "claude-haiku-4-5"][0], summary.render_markdown(s)
+
+    missing = {"method": "judge", "judge_model": "claude-haiku-4-5", "usage_missing": True, "input_tokens": None, "output_tokens": None,
+               "retry_attempts_charged": 0, "provider_attempts": 1}
+    metered = {**missing, "usage_missing": False, "input_tokens": 100, "output_tokens": 20}
+    judge, text = judge_rows(missing)
+    assert judge["input_tokens"] is None and judge["output_tokens"] is None and judge["calls"] == 1
+    assert judge["status"] == summary.USAGE_UNAVAILABLE and judge["note"].endswith("tokens metered on 0 of 1 judge row(s)")
+    assert "| claude-haiku-4-5 | 1 | 1 | — | — | **unavailable**" in text
+    judge, text = judge_rows(missing, missing)
+    assert judge["input_tokens"] is None and judge["calls"] == 2 and judge["note"].endswith("tokens metered on 0 of 2 judge row(s)")
+    judge, text = judge_rows(missing, metered)
+    assert judge["input_tokens"] == 100 and judge["output_tokens"] == 20 and judge["calls_without_usage"] == 1
+    assert judge["note"].endswith("tokens metered on 1 of 2 judge row(s)") and "| claude-haiku-4-5 | 2 | 1 | 100 | 20 | **unavailable**" in text
+    judge, text = judge_rows(metered, metered)
+    assert judge["input_tokens"] == 200 and "tokens metered" not in judge["note"] and judge["status"] == summary.USAGE_PROVIDER_MEASURED

@@ -1420,6 +1420,12 @@ dry run observable, which section 14 depends on.
    counts stand and the judge rows keep their sidecar-pinned price); the
    fallback sidecar's rows are reconciled with their own `usage_missing`
    flag and the sidecar's list; and recorded rates are bounded like spend.
+   The sixteenth round added four: with no manifest the registry is
+   unchecked, so a judge without a sidecar-recorded price keeps its counts
+   and gets no label; a repeated model row (fallback sidecar or manifest) is
+   a named gap; judgment rows must name the judge the sidecar records, and
+   one judge per run; and judge token totals stay absent until a row
+   carried usage, with the coverage stated when it is partial.
 
 ## Decisions recorded from the owner (2026-09-16)
 
