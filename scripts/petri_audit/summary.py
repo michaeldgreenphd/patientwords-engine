@@ -85,53 +85,98 @@ def _reason(exc: BaseException) -> str:
     return str(exc.args[0]) if exc.args else str(exc)
 
 
-def _structure(manifest: dict, run_dir: Path, eval_status: str | None) -> dict:
+def _member(obj: Any, key: str, where: str) -> Any:
+    """A key a collection member must carry. Its value may legitimately be
+    None (a root branch's parent), so presence is what is required; an
+    absent key is a gap in every count that reads it, never a value (Codex,
+    PR #27: `.get()` read a missing survivor flag as False and a missing
+    parent as a root)."""
+    if not isinstance(obj, dict):
+        raise TypeError(f"{where} is not an object")
+    if key not in obj:
+        raise KeyError(f"{where} lacks {key!r}")
+    return obj[key]
+
+
+def _structure(manifest: dict, run_dir: Path) -> dict:
     """The measured structure. Every field is either a value read from a
-    collection the manifest carries or None with the reason recorded in
-    `unavailable_fields`; nothing here is a default."""
+    collection the manifest carries, with every member key it reads
+    present, or None with the reason recorded in `unavailable_fields`;
+    nothing here is a default."""
     unavailable: dict[str, str] = {}
-    out: dict[str, Any] = {"eval_status": eval_status,
-                           "max_turns": (manifest.get("execution") or {}).get("max_turns"),
+    out: dict[str, Any] = {"max_turns": (manifest.get("execution") or {}).get("max_turns"),
                            "max_tool_rounds_per_turn": (manifest.get("execution") or {}).get("max_tool_rounds_per_turn"),
                            "epochs": (manifest.get("execution") or {}).get("epochs")}
+    # the eval's own status, from the sanitised projection; a file that is missing, does not parse or carries no
+    # status is a named gap (Codex, PR #27: the parse used to sit outside every guard)
+    sanitised = run_dir / "sanitised_log.json"
+    out["eval_status"] = None
+    if not sanitised.is_file():
+        unavailable["eval_status"] = "sanitised_log.json is missing from the run directory"
+    else:
+        try:
+            doc = load_json(sanitised)
+            if not isinstance(doc, dict):
+                raise TypeError(f"sanitised_log.json holds a {type(doc).__name__}, not an object")
+            out["eval_status"] = _member(doc, "status", "sanitised_log.json")
+        except (ValueError, TypeError, OSError, KeyError) as exc:
+            unavailable["eval_status"] = f"sanitised_log.json: {_reason(exc)}"
     try:
-        out["seeds"] = [{"seed_id": s.get("seed_id"), "claim_grade_eligible": s.get("claim_grade_eligible")}
-                        for s in _collection(manifest, "seeds")]
+        out["seeds"] = [{"seed_id": _member(s, "seed_id", f"seed #{i}"),
+                         "claim_grade_eligible": _member(s, "claim_grade_eligible", f"seed {s.get('seed_id', i)!r}")}
+                        for i, s in enumerate(_collection(manifest, "seeds"))]
     except (KeyError, TypeError) as exc:
         # a missing seeds collection is a gap, never an empty seed list (Codex, PR #27)
         out["seeds"] = None
         unavailable["seeds"] = _reason(exc)
-    tree_fields = ("trees", "branches", "conditions", "shared_prefix_branches", "survivors_exported")
+    tree_fields = ("trees", "branches", "conditions", "branches_without_condition_id", "shared_prefix_branches", "survivors_exported")
     try:
         trees = _collection(manifest, "trees")
-        branches: list[dict] = []
+        cells: set[tuple[Any, Any]] = set()       # (seed_id, condition_id): condition ids repeat across seeds
+        anchors: list[Any] = []
+        branches_n = survivors = no_condition = 0
         for i, t in enumerate(trees):
+            where = f"tree {t.get('tree_id', i)!r}" if isinstance(t, dict) else f"tree #{i}"
+            seed_id = _member(t, "seed_id", where)
+            survivors += bool(_member(t, "survivor_exported", where))
             # each tree's own collection is required too (Codex, PR #27): a tree without `branches` is a gap in every
             # branch-derived count, not zero branches
             try:
-                branches.extend(_collection(t, "branches"))
+                tree_branches = _collection(t, "branches")
             except (KeyError, TypeError) as exc:
-                raise KeyError(f"tree {t.get('tree_id', i)!r}: {_reason(exc)}") from exc
-        child = [b for b in branches if b.get("parent_branch_id") is not None]
-        out.update(trees=len(trees), branches=len(branches), conditions=len({b.get("condition_id") for b in branches}),
-                   shared_prefix_branches={"anchored": sum(1 for b in child if b.get("branched_from_turn_id") is not None),
-                                           "without_resolved_anchor": sum(1 for b in child if b.get("branched_from_turn_id") is None)},
-                   survivors_exported=sum(1 for t in trees if t.get("survivor_exported")))
+                raise KeyError(f"{where}: {_reason(exc)}") from exc
+            for j, b in enumerate(tree_branches):
+                bwhere = f"{where} branch {b.get('branch_id', j)!r}" if isinstance(b, dict) else f"{where} branch #{j}"
+                branches_n += 1
+                condition = _member(b, "condition_id", bwhere)
+                if condition is None:
+                    no_condition += 1
+                else:
+                    cells.add((seed_id, condition))
+                anchor = _member(b, "branched_from_turn_id", bwhere)
+                if _member(b, "parent_branch_id", bwhere) is not None:
+                    anchors.append(anchor)
+        out.update(trees=len(trees), branches=branches_n, conditions=len(cells), branches_without_condition_id=no_condition,
+                   shared_prefix_branches={"anchored": sum(1 for a in anchors if a is not None),
+                                           "without_resolved_anchor": sum(1 for a in anchors if a is None)},
+                   survivors_exported=survivors)
     except (KeyError, TypeError) as exc:
         out.update({f: None for f in tree_fields})
         unavailable["trees"] = _reason(exc)
     try:
         refused = _collection(manifest, "integrity", "records_refused")
-        out["refused"] = {"count": len(refused), "reasons": [f"{r.get('branch_id')}: {r.get('reason')}" for r in refused]}
+        out["refused"] = {"count": len(refused),
+                          "reasons": [f"{_member(r, 'branch_id', f'refusal #{i}')}: {_member(r, 'reason', f'refusal #{i}')}"
+                                      for i, r in enumerate(refused)]}
     except (KeyError, TypeError) as exc:
         out["refused"] = None
         unavailable["refused"] = _reason(exc)
     try:
-        by_role = {r.get("role"): r for r in _collection(manifest, "usage", "by_role")}
+        by_role = {_member(r, "role", f"usage.by_role #{i}"): r for i, r in enumerate(_collection(manifest, "usage", "by_role"))}
         if "target" not in by_role:
             raise KeyError("manifest usage.by_role carries no target row")
-        out["target_calls"] = by_role["target"].get("calls")
-        out["target_calls_without_usage"] = by_role["target"].get("calls_without_usage")
+        out["target_calls"] = _member(by_role["target"], "calls", "usage.by_role target row")
+        out["target_calls_without_usage"] = _member(by_role["target"], "calls_without_usage", "usage.by_role target row")
     except (KeyError, TypeError) as exc:
         out["target_calls"] = out["target_calls_without_usage"] = None
         unavailable["target_calls"] = _reason(exc)
@@ -306,16 +351,13 @@ def run_summary(run_dir: Path | str | None, *, mode: str, raw_eval_dir: Path | s
     except (ValueError, TypeError, OSError) as exc:
         # a truncated or unreadable manifest is reported by name and the rest still inventoried (Codex, PR #27)
         return without_manifest(f"manifest.json does not parse: {type(exc).__name__}: {exc}")
-    sanitised = run_dir / "sanitised_log.json"
-    # the eval's own status, from the sanitised projection (the manifest is left untouched: its digests are checked below)
-    eval_status = load_json(sanitised).get("status") if sanitised.is_file() else None
     out["manifest"] = {"run_id": manifest.get("run_id"), "eval_id": manifest.get("eval_id"),
                        "claim_grade_eligible": (manifest.get("execution") or {}).get("claim_grade_eligible"),
                        "contract_checks": (manifest.get("execution") or {}).get("contract_checks"),
                        "target": (manifest.get("models") or {}).get("target", {}).get("inspect_name"),
                        "lock_sha256": (manifest.get("harness") or {}).get("environment_lock_sha256"),
                        "journal_nonce": (manifest.get("spend") or {}).get("journal_nonce")}
-    out["structure"] = _guard(_structure, manifest, run_dir, eval_status)
+    out["structure"] = _guard(_structure, manifest, run_dir)
     out["usage"] = _guard(_usage, manifest)
     out["redaction"] = ((manifest.get("artifacts") or {}).get("sanitiser") or {}).get("redaction_report")
     out["raw_eval"] = _guard(_raw_eval, manifest, raw_dir)
@@ -370,14 +412,16 @@ def render_markdown(s: dict) -> str:
         else:
             lines += _table("Measured structure (valid under any target)", [
                 ("eval status", st.get("eval_status")), ("seeds", _fmt(st.get("seeds"))), ("epochs", st.get("epochs")),
-                ("trees (samples)", st.get("trees")), ("conditions", st.get("conditions")), ("branches", st.get("branches")),
+                ("trees (samples)", st.get("trees")), ("conditions (distinct seed × condition cells)", st.get("conditions")),
+                ("branches", st.get("branches")),
                 ("shared-prefix branches", _fmt(st.get("shared_prefix_branches"))), ("survivors exported", st.get("survivors_exported")),
                 ("target calls (generates)", st.get("target_calls")),
                 ("target calls without a usage block", st.get("target_calls_without_usage")),
                 ("records exported", (st.get("records") or {}).get("count", "unavailable: " + str((st.get("records") or {}).get("unavailable")))),
                 ("records with schema or pairing problems", (st.get("records") or {}).get("with_problems", "unavailable")),
                 ("records refused by the adapter", (st.get("refused") or {}).get("count") if st.get("refused") is not None else None),
-                ("max turns / tool rounds per turn", f"{st.get('max_turns')} / {st.get('max_tool_rounds_per_turn')}")])
+                ("max turns / tool rounds per turn", f"{st.get('max_turns')} / {st.get('max_tool_rounds_per_turn')}")]
+                + ([("branches without a condition id", st["branches_without_condition_id"])] if st.get("branches_without_condition_id") else []))
             missing = st.get("unavailable_fields") or {}
             if missing:
                 lines += ["Structure fields unavailable (not zero):", ""] + [f"- {k}: {v}" for k, v in missing.items()] + [""]

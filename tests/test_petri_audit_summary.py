@@ -67,7 +67,9 @@ def test_summary_reads_the_run_it_is_given_and_labels_usage_by_provenance(run_di
     child = [b for t in m["trees"] for b in t["branches"] if b["parent_branch_id"] is not None]
     assert child and st["shared_prefix_branches"] == {"anchored": len(child), "without_resolved_anchor": 0}
     assert st["refused"]["count"] == len(m["integrity"]["records_refused"]) and st["eval_status"] == "success"
-    assert st["conditions"] == len({b["condition_id"] for t in m["trees"] for b in t["branches"]})
+    assert st["conditions"] == len({(t["seed_id"], b["condition_id"]) for t in m["trees"] for b in t["branches"] if b["condition_id"] is not None})
+    assert st["branches_without_condition_id"] == sum(1 for t in m["trees"] for b in t["branches"] if b["condition_id"] is None)
+    assert st["unavailable_fields"] == {}
     # the mock target is labelled as such: its token counts are never called provider-measured
     assert [r["status"] for r in s["usage"]] == [summary.USAGE_MOCK]
     assert s["usage"][0]["price_source"] == "zero:mock_or_placeholder"
@@ -246,6 +248,72 @@ def test_a_missing_seeds_collection_is_a_gap_not_an_empty_list(run_dir):
     assert st["seeds"] is None and st["unavailable_fields"] == {"seeds": "manifest lacks 'seeds'"}
     assert st["trees"] == 1, "the other collections still count"
     assert "| seeds | — |" in summary.render_markdown(summary.run_summary(run_dir, mode="dry_run"))
+
+
+def test_conditions_are_counted_per_seed(run_dir):
+    """Codex (PR #27, fifth round): condition ids repeat across seeds (every
+    wave-1 seed has `clinical` and `colloquial`), so a manifest-wide set
+    undercounted the cells that ran."""
+    m = framework.load_json(run_dir / "manifest.json")
+    second = json.loads(json.dumps(m["trees"][0]))
+    second["tree_id"], second["seed_id"] = "t2", "another-seed"
+    m["trees"].append(second)
+    framework.write_json(run_dir / "manifest.json", m)
+    st = summary.run_summary(run_dir, mode="dry_run")["structure"]
+    labels = {b["condition_id"] for t in m["trees"] for b in t["branches"] if b["condition_id"] is not None}
+    assert st["trees"] == 2 and st["conditions"] == 2 * len(labels) > len(labels)
+
+
+def test_missing_member_keys_are_gaps_not_values(run_dir):
+    """Codex (PR #27, fifth round): `.get()` on collection members read a
+    missing survivor flag as False, a missing parent as a root and a missing
+    anchor as unresolved."""
+    base = framework.load_json(run_dir / "manifest.json")
+
+    def damaged(mutate):
+        m = json.loads(json.dumps(base))
+        mutate(m)
+        framework.write_json(run_dir / "manifest.json", m)
+        return summary.run_summary(run_dir, mode="dry_run")["structure"]
+
+    st = damaged(lambda m: m["trees"][0].pop("survivor_exported"))
+    assert st["survivors_exported"] is None and st["trees"] is None
+    assert st["unavailable_fields"]["trees"] == "tree 't1' lacks 'survivor_exported'"
+    st = damaged(lambda m: m["trees"][0]["branches"][1].pop("parent_branch_id"))
+    assert st["shared_prefix_branches"] is None and "branch 'b2' lacks 'parent_branch_id'" in st["unavailable_fields"]["trees"]
+    st = damaged(lambda m: m["trees"][0]["branches"][0].pop("branched_from_turn_id"))
+    assert st["branches"] is None and "lacks 'branched_from_turn_id'" in st["unavailable_fields"]["trees"]
+    st = damaged(lambda m: m["trees"][0]["branches"][0].pop("condition_id"))
+    assert st["conditions"] is None and "lacks 'condition_id'" in st["unavailable_fields"]["trees"]
+    st = damaged(lambda m: m["integrity"]["records_refused"].append({"branch_id": "x"}))
+    assert st["refused"] is None and st["unavailable_fields"]["refused"] == "refusal #0 lacks 'reason'"
+    st = damaged(lambda m: m["seeds"][0].pop("claim_grade_eligible"))
+    assert st["seeds"] is None and "lacks 'claim_grade_eligible'" in st["unavailable_fields"]["seeds"]
+    st = damaged(lambda m: m["usage"]["by_role"][0].pop("calls"))
+    assert st["target_calls"] is None and st["unavailable_fields"]["target_calls"] == "usage.by_role target row lacks 'calls'"
+    # a legitimately null value is not a gap: the root branch's parent is None
+    assert base["trees"][0]["branches"][0]["parent_branch_id"] is None
+    framework.write_json(run_dir / "manifest.json", base)
+    assert summary.run_summary(run_dir, mode="dry_run")["structure"]["unavailable_fields"] == {}
+
+
+def test_a_damaged_sanitised_log_is_a_named_gap_not_a_failed_summary(run_dir, capsys):
+    """Codex (PR #27, fifth round): the sanitised-log parse sat outside every
+    guard, so a truncated file aborted the whole summary."""
+    (run_dir / "sanitised_log.json").write_text('{"status": "succ', encoding="utf-8")
+    s = summary.run_summary(run_dir, mode="dry_run")
+    st = s["structure"]
+    assert st["eval_status"] is None and st["unavailable_fields"]["eval_status"].startswith("sanitised_log.json: ")
+    assert st["trees"] == 1 and s["published"]["files"]["sanitised_log.json"] > 0, "the rest of the summary still reports"
+    assert any("sanitised_log" in p for p in s["integrity"]["artifact_problems"])
+    assert cli.main(["run-summary", "--run-dir", str(run_dir), "--mode", "dry_run"]) == 0
+    assert "- eval_status: sanitised_log.json: " in capsys.readouterr().out
+    (run_dir / "sanitised_log.json").write_text('{"samples": []}', encoding="utf-8")
+    st = summary.run_summary(run_dir, mode="dry_run")["structure"]
+    assert st["unavailable_fields"]["eval_status"] == "sanitised_log.json: sanitised_log.json lacks 'status'"
+    (run_dir / "sanitised_log.json").unlink()
+    st = summary.run_summary(run_dir, mode="dry_run")["structure"]
+    assert st["unavailable_fields"]["eval_status"] == "sanitised_log.json is missing from the run directory"
 
 
 def test_an_empty_by_model_reports_the_missing_usage_instead_of_no_section(run_dir):

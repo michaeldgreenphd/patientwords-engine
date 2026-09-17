@@ -187,6 +187,10 @@ def test_run_summary_reports_the_measured_structure_of_the_mock_run(run):
     assert st["trees"] == len(m["trees"]) and st["branches"] == sum(len(t["branches"]) for t in m["trees"])
     assert st["records"]["count"] == len(run["r1"].records) and st["records"]["with_problems"] == 0
     assert st["refused"]["count"] == 0 and st["survivors_exported"] == len(m["trees"])
+    cells = {(t["seed_id"], b["condition_id"]) for t in m["trees"] for b in t["branches"]}
+    labels = {b["condition_id"] for t in m["trees"] for b in t["branches"]}
+    assert st["conditions"] == len(cells) > len(labels), "condition ids repeat across seeds; cells are counted per seed"
+    assert st["branches_without_condition_id"] == 0 and st["unavailable_fields"] == {}
     assert st["shared_prefix_branches"]["anchored"] > 0 and st["shared_prefix_branches"]["without_resolved_anchor"] == 0
     assert st["target_calls"] == next(r for r in m["usage"]["by_role"] if r["role"] == "target")["calls"] > 0
     assert st["eval_status"] == "success"
