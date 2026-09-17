@@ -168,10 +168,32 @@ def verify_run(run_dir: Path) -> list[str]:
     except ValueError as exc:
         return [f"{run_dir.name}: manifest.json does not parse ({exc})"]
     problems = [f"manifest: {p}" for p in manifest_problems(manifest)]
-    for rel in (a for fam in ARTIFACT_FAMILIES for a in [(manifest.get("artifacts") or {}).get(f"{fam}_path")] if a):
-        if Path(rel).parts[:1] != (run_dir.name,):
-            problems.append(f"artifact {rel} is recorded outside this run directory")
-    problems.extend(artifact_problems(manifest, run_dir.parent))
+    # artifact paths are recorded as `<recorded run directory>/<file>` relative to the runs directory; the files are
+    # looked up by basename under the directory given, so a downloaded artifact extracted flat under any folder name
+    # verifies exactly like the committed layout (Codex, PR #27: upload-artifact roots the archive at the run
+    # directory, so the extraction carries no enclosing directory); every path must still share one recorded
+    # directory and name a file directly inside it
+    artifacts = manifest.get("artifacts") or {}
+    pairs = [(artifacts.get(f"{fam}_path"), artifacts.get(f"{fam}_sha256"), fam) for fam in ARTIFACT_FAMILIES]
+    judge = artifacts.get("judge_of_record")
+    if isinstance(judge, dict):
+        pairs.append((judge.get("report_path"), judge.get("report_sha256"), "judge_of_record.report"))
+    recorded_dirs: set[str] = set()
+    for rel, digest, fam in pairs:
+        if rel is None:
+            continue
+        parts = Path(rel).parts
+        if len(parts) != 2:
+            problems.append(f"{fam}: {rel} is not recorded as <run directory>/<file>")
+            continue
+        recorded_dirs.add(parts[0])
+        fpath = run_dir / parts[1]
+        if not fpath.is_file():
+            problems.append(f"{fam}: {parts[1]} is missing from the run directory")
+        elif sha256_file(fpath) != digest:
+            problems.append(f"{fam}: {parts[1]} does not digest to its recorded value")
+    if len(recorded_dirs) > 1:
+        problems.append(f"artifacts are recorded under more than one run directory: {sorted(recorded_dirs)}")
     return problems
 
 

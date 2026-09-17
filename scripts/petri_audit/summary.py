@@ -99,7 +99,14 @@ def _structure(manifest: dict, run_dir: Path, eval_status: str | None) -> dict:
     tree_fields = ("trees", "branches", "conditions", "shared_prefix_branches", "survivors_exported")
     try:
         trees = _collection(manifest, "trees")
-        branches = [b for t in trees for b in t.get("branches") or []]
+        branches: list[dict] = []
+        for i, t in enumerate(trees):
+            # each tree's own collection is required too (Codex, PR #27): a tree without `branches` is a gap in every
+            # branch-derived count, not zero branches
+            try:
+                branches.extend(_collection(t, "branches"))
+            except (KeyError, TypeError) as exc:
+                raise KeyError(f"tree {t.get('tree_id', i)!r}: {_reason(exc)}") from exc
         child = [b for b in branches if b.get("parent_branch_id") is not None]
         out.update(trees=len(trees), branches=len(branches), conditions=len({b.get("condition_id") for b in branches}),
                    shared_prefix_branches={"anchored": sum(1 for b in child if b.get("branched_from_turn_id") is not None),

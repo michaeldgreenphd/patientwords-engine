@@ -201,6 +201,21 @@ def test_missing_manifest_collections_are_unavailable_not_zero(run_dir):
     assert s["integrity"]["manifest_problems"], "the damaged manifest is also reported by the schema check"
 
 
+def test_a_tree_without_its_branches_collection_is_a_gap_not_zero_branches(run_dir):
+    """Codex (PR #27, third round): the outer `trees` list was validated but a
+    tree's own `branches` fell back to zero branches."""
+    m = framework.load_json(run_dir / "manifest.json")
+    del m["trees"][0]["branches"]
+    framework.write_json(run_dir / "manifest.json", m)
+    st = summary.run_summary(run_dir, mode="dry_run")["structure"]
+    assert st["trees"] is None and st["branches"] is None and st["conditions"] is None and st["shared_prefix_branches"] is None
+    assert st["unavailable_fields"] == {"trees": f"tree {m['trees'][0]['tree_id']!r}: manifest lacks 'branches'"}
+    m["trees"][0]["branches"] = "not a list"
+    framework.write_json(run_dir / "manifest.json", m)
+    st = summary.run_summary(run_dir, mode="dry_run")["structure"]
+    assert st["branches"] is None and "is not a list" in st["unavailable_fields"]["trees"]
+
+
 def test_verify_run_checks_a_run_directory_on_its_own(run_dir, tmp_path, capsys):
     """Codex (PR #27): the exports artifact carried the cumulative chain
     file, which names every earlier committed run; a downloaded artifact
@@ -214,6 +229,12 @@ def test_verify_run_checks_a_run_directory_on_its_own(run_dir, tmp_path, capsys)
     assert manifest_mod.verify_run(copy) == []
     assert cli.main(["verify-run", "--run-dir", str(copy)]) == 0
     assert "verifies on its own" in capsys.readouterr().out
+    # a flat extraction under any folder name (what upload-artifact produces: the archive is rooted at the run
+    # directory, so the enclosing name is the downloader's choice) verifies too
+    flat = tmp_path / "artifact-12345"
+    shutil.copytree(run_dir, flat)
+    assert flat.name != run_dir.name and manifest_mod.verify_run(flat) == []
+    assert cli.main(["verify-run", "--run-dir", str(flat)]) == 0
     # a tampered artifact, a tampered manifest and a missing manifest all fail by name
     (copy / "transcripts.jsonl").write_text("edited\n", encoding="utf-8")
     assert any("transcripts" in p and "does not digest" in p for p in manifest_mod.verify_run(copy))
@@ -224,13 +245,17 @@ def test_verify_run_checks_a_run_directory_on_its_own(run_dir, tmp_path, capsys)
     (copy / "manifest.json").unlink()
     assert manifest_mod.verify_run(copy) == [f"{copy.name}: manifest.json is missing"]
     assert cli.main(["verify-run", "--run-dir", str(copy)]) == 6
-    # an artifact recorded outside the run directory is refused, whatever its digest
+    # artifacts recorded under two different run directories, or deeper than <run directory>/<file>, are refused
     m = framework.load_json(run_dir / "manifest.json")
     m["artifacts"]["transcripts_path"] = "elsewhere/transcripts.jsonl"
     other = tmp_path / "runs2" / run_dir.name
-    other.mkdir(parents=True)
+    shutil.copytree(run_dir, other)
     framework.write_json(other / "manifest.json", m)
-    assert any("outside this run directory" in p for p in manifest_mod.verify_run(other))
+    problems = manifest_mod.verify_run(other)
+    assert any("more than one run directory" in p for p in problems), problems
+    m["artifacts"]["transcripts_path"] = "example/nested/transcripts.jsonl"
+    framework.write_json(other / "manifest.json", m)
+    assert any("is not recorded as <run directory>/<file>" in p for p in manifest_mod.verify_run(other))
 
 
 def test_prompt_byte_stats_keep_the_numeric_median():
