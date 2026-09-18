@@ -20,6 +20,11 @@ def _entry(fired: str, nonce: str | None, max_spend: float | None = None, **extr
         e["max_spend"] = max_spend
         e["lane"] = "anthropic"
     e.update(extra)
+    # `fire_trigger.resolve` always stamps `resolved_utc` when it sets `resolved`, and reconciliation now names an
+    # entry that claims the first without the second - so the fixture stamps it too, the sixth round in which a
+    # hand-built fixture was thinner than the writer it stands in for (Codex round 12 on PR #28)
+    if e.get("resolved") and "resolved_utc" not in e:
+        e["resolved_utc"] = fired
     return e
 
 
@@ -1064,42 +1069,136 @@ def test_a_naive_sidecar_stamp_is_utc_the_way_the_ledger_reads_it(tmp_path):
     assert "precedes the fire" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
 
 
-def test_folded_amounts_must_be_covered_by_the_daily_totals(tmp_path):
-    # round 10 checked that `by_day` and `today.spent_usd` EXIST; `{"2026-09-18": 0}` beside a positive watermark
-    # passed, and every landed sidecar still read as fully booked while budget_check saw the whole day's ceiling
-    # free. The totals must be able to contain the folds (Codex round 11 on PR #28)
+def test_a_day_bucket_must_contain_what_the_ledger_books_into_it(tmp_path):
+    # round 11 compared the WATERMARK against the day bucket, which is not what the writer books there. The claim
+    # is per sidecar and per day: `by_day[<the day its stamp names>]` must be able to hold the amount
+    # `ledger_update` adds to it (Codex rounds 11 and 12 on PR #28)
     journal, runs, dashboard = _layout(tmp_path)
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
     _sidecar(runs, "run_1", 0.4, "n1")
     seen, folded = ["run_1.report.json"], {"run_1.report.json": 0.4}
 
-    framework.write_json(dashboard, {"schema_version": 1,
-                                     "spend": {"entries_seen": seen, "entries_folded": folded,
-                                               "by_day": {"2026-09-18": 0.0},
-                                               "today": {"date": "2026-09-18", "spent_usd": 0.0}}})
+    def dash(by_day, spent):
+        framework.write_json(dashboard, {"schema_version": 1,
+                                         "spend": {"entries_seen": seen, "entries_folded": folded,
+                                                   "by_day": by_day,
+                                                   "today": {"date": "2026-09-18", "spent_usd": spent}}})
+
+    dash({"2026-09-18": 0.0}, 0.0)
     result = reconcile.reconcile(journal, runs, dashboard)
     problems = "\n".join(result["problems"])
-    assert "spend.by_day totals 0.0000 across every lane and every day, which cannot contain it" in problems
-    assert result["paid_fires"][0]["folded"] is None, "unknown, never False"
-    assert result["unfolded_sidecars"] == [], "nothing may be reported unfolded on a ledger that was refused"
+    assert "the ledger books 0.4000 of it to 2026-09-18 but spend.by_day[2026-09-18] totals 0.0000" in problems
 
-    # totals that cover it overall, but not on the day this sidecar's own stamp names
-    framework.write_json(dashboard, {"schema_version": 1,
-                                     "spend": {"entries_seen": seen, "entries_folded": folded,
-                                               "by_day": {"2026-09-17": 9.0},
-                                               "today": {"date": "2026-09-18", "spent_usd": 0.0}}})
-    problems = "\n".join(reconcile.reconcile(journal, runs, dashboard)["problems"])
-    assert "spend.by_day has no 2026-09-18 entry at all" in problems
-    framework.write_json(dashboard, {"schema_version": 1,
-                                     "spend": {"entries_seen": seen, "entries_folded": folded,
-                                               "by_day": {"2026-09-18": 0.2, "2026-09-17": 9.0},
-                                               "today": {"date": "2026-09-18", "spent_usd": 0.2}}})
-    problems = "\n".join(reconcile.reconcile(journal, runs, dashboard)["problems"])
-    assert "spend.by_day[2026-09-18] totals 0.2000 across every lane, which cannot contain it" in problems
+    dash({"2026-09-17": 9.0}, 0.0)
+    assert "spend.by_day has no entry for that day at all" in \
+        "\n".join(reconcile.reconcile(journal, runs, dashboard)["problems"])
 
-    # the state the daily Routine actually writes: the ledger is accepted and the sidecar reads as booked. The
-    # one problem left is the pre-existing "folded but still unresolved" finding, which is the true state here.
+    # the state the daily Routine writes: the bucket holds it, and the only finding left is the true
+    # "folded but still unresolved" one
     framework.write_json(dashboard, _ledger({"entries_seen": seen, "entries_folded": folded}))
     result = reconcile.reconcile(journal, runs, dashboard)
     assert [pr for pr in result["problems"] if "unresolved" not in pr] == []
     assert result["paid_fires"][0]["folded"] is True
+
+
+def test_a_cumulative_fold_legitimately_exceeds_its_day_bucket(tmp_path):
+    """Round 11 required `sum(by_day)` to cover `sum(entries_folded)` and every day bucket to cover its sidecar's
+    whole watermark. Neither holds: `ledger_update` books only `run_cost_usd` of a `cumulative_from_records`
+    report to a day and puts the prior-runs balance into lifetime totals alone, because that balance has no single
+    day. The live dashboard is $0.18 apart for exactly this reason, so the rule would have failed the pilot's
+    first reconciliation (Codex round 12 on PR #28)."""
+    journal, runs, dashboard = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.2, "n1", judge_cost=0.1)
+    jpath = runs / "run_1" / "run_1.judge.report.json"
+    # a resumed judge pass: 0.30 cumulative, of which 0.10 is this run's and 0.20 a prior run's balance
+    framework.write_json(jpath, {**framework.load_json(jpath), "cost_usd": 0.3,
+                                 "run_cost_usd": 0.1, "prior_cost_usd": 0.2})
+    framework.write_json(dashboard, {"schema_version": 1,
+                                     "spend": {"entries_seen": ["run_1.report.json", "run_1.judge.report.json"],
+                                               # the watermark holds the whole cumulative...
+                                               "entries_folded": {"run_1.report.json": 0.2,
+                                                                  "run_1.judge.report.json": 0.3},
+                                               # ...while the day bucket holds 0.20 target + 0.10 run_cost only
+                                               "by_day": {"2026-09-18": 0.3},
+                                               "today": {"date": "2026-09-18", "spent_usd": 0.3}}})
+    problems = "\n".join(reconcile.reconcile(journal, runs, dashboard)["problems"])
+    assert "by_day" not in problems, problems
+    assert "cannot contain it" not in problems, problems
+    # and the claim it DOES make still bites: a bucket below the run's own day cost
+    framework.write_json(dashboard, {"schema_version": 1,
+                                     "spend": {"entries_seen": ["run_1.report.json", "run_1.judge.report.json"],
+                                               "entries_folded": {"run_1.report.json": 0.2,
+                                                                  "run_1.judge.report.json": 0.3},
+                                               "by_day": {"2026-09-18": 0.05},
+                                               "today": {"date": "2026-09-18", "spent_usd": 0.05}}})
+    assert "cannot contain it" in "\n".join(reconcile.reconcile(journal, runs, dashboard)["problems"])
+
+
+def test_the_today_block_must_match_the_tables_it_is_built_from(tmp_path):
+    # `today_record` copies `by_day[date]` into `spent_usd` and `by_day_by_channel[ch][date]` into `<ch>_usd`, and
+    # `budget_check` reads the CHANNEL key in preference to the pooled one - so a zero there admits later fires as
+    # though the day's landed spend did not exist (Codex round 12 on PR #28)
+    journal, runs, dashboard = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.4, "n1")
+    base = {"entries_seen": ["run_1.report.json"], "entries_folded": {"run_1.report.json": 0.4},
+            "by_day": {"2026-09-18": 0.4}, "by_day_by_channel": {"anthropic": {"2026-09-18": 0.4}}}
+
+    def dash(today):
+        framework.write_json(dashboard, {"schema_version": 1, "spend": {**base, "today": today}})
+        return "\n".join(reconcile.reconcile(journal, runs, dashboard)["problems"])
+
+    problems = dash({"date": "2026-09-18", "spent_usd": 0.0, "anthropic_usd": 0.0})
+    assert "spend.today.spent_usd is 0.0000 but spend.by_day[2026-09-18] is 0.4000" in problems
+    assert "spend.today.anthropic_usd is 0.0000 but spend.by_day_by_channel[anthropic][2026-09-18] is 0.4000" \
+        in problems
+    assert "budget_check` reads" in problems or "budget_check" in problems
+
+    # the pooled figure right and the channel key zeroed is the dangerous half on its own
+    problems = dash({"date": "2026-09-18", "spent_usd": 0.4, "anthropic_usd": 0.0})
+    assert "spend.today.anthropic_usd" in problems and "spent_usd is" not in problems
+
+    problems = dash({"date": "2026-09-18", "spent_usd": 0.4, "anthropic_usd": "nope"})
+    assert "not a finite non-negative number" in problems
+
+    assert dash({"date": "2026-09-18", "spent_usd": 0.4, "anthropic_usd": 0.4}).count("spend.today") == 0
+    # a day the ledger has not booked reads as zero on both sides, which is what the live dashboard looks like
+    assert dash({"date": "2026-09-19", "spent_usd": 0.0, "anthropic_usd": 0.0}).count("spend.today") == 0
+
+
+def test_a_resolved_entry_without_a_parseable_stamp_is_named(tmp_path):
+    # `recently_resolved` skips an entry whose `resolved_utc` does not parse, so a resolved entry without one
+    # opens no settle window and a same-lane fire inside 15 minutes is admitted while the prior Actions run may
+    # still hold the concurrency slot - the 2026-07-09 eviction seam (Codex round 12 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    _sidecar(runs, "run_1", 0.2, "n1")
+    for bad in (None, "", "not-a-time", 1758196800):
+        entry = _entry("2026-09-18T10:00:00Z", "n1", 1.0, resolved=True, resolved_utc=bad)
+        journal.write_text(json.dumps(entry) + "\n", encoding="utf-8")
+        problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+        assert "the journal entry is resolved but records resolved_utc" in problems, bad
+        assert "the 15-minute settle window this entry should open" in problems, bad
+    entry = _entry("2026-09-18T10:00:00Z", "n1", 1.0, resolved=True, resolved_utc="2026-09-18T10:30:00Z")
+    journal.write_text(json.dumps(entry) + "\n", encoding="utf-8")
+    assert "records resolved_utc" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    # and an unresolved entry is not asked for a stamp it should not have
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    assert "records resolved_utc" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_stamp_in_the_future_is_named(tmp_path):
+    # the ordering check rejected only stamps BEFORE the fire. A stamp after now books the cost into a future
+    # day's bucket, so spend.today never receives it: once the fire is resolved and its hold released, neither the
+    # landed cost nor the reservation counts against today's ceiling (Codex round 12 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.2, "n1")
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {**framework.load_json(path), "run_utc": "2099-01-01T00:00:00Z"})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "is in the future" in problems
+    assert "a day the daily guard will not read as today's spend" in problems
+    # the writers' own shape, stamped after the fire and before now, stays silent
+    framework.write_json(path, {**framework.load_json(path), "run_utc": "2026-09-18T10:05:00Z"})
+    assert "is in the future" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])

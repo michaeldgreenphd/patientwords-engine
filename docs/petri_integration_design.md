@@ -1850,7 +1850,44 @@ re-parked. PR B carries what a paid fire still lacked:
     assigns UTC to and still buckets by day; `_timestamp` now normalises the
     way `parse_ts` does, which is what its docstring already claimed.
 
-    The rehearsal is at eight states. The staged pilot still clears the gate. In the reconciliation: a
+    The rehearsal is at eight states. The staged pilot still clears the gate.
+
+24. **Four from the twelfth round, and the first of them is a defect round 11
+    introduced.** The aggregate ledger rule I added there - `sum(by_day)` must
+    cover `sum(entries_folded)`, and each day bucket must cover its sidecar's
+    whole watermark - is not an invariant the writer supports. A
+    `cumulative_from_records` first fold books only `run_cost_usd` to the run's
+    day and puts the prior-runs balance into lifetime totals alone, deliberately,
+    because that balance has no single day, while `entries_folded` records the
+    whole cumulative cost. The live dashboard is **$0.1841 apart** for exactly
+    that reason (71.4449 booked, 71.2608 across `by_day`), so the rule would
+    have failed the pilot's first reconciliation. The aggregate comparison is
+    gone; the per-sidecar claim now compares the day bucket against
+    `_day_bookable`, which mirrors the writer's own branch. **The lesson is the
+    one this file keeps recording from the other direction:** a check is only
+    as good as its model of the writer, and I wrote this one from the shape of
+    the data rather than from `ledger_update`'s code.
+
+    The other three: `spend.today` is built FROM `by_day` and
+    `by_day_by_channel` by `today_record`, and `budget_check` reads
+    `today.<channel>_usd` in PREFERENCE to `spent_usd`, so a zero there admits
+    later fires as though the day's landed spend did not exist - the three must
+    agree. A journal entry with `resolved: true` and no parseable `resolved_utc`
+    opens no settle window, because `recently_resolved` skips it (deliberately,
+    for entries resolved before the field existed), so a same-lane fire inside
+    fifteen minutes is admitted while the prior run may still hold the
+    concurrency slot: that is the 2026-07-09 eviction seam, and reconciliation
+    now names it rather than changing the fire guard's back-compatibility. And
+    the stamp-ordering check rejected only stamps BEFORE the fire; one after
+    *now* books into a future day's bucket, so `spend.today` never receives it
+    and, once the hold is released, neither the landed cost nor the reservation
+    counts against today's ceiling.
+
+    Running the checks caught a seventh hand-built fixture unlike its writer:
+    `scratchpad/reconcile_on_a_real_run.py` carried stamps fixed at 13:0x, two
+    hours ahead of the clock when it ran, so it reported its own fixture. Its
+    stamps are derived from the run time now. `_entry` in the reconcile tests
+    gained the `resolved_utc` that `resolve` always writes. In the reconciliation: a
     sidecar seen by the ledger with no amount in `entries_folded` is a
     truncated dashboard, not a legacy record, because this lane postdates that
     watermark; a ceiling that is present but unusable is named rather than
