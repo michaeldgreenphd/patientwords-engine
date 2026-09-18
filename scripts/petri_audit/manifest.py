@@ -37,6 +37,41 @@ CHAIN_FILE = "manifests.chain"           # one manifest digest per line, append-
 RECORD_DEPENDENT_FIELDS = ("transcripts_sha256", "rule_outcomes_sha256", "judgments_path", "judgments_sha256",
                            "judge_of_record")
 ARTIFACT_FAMILIES = ("sanitised_log", "transcripts", "rule_outcomes", "judgments")
+# the filename each family's consumers open by name (the adapter writes them, the judge, the analysis and the summary
+# read them); a manifest binding a family to any other file would verify while the consumed file stayed unbound
+ARTIFACT_FILENAMES = {"sanitised_log": "sanitised_log.json", "transcripts": "transcripts.jsonl",
+                      "rule_outcomes": "rule_outcomes.jsonl", "judgments": "judgments.jsonl"}
+JUDGE_REPORT_SUFFIX = ".judge.report.json"
+
+
+def artifact_name_problems(pairs: list[tuple], manifest_dir: str | None = None) -> list[str]:
+    """Each recorded artifact path names the file its family's consumers
+    open, and no two families share a path (Codex, PR #27, twelfth round:
+    `transcripts_path` sealed as `sanitised_log.json` with that file's
+    digest verified, while `transcripts.jsonl` was unbound). With
+    `manifest_dir`, every path must also sit in the manifest's own run
+    directory (thirteenth round: a resealed manifest naming another run's
+    files, same basenames and matching digests, verified while the files
+    beside it were unbound). `pairs` are `(relative path, digest, family)`;
+    a null or non-string path is another check's problem."""
+    problems: list[str] = []
+    seen: dict[str, list[str]] = {}
+    for rel, _digest, fam in pairs:
+        if not isinstance(rel, str):
+            continue
+        if manifest_dir is not None and Path(rel).parent.as_posix() != manifest_dir:
+            problems.append(f"{fam}: {rel} is recorded outside the manifest's directory {manifest_dir}")
+        name = Path(rel).name
+        expected = ARTIFACT_FILENAMES.get(fam)
+        if expected is not None and name != expected:
+            problems.append(f"{fam}: recorded as {name}, expected {expected}")
+        elif expected is None and not name.endswith(JUDGE_REPORT_SUFFIX):
+            problems.append(f"{fam}: recorded as {name}, expected *{JUDGE_REPORT_SUFFIX}")
+        seen.setdefault(rel, []).append(fam)
+    for rel, fams in seen.items():
+        if len(fams) > 1:
+            problems.append(f"artifact path {rel} is recorded for more than one family: {', '.join(fams)}")
+    return problems
 
 
 def identity_digest(manifest: dict) -> str:
@@ -66,9 +101,25 @@ def seal_manifest(manifest: dict, prev_sha256: str | None) -> dict:
 
 
 def manifest_problems(manifest: dict, schema: dict | None = None) -> list[str]:
+    """Schema problems plus the two digest checks. A `chain` or `artifacts`
+    value that is not an object is reported as a problem rather than raised
+    from the digest helpers, which assume objects (Codex, PR #27: a
+    downloaded manifest with `chain: [1]` produced a traceback instead of a
+    verdict)."""
     schema = schema or load_json(MANIFEST_SCHEMA)
-    problems = validate_with_refs(manifest, schema)
-    chain = manifest.get("chain") or {}
+    try:
+        problems = list(validate_with_refs(manifest, schema))
+    except Exception as exc:  # noqa: BLE001 - a validator failure is itself a named problem, never a crash
+        problems = [f"schema validation failed: {type(exc).__name__}: {exc}"]
+    chain = manifest.get("chain")
+    artifacts = manifest.get("artifacts")
+    if chain is not None and not isinstance(chain, dict):
+        problems.append("chain is not an object; digests cannot be checked")
+        return problems
+    if artifacts is not None and not isinstance(artifacts, dict):
+        problems.append("artifacts is not an object; digests cannot be checked")
+        return problems
+    chain = chain or {}
     if chain.get("identity_sha256") != identity_digest(manifest):
         problems.append("chain.identity_sha256 does not match the manifest body")
     if chain.get("manifest_sha256") != manifest_digest(manifest):
@@ -103,16 +154,19 @@ def append_chain(data_dir: Path, manifest: dict, manifest_path: Path) -> None:
         fh.write(f"{manifest_path.relative_to(data_dir).as_posix()} {manifest['chain']['manifest_sha256']}\n")
 
 
-def artifact_problems(manifest: dict, data_dir: Path) -> list[str]:
+def artifact_problems(manifest: dict, data_dir: Path, manifest_dir: str | None = None) -> list[str]:
     """Every artifact the manifest names (relative to the runs directory)
     exists and digests to its recorded value; a null path is one not yet
-    written (judgments before judging)."""
+    written (judgments before judging). `manifest_dir` is the manifest's own
+    run directory (its name under `data_dir`); when given, every artifact
+    must be recorded inside it."""
     problems: list[str] = []
     artifacts = manifest.get("artifacts") or {}
     pairs = [(artifacts.get(f"{fam}_path"), artifacts.get(f"{fam}_sha256"), fam) for fam in ARTIFACT_FAMILIES]
     judge = artifacts.get("judge_of_record")
     if isinstance(judge, dict):
         pairs.append((judge.get("report_path"), judge.get("report_sha256"), "judge_of_record.report"))
+    problems.extend(artifact_name_problems(pairs, manifest_dir))
     for rel, digest, fam in pairs:
         if rel is None:
             continue
@@ -142,11 +196,72 @@ def verify_chain(data_dir: Path) -> tuple[bool, str]:
             return False, f"line {n + 1}: {rel} does not digest to {digest}"
         if manifest["chain"]["prev_sha256"] != prev:
             return False, f"line {n + 1}: {rel} links to {manifest['chain']['prev_sha256']!r}, expected {prev!r}"
-        problems = artifact_problems(manifest, data_dir)
+        # the chain knows where each manifest sits, so its artifacts are bound to that directory
+        problems = artifact_problems(manifest, data_dir, manifest_dir=Path(rel).parent.as_posix())
         if problems:
             return False, f"line {n + 1}: {rel}: " + "; ".join(problems)
         prev = digest
     return True, f"chain intact ({prev})"
+
+
+def verify_run(run_dir: Path) -> list[str]:
+    """Every problem with ONE run directory taken on its own: the manifest
+    exists and validates, its chain block digests to its body (identity and
+    manifest digests), and every artifact it names exists beside it and
+    digests to its recorded value. Needs no chain file, so a downloaded run
+    directory (the dry-run exports artifact) verifies exactly like the
+    committed one; the link to the previous run is the manifest's own
+    `chain.prev_sha256`, which only the full chain can check (Codex, PR #27:
+    the cumulative chain file in the artifact referenced runs the artifact
+    did not carry)."""
+    run_dir = Path(run_dir)
+    mpath = run_dir / "manifest.json"
+    if not mpath.is_file():
+        return [f"{run_dir.name}: manifest.json is missing"]
+    try:
+        manifest = load_json(mpath)
+    except ValueError as exc:
+        return [f"{run_dir.name}: manifest.json does not parse ({exc})"]
+    if not isinstance(manifest, dict):
+        # valid JSON that is not an object (Codex, PR #27): a named refusal, never a traceback out of the schema check
+        return [f"{run_dir.name}: manifest.json holds a {type(manifest).__name__}, not an object"]
+    problems = [f"manifest: {p}" for p in manifest_problems(manifest)]
+    # artifact paths are recorded as `<recorded run directory>/<file>` relative to the runs directory; the files are
+    # looked up by basename under the directory given, so a downloaded artifact extracted flat under any folder name
+    # verifies exactly like the committed layout (Codex, PR #27: upload-artifact roots the archive at the run
+    # directory, so the extraction carries no enclosing directory); every path must still share one recorded
+    # directory and name a file directly inside it
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, dict):
+        return problems + [f"artifacts is {'absent' if artifacts is None else 'not an object'}; no artifact can be verified"]
+    pairs = [(artifacts.get(f"{fam}_path"), artifacts.get(f"{fam}_sha256"), fam) for fam in ARTIFACT_FAMILIES]
+    judge = artifacts.get("judge_of_record")
+    if isinstance(judge, dict):
+        pairs.append((judge.get("report_path"), judge.get("report_sha256"), "judge_of_record.report"))
+    problems.extend(artifact_name_problems(pairs))
+    recorded_dirs: set[str] = set()
+    for rel, digest, fam in pairs:
+        if rel is None:
+            continue
+        if not isinstance(rel, str):
+            problems.append(f"{fam}: path is not a string")
+            continue
+        parts = Path(rel).parts
+        # exactly two plain components (Codex, PR #27): `../x`, `/x` and `a\\b` also have two parts or one, and would
+        # resolve elsewhere under the chain verifier while hashing a local basename here
+        if (len(parts) != 2 or Path(rel).is_absolute()
+                or any(p in (".", "..", "") or "/" in p or "\\" in p for p in parts)):
+            problems.append(f"{fam}: {rel} is not recorded as <run directory>/<file>")
+            continue
+        recorded_dirs.add(parts[0])
+        fpath = run_dir / parts[1]
+        if not fpath.is_file():
+            problems.append(f"{fam}: {parts[1]} is missing from the run directory")
+        elif sha256_file(fpath) != digest:
+            problems.append(f"{fam}: {parts[1]} does not digest to its recorded value")
+    if len(recorded_dirs) > 1:
+        problems.append(f"artifacts are recorded under more than one run directory: {sorted(recorded_dirs)}")
+    return problems
 
 
 def replace_chain_head(data_dir: Path, manifest_path: Path, old_digest: str, new_digest: str) -> None:

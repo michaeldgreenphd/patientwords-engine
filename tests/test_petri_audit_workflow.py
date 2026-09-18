@@ -167,7 +167,8 @@ def test_paid_steps_are_gated_on_mode_and_the_raw_log_stays_outside_the_checkout
     assert "mode == 'run'" in judge["if"] and "judge == 'true'" in judge["if"]
     adapt = _step(workflow, "Adapt")
     assert "--custody \"github_actions_artifact:90d\"" in adapt["run"] and "data/petri/runs/" in adapt["run"]
-    upload = next(s for s in _steps(workflow, "audit") if str(s.get("uses", "")).startswith("actions/upload-artifact"))
+    upload = _step(workflow, "Upload the raw .eval")
+    assert str(upload.get("uses", "")).startswith("actions/upload-artifact")
     assert upload["with"]["retention-days"] == 90 and "petri-run/logs" in upload["with"]["path"]
     guard = _step(workflow, "Refuse to publish a raw log")
     assert "*.eval" in guard["run"] and "exit 1" in guard["run"]
@@ -217,6 +218,46 @@ def test_paid_steps_are_gated_on_mode_and_the_raw_log_stays_outside_the_checkout
     assert "seal_check.py" in seal["run"] and "verify-chain" in seal["run"]
     gate = _step(workflow, "Daily-ceiling gate", job="params")
     assert f"budget-gate --trigger {TRIGGER}" in gate["run"]
+
+
+def test_a_dry_run_uploads_its_seal_cleared_exports_and_the_summary_reads_the_run(workflow, raw):
+    """Tenth-pass review (2026-09-17): a dry run's sanitised exports were
+    destroyed with the runner (the commit path is mode run only) and the
+    summary printed four manifest fields, so the structural measurements the
+    pilot design waits on (design memo section 14) were never observable."""
+    steps = _steps(workflow, "audit")
+    names = [s.get("name", "") for s in steps]
+    exports = _step(workflow, "Upload the seal-cleared sanitised exports of a dry run")
+    assert exports["if"] == "${{ needs.params.outputs.mode == 'dry_run' }}", "dry-run exports only; never a paid run's"
+    assert "always()" not in exports["if"], "must depend on every prior step, the seal check and verify-chain included"
+    assert str(exports["uses"]).startswith("actions/upload-artifact")
+    assert "data/petri/runs/run_${{ github.run_id }}_${{ github.run_attempt }}/" in exports["with"]["path"]
+    # Codex (PR #27): the cumulative chain file references every earlier committed run, which the artifact does not
+    # carry, so the run directory is uploaded alone and must verify on its own (verify-run runs before the upload)
+    assert "manifests.chain" not in exports["with"]["path"]
+    seal = _step(workflow, "Holdout seal check")
+    assert 'verify-run --run-dir "data/petri/runs/$RUN_STEM"' in seal["run"] and seal["env"]["RUN_STEM"].startswith("run_${{")
+    assert names.index(seal["name"]) < names.index(exports["name"])
+    assert "petri-run/logs" not in exports["with"]["path"], "the raw .eval is never in this artifact"
+    assert exports["with"]["if-no-files-found"] == "error" and exports["with"]["retention-days"] == 30
+    assert "!data/petri/runs/**/*.eval" in exports["with"]["path"], "a raw log is excluded from the artifact by pattern"
+    assert names.index("Holdout seal check over every publishable Petri output (fails closed)") < names.index(exports["name"])
+    # Codex (PR #27): an artifact cannot be retracted, so the raw-log refusal must run before the upload, and the
+    # upload (no always()) then never runs after that refusal failed the job
+    assert names.index("Refuse to publish a raw log (belt and braces)") < names.index(exports["name"])
+    # the summary step reads the run through the CLI, with the resolved params, the raw log location and the seeds
+    summary = _step(workflow, "Job summary")
+    assert "always()" in summary["if"] and "run-summary" in summary["run"]
+    assert summary["env"]["RESOLVED_PARAMS"] == "${{ toJSON(needs.params.outputs) }}"
+    assert summary["env"]["SEEDS_FILE"] == "${{ needs.params.outputs.seeds_file }}"
+    for flag in ('--run-dir "data/petri/runs/$RUN_STEM"', '--mode "$MODE"', '--raw-eval-dir "$RUNNER_TEMP/petri-run/logs"',
+                 '--seeds "$SEEDS_FILE"', '--params-file "$RUNNER_TEMP/resolved_params.json"', '>> "$GITHUB_STEP_SUMMARY"'):
+        assert flag in summary["run"], flag
+    # independent review of PR #27: the step is always(), so what it prints passes the holdout seal first
+    assert '--seal-scan >> "$GITHUB_STEP_SUMMARY"' in summary["run"], "the rendered summary is scanned before it is published"
+    # Codex (PR #27, eleventh round): the judge-start marker is evidence the summary must see
+    assert '--judge-started-marker "$RUNNER_TEMP/petri-run/judge_started"' in summary["run"]
+    assert "run-summary failed" in summary["run"], "a failed summary is reported, never a silent blank"
 
 
 def test_secrets_reach_only_env_blocks_and_are_never_echoed(workflow, raw):

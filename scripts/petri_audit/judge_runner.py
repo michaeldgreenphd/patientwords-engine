@@ -465,7 +465,9 @@ def run_judgments(plans: list[JudgePlan], client: JudgeClient, *, out_path: Path
     except Exception as exc:  # noqa: BLE001 - the sidecar must record whatever was charged before the failure
         abort_error = f"{type(exc).__name__}: {exc}"
     sidecar = _sidecar(out_path, client, ceiling, counts, now_fn, sidecar_extra, abort_error, judge_max_tokens)
-    report_path = report_path or out_path.with_suffix(".report.json")
+    # the default carries the lane's judge suffix: the manifest verifiers require it and the summary locates the judge
+    # sidecar by it, so a default name that lacked it could not be bound (Codex, PR #27, twelfth round)
+    report_path = report_path or out_path.with_name(f"{out_path.stem}.judge.report.json")
     report_path.write_text(json.dumps(sidecar, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     if abort_error is not None:
         raise JudgeAborted(abort_error, sidecar)
@@ -508,6 +510,11 @@ def cumulative_counts(rows: list[dict]) -> dict[str, int]:
     return out
 
 
+# the cost basis of the sidecar the judge loop itself writes; any other basis on a judge sidecar was written by the
+# workflow's fallback after the loop died without writing its own (the summary reads this to tell the two apart)
+JUDGE_LOOP_COST_BASIS = "cumulative_from_records"
+
+
 def _sidecar(out_path: Path, client: JudgeClient, ceiling: SpendCeiling, counts: dict, now_fn: Callable[[], str],
              sidecar_extra: dict | None, abort_error: str | None, judge_max_tokens: int | None = None) -> dict:
     rows = read_jsonl(out_path)
@@ -519,7 +526,7 @@ def _sidecar(out_path: Path, client: JudgeClient, ceiling: SpendCeiling, counts:
             # cumulative over every row in the file (cost_basis the ledger knows: it books run_cost_usd to the day
             # on first sight and each later growth as a delta), never this invocation alone
             "cost_usd": round(ceiling.spent, 8), "run_cost_usd": round(ceiling.spent - ceiling.prior_spent, 8),
-            "prior_cost_usd": round(ceiling.prior_spent, 8), "cost_basis": "cumulative_from_records",
+            "prior_cost_usd": round(ceiling.prior_spent, 8), "cost_basis": JUDGE_LOOP_COST_BASIS,
             "max_spend_usd": ceiling.max_spend, "truncated": ceiling.truncated,
             "overrun_usd": ceiling.overrun_usd, "input_token_estimator": INPUT_TOKEN_ESTIMATOR,
             "largest_input_estimate": ceiling.largest_estimate,
@@ -584,6 +591,10 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                        "cost_basis": "imputed_worst_case:call_failed", "cost_usd": round(cost, 8),
                        "max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
                        "retry_attempts_charged": len(retry_charges),
+                       # the requests the provider received for this row: each charged retry followed one, and a refused
+                       # retry was never sent, so the summary reads the count here instead of deriving `retries + 1`
+                       # (independent review of PR #27: that derivation counted the refused retry as a request)
+                       "provider_attempts": len(retry_charges) if gate_refused else len(retry_charges) + 1,
                        "judge_error": (f"call failed: retry refused by the ceiling after {len(retry_charges)} charged "
                                        f"attempt(s): {type(exc).__name__}: {exc}" if gate_refused
                                        else f"call failed: {type(exc).__name__}: {exc}")}
@@ -605,7 +616,8 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
                    "usage_missing": reply.usage_missing,
                    "cost_basis": "imputed_worst_case" if reply.usage_missing else "actual_usage",
                    "cost_usd": round(cost, 8), "max_tokens": judge_max_tokens, "temperature": TIER_TEMPERATURE,
-                   "retry_attempts_charged": len(retry_charges), "judge_error": error}
+                   "retry_attempts_charged": len(retry_charges), "provider_attempts": len(retry_charges) + 1,
+                   "judge_error": error}
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
             fh.flush()
             counts[row_bucket(row)] += 1

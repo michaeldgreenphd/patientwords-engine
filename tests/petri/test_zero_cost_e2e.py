@@ -60,7 +60,7 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.petri_audit import checks, cli, framework, judge_runner, sanitizer, seeds  # noqa: E402
 from scripts.petri_audit.adapter import AdapterError, adapt_run, read_records  # noqa: E402
-from scripts.petri_audit.manifest import bind_judgments, manifest_problems, reseal_problems, verify_chain  # noqa: E402
+from scripts.petri_audit.manifest import bind_judgments, manifest_problems, reseal_problems, verify_chain, verify_run  # noqa: E402
 from scripts.petri_audit.task import run_study, study_task  # noqa: E402
 from scripts.petri_audit.transcripts import record_problems  # noqa: E402
 
@@ -170,6 +170,56 @@ def test_raw_digest_sanitised_export_and_no_unresolved_attachment(run):
     assert isinstance(report["events_dropped_by_type"], dict) and report["samples"] == len(sanitised["samples"])
     assert report["events_kept"] == sum(len(s["events"]) for s in sanitised["samples"])
     assert m["artifacts"]["sanitised_log_sha256"] == framework.sha256_file(run["out1"] / "sanitised_log.json")
+
+
+def test_run_summary_reports_the_measured_structure_of_the_mock_run(run):
+    """Tenth-pass review (2026-09-17): the dry run's structural measurements
+    (calls, trees, branches, records, byte sizes, redaction counts, judge
+    prompt sizes) are what the pilot design waits on; the summary reads them
+    from the exports, labels the mock usage as non-metered and reports a
+    cost of exactly zero."""
+    from scripts.petri_audit import summary
+
+    m = run["r1"].manifest
+    s = summary.run_summary(run["out1"], mode="dry_run", raw_eval_dir=run["eval_path"].parent, seeds_path=seeds.SEED_FILE,
+                            params={"mode": "dry_run", "target": "mockllm/model"})
+    st = s["structure"]
+    assert st["trees"] == len(m["trees"]) and st["branches"] == sum(len(t["branches"]) for t in m["trees"])
+    assert st["records"]["count"] == len(run["r1"].records) and st["records"]["with_problems"] == 0
+    assert st["records"]["unique_conversation_ids"] == st["records"]["count"]
+    assert st["records"]["id_match"] == {"records_not_in_manifest": 0, "branches_without_record": 0, "duplicate_branch_ids": 0}
+    assert st["records"]["provenance_mismatches"] == 0, "every exported record names this manifest's identity"
+    assert s["manifest"]["contract_checks"] == m["execution"]["contract_checks"], "the real block passes the closed-set check"
+    assert s["redaction"] == m["artifacts"]["sanitiser"]["redaction_report"]
+    assert st["refused"]["count"] == 0 and st["survivors_exported"] == len(m["trees"])
+    cells = {(t["seed_id"], b["condition_id"]) for t in m["trees"] for b in t["branches"]}
+    labels = {b["condition_id"] for t in m["trees"] for b in t["branches"]}
+    assert st["conditions"] == len(cells) > len(labels), "condition ids repeat across seeds; cells are counted per seed"
+    assert st["branches_without_condition_id"] == 0 and st["unavailable_fields"] == {}
+    assert st["shared_prefix_branches"]["anchored"] > 0 and st["shared_prefix_branches"]["without_resolved_anchor"] == 0
+    assert st["target_calls"] == next(r for r in m["usage"]["by_role"] if r["role"] == "target")["calls"] > 0
+    assert st["eval_status"] == "success"
+    assert [(r["model"], r["status"]) for r in s["usage"]] == [("mockllm/model", summary.USAGE_MOCK)]
+    assert s["raw_eval"]["files"] and s["raw_eval"]["files"][0]["matches_manifest"] is True
+    assert s["raw_eval"]["files"][0]["bytes"] == run["eval_path"].stat().st_size
+    pub = s["published"]
+    assert pub["attachment_references"] == 0 and pub["total_bytes"] == sum(pub["files"].values()) + sum(pub["cost_sidecars"].values())
+    assert set(pub["files"]) == {"manifest.json", "transcripts.jsonl", "rule_outcomes.jsonl", "sanitised_log.json"}
+    assert pub["unexpected"] == {}, "the adapter writes nothing the summary does not know"
+    assert s["integrity"] == {"manifest_problems": [], "artifact_problems": [], "run_self_verification": [],
+                              "chain": {"ok": True, "message": s["integrity"]["chain"]["message"]}, "attachments_resolved": True}
+    assert verify_run(run["out1"]) == [] and verify_run(run["out2"]) == []
+    jp = s["judge_prompts"]
+    assert jp["planned_calls"] > 0 and jp["prompt_bytes"]["min"] <= jp["prompt_bytes"]["median"] <= jp["prompt_bytes"]["max"]
+    assert jp["input_bound_tokens_total"] > jp["prompt_bytes"]["total"]
+    assert jp["inputs"]["verified_against_engine_commit"] == {"seeds": None, "outcome_registry": None, "rubric": None}, (
+        "the placeholder engine sha cannot be compared")
+    assert jp["inputs"]["outcome_registry_sha256"] == m["framework"]["outcome_registry_sha256"]
+    assert s["sidecar"] is None, "adapt_run wrote no sidecar here; the CLI's --report does"
+    text = summary.render_markdown(s)
+    row = next(ln for ln in text.splitlines() if ln.startswith("| mockllm/model |"))
+    assert "**mock/non-metered**" in row and "provider-measured" not in row
+    assert "not provider-metered tokens" in text
 
 
 def test_manifest_validates_chains_and_binds_every_record(run):
@@ -417,7 +467,7 @@ def test_judging_binds_the_judgments_into_the_manifest_and_verify_chain_covers_t
     side = judge_runner.run_judgments(plans, client, out_path=judgments, ceiling=judge_runner.SpendCeiling(1.0, 0.0, 0.0, 300),
                                       judge_max_tokens=300, labels=judge_runner.labels_from_manifest(before),
                                       now_fn=lambda: "2026-09-16T00:00:00Z", sidecar_extra={"billing_channel": "anthropic"})
-    sealed = bind_judgments(out, judgments_path=judgments, report_path=judgments.with_suffix(".report.json"),
+    sealed = bind_judgments(out, judgments_path=judgments, report_path=judgments.with_name("judgments.judge.report.json"),
                             judge_of_record={"judge_model": "mockllm/judge", "billing_channel": "anthropic", "price_source": "zero",
                                              "judged_utc": side["run_utc"], "cost_usd": side["cost_usd"], "truncated": side["truncated"],
                                              "planned": side["planned"], "judged": side["judged"], "null": side["null"],

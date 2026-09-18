@@ -1289,7 +1289,7 @@ regression test each.
    senders take a `before_retry` hook; the judge charges each failed attempt
    at its worst case through `attempt_gate` and admits another attempt only
    while the ceiling affords one. Rows and the sidecar record
-   `retry_attempts_charged`.
+   `retry_attempts_charged`; rows also record `provider_attempts` (PR #27).
 6. **Only `mode: run` is a paid Petri fire.** `fire_trigger.is_paid_fire`
    exempts preflight and dry_run from the ceiling in the fire path, the
    publish correction and the server-side gate, so the park is never refused
@@ -1326,6 +1326,118 @@ regression test each.
 5. **Derived condition ids must stay distinct.** `arm__variant` is not
    injective when the ids carry `__`; `seed_problems` refuses a collision
    before execution.
+
+### Tenth pass and dry-run observability (main, 2026-09-17)
+
+PR #26 merged with its last commit unreviewed (Codex's usage limit). The
+owner's independent tenth pass found one defect, verified against `main`
+and fixed with a regression test; the same pull request makes the zero-cost
+dry run observable, which section 14 depends on.
+
+1. **`marker_echo` tested the final reply against markers it had not yet
+   received.** `returned_markers` carried no position, and the only ordering
+   test was that the final reply came after the *first* tool result, so a
+   marker-bearing result delivered after the final reply (a transcript that
+   ends on a tool turn, as a truncated tool loop does) was tested against a
+   reply that had never seen it. Each returned marker now carries the
+   transcript position of its tool turn, and the final reply is tested only
+   against markers delivered before it; a reply with none before it is
+   `not_applicable` with the reason "no marker-bearing tool result before the
+   final reply". `RULE_VERSION` is `3` and the registry definition says so; no
+   rule outcome under version 1 or 2 was ever published.
+2. **The dry run reports what it measured.** A `dry_run` uploads its
+   seal-cleared run directory as a 30-day workflow artifact (a step without
+   `always()`, after the seal check, `verify-chain`, `verify-run` and the
+   raw-log refusal, so a rejected export is never uploaded; the raw `.eval`
+   stays outside the checkout and outside that artifact, and `*.eval` is
+   excluded from its path). The run directory verifies on its own with
+   `cli verify-run` (the manifest's chain block and every artifact it
+   names), which is what a downloader checks; the cumulative chain file is
+   not in the artifact because it references every earlier committed run.
+   The job summary
+   is rendered by `scripts/petri_audit/summary.py` (`cli run-summary`): the
+   parameters CI resolved, target calls, trees, conditions, branches and
+   shared-prefix anchors, records exported and refused with reasons, the raw
+   log's byte size and digest match, every published file's byte size, the
+   count of unresolved `attachment://` references, the sanitiser's redaction
+   report, the contract-check statuses, the manifest, artifact and chain
+   verdicts, the planned judge prompts' UTF-8 byte distribution (planned
+   from the exports; no call), the cost sidecars, and a usage status per
+   model labelled `provider-measured`, `mock/non-metered` or `unavailable`.
+   The label is the point: a mock target's token counts are never called
+   provider-measured tokens, so section 14's provider-token and dollar rows
+   stay estimates until a real provider call returns usage, while its
+   structural rows (calls, branches, sizes, redaction counts) become
+   measurements after the first dry run. A section the summary cannot
+   compute reports `unavailable` with the reason; the step never fails the
+   job over its own output. Two corrections from an independent review of the
+   pull request (Codex's usage limit was reached after its ninth round): judge
+   rows record `provider_attempts`, the requests the provider received for the
+   row (the charged retries plus the answered one, or the charged attempts
+   alone when the ceiling refused the retry, which was never sent), and the
+   usage table reads that count instead of deriving `1 + retries`, which
+   counted a refused retry as a request; and the rendered summary passes the
+   holdout seal before it is printed (`--seal-scan`), because the step is
+   `always()` and prints manifest strings the seal never scanned (a refusal
+   reason quotes Inspect's sample error), so a summary that would carry a
+   sealed phrase is withheld in full and only the verdict is printed. Codex's
+   tenth round then found two more gaps of the same family: usage counters
+   are bounded (non-negative, and never more calls without usage than calls)
+   before any provenance label, since a negative `calls_without_usage` read
+   as "nothing missing"; and a `judgments.jsonl` with no judge row (the loop
+   opens the file before its first call, so a judge killed during that call
+   leaves it empty) falls back to the sidecar like an absent file does,
+   instead of omitting the paid judge. The eleventh round found eight more:
+   the by-role target counters are bounded and a repeated role is a gap;
+   the export's record ids are compared with the manifest's branch ids
+   (equal by the adapter's contract) and both differences are reported; the
+   contract-check block and the redaction report are validated against the
+   schema's closed sets before they are rendered; a judgment row whose
+   `method` is neither `judge` nor `rule` is a named gap; a sidecar that
+   does not parse is that section's gap rather than an exception that takes
+   the target usage with it; and the workflow passes its judge-start marker
+   (`--judge-started-marker`) so a judge that died before writing anything is
+   still reported. The twelfth round found six more: the no-manifest summary
+   derives its usage table from the fallback sidecar's model rows (the only
+   per-model evidence a failed run leaves) with the same checks; each
+   artifact family is bound to the filename its consumers open and no two
+   families may share a path (both verifiers); a repeated branch
+   `conversation_id` is reported beside the id comparison; each record's
+   `provenance.run_manifest.sha256` must equal the manifest's identity
+   digest; the execution limits are validated as integers of at least 1;
+   and sidecar spend values must be finite and non-negative with a positive
+   ceiling. The thirteenth round added two: the chain verifier and the
+   summary bind every artifact to the manifest's own run directory, and the
+   judge sidecar's ceiling is required. The fourteenth round added three:
+   every price the summary labels with comes from the run's own record (the
+   sidecars' recorded source and rates) or from a registry whose digest
+   equals the manifest's `pricing_source_sha256`, never from whatever
+   registry the summary runs against; the by-model rows are reconciled with
+   `usage_missing_models`; and a target sidecar may record a zero ceiling
+   (a zero-priced dry run is admitted under `max_spend: "0"`), while a judge
+   ceiling stays positive. The fifteenth round refined that: an
+   unattributable registry withholds the labels, not the section (the
+   counts stand and the judge rows keep their sidecar-pinned price); the
+   fallback sidecar's rows are reconciled with their own `usage_missing`
+   flag and the sidecar's list; and recorded rates are bounded like spend.
+   The sixteenth round added four: with no manifest the registry is
+   unchecked, so a judge without a sidecar-recorded price keeps its counts
+   and gets no label; a repeated model row (fallback sidecar or manifest) is
+   a named gap; judgment rows must name the judge the sidecar records, and
+   one judge per run; and judge token totals stay absent until a row
+   carried usage, with the coverage stated when it is partial. The
+   seventeenth round added three: a judgment row with usage must record
+   exactly one answered request after its charged retries; rows beside a
+   judge sidecar the workflow's fallback wrote (any basis but the loop's own
+   `cumulative_from_records`) are partial evidence, reported with their
+   counts and no label; and `usage.by_role` and `usage.by_model` must sum to
+   the same calls and calls without usage before either is published. An
+   independent review of that head, run while Codex was out of usage, found
+   three more: the judge rows are bound to the sidecar's recorded
+   `judgments_sha256` (rows past it are partial evidence, the state a
+   resumed pass that died mid-call leaves); rows beside a judge sidecar that
+   cannot be read get no label rather than a registry price; and a
+   zero-price judge stays non-metered whatever survived.
 
 ## Decisions recorded from the owner (2026-09-16)
 

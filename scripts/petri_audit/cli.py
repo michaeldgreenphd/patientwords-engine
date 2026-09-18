@@ -14,6 +14,8 @@ same checks and calls nothing.
     python -m scripts.petri_audit.cli judge-spend-report --run-dir DIR --judge-model SPEC --judge-max-spend USD
     python -m scripts.petri_audit.cli analyze --run-dir DIR
     python -m scripts.petri_audit.cli verify-chain --data-dir DIR
+    python -m scripts.petri_audit.cli verify-run --run-dir DIR
+    python -m scripts.petri_audit.cli run-summary --run-dir DIR --mode MODE [--raw-eval-dir DIR] [--seeds FILE] [...]
 
 Python 3.11 can run everything except `run` and `adapt`, which import the
 harness and are 3.12 only.
@@ -29,7 +31,7 @@ from pathlib import Path
 
 from .envlock import load_lock, report_lines, verify_lock
 from .framework import ENV_LOCK, OUTCOME_REGISTRY, ROOT, SEED_FILE, load_json, sha256_file, write_json
-from .manifest import bind_judgments, reseal_problems, verify_chain
+from .manifest import bind_judgments, reseal_problems, verify_chain, verify_run
 from .seal import sealed_registry, seed_texts_against_registry
 from .seeds import conditions, load_seed_file, select_seeds, target_visible_strings, validate_seed
 from .spend import (
@@ -367,6 +369,65 @@ def cmd_verify_chain(args: argparse.Namespace) -> int:
     return 0 if ok else 6
 
 
+def cmd_verify_run(args: argparse.Namespace) -> int:
+    """One run directory on its own (no chain file): the check a downloaded
+    dry-run exports artifact can pass."""
+    problems = verify_run(Path(args.run_dir))
+    for p in problems:
+        print(p, file=sys.stderr)
+    print(f"{args.run_dir}: " + ("run directory verifies on its own" if not problems else f"{len(problems)} problem(s)"))
+    return 0 if not problems else 6
+
+
+def _seal_gate_summary(text: str, mode: str, run_dir: str | None) -> str:
+    """The rendered summary is a publication (the job summary of a public
+    repository), so it passes the holdout seal that every published file
+    passes. The step is `always()`, so it runs after a rejected seal check
+    too, and the text quotes manifest strings the seal never scanned (a
+    refusal reason carries Inspect's sample error); a hit, an unchecked scan
+    or a scan that fails to run withholds the summary in full and prints the
+    verdict alone: a status and a count, never a phrase or a label."""
+    from .seal import scan_strings, sealed_registry
+
+    stem = Path(run_dir).name if run_dir else "no run directory"
+    try:
+        result = scan_strings([text], sealed_registry(), what="rendered run summary")
+    except Exception as exc:  # noqa: BLE001 - fail closed: a summary that was not scanned is not published
+        return (f"## Petri audit ({mode}, {stem}): summary withheld\n\nthe holdout seal scan of the rendered summary "
+                f"did not run ({type(exc).__name__}: {exc}); the summary data is in the run-summary JSON under the "
+                "runner's temp directory, which is not published\n")
+    if result.status == "pass":
+        return text
+    return (f"## Petri audit ({mode}, {stem}): summary withheld\n\nholdout seal scan of the rendered summary: "
+            f"**{result.status}** ({result.detail}); the summary is not published until the seal-check step's "
+            "verdict is understood; its data is in the run-summary JSON under the runner's temp directory, which is "
+            "not published\n")
+
+
+def cmd_run_summary(args: argparse.Namespace) -> int:
+    """The job summary (Markdown on stdout, JSON to --json-out): measured
+    structure, usage status per model, cost, redaction counts, integrity.
+    Reports its own gaps as `unavailable` and never fails the job. With
+    `--seal-scan` the rendered text passes the holdout seal before it is
+    printed (see `_seal_gate_summary`)."""
+    from .summary import render_markdown, run_summary
+
+    params = load_json(args.params_file) if args.params_file else None
+    summary = run_summary(args.run_dir, mode=args.mode, raw_eval_dir=args.raw_eval_dir, seeds_path=args.seeds, params=params,
+                          judge_started=args.judge_started_marker)
+    if args.json_out:
+        write_json(args.json_out, summary)
+    try:
+        text = render_markdown(summary)
+    except Exception as exc:  # noqa: BLE001 - the summary step never fails the job over its own output
+        text = (f"## Petri audit ({args.mode})\n\nrender failed: {type(exc).__name__}: {exc}; the summary data follows\n\n"
+                "```json\n" + json.dumps(summary, indent=2, default=str) + "\n```\n")
+    if args.seal_scan:
+        text = _seal_gate_summary(text, args.mode, args.run_dir)
+    print(text, end="")
+    return 0
+
+
 def cmd_digest(args: argparse.Namespace) -> int:
     for p in args.paths:
         print(f"{sha256_file(p)}  {p}")
@@ -470,6 +531,24 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("verify-chain")
     p.add_argument("--data-dir", default=str(DEFAULT_RUNS_DIR))
     p.set_defaults(func=cmd_verify_chain)
+
+    p = sub.add_parser("verify-run")
+    p.add_argument("--run-dir", required=True)
+    p.set_defaults(func=cmd_verify_run)
+
+    p = sub.add_parser("run-summary")
+    p.add_argument("--run-dir", default=None, help="the adapted run directory (absent under preflight)")
+    p.add_argument("--mode", required=True, choices=["preflight", "dry_run", "run"])
+    p.add_argument("--raw-eval-dir", default=None, help="where the run step wrote the raw .eval (outside the checkout)")
+    p.add_argument("--seeds", default=None, help="seed file, for the planned judge prompt sizes (no call is made)")
+    p.add_argument("--params-file", default=None, help="the parameters the params job resolved, as JSON")
+    p.add_argument("--json-out", default=None)
+    p.add_argument("--judge-started-marker", default=None,
+                   help="the workflow's judge-start marker file; when it exists, a judge that left no file is still reported")
+    p.add_argument("--seal-scan", action="store_true",
+                   help="pass the rendered text through the holdout seal before printing it; a hit or an unchecked scan "
+                        "withholds the summary and prints the verdict alone")
+    p.set_defaults(func=cmd_run_summary)
 
     p = sub.add_parser("digest")
     p.add_argument("paths", nargs="+")
