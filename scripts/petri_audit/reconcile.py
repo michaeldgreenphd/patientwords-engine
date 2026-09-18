@@ -179,10 +179,13 @@ def _channel(value: Any, default: str = "anthropic") -> str:
 def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Path | str | None = None) -> dict[str, Any]:
     """Join the lane's paid journal entries to the landed cost sidecars on the fire nonce.
 
-    Returns `{"lane", "paid_fires": [row...], "sidecars": {"target", "judge"}, "unfolded_sidecars": [...],
-    "problems": [...]}`. Each row carries the entry's `fired_utc`, `nonce`, `max_spend`, `resolved`, `evicted`,
-    and, when one sidecar matched, the run directory, the target and judge `cost_usd`, their sum and whether the
-    ledger has folded them (`None` when no dashboard was given). `problems` is the list a strict caller fails on.
+    Returns `{"lane", "paid_fires": [row...], "sidecars": {"target", "judge"}, "runs_dir", "runs_dir_note",
+    "unfolded_sidecars": [...], "problems": [...]}`. Each row carries the entry's `fired_utc`, `nonce`,
+    `max_spend`, `resolved`, `evicted`, and, when exactly one sidecar matched, the run directory, the target and
+    judge `cost_usd`, their sum and whether the ledger has booked them - `None` where no dashboard was given or
+    it could not be read, never `False`, since unknown is not unbooked. `runs_dir_note` states an absent runs
+    archive whether or not it is a problem. `problems` is the list a strict caller fails on; every sidecar the
+    ledger has not booked is in it, so `unfolded_sidecars` is never a list of unnamed gaps.
     """
     entries = read_journal(journal_path)
     paid = [e for e in entries if e.get("trigger") == LANE and e.get("max_spend") is not None]
@@ -307,15 +310,11 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                     problems.append(f"{sp.parent.name}/{sp.name}: the {what} states no billing_channel, so which "
                                     "account its cost lands on cannot be checked against the fire's lane")
             if ledger is not None:
-                booked, why = ledger.state(p.name, row["cost_usd"])
-                row["folded"] = booked
-                if not booked:
-                    problems.append(f"{p.parent.name}/{p.name}: {why}")
+                # the row records the state; the problem for an unbooked sidecar is raised once, below, over
+                # every sidecar - joined to a fire or not - so nothing can be listed as unfolded and unnamed
+                row["folded"] = ledger.state(p.name, row["cost_usd"])[0]
                 if judge is not None:
-                    jbooked, jwhy = ledger.state(judge[0].name, row["judge_cost_usd"])
-                    row["judge_folded"] = jbooked
-                    if not jbooked:
-                        problems.append(f"{judge[0].parent.name}/{judge[0].name}: {jwhy}")
+                    row["judge_folded"] = ledger.state(judge[0].name, row["judge_cost_usd"])[0]
             row["status"] = "landed"
         rows.append(row)
 
@@ -333,16 +332,17 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
         if nonce not in known:
             for p, _ in matches:
                 problems.append(f"{p.parent.name}/{p.name}: journal_nonce {nonce!r} matches no paid {LANE} journal entry")
-    # Every sidecar the ledger has not fully booked, joined to a fire or not. Each one is already a problem in
-    # its own right - a joined sidecar through the fold check above, an unjoined one through the checks just
-    # above that - so `--strict` no longer exits 0 while this list is non-empty (Codex round 2 on PR #28).
+    # Every sidecar the ledger has not fully booked, joined to a fire or not, named here and nowhere else, so
+    # `--strict` cannot exit 0 while this list is non-empty (Codex round 2 on PR #28).
     unfolded: list[str] = []
     if ledger is not None:
         for p, r in targets + judges:
             if "unreadable" in r:
-                continue
-            if not ledger.state(p.name, _money(r.get("cost_usd")))[0]:
+                continue                       # already named; its cost cannot be read, so nothing is owed on it
+            booked, why = ledger.state(p.name, _money(r.get("cost_usd")))
+            if not booked:
                 unfolded.append(p.name)
+                problems.append(f"{p.parent.name}/{p.name}: {why}")
     unfolded = sorted(unfolded)
     if runs_absent:
         # stated whether or not it is a problem, so "Sidecars found: 0" is never read as "the archive is empty"

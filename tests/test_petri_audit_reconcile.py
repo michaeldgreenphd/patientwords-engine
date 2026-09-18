@@ -71,9 +71,11 @@ def test_paid_fires_are_joined_to_their_sidecars_on_the_nonce(tmp_path):
     assert "n3" not in problems, "an evicted fire never ran; nothing to book"
     text = reconcile.render_markdown(result)
     assert "| 2026-09-18T10:00:00Z | n1 | 1.5000 | run_1 | 0.4000 | 0.3000 | 0.7000 | engine_repriced_from_inspect_model_usage | no | landed |" in text
-    assert "**Problems (4)**" in text and "Not yet folded into the ledger" in text
-    # an unfolded sidecar is a problem in its own right, so --strict cannot pass while one is listed
-    assert "run_1/run_1.judge.report.json: the ledger has not folded it yet" in problems
+    assert "**Problems (6)**" in text and "Not yet folded into the ledger" in text
+    # every unfolded sidecar is a problem in its own right, joined to a fire or not, so --strict cannot pass
+    # while one is listed and the list can never hold a gap nothing names
+    for name in result["unfolded_sidecars"]:
+        assert f"/{name}: the ledger has not folded it yet" in problems, name
 
 
 def test_a_landed_cost_above_the_commitment_and_a_bad_sidecar_are_named(tmp_path):
