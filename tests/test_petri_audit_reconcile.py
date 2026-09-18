@@ -900,7 +900,9 @@ def test_an_imputed_report_validates_its_rows_as_strictly_as_a_repriced_one(tmp_
     base = {**framework.load_json(path), "cost_basis": "ceiling_imputed:usage_missing", "cost_usd": 1.0,
             "max_spend_usd": 1.0}
     framework.write_json(path, {**base, "models": "truncated"})
-    assert "records `models` as str, not a list" in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    # on a TARGET report this is now the stricter round-11 rule, which requires rows rather than only well-formed
+    # ones; the round-10 wording still applies to a judge report claiming an imputed basis
+    assert "but `models` is 'truncated'" in "\n".join(reconcile.reconcile(journal, runs)["problems"])
     framework.write_json(path, {**base, "models": [{"model": "a", "cost_usd": 0.4, "usage_missing": False}, "x"]})
     assert "holds an element of `models` that is not an object" in \
         "\n".join(reconcile.reconcile(journal, runs)["problems"])
@@ -1007,3 +1009,97 @@ def test_a_watermark_with_no_totals_behind_it_is_not_a_ledger(tmp_path):
     framework.write_json(dashboard, _ledger({"entries_seen": ["run_1.report.json"],
                                              "entries_folded": {"run_1.report.json": 0.4}}))
     assert "entries_folded books" not in "\n".join(reconcile.reconcile(journal, runs, dashboard)["problems"])
+
+
+def test_an_imputed_target_report_must_carry_the_rows_its_writer_always_records(tmp_path):
+    # round 10 validated `models` only when the key was present, so deleting it or supplying an empty list left
+    # the floor unverifiable and passed --strict. `write_report_sidecar` reaches this basis only through
+    # `reprice_usage` returning None, which needs a row flagged usage_missing - and synthesises one when there is
+    # no usage at all - so a target report claiming it with no rows is truncated (Codex round 11 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 1.0, "n1")
+    path = runs / "run_1" / "run_1.report.json"
+    base = {**framework.load_json(path), "cost_basis": "ceiling_imputed:usage_missing", "cost_usd": 1.0,
+            "max_spend_usd": 1.0}
+    for rows in (None, []):
+        record = dict(base)
+        if rows is None:
+            record.pop("models")
+        else:
+            record["models"] = rows
+        framework.write_json(path, record)
+        problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+        assert "its writer always records the `models` row that made the usage missing" in problems, rows
+    framework.write_json(path, {**base, "models": [{"model": "a", "cost_usd": None, "usage_missing": True}]})
+    assert "always records the `models` row" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_the_judge_fallback_may_impute_without_rows(tmp_path):
+    # the twin of the rule above, on the side it must NOT apply to: `judge-spend-report` writes no `models` at all
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.2, "n1", judge_cost=0.1)
+    jpath = runs / "run_1" / "run_1.judge.report.json"
+    ordinary = framework.load_json(jpath)
+    framework.write_json(jpath, {**{k: v for k, v in ordinary.items() if k != "eval_id"},
+                                 "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar",
+                                 "cost_usd": 0.5, "run_cost_usd": 0.5, "max_spend_usd": 0.5, "run_id": "run_1"})
+    assert reconcile.reconcile(journal, runs)["problems"] == []
+
+
+def test_a_naive_sidecar_stamp_is_utc_the_way_the_ledger_reads_it(tmp_path):
+    # `_timestamp` returned a naive datetime for an offset-free stamp while `ledger_update.parse_ts` assigns UTC,
+    # so the timezone-parity guard skipped the ordering check on exactly the values the ledger still buckets by
+    # day, and a sidecar dated before its own fire passed --strict (Codex round 11 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.2, "n1")
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {**framework.load_json(path), "run_utc": "2026-09-17T23:50:00"})   # no offset
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "precedes the fire that reserved it (2026-09-18T10:00:00Z)" in problems
+    # and the same parsing rule as the ledger's, so an offset-free stamp after the fire is silent
+    framework.write_json(path, {**framework.load_json(path), "run_utc": "2026-09-18T10:05:00"})
+    assert "precedes the fire" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_folded_amounts_must_be_covered_by_the_daily_totals(tmp_path):
+    # round 10 checked that `by_day` and `today.spent_usd` EXIST; `{"2026-09-18": 0}` beside a positive watermark
+    # passed, and every landed sidecar still read as fully booked while budget_check saw the whole day's ceiling
+    # free. The totals must be able to contain the folds (Codex round 11 on PR #28)
+    journal, runs, dashboard = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.4, "n1")
+    seen, folded = ["run_1.report.json"], {"run_1.report.json": 0.4}
+
+    framework.write_json(dashboard, {"schema_version": 1,
+                                     "spend": {"entries_seen": seen, "entries_folded": folded,
+                                               "by_day": {"2026-09-18": 0.0},
+                                               "today": {"date": "2026-09-18", "spent_usd": 0.0}}})
+    result = reconcile.reconcile(journal, runs, dashboard)
+    problems = "\n".join(result["problems"])
+    assert "spend.by_day totals 0.0000 across every lane and every day, which cannot contain it" in problems
+    assert result["paid_fires"][0]["folded"] is None, "unknown, never False"
+    assert result["unfolded_sidecars"] == [], "nothing may be reported unfolded on a ledger that was refused"
+
+    # totals that cover it overall, but not on the day this sidecar's own stamp names
+    framework.write_json(dashboard, {"schema_version": 1,
+                                     "spend": {"entries_seen": seen, "entries_folded": folded,
+                                               "by_day": {"2026-09-17": 9.0},
+                                               "today": {"date": "2026-09-18", "spent_usd": 0.0}}})
+    problems = "\n".join(reconcile.reconcile(journal, runs, dashboard)["problems"])
+    assert "spend.by_day has no 2026-09-18 entry at all" in problems
+    framework.write_json(dashboard, {"schema_version": 1,
+                                     "spend": {"entries_seen": seen, "entries_folded": folded,
+                                               "by_day": {"2026-09-18": 0.2, "2026-09-17": 9.0},
+                                               "today": {"date": "2026-09-18", "spent_usd": 0.2}}})
+    problems = "\n".join(reconcile.reconcile(journal, runs, dashboard)["problems"])
+    assert "spend.by_day[2026-09-18] totals 0.2000 across every lane, which cannot contain it" in problems
+
+    # the state the daily Routine actually writes: the ledger is accepted and the sidecar reads as booked. The
+    # one problem left is the pre-existing "folded but still unresolved" finding, which is the true state here.
+    framework.write_json(dashboard, _ledger({"entries_seen": seen, "entries_folded": folded}))
+    result = reconcile.reconcile(journal, runs, dashboard)
+    assert [pr for pr in result["problems"] if "unresolved" not in pr] == []
+    assert result["paid_fires"][0]["folded"] is True

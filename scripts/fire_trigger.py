@@ -1288,6 +1288,9 @@ def cmd_fire(args):
         # replay of the same nonce with different bytes - a formatting-only edit, a hand edit, a merge that changes
         # the content - cannot claim this reservation (Codex round 9 on PR #28)
         "params_sha256": params_digest(content),
+        # and the branch it is made on: the same commit reaching a second ref by merge or cherry-pick is a second
+        # workflow run, on a ref whose previous tip never carried this nonce (Codex round 11 on PR #28)
+        "ref": fire_ref(repo),
     }
     if max_spend is not None:
         entry["max_spend"] = max_spend  # in-flight commitment budget_check will count
@@ -1417,6 +1420,23 @@ def journal_at(repo: Path, ref: str) -> tuple[list[dict] | None, list[str]]:
     return entries, problems
 
 
+def fire_ref(repo):
+    """The branch this fire is being made on, or None when git cannot say (a detached HEAD, `--no-git` against a
+    directory that is not a repository).
+
+    Recorded on the journal entry because a reservation is for one REF as well as one push. Every lane's workflow
+    fires on any branch that changes its trigger file, and this repo's own merge rule says a merge carrying a
+    trigger change re-fires it - so a paid fire made on a feature branch and then merged or cherry-picked to
+    `main` appears on `main` for the first time there. The push binding alone reads that as a fresh reservation,
+    and both refs spend concurrently under one nonce (Codex round 11 on PR #28).
+    """
+    proc = _git(repo, "rev-parse", "--abbrev-ref", "HEAD")
+    branch = proc.stdout.strip() if proc.returncode == 0 else ""
+    if not branch or branch == "HEAD":      # no repo, or a detached HEAD, which no fire pushes from
+        return None
+    return branch
+
+
 def journal_nonces_at(repo, ref, trigger):
     """The nonces `trigger`'s journal entries carry at `ref`, or None when git cannot answer.
 
@@ -1436,6 +1456,42 @@ def journal_nonces_at(repo, ref, trigger):
         return set()
     return {e["nonce"] for e in entries
             if e.get("trigger") == trigger and isinstance(e.get("nonce"), str) and e["nonce"]}
+
+
+def ref_reservation_problems(trigger, params, entries, ref, required):
+    """Why this paid petri-audit run's reservation was not taken on the ref CI is running.
+
+    The push binding asks whether the nonce was already on THIS ref before THIS push, which is the right question
+    for a replay onto the same branch and the wrong one across branches: a paid fire made on a feature branch and
+    then merged or cherry-picked to `main` appears on `main`'s new tip for the first time, so its previous tip
+    lacks the nonce and the binding passes while the feature branch's run is still spending. Both refs then land
+    sidecars carrying one nonce (Codex round 11 on PR #28). `cmd_fire` records the branch it fired on, and this
+    requires CI's ref to be that one.
+    """
+    if trigger != "petri-audit" or not is_paid_fire(trigger, params):
+        return []
+    mine = reservation_entries(trigger, params, entries) or []
+    if len(mine) != 1:
+        return []                         # already refused by journal_reservation_problems, which names it better
+    entry, nonce = mine[0], str(params.get("_nonce"))
+    recorded = entry.get("ref")
+    if not isinstance(recorded, str) or not recorded:
+        return [f"the {trigger} journal entry for _nonce {nonce!r} records no ref, so it cannot be shown to have "
+                "reserved a run on the branch CI is running; re-fire through scripts/fire_trigger.py, which "
+                "records the branch it fires on"]
+    if ref is None or not str(ref).strip():
+        if not required:
+            return []
+        return [f"the {trigger} gate was not told which ref it is running on, so the reservation for _nonce "
+                f"{nonce!r} cannot be shown to belong to this branch rather than the one it was fired on "
+                f"({recorded!r}). The workflow passes the ref name as --ref"]
+    if str(ref).strip() != recorded:
+        return [f"the {trigger} reservation for _nonce {nonce!r} was taken on ref {recorded!r} but CI is running "
+                f"on {str(ref).strip()!r}: the fire commit reached this branch by a merge, a cherry-pick or a "
+                "rebase, and the run it reserved is the one on the ref it was fired from. Two refs cannot spend "
+                "one reservation; re-fire through scripts/fire_trigger.py from this branch if a run is wanted "
+                "here"]
+    return []
 
 
 def push_reservation_problems(repo, trigger, params, before, required):
@@ -1473,7 +1529,7 @@ def push_reservation_problems(repo, trigger, params, before, required):
                 f"already took the reservation for _nonce {nonce!r} cannot be established; the gate needs the "
                 "ref's history (check out with fetch-depth: 0), and a paid run is refused rather than guessed"]
     if nonce in earlier:
-        return [f"the {trigger} reservation for _nonce {nonce!r} was already on the branch before this push: "
+        return [f"the {trigger} reservation for _nonce {nonce!r} was already on this ref before this push: "
                 "fire_trigger.py writes the entry and the trigger file in one commit, so this content was put "
                 "here by something else (a merge, a revert or a hand edit) and would spend a reservation an "
                 "earlier fire already took. Re-fire through scripts/fire_trigger.py, which takes a fresh one"]
@@ -1900,6 +1956,11 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
     # only when the entry HAS a digest and it is now wrong. Backfilling one onto an entry that never carried it is
     # not a correction, and it would force a journal-correction commit in states where `publish` is inspecting a
     # captured commit that is not the branch tip - where the guard below rightly refuses to make one.
+    # ...and the ref it is being published to, on the same terms: `publish` pushes the current branch, so an entry
+    # naming another one would be a reservation the gate refuses on arrival (Codex round 11 on PR #28)
+    if fire.get("ref") and fire["ref"] != branch:
+        corrections.append(f"ref {fire.get('ref')!r} -> {branch!r} (the branch being published to)")
+        fire["ref"] = branch
     if fire.get("params_sha256") and fire["params_sha256"] != published_digest:
         corrections.append(f"params_sha256 {str(fire.get('params_sha256'))[:12]} -> {str(published_digest)[:12]} "
                            "(the published trigger file's)")
@@ -2223,8 +2284,11 @@ def cmd_budget_gate(args):
                                               expire_hours=expire_hours_from_env(), digest=digest)
     # ...and the reservation must have been taken by THIS push, not merely for this content: identical bytes can
     # be restored by a merge while the first run is still spending them (Codex round 10 on PR #28)
-    unreserved += push_reservation_problems(repo, args.trigger, params, getattr(args, "push_before", None),
-                                            os.environ.get("GITHUB_ACTIONS") == "true")
+    in_ci = os.environ.get("GITHUB_ACTIONS") == "true"
+    unreserved += push_reservation_problems(repo, args.trigger, params, getattr(args, "push_before", None), in_ci)
+    # ...and on THIS ref: "first appearance on this branch" is a fresh reservation to the push binding, which a
+    # merge or cherry-pick of the fire commit onto another branch produces for free (Codex round 11 on PR #28)
+    unreserved += ref_reservation_problems(args.trigger, params, entries, getattr(args, "ref", None), in_ci)
     if unreserved:
         for problem in unreserved:
             print(f"budget-gate: REFUSED - {problem}", file=sys.stderr)
@@ -2332,6 +2396,11 @@ def build_parser():
                       help="params JSON path (default: this checkout's trigger file - "
                            "correct for push-fired runs; workflow_dispatch should pass "
                            "its resolved params explicitly)")
+    gate.add_argument("--ref",
+                      help="the ref CI is running on (GitHub's github.ref_name). A paid petri-audit fire is "
+                           "refused when its journal entry was fired on a different branch: the same fire commit "
+                           "reaching a second ref by merge or cherry-pick is a second run, and one reservation "
+                           "cannot cover both. Required when GITHUB_ACTIONS is set.")
     gate.add_argument("--push-before",
                       help="the commit this ref pointed at before the push CI is running (GitHub's "
                            "github.event.before). A paid petri-audit fire is refused when its reservation was "

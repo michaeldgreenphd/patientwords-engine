@@ -240,9 +240,13 @@ jobs:
           # commit, so a reservation already present at that commit was taken by an earlier fire and this push is
           # a replay of it - which identical bytes restored by a merge otherwise pass (Codex round 10 on PR #28)
           PUSH_BEFORE: ${{ github.event.before }}
+          # the ref this run is on. A reservation is for one ref as well as one push: the same fire commit
+          # reaching a second branch by merge or cherry-pick appears there for the first time, so the push
+          # binding alone would read it as a fresh reservation (Codex round 11 on PR #28)
+          REF_NAME: ${{ github.ref_name }}
         run: |
           printf '%s' "$GATE_PARAMS" > "$RUNNER_TEMP/gate_params.json"
-          python3 scripts/fire_trigger.py budget-gate --trigger petri-audit --params-file "$RUNNER_TEMP/gate_params.json" --push-before "$PUSH_BEFORE"
+          python3 scripts/fire_trigger.py budget-gate --trigger petri-audit --params-file "$RUNNER_TEMP/gate_params.json" --push-before "$PUSH_BEFORE" --ref "$REF_NAME"
 
   audit:
     if: ${{ !github.event.created }}

@@ -1816,7 +1816,41 @@ re-parked. PR B carries what a paid fire still lacked:
     the `models` rows. There is now a `_ledger()` helper beside `_sidecar()`,
     for the same reason. The rehearsal grew the byte-replay case and runs
     against a real repository with the parked commit and the fire commit in it,
-    so it exercises seven states; the staged pilot still clears the gate. In the reconciliation: a
+    so it exercises seven states; the staged pilot still clears the gate.
+
+23. **Four from the eleventh round, and every one of them a gap in round 10's
+    own fix.** That is the round's lesson: each fix answered its finding and
+    stopped one step short of the invariant behind it.
+
+    The P1 is the sharpest. Binding a reservation to the push that took it asks
+    whether the nonce was already on THIS ref before THIS push - the right
+    question for a replay onto the same branch, and the wrong one across
+    branches. A paid fire made on a feature branch and then merged or
+    cherry-picked to `main` appears on `main`'s new tip for the first time, so
+    that ref's previous tip lacks the nonce, the binding passes, and both refs
+    spend one reservation while the first run is still in flight. `cmd_fire`
+    now records the branch it fired on and the gate requires CI's ref to be
+    that one; `publish` corrects it to the branch being published to, on the
+    same terms as the digest. The operational consequence belongs in the
+    handbook rather than only here: **a paid fire must be made on the ref the
+    run will execute on, and a fire that lands on the wrong branch is re-fired
+    with a fresh nonce, never merged across.**
+
+    The three P2s are the same shape. The ledger-totals check tested that
+    `by_day` and `today.spent_usd` EXIST, so `by_day: {"<day>": 0}` beside a
+    positive watermark still read as fully booked; the totals must be able to
+    CONTAIN the folds, and per sidecar the day its own stamp names must carry
+    what the watermark says was booked. The imputed-rows check ran only when
+    `models` was present, so deleting the key or emptying the list left the
+    floor unverifiable - and `write_report_sidecar` reaches that basis only
+    through a row flagged `usage_missing`, so a target report claiming it
+    without rows is truncated (the judge fallback, which writes no rows at all,
+    stays exempt). And the stamp-ordering check guarded on timezone parity,
+    which skipped exactly the offset-free values `ledger_update.parse_ts`
+    assigns UTC to and still buckets by day; `_timestamp` now normalises the
+    way `parse_ts` does, which is what its docstring already claimed.
+
+    The rehearsal is at eight states. The staged pilot still clears the gate. In the reconciliation: a
     sidecar seen by the ledger with no amount in `entries_folded` is a
     truncated dashboard, not a legacy record, because this lane postdates that
     watermark; a ceiling that is present but unusable is named rather than

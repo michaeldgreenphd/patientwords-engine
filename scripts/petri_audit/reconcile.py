@@ -18,7 +18,7 @@ A missing or malformed value is reported by name, never defaulted (AGENTS.md,
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -113,9 +113,29 @@ class Ledger:
 
     RESOLUTION = 1e-4          # ledger_update's Petri branch books to four decimals
 
-    def __init__(self, seen: set[str], folded: dict[str, float]) -> None:
+    def __init__(self, seen: set[str], folded: dict[str, float], days: dict[str, float] | None = None) -> None:
         self.seen = seen
         self.folded = folded
+        self.days = days or {}
+
+    def day_problem(self, name: str, day: str | None) -> str | None:
+        """Why the daily bucket this sidecar folded into does not carry what the watermark says was booked.
+
+        `ledger_update` adds the booked amount to `by_day[<the day the stamp names>]` in the same statement as it
+        advances the watermark, so the two cannot disagree in a dashboard it wrote. Checking only that `by_day`
+        exists accepted `{"2026-09-18": 0}` beside a positive watermark, which reads as fully booked here while
+        `budget_check` sees the whole day's ceiling free (Codex round 11 on PR #28).
+        """
+        booked = self.folded.get(name)
+        if booked is None or booked <= 0 or not day:
+            return None                            # unbooked, or a day this sidecar's own stamp cannot name
+        if day not in self.days:
+            return (f"the ledger books {booked:.4f} for it but spend.by_day has no {day} entry at all - the day "
+                    "its own stamp names - so the daily total the guard reads never received that fold")
+        if self.days[day] + self.RESOLUTION < booked:
+            return (f"the ledger books {booked:.4f} for it but spend.by_day[{day}] totals {self.days[day]:.4f} "
+                    "across every lane, which cannot contain it, so the watermark and the daily totals disagree")
+        return None
 
     def state(self, name: str, cost: float | None) -> tuple[bool, str | None]:
         """(booked, why not) for one sidecar filename."""
@@ -187,8 +207,14 @@ def _read_ledger(dashboard_path: Path | str | None, problems: list[str]) -> Ledg
     # sidecar as fully booked here while the guard sees no landed spend at all, and the day's remaining headroom
     # is the whole ceiling (Codex round 10 on PR #28).
     booked = sum(amount for amount in folded.values() if amount > 0)
+    by_day, today = spend.get("by_day"), spend.get("today")
+    days: dict[str, float] = {}
+    if isinstance(by_day, dict):
+        for day, value in by_day.items():
+            amount = _money(value)
+            if amount is not None:
+                days[str(day)] = amount
     if booked > 0:
-        by_day, today = spend.get("by_day"), spend.get("today")
         missing = []
         if not isinstance(by_day, dict) or not by_day:
             missing.append("spend.by_day")
@@ -200,7 +226,18 @@ def _read_ledger(dashboard_path: Path | str | None, problems: list[str]) -> Ledg
                             "hold none of it; no sidecar can be checked against a ledger whose watermark and "
                             "totals disagree about whether anything was folded")
             return None
-    return Ledger({str(s) for s in seen}, folded)
+        # Present is not the same as populated. A dashboard carrying `by_day: {"<day>": 0}` and
+        # `today.spent_usd: 0` passed the container test above while every landed sidecar still read as fully
+        # booked and `budget_check` still saw no landed spend - the exact state the container test was written to
+        # refuse (Codex round 11 on PR #28). `by_day` holds every lane's spend for every day, so it can only ever
+        # be at least the Petri folds; less than that is a ledger whose two halves contradict each other.
+        if sum(days.values()) + Ledger.RESOLUTION < booked:
+            problems.append(f"{name}: spend.entries_folded books {booked:.4f} across {len(folded)} sidecar(s), but "
+                            f"spend.by_day totals {sum(days.values()):.4f} across every lane and every day, which "
+                            "cannot contain it; the watermark says folded and the totals the daily guard reads "
+                            "say otherwise, so no sidecar can be checked against this ledger")
+            return None
+    return Ledger({str(s) for s in seen}, folded, days)
 
 
 def _flag(entry: dict[str, Any], key: str, problems: list[str]) -> bool:
@@ -223,13 +260,28 @@ def _timestamp(value: Any) -> datetime | None:
     this mirrors that function exactly rather than parsing as it pleases. In
     particular it does NOT strip: `datetime.fromisoformat` rejects surrounding
     whitespace, so a padded stamp the ledger falls back on must be reported
-    here too (found in self-review, 2026-09-18)."""
+    here too (found in self-review, 2026-09-18). It DOES assign UTC to an
+    offset-free stamp, because `parse_ts` does: returning a naive datetime made
+    the ordering check below skip exactly the values the ledger still buckets
+    by day, so a sidecar dated before its own fire passed (Codex round 11)."""
     if not isinstance(value, str) or not value:
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
+    return stamp if stamp.tzinfo else stamp.replace(tzinfo=timezone.utc)
+
+
+def _ledger_day(report: dict[str, Any]) -> str | None:
+    """The `spend.by_day` key `ledger_update` books this sidecar's cost under, or None when its stamp gives none.
+
+    Mirrors the first-fold loop: `parse_ts(run_timestamp or run_utc).astimezone(utc).date().isoformat()`. The
+    fallback to the scan date when nothing parses is deliberately NOT mirrored - that fallback is itself a
+    reported problem here, and guessing the scan day would hide it.
+    """
+    stamp = _timestamp(report.get("run_timestamp") or report.get("run_utc"))
+    return stamp.astimezone(timezone.utc).date().isoformat() if stamp else None
 
 
 def _channel(value: Any, default: str = "anthropic") -> str:
@@ -287,6 +339,16 @@ def _basis_problems(label: str, report: dict[str, Any], cost: float | None, judg
             # aborted judge recorded as its surviving rows, are spend the sidecar itself proves. If they exceed the
             # ceiling the ledger books, the imputation understates the run rather than covering it (Codex round 9).
             rows = report.get("models")
+            if not judge and (not isinstance(rows, list) or not rows):
+                # `write_report_sidecar` reaches this basis only through `reprice_usage` returning None, which
+                # requires at least one row flagged `usage_missing` - and with no usage at all and a target named
+                # it synthesises that row. So a target report claiming the imputed basis with `models` absent,
+                # empty or not a list is truncated, and the floor its priced rows prove cannot be reconstructed
+                # (Codex round 11 on PR #28). The judge fallback is exempt: `judge-spend-report` writes no rows.
+                found.append(f"{label}: cost_basis {basis} is a target report, and its writer always records the "
+                             f"`models` row that made the usage missing, but `models` is {rows!r}; the spend its "
+                             "own rows prove cannot be checked against the ceiling it books")
+                return found
             if "models" in report and not isinstance(rows, list):
                 # the floor claim below is only as good as the rows it reads, and the repriced branch already
                 # refuses both of these shapes; here they silently skipped the check instead (Codex round 10)
@@ -583,8 +645,7 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                 # fired and the runner that ran.
                 stamp = _timestamp(sr.get("run_timestamp") or sr.get("run_utc"))
                 fired_at = _timestamp(e.get("fired_utc"))
-                if stamp is not None and fired_at is not None and bool(stamp.tzinfo) == bool(fired_at.tzinfo) \
-                        and stamp < fired_at - timedelta(minutes=1):
+                if stamp is not None and fired_at is not None and stamp < fired_at - timedelta(minutes=1):
                     problems.append(f"{sp.parent.name}/{sp.name}: its stamp {stamp.isoformat()} precedes the fire "
                                     f"that reserved it ({e.get('fired_utc')}), so the ledger books this cost to a "
                                     "day the fire's commitment was never counted against")
@@ -760,6 +821,19 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                     row["folded"] = ledger.state(p.name, row["cost_usd"])[0]
                 if judge is not None and judge[0].name not in duplicate_names:
                     row["judge_folded"] = ledger.state(judge[0].name, row["judge_cost_usd"])[0]
+                # ...and into the right day. `ledger_update`'s first-fold loop buckets by `run_timestamp or
+                # run_utc`; the round-7 check above already requires both of its orders to parse, so this one
+                # follows the order that books the cost the first time (Codex round 11 on PR #28).
+                booked_pairs = [(p, r)]
+                if judge is not None and "unreadable" not in judge[1]:
+                    booked_pairs.append(judge)
+                for sp, sr in booked_pairs:
+                    if sp.name in duplicate_names:
+                        continue
+                    day = _ledger_day(sr)
+                    day_problem = ledger.day_problem(sp.name, day)
+                    if day_problem:
+                        problems.append(f"{sp.parent.name}/{sp.name}: {day_problem}")
                 # Folded but unresolved is not a transient: the ledger folds in the daily cycle, long after
                 # `resolve` should have run. Until it does, `entry_is_active` keeps counting the fire's whole
                 # commitment as in-flight ON TOP of the landed cost, and it holds a queue slot until it expires
