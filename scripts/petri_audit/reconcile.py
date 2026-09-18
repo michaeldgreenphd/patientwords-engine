@@ -108,7 +108,11 @@ class Ledger:
             return True, None                      # the cost itself is already a named problem
         booked = self.folded.get(name)
         if booked is None:
-            return True, None                      # seen with no watermark: a pre-watermark fold, nothing owed
+            # `ledger_update` writes the filename to entries_seen and its cost to entries_folded in the same
+            # fold, and this lane postdates that watermark, so there is no legitimate pre-watermark Petri
+            # record: seen with no watermark means a truncated or edited dashboard (Codex round 5 on PR #28)
+            return False, ("the ledger lists it as folded but records no amount for it in spend.entries_folded, "
+                           "so how much of its cost reached the daily totals cannot be established")
         if float(booked) + self.RESOLUTION < cost:
             return False, (f"the ledger has booked {float(booked):.4f} of its {cost:.4f}, so "
                            f"{cost - float(booked):.4f} of landed spend is not in the daily totals")
@@ -337,8 +341,14 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                                     "the ledger books its cost to the day it happens to scan rather than the run's")
             judge = judge_by_dir.get(p.parent.name)
             # a target sidecar that records a judge ceiling says a judge pass was requested; no judge sidecar
-            # beside it then hides up to that ceiling rather than a zero (Codex round 4 on PR #28)
+            # beside it then hides up to that ceiling rather than a zero (Codex round 4 on PR #28). A ceiling
+            # that is present but unusable is named rather than read as absent, which would suppress this check
+            # as well as the authorisation one below (Codex round 5).
             judge_ceiling = _money(r.get("judge_max_spend_usd"))
+            if r.get("judge_max_spend_usd") is not None and judge_ceiling is None:
+                problems.append(f"{p.parent.name}/{p.name}: judge_max_spend_usd {r.get('judge_max_spend_usd')!r} is "
+                                "not a finite non-negative number, so neither the judge's ceiling nor whether one "
+                                "was requested can be established")
             if judge is None and judge_ceiling:
                 problems.append(f"{p.parent.name}: the run reserved {judge_ceiling:.4f} for a judge pass and no judge "
                                 "sidecar landed beside it, so its cost is unaccounted rather than zero")
@@ -359,7 +369,24 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             # What the run was AUTHORISED to spend, not only what it did: the daily guard counted the journal's
             # commitment, so ceilings on the sidecar that sum higher mean CI ran with more headroom than the guard
             # reserved, and a low actual cost hides it (Codex round 4 on PR #28).
-            ceilings = [_money(r.get("max_spend_usd")), _money(r.get("judge_max_spend_usd"))]
+            target_ceiling = _money(r.get("max_spend_usd"))
+            if r.get("max_spend_usd") is not None and target_ceiling is None:
+                problems.append(f"{p.parent.name}/{p.name}: max_spend_usd {r.get('max_spend_usd')!r} is not a finite "
+                                "non-negative number, so what the run was authorised to spend cannot be established")
+            # the judge report records the ceiling the judge loop ACTUALLY ran under; the target report only
+            # declares what was requested, and the two can differ (Codex round 5 on PR #28)
+            judge_actual = None
+            if judge is not None and "unreadable" not in judge[1]:
+                judge_actual = _money(judge[1].get("max_spend_usd"))
+                if judge[1].get("max_spend_usd") is not None and judge_actual is None:
+                    problems.append(f"{judge[0].parent.name}/{judge[0].name}: max_spend_usd "
+                                    f"{judge[1].get('max_spend_usd')!r} is not a finite non-negative number")
+                elif judge_actual is not None and judge_ceiling is not None \
+                        and abs(judge_actual - judge_ceiling) > 1e-9:
+                    problems.append(f"{p.parent.name}: the judge ran under a ceiling of {judge_actual:.4f} but the "
+                                    f"run declared {judge_ceiling:.4f}, so the two records of the same reservation "
+                                    "disagree")
+            ceilings = [target_ceiling, judge_actual if judge_actual is not None else judge_ceiling]
             authorised = sum(c for c in ceilings if c is not None)
             if row["max_spend"] is not None and any(c is not None for c in ceilings) \
                     and authorised > row["max_spend"] + 1e-9:
@@ -385,6 +412,17 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                 row["folded"] = ledger.state(p.name, row["cost_usd"])[0]
                 if judge is not None:
                     row["judge_folded"] = ledger.state(judge[0].name, row["judge_cost_usd"])[0]
+                # Folded but unresolved is not a transient: the ledger folds in the daily cycle, long after
+                # `resolve` should have run. Until it does, `entry_is_active` keeps counting the fire's whole
+                # commitment as in-flight ON TOP of the landed cost, and it holds a queue slot until it expires
+                # (Codex round 5 on PR #28). Before the fold this is the ordinary gap between landing and
+                # resolving, so it is not reported.
+                if row["folded"] and row["judge_folded"] in (True, None) and not row["resolved"] \
+                        and not row["evicted"]:
+                    problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}) landed and is fully booked but "
+                                    "the journal entry is still unresolved: its commitment keeps counting as "
+                                    "in-flight beside the landed cost and it holds a queue slot until it expires. "
+                                    "Run `fire_trigger.py resolve --trigger petri-audit`")
             row["status"] = "landed"
         rows.append(row)
 

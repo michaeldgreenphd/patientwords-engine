@@ -307,6 +307,14 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
                 "petri-audit mode run must carry a non-empty _nonce: it is the only join key between the "
                 "journal entry that reserves the spend and the cost sidecar the run lands, so a paid fire "
                 f"without one can never be reconciled, got {nonce!r}")
+        # A mock/test sentinel prices at zero in the engine's table, so naming one as a paid run's TARGET buys a
+        # free pre-flight bound and commits mock output through the production path. The workflow refuses these
+        # too; this refuses them before the fire (Codex round 5 on PR #28).
+        target = str(params.get("target") or "").strip()
+        if target.split("/")[0] in ("mockllm", "none"):
+            problems.append(f"petri-audit mode run must not target the test sentinel {target!r}: it prices at "
+                            "zero, so the paid pre-flight bound admits it for free and the run commits mock "
+                            "output as a measurement; use mode dry_run for mockllm")
     target_channel, judge_channel = petri_channels(params, registry)
     if judge_channel is not None and judge_channel != target_channel:
         problems.append(
@@ -1718,6 +1726,26 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
                                    parked=is_park_params(trigger, params))
     if rc is not None:
         return rc, head
+    # The rebase also integrated journal entries another session pushed while this fire sat unpushed, so a nonce
+    # that was unique when `fire` checked it may not be now; publishing the duplicate leaves reconciliation
+    # unable to attribute either fire's sidecar (Codex round 5 on PR #28). The entries at `head` include this
+    # fire's own, so it is compared against the others only.
+    journal_at_head = _git_show(repo, head, JOURNAL_RELPATH.as_posix())
+    if journal_at_head is not None:
+        others = []
+        for line in journal_at_head.splitlines():
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                continue                          # a corrupt line is the journal-repair path's business
+            if not (entry.get("trigger") == trigger and entry.get("commit") == "" and not entry.get("resolved")):
+                others.append(entry)
+        reused = reused_nonce(trigger, params, others)
+        if reused:
+            print(f"refused: {reused}", file=sys.stderr)
+            return 3, head
     # The workflow's paths filter sees the push as a whole: a commit that restored
     # the trigger file after the fire leaves the final tree unchanged, so the push
     # would land, fire nothing, and leave a journal entry for a run that never

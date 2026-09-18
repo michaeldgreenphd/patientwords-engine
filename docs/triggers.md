@@ -40,12 +40,15 @@ Three facts about the mechanism that have cost real money or real runs:
 The key column is the exact set the workflow's push path reads
 (`KNOWN_KEYS` in `scripts/fire_trigger.py`); any other key is refused. Keys
 beginning with `_` (`_nonce`, `_parked`) are the script's own: they are not
-trigger keys, no workflow's `defaults` dict carries one, and `budget-gate`
-strips them. One workflow reads one of them anyway — `petri_audit.yml`'s params
-job takes `_nonce` from the trigger file and emits it as an output of the same
-name, beside the trigger keys and never among them, so the run can record which
-journal entry reserved its spend (PR B, 2026-09-18). Treat "never sent" as the
-rule and that as its one documented exception. `tests/test_trigger_docs.py` fails when this table, the table in
+trigger keys, no workflow's `defaults` dict carries one, and `validate_params`
+excludes them from the unknown-key check rather than passing them to CI as
+parameters. Two things do read them, and neither strips them:
+`petri_audit.yml`'s params job takes `_nonce` from the trigger file and emits
+it as an output of the same name, beside the trigger keys and never among
+them, so the run can record which journal entry reserved its spend; and
+`budget-gate` passes the whole trigger file, `_nonce` included, to
+`lane_params_problems`, which is what enforces the paid-fire nonce rule
+server-side (PR B, 2026-09-18). `tests/test_trigger_docs.py` fails when this table, the table in
 `AGENTS.md`, and the script's `TRIGGERS`, `PAID_TRIGGERS`, `PARK_DEFAULTS`,
 `KNOWN_KEYS` or `MITIGATION_IMPUTED_USD` disagree; when a row names a workflow
 whose parsed `on.push.paths` does not include its file; or when a lane's

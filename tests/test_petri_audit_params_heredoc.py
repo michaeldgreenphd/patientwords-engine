@@ -88,6 +88,18 @@ def test_a_trigger_value_carrying_a_newline_is_refused(tmp_path, key):
     assert out == ""
 
 
+@pytest.mark.parametrize("sentinel", ["mockllm/model", "mockllm/judge", "none/none"])
+def test_mode_run_refuses_every_test_sentinel_as_a_target(tmp_path, sentinel):
+    # these price at zero in the engine table, so a run target naming one passed the paid pre-flight bound for
+    # free and could commit mock output through the production path (Codex round 5 on PR #28)
+    rc, out, err = _run(tmp_path, {**PAID, "target": sentinel})
+    assert rc != 0 and "mode run needs a real target, not the test sentinel" in err
+    assert out == ""
+    # the same sentinel is exactly what dry_run is for
+    rc, out, err = _run(tmp_path, {**PAID, "mode": "dry_run", "target": "mockllm/model"})
+    assert rc == 0, err
+
+
 def test_the_guard_does_not_reject_the_park_default(tmp_path):
     ft_path = ROOT / "scripts" / "fire_trigger.py"
     src = ft_path.read_text(encoding="utf-8")

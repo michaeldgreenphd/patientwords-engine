@@ -345,6 +345,19 @@ def test_a_paid_petri_fire_must_carry_a_nonce_and_a_new_one():
     assert ft.reused_nonce("petri-audit", {**paid, "_nonce": "other"}, entries) == ""
 
 
+def test_a_paid_run_may_not_target_a_zero_price_test_sentinel():
+    # a mock sentinel prices at zero in the engine table, so naming one as a paid run's TARGET buys a free
+    # pre-flight bound and commits mock output as a measurement; the workflow refuses these too (Codex round 5)
+    base = {"seeds_file": "docs/framework/petri_seeds.draft.json", "mode": "run", "max_spend": "1.00",
+            "judge": "false", "commit_outputs": "true", "_nonce": "pilot-1"}
+    for sentinel in ("mockllm/model", "mockllm/judge", "none/none"):
+        with pytest.raises(ValueError, match="test sentinel"):
+            ft.validate_params("petri-audit", {**base, "target": sentinel})
+    assert ft.validate_params("petri-audit", {**base, "target": "anthropic/claude-haiku-4-5"}) is None
+    # a dry run is exactly where the sentinel belongs
+    assert ft.validate_params("petri-audit", {**base, "mode": "dry_run", "target": "mockllm/model"}) is None
+
+
 def test_a_value_carrying_a_control_character_is_refused_at_the_fire():
     # every workflow's params job writes its resolved values into $GITHUB_OUTPUT as `key=value` lines and a
     # later duplicate key wins, so a newline inside a value writes further key=value lines of its own. On the

@@ -1605,6 +1605,29 @@ re-parked. PR B carries what a paid fire still lacked:
     said underscore keys are never sent to a workflow, which the `_nonce`
     output made false; the rule now names its one exception.
 
+17. **Eight from the fifth round.** The exports upload is non-blocking only
+    where a committed copy follows it (`mode == 'run' && commit_outputs ==
+    'true'`): a paid run that commits nothing has that artifact as its only
+    seal-cleared output, exactly as a dry run does. No mock or test sentinel
+    may be a `run` target, in the workflow or at the fire: they price at zero,
+    so one would buy a free pre-flight bound and commit mock output as a
+    measurement. The recovery `publish` path re-runs the nonce uniqueness
+    check against the rebased journal, since another session's fire may have
+    taken the nonce while this one sat unpushed. In the reconciliation: a
+    sidecar seen by the ledger with no amount in `entries_folded` is a
+    truncated dashboard, not a legacy record, because this lane postdates that
+    watermark; a ceiling that is present but unusable is named rather than
+    read as absent, which had suppressed the required-judge-sidecar check; the
+    judge report's own `max_spend_usd` is what the judge actually ran under,
+    so it is compared with the target's declaration and used in the
+    authorisation sum; and a fire that landed and is fully booked while its
+    journal entry is still unresolved is named, because until `resolve` runs
+    its whole commitment keeps counting as in-flight beside the landed cost.
+    `docs/triggers.md` also claimed `budget-gate` strips underscore keys,
+    which this PR made false: it passes the whole trigger file, `_nonce`
+    included, to `lane_params_problems`, and that is what enforces the paid
+    nonce rule server-side.
+
 The lane is parked, so the trigger file at rest holds the `preflight` park;
 `tests/test_petri_audit_workflow.py` checks that it is either absent (a
 branch cut before the park) or exactly `PARK_DEFAULTS`, and never a

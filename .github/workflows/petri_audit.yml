@@ -186,8 +186,12 @@ jobs:
               raise SystemExit("mode must be preflight, dry_run or run")
           if p["mode"] == "dry_run" and p["target"] != "mockllm/model":
               raise SystemExit("dry_run runs against mockllm/model only")
-          if p["mode"] == "run" and p["target"] == "mockllm/model":
-              raise SystemExit("mode run needs a real target; use dry_run for mockllm")
+          # every mock/test sentinel, not just the one dry_run uses: `mockllm/judge` and `none/none` price at
+          # zero in the engine's table, so naming one as a run target passed the paid pre-flight bound for free
+          # and could commit mock output through the production path (Codex round 5)
+          if p["mode"] == "run" and p["target"].split("/")[0] in ("mockllm", "none"):
+              raise SystemExit(f"mode run needs a real target, not the test sentinel {p['target']!r}; "
+                               "use dry_run for mockllm")
           # a paid run is admitted only from a push-to-run fire on its first attempt: the fire path journals the
           # reservation the daily ceiling counts, and neither a workflow_dispatch nor an Actions-tab re-run has one
           # of its own (Codex round 8); preflight and dry_run cost nothing and may run from anywhere
@@ -410,13 +414,14 @@ jobs:
       # always(), after the seal check, verify-chain, verify-run and the raw-log refusal.
       - name: Upload the seal-cleared sanitised exports (dry run or paid run; never a raw log)
         if: ${{ needs.params.outputs.mode != 'preflight' }}
-        # For a PAID run this upload is the RECOVERY copy, so its own failure must not cost the primary path:
-        # without this, a transient upload failure fails the job here and the commit step below (default success
-        # gating) is skipped, leaving the measurement neither committed nor recoverable while the always()-gated
-        # sidecar step still books the spend (Codex round 1 on PR #28). For a DRY RUN it is the only output -
-        # nothing is committed - so its failure stays fatal, or the run reports success having produced nothing
-        # (Codex round 3). The security gates above stay prerequisites in both modes.
-        continue-on-error: ${{ needs.params.outputs.mode == 'run' }}
+        # Non-blocking ONLY where a committed copy follows it. For a paid run that commits, this upload is the
+        # recovery copy and its own failure must not skip the commit step below (default success gating), which
+        # would leave the measurement neither committed nor recoverable while the always()-gated sidecar step
+        # books the spend (Codex round 1 on PR #28). Where nothing is committed - a dry run (Codex round 3), or
+        # a paid run with commit_outputs false (Codex round 5) - this artifact is the only seal-cleared copy of
+        # the run, so its failure stays fatal rather than reporting success with nothing preserved. The security
+        # gates above stay prerequisites in every mode.
+        continue-on-error: ${{ needs.params.outputs.mode == 'run' && needs.params.outputs.commit_outputs == 'true' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: petri-audit-exports-${{ github.run_id }}-${{ github.run_attempt }}
