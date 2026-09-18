@@ -25,11 +25,14 @@ def _entry(fired: str, nonce: str | None, max_spend: float | None = None, **extr
 def _sidecar(runs: Path, run: str, cost: float, nonce: str | None, judge_cost: float | None = None) -> None:
     d = runs / run
     d.mkdir(parents=True, exist_ok=True)
+    # the writers record run_utc (spend.write_report_sidecar) and the ledger books the cost to the day it names
     framework.write_json(d / f"{run}.report.json", {"run_id": run, "cost_usd": cost, "cost_basis": "engine_repriced_from_inspect_model_usage",
-                                                   "billing_channel": "anthropic", "journal_nonce": nonce, "max_spend_usd": 1.0})
+                                                   "billing_channel": "anthropic", "journal_nonce": nonce, "max_spend_usd": 1.0,
+                                                   "run_utc": "2026-09-18T10:05:00Z"})
     if judge_cost is not None:
         framework.write_json(d / f"{run}.judge.report.json", {"judge_model": "claude-haiku-4-5", "cost_usd": judge_cost,
-                                                             "cost_basis": "cumulative_from_records", "billing_channel": "anthropic"})
+                                                             "cost_basis": "cumulative_from_records", "billing_channel": "anthropic",
+                                                             "run_utc": "2026-09-18T10:07:00Z"})
 
 
 def _layout(tmp_path: Path):
@@ -346,6 +349,71 @@ def test_two_target_sidecars_in_one_run_directory_join_nothing(tmp_path):
     assert "run_1: 2 target sidecars (run_1.report.json, second.report.json); one run directory is one run" in problems
     assert [r["status"] for r in result["paid_fires"]] == ["no sidecar landed", "no sidecar landed"]
     assert all(r["total_usd"] is None for r in result["paid_fires"]), "one judge cost may not be booked twice"
+
+
+def test_a_fire_journaled_evicted_that_landed_a_sidecar_is_a_contradiction(tmp_path):
+    # eviction released the in-flight commitment, so a replacement fire was admitted without counting this one;
+    # a sidecar proves the run went ahead anyway (Codex round 4 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0, evicted=True)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.4, "n1")
+    result = reconcile.reconcile(journal, runs)
+    assert result["paid_fires"][0]["status"] == "landed", "the cost is still attributed"
+    assert "is journaled evicted but landed run_1" in "\n".join(result["problems"])
+
+
+def test_a_requested_judge_pass_with_no_sidecar_is_not_read_as_zero(tmp_path):
+    # the target sidecar records the judge ceiling the run reserved; no judge sidecar beside it hides up to that
+    # amount rather than proving it was zero (Codex round 4 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.4, "n1")                       # no judge sidecar
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {**framework.load_json(path), "judge_max_spend_usd": 0.5})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1: the run reserved 0.5000 for a judge pass and no judge sidecar landed beside it" in problems
+    # a run that reserved nothing for a judge is not missing one
+    framework.write_json(path, {**framework.load_json(path), "judge_max_spend_usd": None})
+    assert "reserved" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_ceilings_the_run_carried_are_checked_against_what_the_fire_reserved(tmp_path):
+    # the daily guard counted the journal's commitment; ceilings on the sidecar summing higher mean CI ran with
+    # more headroom than was reserved, and a low actual cost hides it (Codex round 4 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.05, "n1")                      # a small actual cost
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {**framework.load_json(path), "max_spend_usd": 1.0, "judge_max_spend_usd": 0.5})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1: the run carried ceilings summing to 1.5000 but the fire reserved 1.0000" in problems
+    # ceilings that match the commitment are silent
+    framework.write_json(path, {**framework.load_json(path), "max_spend_usd": 0.5, "judge_max_spend_usd": 0.5})
+    assert "authorised" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_sidecar_whose_run_timestamp_does_not_parse_is_named(tmp_path):
+    # ledger_update books to the day run_utc names and falls back to the scan date when it cannot parse one,
+    # which puts the spend in the wrong daily bucket (Codex round 4 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.4, "n1", judge_cost=0.2)
+    path = runs / "run_1" / "run_1.report.json"
+    for bad in ("", "  ", "yesterday", None):
+        framework.write_json(path, {**framework.load_json(path), "run_utc": bad})
+        assert f"run_1/run_1.report.json: run_utc {bad!r} is missing or does not parse" in \
+            "\n".join(reconcile.reconcile(journal, runs)["problems"]), bad
+    # the judge sidecar is checked too, and the writers' own format parses
+    framework.write_json(path, {**framework.load_json(path), "run_utc": "2026-09-18T10:05:00Z"})
+    jpath = runs / "run_1" / "run_1.judge.report.json"
+    framework.write_json(jpath, {**framework.load_json(jpath), "run_utc": "not a time"})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1/run_1.judge.report.json: run_utc 'not a time' is missing or does not parse" in problems
+    assert "run_1/run_1.report.json: run_utc" not in problems
+    # run_timestamp is the older field name and satisfies the same check
+    framework.write_json(jpath, {k: v for k, v in framework.load_json(jpath).items() if k != "run_utc"}
+                         | {"run_timestamp": "2026-09-18T10:07:00+00:00"})
+    assert "run_utc" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
 
 
 def test_cli_reconcile_spend_renders_writes_json_and_is_strict_on_request(tmp_path, capsys):

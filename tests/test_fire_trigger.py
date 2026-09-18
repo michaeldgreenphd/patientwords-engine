@@ -319,6 +319,14 @@ def test_a_paid_petri_fire_must_carry_a_nonce_and_a_new_one():
         with pytest.raises(ValueError, match="_nonce"):
             ft.validate_params("petri-audit", {**paid, "_nonce": falsy})
     assert ft.validate_params("petri-audit", {**paid, "_nonce": 12345}) is None, "a non-zero int survives str()"
+    # padding is refused rather than trimmed: the journal stores the value as given, so a padded nonce would be
+    # stored padded while the uniqueness check compared a stripped one (Codex round 4)
+    for padded in (" pilot-1", "pilot-1 ", "\tpilot-1"):
+        with pytest.raises(ValueError, match="_nonce"):
+            ft.validate_params("petri-audit", {**paid, "_nonce": padded})
+    assert ft.reused_nonce("petri-audit", {**paid, "_nonce": "pad"},
+                           [{"trigger": "petri-audit", "fired_utc": "x", "nonce": " pad "}]), \
+        "an entry journaled before that rule may carry padding; both sides normalise"
     # the park and any other free mode are unaffected
     assert ft.validate_params("petri-audit", dict(ft.PARK_DEFAULTS["petri-audit"])) is None
     assert ft.validate_params("petri-audit", {**paid, "mode": "dry_run", "target": "mockllm/model"}) is None

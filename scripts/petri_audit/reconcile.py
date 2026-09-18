@@ -18,6 +18,7 @@ A missing or malformed value is reported by name, never defaulted (AGENTS.md,
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -175,6 +176,19 @@ def _flag(entry: dict[str, Any], key: str, problems: list[str]) -> bool:
     return False
 
 
+def _timestamp(value: Any) -> datetime | None:
+    """A sidecar's `run_utc` as a datetime, or None when it is missing or does
+    not parse. `ledger_update.parse_ts` reads the same field and falls back to
+    the scan date when it cannot, which books the cost to the wrong day."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = value.strip().replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
 def _channel(value: Any, default: str = "anthropic") -> str:
     """A billing channel, defaulting the way `fire_trigger.inflight_max_spend`
     defaults a journal entry with no `lane`: to the account the daily ceiling
@@ -305,7 +319,29 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             if row["cost_usd"] is None:
                 problems.append(f"{p.parent.name}/{p.name}: cost_usd {r.get('cost_usd')!r} is missing or not a "
                                 "finite non-negative number")
+            if row["evicted"]:
+                # eviction released this fire's in-flight commitment, so a replacement was admitted without
+                # counting it; a sidecar proves the run went ahead anyway (Codex round 4 on PR #28)
+                problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}) is journaled evicted but landed "
+                                f"{p.parent.name}: the queue released its commitment while the run spent, so the "
+                                "daily total for that day is short by whatever it cost")
+            # `ledger_update` books a sidecar to the day its `run_utc` names and falls back to the scan date when
+            # that cannot be parsed, which puts the spend in the wrong daily bucket (Codex round 4 on PR #28)
+            for sp, sr in ([(p, r)] + ([judge_by_dir[p.parent.name]] if p.parent.name in judge_by_dir else [])):
+                if "unreadable" in sr:
+                    continue
+                stamp = sr.get("run_utc") or sr.get("run_timestamp")      # ledger_update's own expression
+                if _timestamp(stamp) is None:
+                    held = sr.get("run_utc", sr.get("run_timestamp"))     # what the file holds, not what the or chose
+                    problems.append(f"{sp.parent.name}/{sp.name}: run_utc {held!r} is missing or does not parse, so "
+                                    "the ledger books its cost to the day it happens to scan rather than the run's")
             judge = judge_by_dir.get(p.parent.name)
+            # a target sidecar that records a judge ceiling says a judge pass was requested; no judge sidecar
+            # beside it then hides up to that ceiling rather than a zero (Codex round 4 on PR #28)
+            judge_ceiling = _money(r.get("judge_max_spend_usd"))
+            if judge is None and judge_ceiling:
+                problems.append(f"{p.parent.name}: the run reserved {judge_ceiling:.4f} for a judge pass and no judge "
+                                "sidecar landed beside it, so its cost is unaccounted rather than zero")
             if judge is not None:
                 jp, jr = judge
                 if "unreadable" in jr:
@@ -320,6 +356,16 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                 if row["max_spend"] is not None and row["total_usd"] > row["max_spend"] + 1e-9:
                     problems.append(f"{p.parent.name}: landed cost {row['total_usd']:.4f} exceeds the fire's commitment "
                                     f"{row['max_spend']:.4f}")
+            # What the run was AUTHORISED to spend, not only what it did: the daily guard counted the journal's
+            # commitment, so ceilings on the sidecar that sum higher mean CI ran with more headroom than the guard
+            # reserved, and a low actual cost hides it (Codex round 4 on PR #28).
+            ceilings = [_money(r.get("max_spend_usd")), _money(r.get("judge_max_spend_usd"))]
+            authorised = sum(c for c in ceilings if c is not None)
+            if row["max_spend"] is not None and any(c is not None for c in ceilings) \
+                    and authorised > row["max_spend"] + 1e-9:
+                problems.append(f"{p.parent.name}: the run carried ceilings summing to {authorised:.4f} but the fire "
+                                f"reserved {row['max_spend']:.4f}, so it was authorised to spend past what the daily "
+                                "guard counted")
             # The fire reserved its commitment against ONE prepaid account (the journal's `lane`), and the ledger
             # books the landed cost against whatever the sidecar's `billing_channel` says. A mismatch moves spend
             # between the Anthropic and OpenRouter ceilings unseen (Codex round 2 on PR #28).

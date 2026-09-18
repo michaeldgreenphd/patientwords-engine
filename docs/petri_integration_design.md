@@ -1590,6 +1590,21 @@ re-parked. PR B carries what a paid fire still lacked:
     key before the commitment is read, so an entry with a null commitment is
     reported instead of filtered away.
 
+16. **Six more from the fourth round.** A fire journaled `evicted` that
+    nevertheless landed a sidecar is a contradiction, not an ordinary landed
+    fire: eviction released its in-flight commitment, so a replacement was
+    admitted without counting a run that went ahead. A target sidecar
+    recording a judge ceiling with no judge sidecar beside it hides up to that
+    ceiling rather than proving zero. Sidecar ceilings that sum above the
+    journal's commitment mean CI ran with more headroom than the daily guard
+    reserved, which a low actual cost hides. A sidecar whose `run_utc` does
+    not parse is booked by `ledger_update` to the day it happens to scan
+    rather than the run's. A `_nonce` carrying surrounding whitespace is
+    refused rather than trimmed, since the journal stores the value as given
+    and the uniqueness check compared a stripped one. And `docs/triggers.md`
+    said underscore keys are never sent to a workflow, which the `_nonce`
+    output made false; the rule now names its one exception.
+
 The lane is parked, so the trigger file at rest holds the `preflight` park;
 `tests/test_petri_audit_workflow.py` checks that it is either absent (a
 branch cut before the park) or exactly `PARK_DEFAULTS`, and never a

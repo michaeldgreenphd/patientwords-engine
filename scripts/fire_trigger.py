@@ -298,7 +298,11 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
         # The workflow resolves the trigger value as `str(cfg.get("_nonce") or "")`, so any FALSY scalar - 0,
         # false, "" - reaches the run as an empty nonce while this entry journals "0" or "False" and the two
         # records can never be joined (Codex round 3 on PR #28). A boolean is refused whichever way it falls.
-        if isinstance(nonce, bool) or not isinstance(nonce, (str, int)) or not nonce or not str(nonce).strip():
+        # Padding is refused too, not trimmed: the journal records the value as given, so a padded nonce would
+        # be stored padded while the uniqueness check compared a stripped one, and re-firing the same padded
+        # value would slip past it (Codex round 4 on PR #28).
+        if (isinstance(nonce, bool) or not isinstance(nonce, (str, int)) or not nonce
+                or not str(nonce).strip() or str(nonce) != str(nonce).strip()):
             problems.append(
                 "petri-audit mode run must carry a non-empty _nonce: it is the only join key between the "
                 "journal entry that reserves the spend and the cost sidecar the run lands, so a paid fire "
@@ -618,7 +622,9 @@ def reused_nonce(trigger, params, entries):
     if not nonce:
         return ""
     for entry in entries:
-        if entry.get("trigger") == trigger and str(entry.get("nonce") or "") == nonce:
+        # both sides normalised: validate_params refuses a padded nonce, but an entry journaled before that
+        # rule, or by hand, may carry one (Codex round 4 on PR #28)
+        if entry.get("trigger") == trigger and str(entry.get("nonce") or "").strip() == nonce:
             return (f"_nonce {nonce!r} is already on the {trigger} journal entry fired at "
                     f"{entry.get('fired_utc', '?')}: a nonce binds one journal entry to one landed cost "
                     "sidecar, so reusing it would book one cost against two commitments. Use a new nonce")
