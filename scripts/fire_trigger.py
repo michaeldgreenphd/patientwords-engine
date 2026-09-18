@@ -1417,6 +1417,69 @@ def journal_at(repo: Path, ref: str) -> tuple[list[dict] | None, list[str]]:
     return entries, problems
 
 
+def journal_nonces_at(repo, ref, trigger):
+    """The nonces `trigger`'s journal entries carry at `ref`, or None when git cannot answer.
+
+    None is "unreadable", never "empty": `_git_show` cannot tell a ref this clone does not have from a ref whose
+    tree carries no journal, and reading the second as the first would turn a shallow checkout into a pass. So the
+    commit is confirmed to exist first, and only then is a missing journal read as no reservations.
+    """
+    if not isinstance(ref, str) or not ref.strip():
+        return None
+    ref = ref.strip()
+    if set(ref) == {"0"}:
+        return None                       # the all-zero sha a ref creation reports: there is no "before" to read
+    if _git(repo, "cat-file", "-e", f"{ref}^{{commit}}").returncode != 0:
+        return None
+    entries, _ = journal_at(repo, ref)
+    if entries is None:
+        return set()
+    return {e["nonce"] for e in entries
+            if e.get("trigger") == trigger and isinstance(e.get("nonce"), str) and e["nonce"]}
+
+
+def push_reservation_problems(repo, trigger, params, before, required):
+    """Why this paid petri-audit run's reservation was not taken BY the push CI is running.
+
+    The digest binds a reservation to one trigger CONTENT (Codex round 9); it does not bind it to one PUSH, and
+    the residual I stated there turned out to be reachable rather than theoretical. A paid config running, the
+    resting-state park pushed behind it as the PENDING run, and then a merge that restores the paid content
+    byte-for-byte: the merge is a third push, it evicts the pending park, the digest matches because the bytes
+    match, and the same reservation admits a second irreversible run. My round-9 reasoning that the park prevented
+    this was wrong - the park can itself be the pending run the merge evicts (Codex round 10 on PR #28).
+
+    `cmd_fire` writes the journal entry and the trigger file in ONE commit, so a reservation already on the branch
+    before this push was taken by an earlier fire, and this push is a replay of it.
+
+    `required` is for the one environment where not knowing is itself a refusal: inside GitHub Actions the gate is
+    always running a push (a paid run is push-only, attempt 1 only, enforced in the params job), so a missing
+    `--push-before` there is a workflow that stopped passing it, not a caller who had nothing to pass.
+    """
+    if trigger != "petri-audit" or not is_paid_fire(trigger, params):
+        return []
+    nonce = params.get("_nonce")
+    if isinstance(nonce, bool) or nonce in (None, "") or not str(nonce).strip():
+        return []                         # lane_params_problems has already refused this
+    nonce = str(nonce)
+    if before is None or not str(before).strip():
+        if not required:
+            return []
+        return [f"the {trigger} gate cannot tell a fire from a replay: it was not told which commit the branch "
+                f"pointed at before this push, so the reservation for _nonce {nonce!r} cannot be shown to have "
+                "been taken BY this push. The workflow passes the push event's previous tip as --push-before"]
+    earlier = journal_nonces_at(repo, before, trigger)
+    if earlier is None:
+        return [f"the {trigger} journal at {str(before).strip()!r} could not be read, so whether an earlier push "
+                f"already took the reservation for _nonce {nonce!r} cannot be established; the gate needs the "
+                "ref's history (check out with fetch-depth: 0), and a paid run is refused rather than guessed"]
+    if nonce in earlier:
+        return [f"the {trigger} reservation for _nonce {nonce!r} was already on the branch before this push: "
+                "fire_trigger.py writes the entry and the trigger file in one commit, so this content was put "
+                "here by something else (a merge, a revert or a hand edit) and would spend a reservation an "
+                "earlier fire already took. Re-fire through scripts/fire_trigger.py, which takes a fresh one"]
+    return []
+
+
 def journal_entries_added(repo: Path, branch: str, ref: str | None = None) -> list[dict]:
     """Journal entries present locally but not at origin/<branch>: the entries the
     unpushed commits appended. Keyed on (trigger, fired_utc), which is what the
@@ -2008,10 +2071,18 @@ def reservation_entries(trigger, params, entries):
     """
     if trigger != "petri-audit" or not is_paid_fire(trigger, params):
         return None
-    nonce = str(params.get("_nonce") or "").strip()
-    if not nonce:
+    nonce = params.get("_nonce")
+    if isinstance(nonce, bool) or nonce in (None, "") or not str(nonce).strip():
         return []
-    return [e for e in entries if e.get("trigger") == trigger and str(e.get("nonce") or "").strip() == nonce]
+    # EXACT string equality against the form `cmd_fire` journals (`str(params["_nonce"])`), deliberately unlike
+    # `reused_nonce`, which normalises. That one is liberal about what it REFUSES, so coercing is safe there; this
+    # one AUTHORISES irreversible spend, and `reconcile` joins the journal's `nonce` to the sidecar's
+    # `journal_nonce` with `==`. Coercing here meant a journal entry carrying " n " or 123 satisfied the gate for
+    # params "n"/"123" and could then never be joined to the sidecar the run landed: the spend was admitted
+    # against a reservation reconciliation can never close (Codex round 10 on PR #28).
+    nonce = str(nonce)
+    return [e for e in entries
+            if e.get("trigger") == trigger and isinstance(e.get("nonce"), str) and e["nonce"] == nonce]
 
 
 def journal_reservation_problems(trigger, params, entries, now=None, expire_hours=None, digest=None):
@@ -2070,8 +2141,11 @@ def journal_reservation_problems(trigger, params, entries, now=None, expire_hour
     expected, error = fire_commitment(paid_budget_params(trigger, params))
     if error:
         problems.append(f"the params carry no usable commitment to check against the journal: {error}")
-    elif (not isinstance(entry.get("max_spend"), (int, float)) or isinstance(entry.get("max_spend"), bool)
-            or abs(float(entry["max_spend"]) - expected) > 1e-9):
+    elif parse_max_spend(entry.get("max_spend")) is None or abs(parse_max_spend(entry["max_spend"]) - expected) > 1e-9:
+        # `parse_max_spend`, not a hand-rolled isinstance test: it is what `inflight_max_spend` uses to decide
+        # whether the entry holds anything, so anything IT rejects reserves nothing. NaN was the live hole - every
+        # comparison with NaN is False, so `abs(nan - expected) > 1e-9` passed the entry here while
+        # `inflight_max_spend` skipped it, and `json.loads` accepts a bare NaN in a journal line (Codex round 10).
         problems.append(f"the {trigger} journal entry for _nonce {nonce!r} reserved "
                         f"{entry.get('max_spend')!r} but these params commit {expected!r}; the daily ceiling "
                         "counted the reservation, not what this run would spend")
@@ -2147,6 +2221,10 @@ def cmd_budget_gate(args):
         digest = None
     unreserved = journal_reservation_problems(args.trigger, params, entries, now=now,
                                               expire_hours=expire_hours_from_env(), digest=digest)
+    # ...and the reservation must have been taken by THIS push, not merely for this content: identical bytes can
+    # be restored by a merge while the first run is still spending them (Codex round 10 on PR #28)
+    unreserved += push_reservation_problems(repo, args.trigger, params, getattr(args, "push_before", None),
+                                            os.environ.get("GITHUB_ACTIONS") == "true")
     if unreserved:
         for problem in unreserved:
             print(f"budget-gate: REFUSED - {problem}", file=sys.stderr)
@@ -2254,6 +2332,12 @@ def build_parser():
                       help="params JSON path (default: this checkout's trigger file - "
                            "correct for push-fired runs; workflow_dispatch should pass "
                            "its resolved params explicitly)")
+    gate.add_argument("--push-before",
+                      help="the commit this ref pointed at before the push CI is running (GitHub's "
+                           "github.event.before). A paid petri-audit fire is refused when its reservation was "
+                           "already on the branch at that commit: fire_trigger writes the entry and the trigger "
+                           "file in one commit, so an older reservation means this push replays it. Required "
+                           "when GITHUB_ACTIONS is set.")
     gate.set_defaults(func=cmd_budget_gate)
     return parser
 

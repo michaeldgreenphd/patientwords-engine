@@ -2443,3 +2443,139 @@ def test_a_fire_records_the_digest_of_the_trigger_file_it_writes(repo):
              (repo / "ops" / "trigger_journal.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()][-1]
     written = (repo / TRIGGER_SUBDIR / "petri-audit.json").read_text(encoding="utf-8")
     assert entry["params_sha256"] == ft.params_digest(written)
+
+
+def _git_repo(repo):
+    """The throwaway layout made into a real git repo, because the push binding reads the journal at a commit."""
+    def git(*argv):
+        return subprocess.run(["git", "-C", str(repo), *argv], capture_output=True, text=True, check=True)
+
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "t@example.invalid")
+    git("config", "user.name", "t")
+    git("config", "commit.gpgsign", "false")
+    return git
+
+
+def test_budget_gate_refuses_a_reservation_whose_max_spend_is_not_a_number(repo, capsys):
+    """NaN passed the reservation check: every comparison with NaN is False, so `abs(nan - expected) > 1e-9` was
+    False and the entry read as reserving exactly the commitment - while `inflight_max_spend` rejects it through
+    `parse_max_spend` and counts it as holding nothing, so the daily ceiling never saw this spend. `json.loads`
+    accepts a bare NaN in a journal line, so the value reaches the check (Codex round 10 on PR #28)."""
+    paid = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+            "mode": "run", "max_spend": "1.00", "judge": "false", "commit_outputs": "true", "_nonce": "pilot-1"}
+    content = json.dumps(paid, separators=(",", ":")) + "\n"
+    (repo / TRIGGER_SUBDIR / "petri-audit.json").write_text(content, encoding="utf-8")
+    journal = repo / "ops" / "trigger_journal.jsonl"
+
+    def entry(max_spend):
+        line = json.dumps({"trigger": "petri-audit", "fired_utc": ft.iso_utc(ft.utc_now()), "commit": "",
+                           "note": "pilot", "resolved": False, "evicted": False, "nonce": "pilot-1",
+                           "max_spend": 1.0, "lane": "anthropic", "params_sha256": ft.params_digest(content)})
+        return line.replace('"max_spend": 1.0', f'"max_spend": {max_spend}') + "\n"
+
+    def gate():
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", "petri-audit"])
+
+    journal.write_text(entry("1.0"), encoding="utf-8")
+    assert gate() == 0, capsys.readouterr().err
+
+    for unusable in ("NaN", "Infinity", "0", "-1.0", "true", '"1.0e400"'):
+        journal.write_text(entry(unusable), encoding="utf-8")
+        assert gate() == 6, unusable
+        assert "the daily ceiling counted the reservation, not what this run would spend" \
+            in capsys.readouterr().err, unusable
+    # the value the guard itself counts is the one the check must accept, so a string the fire path parses passes
+    journal.write_text(entry('"1.0"'), encoding="utf-8")
+    assert gate() == 0, capsys.readouterr().err
+
+
+def test_budget_gate_matches_the_reservation_nonce_exactly(repo, capsys):
+    """The gate coerced and stripped both sides of the nonce, so a journal entry carrying " pilot-1 " or 123
+    satisfied params of "pilot-1"/"123" - while `reconcile` joins the journal's `nonce` to the sidecar's
+    `journal_nonce` with `==` and can never close such a pair. The run spent against a reservation reconciliation
+    could never attribute. `reused_nonce` still normalises, deliberately: it decides what to REFUSE, this decides
+    what to AUTHORISE (Codex round 10 on PR #28)."""
+    paid = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+            "mode": "run", "max_spend": "1.00", "judge": "false", "commit_outputs": "true", "_nonce": "pilot-1"}
+    content = json.dumps(paid, separators=(",", ":")) + "\n"
+    (repo / TRIGGER_SUBDIR / "petri-audit.json").write_text(content, encoding="utf-8")
+    journal = repo / "ops" / "trigger_journal.jsonl"
+
+    def entry(nonce):
+        return json.dumps({"trigger": "petri-audit", "fired_utc": ft.iso_utc(ft.utc_now()), "commit": "",
+                           "note": "pilot", "resolved": False, "evicted": False, "nonce": nonce,
+                           "max_spend": 1.0, "lane": "anthropic",
+                           "params_sha256": ft.params_digest(content)}) + "\n"
+
+    def gate():
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", "petri-audit"])
+
+    journal.write_text(entry("pilot-1"), encoding="utf-8")
+    assert gate() == 0, capsys.readouterr().err
+    for near_miss in (" pilot-1", "pilot-1 ", "\tpilot-1", 1, None, True):
+        journal.write_text(entry(near_miss), encoding="utf-8")
+        assert gate() == 6, near_miss
+        assert "no petri-audit journal entry carries _nonce 'pilot-1'" in capsys.readouterr().err, near_miss
+
+
+def test_budget_gate_binds_the_reservation_to_the_push_that_took_it(repo, capsys, monkeypatch):
+    """The digest binds a reservation to one trigger CONTENT, not to one PUSH, and the residual I recorded in
+    round 9 is reachable: a paid config running, the resting-state park pushed behind it as the PENDING run, and a
+    merge that restores the paid bytes. The merge is a third push, it evicts the park, the digest matches, and the
+    same reservation admits a second irreversible run. `cmd_fire` writes the entry and the trigger file in ONE
+    commit, so a reservation already on the branch before this push was taken by an earlier fire (Codex round
+    10 on PR #28)."""
+    git = _git_repo(repo)
+    paid = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+            "mode": "run", "max_spend": "1.00", "judge": "false", "commit_outputs": "true", "_nonce": "pilot-1"}
+    content = json.dumps(paid, separators=(",", ":")) + "\n"
+    trigger = repo / TRIGGER_SUBDIR / "petri-audit.json"
+    journal = repo / "ops" / "trigger_journal.jsonl"
+    park = dict(ft.PARK_DEFAULTS["petri-audit"])
+
+    trigger.write_text(json.dumps(park, separators=(",", ":")) + "\n", encoding="utf-8")
+    journal.write_text("", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "parked")
+    parked = git("rev-parse", "HEAD").stdout.strip()
+
+    # the fire: the trigger file and the reservation land in one commit, exactly as cmd_fire writes them
+    trigger.write_text(content, encoding="utf-8")
+    journal.write_text(json.dumps({"trigger": "petri-audit", "fired_utc": ft.iso_utc(ft.utc_now()), "commit": "",
+                                   "note": "pilot", "resolved": False, "evicted": False, "nonce": "pilot-1",
+                                   "max_spend": 1.0, "lane": "anthropic",
+                                   "params_sha256": ft.params_digest(content)}) + "\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "fire")
+    fired = git("rev-parse", "HEAD").stdout.strip()
+
+    def gate(*extra, ci=False):
+        monkeypatch.setitem(os.environ, "GITHUB_ACTIONS", "true") if ci else             monkeypatch.delitem(os.environ, "GITHUB_ACTIONS", raising=False)
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", "petri-audit", *extra])
+
+    assert gate("--push-before", parked) == 0, capsys.readouterr().err
+
+    # the merge that restores the paid bytes: same content, same digest, but the reservation predates the push
+    assert gate("--push-before", fired) == 6
+    err = capsys.readouterr().err
+    assert "was already on the branch before this push" in err
+
+    # a commit this clone does not have (a shallow checkout) is refused, not guessed
+    assert gate("--push-before", "0" * 40) == 6
+    assert "could not be read" in capsys.readouterr().err
+    assert gate("--push-before", "e" * 40) == 6
+    assert "could not be read" in capsys.readouterr().err
+
+    # inside Actions the gate is always running a push, so a workflow that stopped passing one is a refusal
+    assert gate(ci=True) == 6
+    assert "cannot tell a fire from a replay" in capsys.readouterr().err
+    assert gate() == 0, "outside Actions there is no push to bind to; every other check still ran"
+
+
+def test_the_workflow_hands_the_gate_the_pushs_previous_tip():
+    body = (_MODULE_PATH.parents[1] / ".github" / "workflows" / "petri_audit.yml").read_text(encoding="utf-8")
+    assert "--push-before" in body, "the gate cannot tell a fire from a replay without it"
+    assert "PUSH_BEFORE: ${{ github.event.before }}" in body
+    # and it needs the history to read that commit's journal at all
+    assert "fetch-depth: 0" in body

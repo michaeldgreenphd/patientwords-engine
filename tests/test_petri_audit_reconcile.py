@@ -56,6 +56,18 @@ def _sidecar(runs: Path, run: str, cost: float, nonce: str | None, judge_cost: f
                                                              "run_utc": "2026-09-18T10:07:00Z"})
 
 
+def _ledger(spend: dict) -> dict:
+    """A dashboard as `ledger_update` writes it: the watermark AND the daily totals it folded into.
+
+    Kept in step with the writer for the same reason `_sidecar` is. A fixture carrying `entries_seen` and
+    `entries_folded` alone is a state the writer never produces - it books the cost into `by_day` and `today` in
+    the same pass - and reconciliation now refuses a watermark whose totals hold none of it (Codex round 10).
+    """
+    return {"schema_version": 1,
+            "spend": {"daily_ceiling_usd": 2.0, "today": {"date": "2026-09-18", "spent_usd": 1.5},
+                      "by_day": {"2026-09-18": 1.5}, **spend}}
+
+
 def _layout(tmp_path: Path):
     journal = tmp_path / "trigger_journal.jsonl"
     runs = tmp_path / "runs"
@@ -78,8 +90,8 @@ def test_paid_fires_are_joined_to_their_sidecars_on_the_nonce(tmp_path):
     _sidecar(runs, "run_1", 0.4, "n1", judge_cost=0.3)
     _sidecar(runs, "run_9", 0.2, "n9")                                       # a sidecar no fire accounts for
     _sidecar(runs, "run_0", 0.1, None)                                       # a sidecar without a nonce
-    framework.write_json(dashboard, {"spend": {"entries_seen": ["run_1.report.json"],
-                                               "entries_folded": {"run_1.report.json": 0.4}}})
+    framework.write_json(dashboard, _ledger({"entries_seen": ["run_1.report.json"],
+                                             "entries_folded": {"run_1.report.json": 0.4}}))
     result = reconcile.reconcile(journal, runs, dashboard)
     rows = {r["nonce"]: r for r in result["paid_fires"]}
     assert set(rows) == {"n1", "n2", "n3"}
@@ -237,9 +249,9 @@ def test_a_cumulative_sidecar_that_grew_since_its_fold_is_not_counted_as_booked(
     # what the fixture's two sidecars declare (1.0 + 0.5), so the round-4 ceilings check stays silent here
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5, resolved=True)) + "\n", encoding="utf-8")
     _sidecar(runs, "run_1", 0.40, "n1", judge_cost=0.30)
-    framework.write_json(dashboard, {"spend": {"entries_seen": ["run_1.report.json", "run_1.judge.report.json"],
-                                               "entries_folded": {"run_1.report.json": 0.40,
-                                                                  "run_1.judge.report.json": 0.18}}})
+    framework.write_json(dashboard, _ledger({"entries_seen": ["run_1.report.json", "run_1.judge.report.json"],
+                                             "entries_folded": {"run_1.report.json": 0.40,
+                                                                "run_1.judge.report.json": 0.18}}))
     result = reconcile.reconcile(journal, runs, dashboard)
     row = result["paid_fires"][0]
     problems = "\n".join(result["problems"])
@@ -249,15 +261,15 @@ def test_a_cumulative_sidecar_that_grew_since_its_fold_is_not_counted_as_booked(
            "spend is not in the daily totals" in problems
     assert result["unfolded_sidecars"] == ["run_1.judge.report.json"]
     # a residual below the ledger's four-decimal booking resolution waits legitimately and is not a gap
-    framework.write_json(dashboard, {"spend": {"entries_seen": ["run_1.report.json", "run_1.judge.report.json"],
-                                               "entries_folded": {"run_1.report.json": 0.40,
-                                                                  "run_1.judge.report.json": 0.29999}}})
+    framework.write_json(dashboard, _ledger({"entries_seen": ["run_1.report.json", "run_1.judge.report.json"],
+                                             "entries_folded": {"run_1.report.json": 0.40,
+                                                                "run_1.judge.report.json": 0.29999}}))
     clean = reconcile.reconcile(journal, runs, dashboard)
     assert clean["problems"] == [] and clean["unfolded_sidecars"] == []
     # `ledger_update` writes the name and the amount in the same fold, and this lane postdates that watermark,
     # so a name in entries_seen with no amount is a truncated or edited dashboard, not a legacy record
     # (Codex round 5 on PR #28)
-    framework.write_json(dashboard, {"spend": {"entries_seen": ["run_1.report.json", "run_1.judge.report.json"]}})
+    framework.write_json(dashboard, _ledger({"entries_seen": ["run_1.report.json", "run_1.judge.report.json"]}))
     result = reconcile.reconcile(journal, runs, dashboard)
     problems = "\n".join(result["problems"])
     assert "run_1/run_1.report.json: the ledger lists it as folded but records no amount for it in " \
@@ -342,8 +354,8 @@ def test_a_sidecar_that_shrank_below_the_ledger_watermark_is_named(tmp_path):
     journal, runs, dashboard = _layout(tmp_path)
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 2.0, resolved=True)) + "\n", encoding="utf-8")
     _sidecar(runs, "run_1", 0.50, "n1")
-    framework.write_json(dashboard, {"spend": {"entries_seen": ["run_1.report.json"],
-                                               "entries_folded": {"run_1.report.json": 1.00}}})
+    framework.write_json(dashboard, _ledger({"entries_seen": ["run_1.report.json"],
+                                             "entries_folded": {"run_1.report.json": 1.00}}))
     result = reconcile.reconcile(journal, runs, dashboard)
     assert result["paid_fires"][0]["folded"] is False
     assert "run_1/run_1.report.json: the ledger has booked 1.0000 but the sidecar now records 0.5000: a landed " \
@@ -493,8 +505,8 @@ def test_a_landed_and_booked_fire_that_was_never_resolved_is_named(tmp_path):
     journal, runs, dashboard = _layout(tmp_path)
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
     _sidecar(runs, "run_1", 0.4, "n1")
-    framework.write_json(dashboard, {"spend": {"entries_seen": ["run_1.report.json"],
-                                               "entries_folded": {"run_1.report.json": 0.4}}})
+    framework.write_json(dashboard, _ledger({"entries_seen": ["run_1.report.json"],
+                                             "entries_folded": {"run_1.report.json": 0.4}}))
     problems = "\n".join(reconcile.reconcile(journal, runs, dashboard)["problems"])
     assert "landed and is fully booked but the journal entry is still unresolved" in problems
     assert "fire_trigger.py resolve --trigger petri-audit" in problems
@@ -502,7 +514,7 @@ def test_a_landed_and_booked_fire_that_was_never_resolved_is_named(tmp_path):
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0, resolved=True)) + "\n", encoding="utf-8")
     assert reconcile.reconcile(journal, runs, dashboard)["problems"] == []
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
-    framework.write_json(dashboard, {"spend": {"entries_seen": [], "entries_folded": {}}})
+    framework.write_json(dashboard, _ledger({"entries_seen": [], "entries_folded": {}}))
     assert "still unresolved" not in "\n".join(reconcile.reconcile(journal, runs, dashboard)["problems"])
 
 
@@ -544,8 +556,8 @@ def test_cli_reconcile_spend_renders_writes_json_and_is_strict_on_request(tmp_pa
     journal, runs, dashboard = _layout(tmp_path)
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0, resolved=True)) + "\n", encoding="utf-8")
     _sidecar(runs, "run_1", 0.3, "n1")
-    framework.write_json(dashboard, {"spend": {"entries_seen": ["run_1.report.json"],
-                                               "entries_folded": {"run_1.report.json": 0.3}}})
+    framework.write_json(dashboard, _ledger({"entries_seen": ["run_1.report.json"],
+                                             "entries_folded": {"run_1.report.json": 0.3}}))
     out = tmp_path / "reconcile.json"
     args = ["reconcile-spend", "--journal", str(journal), "--runs", str(runs), "--dashboard", str(dashboard), "--json-out", str(out)]
     assert cli.main(args + ["--strict"]) == 0
@@ -610,8 +622,8 @@ def test_a_sidecar_basename_repeated_across_run_directories_is_named(tmp_path):
     # the same basename under a second directory: a copied or renamed file, which the writers never produce
     (runs / "run_2" / "run_1.report.json").write_text(
         (runs / "run_1" / "run_1.report.json").read_text(encoding="utf-8").replace('"n1"', '"n2"'), encoding="utf-8")
-    framework.write_json(dashboard, {"spend": {"entries_seen": ["run_1.report.json"],
-                                               "entries_folded": {"run_1.report.json": 0.3}}})
+    framework.write_json(dashboard, _ledger({"entries_seen": ["run_1.report.json"],
+                                             "entries_folded": {"run_1.report.json": 0.3}}))
     result = reconcile.reconcile(journal, runs, dashboard)
     problems = "\n".join(result["problems"])
     assert "run_1.report.json: the same sidecar basename is in 2 run directories (run_1, run_2)" in problems
@@ -876,3 +888,122 @@ def test_repricing_rows_must_be_a_nonempty_list_of_objects(tmp_path):
                                 "models": [{"model": "a", "cost_usd": 0.4, "usage_missing": False}, "truncated"]})
     assert "holds an element that is not an object" in \
         "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_an_imputed_report_validates_its_rows_as_strictly_as_a_repriced_one(tmp_path):
+    # the floor claim reads `models`, and a non-list or a truncated element made it silently unverifiable while
+    # the repriced branch refuses both shapes outright (Codex round 10 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 1.0, "n1")
+    path = runs / "run_1" / "run_1.report.json"
+    base = {**framework.load_json(path), "cost_basis": "ceiling_imputed:usage_missing", "cost_usd": 1.0,
+            "max_spend_usd": 1.0}
+    framework.write_json(path, {**base, "models": "truncated"})
+    assert "records `models` as str, not a list" in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    framework.write_json(path, {**base, "models": [{"model": "a", "cost_usd": 0.4, "usage_missing": False}, "x"]})
+    assert "holds an element of `models` that is not an object" in \
+        "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    # the shape the writer emits - rows present, one of them unpriced - still passes
+    framework.write_json(path, {**base, "models": [{"model": "a", "cost_usd": 0.4, "usage_missing": False},
+                                                   {"model": "b", "cost_usd": None, "usage_missing": True}]})
+    assert "`models`" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_the_fallback_judge_contract_is_chosen_by_cost_basis(tmp_path):
+    # selecting it on "no eval_id" alone handed the fallback's weaker identity rule to a `cumulative_from_records`
+    # report - the ordinary judge loop's own basis, which always copies eval_id from the manifest - so a truncated
+    # or copied ordinary sidecar passed on a run_id equal to the directory it sits in (Codex round 10 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.2, "n1", judge_cost=0.1)
+    jpath = runs / "run_1" / "run_1.judge.report.json"
+    ordinary = framework.load_json(jpath)
+
+    framework.write_json(jpath, {k: v for k, v in ordinary.items() if k != "eval_id"})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "records cost_basis 'cumulative_from_records'" in problems
+    assert "always carries the manifest's eval_id, but it records none" in problems
+
+    # the real fallback writer: its own basis, the run directory as run_id, no eval_id - and no finding
+    framework.write_json(jpath, {**{k: v for k, v in ordinary.items() if k != "eval_id"},
+                                 "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar",
+                                 "cost_usd": 0.5, "run_cost_usd": 0.5, "max_spend_usd": 0.5, "run_id": "run_1"})
+    assert reconcile.reconcile(journal, runs)["problems"] == []
+    # ...and it is still held to the fields it does record
+    framework.write_json(jpath, {**{k: v for k, v in ordinary.items()},
+                                 "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar",
+                                 "cost_usd": 0.5, "run_cost_usd": 0.5, "max_spend_usd": 0.5, "run_id": "run_1",
+                                 "eval_id": "ev_somewhere_else"})
+    assert "belongs to another run" in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_ceilings_that_fall_short_of_the_commitment_are_named(tmp_path):
+    # `fire_commitment` reserves EXACTLY the target ceiling plus the judge's, so checking only the excess let a
+    # 1.50 commitment sit above a target of 1.00 with no judge ceiling anywhere: a requested judge pass erased,
+    # its authorisation untraceable, and the daily guard charged for it (Codex round 10 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.2, "n1")                       # target ceiling 1.0, no judge requested or landed
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "the run carried ceilings summing to 1.0000 but the fire reserved 1.5000" in problems
+    assert "the shortfall is authorisation the daily guard counted" in problems
+    # the judged run this commitment was written for accounts for all of it: 1.00 target + 0.50 judge
+    _sidecar(runs, "run_2", 0.2, "n2", judge_cost=0.1)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n2", 1.5)) + "\n", encoding="utf-8")
+    assert "ceilings summing to" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_paid_entry_with_no_lane_is_named_not_defaulted(tmp_path):
+    # `inflight_max_spend` counts an entry without a lane against the Anthropic ceiling by default and every
+    # channel check below compared the sidecars against that assumption, which is not the record saying so
+    # (Codex round 10 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0, lane=None)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.2, "n1")
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "the journal entry records no lane (None)" in problems
+    assert "which account this commitment was reserved against is assumed, not recorded" in problems
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    assert "records no lane" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_stamp_that_precedes_its_own_fire_is_named(tmp_path):
+    # the stamp parsing is not enough: `ledger_update` books to the day the stamp NAMES, so one earlier than the
+    # fire books into a day the commitment was never counted against, and each day reads consistently on its own
+    # (Codex round 10 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.2, "n1")
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {**framework.load_json(path), "run_utc": "2026-09-17T23:50:00Z"})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "precedes the fire that reserved it (2026-09-18T10:00:00Z)" in problems
+    assert "a day the fire's commitment was never counted against" in problems
+    # a minute of skew between the machine that fired and the runner that ran is not a finding
+    framework.write_json(path, {**framework.load_json(path), "run_utc": "2026-09-18T09:59:30Z"})
+    assert "precedes the fire" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_watermark_with_no_totals_behind_it_is_not_a_ledger(tmp_path):
+    # `ledger_update` writes entries_folded in the same pass as the daily totals, and `budget_check` reads the
+    # totals, not the watermark - so a dashboard booking amounts while carrying neither reported every landed
+    # sidecar as fully booked here while the guard saw no landed spend at all (Codex round 10 on PR #28)
+    journal, runs, dashboard = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.4, "n1")
+    for spend in ({"entries_seen": ["run_1.report.json"], "entries_folded": {"run_1.report.json": 0.4}},
+                  {"entries_seen": ["run_1.report.json"], "entries_folded": {"run_1.report.json": 0.4},
+                   "by_day": {}, "today": {"date": "2026-09-18", "spent_usd": 0.4}},
+                  {"entries_seen": ["run_1.report.json"], "entries_folded": {"run_1.report.json": 0.4},
+                   "by_day": {"2026-09-18": 0.4}, "today": {"date": "2026-09-18"}}):
+        framework.write_json(dashboard, {"schema_version": 1, "spend": spend})
+        result = reconcile.reconcile(journal, runs, dashboard)
+        problems = "\n".join(result["problems"])
+        assert "spend.entries_folded books 0.4000 across 1 sidecar(s)" in problems, spend
+        assert "the totals the daily guard reads hold none of it" in problems, spend
+        assert result["paid_fires"][0]["folded"] is None, "unknown, never False"
+        assert result["unfolded_sidecars"] == [], "nothing may be reported unfolded on a ledger that was refused"
+    framework.write_json(dashboard, _ledger({"entries_seen": ["run_1.report.json"],
+                                             "entries_folded": {"run_1.report.json": 0.4}}))
+    assert "entries_folded books" not in "\n".join(reconcile.reconcile(journal, runs, dashboard)["problems"])

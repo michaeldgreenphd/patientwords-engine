@@ -1762,7 +1762,61 @@ re-parked. PR B carries what a paid fire still lacked:
     skipping the binding - a skipped check is the silent failure this repo's
     own rule forbids. And `scratchpad/pilot_gate_rehearsal.py` grew the replay
     and stale-reservation cases, so the rehearsal now exercises six states
-    rather than four. In the reconciliation: a
+    rather than four.
+
+22. **Nine from the tenth round, three of them P1 - and the first of those
+    retires the residual above.** I wrote that content restored byte-for-byte
+    by a merge while the first run is in flight still matches the digest, and
+    that the resting-state rule and the park are what prevent it. The park does
+    not prevent it: the park can itself be the PENDING run, which the merge's
+    push evicts. So the sequence is a paid config running, the park pushed
+    behind it, a merge restoring the paid bytes - three pushes, the third
+    admitted by a reservation the first is still spending, and two sidecars
+    landing under one nonce. A reservation is now bound to the PUSH that took
+    it, not only to the content: `cmd_fire` writes the journal entry and the
+    trigger file in one commit, so the gate reads the journal at the ref's
+    previous tip (`github.event.before`) and refuses a paid run whose
+    reservation was already there. That needs history the params job did not
+    have, so its checkout takes `fetch-depth: 0`, still blobless. A commit the
+    clone cannot read is a refusal, not a pass, and inside GitHub Actions a
+    missing `--push-before` is one too - a paid run there is always a push.
+
+    The other two P1s are both a guard that read a value differently from the
+    guard it protects. A journal `max_spend` of `NaN` passed the reservation
+    check because every comparison with NaN is False, while
+    `inflight_max_spend` rejects it through `parse_max_spend` and counts the
+    entry as holding nothing; the check now uses `parse_max_spend` itself.
+    And the nonce lookup coerced and stripped both sides, so a journal entry
+    carrying `" n "` or `123` satisfied params of `"n"`/`"123"` - which
+    `reconcile` joins with `==` and can never close. It is exact now. The
+    distinction from `reused_nonce`, which still normalises, is deliberate:
+    that one decides what to REFUSE and may be liberal, this one authorises
+    irreversible spend and may not.
+
+    The six P2s are all in the reconciliation. Three are a rule applied to one
+    shape and not its twin: the imputed branch read `models` loosely where the
+    repriced branch refuses a non-list and a non-object element outright; the
+    component ceilings were checked for excess but not for shortfall, so a
+    $1.50 commitment sat above a $1.00 target with the judge's authorisation
+    erased; and a stamp was checked for parsing but not against the fire that
+    reserved it, so a `run_utc` earlier than its own fire books into a day the
+    commitment was never counted against. Of the rest: the fallback judge
+    writer's weaker identity contract was selected by an absent `eval_id`
+    rather than by the `cost_basis` that says which writer wrote the file, so a
+    truncated `cumulative_from_records` report was excused by a rule written
+    for a different writer; a paid entry with no `lane` was defaulted onto the
+    Anthropic ceiling rather than named; and `_read_ledger` trusted a watermark
+    with no `by_day` and no usable `today.spent_usd` behind it, reporting every
+    landed sidecar as booked against a dashboard the daily guard reads as
+    holding no spend at all.
+
+    That last one needed the test fixtures to carry what `ledger_update`
+    actually writes - the fourth round in which a fixture was thinner than the
+    production writer, after `run_id`/`eval_id`, the judge component costs and
+    the `models` rows. There is now a `_ledger()` helper beside `_sidecar()`,
+    for the same reason. The rehearsal grew the byte-replay case and runs
+    against a real repository with the parked commit and the fire commit in it,
+    so it exercises seven states; the staged pilot still clears the gate. In the reconciliation: a
     sidecar seen by the ledger with no amount in `entries_folded` is a
     truncated dashboard, not a legacy record, because this lane postdates that
     watermark; a ceiling that is present but unusable is named rather than

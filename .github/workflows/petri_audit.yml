@@ -120,6 +120,9 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           filter: blob:none
+          # the daily-ceiling gate reads the journal at github.event.before to tell a fire from a replay of one,
+          # and a depth-1 clone has no commit to read it at; blobless keeps full history cheap
+          fetch-depth: 0
           sparse-checkout: |
             .github
             scripts
@@ -233,9 +236,13 @@ jobs:
       - name: Daily-ceiling gate (server-side; same budget_check as the fire guard)
         env:
           GATE_PARAMS: ${{ toJSON(steps.params.outputs) }}
+          # the ref's tip BEFORE this push. fire_trigger writes the journal entry and the trigger file in one
+          # commit, so a reservation already present at that commit was taken by an earlier fire and this push is
+          # a replay of it - which identical bytes restored by a merge otherwise pass (Codex round 10 on PR #28)
+          PUSH_BEFORE: ${{ github.event.before }}
         run: |
           printf '%s' "$GATE_PARAMS" > "$RUNNER_TEMP/gate_params.json"
-          python3 scripts/fire_trigger.py budget-gate --trigger petri-audit --params-file "$RUNNER_TEMP/gate_params.json"
+          python3 scripts/fire_trigger.py budget-gate --trigger petri-audit --params-file "$RUNNER_TEMP/gate_params.json" --push-before "$PUSH_BEFORE"
 
   audit:
     if: ${{ !github.event.created }}

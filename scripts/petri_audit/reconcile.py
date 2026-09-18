@@ -18,7 +18,7 @@ A missing or malformed value is reported by name, never defaulted (AGENTS.md,
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +39,11 @@ TARGET_BASES = ("engine_repriced_from_inspect_model_usage", "ceiling_imputed:usa
 JUDGE_BASES = ("cumulative_from_records", "ceiling_imputed:judge_aborted_without_sidecar",
                "engine_repriced_from_inspect_model_usage")
 CUMULATIVE = "cumulative_from_records"
+# The bases the FALLBACK judge writer emits (`cli judge-spend-report`): the imputed ceiling when the judge is
+# priced, and a repriced zero when it is not. It records the run DIRECTORY as its run_id and no eval_id, so it
+# needs its own identity contract - and which writer wrote a report is what its basis says, never what the report
+# happens to be missing (Codex round 10 on PR #28).
+FALLBACK_JUDGE_BASES = tuple(b for b in JUDGE_BASES if b != CUMULATIVE)
 DEFAULT_RUNS_DIR = ROOT / "data" / "petri" / "runs"      # the CLI's default; the first landed run creates it
 
 
@@ -176,6 +181,25 @@ def _read_ledger(dashboard_path: Path | str | None, problems: list[str]) -> Ledg
     elif raw is not None:
         problems.append(f"{name}: spend.entries_folded is not an object, so how much of each sidecar is booked "
                         "cannot be checked")
+    # A watermark with no totals behind it is not a ledger. `ledger_update` writes `entries_folded` in the same
+    # pass as the daily and lifetime figures, and `budget_check` reads those figures, not the watermark - so a
+    # dashboard booking amounts while carrying no `by_day` and no usable `today.spent_usd` reports every landed
+    # sidecar as fully booked here while the guard sees no landed spend at all, and the day's remaining headroom
+    # is the whole ceiling (Codex round 10 on PR #28).
+    booked = sum(amount for amount in folded.values() if amount > 0)
+    if booked > 0:
+        by_day, today = spend.get("by_day"), spend.get("today")
+        missing = []
+        if not isinstance(by_day, dict) or not by_day:
+            missing.append("spend.by_day")
+        if not isinstance(today, dict) or _money(today.get("spent_usd")) is None:
+            missing.append("spend.today.spent_usd")
+        if missing:
+            problems.append(f"{name}: spend.entries_folded books {booked:.4f} across {len(folded)} sidecar(s), but "
+                            f"{' and '.join(missing)} is missing or unusable, so the totals the daily guard reads "
+                            "hold none of it; no sidecar can be checked against a ledger whose watermark and "
+                            "totals disagree about whether anything was folded")
+            return None
     return Ledger({str(s) for s in seen}, folded)
 
 
@@ -263,9 +287,16 @@ def _basis_problems(label: str, report: dict[str, Any], cost: float | None, judg
             # aborted judge recorded as its surviving rows, are spend the sidecar itself proves. If they exceed the
             # ceiling the ledger books, the imputation understates the run rather than covering it (Codex round 9).
             rows = report.get("models")
-            if isinstance(rows, list):
-                known = [c for c in (_money(row.get("cost_usd")) for row in rows if isinstance(row, dict))
-                         if c is not None]
+            if "models" in report and not isinstance(rows, list):
+                # the floor claim below is only as good as the rows it reads, and the repriced branch already
+                # refuses both of these shapes; here they silently skipped the check instead (Codex round 10)
+                found.append(f"{label}: cost_basis {basis} records `models` as {type(rows).__name__}, not a list, "
+                             "so the spend its own rows prove cannot be checked against the ceiling it books")
+            elif isinstance(rows, list) and any(not isinstance(row, dict) for row in rows):
+                found.append(f"{label}: cost_basis {basis} holds an element of `models` that is not an object, so "
+                             "the spend its own rows prove cannot be checked against the ceiling it books")
+            if isinstance(rows, list) and all(isinstance(row, dict) for row in rows):
+                known = [c for c in (_money(row.get("cost_usd")) for row in rows) if c is not None]
                 if known and sum(known) > cost + 1e-6:
                     found.append(f"{label}: cost_basis {basis} books {cost:.8f}, but the rows that did price sum to "
                                  f"{sum(known):.8f}; the sidecar proves more spend than the ledger will fold")
@@ -337,7 +368,13 @@ def _judge_identity_problem(run_dir: str, target: dict[str, Any], judge: dict[st
         # the fallback `spend-report` both always record run_id and eval_id (Codex round 8 on PR #28).
         return (f"{run_dir}: the target sidecar records neither eval_id nor run_id, so nothing the judge sidecar "
                 "carries can be checked against it and its cost is joined on the directory alone")
-    if j_eval is None:
+    # WHICH writer wrote this report decides which contract it is held to, and the writers are told apart by the
+    # cost_basis they emit. Selecting the fallback contract on "no eval_id" alone handed it to a
+    # `cumulative_from_records` report - the ordinary judge loop's own basis, which always copies eval_id from the
+    # manifest - so a truncated or copied ordinary sidecar was excused by a rule written for a different writer and
+    # needed only a run_id equal to the directory it sits in (Codex round 10 on PR #28).
+    basis = judge.get("cost_basis")
+    if isinstance(basis, str) and basis in FALLBACK_JUDGE_BASES:
         # the fallback writer: it names the directory it was written into. An ABSENT run_id is not the fallback
         # shape either - both judge writers record an identity, so a report carrying neither field is truncated
         # or copied, and letting it through attributes another run's cost here (Codex round 7 on PR #28).
@@ -347,7 +384,15 @@ def _judge_identity_problem(run_dir: str, target: dict[str, Any], judge: dict[st
         if j_run != run_dir:
             return (f"{run_dir}: the judge sidecar records run_id {j_run!r}, but the fallback judge writer records "
                     f"the run directory, which is {run_dir!r}; this judge report was written for another run")
+        if j_eval is not None and t_eval is not None and j_eval != t_eval:
+            return (f"{run_dir}: the judge sidecar records eval_id {j_eval!r} and the target sidecar {t_eval!r}; "
+                    "both copy it from the same manifest, so this judge report belongs to another run")
         return None
+    if j_eval is None:
+        return (f"{run_dir}: the judge sidecar records cost_basis {basis!r}, which the judge loop writes and which "
+                "always carries the manifest's eval_id, but it records none; only the fallback "
+                "`judge-spend-report` omits it, and it books a different basis, so this report is truncated or "
+                "copied and its cost would be joined on the directory alone")
     # Both comparisons were conditional on their fields being present, so a target keeping only `run_id` beside a
     # judge keeping only `eval_id` ran neither and returned success on two reports that share no identity at all
     # (Codex round 9 on PR #28). At least one field must be common, and every common field must agree.
@@ -530,6 +575,19 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                                         "it happens to scan rather than the run's (run_utc "
                                         f"{sr.get('run_utc')!r}, run_timestamp {sr.get('run_timestamp')!r})")
                         break
+                # Parsing is not enough. `ledger_update` books the cost to the day the stamp NAMES, so a stamp
+                # that precedes the fire which reserved it books into an earlier day's bucket than the one the
+                # daily guard counted the commitment against - and each day then reads consistently on its own,
+                # which is exactly the alteration this command exists to surface (Codex round 10 on PR #28). A run
+                # cannot start before its own fire; the minute of grace is for skew between the machine that
+                # fired and the runner that ran.
+                stamp = _timestamp(sr.get("run_timestamp") or sr.get("run_utc"))
+                fired_at = _timestamp(e.get("fired_utc"))
+                if stamp is not None and fired_at is not None and bool(stamp.tzinfo) == bool(fired_at.tzinfo) \
+                        and stamp < fired_at - timedelta(minutes=1):
+                    problems.append(f"{sp.parent.name}/{sp.name}: its stamp {stamp.isoformat()} precedes the fire "
+                                    f"that reserved it ({e.get('fired_utc')}), so the ledger books this cost to a "
+                                    "day the fire's commitment was never counted against")
             judge = judge_by_dir.get(p.parent.name)
             # a target sidecar that records a judge ceiling says a judge pass was requested; no judge sidecar
             # beside it then hides up to that ceiling rather than a zero (Codex round 4 on PR #28). A ceiling
@@ -649,11 +707,31 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                 problems.append(f"{p.parent.name}: the run carried ceilings summing to {authorised:.4f} but the fire "
                                 f"reserved {row['max_spend']:.4f}, so it was authorised to spend past what the daily "
                                 "guard counted")
+            elif row["max_spend"] is not None and target_ceiling is not None \
+                    and authorised < row["max_spend"] - 1e-9:
+                # and not merely "at most": `fire_commitment` reserves EXACTLY max_spend plus the judge's, and the
+                # workflow hands the run those same two numbers, so the ceilings the run records must add back up
+                # to what the daily guard counted. Checking only the excess let a $1.50 commitment sit above a
+                # target of 1.00 with no judge ceiling recorded anywhere - a requested judge pass erased, its
+                # authorisation untraceable, and the guard charged for it (Codex round 10 on PR #28).
+                problems.append(f"{p.parent.name}: the run carried ceilings summing to {authorised:.4f} but the fire "
+                                f"reserved {row['max_spend']:.4f}; the fire reserves exactly the target ceiling plus "
+                                "the judge's, so the shortfall is authorisation the daily guard counted and this "
+                                "run's own records do not account for")
             # The fire reserved its commitment against ONE prepaid account (the journal's `lane`), and the ledger
             # books the landed cost against whatever the sidecar's `billing_channel` says. A mismatch moves spend
             # between the Anthropic and OpenRouter ceilings unseen (Codex round 2 on PR #28).
             lane = _channel(e.get("lane"))
             unsupported = _channel_unsupported(e.get("lane"))
+            if not isinstance(e.get("lane"), str) or not e.get("lane"):
+                # `cmd_fire` always writes it and `budget-gate` refuses a fire whose entry's lane disagrees with
+                # its params, so an absent one is a hand-written, merged or truncated entry. `inflight_max_spend`
+                # then counts it against the Anthropic ceiling by default and every check below compares the
+                # sidecars against that assumption, which is not the same as the record saying so (Codex round 10).
+                problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}): the journal entry records no "
+                                f"lane ({e.get('lane')!r}); the fire path always writes one, and the daily guard "
+                                f"counts an entry without it against the {_channel(None)} ceiling by default, so "
+                                "which account this commitment was reserved against is assumed, not recorded")
             if unsupported:
                 problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}): lane {unsupported!r} is not an "
                                 f"account this study bills ({' or '.join(CHANNELS)}), so the ceiling it reserved "
