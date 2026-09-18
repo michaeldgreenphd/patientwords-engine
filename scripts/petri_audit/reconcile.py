@@ -284,8 +284,13 @@ def _judge_identity_problem(run_dir: str, target: dict[str, Any], judge: dict[st
     j_eval, t_eval = text(judge, "eval_id"), text(target, "eval_id")
     j_run, t_run = text(judge, "run_id"), text(target, "run_id")
     if j_eval is None:
-        # the fallback writer: it names the directory it was written into
-        if j_run is not None and j_run != run_dir:
+        # the fallback writer: it names the directory it was written into. An ABSENT run_id is not the fallback
+        # shape either - both judge writers record an identity, so a report carrying neither field is truncated
+        # or copied, and letting it through attributes another run's cost here (Codex round 7 on PR #28).
+        if j_run is None:
+            return (f"{run_dir}: the judge sidecar records neither eval_id nor run_id; both judge writers record "
+                    "an identity, so nothing ties this report to the run it sits in")
+        if j_run != run_dir:
             return (f"{run_dir}: the judge sidecar records run_id {j_run!r}, but the fallback judge writer records "
                     f"the run directory, which is {run_dir!r}; this judge report was written for another run")
         return None
@@ -448,11 +453,19 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             for sp, sr in ([(p, r)] + ([judge_by_dir[p.parent.name]] if p.parent.name in judge_by_dir else [])):
                 if "unreadable" in sr:
                     continue
-                stamp = sr.get("run_utc") or sr.get("run_timestamp")      # ledger_update's own expression
-                if _timestamp(stamp) is None:
-                    held = sr.get("run_utc", sr.get("run_timestamp"))     # what the file holds, not what the or chose
-                    problems.append(f"{sp.parent.name}/{sp.name}: run_utc {held!r} is missing or does not parse, so "
-                                    "the ledger books its cost to the day it happens to scan rather than the run's")
+                # `ledger_update` reads the stamp in TWO different orders: its first-fold loop takes
+                # `run_timestamp or run_utc` and its growth loop `run_utc or run_timestamp`. With both fields
+                # present and one of them malformed the two paths disagree, and whichever hits the bad value
+                # falls back to the scan date - so BOTH expressions must parse, not just the one a growth fold
+                # would use (Codex round 7 on PR #28).
+                for field_order, chosen in (("run_timestamp or run_utc", sr.get("run_timestamp") or sr.get("run_utc")),
+                                            ("run_utc or run_timestamp", sr.get("run_utc") or sr.get("run_timestamp"))):
+                    if _timestamp(chosen) is None:
+                        problems.append(f"{sp.parent.name}/{sp.name}: the stamp `{field_order}` resolves to "
+                                        f"{chosen!r}, which does not parse, so the ledger books its cost to the day "
+                                        "it happens to scan rather than the run's (run_utc "
+                                        f"{sr.get('run_utc')!r}, run_timestamp {sr.get('run_timestamp')!r})")
+                        break
             judge = judge_by_dir.get(p.parent.name)
             # a target sidecar that records a judge ceiling says a judge pass was requested; no judge sidecar
             # beside it then hides up to that ceiling rather than a zero (Codex round 4 on PR #28). A ceiling
@@ -513,7 +526,13 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             # commitment, so ceilings on the sidecar that sum higher mean CI ran with more headroom than the guard
             # reserved, and a low actual cost hides it (Codex round 4 on PR #28).
             target_ceiling = _money(r.get("max_spend_usd"))
-            if r.get("max_spend_usd") is not None and target_ceiling is None:
+            if "max_spend_usd" not in r:
+                # `spend.write_report_sidecar` always emits it, so an absent key is a truncated or edited record,
+                # not an optional field - and the `is not None` guard below read it as nothing to check, which let
+                # a low-cost sidecar pass --strict with its authorisation unverifiable (Codex round 7 on PR #28)
+                problems.append(f"{p.parent.name}/{p.name}: max_spend_usd is absent; the target writer always "
+                                "records it, so what the run was authorised to spend cannot be established")
+            elif target_ceiling is None:
                 problems.append(f"{p.parent.name}/{p.name}: max_spend_usd {r.get('max_spend_usd')!r} is not a finite "
                                 "non-negative number, so what the run was authorised to spend cannot be established")
             # the judge report records the ceiling the judge loop ACTUALLY ran under; the target report only
@@ -521,7 +540,11 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             judge_actual = None
             if judge is not None and "unreadable" not in judge[1]:
                 judge_actual = _money(judge[1].get("max_spend_usd"))
-                if judge[1].get("max_spend_usd") is not None and judge_actual is None:
+                if "max_spend_usd" not in judge[1]:
+                    # both judge writers record it, so the same reasoning as the target's applies
+                    problems.append(f"{judge[0].parent.name}/{judge[0].name}: max_spend_usd is absent; both judge "
+                                    "writers record it, so the ceiling the judge ran under cannot be established")
+                elif judge[1].get("max_spend_usd") is not None and judge_actual is None:
                     problems.append(f"{judge[0].parent.name}/{judge[0].name}: max_spend_usd "
                                     f"{judge[1].get('max_spend_usd')!r} is not a finite non-negative number")
                 elif judge_actual is not None and judge_ceiling is not None \

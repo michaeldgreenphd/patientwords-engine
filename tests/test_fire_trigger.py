@@ -1647,8 +1647,16 @@ def test_publish_reruns_the_nonce_guard_against_the_entry_another_session_pushed
         json.dumps({**paid, "_nonce": "pilot-20260918b"}) + "\n", encoding="utf-8")
     _commit(clone, "Fire petri-audit: re-nonced")
     assert ft.main(["publish", "--repo", str(clone)]) == 0
-    published = json.loads(_origin_main_files(origin, tmp_path)[".github/trigger/petri-audit.json"])
+    files = _origin_main_files(origin, tmp_path)
+    published = json.loads(files[".github/trigger/petri-audit.json"])
     assert published["_nonce"] == "pilot-20260918b"
+    # ...and the journal entry follows it. The RUN takes its nonce from the trigger file, so an entry left on
+    # the old value would leave the sidecar carrying one nonce and the journal another, with nothing able to
+    # join them (Codex round 7 on PR #28). The other session's entry keeps its own.
+    entries = [json.loads(line) for line in files["ops/trigger_journal.jsonl"].splitlines() if line.strip()]
+    petri = [e for e in entries if e.get("trigger") == "petri-audit"]
+    assert sorted(str(e.get("nonce")) for e in petri) == ["pilot-20260918a", "pilot-20260918b"], petri
+    assert [e for e in petri if e.get("nonce") == "pilot-20260918b"][0]["fired_utc"] != theirs
 
 
 def test_publish_keeps_the_park_exemption_when_the_park_push_was_rejected(tmp_path, monkeypatch, capsys):
@@ -2252,3 +2260,88 @@ def test_journal_entry_records_the_fire_nonce(repo):
     assert entry["nonce"] == "n-bind-1"
     assert fire(repo, "scenario-generation", {"task": "pairs", "num": "5", "max_spend": "0.5"}) == 0
     assert json.loads(journal_path(repo).read_text().splitlines()[-1])["nonce"] is None, "no nonce fired: none recorded"
+
+
+
+def test_budget_gate_requires_a_journal_reservation_for_a_paid_petri_run(repo, tmp_path, capsys):
+    """The hole `budget-gate` existed to close, still open in the one place this
+    lane's `_nonce` contract is for.
+
+    The gate re-runs the lane invariants and the daily ceiling server-side
+    because a trigger file can reach a pushed ref without passing through
+    `cmd_fire` - a merge, a rebase, a hand edit. It did not check that a paid
+    journal entry actually reserved the spend, so such a push made irreversible
+    provider calls against a reservation nobody took, and the landed sidecar
+    could never be joined (Codex round 7 on PR #28).
+    """
+    pf = tmp_path / "petri-params.json"
+    paid = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+            "mode": "run", "max_spend": "1.00", "judge": "true", "judge_model": "claude-haiku-4-5",
+            "judge_max_spend": "0.50", "commit_outputs": "true", "_nonce": "pilot-1"}
+    pf.write_text(json.dumps(paid), encoding="utf-8")
+    journal = repo / "ops" / "trigger_journal.jsonl"
+
+    def gate():
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", "petri-audit", "--params-file", str(pf)])
+
+    def entry(**over):
+        base = {"trigger": "petri-audit", "fired_utc": ft.iso_utc(ft.utc_now()), "commit": "", "note": "pilot",
+                "resolved": False, "evicted": False, "nonce": "pilot-1", "max_spend": 1.5, "lane": "anthropic"}
+        return json.dumps({**base, **over}) + "\n"
+
+    # no journal at all: the push carried no reservation
+    journal.write_text("", encoding="utf-8")
+    assert gate() == 6
+    assert "no petri-audit journal entry carries _nonce 'pilot-1'" in capsys.readouterr().err
+
+    # The reservation cmd_fire would have written: clear. This is ALSO the regression for the double count that
+    # writing this test exposed. cmd_fire checks the ceiling before it writes the entry; by the time CI runs the
+    # gate the entry is on the branch, so inflight_max_spend already holds this fire's 1.50 and adding the params'
+    # 1.50 again came to 3.00 against the 2.00 ceiling - the pilot refused server-side by the guard meant to
+    # protect it. Only the entry bound to this nonce is excluded.
+    journal.write_text(entry(), encoding="utf-8")
+    assert gate() == 0, capsys.readouterr().err
+    out = capsys.readouterr().out
+    assert "clear" in out and "in-flight 0.00" in out, out
+
+    # another lane's active paid fire still counts against the day, so the exclusion is this fire's alone
+    other = json.dumps({"trigger": "advice-eval", "fired_utc": ft.iso_utc(ft.utc_now()), "commit": "", "note": "x",
+                        "resolved": False, "evicted": False, "max_spend": 0.9, "lane": "anthropic"}) + "\n"
+    journal.write_text(entry() + other, encoding="utf-8")
+    assert gate() == 6 and "in-flight 0.90" in capsys.readouterr().err
+
+    # a reservation already released, in either way, reserves nothing for this run
+    journal.write_text(entry(resolved=True, resolved_utc=ft.iso_utc(ft.utc_now())), encoding="utf-8")
+    assert gate() == 6 and "already resolved" in capsys.readouterr().err
+    journal.write_text(entry(evicted=True), encoding="utf-8")
+    assert gate() == 6 and "marked evicted" in capsys.readouterr().err
+
+    # a reservation for less than these params commit: the ceiling counted the wrong number
+    journal.write_text(entry(max_spend=1.0), encoding="utf-8")
+    assert gate() == 6 and "reserved 1.0 but these params commit 1.5" in capsys.readouterr().err
+
+    # ...and on the wrong account
+    journal.write_text(entry(lane="openrouter"), encoding="utf-8")
+    assert gate() == 6 and "reserved on lane 'openrouter'" in capsys.readouterr().err
+
+    # two entries sharing the nonce: neither can be the reservation
+    journal.write_text(entry() + entry(fired_utc="2026-09-18T01:00:00Z"), encoding="utf-8")
+    assert gate() == 6 and "2 petri-audit journal entries carry _nonce 'pilot-1'" in capsys.readouterr().err
+
+    # a free fire needs no reservation and is unaffected, even with an empty journal
+    journal.write_text("", encoding="utf-8")
+    pf.write_text(json.dumps(dict(ft.PARK_DEFAULTS["petri-audit"])), encoding="utf-8")
+    assert gate() == 0
+    assert "free fire" in capsys.readouterr().out
+
+
+def test_journal_reservation_problems_is_scoped_to_the_lane_with_a_nonce_contract():
+    # the other paid lanes have no join key, so the check does not apply to them and must not invent one
+    paid_advice = {"models": "claude-haiku-4-5", "max_spend": "1.0", "_nonce": "x"}
+    assert ft.journal_reservation_problems("advice-eval", paid_advice, []) == []
+    petri = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+             "mode": "run", "max_spend": "1.00", "judge": "false", "commit_outputs": "true", "_nonce": "x"}
+    assert ft.journal_reservation_problems("petri-audit", petri, []), "the petri lane is checked"
+    # a free petri fire is not a paid one
+    assert ft.journal_reservation_problems("petri-audit", {**petri, "mode": "preflight",
+                                                           "target": "mockllm/model"}, []) == []

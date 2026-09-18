@@ -1817,6 +1817,15 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
         corrections.append("max_spend/lane removed: not a paid fire")
         fire.pop("max_spend", None)
         fire.pop("lane", None)
+    # The nonce is the join key between this entry and the cost sidecar the run lands, and the run takes it from
+    # the TRIGGER FILE, not from here. The supported recovery for a nonce another session took is to re-nonce the
+    # trigger file and publish again - which left the entry on the old value, so the sidecar carried one nonce and
+    # the journal another and reconciliation could never join them (Codex round 7 on PR #28). Written exactly as
+    # cmd_fire writes it, so the two paths cannot diverge.
+    published_nonce = str(params["_nonce"]) if params.get("_nonce") not in (None, "") else None
+    if fire.get("nonce") != published_nonce:
+        corrections.append(f"nonce {fire.get('nonce')!r} -> {published_nonce!r} (the published trigger file's)")
+        fire["nonce"] = published_nonce
     if corrections:
         save_journal(repo / JOURNAL_RELPATH, entries)
         proc = _git(repo, "add", "--", JOURNAL_RELPATH.as_posix())
@@ -1964,6 +1973,78 @@ def cmd_status(args):
     return 0
 
 
+def reservation_entries(trigger, params, entries):
+    """The journal entries that claim to reserve THIS fire, or None when the
+    lane has no join key to look one up by.
+
+    Only petri-audit's params must carry a `_nonce`, and that nonce is what
+    binds a fire to its landed cost; the other paid lanes have nothing to match
+    on, so they get None and every caller leaves them alone.
+    """
+    if trigger != "petri-audit" or not is_paid_fire(trigger, params):
+        return None
+    nonce = str(params.get("_nonce") or "").strip()
+    if not nonce:
+        return []
+    return [e for e in entries if e.get("trigger") == trigger and str(e.get("nonce") or "").strip() == nonce]
+
+
+def journal_reservation_problems(trigger, params, entries):
+    """Why a paid petri-audit run has no journal reservation behind it, as a
+    list of refusals; empty when exactly one entry accounts for it.
+
+    `budget-gate` exists because a trigger file can reach a pushed ref without
+    passing through `cmd_fire` at all - a merge, a rebase, a hand edit - and it
+    already re-runs the lane invariants and the daily ceiling server-side. What
+    it did NOT check is the one thing this lane's `_nonce` contract is for: that
+    a paid journal entry actually reserved this spend. Without it a pushed
+    `mode: run` config with any syntactically valid nonce made irreversible
+    provider calls against a reservation that was never taken, and the landed
+    sidecar could never be joined to anything (Codex round 7 on PR #28).
+
+    Scoped to petri-audit because it is the lane whose params must carry a
+    `_nonce`; the other paid lanes have no join key to check.
+    """
+    problems = []
+    mine = reservation_entries(trigger, params, entries)
+    if mine is None:
+        return problems
+    nonce = str(params.get("_nonce") or "").strip()
+    if not nonce:
+        # lane_params_problems has already refused this; kept so the function is safe on its own
+        return [f"{trigger} mode run carries no usable _nonce, so no journal entry can account for it"]
+    if not mine:
+        return [f"no {trigger} journal entry carries _nonce {nonce!r}: this trigger file reached the branch "
+                "without a reservation (a merge, a rebase or a hand edit), so its spend was never counted "
+                "against the daily ceiling and its cost sidecar could never be joined to a fire. Fire through "
+                "scripts/fire_trigger.py, which writes the entry and the trigger file in one commit"]
+    if len(mine) > 1:
+        when = ", ".join(str(e.get("fired_utc")) for e in mine)
+        return [f"{len(mine)} {trigger} journal entries carry _nonce {nonce!r} ({when}); a nonce binds one fire "
+                "to one landed cost, so this run's spend cannot be attributed"]
+    entry = mine[0]
+    if entry.get("resolved"):
+        problems.append(f"the {trigger} journal entry for _nonce {nonce!r} is already resolved, which released "
+                        "its in-flight commitment: this run would spend outside any reservation")
+    if entry.get("evicted"):
+        problems.append(f"the {trigger} journal entry for _nonce {nonce!r} is marked evicted, so the queue "
+                        "released its commitment and nothing reserves this run's spend")
+    expected, error = fire_commitment(paid_budget_params(trigger, params))
+    if error:
+        problems.append(f"the params carry no usable commitment to check against the journal: {error}")
+    elif (not isinstance(entry.get("max_spend"), (int, float)) or isinstance(entry.get("max_spend"), bool)
+            or abs(float(entry["max_spend"]) - expected) > 1e-9):
+        problems.append(f"the {trigger} journal entry for _nonce {nonce!r} reserved "
+                        f"{entry.get('max_spend')!r} but these params commit {expected!r}; the daily ceiling "
+                        "counted the reservation, not what this run would spend")
+    expected_lane = fire_lane(trigger, params)
+    if entry.get("lane") != expected_lane:
+        problems.append(f"the {trigger} journal entry for _nonce {nonce!r} reserved on lane "
+                        f"{entry.get('lane')!r} but these params bill {expected_lane!r}; the wrong account's "
+                        "ceiling was counted")
+    return problems
+
+
 def cmd_budget_gate(args):
     """CI-side twin of cmd_fire's paid-path budget check (audit S2, owner-approved
     2026-08-19). fire_trigger's ceiling is client-side only: a direct push of a
@@ -1995,6 +2076,23 @@ def cmd_budget_gate(args):
     budget_params = paid_budget_params(args.trigger, params)
     now = utc_now()
     entries = load_journal(repo / JOURNAL_RELPATH)
+    # the reservation itself, before the aggregate: a ceiling that holds in total says nothing about whether THIS
+    # run was ever reserved (Codex round 7 on PR #28)
+    unreserved = journal_reservation_problems(args.trigger, params, entries)
+    if unreserved:
+        for problem in unreserved:
+            print(f"budget-gate: REFUSED - {problem}", file=sys.stderr)
+        return 6
+    # ...and once the reservation is found, it must not be counted TWICE. `cmd_fire` runs this check before it
+    # writes the journal entry; by the time CI runs it the entry is on the branch, so `inflight_max_spend` already
+    # holds this fire's commitment and adding the params' commitment on top double-counts it. The pilot's $1.50
+    # came to $3.00 against the $2.00 ceiling and would have been refused server-side - the first paid fire, by the
+    # guard meant to protect it (found writing the round-7 reservation test, 2026-09-18). Only the entry this fire
+    # is bound to by nonce is removed, so nothing else's in-flight hold is lost.
+    mine = reservation_entries(args.trigger, params, entries)
+    if mine and len(mine) == 1:
+        held = mine[0]
+        entries = [e for e in entries if e is not held]
     dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
     overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
     kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),

@@ -428,10 +428,10 @@ def test_ceilings_the_run_carried_are_checked_against_what_the_fire_reserved(tmp
 
 
 def test_a_sidecar_whose_run_timestamp_does_not_parse_is_named(tmp_path):
-    # ledger_update books to the day run_utc names and falls back to the scan date when it cannot parse one,
+    # ledger_update books to the day the stamp names and falls back to the scan date when it cannot parse one,
     # which puts the spend in the wrong daily bucket (Codex round 4 on PR #28)
     journal, runs, _ = _layout(tmp_path)
-    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5)) + "\n", encoding="utf-8")
     _sidecar(runs, "run_1", 0.4, "n1", judge_cost=0.2)
     path = runs / "run_1" / "run_1.report.json"
     # a padded stamp is in this list because `datetime.fromisoformat` rejects surrounding whitespace, so
@@ -439,7 +439,7 @@ def test_a_sidecar_whose_run_timestamp_does_not_parse_is_named(tmp_path):
     # passed the very stamp the ledger mis-books (found in self-review, 2026-09-18)
     for bad in ("", "  ", "yesterday", None, " 2026-09-18T10:00:00Z", "2026-09-18T10:00:00Z\n"):
         framework.write_json(path, {**framework.load_json(path), "run_utc": bad})
-        assert f"run_1/run_1.report.json: run_utc {bad!r} is missing or does not parse" in \
+        assert f"run_1/run_1.report.json: the stamp `run_timestamp or run_utc` resolves to {bad!r}" in \
             "\n".join(reconcile.reconcile(journal, runs)["problems"]), bad
         assert ledger_update.parse_ts(bad) is None, f"the ledger must agree that {bad!r} does not parse"
     # the judge sidecar is checked too, and the writers' own format parses
@@ -447,12 +447,38 @@ def test_a_sidecar_whose_run_timestamp_does_not_parse_is_named(tmp_path):
     jpath = runs / "run_1" / "run_1.judge.report.json"
     framework.write_json(jpath, {**framework.load_json(jpath), "run_utc": "not a time"})
     problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
-    assert "run_1/run_1.judge.report.json: run_utc 'not a time' is missing or does not parse" in problems
-    assert "run_1/run_1.report.json: run_utc" not in problems
+    assert "run_1/run_1.judge.report.json: the stamp `run_timestamp or run_utc` resolves to 'not a time'" in problems
+    assert "run_1/run_1.report.json: the stamp" not in problems
     # run_timestamp is the older field name and satisfies the same check
     framework.write_json(jpath, {k: v for k, v in framework.load_json(jpath).items() if k != "run_utc"}
                          | {"run_timestamp": "2026-09-18T10:07:00+00:00"})
-    assert "run_utc" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "the stamp" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_both_of_the_ledgers_stamp_precedences_must_parse(tmp_path):
+    """`ledger_update` reads the stamp in two orders: its first-fold loop takes
+    `run_timestamp or run_utc` (scripts/ledger_update.py:385) and its growth loop
+    `run_utc or run_timestamp` (:442). With both fields present and one malformed,
+    the two paths disagree and whichever hits the bad value books the cost to the
+    scan date, so checking only one order passed the mis-booking (Codex round 7)."""
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.4, "n1")
+    path = runs / "run_1" / "run_1.report.json"
+    good = "2026-09-18T10:05:00Z"
+
+    # a valid run_utc beside a malformed run_timestamp: the growth loop is happy, the first fold is not
+    framework.write_json(path, {**framework.load_json(path), "run_utc": good, "run_timestamp": "not a time"})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "the stamp `run_timestamp or run_utc` resolves to 'not a time'" in problems
+    assert ledger_update.parse_ts("not a time") is None
+    # ...and the other way round, which the growth loop is the one to mis-book
+    framework.write_json(path, {**framework.load_json(path), "run_utc": "also not a time", "run_timestamp": good})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "the stamp `run_utc or run_timestamp` resolves to 'also not a time'" in problems
+    # both valid, in either field order: silent
+    framework.write_json(path, {**framework.load_json(path), "run_utc": good, "run_timestamp": good})
+    assert "the stamp" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
 
 
 def test_a_landed_and_booked_fire_that_was_never_resolved_is_named(tmp_path):
@@ -656,3 +682,44 @@ def test_a_cost_basis_the_writers_do_not_emit_is_named(tmp_path):
     # the writers' own shapes are silent
     framework.write_json(jpath, {**framework.load_json(jpath), "run_cost_usd": 0.1, "prior_cost_usd": 0.0})
     assert "cost_basis" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+# ---------------------------------------------------------------- Codex round 7 on PR #28
+
+def test_an_absent_ceiling_is_not_an_optional_one(tmp_path):
+    # round 5 named a ceiling that was present and unusable; an ABSENT key slipped through the `is not None`
+    # guard and read as nothing to check, so a low-cost sidecar passed --strict with its authorisation
+    # unverifiable. Both writers always emit max_spend_usd (Codex round 7 on PR #28).
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.05, "n1", judge_cost=0.02)
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {k: v for k, v in framework.load_json(path).items() if k != "max_spend_usd"})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1/run_1.report.json: max_spend_usd is absent; the target writer always records it" in problems
+    # the judge sidecar is held to the same rule, by the same reasoning about its two writers
+    framework.write_json(path, {**framework.load_json(path), "max_spend_usd": 1.0})
+    jpath = runs / "run_1" / "run_1.judge.report.json"
+    framework.write_json(jpath, {k: v for k, v in framework.load_json(jpath).items() if k != "max_spend_usd"})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1/run_1.judge.report.json: max_spend_usd is absent; both judge writers record it" in problems
+    # present and usable: silent
+    framework.write_json(jpath, {**framework.load_json(jpath), "max_spend_usd": 0.5})
+    assert "max_spend_usd is absent" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_judge_sidecar_carrying_no_identity_at_all_is_named(tmp_path):
+    # the fallback branch rejected only a PRESENT run_id naming another directory, so a truncated or copied
+    # report with neither eval_id nor run_id was attributed to this run (Codex round 7 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.2, "n1", judge_cost=0.1)
+    jpath = runs / "run_1" / "run_1.judge.report.json"
+    stripped = {k: v for k, v in framework.load_json(jpath).items() if k not in ("eval_id", "run_id")}
+    framework.write_json(jpath, {**stripped, "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar"})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1: the judge sidecar records neither eval_id nor run_id" in problems
+    # the fallback writer's real shape - run_id naming its own directory, no eval_id - stays silent
+    framework.write_json(jpath, {**stripped, "run_id": "run_1",
+                                 "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar"})
+    assert "neither eval_id nor run_id" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])

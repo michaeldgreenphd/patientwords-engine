@@ -1653,7 +1653,39 @@ re-parked. PR B carries what a paid fire still lacked:
     fallback writer, which records the directory as its `run_id` and no
     `eval_id`; comparing `run_id` blindly would have failed on the realistic
     path where an adapted run's judge died, since the target carries Inspect's
-    run id and the fallback carries the directory name. In the reconciliation: a
+    run id and the fallback carries the directory name.
+
+19. **Five from the seventh round, and the defect they uncovered.** The
+    server-side `budget-gate` re-ran the lane invariants and the daily ceiling
+    but never checked that a paid journal entry actually reserved the run, so a
+    `mode: run` trigger file reaching the branch any other way - a merge, a
+    rebase, a hand edit - made irreversible provider calls against a
+    reservation nobody took. It now requires exactly one active petri-audit
+    entry carrying the fire's nonce, with the commitment and lane the params
+    imply. `publish` also corrects the entry's `nonce` to the published trigger
+    file's, because the supported recovery for a nonce another session took is
+    to re-nonce and publish again - which left the run taking one nonce from
+    the trigger file while the journal kept the other. In the reconciliation:
+    an ABSENT `max_spend_usd` is reported like a malformed one, since both
+    writers always emit it; a judge sidecar carrying neither `eval_id` nor
+    `run_id` is named, since both judge writers record an identity; and the
+    stamp check now requires BOTH of `ledger_update`'s precedences to parse,
+    because its first-fold loop reads `run_timestamp or run_utc` and its growth
+    loop `run_utc or run_timestamp`, so a sidecar with both fields and one
+    malformed books differently depending on the path.
+
+    Writing the reservation test exposed a defect none of the seven rounds had
+    named: **the gate double-counted the run's own reservation.** `cmd_fire`
+    checks the ceiling before it writes the journal entry, but by the time CI
+    runs the gate the entry is on the branch, so `inflight_max_spend` already
+    holds this fire's commitment and the gate added the params' commitment on
+    top. At the pilot's $1.50 that is $3.00 against the $2.00 ceiling: the
+    first paid fire would have been refused server-side by the guard meant to
+    protect it. The gate now excludes the single entry the fire is bound to by
+    nonce, and nothing else's hold. The other paid lanes have no join key and
+    are unchanged; their double count is masked by headroom (advice-eval at
+    $1.00 lands exactly on the $2.00 ceiling and passes) and is the owner's to
+    weigh separately. In the reconciliation: a
     sidecar seen by the ledger with no amount in `entries_folded` is a
     truncated dashboard, not a legacy record, because this lane postdates that
     watermark; a ceiling that is present but unusable is named rather than
