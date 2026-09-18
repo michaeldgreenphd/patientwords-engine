@@ -792,3 +792,87 @@ def test_a_repriced_cost_must_match_the_rows_it_was_priced_from(tmp_path):
         "\n".join(reconcile.reconcile(journal, runs)["problems"])
     framework.write_json(path, {**framework.load_json(path), "cost_usd": 1.0})
     assert "books the ceiling" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_judge_and_target_that_share_no_identity_field_are_named(tmp_path):
+    # both comparisons were conditional on their own field being present, so a target keeping only run_id beside a
+    # judge keeping only eval_id ran neither and returned success (Codex round 9 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.2, "n1", judge_cost=0.1)
+    path = runs / "run_1" / "run_1.report.json"
+    jpath = runs / "run_1" / "run_1.judge.report.json"
+    framework.write_json(path, {k: v for k, v in framework.load_json(path).items() if k != "eval_id"})
+    framework.write_json(jpath, {k: v for k, v in framework.load_json(jpath).items() if k != "run_id"})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1: the judge sidecar records eval_id and the target sidecar records run_id" in problems
+    assert "share no identity field" in problems
+    # one field in common, and agreeing, is silent
+    framework.write_json(jpath, {**framework.load_json(jpath), "run_id": "run_1"})
+    assert "share no identity field" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_judge_ceiling_that_is_present_and_null_or_zero_is_named(tmp_path):
+    # present-but-null passed both branches - not absent, and `is not None` false - and fell through to the
+    # target's declaration, so a judge with no record of its own ceiling folded clean (Codex round 9 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.2, "n1", judge_cost=0.1)
+    jpath = runs / "run_1" / "run_1.judge.report.json"
+    for bad in (None, 0):
+        framework.write_json(jpath, {**framework.load_json(jpath), "max_spend_usd": bad})
+        problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+        assert "run_1/run_1.judge.report.json: max_spend_usd" in problems, bad
+        assert "the ceiling the judge ran under cannot be established" in problems, bad
+    framework.write_json(jpath, {**framework.load_json(jpath), "max_spend_usd": 0.5})
+    assert "the ceiling the judge ran under" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_target_ceiling_of_zero_is_named(tmp_path):
+    # the twin of round 8's judge rule, applied to one side of a symmetric pair (Codex round 9 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.0, "n1")
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {**framework.load_json(path), "max_spend_usd": 0,
+                                "models": [{"model": "m", "cost_usd": 0.0, "usage_missing": False}]})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1/run_1.report.json: max_spend_usd is 0, which no paid fire produces" in problems
+
+
+def test_an_imputed_cost_must_cover_the_spend_its_own_rows_prove(tmp_path):
+    # an imputed cost is a floor claim as well as a ceiling one: rows that DID price, and an aborted judge's
+    # surviving rows, are spend the sidecar itself proves (Codex round 9 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 2.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.5, "n1", judge_cost=0.1)
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {**framework.load_json(path), "cost_basis": "ceiling_imputed:usage_missing",
+                                "cost_usd": 0.5, "max_spend_usd": 0.5,
+                                "models": [{"model": "a", "cost_usd": 0.7, "usage_missing": False},
+                                           {"model": "b", "cost_usd": None, "usage_missing": True}]})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "books 0.50000000, but the rows that did price sum to 0.70000000" in problems
+
+    # an aborted judge whose surviving rows already exceed the ceiling it booked
+    jpath = runs / "run_1" / "run_1.judge.report.json"
+    framework.write_json(jpath, {**framework.load_json(jpath),
+                                 "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar",
+                                 "cost_usd": 0.5, "max_spend_usd": 0.5, "rows_cost_usd": 0.9})
+    assert "but rows_cost_usd records 0.90000000 already charged" in \
+        "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_repricing_rows_must_be_a_nonempty_list_of_objects(tmp_path):
+    # the comprehension dropped non-object elements and the mismatch check was conditional on what survived, so
+    # `models: []` passed outright and a truncated element passed whenever the valid rows matched (Codex round 9)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.4, "n1")
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {**framework.load_json(path), "models": []})
+    assert "`models` is empty" in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    framework.write_json(path, {**framework.load_json(path),
+                                "models": [{"model": "a", "cost_usd": 0.4, "usage_missing": False}, "truncated"]})
+    assert "holds an element that is not an object" in \
+        "\n".join(reconcile.reconcile(journal, runs)["problems"])

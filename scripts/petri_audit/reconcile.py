@@ -259,19 +259,40 @@ def _basis_problems(label: str, report: dict[str, Any], cost: float | None, judg
             if ceiling is not None and abs(cost - ceiling) > 1e-6:
                 found.append(f"{label}: cost_basis {basis} books the ceiling, but cost_usd {cost:.8f} is not the "
                              f"max_spend_usd {ceiling:.8f} it records")
+            # An imputed cost is a FLOOR claim as well as a ceiling one: whatever rows did price, and whatever an
+            # aborted judge recorded as its surviving rows, are spend the sidecar itself proves. If they exceed the
+            # ceiling the ledger books, the imputation understates the run rather than covering it (Codex round 9).
+            rows = report.get("models")
+            if isinstance(rows, list):
+                known = [c for c in (_money(row.get("cost_usd")) for row in rows if isinstance(row, dict))
+                         if c is not None]
+                if known and sum(known) > cost + 1e-6:
+                    found.append(f"{label}: cost_basis {basis} books {cost:.8f}, but the rows that did price sum to "
+                                 f"{sum(known):.8f}; the sidecar proves more spend than the ledger will fold")
+            surviving = _money(report.get("rows_cost_usd"))
+            if surviving is not None and surviving > cost + 1e-6:
+                found.append(f"{label}: cost_basis {basis} books {cost:.8f}, but rows_cost_usd records "
+                             f"{surviving:.8f} already charged; the ledger folds the smaller figure")
             return found
         rows = report.get("models")
-        if not isinstance(rows, list):
+        if not isinstance(rows, list) or not rows:
             found.append(f"{label}: cost_basis {basis} is priced from per-model rows, but `models` is "
-                         f"{type(report.get('models')).__name__}, so cost_usd cannot be checked against them")
+                         f"{'empty' if isinstance(rows, list) else type(rows).__name__}, so cost_usd cannot be "
+                         "checked against them")
             return found
-        priced = [_money(row.get("cost_usd")) for row in rows if isinstance(row, dict)]
+        if any(not isinstance(row, dict) for row in rows):
+            # dropping the bad elements and comparing what is left would accept a total that cannot be
+            # reconstructed from the report (Codex round 9 on PR #28)
+            found.append(f"{label}: cost_basis {basis} is priced from per-model rows, but `models` holds an element "
+                         "that is not an object, so cost_usd cannot be checked against them")
+            return found
+        priced = [_money(row.get("cost_usd")) for row in rows]
         if any(c is None for c in priced):
             # a row with no cost is what `usage_missing` produces, and that path imputes the ceiling instead of
             # repricing - so a repriced basis must not carry one
             found.append(f"{label}: cost_basis {basis} is priced from per-model rows, but a row records no usable "
                          "cost_usd; a run with unpriced usage books the ceiling instead")
-        elif priced and abs(sum(priced) - cost) > 1e-6:
+        elif abs(sum(priced) - cost) > 1e-6:
             found.append(f"{label}: cost_basis {basis} prices from per-model rows summing to {sum(priced):.8f}, "
                          f"but cost_usd is {cost:.8f}; the ledger folds cost_usd, so the daily total follows the "
                          "smaller of the two")
@@ -327,12 +348,22 @@ def _judge_identity_problem(run_dir: str, target: dict[str, Any], judge: dict[st
             return (f"{run_dir}: the judge sidecar records run_id {j_run!r}, but the fallback judge writer records "
                     f"the run directory, which is {run_dir!r}; this judge report was written for another run")
         return None
-    if t_eval is not None and j_eval != t_eval:
-        return (f"{run_dir}: the judge sidecar records eval_id {j_eval!r} and the target sidecar {t_eval!r}; both "
-                "copy it from the same manifest, so this judge report belongs to another run")
-    if j_run is not None and t_run is not None and j_run != t_run:
-        return (f"{run_dir}: the judge sidecar records run_id {j_run!r} and the target sidecar {t_run!r}; both copy "
-                "it from the same manifest, so this judge report belongs to another run")
+    # Both comparisons were conditional on their fields being present, so a target keeping only `run_id` beside a
+    # judge keeping only `eval_id` ran neither and returned success on two reports that share no identity at all
+    # (Codex round 9 on PR #28). At least one field must be common, and every common field must agree.
+    common = []
+    if t_eval is not None:
+        common.append(("eval_id", j_eval, t_eval))
+    if j_run is not None and t_run is not None:
+        common.append(("run_id", j_run, t_run))
+    if not common:
+        return (f"{run_dir}: the judge sidecar records {'eval_id' if j_eval else 'run_id'} and the target sidecar "
+                f"records {'run_id' if t_run else 'eval_id'}, so the two share no identity field and the judge's "
+                "cost is joined on the directory alone; both ordinary writers record both fields")
+    for field, mine, theirs in common:
+        if mine != theirs:
+            return (f"{run_dir}: the judge sidecar records {field} {mine!r} and the target sidecar {theirs!r}; both "
+                    "copy it from the same manifest, so this judge report belongs to another run")
     return None
 
 
@@ -567,6 +598,12 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             # commitment, so ceilings on the sidecar that sum higher mean CI ran with more headroom than the guard
             # reserved, and a low actual cost hides it (Codex round 4 on PR #28).
             target_ceiling = _money(r.get("max_spend_usd"))
+            if target_ceiling == 0.0:
+                # the twin of round 8's judge-ceiling rule, which I applied to one side of a symmetric pair:
+                # every paid fire reserves a positive max_spend and the writer records what it was given, so zero
+                # erases the authorisation the run executed under (Codex round 9 on PR #28)
+                problems.append(f"{p.parent.name}/{p.name}: max_spend_usd is 0, which no paid fire produces; the "
+                                "authorisation this run executed under cannot be established")
             if "max_spend_usd" not in r:
                 # `spend.write_report_sidecar` always emits it, so an absent key is a truncated or edited record,
                 # not an optional field - and the `is not None` guard below read it as nothing to check, which let
@@ -585,9 +622,16 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                     # both judge writers record it, so the same reasoning as the target's applies
                     problems.append(f"{judge[0].parent.name}/{judge[0].name}: max_spend_usd is absent; both judge "
                                     "writers record it, so the ceiling the judge ran under cannot be established")
-                elif judge[1].get("max_spend_usd") is not None and judge_actual is None:
+                elif judge_actual is None:
+                    # a PRESENT but null value passed both branches - not absent, and `is not None` was false - and
+                    # fell through to the target's declaration, so a judge sidecar with no record of the ceiling it
+                    # ran under folded clean (Codex round 9 on PR #28)
                     problems.append(f"{judge[0].parent.name}/{judge[0].name}: max_spend_usd "
-                                    f"{judge[1].get('max_spend_usd')!r} is not a finite non-negative number")
+                                    f"{judge[1].get('max_spend_usd')!r} is not a finite non-negative number, so the "
+                                    "ceiling the judge ran under cannot be established")
+                elif judge_actual == 0.0:
+                    problems.append(f"{judge[0].parent.name}/{judge[0].name}: max_spend_usd is 0, which no judged "
+                                    "fire produces; the ceiling the judge ran under cannot be established")
                 elif judge_actual is not None and judge_ceiling is not None \
                         and abs(judge_actual - judge_ceiling) > 1e-9:
                     problems.append(f"{p.parent.name}: the judge ran under a ceiling of {judge_actual:.4f} but the "

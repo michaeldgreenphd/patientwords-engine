@@ -1722,7 +1722,47 @@ re-parked. PR B carries what a paid fire still lacked:
     the per-model rows it was priced from and must not carry an unpriced row,
     and a ceiling-imputed cost must equal the ceiling it records. The test
     fixture gained the `models` rows every repriced sidecar carries, the third
-    round in which the fixture was thinner than the writers. In the reconciliation: a
+    round in which the fixture was thinner than the writers.
+
+21. **Six from the ninth round.** The P1 is a replay: a formatting-only edit, a
+    hand edit or a merge can push the same paid parameters again while the
+    first run is still in flight, and round 7's lookup accepted the original
+    entry because the nonce matched. The replay is a push on attempt 1, so it
+    passes the params guard, waits in the concurrency group and spends a second
+    time, after which both runs land sidecars carrying one nonce. `cmd_fire`
+    now records `params_sha256`, the digest of the exact trigger-file bytes it
+    writes, and the gate requires the reservation to carry the digest of the
+    file CI is running. `publish` corrects it when a re-nonced file is
+    published, but only when the entry already has one - backfilling would
+    force a journal-correction commit in the states where `publish` is
+    inspecting a captured commit rather than the branch tip, and the guard
+    there rightly refuses. **The residual is worth stating:** content restored
+    byte-for-byte by a merge while the first run is in flight still matches.
+    That is what the resting-state rule and the park exist to prevent, and it
+    is why a paid config must never be the trigger file at rest.
+
+    The five P2s are all in the reconciliation, and three of them are the other
+    half of a pair I had fixed on one side only - which is now a pattern worth
+    naming rather than a coincidence. Round 7 required an identity on the judge
+    and round 8 on the target; neither required one **in common**, so a target
+    keeping only `run_id` beside a judge keeping only `eval_id` ran no
+    comparison at all. Round 8 rejected a judge ceiling of zero on the target's
+    declaration; the judge report's own `max_spend_usd` accepted both zero and
+    a present null, the latter falling through to the target's declaration.
+    Round 8 rejected a zero judge ceiling but not a zero target ceiling. The
+    remaining two: an imputed cost is a floor claim as well as a ceiling one,
+    so rows that did price - and an aborted judge's `rows_cost_usd` - must not
+    exceed what the ledger will fold; and the repricing rows must be a nonempty
+    list of objects, because the comprehension dropped non-object elements and
+    the mismatch check was conditional on what survived, so `models: []` passed
+    outright.
+
+    Two things this round changed beyond the findings. The gate now REFUSES
+    when it cannot read the trigger file for a paid petri fire, rather than
+    skipping the binding - a skipped check is the silent failure this repo's
+    own rule forbids. And `scratchpad/pilot_gate_rehearsal.py` grew the replay
+    and stale-reservation cases, so the rehearsal now exercises six states
+    rather than four. In the reconciliation: a
     sidecar seen by the ledger with no amount in `entries_folded` is a
     truncated dashboard, not a legacy record, because this lane postdates that
     watermark; a ceiling that is present but unusable is named rather than

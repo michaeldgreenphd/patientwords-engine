@@ -42,6 +42,7 @@ No medical vocabulary lives in this file.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -1283,6 +1284,10 @@ def cmd_fire(args):
         # writers copy it, so `scripts.petri_audit.cli reconcile-spend` can match every paid fire to its landed cost
         # (PR B, 2026-09-18); None when the fire carried no nonce
         "nonce": str(params["_nonce"]) if params.get("_nonce") not in (None, "") else None,
+        # the digest of the trigger file this fire writes: the gate compares it with the file CI actually ran, so a
+        # replay of the same nonce with different bytes - a formatting-only edit, a hand edit, a merge that changes
+        # the content - cannot claim this reservation (Codex round 9 on PR #28)
+        "params_sha256": params_digest(content),
     }
     if max_spend is not None:
         entry["max_spend"] = max_spend  # in-flight commitment budget_check will count
@@ -1826,6 +1831,16 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
     if fire.get("nonce") != published_nonce:
         corrections.append(f"nonce {fire.get('nonce')!r} -> {published_nonce!r} (the published trigger file's)")
         fire["nonce"] = published_nonce
+    # ...and the digest of what is actually being published, for the same reason: a re-nonced or hand-corrected
+    # trigger file is different bytes, and the gate compares bytes (Codex round 9 on PR #28)
+    published_digest = params_digest(text)
+    # only when the entry HAS a digest and it is now wrong. Backfilling one onto an entry that never carried it is
+    # not a correction, and it would force a journal-correction commit in states where `publish` is inspecting a
+    # captured commit that is not the branch tip - where the guard below rightly refuses to make one.
+    if fire.get("params_sha256") and fire["params_sha256"] != published_digest:
+        corrections.append(f"params_sha256 {str(fire.get('params_sha256'))[:12]} -> {str(published_digest)[:12]} "
+                           "(the published trigger file's)")
+        fire["params_sha256"] = published_digest
     if corrections:
         save_journal(repo / JOURNAL_RELPATH, entries)
         proc = _git(repo, "add", "--", JOURNAL_RELPATH.as_posix())
@@ -1973,6 +1988,16 @@ def cmd_status(args):
     return 0
 
 
+def params_digest(text):
+    """The digest of a trigger file's exact bytes, which is what CI runs.
+
+    `cmd_fire` records it on the journal entry, so the server-side gate can ask
+    whether the reservation it found was taken for THIS content or for an
+    earlier fire whose run is already in flight (Codex round 9 on PR #28).
+    """
+    return hashlib.sha256(text.encode("utf-8")).hexdigest() if isinstance(text, str) else None
+
+
 def reservation_entries(trigger, params, entries):
     """The journal entries that claim to reserve THIS fire, or None when the
     lane has no join key to look one up by.
@@ -1989,7 +2014,7 @@ def reservation_entries(trigger, params, entries):
     return [e for e in entries if e.get("trigger") == trigger and str(e.get("nonce") or "").strip() == nonce]
 
 
-def journal_reservation_problems(trigger, params, entries, now=None, expire_hours=None):
+def journal_reservation_problems(trigger, params, entries, now=None, expire_hours=None, digest=None):
     """Why a paid petri-audit run has no journal reservation behind it, as a
     list of refusals; empty when exactly one entry accounts for it.
 
@@ -2050,6 +2075,28 @@ def journal_reservation_problems(trigger, params, entries, now=None, expire_hour
         problems.append(f"the {trigger} journal entry for _nonce {nonce!r} reserved "
                         f"{entry.get('max_spend')!r} but these params commit {expected!r}; the daily ceiling "
                         "counted the reservation, not what this run would spend")
+    # The reservation must have been taken for THIS trigger content. A formatting-only edit, a hand edit or a merge
+    # can push the same paid parameters again while the original entry is still active; the run is a push on
+    # attempt 1, so it passes the params guard, and matching on the nonce alone let it claim a reservation an
+    # earlier run is already spending (Codex round 9 on PR #28). Both runs would then land sidecars carrying one
+    # nonce and reconciliation could attribute neither. NOTE the residual: content restored byte-for-byte by a
+    # merge while the first run is in flight still matches, which is what the resting-state rule and the park
+    # exist to prevent - a paid config must never be the trigger file at rest.
+    if digest is None:
+        # never skipped: a paid run is gated on bytes, and not being able to read them is a refusal, not a pass
+        # (AGENTS.md, no silent failures). In CI the file is always there - it is what fired the workflow.
+        problems.append(f"the {trigger} trigger file could not be read, so the reservation for _nonce {nonce!r} "
+                        "cannot be checked against the content CI is running")
+    else:
+        recorded = entry.get("params_sha256")
+        if not isinstance(recorded, str) or not recorded:
+            problems.append(f"the {trigger} journal entry for _nonce {nonce!r} records no params_sha256, so it "
+                            "cannot be shown to have reserved the trigger file CI is running; re-fire through "
+                            "scripts/fire_trigger.py")
+        elif recorded != digest:
+            problems.append(f"the {trigger} journal entry for _nonce {nonce!r} reserved trigger content "
+                            f"{recorded[:12]} but CI is running {digest[:12]}: this is a replay of a nonce whose "
+                            "reservation belongs to a different fire, so two runs would land one nonce")
     expected_lane = fire_lane(trigger, params)
     if entry.get("lane") != expected_lane:
         problems.append(f"the {trigger} journal entry for _nonce {nonce!r} reserved on lane "
@@ -2091,8 +2138,15 @@ def cmd_budget_gate(args):
     entries = load_journal(repo / JOURNAL_RELPATH)
     # the reservation itself, before the aggregate: a ceiling that holds in total says nothing about whether THIS
     # run was ever reserved (Codex round 7 on PR #28)
+    # the digest is taken from the TRIGGER FILE in the checkout, not from --params-file: the workflow passes the
+    # resolved params job outputs there, while what fired CI is the file itself
+    trigger_on_disk = repo / TRIGGER_DIR_RELPATH / f"{args.trigger}.json"
+    try:
+        digest = params_digest(trigger_on_disk.read_text(encoding="utf-8"))
+    except OSError:
+        digest = None
     unreserved = journal_reservation_problems(args.trigger, params, entries, now=now,
-                                              expire_hours=expire_hours_from_env())
+                                              expire_hours=expire_hours_from_env(), digest=digest)
     if unreserved:
         for problem in unreserved:
             print(f"budget-gate: REFUSED - {problem}", file=sys.stderr)

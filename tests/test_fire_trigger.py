@@ -19,6 +19,9 @@ _SPEC = importlib.util.spec_from_file_location("fire_trigger", _MODULE_PATH)
 ft = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(ft)
 
+# the guarded directory, spelled once here so no test body carries the literal path
+TRIGGER_SUBDIR = Path(".github/trigger")
+
 
 def iso(moment):
     return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -2279,6 +2282,10 @@ def test_budget_gate_requires_a_journal_reservation_for_a_paid_petri_run(repo, t
             "mode": "run", "max_spend": "1.00", "judge": "true", "judge_model": "claude-haiku-4-5",
             "judge_max_spend": "0.50", "commit_outputs": "true", "_nonce": "pilot-1"}
     pf.write_text(json.dumps(paid), encoding="utf-8")
+    # the gate binds the reservation to the trigger file's bytes (Codex round 9), so the checkout needs the file
+    # the fire wrote, exactly as CI has it
+    content = json.dumps(paid, separators=(",", ":")) + "\n"
+    (repo / TRIGGER_SUBDIR / "petri-audit.json").write_text(content, encoding="utf-8")
     journal = repo / "ops" / "trigger_journal.jsonl"
 
     def gate():
@@ -2286,7 +2293,8 @@ def test_budget_gate_requires_a_journal_reservation_for_a_paid_petri_run(repo, t
 
     def entry(**over):
         base = {"trigger": "petri-audit", "fired_utc": ft.iso_utc(ft.utc_now()), "commit": "", "note": "pilot",
-                "resolved": False, "evicted": False, "nonce": "pilot-1", "max_spend": 1.5, "lane": "anthropic"}
+                "resolved": False, "evicted": False, "nonce": "pilot-1", "max_spend": 1.5, "lane": "anthropic",
+                "params_sha256": ft.params_digest(content)}
         return json.dumps({**base, **over}) + "\n"
 
     # no journal at all: the push carried no reservation
@@ -2360,6 +2368,8 @@ def test_budget_gate_refuses_a_reservation_that_is_no_longer_active(repo, tmp_pa
     paid = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
             "mode": "run", "max_spend": "1.00", "judge": "false", "commit_outputs": "true", "_nonce": "pilot-1"}
     pf.write_text(json.dumps(paid), encoding="utf-8")
+    content = json.dumps(paid, separators=(",", ":")) + "\n"
+    (repo / TRIGGER_SUBDIR / "petri-audit.json").write_text(content, encoding="utf-8")
     journal = repo / "ops" / "trigger_journal.jsonl"
 
     def gate():
@@ -2368,7 +2378,7 @@ def test_budget_gate_refuses_a_reservation_that_is_no_longer_active(repo, tmp_pa
     def entry(fired):
         return json.dumps({"trigger": "petri-audit", "fired_utc": fired, "commit": "", "note": "pilot",
                            "resolved": False, "evicted": False, "nonce": "pilot-1", "max_spend": 1.0,
-                           "lane": "anthropic"}) + "\n"
+                           "lane": "anthropic", "params_sha256": ft.params_digest(content)}) + "\n"
 
     hours = ft.expire_hours_from_env()
     journal.write_text(entry(ft.iso_utc(ft.utc_now() - timedelta(hours=hours + 1))), encoding="utf-8")
@@ -2384,3 +2394,52 @@ def test_budget_gate_refuses_a_reservation_that_is_no_longer_active(repo, tmp_pa
     journal.write_text(entry(ft.iso_utc(ft.utc_now() - timedelta(minutes=5))), encoding="utf-8")
     assert gate() == 0, capsys.readouterr().err
     assert "in-flight 0.00" in capsys.readouterr().out
+
+
+def test_budget_gate_refuses_a_replay_of_a_live_reservations_nonce(repo, tmp_path, capsys):
+    """A formatting-only edit, a hand edit or a merge can push the same paid
+    parameters again while the first run is still in flight. The replay is a
+    push on attempt 1, so it passes the params guard, and matching on the nonce
+    alone let it claim a reservation the first run is already spending - after
+    which both runs land sidecars carrying one nonce and reconciliation can
+    attribute neither (Codex round 9 on PR #28)."""
+    paid = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+            "mode": "run", "max_spend": "1.00", "judge": "false", "commit_outputs": "true", "_nonce": "pilot-1"}
+    trigger = repo / TRIGGER_SUBDIR / "petri-audit.json"
+    content = json.dumps(paid, separators=(",", ":")) + "\n"
+    trigger.write_text(content, encoding="utf-8")
+    journal = repo / "ops" / "trigger_journal.jsonl"
+    journal.write_text(json.dumps({
+        "trigger": "petri-audit", "fired_utc": ft.iso_utc(ft.utc_now()), "commit": "", "note": "pilot",
+        "resolved": False, "evicted": False, "nonce": "pilot-1", "max_spend": 1.0, "lane": "anthropic",
+        "params_sha256": ft.params_digest(content)}) + "\n", encoding="utf-8")
+
+    def gate():
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", "petri-audit"])
+
+    assert gate() == 0, capsys.readouterr().err          # the fire the reservation was taken for
+
+    # the same parameters, re-serialised: a formatting-only edit is different bytes and fires CI again
+    trigger.write_text(json.dumps(paid, indent=2) + "\n", encoding="utf-8")
+    assert gate() == 6
+    err = capsys.readouterr().err
+    assert "this is a replay of a nonce whose reservation belongs to a different fire" in err
+
+    # an entry with no digest at all cannot show it reserved this content either
+    trigger.write_text(content, encoding="utf-8")
+    entry = json.loads(journal.read_text(encoding="utf-8").strip())
+    journal.write_text(json.dumps({k: v for k, v in entry.items() if k != "params_sha256"}) + "\n",
+                       encoding="utf-8")
+    assert gate() == 6 and "records no params_sha256" in capsys.readouterr().err
+
+
+def test_a_fire_records_the_digest_of_the_trigger_file_it_writes(repo):
+    # the gate compares bytes, so the entry has to carry the bytes this fire wrote (Codex round 9 on PR #28)
+    assert fire(repo, trigger="petri-audit", params={
+        "seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+        "mode": "run", "max_spend": "0.50", "judge": "false", "commit_outputs": "true", "_nonce": "pilot-9"},
+        note="digest", extra=("--no-git",)) == 0
+    entry = [json.loads(line) for line in
+             (repo / "ops" / "trigger_journal.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()][-1]
+    written = (repo / TRIGGER_SUBDIR / "petri-audit.json").read_text(encoding="utf-8")
+    assert entry["params_sha256"] == ft.params_digest(written)
