@@ -111,6 +111,12 @@ class Ledger:
         if float(booked) + self.RESOLUTION < cost:
             return False, (f"the ledger has booked {float(booked):.4f} of its {cost:.4f}, so "
                            f"{cost - float(booked):.4f} of landed spend is not in the daily totals")
+        if cost + self.RESOLUTION < float(booked):
+            # the archive now claims LESS than the ledger booked: a sidecar rewritten or truncated after its
+            # fold, which is exactly the alteration this command exists to surface, and growth-only comparison
+            # read it as fully booked (Codex round 3 on PR #28)
+            return False, (f"the ledger has booked {float(booked):.4f} but the sidecar now records {cost:.4f}: a "
+                           "landed cost record cannot shrink, so either it was rewritten or the ledger over-booked")
         return True, None
 
 
@@ -188,7 +194,11 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
     ledger has not booked is in it, so `unfolded_sidecars` is never a list of unnamed gaps.
     """
     entries = read_journal(journal_path)
-    paid = [e for e in entries if e.get("trigger") == LANE and e.get("max_spend") is not None]
+    # A paid entry is CLASSIFIED before its commitment is read: filtering on `max_spend is not None` dropped an
+    # entry that carries the paid-only `lane` with a missing or null commitment, so a paid fire whose sidecar is
+    # also absent went unmentioned entirely (Codex round 3 on PR #28). `cmd_fire` writes both keys together on a
+    # paid fire and neither on a free one, so either key present means the entry claims to be paid.
+    paid = [e for e in entries if e.get("trigger") == LANE and ("max_spend" in e or "lane" in e)]
     problems: list[str] = []
     runs_absent = not Path(runs_dir).is_dir()
     if runs_absent and (paid or Path(runs_dir).resolve() != DEFAULT_RUNS_DIR.resolve()):
@@ -200,12 +210,26 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
     targets, judges = _sidecars(Path(runs_dir))
     ledger = _read_ledger(dashboard_path, problems)
 
+    # One run directory holds one target sidecar. Two carrying different nonces each matched a fire cleanly, so
+    # both read "landed" while the directory's single judge sidecar was attached to both rows and its cost
+    # counted twice (Codex round 3 on PR #28); such a directory joins nothing.
+    targets_by_dir: dict[str, list[tuple[Path, dict[str, Any]]]] = {}
+    for p, r in targets:
+        targets_by_dir.setdefault(p.parent.name, []).append((p, r))
+    ambiguous_dirs = {d for d, found in targets_by_dir.items() if len(found) > 1}
+    for run_dir in sorted(ambiguous_dirs):
+        names = ", ".join(p.name for p, _ in targets_by_dir[run_dir])
+        problems.append(f"{run_dir}: {len(targets_by_dir[run_dir])} target sidecars ({names}); one run directory "
+                        "is one run, so none of them is joined to a fire")
+
     by_nonce: dict[str, list[tuple[Path, dict[str, Any]]]] = {}
     unbound: list[Path] = []
     for p, r in targets:
         if "unreadable" in r:
             problems.append(f"{p.parent.name}/{p.name}: sidecar unreadable ({r['unreadable']})")
             continue
+        if p.parent.name in ambiguous_dirs:
+            continue                               # named above; joining any of them would attribute one run twice
         nonce = r.get("journal_nonce")
         if isinstance(nonce, str) and nonce:
             by_nonce.setdefault(nonce, []).append((p, r))

@@ -295,7 +295,10 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
     # refused as a no-op (Codex round 1 on PR #28). Free modes need none - the park default carries none.
     if str(params.get("mode", "preflight")).strip().lower() == "run":
         nonce = params.get("_nonce")
-        if not isinstance(nonce, (str, int)) or not str(nonce).strip():
+        # The workflow resolves the trigger value as `str(cfg.get("_nonce") or "")`, so any FALSY scalar - 0,
+        # false, "" - reaches the run as an empty nonce while this entry journals "0" or "False" and the two
+        # records can never be joined (Codex round 3 on PR #28). A boolean is refused whichever way it falls.
+        if isinstance(nonce, bool) or not isinstance(nonce, (str, int)) or not nonce or not str(nonce).strip():
             problems.append(
                 "petri-audit mode run must carry a non-empty _nonce: it is the only join key between the "
                 "journal entry that reserves the spend and the cost sidecar the run lands, so a paid fire "

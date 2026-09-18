@@ -303,6 +303,51 @@ def test_a_runs_directory_that_does_not_exist_is_named(tmp_path, monkeypatch):
         "\n".join(reconcile.reconcile(journal, missing)["problems"])
 
 
+def test_a_sidecar_that_shrank_below_the_ledger_watermark_is_named(tmp_path):
+    # growth-only comparison read a truncated or rewritten sidecar as fully booked, hiding exactly the archive
+    # alteration this command exists to surface (Codex round 3 on PR #28)
+    journal, runs, dashboard = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 2.0, resolved=True)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.50, "n1")
+    framework.write_json(dashboard, {"spend": {"entries_seen": ["run_1.report.json"],
+                                               "entries_folded": {"run_1.report.json": 1.00}}})
+    result = reconcile.reconcile(journal, runs, dashboard)
+    assert result["paid_fires"][0]["folded"] is False
+    assert "run_1/run_1.report.json: the ledger has booked 1.0000 but the sidecar now records 0.5000: a landed " \
+           "cost record cannot shrink" in "\n".join(result["problems"])
+
+
+def test_a_paid_entry_whose_commitment_is_missing_is_still_reconciled(tmp_path):
+    # filtering on `max_spend is not None` dropped an entry carrying the paid-only `lane` with a null
+    # commitment, so a paid fire with no sidecar went unmentioned entirely (Codex round 3 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    broken = {"trigger": "petri-audit", "fired_utc": "2026-09-18T10:00:00Z", "commit": "", "note": "t",
+              "resolved": False, "evicted": False, "nonce": "n1", "lane": "anthropic", "max_spend": None}
+    journal.write_text(json.dumps(broken) + "\n"
+                       + json.dumps(_entry("2026-09-18T11:00:00Z", "park-1")) + "\n", encoding="utf-8")
+    result = reconcile.reconcile(journal, runs)
+    assert [r["nonce"] for r in result["paid_fires"]] == ["n1"], "the park is still not a paid fire"
+    problems = "\n".join(result["problems"])
+    assert "paid fire 2026-09-18T10:00:00Z: max_spend None is not a finite non-negative number" in problems
+    assert "no cost sidecar carries its nonce" in problems
+
+
+def test_two_target_sidecars_in_one_run_directory_join_nothing(tmp_path):
+    # each nonce matched one sidecar cleanly, so both fires read "landed" while the directory's single judge
+    # sidecar was attached to both rows and its cost counted twice (Codex round 3 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n"
+                       + json.dumps(_entry("2026-09-18T11:00:00Z", "n2", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.4, "n1", judge_cost=0.3)
+    framework.write_json(runs / "run_1" / "second.report.json",
+                         {"run_id": "run_1", "cost_usd": 0.2, "billing_channel": "anthropic", "journal_nonce": "n2"})
+    result = reconcile.reconcile(journal, runs)
+    problems = "\n".join(result["problems"])
+    assert "run_1: 2 target sidecars (run_1.report.json, second.report.json); one run directory is one run" in problems
+    assert [r["status"] for r in result["paid_fires"]] == ["no sidecar landed", "no sidecar landed"]
+    assert all(r["total_usd"] is None for r in result["paid_fires"]), "one judge cost may not be booked twice"
+
+
 def test_cli_reconcile_spend_renders_writes_json_and_is_strict_on_request(tmp_path, capsys):
     journal, runs, dashboard = _layout(tmp_path)
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0, resolved=True)) + "\n", encoding="utf-8")

@@ -410,12 +410,13 @@ jobs:
       # always(), after the seal check, verify-chain, verify-run and the raw-log refusal.
       - name: Upload the seal-cleared sanitised exports (dry run or paid run; never a raw log)
         if: ${{ needs.params.outputs.mode != 'preflight' }}
-        # This upload is the RECOVERY copy, so its own failure must not cost the primary path: without this, a
-        # transient upload failure fails the job here and the commit step below (default success gating) is
-        # skipped, leaving a paid run's measurement neither committed nor recoverable while the always()-gated
-        # sidecar step still books the spend (Codex round 1 on PR #28). The security gates above stay
-        # prerequisites - a failure there still stops everything after them.
-        continue-on-error: true
+        # For a PAID run this upload is the RECOVERY copy, so its own failure must not cost the primary path:
+        # without this, a transient upload failure fails the job here and the commit step below (default success
+        # gating) is skipped, leaving the measurement neither committed nor recoverable while the always()-gated
+        # sidecar step still books the spend (Codex round 1 on PR #28). For a DRY RUN it is the only output -
+        # nothing is committed - so its failure stays fatal, or the run reports success having produced nothing
+        # (Codex round 3). The security gates above stay prerequisites in both modes.
+        continue-on-error: ${{ needs.params.outputs.mode == 'run' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: petri-audit-exports-${{ github.run_id }}-${{ github.run_attempt }}

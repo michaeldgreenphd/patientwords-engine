@@ -1563,6 +1563,33 @@ re-parked. PR B carries what a paid fire still lacked:
     `resolved` or `evicted` is now named and read as false, the state that
     keeps the fire under scrutiny.
 
+12. **The zero-price sentinel is not a judge of record.** `mockllm/judge`
+    belongs to `MockJudge`, which only the tests construct, but `cmd_judge`
+    always builds `RegistryJudge`, whose resolver reads that bare string as an
+    Anthropic model id. Pricing it at zero — which item 4 requires, so a local
+    judged run reads non-metered — would have let a paid fire naming it pass
+    pre-flight free, run under a `SpendCeiling` that admits every call, and
+    book zero in the fallback sidecar while the client sent the spec to a real
+    provider. `judge_spec_problems` refuses it before any target call and
+    `RegistryJudge` refuses it again at construction.
+13. **A falsy nonce is not a nonce.** The params job resolves the trigger value
+    as `str(cfg.get("_nonce") or "")`, so `0`, `false` or `""` reach the run as
+    an empty nonce while the fire journals `"0"` or `"False"`; the two records
+    could never be joined. The fire path refuses any falsy or boolean value.
+14. **A dry run's artifact failure stays fatal.** `continue-on-error` on the
+    exports upload is now `mode == 'run'`: a paid run's commit path must
+    survive a transient upload failure, but a dry run commits nothing, so the
+    artifact is its only output and a failed upload must not report success.
+15. **Two more refusals in the reconciliation.** A sidecar whose cost has
+    shrunk below the ledger's watermark is named rather than read as fully
+    booked — a landed cost record cannot shrink, so either it was rewritten or
+    the ledger over-booked. A run directory holding two target sidecars joins
+    nothing: each nonce matched one cleanly, so both fires read "landed" while
+    the directory's single judge sidecar was attached to both rows and its cost
+    counted twice. And a paid entry is classified by its `lane` or `max_spend`
+    key before the commitment is read, so an entry with a null commitment is
+    reported instead of filtered away.
+
 The lane is parked, so the trigger file at rest holds the `preflight` park;
 `tests/test_petri_audit_workflow.py` checks that it is either absent (a
 branch cut before the park) or exactly `PARK_DEFAULTS`, and never a

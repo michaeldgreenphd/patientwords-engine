@@ -249,10 +249,11 @@ def test_a_dry_run_uploads_its_seal_cleared_exports_and_the_summary_reads_the_ru
     assert exports["with"]["name"] == "petri-audit-exports-${{ github.run_id }}-${{ github.run_attempt }}"
     assert names.index(exports["name"]) < names.index("Commit sanitised outputs to the branch (mode run only; requires every prior step green)")
     assert "always()" not in exports["if"], "must depend on every prior step, the seal check and verify-chain included"
-    # Codex round 1 (PR #28): the recovery upload's OWN failure must not skip the commit step that follows it
-    # (default success gating), or a transient upload error leaves a paid run neither committed nor recoverable
-    # while the always()-gated sidecar step still books the spend
-    assert exports["continue-on-error"] is True
+    # Codex round 1 (PR #28): on a PAID run the recovery upload's OWN failure must not skip the commit step that
+    # follows it (default success gating), or a transient upload error leaves the measurement neither committed
+    # nor recoverable while the always()-gated sidecar step still books the spend. Codex round 3: on a DRY RUN
+    # the artifact is the only output, so its failure stays fatal rather than reporting success with nothing.
+    assert exports["continue-on-error"] == "${{ needs.params.outputs.mode == 'run' }}"
     commit = _step(workflow, "Commit sanitised outputs to the branch")
     assert "continue-on-error" not in commit, "only the recovery upload is non-blocking"
     assert str(exports["uses"]).startswith("actions/upload-artifact")

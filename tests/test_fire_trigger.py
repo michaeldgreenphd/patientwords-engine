@@ -313,6 +313,12 @@ def test_a_paid_petri_fire_must_carry_a_nonce_and_a_new_one():
     with pytest.raises(ValueError, match="must carry a non-empty _nonce"):
         ft.validate_params("petri-audit", {**paid, "_nonce": "   "})
     assert ft.validate_params("petri-audit", {**paid, "_nonce": "pilot-1"}) is None
+    # the workflow resolves the value as `str(cfg.get("_nonce") or "")`, so a FALSY scalar reaches the run as an
+    # empty nonce while this path journals "0" or "False" and the two records can never be joined (Codex round 3)
+    for falsy in (0, False, True, "", "   ", None, [], {"a": 1}):
+        with pytest.raises(ValueError, match="_nonce"):
+            ft.validate_params("petri-audit", {**paid, "_nonce": falsy})
+    assert ft.validate_params("petri-audit", {**paid, "_nonce": 12345}) is None, "a non-zero int survives str()"
     # the park and any other free mode are unaffected
     assert ft.validate_params("petri-audit", dict(ft.PARK_DEFAULTS["petri-audit"])) is None
     assert ft.validate_params("petri-audit", {**paid, "mode": "dry_run", "target": "mockllm/model"}) is None

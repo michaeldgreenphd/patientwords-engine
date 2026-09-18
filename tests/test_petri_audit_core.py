@@ -992,6 +992,18 @@ def test_judge_specs_are_resolved_through_the_registry_before_any_spend():
     problems = judge_runner.judge_spec_problems("nope:some-model")
     assert problems and "unknown provider" in problems[0]
     assert judge_runner.judge_spec_problems("copilot"), "a manual-UI provider has no API to judge with"
+    # Codex round 3 on PR #28: `cmd_judge` always builds RegistryJudge, whose resolver reads the bare string
+    # `mockllm/judge` as an Anthropic model id. Priced at zero (which it must be, so a local judged run reads
+    # non-metered), that spec would pass pre-flight free, leave SpendCeiling admitting every call, and book zero
+    # in the fallback sidecar, while the client sent it to a real provider. Refused at both entry points.
+    problems = judge_runner.judge_spec_problems("mockllm/judge")
+    assert problems and "test sentinel for MockJudge" in problems[0]
+    with pytest.raises(ValueError, match="zero-price test sentinel"):
+        judge_runner.RegistryJudge("mockllm/judge")
+    from scripts.petri_audit.spend import ZERO_PRICE_MODELS
+
+    for sentinel in ZERO_PRICE_MODELS:
+        assert judge_runner.judge_spec_problems(sentinel), sentinel
 
 
 def test_analysis_rows_carry_protocol_and_flag_shared_prefix(seed_set):
