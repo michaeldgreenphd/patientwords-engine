@@ -278,13 +278,27 @@ def test_a_flag_that_is_not_a_boolean_cannot_excuse_a_fire(tmp_path):
     assert "no cost sidecar carries its nonce" in problems
 
 
-def test_a_runs_directory_that_does_not_exist_is_named(tmp_path):
+def test_a_runs_directory_that_does_not_exist_is_named(tmp_path, monkeypatch):
     journal, runs, _ = _layout(tmp_path)
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0, evicted=True)) + "\n", encoding="utf-8")
     missing = tmp_path / "no_such_runs"
+    # a path the caller named that is not there: a mistyped --runs, scanned nothing, said nothing
     result = reconcile.reconcile(journal, missing)
     assert f"{missing}: no such directory, so no landed sidecar was scanned at all" in "\n".join(result["problems"])
     assert reconcile.reconcile(journal, runs)["problems"] == [], "an existing but empty archive is not a problem"
+    # ...but the DEFAULT archive before the lane's first landed run is the normal state, not a defect: nothing
+    # has created it and no paid fire is waiting on it. It is stated in the report and left out of problems,
+    # so `--strict` does not fail a lane that has simply never run (found by running the CLI on this repo).
+    monkeypatch.setattr(reconcile, "DEFAULT_RUNS_DIR", missing)
+    empty_journal = tmp_path / "empty.jsonl"
+    empty_journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "park-1")) + "\n", encoding="utf-8")
+    quiet = reconcile.reconcile(empty_journal, missing)
+    assert quiet["problems"] == []
+    assert quiet["runs_dir_note"] == f"{missing}: no such directory (no run has landed here)"
+    assert quiet["runs_dir_note"] in reconcile.render_markdown(quiet), "the absence is stated, never hidden"
+    # one paid fire is waiting on it, so the same absent default IS a problem
+    assert f"{missing}: no such directory, so no landed sidecar was scanned at all" in \
+        "\n".join(reconcile.reconcile(journal, missing)["problems"])
 
 
 def test_cli_reconcile_spend_renders_writes_json_and_is_strict_on_request(tmp_path, capsys):

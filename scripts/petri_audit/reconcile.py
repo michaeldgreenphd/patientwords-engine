@@ -21,11 +21,12 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .framework import load_json
+from .framework import ROOT, load_json
 
 LANE = "petri-audit"
 JUDGE_SUFFIX = ".judge.report.json"
 NUMBER = (int, float)
+DEFAULT_RUNS_DIR = ROOT / "data" / "petri" / "runs"      # the CLI's default; the first landed run creates it
 
 
 def read_journal(path: Path | str) -> list[dict[str, Any]]:
@@ -186,9 +187,12 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
     entries = read_journal(journal_path)
     paid = [e for e in entries if e.get("trigger") == LANE and e.get("max_spend") is not None]
     problems: list[str] = []
-    if not Path(runs_dir).is_dir():
+    runs_absent = not Path(runs_dir).is_dir()
+    if runs_absent and (paid or Path(runs_dir).resolve() != DEFAULT_RUNS_DIR.resolve()):
         # a mistyped --runs, or a checkout without the runs tree: read as an empty archive it reported "no
-        # problems" with nothing scanned, or blamed every fire for a sidecar that was never looked for
+        # problems" with nothing scanned, or blamed every fire for a sidecar that was never looked for.
+        # The default path before the lane's first landed run is not that: nothing has created it yet and no
+        # paid fire is waiting on it, so the report states the absence without calling it a problem.
         problems.append(f"{runs_dir}: no such directory, so no landed sidecar was scanned at all")
     targets, judges = _sidecars(Path(runs_dir))
     ledger = _read_ledger(dashboard_path, problems)
@@ -340,7 +344,13 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             if not ledger.state(p.name, _money(r.get("cost_usd")))[0]:
                 unfolded.append(p.name)
     unfolded = sorted(unfolded)
+    if runs_absent:
+        # stated whether or not it is a problem, so "Sidecars found: 0" is never read as "the archive is empty"
+        problems_note = f"{runs_dir}: no such directory (no run has landed here)"
+    else:
+        problems_note = None
     return {"lane": LANE, "paid_fires": rows, "sidecars": {"target": len(targets), "judge": len(judges)},
+            "runs_dir": str(runs_dir), "runs_dir_note": problems_note,
             "unfolded_sidecars": unfolded, "problems": problems}
 
 
@@ -364,6 +374,8 @@ def render_markdown(result: dict[str, Any]) -> str:
         lines.append("| — | — | — | — | — | — | — | — | — | no paid fire journaled |")
     s = result["sidecars"]
     lines += ["", f"Sidecars found: {s['target']} target, {s['judge']} judge."]
+    if result.get("runs_dir_note"):
+        lines.append(result["runs_dir_note"])
     if result["unfolded_sidecars"]:
         lines.append("Not yet folded into the ledger (the daily Routine folds): " + ", ".join(result["unfolded_sidecars"]))
     lines.append("")
