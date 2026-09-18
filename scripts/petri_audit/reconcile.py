@@ -183,12 +183,15 @@ def _flag(entry: dict[str, Any], key: str, problems: list[str]) -> bool:
 def _timestamp(value: Any) -> datetime | None:
     """A sidecar's `run_utc` as a datetime, or None when it is missing or does
     not parse. `ledger_update.parse_ts` reads the same field and falls back to
-    the scan date when it cannot, which books the cost to the wrong day."""
-    if not isinstance(value, str) or not value.strip():
+    the scan date when it cannot, which books the cost to the wrong day - so
+    this mirrors that function exactly rather than parsing as it pleases. In
+    particular it does NOT strip: `datetime.fromisoformat` rejects surrounding
+    whitespace, so a padded stamp the ledger falls back on must be reported
+    here too (found in self-review, 2026-09-18)."""
+    if not isinstance(value, str) or not value:
         return None
-    text = value.strip().replace("Z", "+00:00")
     try:
-        return datetime.fromisoformat(text)
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
 

@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts import ledger_update  # noqa: E402
 from scripts.petri_audit import cli, framework, reconcile  # noqa: E402
 
 
@@ -406,10 +407,14 @@ def test_a_sidecar_whose_run_timestamp_does_not_parse_is_named(tmp_path):
     journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
     _sidecar(runs, "run_1", 0.4, "n1", judge_cost=0.2)
     path = runs / "run_1" / "run_1.report.json"
-    for bad in ("", "  ", "yesterday", None):
+    # a padded stamp is in this list because `datetime.fromisoformat` rejects surrounding whitespace, so
+    # `ledger_update.parse_ts` falls back to the scan date on it: stripping here before parsing would have
+    # passed the very stamp the ledger mis-books (found in self-review, 2026-09-18)
+    for bad in ("", "  ", "yesterday", None, " 2026-09-18T10:00:00Z", "2026-09-18T10:00:00Z\n"):
         framework.write_json(path, {**framework.load_json(path), "run_utc": bad})
         assert f"run_1/run_1.report.json: run_utc {bad!r} is missing or does not parse" in \
             "\n".join(reconcile.reconcile(journal, runs)["problems"]), bad
+        assert ledger_update.parse_ts(bad) is None, f"the ledger must agree that {bad!r} does not parse"
     # the judge sidecar is checked too, and the writers' own format parses
     framework.write_json(path, {**framework.load_json(path), "run_utc": "2026-09-18T10:05:00Z"})
     jpath = runs / "run_1" / "run_1.judge.report.json"

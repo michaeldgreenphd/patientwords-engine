@@ -1617,7 +1617,12 @@ re-parked. PR B carries what a paid fire still lacked:
     already identifies the fire's own entry exactly, because every entry the
     script writes carries `commit: ""` and a filter on that field would have
     dropped the other session's fresh entry - the one to compare with (found
-    in self-review before the round-5 replies went out). In the reconciliation: a
+    in self-review before the round-5 replies went out). The same pass found
+    `reconcile`'s `run_utc` parser stripping whitespace where
+    `ledger_update.parse_ts` does not: `datetime.fromisoformat` rejects a
+    padded stamp, so the ledger falls back to the scan date on exactly the
+    value the check was passing. It now mirrors that function rather than
+    parsing as it pleases. In the reconciliation: a
     sidecar seen by the ledger with no amount in `entries_folded` is a
     truncated dashboard, not a legacy record, because this lane postdates that
     watermark; a ceiling that is present but unusable is named rather than
