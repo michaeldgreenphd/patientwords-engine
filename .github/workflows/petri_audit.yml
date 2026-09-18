@@ -210,6 +210,14 @@ jobs:
               if v not in ("true", "false"):
                   raise SystemExit(f"{k} must be true or false, got {p[k]!r}")
               p[k] = v
+          # Every value below is written as one `key=value` line, and a later duplicate key wins, so a value
+          # carrying a newline writes further key=value lines of its own: a trigger file whose `target` or
+          # `_nonce` held one could rewrite mode, a ceiling or commit_outputs AFTER the checks above passed.
+          # `_nonce` is written last, so an injected line there overrides every key. fire_trigger.py refuses
+          # such a value at the fire, and this refuses it again for a trigger file no fire wrote (PR B).
+          for k, v in list(p.items()) + [("_nonce", nonce)]:
+              if any(ord(c) < 32 or ord(c) == 127 for c in v):
+                  raise SystemExit(f"{k} must not carry a control character (newline, carriage return, tab), got {v!r}")
           out = os.environ["GITHUB_OUTPUT"]
           with open(out, "a", encoding="utf-8") as f:
               for k in defaults:
@@ -402,6 +410,12 @@ jobs:
       # always(), after the seal check, verify-chain, verify-run and the raw-log refusal.
       - name: Upload the seal-cleared sanitised exports (dry run or paid run; never a raw log)
         if: ${{ needs.params.outputs.mode != 'preflight' }}
+        # This upload is the RECOVERY copy, so its own failure must not cost the primary path: without this, a
+        # transient upload failure fails the job here and the commit step below (default success gating) is
+        # skipped, leaving a paid run's measurement neither committed nor recoverable while the always()-gated
+        # sidecar step still books the spend (Codex round 1 on PR #28). The security gates above stay
+        # prerequisites - a failure there still stops everything after them.
+        continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: petri-audit-exports-${{ github.run_id }}-${{ github.run_attempt }}

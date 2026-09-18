@@ -85,7 +85,7 @@ def test_fire_path_refuses_a_bad_judge_token_allowance(capsys):
     """Codex round 6: judge_max_tokens was the one numeric key no entry point
     parsed before the paid run."""
     base = dict(ft.PARK_DEFAULTS[TRIGGER], mode="run", target="anthropic/claude-haiku-4-5", judge="true",
-                judge_model="claude-haiku-4-5", judge_max_spend="0.01")
+                judge_model="claude-haiku-4-5", judge_max_spend="0.01", _nonce="n1")  # a paid fire carries a nonce (PR #28)
     for bad in ("three-hundred", "0", "-5", ""):
         assert any("judge_max_tokens must be a positive integer" in p
                    for p in ft.petri_params_problems(dict(base, judge_max_tokens=bad))), bad
@@ -141,9 +141,24 @@ def test_defaults_cover_every_trigger_key_and_dispatch_input(workflow, defaults)
     assert TRIGGER in ft.PAID_TRIGGERS and TRIGGER in ft.TRIGGERS
 
 
-def test_no_trigger_file_exists_so_nothing_can_fire():
-    assert not (ROOT / ".github" / "trigger" / f"{TRIGGER}.json").exists(), (
-        "the trigger file is created by fire_trigger.py park after the lane merges, never by hand")
+def test_the_trigger_file_is_absent_or_parked_so_a_branch_operation_re_fires_nothing():
+    """The resting-state rule (AGENTS.md): a trigger file at rest is a loaded
+    default any branch operation can pull, so it is either absent or the park.
+
+    It was absent while the lane was unmerged; the owner parked the lane on
+    2026-09-18 (fire_trigger.py park), so `main` now carries the park default
+    and a branch cut before it still carries none. Either state is correct; a
+    file holding anything else - a paid `mode: run` left at rest - is not, and
+    would re-fire that configuration on the next merge, rebase or cherry-pick.
+    """
+    path = ROOT / ".github" / "trigger" / f"{TRIGGER}.json"
+    if not path.exists():
+        return
+    params = json.loads(path.read_text(encoding="utf-8"))
+    at_rest = {k: v for k, v in params.items() if not k.startswith("_")}
+    assert at_rest == ft.PARK_DEFAULTS[TRIGGER], (
+        "the trigger file at rest must be the park default, written by fire_trigger.py park, never by hand")
+    assert not ft.is_paid_fire(TRIGGER, params), "a file at rest that would spend is the resting-state defect"
 
 
 def test_interpreter_and_harness_are_the_locked_ones(workflow, raw):
@@ -234,6 +249,12 @@ def test_a_dry_run_uploads_its_seal_cleared_exports_and_the_summary_reads_the_ru
     assert exports["with"]["name"] == "petri-audit-exports-${{ github.run_id }}-${{ github.run_attempt }}"
     assert names.index(exports["name"]) < names.index("Commit sanitised outputs to the branch (mode run only; requires every prior step green)")
     assert "always()" not in exports["if"], "must depend on every prior step, the seal check and verify-chain included"
+    # Codex round 1 (PR #28): the recovery upload's OWN failure must not skip the commit step that follows it
+    # (default success gating), or a transient upload error leaves a paid run neither committed nor recoverable
+    # while the always()-gated sidecar step still books the spend
+    assert exports["continue-on-error"] is True
+    commit = _step(workflow, "Commit sanitised outputs to the branch")
+    assert "continue-on-error" not in commit, "only the recovery upload is non-blocking"
     assert str(exports["uses"]).startswith("actions/upload-artifact")
     assert "data/petri/runs/run_${{ github.run_id }}_${{ github.run_attempt }}/" in exports["with"]["path"]
     # Codex (PR #27): the cumulative chain file references every earlier committed run, which the artifact does not
@@ -294,7 +315,7 @@ def test_fire_lane_classifies_the_petri_target_and_judge_specs():
     from scripts.petri_audit import spend
     assert spend.billing_channel([orl]) == "openrouter" and spend.judge_billing_channel("openrouter:google/x") == "openrouter"
     # a mixed-channel fire is refused outright: one journal entry carries one commitment on one account
-    base = dict(ft.PARK_DEFAULTS[TRIGGER], mode="run", judge="true", judge_max_spend="0.01")
+    base = dict(ft.PARK_DEFAULTS[TRIGGER], mode="run", judge="true", judge_max_spend="0.01", _nonce="n1")
     with pytest.raises(ValueError, match="mixed-channel"):
         ft.validate_params(TRIGGER, dict(base, target=orl, judge_model="claude-haiku-4-5"))
     with pytest.raises(ValueError, match="mixed-channel"):

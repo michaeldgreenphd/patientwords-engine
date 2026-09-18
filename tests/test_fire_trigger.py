@@ -302,6 +302,56 @@ def test_validate_params_requires_explicit_commit_outputs():
             ft.validate_params(trigger, params)
 
 
+def test_a_paid_petri_fire_must_carry_a_nonce_and_a_new_one():
+    # the nonce is the only join key between the journal entry that reserves the spend and the cost sidecar the
+    # run lands; without one both records are permanently unaccountable, and a repeat would book one landed cost
+    # against two commitments (Codex round 1 on PR #28). Free modes need none - the park default carries none.
+    paid = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+            "mode": "run", "max_spend": "1.00", "judge": "false", "commit_outputs": "true"}
+    with pytest.raises(ValueError, match="must carry a non-empty _nonce"):
+        ft.validate_params("petri-audit", paid)
+    with pytest.raises(ValueError, match="must carry a non-empty _nonce"):
+        ft.validate_params("petri-audit", {**paid, "_nonce": "   "})
+    assert ft.validate_params("petri-audit", {**paid, "_nonce": "pilot-1"}) is None
+    # the park and any other free mode are unaffected
+    assert ft.validate_params("petri-audit", dict(ft.PARK_DEFAULTS["petri-audit"])) is None
+    assert ft.validate_params("petri-audit", {**paid, "mode": "dry_run", "target": "mockllm/model"}) is None
+    # ...and the same requirement holds server-side, where a workflow_dispatch never passes through the fire path
+    assert any("_nonce" in p for p in ft.lane_params_problems("petri-audit", paid))
+
+    entries = [{"trigger": "petri-audit", "fired_utc": "2026-09-18T10:00:00Z", "nonce": "pilot-1"},
+               {"trigger": "advice-eval", "fired_utc": "2026-09-18T11:00:00Z", "nonce": "other", "max_spend": 1.0},
+               {"trigger": "petri-audit", "fired_utc": "2026-09-18T12:00:00Z", "nonce": None}]
+    assert "already on the petri-audit journal entry fired at 2026-09-18T10:00:00Z" in \
+        ft.reused_nonce("petri-audit", {**paid, "_nonce": "pilot-1"}, entries)
+    assert ft.reused_nonce("petri-audit", {**paid, "_nonce": "pilot-2"}, entries) == ""
+    # a free fire's nonce exists only to make the trigger file differ, so reuse there is not a refusal
+    assert ft.reused_nonce("petri-audit", {**paid, "mode": "preflight", "_nonce": "pilot-1"}, entries) == ""
+    # another lane's nonce is not this lane's
+    assert ft.reused_nonce("petri-audit", {**paid, "_nonce": "other"}, entries) == ""
+
+
+def test_a_value_carrying_a_control_character_is_refused_at_the_fire():
+    # every workflow's params job writes its resolved values into $GITHUB_OUTPUT as `key=value` lines and a
+    # later duplicate key wins, so a newline inside a value writes further key=value lines of its own. On the
+    # petri lane `_nonce` is written last, where an injected line overrides mode, target and both ceilings
+    # after the job's checks have passed (PR B). No legitimate value carries a control character.
+    ok = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+          "mode": "run", "max_spend": "1.00", "judge": "false", "commit_outputs": "true",
+          "_nonce": "pilot-20260918a"}
+    assert ft.validate_params("petri-audit", ok) is None
+    for bad in ({"_nonce": "x\nmode=run"}, {"_nonce": "x\rmax_spend=99"}, {"target": "m\ncommit_outputs=true"},
+                {"seeds_file": "s\tx"}):
+        with pytest.raises(ValueError, match="control character"):
+            ft.validate_params("petri-audit", {**ok, **bad})
+    # the same guard covers a list-valued param, element by element (archive-renders `runs`)
+    assert ft.validate_params("archive-renders", {"tag": "t", "runs": ["trace_out/x"]}) is None
+    with pytest.raises(ValueError, match="control character"):
+        ft.validate_params("archive-renders", {"tag": "t", "runs": ["trace_out/x", "y\nprune=true"]})
+    assert ft.control_char_values({"a": "clean", "b": ["also", "clean"], "c": 3}) == []
+    assert ft.control_char_values({"z": "bad\n", "a": "bad\x7f", "ok": "fine"}) == ["a", "z"]
+
+
 def test_queue_view_shape():
     now = datetime.now(timezone.utc)
     entries = [

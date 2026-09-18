@@ -62,7 +62,51 @@ def _sidecars(runs_dir: Path) -> tuple[list[tuple[Path, Any]], list[tuple[Path, 
 
 
 def _money(value: Any) -> float | None:
-    return float(value) if isinstance(value, NUMBER) and not isinstance(value, bool) else None
+    """A monetary field as a float, or None when it is anything money cannot be.
+
+    `json.loads` accepts `NaN` and `Infinity`, and every comparison with NaN is
+    False, so a NaN total sailed past the over-commitment check; a negative cost
+    lowered a run's total instead of being named (Codex round 1 on PR #28). Both
+    are None here, which every caller reports by name rather than treating as
+    zero.
+    """
+    if not isinstance(value, NUMBER) or isinstance(value, bool):
+        return None
+    number = float(value)
+    if number != number or number in (float("inf"), float("-inf")) or number < 0:
+        return None
+    return number
+
+
+def _folded_entries(dashboard_path: Path | str | None, problems: list[str]) -> set[str] | None:
+    """The sidecar filenames the ledger has folded (`spend.entries_seen`, which
+    `ledger_update.sidecar_key` keys on the bare filename for this lane), or
+    None when no dashboard was given or it cannot be read - a dashboard that
+    does not parse is a named problem, never an empty fold set that would
+    report every landed sidecar as unbooked."""
+    if dashboard_path is None:
+        return None
+    name = Path(dashboard_path).name
+    if not Path(dashboard_path).is_file():
+        # the CLI always supplies a path, so this is a mistyped --dashboard or a checkout without the ledger:
+        # left silent, --strict printed "No problems" without having checked the ledger half at all
+        problems.append(f"{dashboard_path}: no such file, so no sidecar can be checked against the ledger")
+        return None
+    try:
+        dashboard: Any = load_json(dashboard_path)
+    except (OSError, ValueError) as exc:
+        problems.append(f"{name}: unreadable, so no sidecar can be checked against the ledger ({exc})")
+        return None
+    spend = dashboard.get("spend") if isinstance(dashboard, dict) else None
+    if not isinstance(spend, dict):
+        problems.append(f"{name}: no spend block, so no sidecar can be checked against the ledger")
+        return None
+    seen = spend.get("entries_seen")
+    if not isinstance(seen, list):
+        problems.append(f"{name}: spend.entries_seen is missing or not a list, so no sidecar can be checked "
+                        "against the ledger")
+        return None
+    return {str(s) for s in seen}
 
 
 def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Path | str | None = None) -> dict[str, Any]:
@@ -76,14 +120,11 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
     entries = read_journal(journal_path)
     paid = [e for e in entries if e.get("trigger") == LANE and e.get("max_spend") is not None]
     targets, judges = _sidecars(Path(runs_dir))
-    folded: set[str] | None = None
-    if dashboard_path is not None and Path(dashboard_path).is_file():
-        seen = (load_json(dashboard_path).get("spend") or {}).get("entries_seen")
-        folded = set(seen) if isinstance(seen, list) else set()
+    problems: list[str] = []
+    folded: set[str] | None = _folded_entries(dashboard_path, problems)
 
     by_nonce: dict[str, list[tuple[Path, dict[str, Any]]]] = {}
     unbound: list[Path] = []
-    problems: list[str] = []
     for p, r in targets:
         if "unreadable" in r:
             problems.append(f"{p.parent.name}/{p.name}: sidecar unreadable ({r['unreadable']})")
@@ -93,7 +134,20 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             by_nonce.setdefault(nonce, []).append((p, r))
         else:
             unbound.append(p)
-    judge_by_dir = {p.parent.name: (p, r) for p, r in judges}
+    # one judge sidecar per run directory is what the writers produce; keeping the last of several silently
+    # dropped the others' cost from the reconciliation (Codex round 1 on PR #28), so an ambiguous directory
+    # carries no judge cost at all and is named
+    judges_by_dir: dict[str, list[tuple[Path, dict[str, Any]]]] = {}
+    for p, r in judges:
+        judges_by_dir.setdefault(p.parent.name, []).append((p, r))
+    judge_by_dir: dict[str, tuple[Path, dict[str, Any]]] = {}
+    for run_dir, found in judges_by_dir.items():
+        if len(found) == 1:
+            judge_by_dir[run_dir] = found[0]
+        else:
+            names = ", ".join(p.name for p, _ in found)
+            problems.append(f"{run_dir}: {len(found)} judge sidecars ({names}); one run directory carries one "
+                            "judge pass, so none of their costs is joined to a fire")
 
     rows: list[dict[str, Any]] = []
     known: set[str] = set()
@@ -103,6 +157,9 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                                "resolved": bool(e.get("resolved")), "evicted": bool(e.get("evicted")), "run": None,
                                "cost_usd": None, "judge_cost_usd": None, "total_usd": None, "cost_basis": None,
                                "folded": None, "judge_folded": None, "status": None}
+        if row["max_spend"] is None:
+            problems.append(f"paid fire {e.get('fired_utc')}: max_spend {e.get('max_spend')!r} is not a finite "
+                            "non-negative number, so the landed cost cannot be checked against the commitment")
         if not isinstance(nonce, str) or not nonce:
             row["status"] = "no nonce recorded"
             problems.append(f"paid fire {e.get('fired_utc')}: the journal entry records no nonce, so no sidecar can be joined to it")
@@ -126,13 +183,18 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             row["cost_usd"] = _money(r.get("cost_usd"))
             row["cost_basis"] = r.get("cost_basis") if isinstance(r.get("cost_basis"), str) else None
             if row["cost_usd"] is None:
-                problems.append(f"{p.parent.name}/{p.name}: cost_usd is missing or not a number")
+                problems.append(f"{p.parent.name}/{p.name}: cost_usd {r.get('cost_usd')!r} is missing or not a "
+                                "finite non-negative number")
             judge = judge_by_dir.get(p.parent.name)
             if judge is not None:
                 jp, jr = judge
-                row["judge_cost_usd"] = _money(jr.get("cost_usd")) if "unreadable" not in jr else None
-                if row["judge_cost_usd"] is None:
-                    problems.append(f"{jp.parent.name}/{jp.name}: judge cost_usd is missing or not a number")
+                if "unreadable" in jr:
+                    problems.append(f"{jp.parent.name}/{jp.name}: judge sidecar unreadable ({jr['unreadable']})")
+                else:
+                    row["judge_cost_usd"] = _money(jr.get("cost_usd"))
+                    if row["judge_cost_usd"] is None:
+                        problems.append(f"{jp.parent.name}/{jp.name}: judge cost_usd {jr.get('cost_usd')!r} is missing "
+                                        "or not a finite non-negative number")
             if row["cost_usd"] is not None and (judge is None or row["judge_cost_usd"] is not None):
                 row["total_usd"] = row["cost_usd"] + (row["judge_cost_usd"] or 0.0)
                 if row["max_spend"] is not None and row["total_usd"] > row["max_spend"] + 1e-9:
@@ -146,6 +208,14 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
 
     for p in unbound:
         problems.append(f"{p.parent.name}/{p.name}: sidecar carries no journal_nonce; no fire accounts for it")
+    # a judge sidecar is joined through its run directory's target sidecar, so one standing alone is booked by
+    # the ledger and reported by nothing here unless it is named (the fallback spend-report step writes a target
+    # sidecar for every attempted run, so this means that step did not run either)
+    target_dirs = {p.parent.name for p, _ in targets}
+    for p, _ in judges:
+        if p.parent.name not in target_dirs:
+            problems.append(f"{p.parent.name}/{p.name}: judge sidecar with no target sidecar in its run directory, "
+                            "so no journal entry accounts for its cost")
     for nonce, matches in by_nonce.items():
         if nonce not in known:
             for p, _ in matches:

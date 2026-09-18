@@ -288,6 +288,18 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
             ok = False
         if not ok:
             problems.append(f"petri-audit judge_max_tokens must be a positive integer, got {params['judge_max_tokens']!r}")
+    # A paid run's `_nonce` is the ONLY join key between the journal entry that reserved its spend and the cost
+    # sidecar it lands (workflow -> run_params.json -> manifest spend.journal_nonce -> both sidecar writers).
+    # Without one, `cli reconcile-spend` reports the fire as unbooked and the sidecar as unaccounted, for good,
+    # and the omission is easy: any other changed key already makes the trigger file differ, so the fire is not
+    # refused as a no-op (Codex round 1 on PR #28). Free modes need none - the park default carries none.
+    if str(params.get("mode", "preflight")).strip().lower() == "run":
+        nonce = params.get("_nonce")
+        if not isinstance(nonce, (str, int)) or not str(nonce).strip():
+            problems.append(
+                "petri-audit mode run must carry a non-empty _nonce: it is the only join key between the "
+                "journal entry that reserves the spend and the cost sidecar the run lands, so a paid fire "
+                f"without one can never be reconciled, got {nonce!r}")
     target_channel, judge_channel = petri_channels(params, registry)
     if judge_channel is not None and judge_channel != target_channel:
         problems.append(
@@ -578,9 +590,52 @@ def validate_params(trigger, params):
             "the workflow's push-path default is false, which measures and then discards "
             "every output when the runner is reclaimed"
         )
+    bad = control_char_values(params)
+    if bad:
+        raise ValueError(
+            f"{trigger} param value(s) {bad} carry a control character (newline, carriage return, tab): "
+            "every workflow's params job writes its resolved values into $GITHUB_OUTPUT as `key=value` "
+            "lines, so an embedded newline writes further key=value lines of its own and a duplicate key "
+            "read later wins - a value could silently rewrite mode, target or a spend ceiling after the "
+            "job's own checks passed. No legitimate value carries one"
+        )
     problems = lane_params_problems(trigger, params)
     if problems:
         raise ValueError("; ".join(problems))
+
+
+def reused_nonce(trigger, params, entries):
+    """The refusal message when this paid fire's `_nonce` is one an existing
+    journal entry of the same trigger already carries, else "". Only a paid
+    fire is checked: a free fire's nonce exists to make the trigger file
+    differ, and the parks deliberately reuse none at all."""
+    if not is_paid_fire(trigger, params):
+        return ""
+    nonce = str(params.get("_nonce") or "").strip()
+    if not nonce:
+        return ""
+    for entry in entries:
+        if entry.get("trigger") == trigger and str(entry.get("nonce") or "") == nonce:
+            return (f"_nonce {nonce!r} is already on the {trigger} journal entry fired at "
+                    f"{entry.get('fired_utc', '?')}: a nonce binds one journal entry to one landed cost "
+                    "sidecar, so reusing it would book one cost against two commitments. Use a new nonce")
+    return ""
+
+
+def control_char_values(params):
+    """Sorted keys whose value (or, for a list, some element) carries a control
+    character. Underscore metadata is included: `_nonce` reaches $GITHUB_OUTPUT
+    like any resolved value, and it is written last, where an injected line
+    overrides every key before it (PR B, 2026-09-18)."""
+    def dirty(value):
+        return any(ord(ch) < 32 or ord(ch) == 127 for ch in str(value))
+
+    bad = []
+    for key, value in params.items():
+        values = value if isinstance(value, (list, tuple)) else [value]
+        if any(dirty(v) for v in values):
+            bad.append(str(key))
+    return sorted(bad)
 
 
 def parse_max_spend(value):
@@ -1130,6 +1185,14 @@ def cmd_fire(args):
             for e in recent:
                 print(f"  resolved {e.get('resolved_utc', '?')}  note={e.get('note', '')!r}", file=sys.stderr)
             return 6
+
+    # 3c. A paid fire's nonce must also be NEW. validate_params has already refused a paid petri fire without
+    # one; a repeat of a nonce some earlier entry carries would bind two journal entries to one sidecar, and
+    # reconcile-spend would book that single landed cost against both commitments (Codex round 1 on PR #28).
+    reused = reused_nonce(args.trigger, params, entries)
+    if reused:
+        print(f"refused: {reused}", file=sys.stderr)
+        return 3
 
     # 4. Budget guard for the paid triggers: committed = landed + in-flight max_spend.
     # Mitigation circuit-trace fires are paid too (Anthropic translation calls);

@@ -1557,8 +1557,23 @@ def test_the_mock_judge_is_zero_priced():
     """PR B (2026-09-18): `mockllm/judge` is the judge spec the local tests use; it
     resolved to the fallback price, so a mock judge's rows were labelled
     provider-measured with a fallback source."""
-    from scripts.petri_audit.spend import ZERO_PRICE_MODELS, resolve_price
+    from scripts.petri_audit.spend import (
+        ZERO_PRICE_MODELS,
+        registry_spec_to_inspect,
+        resolve_price,
+        resolve_registry_price,
+    )
 
     assert "mockllm/judge" in ZERO_PRICE_MODELS
     price = resolve_price("mockllm/judge")
     assert (price.input_per_mtok, price.output_per_mtok, price.source) == (0.0, 0.0, "zero:mock_or_placeholder")
+    # preflight, the judge pass and judge-spend-report all price the judge through the REGISTRY resolver, which
+    # expanded the bare spec to `anthropic/mockllm/judge` and missed the zero-price entry entirely (Codex round 1
+    # on PR #28); every one of those paths must see the same zero price
+    assert registry_spec_to_inspect("mockllm/judge") == "mockllm/judge"
+    registry_price = resolve_registry_price("mockllm/judge")
+    assert (registry_price.input_per_mtok, registry_price.output_per_mtok) == (0.0, 0.0)
+    assert registry_price.source == "zero:mock_or_placeholder"
+    # a real judge spec still expands by the registry's rule
+    assert registry_spec_to_inspect("claude-haiku-4-5") == "anthropic/claude-haiku-4-5"
+    assert registry_spec_to_inspect("openrouter:vendor/model") == "openrouter/vendor/model"

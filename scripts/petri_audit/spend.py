@@ -69,6 +69,11 @@ def registry_spec_to_inspect(spec: str, registry: dict | None = None) -> str:
     `openai` used to price as `anthropic/openai`, the fallback rate), and a
     provider without one is refused, as the resolver refuses it."""
     spec = spec.strip()
+    if spec in ZERO_PRICE_MODELS:
+        # already an Inspect name, and the only one a judge takes that no registry knows: expanding it to
+        # `anthropic/mockllm/judge` priced the local mock judge at the 10/50 fallback and labelled its rows
+        # provider-measured (Codex round 1 on PR #28)
+        return spec
     if ":" in spec:
         provider, model = spec.split(":", 1)
         return f"{provider}/{model}"

@@ -1501,6 +1501,48 @@ re-parked. PR B carries what a paid fire still lacked:
 4. **The mock judge is zero-priced.** `mockllm/judge` joins
    `ZERO_PRICE_MODELS`, so a local judged run's rows are labelled
    non-metered rather than provider-measured at a fallback price.
+5. **No trigger value may carry a control character.** The params job writes
+   every resolved value into `$GITHUB_OUTPUT` as one `key=value` line, and a
+   later duplicate key wins, so a value holding a newline writes further
+   `key=value` lines of its own. Four values reach that write unparsed
+   (`seeds_file`, `seed_ids`, `target`, `judge_model`; `mode` is set-checked,
+   the numbers are `float()`/`int()`-parsed and the booleans canonicalised),
+   and `_nonce`, added above, is written last, where an injected line
+   overrides every key before it — `mode`, `target`, `max_spend`,
+   `judge_max_spend`, `commit_outputs` — after the job's own checks have
+   passed. `fire_trigger.validate_params` now refuses a control character in
+   any param value (every lane, list elements included) and the params job
+   refuses it again for a trigger file no fire wrote.
+   `tests/test_petri_audit_params_heredoc.py` runs the heredoc itself, as
+   `tests/test_archive_workflow_params.py` does for the archive lane, and
+   asserts each injection is refused before anything is written.
+6. **A paid fire's nonce is required and must be new.** The nonce is the only
+   join key between the reservation and the landed cost, and omitting it was
+   easy — any other changed key already makes the trigger file differ, so the
+   fire was not refused as a no-op. `validate_params` (and so the server-side
+   `budget-gate`) now refuses `mode: run` without a non-empty `_nonce`, and
+   the fire path refuses one an earlier entry of the same lane already
+   carries, which would book one landed cost against two commitments. Free
+   modes are unaffected; the park carries none.
+7. **The recovery upload cannot cost the commit.** `continue-on-error: true`
+   on the upload step: it runs after the seal check, `verify-chain`,
+   `verify-run` and the raw-log refusal, but its own transient failure must
+   not skip the commit step that follows (default `success()` gating) and
+   leave a paid run neither committed nor recoverable while the `always()`
+   sidecar step books the spend.
+8. **Reconciliation refuses what it cannot count.** `json.loads` accepts `NaN`
+   and `Infinity` and every comparison with NaN is False, so a NaN total
+   passed the over-commitment check and a negative cost lowered a run's
+   total; both are now named. A dashboard that is missing, unreadable, or
+   without a usable `spend.entries_seen` is a named problem rather than an
+   empty fold set (which reads exactly like real underbooking), and a run
+   directory with two judge sidecars, or a judge sidecar with no target
+   sidecar, is named instead of silently reduced to one of them.
+
+The lane is parked, so the trigger file at rest holds the `preflight` park;
+`tests/test_petri_audit_workflow.py` checks that it is either absent (a
+branch cut before the park) or exactly `PARK_DEFAULTS`, and never a
+configuration that would spend when a branch operation re-fires it.
 
 Deferred to the next PR, none of them gating the pilot: the advice rubric's
 digest in the manifest (a judged run's rubric is reproducible through the
