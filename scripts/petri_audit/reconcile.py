@@ -27,6 +27,18 @@ from .framework import ROOT, load_json
 LANE = "petri-audit"
 JUDGE_SUFFIX = ".judge.report.json"
 NUMBER = (int, float)
+# `ledger_update.billing_channel` honours an explicit field ONLY for these two and silently books anything else to
+# the Anthropic account the $2/day guard bounds, so an unrecognised channel is not a channel (Codex round 6 on PR #28)
+CHANNELS = ("anthropic", "openrouter")
+# What each writer actually emits. `spend.write_report_sidecar` gives a target one of two bases; the judge loop
+# writes the cumulative basis and the fallback `judge-spend-report` an imputed or repriced one. The cumulative
+# basis matters to the ledger: on first sight it books `run_cost_usd` to the run's day while advancing the folded
+# watermark by the whole `cost_usd`, so a target claiming it, or a judge claiming it with inconsistent component
+# costs, understates the daily total while reconciliation reads the watermark as fully booked (Codex round 6).
+TARGET_BASES = ("engine_repriced_from_inspect_model_usage", "ceiling_imputed:usage_missing")
+JUDGE_BASES = ("cumulative_from_records", "ceiling_imputed:judge_aborted_without_sidecar",
+               "engine_repriced_from_inspect_model_usage")
+CUMULATIVE = "cumulative_from_records"
 DEFAULT_RUNS_DIR = ROOT / "data" / "petri" / "runs"      # the CLI's default; the first landed run creates it
 
 
@@ -199,8 +211,89 @@ def _timestamp(value: Any) -> datetime | None:
 def _channel(value: Any, default: str = "anthropic") -> str:
     """A billing channel, defaulting the way `fire_trigger.inflight_max_spend`
     defaults a journal entry with no `lane`: to the account the daily ceiling
-    bounds."""
+    bounds. An unrecognised value is returned as given so the caller can name
+    it - `_channel_unsupported` is the test, because two records agreeing on
+    `"stripe"` are not agreeing about anything the ledger will honour."""
     return value if isinstance(value, str) and value else default
+
+
+def _channel_unsupported(value: Any) -> str | None:
+    """The offending value when a billing channel is present and is neither
+    account the ledger knows, else None. `ledger_update.billing_channel` takes
+    an explicit field only for `anthropic` and `openrouter`; anything else
+    falls through to model-name derivation and lands on Anthropic, so a
+    sidecar and a journal entry can agree on a channel the ledger ignores
+    (Codex round 6 on PR #28)."""
+    if isinstance(value, str) and value and value not in CHANNELS:
+        return value
+    return None
+
+
+def _basis_problems(label: str, report: dict[str, Any], cost: float | None, judge: bool) -> list[str]:
+    """Why a sidecar's `cost_basis` (and, for the cumulative basis, its
+    component costs) cannot be trusted to have folded correctly.
+
+    The basis is not decoration: `ledger_update` reads it. On a first fold a
+    `cumulative_from_records` sidecar books `run_cost_usd` to the run's day and
+    the whole `cost_usd` to the folded watermark, so `run_cost_usd: 0` beside a
+    positive `cost_usd` leaves the daily total untouched while this module's
+    watermark check reads the file as fully booked (Codex round 6 on PR #28).
+    """
+    found: list[str] = []
+    basis = report.get("cost_basis")
+    allowed = JUDGE_BASES if judge else TARGET_BASES
+    if not isinstance(basis, str) or basis not in allowed:
+        found.append(f"{label}: cost_basis {basis!r} is not one this lane's "
+                     f"{'judge' if judge else 'target'} writer emits ({', '.join(allowed)}), so how the ledger "
+                     "books it cannot be established")
+        return found
+    if basis != CUMULATIVE:
+        return found
+    run_cost, prior = _money(report.get("run_cost_usd")), _money(report.get("prior_cost_usd"))
+    if run_cost is None or prior is None:
+        found.append(f"{label}: cost_basis is {CUMULATIVE} but run_cost_usd {report.get('run_cost_usd')!r} and "
+                     f"prior_cost_usd {report.get('prior_cost_usd')!r} are not both finite non-negative numbers, "
+                     "and the ledger books run_cost_usd to the run's day")
+    elif cost is not None and (run_cost > cost + 1e-9 or abs(run_cost + prior - cost) > 1e-6):
+        found.append(f"{label}: cost_basis is {CUMULATIVE} with run_cost_usd {run_cost:.8f} and prior_cost_usd "
+                     f"{prior:.8f}, which do not account for cost_usd {cost:.8f}; the ledger books run_cost_usd to "
+                     "the run's day and the whole cost_usd to the folded watermark, so the day is understated")
+    return found
+
+
+def _judge_identity_problem(run_dir: str, target: dict[str, Any], judge: dict[str, Any]) -> str | None:
+    """Why a judge sidecar does not belong to the target run it sits beside.
+
+    Sharing a directory is not identity: a sidecar copied or renamed from
+    another run joins on the directory alone and its cost and judgments are
+    attributed to this fire (Codex round 6 on PR #28). The two writers record
+    identity differently, and the check follows them rather than assuming:
+    the judge loop copies `run_id` and `eval_id` from the manifest, exactly as
+    `adapt --report` does for the target, while the fallback
+    `judge-spend-report` records the run DIRECTORY as its `run_id` and no
+    `eval_id` at all. Comparing `run_id` blindly would therefore fail on the
+    realistic path where an adapted run's judge died - the target carries
+    Inspect's run id and the fallback carries the directory name.
+    """
+    def text(record: dict[str, Any], key: str) -> str | None:
+        value = record.get(key)
+        return value if isinstance(value, str) and value else None
+
+    j_eval, t_eval = text(judge, "eval_id"), text(target, "eval_id")
+    j_run, t_run = text(judge, "run_id"), text(target, "run_id")
+    if j_eval is None:
+        # the fallback writer: it names the directory it was written into
+        if j_run is not None and j_run != run_dir:
+            return (f"{run_dir}: the judge sidecar records run_id {j_run!r}, but the fallback judge writer records "
+                    f"the run directory, which is {run_dir!r}; this judge report was written for another run")
+        return None
+    if t_eval is not None and j_eval != t_eval:
+        return (f"{run_dir}: the judge sidecar records eval_id {j_eval!r} and the target sidecar {t_eval!r}; both "
+                "copy it from the same manifest, so this judge report belongs to another run")
+    if j_run is not None and t_run is not None and j_run != t_run:
+        return (f"{run_dir}: the judge sidecar records run_id {j_run!r} and the target sidecar {t_run!r}; both copy "
+                "it from the same manifest, so this judge report belongs to another run")
+    return None
 
 
 def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Path | str | None = None) -> dict[str, Any]:
@@ -230,6 +323,21 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
         problems.append(f"{runs_dir}: no such directory, so no landed sidecar was scanned at all")
     targets, judges = _sidecars(Path(runs_dir))
     ledger = _read_ledger(dashboard_path, problems)
+
+    # `ledger_update.sidecar_key` keys a Petri sidecar on its BARE FILENAME, so two run directories holding the
+    # same basename are one entry to the ledger: it folds the first and the second never reaches the daily totals,
+    # while a watermark that covers the first covers the second too and this module would read both as booked
+    # (Codex round 6 on PR #28). The writers name every sidecar after its run directory, so a repeat is a copied
+    # or renamed file - exactly the archive alteration this command exists to surface.
+    by_basename: dict[str, set[str]] = {}
+    for sp, _ in targets + judges:
+        by_basename.setdefault(sp.name, set()).add(sp.parent.name)
+    duplicate_names = {name for name, dirs in by_basename.items() if len(dirs) > 1}
+    for name in sorted(duplicate_names):
+        where = ", ".join(sorted(by_basename[name]))
+        problems.append(f"{name}: the same sidecar basename is in {len(by_basename[name])} run directories "
+                        f"({where}); the ledger keys Petri sidecars by bare filename, so only one of them can ever "
+                        "be folded and neither can be checked against the ledger")
 
     # One run directory holds one target sidecar. Two carrying different nonces each matched a fire cleanly, so
     # both read "landed" while the directory's single judge sidecar was attached to both rows and its cost
@@ -326,6 +434,7 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             if row["cost_usd"] is None:
                 problems.append(f"{p.parent.name}/{p.name}: cost_usd {r.get('cost_usd')!r} is missing or not a "
                                 "finite non-negative number")
+            problems.extend(_basis_problems(f"{p.parent.name}/{p.name}", r, row["cost_usd"], judge=False))
             if row["evicted"]:
                 # eviction released this fire's in-flight commitment, so a replacement was admitted without
                 # counting it; a sidecar proves the run went ahead anyway (Codex round 4 on PR #28)
@@ -358,6 +467,15 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             # nothing. There the artifacts prove the zero rather than hiding a cost, and demanding a judge sidecar
             # would make every failed paid run report a gap that is not one (self-review, 2026-09-18).
             attempted_only = isinstance(r.get("spend_report_reason"), str) and r.get("spend_report_reason")
+            if judge is not None and "unreadable" not in judge[1] and judge_ceiling is None \
+                    and r.get("judge_max_spend_usd") is None:
+                # the mirror of the check below: the run declares no judge reservation, yet a judge report landed.
+                # With `judge: false` the workflow never runs the judge step, never touches its marker and never
+                # writes a judge sidecar, so this is a stray or drifted paid report whose ceiling would otherwise
+                # be read out of the judge's own file and folded into the authorisation sum (Codex round 6).
+                problems.append(f"{p.parent.name}: a judge sidecar landed but the run reserved nothing for a judge "
+                                "pass (judge_max_spend_usd is absent), so its cost was never counted against the "
+                                "daily ceiling")
             if judge is None and judge_ceiling and not attempted_only:
                 problems.append(f"{p.parent.name}: the run reserved {judge_ceiling:.4f} for a judge pass and no judge "
                                 "sidecar landed beside it, so its cost is unaccounted rather than zero")
@@ -370,11 +488,25 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                     if row["judge_cost_usd"] is None:
                         problems.append(f"{jp.parent.name}/{jp.name}: judge cost_usd {jr.get('cost_usd')!r} is missing "
                                         "or not a finite non-negative number")
+                    problems.extend(_basis_problems(f"{jp.parent.name}/{jp.name}", jr, row["judge_cost_usd"],
+                                                    judge=True))
+                    mismatch = _judge_identity_problem(p.parent.name, r, jr)
+                    if mismatch:
+                        problems.append(mismatch)
             if row["cost_usd"] is not None and (judge is None or row["judge_cost_usd"] is not None):
                 row["total_usd"] = row["cost_usd"] + (row["judge_cost_usd"] or 0.0)
                 if row["max_spend"] is not None and row["total_usd"] > row["max_spend"] + 1e-9:
                     problems.append(f"{p.parent.name}: landed cost {row['total_usd']:.4f} exceeds the fire's commitment "
                                     f"{row['max_spend']:.4f}")
+            # Each component against its OWN ceiling, not only the pair against the commitment: a target that
+            # overspends its max_spend_usd while the judge underspends stays under the journal's total and the
+            # aggregate check passes, though CI let one side spend past what it was authorised (Codex round 6 on
+            # PR #28). The imputed sidecars book exactly their ceiling, so only a strict excess is a problem.
+            target_ceiling_now = _money(r.get("max_spend_usd"))
+            if row["cost_usd"] is not None and target_ceiling_now is not None \
+                    and row["cost_usd"] > target_ceiling_now + 1e-9:
+                problems.append(f"{p.parent.name}/{p.name}: target cost {row['cost_usd']:.4f} exceeds the ceiling "
+                                f"{target_ceiling_now:.4f} the run itself records, whatever the commitment allows")
             # What the run was AUTHORISED to spend, not only what it did: the daily guard counted the journal's
             # commitment, so ceilings on the sidecar that sum higher mean CI ran with more headroom than the guard
             # reserved, and a low actual cost hides it (Codex round 4 on PR #28).
@@ -395,6 +527,11 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                     problems.append(f"{p.parent.name}: the judge ran under a ceiling of {judge_actual:.4f} but the "
                                     f"run declared {judge_ceiling:.4f}, so the two records of the same reservation "
                                     "disagree")
+            judge_limit = judge_actual if judge_actual is not None else judge_ceiling
+            if row["judge_cost_usd"] is not None and judge_limit is not None \
+                    and row["judge_cost_usd"] > judge_limit + 1e-9:
+                problems.append(f"{p.parent.name}: judge cost {row['judge_cost_usd']:.4f} exceeds the judge ceiling "
+                                f"{judge_limit:.4f} it ran under, whatever the commitment allows")
             ceilings = [target_ceiling, judge_actual if judge_actual is not None else judge_ceiling]
             authorised = sum(c for c in ceilings if c is not None)
             if row["max_spend"] is not None and any(c is not None for c in ceilings) \
@@ -406,10 +543,21 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             # books the landed cost against whatever the sidecar's `billing_channel` says. A mismatch moves spend
             # between the Anthropic and OpenRouter ceilings unseen (Codex round 2 on PR #28).
             lane = _channel(e.get("lane"))
+            unsupported = _channel_unsupported(e.get("lane"))
+            if unsupported:
+                problems.append(f"paid fire {e.get('fired_utc')} (nonce {nonce!r}): lane {unsupported!r} is not an "
+                                f"account this study bills ({' or '.join(CHANNELS)}), so the ceiling it reserved "
+                                "against cannot be identified")
             for sp, sr, what in ([(p, r, "sidecar")] + ([(judge[0], judge[1], "judge sidecar")]
                                                         if judge is not None and "unreadable" not in judge[1] else [])):
                 channel = _channel(sr.get("billing_channel"), "")
-                if channel and channel != lane:
+                unsupported = _channel_unsupported(channel)
+                if unsupported:
+                    problems.append(f"{sp.parent.name}/{sp.name}: the {what} books billing_channel {unsupported!r}, "
+                                    f"which is neither {' nor '.join(CHANNELS)}; `ledger_update` honours an explicit "
+                                    "channel only for those two and books everything else to the Anthropic account, "
+                                    "so this cost lands somewhere the record does not say")
+                elif channel and channel != lane:
                     problems.append(f"{sp.parent.name}/{sp.name}: the {what} books the {channel} account but the fire "
                                     f"reserved its commitment on {lane}, so the two ceilings disagree about this spend")
                 elif not channel:
@@ -417,9 +565,12 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                                     "account its cost lands on cannot be checked against the fire's lane")
             if ledger is not None:
                 # the row records the state; the problem for an unbooked sidecar is raised once, below, over
-                # every sidecar - joined to a fire or not - so nothing can be listed as unfolded and unnamed
-                row["folded"] = ledger.state(p.name, row["cost_usd"])[0]
-                if judge is not None:
+                # every sidecar - joined to a fire or not - so nothing can be listed as unfolded and unnamed.
+                # A basename that repeats across run directories is left None: the ledger cannot tell the two
+                # apart, so neither "booked" nor "unbooked" is a true statement about this file (Codex round 6).
+                if p.name not in duplicate_names:
+                    row["folded"] = ledger.state(p.name, row["cost_usd"])[0]
+                if judge is not None and judge[0].name not in duplicate_names:
                     row["judge_folded"] = ledger.state(judge[0].name, row["judge_cost_usd"])[0]
                 # Folded but unresolved is not a transient: the ledger folds in the daily cycle, long after
                 # `resolve` should have run. Until it does, `entry_is_active` keeps counting the fire's whole
@@ -456,6 +607,8 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
         for p, r in targets + judges:
             if "unreadable" in r:
                 continue                       # already named; its cost cannot be read, so nothing is owed on it
+            if p.name in duplicate_names:
+                continue                       # named above; the ledger's key cannot distinguish the copies
             booked, why = ledger.state(p.name, _money(r.get("cost_usd")))
             if not booked:
                 unfolded.append(p.name)

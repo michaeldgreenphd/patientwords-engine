@@ -24,14 +24,28 @@ def _entry(fired: str, nonce: str | None, max_spend: float | None = None, **extr
 
 
 def _sidecar(runs: Path, run: str, cost: float, nonce: str | None, judge_cost: float | None = None) -> None:
+    """What the production writers leave in a run directory.
+
+    Kept in step with them deliberately: every round of review has added a check
+    that reads a field the writers emit, and a fixture thinner than the real
+    thing turns those checks into fixture failures. `run_id`/`eval_id` come from
+    the manifest for both files (judge_runner's `sidecar_extra`, `adapt --report`),
+    the judge is cumulative with its component costs accounting for `cost_usd`,
+    and a target that had a judge pass records the ceiling it reserved.
+    """
     d = runs / run
     d.mkdir(parents=True, exist_ok=True)
     # the writers record run_utc (spend.write_report_sidecar) and the ledger books the cost to the day it names
-    framework.write_json(d / f"{run}.report.json", {"run_id": run, "cost_usd": cost, "cost_basis": "engine_repriced_from_inspect_model_usage",
+    framework.write_json(d / f"{run}.report.json", {"run_id": run, "eval_id": f"ev_{run}", "cost_usd": cost,
+                                                   "cost_basis": "engine_repriced_from_inspect_model_usage",
                                                    "billing_channel": "anthropic", "journal_nonce": nonce, "max_spend_usd": 1.0,
+                                                   "judge_max_spend_usd": 0.5 if judge_cost is not None else None,
                                                    "run_utc": "2026-09-18T10:05:00Z"})
     if judge_cost is not None:
         framework.write_json(d / f"{run}.judge.report.json", {"judge_model": "claude-haiku-4-5", "cost_usd": judge_cost,
+                                                             "run_cost_usd": judge_cost, "prior_cost_usd": 0.0,
+                                                             "run_id": run, "eval_id": f"ev_{run}",
+                                                             "max_spend_usd": 0.5,
                                                              "cost_basis": "cumulative_from_records", "billing_channel": "anthropic",
                                                              "run_utc": "2026-09-18T10:07:00Z"})
 
@@ -213,7 +227,9 @@ def test_a_cumulative_sidecar_that_grew_since_its_fold_is_not_counted_as_booked(
     # judge sidecar is cumulative, so a resumed pass grows a file whose name is already in entries_seen; the
     # name alone said booked while the delta had not reached the dashboard (Codex round 2 on PR #28).
     journal, runs, dashboard = _layout(tmp_path)
-    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0, resolved=True)) + "\n", encoding="utf-8")
+    # the commitment is what fire_commitment computes for a judged fire: max_spend + judge_max_spend, which is
+    # what the fixture's two sidecars declare (1.0 + 0.5), so the round-4 ceilings check stays silent here
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5, resolved=True)) + "\n", encoding="utf-8")
     _sidecar(runs, "run_1", 0.40, "n1", judge_cost=0.30)
     framework.write_json(dashboard, {"spend": {"entries_seen": ["run_1.report.json", "run_1.judge.report.json"],
                                                "entries_folded": {"run_1.report.json": 0.40,
@@ -508,3 +524,135 @@ def test_cli_reconcile_spend_renders_writes_json_and_is_strict_on_request(tmp_pa
     assert cli.main(args) == 0, "without --strict a problem is reported, never a failure"
     assert cli.main(args + ["--strict"]) == 1
     assert "matches no paid petri-audit journal entry" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------- Codex round 6 on PR #28
+
+def test_a_judge_sidecar_beside_a_run_that_reserved_no_judge_is_named(tmp_path):
+    # the mirror of round 4's missing-judge check: with judge=false the workflow never runs the judge step, never
+    # touches its marker and never writes a judge sidecar, so one that exists is stray or drifted paid spend, and
+    # its ceiling was being read out of its own file into the authorisation sum
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.2, "n1", judge_cost=0.1)
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {**framework.load_json(path), "judge_max_spend_usd": None})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1: a judge sidecar landed but the run reserved nothing for a judge pass" in problems
+    # a run that did reserve one is silent, and so is a run with no judge sidecar at all
+    framework.write_json(path, {**framework.load_json(path), "judge_max_spend_usd": 0.5})
+    assert "reserved nothing" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_each_cost_is_checked_against_its_own_ceiling_not_only_the_commitment(tmp_path):
+    # a target that overspends its own max_spend_usd while the judge underspends stays under the journal's total,
+    # so the aggregate check passed though CI let one side spend past what it was authorised
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.60, "n1", judge_cost=0.10)
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {**framework.load_json(path), "max_spend_usd": 0.5})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1/run_1.report.json: target cost 0.6000 exceeds the ceiling 0.5000" in problems
+    assert "landed cost" not in problems, "the pair is still inside the commitment; only the component is over"
+    # and the judge side, against the ceiling its own report records
+    framework.write_json(path, {**framework.load_json(path), "max_spend_usd": 1.0})
+    jpath = runs / "run_1" / "run_1.judge.report.json"
+    framework.write_json(jpath, {**framework.load_json(jpath), "cost_usd": 0.60, "run_cost_usd": 0.60})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1: judge cost 0.6000 exceeds the judge ceiling 0.5000" in problems
+    # a sidecar booked exactly at its ceiling (the imputed writers do this) is not over it
+    framework.write_json(jpath, {**framework.load_json(jpath), "cost_usd": 0.50, "run_cost_usd": 0.50})
+    assert "exceeds the judge ceiling" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_sidecar_basename_repeated_across_run_directories_is_named(tmp_path):
+    # `ledger_update.sidecar_key` keys a Petri sidecar on its bare filename, so two directories holding the same
+    # name are one entry to the ledger: it folds the first, the second never reaches the daily totals, and a
+    # watermark covering the first covered the second too
+    journal, runs, dashboard = _layout(tmp_path)
+    journal.write_text("".join(json.dumps(e) + "\n" for e in [
+        _entry("2026-09-18T10:00:00Z", "n1", 1.0), _entry("2026-09-18T11:00:00Z", "n2", 1.0)]), encoding="utf-8")
+    _sidecar(runs, "run_1", 0.3, "n1")
+    (runs / "run_2").mkdir()
+    # the same basename under a second directory: a copied or renamed file, which the writers never produce
+    (runs / "run_2" / "run_1.report.json").write_text(
+        (runs / "run_1" / "run_1.report.json").read_text(encoding="utf-8").replace('"n1"', '"n2"'), encoding="utf-8")
+    framework.write_json(dashboard, {"spend": {"entries_seen": ["run_1.report.json"],
+                                               "entries_folded": {"run_1.report.json": 0.3}}})
+    result = reconcile.reconcile(journal, runs, dashboard)
+    problems = "\n".join(result["problems"])
+    assert "run_1.report.json: the same sidecar basename is in 2 run directories (run_1, run_2)" in problems
+    assert "the ledger keys Petri sidecars by bare filename" in problems
+    # neither fire may read as booked on a name the ledger cannot tell apart
+    assert all(row["folded"] is None for row in result["paid_fires"]), result["paid_fires"]
+
+
+def test_a_billing_channel_outside_the_two_accounts_is_named(tmp_path):
+    # ledger_update.billing_channel honours an explicit field only for anthropic and openrouter and books
+    # everything else to Anthropic, so a sidecar and a journal entry agreeing on "stripe" agree about nothing
+    journal, runs, _ = _layout(tmp_path)
+    entry = _entry("2026-09-18T10:00:00Z", "n1", 1.0)
+    entry["lane"] = "stripe"
+    journal.write_text(json.dumps(entry) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.3, "n1")
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {**framework.load_json(path), "billing_channel": "stripe"})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "lane 'stripe' is not an account this study bills" in problems
+    assert "run_1/run_1.report.json: the sidecar books billing_channel 'stripe'" in problems
+    assert "the two ceilings disagree about this spend" not in problems, "equality is not the finding here"
+    # the two real accounts stay silent
+    entry["lane"] = "openrouter"
+    journal.write_text(json.dumps(entry) + "\n", encoding="utf-8")
+    framework.write_json(path, {**framework.load_json(path), "billing_channel": "openrouter"})
+    assert "is not an account" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_judge_sidecar_from_another_run_is_named(tmp_path):
+    # sharing a directory is not identity: a copied or renamed judge report joins on the directory alone and its
+    # cost and judgments are attributed to this fire
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.2, "n1", judge_cost=0.1)
+    jpath = runs / "run_1" / "run_1.judge.report.json"
+    framework.write_json(jpath, {**framework.load_json(jpath), "eval_id": "ev_run_9"})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1: the judge sidecar records eval_id 'ev_run_9' and the target sidecar 'ev_run_1'" in problems
+    # the fallback writer records no eval_id and the run DIRECTORY as run_id, which is not a mismatch
+    fallback = {k: v for k, v in framework.load_json(jpath).items() if k != "eval_id"}
+    framework.write_json(jpath, {**fallback, "run_id": "run_1",
+                                 "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar"})
+    assert "belongs to another run" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    # ...but a fallback sidecar naming a different directory is
+    framework.write_json(jpath, {**fallback, "run_id": "run_9",
+                                 "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar"})
+    assert "this judge report was written for another run" in \
+        "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_cost_basis_the_writers_do_not_emit_is_named(tmp_path):
+    # the basis is read by the ledger: on a first fold a cumulative sidecar books run_cost_usd to the run's day
+    # and the whole cost_usd to the watermark, so a target claiming it leaves the day understated while the
+    # watermark check reads the file as fully booked
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.4, "n1", judge_cost=0.1)
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {**framework.load_json(path), "cost_basis": "cumulative_from_records",
+                                "run_cost_usd": 0.0, "prior_cost_usd": 0.4})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1/run_1.report.json: cost_basis 'cumulative_from_records' is not one this lane's target writer " \
+           "emits" in problems
+    # and a judge whose components do not account for its cost
+    framework.write_json(path, {**framework.load_json(path),
+                                "cost_basis": "engine_repriced_from_inspect_model_usage"})
+    jpath = runs / "run_1" / "run_1.judge.report.json"
+    framework.write_json(jpath, {**framework.load_json(jpath), "run_cost_usd": 0.0, "prior_cost_usd": 0.0})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1/run_1.judge.report.json: cost_basis is cumulative_from_records with run_cost_usd 0.00000000" in \
+        problems
+    assert "the day is understated" in problems
+    # the writers' own shapes are silent
+    framework.write_json(jpath, {**framework.load_json(jpath), "run_cost_usd": 0.1, "prior_cost_usd": 0.0})
+    assert "cost_basis" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])

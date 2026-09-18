@@ -1628,7 +1628,32 @@ re-parked. PR B carries what a paid fire still lacked:
     report exists, and the judge step is gated on adapt succeeding - so there
     the judge never started, its marker was never touched, and the artifacts
     prove the zero. Without that narrowing every paid run that died before
-    adapt would have reported a gap that is not one. In the reconciliation: a
+    adapt would have reported a gap that is not one.
+
+18. **Six from the sixth round**, all in the reconciliation, all accounting
+    states it accepted as clean. A judge sidecar beside a run that reserved
+    nothing for a judge is the mirror of item 16's missing-judge check: with
+    `judge: false` the workflow never runs the judge step, so a judge report
+    there is stray paid spend whose ceiling was being read out of its own
+    file. Each cost is now checked against its OWN ceiling, not only the pair
+    against the journal commitment: a target overspending `max_spend_usd`
+    while the judge underspends stayed inside the total. A sidecar basename
+    repeated across run directories is named, because `ledger_update`
+    keys Petri sidecars on the bare filename and folds only the first, while
+    a watermark covering it covered the copy too; both are left unbooked
+    rather than read as folded. A `billing_channel` outside `anthropic` and
+    `openrouter` is named: `ledger_update.billing_channel` honours an explicit
+    field only for those two and books everything else to Anthropic, so two
+    records agreeing on a third value agree about nothing. `cost_basis` is
+    validated per sidecar family, with the cumulative basis' component costs
+    required to account for `cost_usd`, because the ledger books
+    `run_cost_usd` to the run's day while advancing the watermark by the whole
+    `cost_usd`. And a judge sidecar must belong to its target run - by
+    `eval_id` where both writers record one, and by the run directory for the
+    fallback writer, which records the directory as its `run_id` and no
+    `eval_id`; comparing `run_id` blindly would have failed on the realistic
+    path where an adapted run's judge died, since the target carries Inspect's
+    run id and the fallback carries the directory name. In the reconciliation: a
     sidecar seen by the ledger with no amount in `entries_folded` is a
     truncated dashboard, not a legacy record, because this lane postdates that
     watermark; a ceiling that is present but unusable is named rather than
