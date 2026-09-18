@@ -257,7 +257,9 @@ def _basis_problems(label: str, report: dict[str, Any], cost: float | None, judg
     elif cost is not None and (run_cost > cost + 1e-9 or abs(run_cost + prior - cost) > 1e-6):
         found.append(f"{label}: cost_basis is {CUMULATIVE} with run_cost_usd {run_cost:.8f} and prior_cost_usd "
                      f"{prior:.8f}, which do not account for cost_usd {cost:.8f}; the ledger books run_cost_usd to "
-                     "the run's day and the whole cost_usd to the folded watermark, so the day is understated")
+                     "the run's day only while it is within cost_usd and the whole cost_usd otherwise, and the "
+                     "folded watermark advances by the whole cost_usd either way, so the day's figure does not "
+                     "follow from this record")
     return found
 
 
@@ -652,7 +654,11 @@ def render_markdown(result: dict[str, Any]) -> str:
     if result["problems"]:
         lines.append(f"**Problems ({len(result['problems'])})**")
         lines += [f"- {p}" for p in result["problems"]]
+    elif not result["paid_fires"] and not s["target"] and not s["judge"]:
+        # a universal claim over an empty set reads as an assurance it is not: say what was actually the case
+        lines.append("Nothing to reconcile: no paid petri-audit fire is journaled and no cost sidecar has landed.")
     else:
-        lines.append("No problems: every paid fire has exactly one landed sidecar within its commitment, on the "
-                     "account it reserved, fully booked into the ledger, and every sidecar has its fire.")
+        lines.append("No problems: every paid fire has exactly one landed sidecar within its commitment and its own "
+                     "ceilings, on an account the ledger honours, fully booked into it, and every sidecar has its "
+                     "fire.")
     return "\n".join(lines) + "\n"

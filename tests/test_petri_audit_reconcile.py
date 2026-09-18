@@ -652,7 +652,7 @@ def test_a_cost_basis_the_writers_do_not_emit_is_named(tmp_path):
     problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
     assert "run_1/run_1.judge.report.json: cost_basis is cumulative_from_records with run_cost_usd 0.00000000" in \
         problems
-    assert "the day is understated" in problems
+    assert "the day's figure does not follow from this record" in problems
     # the writers' own shapes are silent
     framework.write_json(jpath, {**framework.load_json(jpath), "run_cost_usd": 0.1, "prior_cost_usd": 0.0})
     assert "cost_basis" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
