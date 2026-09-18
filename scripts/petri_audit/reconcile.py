@@ -352,7 +352,13 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                 problems.append(f"{p.parent.name}/{p.name}: judge_max_spend_usd {r.get('judge_max_spend_usd')!r} is "
                                 "not a finite non-negative number, so neither the judge's ceiling nor whether one "
                                 "was requested can be established")
-            if judge is None and judge_ceiling:
+            # ...but only beside an ADAPTED sidecar. `spend_report_reason` is written by the workflow's fallback
+            # `spend-report` step, which runs only when no adapted report exists - and the judge step is gated on
+            # adapt succeeding, so it never started, its marker was never touched and `judge-spend-report` wrote
+            # nothing. There the artifacts prove the zero rather than hiding a cost, and demanding a judge sidecar
+            # would make every failed paid run report a gap that is not one (self-review, 2026-09-18).
+            attempted_only = isinstance(r.get("spend_report_reason"), str) and r.get("spend_report_reason")
+            if judge is None and judge_ceiling and not attempted_only:
                 problems.append(f"{p.parent.name}: the run reserved {judge_ceiling:.4f} for a judge pass and no judge "
                                 "sidecar landed beside it, so its cost is unaccounted rather than zero")
             if judge is not None:

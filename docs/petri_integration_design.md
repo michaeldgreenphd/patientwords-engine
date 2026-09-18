@@ -1622,7 +1622,13 @@ re-parked. PR B carries what a paid fire still lacked:
     `ledger_update.parse_ts` does not: `datetime.fromisoformat` rejects a
     padded stamp, so the ledger falls back to the scan date on exactly the
     value the check was passing. It now mirrors that function rather than
-    parsing as it pleases. In the reconciliation: a
+    parsing as it pleases. And round 4's required-judge-sidecar check applies
+    only beside an ADAPTED sidecar: `spend_report_reason` is written by the
+    workflow's fallback `spend-report` step, which runs only when no adapted
+    report exists, and the judge step is gated on adapt succeeding - so there
+    the judge never started, its marker was never touched, and the artifacts
+    prove the zero. Without that narrowing every paid run that died before
+    adapt would have reported a gap that is not one. In the reconciliation: a
     sidecar seen by the ledger with no amount in `entries_folded` is a
     truncated dashboard, not a legacy record, because this lane postdates that
     watermark; a ceiling that is present but unusable is named rather than

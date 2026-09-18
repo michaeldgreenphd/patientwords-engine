@@ -383,6 +383,17 @@ def test_a_requested_judge_pass_with_no_sidecar_is_not_read_as_zero(tmp_path):
     # a run that reserved nothing for a judge is not missing one
     framework.write_json(path, {**framework.load_json(path), "judge_max_spend_usd": None})
     assert "reserved" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    # nor is a run that never produced an adapted report: `spend_report_reason` is written only by the workflow's
+    # fallback spend-report step, which runs when no adapted report exists - and the judge step is gated on adapt
+    # succeeding, so it never started and wrote nothing. The artifacts prove the zero (self-review, 2026-09-18).
+    framework.write_json(path, {**framework.load_json(path), "judge_max_spend_usd": 0.5,
+                                "spend_report_reason": "run attempted; no adapted report exists"})
+    assert "no judge sidecar landed beside it" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    # an empty or non-string reason is not that marker, so the check still applies
+    for not_a_reason in ("", None, 0):
+        framework.write_json(path, {**framework.load_json(path), "spend_report_reason": not_a_reason})
+        assert "no judge sidecar landed beside it" in "\n".join(reconcile.reconcile(journal, runs)["problems"]), \
+            not_a_reason
 
 
 def test_ceilings_the_run_carried_are_checked_against_what_the_fire_reserved(tmp_path):
