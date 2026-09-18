@@ -1613,7 +1613,11 @@ re-parked. PR B carries what a paid fire still lacked:
     so one would buy a free pre-flight bound and commit mock output as a
     measurement. The recovery `publish` path re-runs the nonce uniqueness
     check against the rebased journal, since another session's fire may have
-    taken the nonce while this one sat unpushed. In the reconciliation: a
+    taken the nonce while this one sat unpushed; it runs where that path
+    already identifies the fire's own entry exactly, because every entry the
+    script writes carries `commit: ""` and a filter on that field would have
+    dropped the other session's fresh entry - the one to compare with (found
+    in self-review before the round-5 replies went out). In the reconciliation: a
     sidecar seen by the ledger with no amount in `entries_folded` is a
     truncated dashboard, not a legacy record, because this lane postdates that
     watermark; a ceiling that is present but unusable is named rather than

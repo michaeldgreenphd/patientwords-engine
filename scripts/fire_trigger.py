@@ -1726,26 +1726,6 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
                                    parked=is_park_params(trigger, params))
     if rc is not None:
         return rc, head
-    # The rebase also integrated journal entries another session pushed while this fire sat unpushed, so a nonce
-    # that was unique when `fire` checked it may not be now; publishing the duplicate leaves reconciliation
-    # unable to attribute either fire's sidecar (Codex round 5 on PR #28). The entries at `head` include this
-    # fire's own, so it is compared against the others only.
-    journal_at_head = _git_show(repo, head, JOURNAL_RELPATH.as_posix())
-    if journal_at_head is not None:
-        others = []
-        for line in journal_at_head.splitlines():
-            if not line.strip():
-                continue
-            try:
-                entry = json.loads(line)
-            except ValueError:
-                continue                          # a corrupt line is the journal-repair path's business
-            if not (entry.get("trigger") == trigger and entry.get("commit") == "" and not entry.get("resolved")):
-                others.append(entry)
-        reused = reused_nonce(trigger, params, others)
-        if reused:
-            print(f"refused: {reused}", file=sys.stderr)
-            return 3, head
     # The workflow's paths filter sees the push as a whole: a commit that restored
     # the trigger file after the fire leaves the final tree unchanged, so the push
     # would land, fire nothing, and leave a journal entry for a run that never
@@ -1790,6 +1770,15 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
     fire = mine[0]
     key = (fire.get("trigger"), fire.get("fired_utc"))
     others = [e for e in entries if (e.get("trigger"), e.get("fired_utc")) != key]
+    # The rebase also integrated journal entries another session pushed while this fire sat unpushed, so a nonce
+    # that was unique when `fire` checked it may not be now; publishing the duplicate would leave reconciliation
+    # unable to attribute either fire's sidecar (Codex round 5 on PR #28). It is checked here, against `others`,
+    # because this is where the fire's own entry is identified exactly: every entry this script writes carries
+    # `commit: ""`, so a coarser filter would drop the other session's fresh entry - the very one to compare with.
+    reused = reused_nonce(trigger, params, others)
+    if reused:
+        print(f"refused: {reused}", file=sys.stderr)
+        return 3, head
     paid = is_paid_fire(trigger, params)
     budget_params = None
     if paid:

@@ -1212,7 +1212,7 @@ def _journal_line(trigger, fired_utc, **extra):
     return json.dumps(entry) + "\n"
 
 
-def _fire_locally(clone, trigger="circuit-trace", params=None, fired_utc=None, journal=True):
+def _fire_locally(clone, trigger="circuit-trace", params=None, fired_utc=None, journal=True, **entry_extra):
     """What cmd_fire leaves behind when its push is rejected: the trigger file and
     the journal entry committed on the local branch."""
     params = PUBLISH_PARAMS if params is None else params
@@ -1220,7 +1220,7 @@ def _fire_locally(clone, trigger="circuit-trace", params=None, fired_utc=None, j
     (clone / ".github" / "trigger" / f"{trigger}.json").write_text(json.dumps(params) + "\n", encoding="utf-8")
     if journal:
         with (clone / "ops" / "trigger_journal.jsonl").open("a", encoding="utf-8") as fh:
-            fh.write(_journal_line(trigger, fired_utc))
+            fh.write(_journal_line(trigger, fired_utc, **entry_extra))
     _commit(clone, f"Fire {trigger}: local")
     return fired_utc
 
@@ -1613,6 +1613,42 @@ def test_publish_reruns_the_reused_tag_guard_after_the_rebase(tmp_path, capsys):
     assert ".github/trigger/archive-renders.json" not in _origin_main_files(origin, tmp_path)
     assert ft.main(["publish", "--repo", str(clone), "--reuse-tag"]) == 0          # the deliberate override
     assert ".github/trigger/archive-renders.json" in _origin_main_files(origin, tmp_path)
+
+
+def test_publish_reruns_the_nonce_guard_against_the_entry_another_session_pushed(tmp_path, capsys):
+    """The race `fire`'s check cannot close: this paid fire sat unpushed while another
+    session published a petri-audit fire carrying the same `_nonce`. The nonce is the
+    only join key between a journal entry and its landed cost sidecar, so publishing
+    the duplicate would book one cost against two commitments and leave reconciliation
+    unable to attribute either (Codex round 5 on PR #28). The comparison runs where the
+    fire's OWN entry is identified exactly: every entry this script writes carries
+    `commit: ""`, so filtering the other session's fresh entry out by that field would
+    have left the guard checking nothing."""
+    paid = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+            "mode": "run", "max_spend": "0.50", "judge": "false", "commit_outputs": "true",
+            "_nonce": "pilot-20260918a"}
+    origin, clone = _publish_fixture(tmp_path)
+    _fire_locally(clone, "petri-audit", paid, nonce="pilot-20260918a")
+    theirs = ft.iso_utc(ft.utc_now() - timedelta(minutes=5))
+    _advance_origin(origin, tmp_path, "other", lambda r: _append_journal(
+        r / "ops" / "trigger_journal.jsonl",
+        _journal_line("petri-audit", theirs, nonce="pilot-20260918a", max_spend=0.5, lane="anthropic")))
+    _pull_conflicts_then_union(clone)
+    before = _head(clone)
+
+    assert ft.main(["publish", "--repo", str(clone)]) == 3
+    err = capsys.readouterr().err
+    assert "'pilot-20260918a' is already on the petri-audit journal entry fired at" in err and theirs in err
+    assert _head(clone) == before                       # kept local, ready for a re-nonced fire
+    assert ".github/trigger/petri-audit.json" not in _origin_main_files(origin, tmp_path)
+
+    # a fresh nonce is what the operator does next, and it publishes
+    (clone / ".github" / "trigger" / "petri-audit.json").write_text(
+        json.dumps({**paid, "_nonce": "pilot-20260918b"}) + "\n", encoding="utf-8")
+    _commit(clone, "Fire petri-audit: re-nonced")
+    assert ft.main(["publish", "--repo", str(clone)]) == 0
+    published = json.loads(_origin_main_files(origin, tmp_path)[".github/trigger/petri-audit.json"])
+    assert published["_nonce"] == "pilot-20260918b"
 
 
 def test_publish_keeps_the_park_exemption_when_the_park_push_was_rejected(tmp_path, monkeypatch, capsys):
