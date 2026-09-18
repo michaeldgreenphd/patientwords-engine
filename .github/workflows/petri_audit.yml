@@ -334,6 +334,14 @@ jobs:
           for s in $SEED_IDS; do ARGS="$ARGS --seed-id $s"; done
           if [ -z "$SEED_IDS" ]; then ARGS="--wave $WAVE"; fi
           if [ "$JUDGE" = "true" ]; then ARGS="$ARGS --judge-max-spend $JUDGE_MAX_SPEND --judge-model $JUDGE_MODEL"; fi
+          # The target-start marker, the twin of the judge's, written immediately before the call that can spend.
+          # The always()-gated spend report runs even when a step BEFORE this one failed - seed validation, the
+          # environment lock, preflight - and with no eval log it imputes the FULL target ceiling; since PR B binds
+          # the journal nonce into that sidecar, the ledger would fold a cost for a run that made no provider call
+          # (Codex round 8 on PR #28). It must sit in THIS step: placed in "Validate seeds", whose first lines are
+          # identical, it would be touched before any call and guard nothing.
+          mkdir -p "$RUNNER_TEMP/petri-run"
+          touch "$RUNNER_TEMP/petri-run/target_started"
           python -m scripts.petri_audit.cli run --seeds "$SEEDS_FILE" $ARGS \
             --target "$TARGET" --max-spend "$MAX_SPEND" --epochs "$EPOCHS" --token-limit "$TOKEN_LIMIT" \
             --log-model-api "$LOG_MODEL_API" --out-dir "$RUNNER_TEMP/petri-run" --journal-nonce "$JOURNAL_NONCE"
@@ -450,6 +458,11 @@ jobs:
           REPORT="data/petri/runs/$RUN_STEM/$RUN_STEM.report.json"
           if [ -f "$REPORT" ]; then
             echo "adapted report present; nothing to impute for the target"
+          elif [ ! -f "$RUNNER_TEMP/petri-run/target_started" ]; then
+            # the Run step never began, so no provider call was made and there is nothing to impute. Writing the
+            # ceiling here would book a cost that did not happen, and since PR B the nonce would bind it to the
+            # fire and make it look like the run's landed spend (Codex round 8 on PR #28)
+            echo "target run never started (no marker); no spend to impute"
           else
             ARGS=""
             if [ "$JUDGE" = "true" ]; then ARGS="--judge-max-spend $JUDGE_MAX_SPEND"; fi

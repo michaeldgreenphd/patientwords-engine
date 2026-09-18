@@ -40,6 +40,12 @@ def _sidecar(runs: Path, run: str, cost: float, nonce: str | None, judge_cost: f
                                                    "cost_basis": "engine_repriced_from_inspect_model_usage",
                                                    "billing_channel": "anthropic", "journal_nonce": nonce, "max_spend_usd": 1.0,
                                                    "judge_max_spend_usd": 0.5 if judge_cost is not None else None,
+                                                   # `reprice_usage` returns the per-model rows it summed, and
+                                                   # `write_report_sidecar` records both, so a repriced cost_usd
+                                                   # always has rows behind it (Codex round 8 on PR #28)
+                                                   "models": [{"model": "anthropic/claude-haiku-4-5",
+                                                               "cost_usd": cost, "usage_missing": False,
+                                                               "calls": 20, "calls_without_usage": 0}],
                                                    "run_utc": "2026-09-18T10:05:00Z"})
     if judge_cost is not None:
         framework.write_json(d / f"{run}.judge.report.json", {"judge_model": "claude-haiku-4-5", "cost_usd": judge_cost,
@@ -723,3 +729,66 @@ def test_a_judge_sidecar_carrying_no_identity_at_all_is_named(tmp_path):
     framework.write_json(jpath, {**stripped, "run_id": "run_1",
                                  "cost_basis": "ceiling_imputed:judge_aborted_without_sidecar"})
     assert "neither eval_id nor run_id" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_target_sidecar_with_no_identity_cannot_vouch_for_its_judge(tmp_path):
+    # every comparison in _judge_identity_problem is conditional on the TARGET's field being present, so a target
+    # carrying neither left a copied judge report - with any identity it likes - joined on the directory alone
+    # (Codex round 8 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.5)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.2, "n1", judge_cost=0.1)
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {k: v for k, v in framework.load_json(path).items()
+                                if k not in ("eval_id", "run_id")})
+    jpath = runs / "run_1" / "run_1.judge.report.json"
+    framework.write_json(jpath, {**framework.load_json(jpath), "eval_id": "ev_somewhere_else",
+                                 "run_id": "run_somewhere_else"})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1: the target sidecar records neither eval_id nor run_id" in problems
+    # one identity field is enough to compare against
+    framework.write_json(path, {**framework.load_json(path), "run_id": "run_1"})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "the target sidecar records neither" not in problems
+    assert "belongs to another run" in problems, "and the copied judge is then caught"
+
+
+def test_a_judge_ceiling_of_zero_is_not_the_absence_of_one(tmp_path):
+    # _money accepts 0 and the truthiness test read it as "no judge requested", so an edited sidecar could erase
+    # the evidence that a judge pass and its spend are missing (Codex round 8 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.2, "n1")                        # no judge sidecar
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {**framework.load_json(path), "judge_max_spend_usd": 0})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1/run_1.report.json: judge_max_spend_usd is 0, which no fire produces" in problems
+    # null is what the writer records when judging is off, and is silent
+    framework.write_json(path, {**framework.load_json(path), "judge_max_spend_usd": None})
+    assert "judge_max_spend_usd is 0" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_repriced_cost_must_match_the_rows_it_was_priced_from(tmp_path):
+    # the basis NAME was all that was checked, so a sidecar could claim the repriced basis while its rows summed
+    # to eight times its cost_usd, and the ledger folds cost_usd (Codex round 8 on PR #28)
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.10, "n1")
+    path = runs / "run_1" / "run_1.report.json"
+    rows = [{"model": "anthropic/claude-haiku-4-5", "cost_usd": 0.80, "usage_missing": False}]
+    framework.write_json(path, {**framework.load_json(path), "models": rows})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "prices from per-model rows summing to 0.80000000, but cost_usd is 0.10000000" in problems
+
+    # a repriced basis must not carry an unpriced row: that path imputes the ceiling instead
+    framework.write_json(path, {**framework.load_json(path), "cost_usd": 0.10,
+                                "models": [{"model": "m", "cost_usd": None, "usage_missing": True}]})
+    assert "a row records no usable cost_usd" in "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+    # ...and a ceiling-imputed cost must be the ceiling it records
+    framework.write_json(path, {**framework.load_json(path), "cost_basis": "ceiling_imputed:usage_missing",
+                                "cost_usd": 0.10, "max_spend_usd": 1.0})
+    assert "books the ceiling, but cost_usd 0.10000000 is not the max_spend_usd 1.00000000" in \
+        "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    framework.write_json(path, {**framework.load_json(path), "cost_usd": 1.0})
+    assert "books the ceiling" not in "\n".join(reconcile.reconcile(journal, runs)["problems"])

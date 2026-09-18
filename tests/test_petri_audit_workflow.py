@@ -390,3 +390,22 @@ def test_the_fire_nonce_reaches_the_run_the_manifest_and_the_fallback_sidecar(wo
     # the adapter reads the nonce from run_params.json, which the run step writes; the adapt step passes that file
     adapt = _step(workflow, "Adapt (sanitised export, transcripts 0.2, rule outcomes, manifest, cost sidecar)")
     assert '--run-params "$RUNNER_TEMP/petri-run/run_params.json"' in adapt["run"]
+
+
+def test_the_fallback_spend_report_waits_for_a_target_start_marker(workflow):
+    """The always()-gated spend report runs even when a step BEFORE the run failed
+    - seed validation, the environment lock, preflight - and with no eval log it
+    imputes the FULL target ceiling. Since PR B binds the journal nonce into that
+    sidecar, the ledger would fold a cost for a run that made no provider call and
+    reconciliation would accept it as this fire's landed spend (Codex round 8)."""
+    run_step = _step(workflow, "Run (mode dry_run or run")
+    assert 'touch "$RUNNER_TEMP/petri-run/target_started"' in run_step["run"], \
+        "the run step must leave the marker the spend report keys off"
+    spend = _step(workflow, "Spend report for an attempted run")
+    assert '[ ! -f "$RUNNER_TEMP/petri-run/target_started" ]' in spend["run"], \
+        "the target sidecar must not be imputed for a run that never started"
+    # the judge's own marker is untouched: a judge that started and died is still booked at its ceiling
+    assert '[ -f "$RUNNER_TEMP/petri-run/judge_started" ]' in spend["run"]
+    # and the marker is written before the paid call, not after it
+    body = run_step["run"]
+    assert body.index("target_started") < body.index("scripts.petri_audit.cli run")

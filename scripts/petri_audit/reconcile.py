@@ -248,6 +248,33 @@ def _basis_problems(label: str, report: dict[str, Any], cost: float | None, judg
                      "books it cannot be established")
         return found
     if basis != CUMULATIVE:
+        # The other two bases are not free of arithmetic either: the writer derives `cost_usd` and the rows
+        # together (`reprice_usage` returns the sum and the rows it summed), and imputes exactly the ceiling when
+        # usage is missing. Checking only the basis NAME let a sidecar claim a repriced basis while its rows summed
+        # to eight times its cost_usd, with the watermark following the understated total (Codex round 8 on PR #28).
+        if cost is None:
+            return found                       # the cost itself is already a named problem
+        if basis.startswith("ceiling_imputed:"):
+            ceiling = _money(report.get("max_spend_usd"))
+            if ceiling is not None and abs(cost - ceiling) > 1e-6:
+                found.append(f"{label}: cost_basis {basis} books the ceiling, but cost_usd {cost:.8f} is not the "
+                             f"max_spend_usd {ceiling:.8f} it records")
+            return found
+        rows = report.get("models")
+        if not isinstance(rows, list):
+            found.append(f"{label}: cost_basis {basis} is priced from per-model rows, but `models` is "
+                         f"{type(report.get('models')).__name__}, so cost_usd cannot be checked against them")
+            return found
+        priced = [_money(row.get("cost_usd")) for row in rows if isinstance(row, dict)]
+        if any(c is None for c in priced):
+            # a row with no cost is what `usage_missing` produces, and that path imputes the ceiling instead of
+            # repricing - so a repriced basis must not carry one
+            found.append(f"{label}: cost_basis {basis} is priced from per-model rows, but a row records no usable "
+                         "cost_usd; a run with unpriced usage books the ceiling instead")
+        elif priced and abs(sum(priced) - cost) > 1e-6:
+            found.append(f"{label}: cost_basis {basis} prices from per-model rows summing to {sum(priced):.8f}, "
+                         f"but cost_usd is {cost:.8f}; the ledger folds cost_usd, so the daily total follows the "
+                         "smaller of the two")
         return found
     run_cost, prior = _money(report.get("run_cost_usd")), _money(report.get("prior_cost_usd"))
     if run_cost is None or prior is None:
@@ -283,6 +310,12 @@ def _judge_identity_problem(run_dir: str, target: dict[str, Any], judge: dict[st
 
     j_eval, t_eval = text(judge, "eval_id"), text(target, "eval_id")
     j_run, t_run = text(judge, "run_id"), text(target, "run_id")
+    if t_eval is None and t_run is None:
+        # every comparison below is conditional on the target's field being there, so a target with neither left
+        # a copied judge report - with any identity it likes - joined on the directory alone. `adapt --report` and
+        # the fallback `spend-report` both always record run_id and eval_id (Codex round 8 on PR #28).
+        return (f"{run_dir}: the target sidecar records neither eval_id nor run_id, so nothing the judge sidecar "
+                "carries can be checked against it and its cost is joined on the directory alone")
     if j_eval is None:
         # the fallback writer: it names the directory it was written into. An ABSENT run_id is not the fallback
         # shape either - both judge writers record an identity, so a report carrying neither field is truncated
@@ -472,6 +505,14 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             # that is present but unusable is named rather than read as absent, which would suppress this check
             # as well as the authorisation one below (Codex round 5).
             judge_ceiling = _money(r.get("judge_max_spend_usd"))
+            if judge_ceiling == 0.0:
+                # `_money` accepts 0 and the truthiness test below then read it as "no judge was requested", so a
+                # truncated or edited sidecar could erase the evidence that a judge pass and its spend are missing.
+                # The writer records null when judging is off, and `fire_commitment` refuses a judged fire whose
+                # judge_max_spend is not > 0, so zero is a value no fire produces (Codex round 8 on PR #28).
+                problems.append(f"{p.parent.name}/{p.name}: judge_max_spend_usd is 0, which no fire produces - a "
+                                "judged run reserves a positive ceiling and an unjudged one records null, so "
+                                "whether a judge pass was requested cannot be established")
             if r.get("judge_max_spend_usd") is not None and judge_ceiling is None:
                 problems.append(f"{p.parent.name}/{p.name}: judge_max_spend_usd {r.get('judge_max_spend_usd')!r} is "
                                 "not a finite non-negative number, so neither the judge's ceiling nor whether one "

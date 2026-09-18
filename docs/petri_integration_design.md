@@ -1685,7 +1685,44 @@ re-parked. PR B carries what a paid fire still lacked:
     nonce, and nothing else's hold. The other paid lanes have no join key and
     are unchanged; their double count is masked by headroom (advice-eval at
     $1.00 lands exactly on the $2.00 ceiling and passes) and is the owner's to
-    weigh separately. In the reconciliation: a
+    weigh separately.
+
+20. **Five from the eighth round, two of them P1, and both of those created by
+    this PR's own work.** Round 7's reservation check tested `resolved` and
+    `evicted` and not the third condition `entry_is_active` applies: an entry
+    whose `fired_utc` does not parse, or that is older than the expiry window,
+    has already been released by the queue and dropped from the in-flight sum,
+    so accepting it let a merge or re-push start a second irreversible run
+    under a dead hold. The gate now requires the entry to be active, and
+    excludes it from the aggregate only when it is.
+
+    The second P1 is the fallback spend report. Its step is `always()`-gated,
+    so it runs even when a step BEFORE the run failed - seed validation, the
+    environment lock, preflight - and with no eval log it imputes the FULL
+    target ceiling. That was tolerable while the sidecar carried no nonce,
+    because reconciliation named it as unaccounted; **PR B's own nonce
+    plumbing bound it to the fire**, so the ledger would fold a cost for a run
+    that never made a provider call and `--strict` would report nothing. A
+    `target_started` marker, the twin of the judge's, is now written in the Run
+    step immediately before the call that can spend, and the fallback target
+    sidecar is written only when it exists. Worth recording how nearly that
+    fix failed: the first attempt put the marker in **Validate seeds**, whose
+    opening lines are identical to the Run step's, where it would have been
+    touched before any call and guarded nothing. The test asserts the marker
+    precedes `cli run` and caught it.
+
+    In the reconciliation: a target sidecar carrying neither `eval_id` nor
+    `run_id` is named, because every identity comparison was conditional on the
+    target's field being present and a target with neither let a copied judge
+    report join on the directory alone; `judge_max_spend_usd: 0` is named,
+    because `_money` accepts it while the truthiness test read it as "no judge
+    requested", and no fire produces zero (a judged fire reserves a positive
+    ceiling, an unjudged one records null); and the non-cumulative bases are
+    checked for the totals they imply - a repriced cost must equal the sum of
+    the per-model rows it was priced from and must not carry an unpriced row,
+    and a ceiling-imputed cost must equal the ceiling it records. The test
+    fixture gained the `models` rows every repriced sidecar carries, the third
+    round in which the fixture was thinner than the writers. In the reconciliation: a
     sidecar seen by the ledger with no amount in `entries_folded` is a
     truncated dashboard, not a legacy record, because this lane postdates that
     watermark; a ceiling that is present but unusable is named rather than

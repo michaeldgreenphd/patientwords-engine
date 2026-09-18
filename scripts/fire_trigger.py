@@ -1989,7 +1989,7 @@ def reservation_entries(trigger, params, entries):
     return [e for e in entries if e.get("trigger") == trigger and str(e.get("nonce") or "").strip() == nonce]
 
 
-def journal_reservation_problems(trigger, params, entries):
+def journal_reservation_problems(trigger, params, entries, now=None, expire_hours=None):
     """Why a paid petri-audit run has no journal reservation behind it, as a
     list of refusals; empty when exactly one entry accounts for it.
 
@@ -2023,12 +2023,25 @@ def journal_reservation_problems(trigger, params, entries):
         return [f"{len(mine)} {trigger} journal entries carry _nonce {nonce!r} ({when}); a nonce binds one fire "
                 "to one landed cost, so this run's spend cannot be attributed"]
     entry = mine[0]
+    # ACTIVE, not merely unresolved. `entry_is_active` also releases an entry whose `fired_utc` does not parse and
+    # one older than the expiry window, and `inflight_max_spend` stops counting it at the same moment - so a stale
+    # entry is a reservation that no longer holds anything, and accepting it (then excluding it from the aggregate,
+    # where it was no longer counted anyway) let a merge or re-push start a second irreversible run under a dead
+    # hold. This is the gap my own round-7 check left by testing only two of the three conditions (Codex round 8).
+    now = now or utc_now()
+    expire_hours = expire_hours if expire_hours is not None else expire_hours_from_env()
     if entry.get("resolved"):
         problems.append(f"the {trigger} journal entry for _nonce {nonce!r} is already resolved, which released "
                         "its in-flight commitment: this run would spend outside any reservation")
-    if entry.get("evicted"):
+    elif entry.get("evicted"):
         problems.append(f"the {trigger} journal entry for _nonce {nonce!r} is marked evicted, so the queue "
                         "released its commitment and nothing reserves this run's spend")
+    elif not entry_is_active(entry, now, expire_hours):
+        fired = entry.get("fired_utc")
+        why = ("its fired_utc does not parse" if parse_utc(fired) is None
+               else f"it was fired at {fired}, more than {expire_hours:g}h ago")
+        problems.append(f"the {trigger} journal entry for _nonce {nonce!r} is no longer active ({why}): the queue "
+                        "and the daily guard both stopped counting it, so nothing reserves this run's spend")
     expected, error = fire_commitment(paid_budget_params(trigger, params))
     if error:
         problems.append(f"the params carry no usable commitment to check against the journal: {error}")
@@ -2078,7 +2091,8 @@ def cmd_budget_gate(args):
     entries = load_journal(repo / JOURNAL_RELPATH)
     # the reservation itself, before the aggregate: a ceiling that holds in total says nothing about whether THIS
     # run was ever reserved (Codex round 7 on PR #28)
-    unreserved = journal_reservation_problems(args.trigger, params, entries)
+    unreserved = journal_reservation_problems(args.trigger, params, entries, now=now,
+                                              expire_hours=expire_hours_from_env())
     if unreserved:
         for problem in unreserved:
             print(f"budget-gate: REFUSED - {problem}", file=sys.stderr)
@@ -2090,7 +2104,8 @@ def cmd_budget_gate(args):
     # guard meant to protect it (found writing the round-7 reservation test, 2026-09-18). Only the entry this fire
     # is bound to by nonce is removed, so nothing else's in-flight hold is lost.
     mine = reservation_entries(args.trigger, params, entries)
-    if mine and len(mine) == 1:
+    if mine and len(mine) == 1 and entry_is_active(mine[0], now, expire_hours_from_env()):
+        # only an ACTIVE entry is counted in the in-flight sum, so only an active one may be removed from it
         held = mine[0]
         entries = [e for e in entries if e is not held]
     dashboard = load_dashboard(repo / DASHBOARD_RELPATH)

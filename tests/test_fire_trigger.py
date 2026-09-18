@@ -2345,3 +2345,42 @@ def test_journal_reservation_problems_is_scoped_to_the_lane_with_a_nonce_contrac
     # a free petri fire is not a paid one
     assert ft.journal_reservation_problems("petri-audit", {**petri, "mode": "preflight",
                                                            "target": "mockllm/model"}, []) == []
+
+
+def test_budget_gate_refuses_a_reservation_that_is_no_longer_active(repo, tmp_path, capsys):
+    """Round 7's check tested `resolved` and `evicted` and not the third condition.
+
+    `entry_is_active` also releases an entry whose `fired_utc` does not parse and
+    one older than the expiry window, and `inflight_max_spend` stops counting it
+    at the same moment - so a stale entry reserves nothing, and accepting it let
+    a merge or re-push of that trigger file start a second irreversible run under
+    a dead hold (Codex round 8 on PR #28).
+    """
+    pf = tmp_path / "petri-params.json"
+    paid = {"seeds_file": "docs/framework/petri_seeds.draft.json", "target": "anthropic/claude-haiku-4-5",
+            "mode": "run", "max_spend": "1.00", "judge": "false", "commit_outputs": "true", "_nonce": "pilot-1"}
+    pf.write_text(json.dumps(paid), encoding="utf-8")
+    journal = repo / "ops" / "trigger_journal.jsonl"
+
+    def gate():
+        return ft.main(["budget-gate", "--repo", str(repo), "--trigger", "petri-audit", "--params-file", str(pf)])
+
+    def entry(fired):
+        return json.dumps({"trigger": "petri-audit", "fired_utc": fired, "commit": "", "note": "pilot",
+                           "resolved": False, "evicted": False, "nonce": "pilot-1", "max_spend": 1.0,
+                           "lane": "anthropic"}) + "\n"
+
+    hours = ft.expire_hours_from_env()
+    journal.write_text(entry(ft.iso_utc(ft.utc_now() - timedelta(hours=hours + 1))), encoding="utf-8")
+    assert gate() == 6
+    err = capsys.readouterr().err
+    assert "no longer active" in err and "more than" in err
+
+    # an unparseable stamp releases it the same way
+    journal.write_text(entry("not a time"), encoding="utf-8")
+    assert gate() == 6 and "fired_utc does not parse" in capsys.readouterr().err
+
+    # inside the window it is a live reservation, and is excluded from the aggregate exactly once
+    journal.write_text(entry(ft.iso_utc(ft.utc_now() - timedelta(minutes=5))), encoding="utf-8")
+    assert gate() == 0, capsys.readouterr().err
+    assert "in-flight 0.00" in capsys.readouterr().out
