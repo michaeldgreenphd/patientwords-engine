@@ -1539,6 +1539,30 @@ re-parked. PR B carries what a paid fire still lacked:
    directory with two judge sidecars, or a judge sidecar with no target
    sidecar, is named instead of silently reduced to one of them.
 
+9. **Reconciliation checks the ledger's watermark, not just its filename
+   list.** `ledger_update.py` keeps `spend.entries_seen` (ever folded) beside
+   `spend.entries_folded` (how much of each file is booked). A judge sidecar is
+   cumulative, so a resumed pass grows a file whose name is already in
+   `entries_seen`: the name alone read as booked while the delta had not
+   reached the dashboard. A sidecar is now booked only when the watermark
+   covers its current `cost_usd`, within the four-decimal resolution
+   `ledger_update` books Petri deltas at, and an unfolded sidecar is a
+   problem in its own right, so `--strict` no longer exits 0 while the report
+   lists one.
+10. **Three more refusals in the same module.** Two paid journal entries
+    sharing a nonce each matched the single sidecar independently and both
+    read "landed", booking one cost against two commitments; they are now
+    named and neither is joined. A sidecar whose `billing_channel` differs
+    from the journal entry's `lane` moved spend between the Anthropic and
+    OpenRouter ceilings unseen; the two are now compared, and a sidecar
+    stating no channel is named. A `--runs` path that is not a directory read
+    as an empty archive and reported "no problems" with nothing scanned.
+11. **A journal flag is a boolean or it is nothing.** `bool("false")` is
+    `True`, so a hand-edited or merged journal could mark a paid fire
+    "evicted before it ran" and drop it from every check. A non-boolean
+    `resolved` or `evicted` is now named and read as false, the state that
+    keeps the fire under scrutiny.
+
 The lane is parked, so the trigger file at rest holds the `preflight` park;
 `tests/test_petri_audit_workflow.py` checks that it is either absent (a
 branch cut before the park) or exactly `PARK_DEFAULTS`, and never a

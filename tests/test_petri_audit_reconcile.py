@@ -71,7 +71,9 @@ def test_paid_fires_are_joined_to_their_sidecars_on_the_nonce(tmp_path):
     assert "n3" not in problems, "an evicted fire never ran; nothing to book"
     text = reconcile.render_markdown(result)
     assert "| 2026-09-18T10:00:00Z | n1 | 1.5000 | run_1 | 0.4000 | 0.3000 | 0.7000 | engine_repriced_from_inspect_model_usage | no | landed |" in text
-    assert "**Problems (3)**" in text and "Not yet folded into the ledger" in text
+    assert "**Problems (4)**" in text and "Not yet folded into the ledger" in text
+    # an unfolded sidecar is a problem in its own right, so --strict cannot pass while one is listed
+    assert "run_1/run_1.judge.report.json: the ledger has not folded it yet" in problems
 
 
 def test_a_landed_cost_above_the_commitment_and_a_bad_sidecar_are_named(tmp_path):
@@ -197,6 +199,92 @@ def test_a_dashboard_path_that_does_not_exist_is_named(tmp_path):
     assert f"{missing}: no such file" in "\n".join(result["problems"]), "strict must not pass having checked half"
     assert reconcile.reconcile(journal, runs)["problems"] == [], "no dashboard asked for is not a problem"
     assert not dashboard.exists()
+
+
+def test_a_cumulative_sidecar_that_grew_since_its_fold_is_not_counted_as_booked(tmp_path):
+    # ledger_update keeps two records: entries_seen (ever folded) and entries_folded (HOW MUCH is booked). A
+    # judge sidecar is cumulative, so a resumed pass grows a file whose name is already in entries_seen; the
+    # name alone said booked while the delta had not reached the dashboard (Codex round 2 on PR #28).
+    journal, runs, dashboard = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0, resolved=True)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.40, "n1", judge_cost=0.30)
+    framework.write_json(dashboard, {"spend": {"entries_seen": ["run_1.report.json", "run_1.judge.report.json"],
+                                               "entries_folded": {"run_1.report.json": 0.40,
+                                                                  "run_1.judge.report.json": 0.18}}})
+    result = reconcile.reconcile(journal, runs, dashboard)
+    row = result["paid_fires"][0]
+    problems = "\n".join(result["problems"])
+    assert row["folded"] is True, "the target sidecar is fully booked"
+    assert row["judge_folded"] is False, "0.18 of 0.30 is not booked"
+    assert "run_1/run_1.judge.report.json: the ledger has booked 0.1800 of its 0.3000, so 0.1200 of landed " \
+           "spend is not in the daily totals" in problems
+    assert result["unfolded_sidecars"] == ["run_1.judge.report.json"]
+    # a residual below the ledger's four-decimal booking resolution waits legitimately and is not a gap
+    framework.write_json(dashboard, {"spend": {"entries_seen": ["run_1.report.json", "run_1.judge.report.json"],
+                                               "entries_folded": {"run_1.report.json": 0.40,
+                                                                  "run_1.judge.report.json": 0.29999}}})
+    clean = reconcile.reconcile(journal, runs, dashboard)
+    assert clean["problems"] == [] and clean["unfolded_sidecars"] == []
+    # a sidecar seen before the watermark existed carries no debt
+    framework.write_json(dashboard, {"spend": {"entries_seen": ["run_1.report.json", "run_1.judge.report.json"]}})
+    assert reconcile.reconcile(journal, runs, dashboard)["problems"] == []
+
+
+def test_two_journal_entries_sharing_a_nonce_are_refused_not_both_landed(tmp_path):
+    # each iteration matched the one sidecar independently, so both fires read "landed" and one cost was booked
+    # against two commitments; fire_trigger refuses a repeat at the fire, this refuses it in the record
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text("".join(json.dumps(e) + "\n" for e in [
+        _entry("2026-09-18T10:00:00Z", "dup", 1.0, resolved=True),
+        _entry("2026-09-18T11:00:00Z", "dup", 1.0),
+        _entry("2026-09-18T12:00:00Z", "solo", 1.0)]), encoding="utf-8")
+    _sidecar(runs, "run_1", 0.4, "dup")
+    _sidecar(runs, "run_2", 0.2, "solo")
+    result = reconcile.reconcile(journal, runs)
+    statuses = [r["status"] for r in result["paid_fires"]]
+    assert statuses == ["duplicate nonce", "duplicate nonce", "landed"]
+    assert all(r["total_usd"] is None for r in result["paid_fires"] if r["nonce"] == "dup")
+    problems = "\n".join(result["problems"])
+    assert "nonce 'dup' is on 2 paid petri-audit journal entries (2026-09-18T10:00:00Z, 2026-09-18T11:00:00Z)" in problems
+    assert problems.count("nonce 'dup' is on") == 1, "named once, not once per row"
+
+
+def test_a_sidecar_that_books_another_account_than_the_fire_reserved_is_named(tmp_path):
+    # the ledger books by the sidecar's billing_channel while the ceiling reserved the journal's lane, so a
+    # mismatch moves spend between the $2 Anthropic and $10 OpenRouter ceilings unseen
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0)) + "\n", encoding="utf-8")
+    _sidecar(runs, "run_1", 0.4, "n1", judge_cost=0.2)
+    path = runs / "run_1" / "run_1.report.json"
+    framework.write_json(path, {**framework.load_json(path), "billing_channel": "openrouter"})
+    problems = "\n".join(reconcile.reconcile(journal, runs)["problems"])
+    assert "run_1/run_1.report.json: the sidecar books the openrouter account but the fire reserved its " \
+           "commitment on anthropic" in problems
+    # a sidecar that states no channel at all cannot be checked, and says so
+    framework.write_json(path, {k: v for k, v in framework.load_json(path).items() if k != "billing_channel"})
+    assert "run_1/run_1.report.json: the sidecar states no billing_channel" in \
+        "\n".join(reconcile.reconcile(journal, runs)["problems"])
+
+
+def test_a_flag_that_is_not_a_boolean_cannot_excuse_a_fire(tmp_path):
+    # bool("false") is True, which classified a paid fire with no sidecar as evicted and dropped it from every check
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0, evicted="false")) + "\n", encoding="utf-8")
+    result = reconcile.reconcile(journal, runs)
+    row = result["paid_fires"][0]
+    problems = "\n".join(result["problems"])
+    assert row["evicted"] is False and row["status"] == "no sidecar landed"
+    assert "evicted is 'false', not true or false; read as false" in problems
+    assert "no cost sidecar carries its nonce" in problems
+
+
+def test_a_runs_directory_that_does_not_exist_is_named(tmp_path):
+    journal, runs, _ = _layout(tmp_path)
+    journal.write_text(json.dumps(_entry("2026-09-18T10:00:00Z", "n1", 1.0, evicted=True)) + "\n", encoding="utf-8")
+    missing = tmp_path / "no_such_runs"
+    result = reconcile.reconcile(journal, missing)
+    assert f"{missing}: no such directory, so no landed sidecar was scanned at all" in "\n".join(result["problems"])
+    assert reconcile.reconcile(journal, runs)["problems"] == [], "an existing but empty archive is not a problem"
 
 
 def test_cli_reconcile_spend_renders_writes_json_and_is_strict_on_request(tmp_path, capsys):

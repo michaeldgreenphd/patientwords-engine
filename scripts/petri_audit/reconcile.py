@@ -78,12 +78,45 @@ def _money(value: Any) -> float | None:
     return number
 
 
-def _folded_entries(dashboard_path: Path | str | None, problems: list[str]) -> set[str] | None:
-    """The sidecar filenames the ledger has folded (`spend.entries_seen`, which
-    `ledger_update.sidecar_key` keys on the bare filename for this lane), or
-    None when no dashboard was given or it cannot be read - a dashboard that
-    does not parse is a named problem, never an empty fold set that would
-    report every landed sidecar as unbooked."""
+class Ledger:
+    """What `ops/dashboard.json` has actually booked, per sidecar filename.
+
+    `ledger_update.py` keeps two records: `spend.entries_seen`, every sidecar
+    key it has ever folded, and `spend.entries_folded`, HOW MUCH of each one's
+    `cost_usd` is booked. The second matters for this lane because a judge
+    sidecar is cumulative (`cost_basis` `cumulative_from_records`): a resumed
+    judge pass grows a file whose name is already in `entries_seen`, so the
+    name alone says booked while the new delta has not reached the dashboard
+    (Codex round 2 on PR #28). `ledger_update` also books Petri deltas in
+    four-decimal steps and advances the watermark by what it booked, so a
+    residual below that resolution waits legitimately and is not a gap.
+    """
+
+    RESOLUTION = 1e-4          # ledger_update's Petri branch books to four decimals
+
+    def __init__(self, seen: set[str], folded: dict[str, float]) -> None:
+        self.seen = seen
+        self.folded = folded
+
+    def state(self, name: str, cost: float | None) -> tuple[bool, str | None]:
+        """(booked, why not) for one sidecar filename."""
+        if name not in self.seen:
+            return False, "the ledger has not folded it yet"
+        if cost is None:
+            return True, None                      # the cost itself is already a named problem
+        booked = self.folded.get(name)
+        if booked is None:
+            return True, None                      # seen with no watermark: a pre-watermark fold, nothing owed
+        if float(booked) + self.RESOLUTION < cost:
+            return False, (f"the ledger has booked {float(booked):.4f} of its {cost:.4f}, so "
+                           f"{cost - float(booked):.4f} of landed spend is not in the daily totals")
+        return True, None
+
+
+def _read_ledger(dashboard_path: Path | str | None, problems: list[str]) -> Ledger | None:
+    """The ledger's booked state, or None when no dashboard was given or it
+    cannot be read - an unreadable dashboard is a named problem, never an empty
+    fold set that would report every landed sidecar as unbooked."""
     if dashboard_path is None:
         return None
     name = Path(dashboard_path).name
@@ -106,7 +139,40 @@ def _folded_entries(dashboard_path: Path | str | None, problems: list[str]) -> s
         problems.append(f"{name}: spend.entries_seen is missing or not a list, so no sidecar can be checked "
                         "against the ledger")
         return None
-    return {str(s) for s in seen}
+    raw = spend.get("entries_folded")
+    folded: dict[str, float] = {}
+    if isinstance(raw, dict):
+        for key, value in raw.items():
+            amount = _money(value)
+            if amount is None:
+                problems.append(f"{name}: spend.entries_folded[{key!r}] is {value!r}, not a finite non-negative "
+                                "number, so how much of that sidecar is booked cannot be checked")
+            else:
+                folded[str(key)] = amount
+    elif raw is not None:
+        problems.append(f"{name}: spend.entries_folded is not an object, so how much of each sidecar is booked "
+                        "cannot be checked")
+    return Ledger({str(s) for s in seen}, folded)
+
+
+def _flag(entry: dict[str, Any], key: str, problems: list[str]) -> bool:
+    """A journal boolean, refused rather than coerced: `bool("false")` is True,
+    which classified a paid fire with no sidecar as evicted and excused it from
+    every check (Codex round 2 on PR #28). Anything but a real boolean reads as
+    False, the state that keeps the fire under scrutiny."""
+    value = entry.get(key, False)
+    if isinstance(value, bool):
+        return value
+    problems.append(f"paid fire {entry.get('fired_utc')}: {key} is {value!r}, not true or false; read as false, "
+                    "because a non-boolean flag must not be able to excuse a fire from reconciliation")
+    return False
+
+
+def _channel(value: Any, default: str = "anthropic") -> str:
+    """A billing channel, defaulting the way `fire_trigger.inflight_max_spend`
+    defaults a journal entry with no `lane`: to the account the daily ceiling
+    bounds."""
+    return value if isinstance(value, str) and value else default
 
 
 def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Path | str | None = None) -> dict[str, Any]:
@@ -119,9 +185,13 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
     """
     entries = read_journal(journal_path)
     paid = [e for e in entries if e.get("trigger") == LANE and e.get("max_spend") is not None]
-    targets, judges = _sidecars(Path(runs_dir))
     problems: list[str] = []
-    folded: set[str] | None = _folded_entries(dashboard_path, problems)
+    if not Path(runs_dir).is_dir():
+        # a mistyped --runs, or a checkout without the runs tree: read as an empty archive it reported "no
+        # problems" with nothing scanned, or blamed every fire for a sidecar that was never looked for
+        problems.append(f"{runs_dir}: no such directory, so no landed sidecar was scanned at all")
+    targets, judges = _sidecars(Path(runs_dir))
+    ledger = _read_ledger(dashboard_path, problems)
 
     by_nonce: dict[str, list[tuple[Path, dict[str, Any]]]] = {}
     unbound: list[Path] = []
@@ -149,14 +219,29 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             problems.append(f"{run_dir}: {len(found)} judge sidecars ({names}); one run directory carries one "
                             "judge pass, so none of their costs is joined to a fire")
 
+    # A nonce binds ONE journal entry to ONE sidecar. Two paid entries carrying the same one - merged journal
+    # histories, a hand edit, or a fire made before the fire path refused a repeat - each matched the single
+    # sidecar independently and both reported "landed", booking one cost against two commitments (Codex round 2
+    # on PR #28). fire_trigger refuses a repeat at the fire; this refuses it in the record.
+    nonce_counts: dict[str, int] = {}
+    for e in paid:
+        n = e.get("nonce")
+        if isinstance(n, str) and n:
+            nonce_counts[n] = nonce_counts.get(n, 0) + 1
+    duplicated = {n for n, c in nonce_counts.items() if c > 1}
+    for n in sorted(duplicated):
+        when = ", ".join(str(e.get("fired_utc")) for e in paid if e.get("nonce") == n)
+        problems.append(f"nonce {n!r} is on {nonce_counts[n]} paid {LANE} journal entries ({when}); a nonce binds "
+                        "one fire to one landed cost, so none of them is joined to a sidecar")
+
     rows: list[dict[str, Any]] = []
     known: set[str] = set()
     for e in paid:
         nonce = e.get("nonce")
         row: dict[str, Any] = {"fired_utc": e.get("fired_utc"), "nonce": nonce, "max_spend": _money(e.get("max_spend")),
-                               "resolved": bool(e.get("resolved")), "evicted": bool(e.get("evicted")), "run": None,
-                               "cost_usd": None, "judge_cost_usd": None, "total_usd": None, "cost_basis": None,
-                               "folded": None, "judge_folded": None, "status": None}
+                               "resolved": _flag(e, "resolved", problems), "evicted": _flag(e, "evicted", problems),
+                               "run": None, "cost_usd": None, "judge_cost_usd": None, "total_usd": None,
+                               "cost_basis": None, "folded": None, "judge_folded": None, "status": None}
         if row["max_spend"] is None:
             problems.append(f"paid fire {e.get('fired_utc')}: max_spend {e.get('max_spend')!r} is not a finite "
                             "non-negative number, so the landed cost cannot be checked against the commitment")
@@ -166,6 +251,10 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
             rows.append(row)
             continue
         known.add(nonce)
+        if nonce in duplicated:
+            row["status"] = "duplicate nonce"      # named once above; no cost is attributed to either fire
+            rows.append(row)
+            continue
         matches = by_nonce.get(nonce, [])
         if row["evicted"] and not matches:
             row["status"] = "evicted before it ran"          # the queue superseded it; nothing was spent
@@ -200,9 +289,29 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
                 if row["max_spend"] is not None and row["total_usd"] > row["max_spend"] + 1e-9:
                     problems.append(f"{p.parent.name}: landed cost {row['total_usd']:.4f} exceeds the fire's commitment "
                                     f"{row['max_spend']:.4f}")
-            if folded is not None:
-                row["folded"] = p.name in folded
-                row["judge_folded"] = (judge[0].name in folded) if judge is not None else None
+            # The fire reserved its commitment against ONE prepaid account (the journal's `lane`), and the ledger
+            # books the landed cost against whatever the sidecar's `billing_channel` says. A mismatch moves spend
+            # between the Anthropic and OpenRouter ceilings unseen (Codex round 2 on PR #28).
+            lane = _channel(e.get("lane"))
+            for sp, sr, what in ([(p, r, "sidecar")] + ([(judge[0], judge[1], "judge sidecar")]
+                                                        if judge is not None and "unreadable" not in judge[1] else [])):
+                channel = _channel(sr.get("billing_channel"), "")
+                if channel and channel != lane:
+                    problems.append(f"{sp.parent.name}/{sp.name}: the {what} books the {channel} account but the fire "
+                                    f"reserved its commitment on {lane}, so the two ceilings disagree about this spend")
+                elif not channel:
+                    problems.append(f"{sp.parent.name}/{sp.name}: the {what} states no billing_channel, so which "
+                                    "account its cost lands on cannot be checked against the fire's lane")
+            if ledger is not None:
+                booked, why = ledger.state(p.name, row["cost_usd"])
+                row["folded"] = booked
+                if not booked:
+                    problems.append(f"{p.parent.name}/{p.name}: {why}")
+                if judge is not None:
+                    jbooked, jwhy = ledger.state(judge[0].name, row["judge_cost_usd"])
+                    row["judge_folded"] = jbooked
+                    if not jbooked:
+                        problems.append(f"{judge[0].parent.name}/{judge[0].name}: {jwhy}")
             row["status"] = "landed"
         rows.append(row)
 
@@ -220,7 +329,17 @@ def reconcile(journal_path: Path | str, runs_dir: Path | str, dashboard_path: Pa
         if nonce not in known:
             for p, _ in matches:
                 problems.append(f"{p.parent.name}/{p.name}: journal_nonce {nonce!r} matches no paid {LANE} journal entry")
-    unfolded = sorted(p.name for p, _ in targets + judges if folded is not None and p.name not in folded)
+    # Every sidecar the ledger has not fully booked, joined to a fire or not. Each one is already a problem in
+    # its own right - a joined sidecar through the fold check above, an unjoined one through the checks just
+    # above that - so `--strict` no longer exits 0 while this list is non-empty (Codex round 2 on PR #28).
+    unfolded: list[str] = []
+    if ledger is not None:
+        for p, r in targets + judges:
+            if "unreadable" in r:
+                continue
+            if not ledger.state(p.name, _money(r.get("cost_usd")))[0]:
+                unfolded.append(p.name)
+    unfolded = sorted(unfolded)
     return {"lane": LANE, "paid_fires": rows, "sidecars": {"target": len(targets), "judge": len(judges)},
             "unfolded_sidecars": unfolded, "problems": problems}
 
@@ -252,5 +371,6 @@ def render_markdown(result: dict[str, Any]) -> str:
         lines.append(f"**Problems ({len(result['problems'])})**")
         lines += [f"- {p}" for p in result["problems"]]
     else:
-        lines.append("No problems: every paid fire has exactly one landed sidecar within its commitment, and every sidecar has its fire.")
+        lines.append("No problems: every paid fire has exactly one landed sidecar within its commitment, on the "
+                     "account it reserved, fully booked into the ledger, and every sidecar has its fire.")
     return "\n".join(lines) + "\n"
