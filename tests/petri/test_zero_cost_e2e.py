@@ -620,10 +620,11 @@ def test_run_params_reach_the_manifest_and_a_spend_report_covers_a_run_without_o
     the manifest, and a run that failed before adaptation left no sidecar."""
     out = tmp_path_factory.mktemp("cli-run")
     code = cli.main(["run", "--target", "mockllm/model", "--max-spend", "0.01", "--seed-id", H4, "--no-harness-commit",
-                     "--out-dir", str(out)])
+                     "--out-dir", str(out), "--journal-nonce", "fire-n1"])
     assert code == 0
     params = framework.load_json(out / "run_params.json")
     assert params["cost_limit_per_sample_usd"] == pytest.approx(0.005) and params["samples"] == 2
+    assert params["journal_nonce"] == "fire-n1", "the fire's nonce is recorded beside the limits (PR B)"
     eval_path = next((out / "logs").glob("*.eval"))
     run_dir = tmp_path_factory.mktemp("cli-adapt") / "run_x"
     code = cli.main(["adapt", "--eval", str(eval_path), "--out-dir", str(run_dir), "--custody", "github_actions_artifact:90d",
@@ -632,12 +633,16 @@ def test_run_params_reach_the_manifest_and_a_spend_report_covers_a_run_without_o
     assert code == 0
     m = framework.load_json(run_dir / "manifest.json")
     assert m["spend"]["cost_limit_per_sample_usd"] == pytest.approx(0.005) and m["spend"]["token_limit_per_sample"] == 20000
+    # the nonce reaches the manifest from run_params and the cost sidecar from the manifest (PR B)
+    assert m["spend"]["journal_nonce"] == "fire-n1"
+    assert framework.load_json(run_dir / f"{run_dir.name}.report.json")["journal_nonce"] == "fire-n1"
     # a spend report from the retained log alone, and one with no log at all
     report = tmp_path_factory.mktemp("spend") / "run_y.report.json"
     assert cli.main(["spend-report", "--out", str(report), "--run-id", "run_y", "--target", "mockllm/model", "--max-spend", "0.01",
-                     "--eval", str(eval_path)]) == 0
+                     "--eval", str(eval_path), "--journal-nonce", "fire-n2"]) == 0
     on_disk = framework.load_json(report)
     assert on_disk["run_status"] == "success" and on_disk["cost_usd"] == 0.0
+    assert on_disk["journal_nonce"] == "fire-n2", "the fallback sidecar carries the nonce too (PR B)"
     # H4: two conditions, each one arm turn plus two branch turns -> six target calls in the retained log; mockllm's
     # default output path (no custom callable) does fill usage, so nothing is missing here
     assert on_disk["models"][0]["calls"] == 6 and on_disk["usage_missing_models"] == []

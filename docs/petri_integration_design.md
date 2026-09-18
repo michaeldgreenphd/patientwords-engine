@@ -891,6 +891,37 @@ extra target calls after tool results on the H3 seeds, the second tier
 instrument on every later turn, and the per-turn judge of record (one call
 per assistant turn per outcome dimension, not in the table) move every
 number; the first `dry_run` fire at a small `max_spend` replaces the table.
+
+**Measured by the first dry run (2026-09-18, run 35295691359 on `main` at
+db0ff933, wave 1, four seeds, one epoch, mock target, no judge; $0).** The
+counts below that the CI log printed (samples, records, refusals, contract
+checks, seal, chain) are the run's own; the byte and token figures are from
+a reproduction of the same commit and seeds under the locked environment,
+which matched every count the log printed, and CI's own figures are in that
+run's job summary.
+
+| Measured | Value |
+|---|---|
+| trees (samples) / branches / records exported | 8 / 16 / 16, none refused |
+| shared-prefix branches anchored | 8 of 8 |
+| target calls | 20 |
+| planned judge calls (not applicable) | 74 (10) |
+| judge prompt UTF-8 bytes, min / median / max / total | 1,178 / 1,602 / 2,519 / 120,925 |
+| judge input bound, tokens summed over calls | 130,397 |
+| sanitised export (log / transcripts / manifest / rules) | 273,360 / 23,595 / 20,346 / 9,272 bytes |
+| raw `.eval` | 44,530 bytes |
+| sanitiser fields removed / events kept | 566 / 276 |
+| exports artifact, zipped | 39,934 bytes |
+| contract checks | six pass; `generation_config_pinned` fails under the mock target (sampling keys not sent), as `tests/petri/test_zero_cost_e2e.py` asserts for mockllm; a paid run must show pass |
+
+Re-deriving the pilot cost from this structure, with the registry's Haiku
+prices (1 / 5 USD per million tokens) and the memo's reply-size assumption
+(272 output tokens per target reply, 300 per judge answer): 74 judge calls
+at 130,397 bounded input tokens and at most 22,200 output tokens is about
+$0.24; 20 target calls at roughly 300 input and 272 output tokens is about
+$0.03; so wave 1 at one epoch is about $0.30 and three epochs under $1. These
+are estimates on measured structure, not measurements; the first paid fire
+replaces them, and the `$2/day` ceiling admits one such fire whole.
 ## 15. Fork discipline
 
 No change to the fork is justified. Every behaviour the design needs is
@@ -1438,6 +1469,48 @@ dry run observable, which section 14 depends on.
    resumed pass that died mid-call leaves); rows beside a judge sidecar that
    cannot be read get no label rather than a registry price; and a
    zero-price judge stays non-metered whatever survived.
+
+### Paid-fire readiness (PR B, 2026-09-18)
+
+After PR A merged, the lane was parked, the first `dry_run` fired at $0
+(run 35295691359; its measurements are in section 14) and the lane was
+re-parked. PR B carries what a paid fire still lacked:
+
+1. **Recovery.** The seal-cleared run directory of a `run` is uploaded as
+   the same 30-day artifact a `dry_run` gets (`petri-audit-exports-<run>-
+   <attempt>`), before the commit steps and under the same gating (no
+   `always()`; after the seal check, `verify-chain`, `verify-run` and the
+   raw-log refusal), so a commit that fails after the spend leaves a
+   recoverable copy (owner decision 8, second round). The dry run measured
+   the artifact at 40 KB zipped for 8 samples.
+2. **Fire-to-manifest binding.** `fire_trigger.py` records the fire's
+   `_nonce` in the journal entry; the workflow's params job emits it as an
+   output (`_nonce`, metadata beside the trigger keys, never one of them);
+   `cli run --journal-nonce` records it in `run_params.json`; the adapter
+   takes it from there into the manifest's `spend.journal_nonce`; and both
+   cost-sidecar writers (`adapt --report`, the fallback `spend-report`)
+   copy it into the sidecar the daily Routine folds.
+3. **Journal-to-ledger reconciliation.** `cli reconcile-spend`
+   (`scripts/petri_audit/reconcile.py`) joins the lane's paid journal
+   entries to the landed cost sidecars on that nonce and names every gap:
+   a paid fire with no landed sidecar, a sidecar no fire accounts for, a
+   landed cost above the fire's commitment, an unreadable sidecar, and a
+   sidecar the ledger has not folded yet. It reads and reports; `--strict`
+   makes a problem an exit status. `fire_trigger.py` and
+   `ledger_update.py` stay the only writers.
+4. **The mock judge is zero-priced.** `mockllm/judge` joins
+   `ZERO_PRICE_MODELS`, so a local judged run's rows are labelled
+   non-metered rather than provider-measured at a fallback price.
+
+Deferred to the next PR, none of them gating the pilot: the advice rubric's
+digest in the manifest (a judged run's rubric is reproducible through the
+recorded engine commit), a run-level unbound-rows verdict in `verify-run`
+(the chain verifier and the summary's usage table already refuse unbound
+rows), the two `calls_without_usage` meanings in the judge sidecar (the
+top-level count is the ceiling's charged attempts, `cumulative` counts rows
+with `usage_missing`), and the register manipulation check on the shared
+pushback turn (decision 3, second round: a judge-side addition). The
+empty-text final reply in `marker_echo` waits on the owner's rule decision.
 
 ## Decisions recorded from the owner (2026-09-16)
 

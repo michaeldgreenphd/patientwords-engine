@@ -160,6 +160,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         "target": args.target, "max_spend_usd": args.max_spend, "judge_max_spend_usd": args.judge_max_spend,
         "cost_limit_per_sample_usd": per_sample_cost, "token_limit_per_sample": args.token_limit,
         "epochs": args.epochs, "samples": facts["samples"], "log_model_api": args.log_model_api == "true",
+        "journal_nonce": args.journal_nonce or None,
         "seed_ids": [s["seed_id"] for s in facts["seeds"]]})
     log = run_study(task, target=args.target, seeds=facts["seeds"], epochs=args.epochs, log_dir=out_dir / "logs",
                     token_limit=args.token_limit, cost_limit=per_sample_cost, log_model_api=args.log_model_api == "true")
@@ -173,7 +174,8 @@ def cmd_adapt(args: argparse.Namespace) -> int:
     seed_set = load_seed_file(args.seeds)
     run_params = load_json(args.run_params) if args.run_params else {}
     spend = {"max_spend_usd": args.max_spend, "judge_max_spend_usd": args.judge_max_spend,
-             "journal_nonce": args.journal_nonce,
+             # the fire's nonce: given to adapt directly, else the one `run` recorded (PR B, 2026-09-18)
+             "journal_nonce": args.journal_nonce or run_params.get("journal_nonce") or None,
              "cost_limit_per_sample_usd": args.cost_limit if args.cost_limit is not None
              else run_params.get("cost_limit_per_sample_usd"),
              "token_limit_per_sample": args.token_limit if args.token_limit is not None
@@ -190,7 +192,8 @@ def cmd_adapt(args: argparse.Namespace) -> int:
         write_report_sidecar(Path(args.out_dir) / f"{Path(args.out_dir).name}.report.json", run_id=m["run_id"],
                              eval_id=m["eval_id"], model_usage=usage, max_spend_usd=args.max_spend,
                              judge_max_spend_usd=args.judge_max_spend, run_utc=m["created_utc"],
-                             extra={"raw_eval_log_sha256": m["artifacts"]["raw_eval_log_sha256"]},
+                             extra={"raw_eval_log_sha256": m["artifacts"]["raw_eval_log_sha256"],
+                                    "journal_nonce": m["spend"]["journal_nonce"]},
                              target=m["models"]["target"]["inspect_name"])
     return 0
 
@@ -203,7 +206,8 @@ def cmd_spend_report(args: argparse.Namespace) -> int:
     zero-price target (Codex round 3)."""
     target = args.target
     model_usage: dict[str, dict] = {}
-    extra: dict = {"spend_report_reason": args.reason, "eval_log": None, "run_status": None}
+    extra: dict = {"spend_report_reason": args.reason, "eval_log": None, "run_status": None,
+                   "journal_nonce": args.journal_nonce or None}
     if args.eval:
         from inspect_ai.log import read_eval_log  # 3.12 only
 
@@ -369,6 +373,18 @@ def cmd_verify_chain(args: argparse.Namespace) -> int:
     return 0 if ok else 6
 
 
+def cmd_reconcile_spend(args: argparse.Namespace) -> int:
+    """Join the lane's paid journal entries to the landed cost sidecars on the fire nonce and name every gap
+    (scripts/petri_audit/reconcile.py). Exit 1 only under --strict with problems; the report itself never fails."""
+    from .reconcile import reconcile, render_markdown
+
+    result = reconcile(args.journal, args.runs, args.dashboard)
+    print(render_markdown(result), end="")
+    if args.json_out:
+        write_json(Path(args.json_out), result)
+    return 1 if (args.strict and result["problems"]) else 0
+
+
 def cmd_verify_run(args: argparse.Namespace) -> int:
     """One run directory on its own (no chain file): the check a downloaded
     dry-run exports artifact can pass."""
@@ -475,6 +491,8 @@ def build_parser() -> argparse.ArgumentParser:
     common_lock(p)
     common_spend(p)
     p.add_argument("--out-dir", required=True)
+    p.add_argument("--journal-nonce", default=None,
+                   help="the fire's _nonce from the trigger file; recorded in run_params.json, the manifest and the cost sidecar")
     p.add_argument("--log-model-api", choices=["true", "false"], default="true",
                    help="retain every raw provider request/response in the (never committed) .eval; "
                         "false leaves generation_config_pinned unprovable, so the run cannot be claim-grade")
@@ -506,6 +524,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--eval", default=None, help="the retained raw log, when one exists")
     p.add_argument("--run-utc", default=None)
     p.add_argument("--reason", default="run attempted but no adapted report exists")
+    p.add_argument("--journal-nonce", default=None, help="the fire's _nonce, so the fallback sidecar reconciles with the journal")
     p.set_defaults(func=cmd_spend_report)
 
     p = sub.add_parser("judge-spend-report")
@@ -535,6 +554,14 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("verify-run")
     p.add_argument("--run-dir", required=True)
     p.set_defaults(func=cmd_verify_run)
+
+    p = sub.add_parser("reconcile-spend")
+    p.add_argument("--journal", default=str(ROOT / "ops" / "trigger_journal.jsonl"))
+    p.add_argument("--runs", default=str(ROOT / "data" / "petri" / "runs"))
+    p.add_argument("--dashboard", default=str(ROOT / "ops" / "dashboard.json"))
+    p.add_argument("--json-out", default=None)
+    p.add_argument("--strict", action="store_true", help="exit 1 when any problem is reported")
+    p.set_defaults(func=cmd_reconcile_spend)
 
     p = sub.add_parser("run-summary")
     p.add_argument("--run-dir", default=None, help="the adapted run directory (absent under preflight)")

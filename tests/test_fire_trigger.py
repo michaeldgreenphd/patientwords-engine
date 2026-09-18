@@ -2127,3 +2127,15 @@ def test_publish_reports_a_fire_origin_already_carries(tmp_path, capsys):
     assert _head(clone) == subprocess.run(["git", "-C", str(clone), "rev-parse", "origin/main"],
                                           capture_output=True, text=True).stdout.strip()
 
+
+
+def test_journal_entry_records_the_fire_nonce(repo):
+    """PR B (2026-09-18): the petri-audit run, its manifest and its cost sidecar
+    carry the fire's `_nonce`; the journal entry records the same string so the
+    reconciliation can join a paid fire to what it landed."""
+    write_dashboard(repo, spent=0.0)
+    assert fire(repo, "advice-eval", _advice_params(_nonce="n-bind-1")) == 0
+    entry = json.loads(journal_path(repo).read_text().splitlines()[-1])
+    assert entry["nonce"] == "n-bind-1"
+    assert fire(repo, "scenario-generation", {"task": "pairs", "num": "5", "max_spend": "0.5"}) == 0
+    assert json.loads(journal_path(repo).read_text().splitlines()[-1])["nonce"] is None, "no nonce fired: none recorded"

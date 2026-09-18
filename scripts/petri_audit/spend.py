@@ -20,7 +20,7 @@ from .framework import ROOT, load_json, sha256_text
 
 PROVIDERS_PATH = ROOT / "data" / "advice_providers.json"
 FALLBACK_PRICING = (10.0, 50.0)          # scripts/advice_eval.py _FALLBACK_PRICING, USD per million tokens
-ZERO_PRICE_MODELS = ("mockllm/model", "none/none")
+ZERO_PRICE_MODELS = ("mockllm/model", "mockllm/judge", "none/none")      # mockllm/judge: the local tests' judge (PR B)
 
 
 @dataclass(frozen=True)

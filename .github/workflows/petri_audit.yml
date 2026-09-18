@@ -113,6 +113,9 @@ jobs:
       judge_max_tokens: ${{ steps.params.outputs.judge_max_tokens }}
       log_model_api: ${{ steps.params.outputs.log_model_api }}
       commit_outputs: ${{ steps.params.outputs.commit_outputs }}
+      # the fire's `_nonce` (pass-through metadata, never a trigger key): the run records it so its cost sidecar can be
+      # reconciled with the journal entry that reserved the spend (PR B, 2026-09-18)
+      _nonce: ${{ steps.params.outputs._nonce }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -165,9 +168,11 @@ jobs:
                       "log_model_api": "true",
                       "commit_outputs": "false"}
           p = dict(defaults)
+          nonce = ""                        # the fire's _nonce, metadata beside the trigger keys (empty on dispatch)
           if os.environ["EVENT_NAME"] == "push":
               with open(".github/trigger/petri-audit.json", encoding="utf-8") as f:
                   cfg = json.load(f)
+              nonce = str(cfg.get("_nonce") or "")
               if isinstance(cfg.get("seed_ids"), list):
                   cfg["seed_ids"] = " ".join(str(s) for s in cfg["seed_ids"])
               p.update({k: (str(v).lower() if isinstance(v, bool) else str(v))
@@ -209,6 +214,7 @@ jobs:
           with open(out, "a", encoding="utf-8") as f:
               for k in defaults:
                   f.write(k + "=" + p[k] + "\n")
+              f.write("_nonce=" + nonce + "\n")
           print(" | ".join(f"{k}={p[k]}" for k in sorted(defaults)))
           EOF
 
@@ -294,6 +300,7 @@ jobs:
       - name: Run (mode dry_run or run; the raw .eval is written OUTSIDE the checkout)
         if: ${{ needs.params.outputs.mode != 'preflight' }}
         env:
+          JOURNAL_NONCE: ${{ needs.params.outputs._nonce }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -317,7 +324,7 @@ jobs:
           if [ "$JUDGE" = "true" ]; then ARGS="$ARGS --judge-max-spend $JUDGE_MAX_SPEND --judge-model $JUDGE_MODEL"; fi
           python -m scripts.petri_audit.cli run --seeds "$SEEDS_FILE" $ARGS \
             --target "$TARGET" --max-spend "$MAX_SPEND" --epochs "$EPOCHS" --token-limit "$TOKEN_LIMIT" \
-            --log-model-api "$LOG_MODEL_API" --out-dir "$RUNNER_TEMP/petri-run"
+            --log-model-api "$LOG_MODEL_API" --out-dir "$RUNNER_TEMP/petri-run" --journal-nonce "$JOURNAL_NONCE"
 
       - name: Adapt (sanitised export, transcripts 0.2, rule outcomes, manifest, cost sidecar)
         if: ${{ needs.params.outputs.mode != 'preflight' }}
@@ -389,11 +396,15 @@ jobs:
       # directory verifies on its own (`cli verify-run`: the manifest's chain block and every artifact it names); the
       # cumulative chain file is NOT included, since it references every earlier committed run the artifact does not
       # carry (Codex, PR #27).
-      - name: Upload the seal-cleared sanitised exports of a dry run (never committed)
-        if: ${{ needs.params.outputs.mode == 'dry_run' }}
+      # A paid run's seal-cleared outputs are uploaded too, and before the commit steps, so a commit that fails after
+      # the spend still leaves a recoverable copy (owner decision 8, second round; PR B, 2026-09-18). The first dry run
+      # measured the artifact at 40 KB zipped for 8 samples, so size is no objection. The same gating applies: no
+      # always(), after the seal check, verify-chain, verify-run and the raw-log refusal.
+      - name: Upload the seal-cleared sanitised exports (dry run or paid run; never a raw log)
+        if: ${{ needs.params.outputs.mode != 'preflight' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: petri-audit-dry-run-exports-${{ github.run_id }}-${{ github.run_attempt }}
+          name: petri-audit-exports-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             data/petri/runs/run_${{ github.run_id }}_${{ github.run_attempt }}/
             !data/petri/runs/**/*.eval
@@ -407,6 +418,7 @@ jobs:
       - name: Spend report for an attempted run that produced no adapted report
         if: ${{ always() && needs.params.outputs.mode != 'preflight' }}
         env:
+          JOURNAL_NONCE: ${{ needs.params.outputs._nonce }}
           TARGET: ${{ needs.params.outputs.target }}
           MAX_SPEND: ${{ needs.params.outputs.max_spend }}
           JUDGE: ${{ needs.params.outputs.judge }}
@@ -425,7 +437,7 @@ jobs:
             if [ -n "$EVAL" ]; then ARGS="$ARGS --eval $EVAL"; fi
             mkdir -p "data/petri/runs/$RUN_STEM"
             python -m scripts.petri_audit.cli spend-report --out "$REPORT" --run-id "$RUN_STEM" \
-              --target "$TARGET" --max-spend "$MAX_SPEND" $ARGS \
+              --target "$TARGET" --max-spend "$MAX_SPEND" $ARGS --journal-nonce "$JOURNAL_NONCE" \
               --reason "run attempted; no adapted report exists (run or adaptation failed)"
           fi
           # a judge that started (marker) and left no sidecar (the process died mid-call) is booked at its ceiling with

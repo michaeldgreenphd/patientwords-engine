@@ -1551,3 +1551,14 @@ def test_derived_condition_ids_must_stay_distinct(seed_set):
     assert ids.count("a__b__c") == 2
     assert any("derived condition id 'a__b__c' collides" in p for p in seeds.seed_problems(h5, seed_set.framing, seed_set.outcomes))
     assert not any("collides" in p for p in seeds.seed_problems(seed_set.seeds["pw-petri-example-h5-audience"], seed_set.framing, seed_set.outcomes))
+
+
+def test_the_mock_judge_is_zero_priced():
+    """PR B (2026-09-18): `mockllm/judge` is the judge spec the local tests use; it
+    resolved to the fallback price, so a mock judge's rows were labelled
+    provider-measured with a fallback source."""
+    from scripts.petri_audit.spend import ZERO_PRICE_MODELS, resolve_price
+
+    assert "mockllm/judge" in ZERO_PRICE_MODELS
+    price = resolve_price("mockllm/judge")
+    assert (price.input_per_mtok, price.output_per_mtok, price.source) == (0.0, 0.0, "zero:mock_or_placeholder")

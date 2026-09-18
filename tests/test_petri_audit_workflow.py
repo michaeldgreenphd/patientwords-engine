@@ -227,8 +227,12 @@ def test_a_dry_run_uploads_its_seal_cleared_exports_and_the_summary_reads_the_ru
     pilot design waits on (design memo section 14) were never observable."""
     steps = _steps(workflow, "audit")
     names = [s.get("name", "") for s in steps]
-    exports = _step(workflow, "Upload the seal-cleared sanitised exports of a dry run")
-    assert exports["if"] == "${{ needs.params.outputs.mode == 'dry_run' }}", "dry-run exports only; never a paid run's"
+    exports = _step(workflow, "Upload the seal-cleared sanitised exports (dry run or paid run; never a raw log)")
+    # PR B (2026-09-18): a paid run's seal-cleared outputs are uploaded too, before the commit steps, so a commit that
+    # fails after the spend leaves a recoverable copy; preflight has nothing to upload
+    assert exports["if"] == "${{ needs.params.outputs.mode != 'preflight' }}"
+    assert exports["with"]["name"] == "petri-audit-exports-${{ github.run_id }}-${{ github.run_attempt }}"
+    assert names.index(exports["name"]) < names.index("Commit sanitised outputs to the branch (mode run only; requires every prior step green)")
     assert "always()" not in exports["if"], "must depend on every prior step, the seal check and verify-chain included"
     assert str(exports["uses"]).startswith("actions/upload-artifact")
     assert "data/petri/runs/run_${{ github.run_id }}_${{ github.run_attempt }}/" in exports["with"]["path"]
@@ -342,3 +346,23 @@ def test_park_default_validates_and_is_a_true_no_op():
     judged = dict(ft.PARK_DEFAULTS[TRIGGER], judge="true", judge_max_spend="0.50", max_spend="1.00")
     commitment, err = ft.fire_commitment(judged)
     assert err is None and commitment == pytest.approx(1.50), "the judge ceiling is counted, as for advice-eval"
+
+
+def test_the_fire_nonce_reaches_the_run_the_manifest_and_the_fallback_sidecar(workflow, raw):
+    """PR B (2026-09-18): nothing tied a landed cost sidecar to the journal entry
+    that reserved its spend. The params job now emits the trigger file's
+    `_nonce` (metadata, never a trigger key), the run records it, and the
+    fallback spend report carries it, so `reconcile-spend` can join the two."""
+    params = workflow["jobs"]["params"]
+    assert params["outputs"]["_nonce"] == "${{ steps.params.outputs._nonce }}"
+    resolve = _step(workflow, "Resolve parameters", job="params")["run"]
+    assert 'nonce = str(cfg.get("_nonce") or "")' in resolve and 'f.write("_nonce=" + nonce + "\\n")' in resolve
+    assert '"_nonce"' not in resolve.split("defaults = {")[1].split("}")[0], "the nonce is not a trigger key"
+    run = _step(workflow, "Run (mode dry_run or run; the raw .eval is written OUTSIDE the checkout)")
+    assert run["env"]["JOURNAL_NONCE"] == "${{ needs.params.outputs._nonce }}" and '--journal-nonce "$JOURNAL_NONCE"' in run["run"]
+    fallback = _step(workflow, "Spend report for an attempted run that produced no adapted report")
+    assert fallback["env"]["JOURNAL_NONCE"] == "${{ needs.params.outputs._nonce }}"
+    assert '--journal-nonce "$JOURNAL_NONCE"' in fallback["run"]
+    # the adapter reads the nonce from run_params.json, which the run step writes; the adapt step passes that file
+    adapt = _step(workflow, "Adapt (sanitised export, transcripts 0.2, rule outcomes, manifest, cost sidecar)")
+    assert '--run-params "$RUNNER_TEMP/petri-run/run_params.json"' in adapt["run"]

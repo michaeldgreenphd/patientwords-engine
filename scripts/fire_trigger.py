@@ -1198,6 +1198,11 @@ def cmd_fire(args):
         "note": args.note,
         "resolved": False,
         "evicted": False,
+        # the fire's `_nonce` is the join key between this entry and what the run leaves behind: the petri-audit
+        # workflow passes it into the run, the manifest records it as spend.journal_nonce and both cost-sidecar
+        # writers copy it, so `scripts.petri_audit.cli reconcile-spend` can match every paid fire to its landed cost
+        # (PR B, 2026-09-18); None when the fire carried no nonce
+        "nonce": str(params["_nonce"]) if params.get("_nonce") not in (None, "") else None,
     }
     if max_spend is not None:
         entry["max_spend"] = max_spend  # in-flight commitment budget_check will count
