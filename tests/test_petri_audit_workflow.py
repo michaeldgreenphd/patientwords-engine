@@ -85,7 +85,7 @@ def test_fire_path_refuses_a_bad_judge_token_allowance(capsys):
     """Codex round 6: judge_max_tokens was the one numeric key no entry point
     parsed before the paid run."""
     base = dict(ft.PARK_DEFAULTS[TRIGGER], mode="run", target="anthropic/claude-haiku-4-5", judge="true",
-                judge_model="claude-haiku-4-5", judge_max_spend="0.01")
+                judge_model="claude-haiku-4-5", judge_max_spend="0.01", _nonce="n1")  # a paid fire carries a nonce (PR #28)
     for bad in ("three-hundred", "0", "-5", ""):
         assert any("judge_max_tokens must be a positive integer" in p
                    for p in ft.petri_params_problems(dict(base, judge_max_tokens=bad))), bad
@@ -141,9 +141,24 @@ def test_defaults_cover_every_trigger_key_and_dispatch_input(workflow, defaults)
     assert TRIGGER in ft.PAID_TRIGGERS and TRIGGER in ft.TRIGGERS
 
 
-def test_no_trigger_file_exists_so_nothing_can_fire():
-    assert not (ROOT / ".github" / "trigger" / f"{TRIGGER}.json").exists(), (
-        "the trigger file is created by fire_trigger.py park after the lane merges, never by hand")
+def test_the_trigger_file_is_absent_or_parked_so_a_branch_operation_re_fires_nothing():
+    """The resting-state rule (AGENTS.md): a trigger file at rest is a loaded
+    default any branch operation can pull, so it is either absent or the park.
+
+    It was absent while the lane was unmerged; the owner parked the lane on
+    2026-09-18 (fire_trigger.py park), so `main` now carries the park default
+    and a branch cut before it still carries none. Either state is correct; a
+    file holding anything else - a paid `mode: run` left at rest - is not, and
+    would re-fire that configuration on the next merge, rebase or cherry-pick.
+    """
+    path = ROOT / ".github" / "trigger" / f"{TRIGGER}.json"
+    if not path.exists():
+        return
+    params = json.loads(path.read_text(encoding="utf-8"))
+    at_rest = {k: v for k, v in params.items() if not k.startswith("_")}
+    assert at_rest == ft.PARK_DEFAULTS[TRIGGER], (
+        "the trigger file at rest must be the park default, written by fire_trigger.py park, never by hand")
+    assert not ft.is_paid_fire(TRIGGER, params), "a file at rest that would spend is the resting-state defect"
 
 
 def test_interpreter_and_harness_are_the_locked_ones(workflow, raw):
@@ -227,9 +242,22 @@ def test_a_dry_run_uploads_its_seal_cleared_exports_and_the_summary_reads_the_ru
     pilot design waits on (design memo section 14) were never observable."""
     steps = _steps(workflow, "audit")
     names = [s.get("name", "") for s in steps]
-    exports = _step(workflow, "Upload the seal-cleared sanitised exports of a dry run")
-    assert exports["if"] == "${{ needs.params.outputs.mode == 'dry_run' }}", "dry-run exports only; never a paid run's"
+    exports = _step(workflow, "Upload the seal-cleared sanitised exports (dry run or paid run; never a raw log)")
+    # PR B (2026-09-18): a paid run's seal-cleared outputs are uploaded too, before the commit steps, so a commit that
+    # fails after the spend leaves a recoverable copy; preflight has nothing to upload
+    assert exports["if"] == "${{ needs.params.outputs.mode != 'preflight' }}"
+    assert exports["with"]["name"] == "petri-audit-exports-${{ github.run_id }}-${{ github.run_attempt }}"
+    assert names.index(exports["name"]) < names.index("Commit sanitised outputs to the branch (mode run only; requires every prior step green)")
     assert "always()" not in exports["if"], "must depend on every prior step, the seal check and verify-chain included"
+    # Non-blocking only where a committed copy follows it. Codex round 1 (PR #28): on a paid run that commits,
+    # the recovery upload's OWN failure must not skip the commit step behind it (default success gating), or the
+    # measurement is neither committed nor recoverable while the always()-gated sidecar step books the spend.
+    # Codex rounds 3 and 5: where nothing is committed - a dry run, or a paid run with commit_outputs false -
+    # this artifact is the only seal-cleared copy, so its failure stays fatal.
+    assert exports["continue-on-error"] == \
+        "${{ needs.params.outputs.mode == 'run' && needs.params.outputs.commit_outputs == 'true' }}"
+    commit = _step(workflow, "Commit sanitised outputs to the branch")
+    assert "continue-on-error" not in commit, "only the recovery upload is non-blocking"
     assert str(exports["uses"]).startswith("actions/upload-artifact")
     assert "data/petri/runs/run_${{ github.run_id }}_${{ github.run_attempt }}/" in exports["with"]["path"]
     # Codex (PR #27): the cumulative chain file references every earlier committed run, which the artifact does not
@@ -290,7 +318,7 @@ def test_fire_lane_classifies_the_petri_target_and_judge_specs():
     from scripts.petri_audit import spend
     assert spend.billing_channel([orl]) == "openrouter" and spend.judge_billing_channel("openrouter:google/x") == "openrouter"
     # a mixed-channel fire is refused outright: one journal entry carries one commitment on one account
-    base = dict(ft.PARK_DEFAULTS[TRIGGER], mode="run", judge="true", judge_max_spend="0.01")
+    base = dict(ft.PARK_DEFAULTS[TRIGGER], mode="run", judge="true", judge_max_spend="0.01", _nonce="n1")
     with pytest.raises(ValueError, match="mixed-channel"):
         ft.validate_params(TRIGGER, dict(base, target=orl, judge_model="claude-haiku-4-5"))
     with pytest.raises(ValueError, match="mixed-channel"):
@@ -342,3 +370,42 @@ def test_park_default_validates_and_is_a_true_no_op():
     judged = dict(ft.PARK_DEFAULTS[TRIGGER], judge="true", judge_max_spend="0.50", max_spend="1.00")
     commitment, err = ft.fire_commitment(judged)
     assert err is None and commitment == pytest.approx(1.50), "the judge ceiling is counted, as for advice-eval"
+
+
+def test_the_fire_nonce_reaches_the_run_the_manifest_and_the_fallback_sidecar(workflow, raw):
+    """PR B (2026-09-18): nothing tied a landed cost sidecar to the journal entry
+    that reserved its spend. The params job now emits the trigger file's
+    `_nonce` (metadata, never a trigger key), the run records it, and the
+    fallback spend report carries it, so `reconcile-spend` can join the two."""
+    params = workflow["jobs"]["params"]
+    assert params["outputs"]["_nonce"] == "${{ steps.params.outputs._nonce }}"
+    resolve = _step(workflow, "Resolve parameters", job="params")["run"]
+    assert 'nonce = str(cfg.get("_nonce") or "")' in resolve and 'f.write("_nonce=" + nonce + "\\n")' in resolve
+    assert '"_nonce"' not in resolve.split("defaults = {")[1].split("}")[0], "the nonce is not a trigger key"
+    run = _step(workflow, "Run (mode dry_run or run; the raw .eval is written OUTSIDE the checkout)")
+    assert run["env"]["JOURNAL_NONCE"] == "${{ needs.params.outputs._nonce }}" and '--journal-nonce "$JOURNAL_NONCE"' in run["run"]
+    fallback = _step(workflow, "Spend report for an attempted run that produced no adapted report")
+    assert fallback["env"]["JOURNAL_NONCE"] == "${{ needs.params.outputs._nonce }}"
+    assert '--journal-nonce "$JOURNAL_NONCE"' in fallback["run"]
+    # the adapter reads the nonce from run_params.json, which the run step writes; the adapt step passes that file
+    adapt = _step(workflow, "Adapt (sanitised export, transcripts 0.2, rule outcomes, manifest, cost sidecar)")
+    assert '--run-params "$RUNNER_TEMP/petri-run/run_params.json"' in adapt["run"]
+
+
+def test_the_fallback_spend_report_waits_for_a_target_start_marker(workflow):
+    """The always()-gated spend report runs even when a step BEFORE the run failed
+    - seed validation, the environment lock, preflight - and with no eval log it
+    imputes the FULL target ceiling. Since PR B binds the journal nonce into that
+    sidecar, the ledger would fold a cost for a run that made no provider call and
+    reconciliation would accept it as this fire's landed spend (Codex round 8)."""
+    run_step = _step(workflow, "Run (mode dry_run or run")
+    assert 'touch "$RUNNER_TEMP/petri-run/target_started"' in run_step["run"], \
+        "the run step must leave the marker the spend report keys off"
+    spend = _step(workflow, "Spend report for an attempted run")
+    assert '[ ! -f "$RUNNER_TEMP/petri-run/target_started" ]' in spend["run"], \
+        "the target sidecar must not be imputed for a run that never started"
+    # the judge's own marker is untouched: a judge that started and died is still booked at its ceiling
+    assert '[ -f "$RUNNER_TEMP/petri-run/judge_started" ]' in spend["run"]
+    # and the marker is written before the paid call, not after it
+    body = run_step["run"]
+    assert body.index("target_started") < body.index("scripts.petri_audit.cli run")

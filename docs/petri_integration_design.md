@@ -891,6 +891,37 @@ extra target calls after tool results on the H3 seeds, the second tier
 instrument on every later turn, and the per-turn judge of record (one call
 per assistant turn per outcome dimension, not in the table) move every
 number; the first `dry_run` fire at a small `max_spend` replaces the table.
+
+**Measured by the first dry run (2026-09-18, run 35295691359 on `main` at
+db0ff933, wave 1, four seeds, one epoch, mock target, no judge; $0).** The
+counts below that the CI log printed (samples, records, refusals, contract
+checks, seal, chain) are the run's own; the byte and token figures are from
+a reproduction of the same commit and seeds under the locked environment,
+which matched every count the log printed, and CI's own figures are in that
+run's job summary.
+
+| Measured | Value |
+|---|---|
+| trees (samples) / branches / records exported | 8 / 16 / 16, none refused |
+| shared-prefix branches anchored | 8 of 8 |
+| target calls | 20 |
+| planned judge calls (not applicable) | 74 (10) |
+| judge prompt UTF-8 bytes, min / median / max / total | 1,178 / 1,602 / 2,519 / 120,925 |
+| judge input bound, tokens summed over calls | 130,397 |
+| sanitised export (log / transcripts / manifest / rules) | 273,360 / 23,595 / 20,346 / 9,272 bytes |
+| raw `.eval` | 44,530 bytes |
+| sanitiser fields removed / events kept | 566 / 276 |
+| exports artifact, zipped | 39,934 bytes |
+| contract checks | six pass; `generation_config_pinned` fails under the mock target (sampling keys not sent), as `tests/petri/test_zero_cost_e2e.py` asserts for mockllm; a paid run must show pass |
+
+Re-deriving the pilot cost from this structure, with the registry's Haiku
+prices (1 / 5 USD per million tokens) and the memo's reply-size assumption
+(272 output tokens per target reply, 300 per judge answer): 74 judge calls
+at 130,397 bounded input tokens and at most 22,200 output tokens is about
+$0.24; 20 target calls at roughly 300 input and 272 output tokens is about
+$0.03; so wave 1 at one epoch is about $0.30 and three epochs under $1. These
+are estimates on measured structure, not measurements; the first paid fire
+replaces them, and the `$2/day` ceiling admits one such fire whole.
 ## 15. Fork discipline
 
 No change to the fork is justified. Every behaviour the design needs is
@@ -1438,6 +1469,453 @@ dry run observable, which section 14 depends on.
    resumed pass that died mid-call leaves); rows beside a judge sidecar that
    cannot be read get no label rather than a registry price; and a
    zero-price judge stays non-metered whatever survived.
+
+### Paid-fire readiness (PR B, 2026-09-18)
+
+After PR A merged, the lane was parked, the first `dry_run` fired at $0
+(run 35295691359; its measurements are in section 14) and the lane was
+re-parked. PR B carries what a paid fire still lacked:
+
+1. **Recovery.** The seal-cleared run directory of a `run` is uploaded as
+   the same 30-day artifact a `dry_run` gets (`petri-audit-exports-<run>-
+   <attempt>`), before the commit steps and under the same gating (no
+   `always()`; after the seal check, `verify-chain`, `verify-run` and the
+   raw-log refusal), so a commit that fails after the spend leaves a
+   recoverable copy (owner decision 8, second round). The dry run measured
+   the artifact at 40 KB zipped for 8 samples.
+2. **Fire-to-manifest binding.** `fire_trigger.py` records the fire's
+   `_nonce` in the journal entry; the workflow's params job emits it as an
+   output (`_nonce`, metadata beside the trigger keys, never one of them);
+   `cli run --journal-nonce` records it in `run_params.json`; the adapter
+   takes it from there into the manifest's `spend.journal_nonce`; and both
+   cost-sidecar writers (`adapt --report`, the fallback `spend-report`)
+   copy it into the sidecar the daily Routine folds.
+3. **Journal-to-ledger reconciliation.** `cli reconcile-spend`
+   (`scripts/petri_audit/reconcile.py`) joins the lane's paid journal
+   entries to the landed cost sidecars on that nonce and names every gap:
+   a paid fire with no landed sidecar, a sidecar no fire accounts for, a
+   landed cost above the fire's commitment, an unreadable sidecar, and a
+   sidecar the ledger has not folded yet. It reads and reports; `--strict`
+   makes a problem an exit status. `fire_trigger.py` and
+   `ledger_update.py` stay the only writers.
+4. **The mock judge is zero-priced.** `mockllm/judge` joins
+   `ZERO_PRICE_MODELS`, so a local judged run's rows are labelled
+   non-metered rather than provider-measured at a fallback price.
+5. **No trigger value may carry a control character.** The params job writes
+   every resolved value into `$GITHUB_OUTPUT` as one `key=value` line, and a
+   later duplicate key wins, so a value holding a newline writes further
+   `key=value` lines of its own. Four values reach that write unparsed
+   (`seeds_file`, `seed_ids`, `target`, `judge_model`; `mode` is set-checked,
+   the numbers are `float()`/`int()`-parsed and the booleans canonicalised),
+   and `_nonce`, added above, is written last, where an injected line
+   overrides every key before it — `mode`, `target`, `max_spend`,
+   `judge_max_spend`, `commit_outputs` — after the job's own checks have
+   passed. `fire_trigger.validate_params` now refuses a control character in
+   any param value (every lane, list elements included) and the params job
+   refuses it again for a trigger file no fire wrote.
+   `tests/test_petri_audit_params_heredoc.py` runs the heredoc itself, as
+   `tests/test_archive_workflow_params.py` does for the archive lane, and
+   asserts each injection is refused before anything is written.
+6. **A paid fire's nonce is required and must be new.** The nonce is the only
+   join key between the reservation and the landed cost, and omitting it was
+   easy — any other changed key already makes the trigger file differ, so the
+   fire was not refused as a no-op. `validate_params` (and so the server-side
+   `budget-gate`) now refuses `mode: run` without a non-empty `_nonce`, and
+   the fire path refuses one an earlier entry of the same lane already
+   carries, which would book one landed cost against two commitments. Free
+   modes are unaffected; the park carries none.
+7. **The recovery upload cannot cost the commit.** `continue-on-error: true`
+   on the upload step: it runs after the seal check, `verify-chain`,
+   `verify-run` and the raw-log refusal, but its own transient failure must
+   not skip the commit step that follows (default `success()` gating) and
+   leave a paid run neither committed nor recoverable while the `always()`
+   sidecar step books the spend.
+8. **Reconciliation refuses what it cannot count.** `json.loads` accepts `NaN`
+   and `Infinity` and every comparison with NaN is False, so a NaN total
+   passed the over-commitment check and a negative cost lowered a run's
+   total; both are now named. A dashboard that is missing, unreadable, or
+   without a usable `spend.entries_seen` is a named problem rather than an
+   empty fold set (which reads exactly like real underbooking), and a run
+   directory with two judge sidecars, or a judge sidecar with no target
+   sidecar, is named instead of silently reduced to one of them.
+
+9. **Reconciliation checks the ledger's watermark, not just its filename
+   list.** `ledger_update.py` keeps `spend.entries_seen` (ever folded) beside
+   `spend.entries_folded` (how much of each file is booked). A judge sidecar is
+   cumulative, so a resumed pass grows a file whose name is already in
+   `entries_seen`: the name alone read as booked while the delta had not
+   reached the dashboard. A sidecar is now booked only when the watermark
+   covers its current `cost_usd`, within the four-decimal resolution
+   `ledger_update` books Petri deltas at, and an unfolded sidecar is a
+   problem in its own right, so `--strict` no longer exits 0 while the report
+   lists one.
+10. **Three more refusals in the same module.** Two paid journal entries
+    sharing a nonce each matched the single sidecar independently and both
+    read "landed", booking one cost against two commitments; they are now
+    named and neither is joined. A sidecar whose `billing_channel` differs
+    from the journal entry's `lane` moved spend between the Anthropic and
+    OpenRouter ceilings unseen; the two are now compared, and a sidecar
+    stating no channel is named. A `--runs` path that is not a directory read
+    as an empty archive and reported "no problems" with nothing scanned.
+11. **A journal flag is a boolean or it is nothing.** `bool("false")` is
+    `True`, so a hand-edited or merged journal could mark a paid fire
+    "evicted before it ran" and drop it from every check. A non-boolean
+    `resolved` or `evicted` is now named and read as false, the state that
+    keeps the fire under scrutiny.
+
+12. **The zero-price sentinel is not a judge of record.** `mockllm/judge`
+    belongs to `MockJudge`, which only the tests construct, but `cmd_judge`
+    always builds `RegistryJudge`, whose resolver reads that bare string as an
+    Anthropic model id. Pricing it at zero — which item 4 requires, so a local
+    judged run reads non-metered — would have let a paid fire naming it pass
+    pre-flight free, run under a `SpendCeiling` that admits every call, and
+    book zero in the fallback sidecar while the client sent the spec to a real
+    provider. `judge_spec_problems` refuses it before any target call and
+    `RegistryJudge` refuses it again at construction.
+13. **A falsy nonce is not a nonce.** The params job resolves the trigger value
+    as `str(cfg.get("_nonce") or "")`, so `0`, `false` or `""` reach the run as
+    an empty nonce while the fire journals `"0"` or `"False"`; the two records
+    could never be joined. The fire path refuses any falsy or boolean value.
+14. **A dry run's artifact failure stays fatal.** `continue-on-error` on the
+    exports upload is now `mode == 'run'`: a paid run's commit path must
+    survive a transient upload failure, but a dry run commits nothing, so the
+    artifact is its only output and a failed upload must not report success.
+15. **Two more refusals in the reconciliation.** A sidecar whose cost has
+    shrunk below the ledger's watermark is named rather than read as fully
+    booked — a landed cost record cannot shrink, so either it was rewritten or
+    the ledger over-booked. A run directory holding two target sidecars joins
+    nothing: each nonce matched one cleanly, so both fires read "landed" while
+    the directory's single judge sidecar was attached to both rows and its cost
+    counted twice. And a paid entry is classified by its `lane` or `max_spend`
+    key before the commitment is read, so an entry with a null commitment is
+    reported instead of filtered away.
+
+16. **Six more from the fourth round.** A fire journaled `evicted` that
+    nevertheless landed a sidecar is a contradiction, not an ordinary landed
+    fire: eviction released its in-flight commitment, so a replacement was
+    admitted without counting a run that went ahead. A target sidecar
+    recording a judge ceiling with no judge sidecar beside it hides up to that
+    ceiling rather than proving zero. Sidecar ceilings that sum above the
+    journal's commitment mean CI ran with more headroom than the daily guard
+    reserved, which a low actual cost hides. A sidecar whose `run_utc` does
+    not parse is booked by `ledger_update` to the day it happens to scan
+    rather than the run's. A `_nonce` carrying surrounding whitespace is
+    refused rather than trimmed, since the journal stores the value as given
+    and the uniqueness check compared a stripped one. And `docs/triggers.md`
+    said underscore keys are never sent to a workflow, which the `_nonce`
+    output made false; the rule now names its one exception.
+
+17. **Eight from the fifth round.** The exports upload is non-blocking only
+    where a committed copy follows it (`mode == 'run' && commit_outputs ==
+    'true'`): a paid run that commits nothing has that artifact as its only
+    seal-cleared output, exactly as a dry run does. No mock or test sentinel
+    may be a `run` target, in the workflow or at the fire: they price at zero,
+    so one would buy a free pre-flight bound and commit mock output as a
+    measurement. The recovery `publish` path re-runs the nonce uniqueness
+    check against the rebased journal, since another session's fire may have
+    taken the nonce while this one sat unpushed; it runs where that path
+    already identifies the fire's own entry exactly, because every entry the
+    script writes carries `commit: ""` and a filter on that field would have
+    dropped the other session's fresh entry - the one to compare with (found
+    in self-review before the round-5 replies went out). The same pass found
+    `reconcile`'s `run_utc` parser stripping whitespace where
+    `ledger_update.parse_ts` does not: `datetime.fromisoformat` rejects a
+    padded stamp, so the ledger falls back to the scan date on exactly the
+    value the check was passing. It now mirrors that function rather than
+    parsing as it pleases. And round 4's required-judge-sidecar check applies
+    only beside an ADAPTED sidecar: `spend_report_reason` is written by the
+    workflow's fallback `spend-report` step, which runs only when no adapted
+    report exists, and the judge step is gated on adapt succeeding - so there
+    the judge never started, its marker was never touched, and the artifacts
+    prove the zero. Without that narrowing every paid run that died before
+    adapt would have reported a gap that is not one.
+
+18. **Six from the sixth round**, all in the reconciliation, all accounting
+    states it accepted as clean. A judge sidecar beside a run that reserved
+    nothing for a judge is the mirror of item 16's missing-judge check: with
+    `judge: false` the workflow never runs the judge step, so a judge report
+    there is stray paid spend whose ceiling was being read out of its own
+    file. Each cost is now checked against its OWN ceiling, not only the pair
+    against the journal commitment: a target overspending `max_spend_usd`
+    while the judge underspends stayed inside the total. A sidecar basename
+    repeated across run directories is named, because `ledger_update`
+    keys Petri sidecars on the bare filename and folds only the first, while
+    a watermark covering it covered the copy too; both are left unbooked
+    rather than read as folded. A `billing_channel` outside `anthropic` and
+    `openrouter` is named: `ledger_update.billing_channel` honours an explicit
+    field only for those two and books everything else to Anthropic, so two
+    records agreeing on a third value agree about nothing. `cost_basis` is
+    validated per sidecar family, with the cumulative basis' component costs
+    required to account for `cost_usd`, because the ledger books
+    `run_cost_usd` to the run's day while advancing the watermark by the whole
+    `cost_usd`. And a judge sidecar must belong to its target run - by
+    `eval_id` where both writers record one, and by the run directory for the
+    fallback writer, which records the directory as its `run_id` and no
+    `eval_id`; comparing `run_id` blindly would have failed on the realistic
+    path where an adapted run's judge died, since the target carries Inspect's
+    run id and the fallback carries the directory name.
+
+19. **Five from the seventh round, and the defect they uncovered.** The
+    server-side `budget-gate` re-ran the lane invariants and the daily ceiling
+    but never checked that a paid journal entry actually reserved the run, so a
+    `mode: run` trigger file reaching the branch any other way - a merge, a
+    rebase, a hand edit - made irreversible provider calls against a
+    reservation nobody took. It now requires exactly one active petri-audit
+    entry carrying the fire's nonce, with the commitment and lane the params
+    imply. `publish` also corrects the entry's `nonce` to the published trigger
+    file's, because the supported recovery for a nonce another session took is
+    to re-nonce and publish again - which left the run taking one nonce from
+    the trigger file while the journal kept the other. In the reconciliation:
+    an ABSENT `max_spend_usd` is reported like a malformed one, since both
+    writers always emit it; a judge sidecar carrying neither `eval_id` nor
+    `run_id` is named, since both judge writers record an identity; and the
+    stamp check now requires BOTH of `ledger_update`'s precedences to parse,
+    because its first-fold loop reads `run_timestamp or run_utc` and its growth
+    loop `run_utc or run_timestamp`, so a sidecar with both fields and one
+    malformed books differently depending on the path.
+
+    Writing the reservation test exposed a defect none of the seven rounds had
+    named: **the gate double-counted the run's own reservation.** `cmd_fire`
+    checks the ceiling before it writes the journal entry, but by the time CI
+    runs the gate the entry is on the branch, so `inflight_max_spend` already
+    holds this fire's commitment and the gate added the params' commitment on
+    top. At the pilot's $1.50 that is $3.00 against the $2.00 ceiling: the
+    first paid fire would have been refused server-side by the guard meant to
+    protect it. The gate now excludes the single entry the fire is bound to by
+    nonce, and nothing else's hold. The other paid lanes have no join key and
+    are unchanged; their double count is masked by headroom (advice-eval at
+    $1.00 lands exactly on the $2.00 ceiling and passes) and is the owner's to
+    weigh separately.
+
+20. **Five from the eighth round, two of them P1, and both of those created by
+    this PR's own work.** Round 7's reservation check tested `resolved` and
+    `evicted` and not the third condition `entry_is_active` applies: an entry
+    whose `fired_utc` does not parse, or that is older than the expiry window,
+    has already been released by the queue and dropped from the in-flight sum,
+    so accepting it let a merge or re-push start a second irreversible run
+    under a dead hold. The gate now requires the entry to be active, and
+    excludes it from the aggregate only when it is.
+
+    The second P1 is the fallback spend report. Its step is `always()`-gated,
+    so it runs even when a step BEFORE the run failed - seed validation, the
+    environment lock, preflight - and with no eval log it imputes the FULL
+    target ceiling. That was tolerable while the sidecar carried no nonce,
+    because reconciliation named it as unaccounted; **PR B's own nonce
+    plumbing bound it to the fire**, so the ledger would fold a cost for a run
+    that never made a provider call and `--strict` would report nothing. A
+    `target_started` marker, the twin of the judge's, is now written in the Run
+    step immediately before the call that can spend, and the fallback target
+    sidecar is written only when it exists. Worth recording how nearly that
+    fix failed: the first attempt put the marker in **Validate seeds**, whose
+    opening lines are identical to the Run step's, where it would have been
+    touched before any call and guarded nothing. The test asserts the marker
+    precedes `cli run` and caught it.
+
+    In the reconciliation: a target sidecar carrying neither `eval_id` nor
+    `run_id` is named, because every identity comparison was conditional on the
+    target's field being present and a target with neither let a copied judge
+    report join on the directory alone; `judge_max_spend_usd: 0` is named,
+    because `_money` accepts it while the truthiness test read it as "no judge
+    requested", and no fire produces zero (a judged fire reserves a positive
+    ceiling, an unjudged one records null); and the non-cumulative bases are
+    checked for the totals they imply - a repriced cost must equal the sum of
+    the per-model rows it was priced from and must not carry an unpriced row,
+    and a ceiling-imputed cost must equal the ceiling it records. The test
+    fixture gained the `models` rows every repriced sidecar carries, the third
+    round in which the fixture was thinner than the writers.
+
+21. **Six from the ninth round.** The P1 is a replay: a formatting-only edit, a
+    hand edit or a merge can push the same paid parameters again while the
+    first run is still in flight, and round 7's lookup accepted the original
+    entry because the nonce matched. The replay is a push on attempt 1, so it
+    passes the params guard, waits in the concurrency group and spends a second
+    time, after which both runs land sidecars carrying one nonce. `cmd_fire`
+    now records `params_sha256`, the digest of the exact trigger-file bytes it
+    writes, and the gate requires the reservation to carry the digest of the
+    file CI is running. `publish` corrects it when a re-nonced file is
+    published, but only when the entry already has one - backfilling would
+    force a journal-correction commit in the states where `publish` is
+    inspecting a captured commit rather than the branch tip, and the guard
+    there rightly refuses. **The residual is worth stating:** content restored
+    byte-for-byte by a merge while the first run is in flight still matches.
+    That is what the resting-state rule and the park exist to prevent, and it
+    is why a paid config must never be the trigger file at rest.
+
+    The five P2s are all in the reconciliation, and three of them are the other
+    half of a pair I had fixed on one side only - which is now a pattern worth
+    naming rather than a coincidence. Round 7 required an identity on the judge
+    and round 8 on the target; neither required one **in common**, so a target
+    keeping only `run_id` beside a judge keeping only `eval_id` ran no
+    comparison at all. Round 8 rejected a judge ceiling of zero on the target's
+    declaration; the judge report's own `max_spend_usd` accepted both zero and
+    a present null, the latter falling through to the target's declaration.
+    Round 8 rejected a zero judge ceiling but not a zero target ceiling. The
+    remaining two: an imputed cost is a floor claim as well as a ceiling one,
+    so rows that did price - and an aborted judge's `rows_cost_usd` - must not
+    exceed what the ledger will fold; and the repricing rows must be a nonempty
+    list of objects, because the comprehension dropped non-object elements and
+    the mismatch check was conditional on what survived, so `models: []` passed
+    outright.
+
+    Two things this round changed beyond the findings. The gate now REFUSES
+    when it cannot read the trigger file for a paid petri fire, rather than
+    skipping the binding - a skipped check is the silent failure this repo's
+    own rule forbids. And `scratchpad/pilot_gate_rehearsal.py` grew the replay
+    and stale-reservation cases, so the rehearsal now exercises six states
+    rather than four.
+
+22. **Nine from the tenth round, three of them P1 - and the first of those
+    retires the residual above.** I wrote that content restored byte-for-byte
+    by a merge while the first run is in flight still matches the digest, and
+    that the resting-state rule and the park are what prevent it. The park does
+    not prevent it: the park can itself be the PENDING run, which the merge's
+    push evicts. So the sequence is a paid config running, the park pushed
+    behind it, a merge restoring the paid bytes - three pushes, the third
+    admitted by a reservation the first is still spending, and two sidecars
+    landing under one nonce. A reservation is now bound to the PUSH that took
+    it, not only to the content: `cmd_fire` writes the journal entry and the
+    trigger file in one commit, so the gate reads the journal at the ref's
+    previous tip (`github.event.before`) and refuses a paid run whose
+    reservation was already there. That needs history the params job did not
+    have, so its checkout takes `fetch-depth: 0`, still blobless. A commit the
+    clone cannot read is a refusal, not a pass, and inside GitHub Actions a
+    missing `--push-before` is one too - a paid run there is always a push.
+
+    The other two P1s are both a guard that read a value differently from the
+    guard it protects. A journal `max_spend` of `NaN` passed the reservation
+    check because every comparison with NaN is False, while
+    `inflight_max_spend` rejects it through `parse_max_spend` and counts the
+    entry as holding nothing; the check now uses `parse_max_spend` itself.
+    And the nonce lookup coerced and stripped both sides, so a journal entry
+    carrying `" n "` or `123` satisfied params of `"n"`/`"123"` - which
+    `reconcile` joins with `==` and can never close. It is exact now. The
+    distinction from `reused_nonce`, which still normalises, is deliberate:
+    that one decides what to REFUSE and may be liberal, this one authorises
+    irreversible spend and may not.
+
+    The six P2s are all in the reconciliation. Three are a rule applied to one
+    shape and not its twin: the imputed branch read `models` loosely where the
+    repriced branch refuses a non-list and a non-object element outright; the
+    component ceilings were checked for excess but not for shortfall, so a
+    $1.50 commitment sat above a $1.00 target with the judge's authorisation
+    erased; and a stamp was checked for parsing but not against the fire that
+    reserved it, so a `run_utc` earlier than its own fire books into a day the
+    commitment was never counted against. Of the rest: the fallback judge
+    writer's weaker identity contract was selected by an absent `eval_id`
+    rather than by the `cost_basis` that says which writer wrote the file, so a
+    truncated `cumulative_from_records` report was excused by a rule written
+    for a different writer; a paid entry with no `lane` was defaulted onto the
+    Anthropic ceiling rather than named; and `_read_ledger` trusted a watermark
+    with no `by_day` and no usable `today.spent_usd` behind it, reporting every
+    landed sidecar as booked against a dashboard the daily guard reads as
+    holding no spend at all.
+
+    That last one needed the test fixtures to carry what `ledger_update`
+    actually writes - the fourth round in which a fixture was thinner than the
+    production writer, after `run_id`/`eval_id`, the judge component costs and
+    the `models` rows. There is now a `_ledger()` helper beside `_sidecar()`,
+    for the same reason. The rehearsal grew the byte-replay case and runs
+    against a real repository with the parked commit and the fire commit in it,
+    so it exercises seven states; the staged pilot still clears the gate.
+
+23. **Four from the eleventh round, and every one of them a gap in round 10's
+    own fix.** That is the round's lesson: each fix answered its finding and
+    stopped one step short of the invariant behind it.
+
+    The P1 is the sharpest. Binding a reservation to the push that took it asks
+    whether the nonce was already on THIS ref before THIS push - the right
+    question for a replay onto the same branch, and the wrong one across
+    branches. A paid fire made on a feature branch and then merged or
+    cherry-picked to `main` appears on `main`'s new tip for the first time, so
+    that ref's previous tip lacks the nonce, the binding passes, and both refs
+    spend one reservation while the first run is still in flight. `cmd_fire`
+    now records the branch it fired on and the gate requires CI's ref to be
+    that one; `publish` corrects it to the branch being published to, on the
+    same terms as the digest. The operational consequence belongs in the
+    handbook rather than only here: **a paid fire must be made on the ref the
+    run will execute on, and a fire that lands on the wrong branch is re-fired
+    with a fresh nonce, never merged across.**
+
+    The three P2s are the same shape. The ledger-totals check tested that
+    `by_day` and `today.spent_usd` EXIST, so `by_day: {"<day>": 0}` beside a
+    positive watermark still read as fully booked; the totals must be able to
+    CONTAIN the folds, and per sidecar the day its own stamp names must carry
+    what the watermark says was booked. The imputed-rows check ran only when
+    `models` was present, so deleting the key or emptying the list left the
+    floor unverifiable - and `write_report_sidecar` reaches that basis only
+    through a row flagged `usage_missing`, so a target report claiming it
+    without rows is truncated (the judge fallback, which writes no rows at all,
+    stays exempt). And the stamp-ordering check guarded on timezone parity,
+    which skipped exactly the offset-free values `ledger_update.parse_ts`
+    assigns UTC to and still buckets by day; `_timestamp` now normalises the
+    way `parse_ts` does, which is what its docstring already claimed.
+
+    The rehearsal is at eight states. The staged pilot still clears the gate.
+
+24. **Four from the twelfth round, and the first of them is a defect round 11
+    introduced.** The aggregate ledger rule I added there - `sum(by_day)` must
+    cover `sum(entries_folded)`, and each day bucket must cover its sidecar's
+    whole watermark - is not an invariant the writer supports. A
+    `cumulative_from_records` first fold books only `run_cost_usd` to the run's
+    day and puts the prior-runs balance into lifetime totals alone, deliberately,
+    because that balance has no single day, while `entries_folded` records the
+    whole cumulative cost. The live dashboard is **$0.1841 apart** for exactly
+    that reason (71.4449 booked, 71.2608 across `by_day`), so the rule would
+    have failed the pilot's first reconciliation. The aggregate comparison is
+    gone; the per-sidecar claim now compares the day bucket against
+    `_day_bookable`, which mirrors the writer's own branch. **The lesson is the
+    one this file keeps recording from the other direction:** a check is only
+    as good as its model of the writer, and I wrote this one from the shape of
+    the data rather than from `ledger_update`'s code.
+
+    The other three: `spend.today` is built FROM `by_day` and
+    `by_day_by_channel` by `today_record`, and `budget_check` reads
+    `today.<channel>_usd` in PREFERENCE to `spent_usd`, so a zero there admits
+    later fires as though the day's landed spend did not exist - the three must
+    agree. A journal entry with `resolved: true` and no parseable `resolved_utc`
+    opens no settle window, because `recently_resolved` skips it (deliberately,
+    for entries resolved before the field existed), so a same-lane fire inside
+    fifteen minutes is admitted while the prior run may still hold the
+    concurrency slot: that is the 2026-07-09 eviction seam, and reconciliation
+    now names it rather than changing the fire guard's back-compatibility. And
+    the stamp-ordering check rejected only stamps BEFORE the fire; one after
+    *now* books into a future day's bucket, so `spend.today` never receives it
+    and, once the hold is released, neither the landed cost nor the reservation
+    counts against today's ceiling.
+
+    Running the checks caught a seventh hand-built fixture unlike its writer:
+    `scratchpad/reconcile_on_a_real_run.py` carried stamps fixed at 13:0x, two
+    hours ahead of the clock when it ran, so it reported its own fixture. Its
+    stamps are derived from the run time now. `_entry` in the reconcile tests
+    gained the `resolved_utc` that `resolve` always writes. In the reconciliation: a
+    sidecar seen by the ledger with no amount in `entries_folded` is a
+    truncated dashboard, not a legacy record, because this lane postdates that
+    watermark; a ceiling that is present but unusable is named rather than
+    read as absent, which had suppressed the required-judge-sidecar check; the
+    judge report's own `max_spend_usd` is what the judge actually ran under,
+    so it is compared with the target's declaration and used in the
+    authorisation sum; and a fire that landed and is fully booked while its
+    journal entry is still unresolved is named, because until `resolve` runs
+    its whole commitment keeps counting as in-flight beside the landed cost.
+    `docs/triggers.md` also claimed `budget-gate` strips underscore keys,
+    which this PR made false: it passes the whole trigger file, `_nonce`
+    included, to `lane_params_problems`, and that is what enforces the paid
+    nonce rule server-side.
+
+The lane is parked, so the trigger file at rest holds the `preflight` park;
+`tests/test_petri_audit_workflow.py` checks that it is either absent (a
+branch cut before the park) or exactly `PARK_DEFAULTS`, and never a
+configuration that would spend when a branch operation re-fires it.
+
+Deferred to the next PR, none of them gating the pilot: the advice rubric's
+digest in the manifest (a judged run's rubric is reproducible through the
+recorded engine commit), a run-level unbound-rows verdict in `verify-run`
+(the chain verifier and the summary's usage table already refuse unbound
+rows), the two `calls_without_usage` meanings in the judge sidecar (the
+top-level count is the ceiling's charged attempts, `cumulative` counts rows
+with `usage_missing`), and the register manipulation check on the shared
+pushback turn (decision 3, second round: a judge-side addition). The
+empty-text final reply in `marker_echo` waits on the owner's rule decision.
 
 ## Decisions recorded from the owner (2026-09-16)
 

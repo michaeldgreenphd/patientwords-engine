@@ -992,6 +992,18 @@ def test_judge_specs_are_resolved_through_the_registry_before_any_spend():
     problems = judge_runner.judge_spec_problems("nope:some-model")
     assert problems and "unknown provider" in problems[0]
     assert judge_runner.judge_spec_problems("copilot"), "a manual-UI provider has no API to judge with"
+    # Codex round 3 on PR #28: `cmd_judge` always builds RegistryJudge, whose resolver reads the bare string
+    # `mockllm/judge` as an Anthropic model id. Priced at zero (which it must be, so a local judged run reads
+    # non-metered), that spec would pass pre-flight free, leave SpendCeiling admitting every call, and book zero
+    # in the fallback sidecar, while the client sent it to a real provider. Refused at both entry points.
+    problems = judge_runner.judge_spec_problems("mockllm/judge")
+    assert problems and "test sentinel for MockJudge" in problems[0]
+    with pytest.raises(ValueError, match="zero-price test sentinel"):
+        judge_runner.RegistryJudge("mockllm/judge")
+    from scripts.petri_audit.spend import ZERO_PRICE_MODELS
+
+    for sentinel in ZERO_PRICE_MODELS:
+        assert judge_runner.judge_spec_problems(sentinel), sentinel
 
 
 def test_analysis_rows_carry_protocol_and_flag_shared_prefix(seed_set):
@@ -1551,3 +1563,29 @@ def test_derived_condition_ids_must_stay_distinct(seed_set):
     assert ids.count("a__b__c") == 2
     assert any("derived condition id 'a__b__c' collides" in p for p in seeds.seed_problems(h5, seed_set.framing, seed_set.outcomes))
     assert not any("collides" in p for p in seeds.seed_problems(seed_set.seeds["pw-petri-example-h5-audience"], seed_set.framing, seed_set.outcomes))
+
+
+def test_the_mock_judge_is_zero_priced():
+    """PR B (2026-09-18): `mockllm/judge` is the judge spec the local tests use; it
+    resolved to the fallback price, so a mock judge's rows were labelled
+    provider-measured with a fallback source."""
+    from scripts.petri_audit.spend import (
+        ZERO_PRICE_MODELS,
+        registry_spec_to_inspect,
+        resolve_price,
+        resolve_registry_price,
+    )
+
+    assert "mockllm/judge" in ZERO_PRICE_MODELS
+    price = resolve_price("mockllm/judge")
+    assert (price.input_per_mtok, price.output_per_mtok, price.source) == (0.0, 0.0, "zero:mock_or_placeholder")
+    # preflight, the judge pass and judge-spend-report all price the judge through the REGISTRY resolver, which
+    # expanded the bare spec to `anthropic/mockllm/judge` and missed the zero-price entry entirely (Codex round 1
+    # on PR #28); every one of those paths must see the same zero price
+    assert registry_spec_to_inspect("mockllm/judge") == "mockllm/judge"
+    registry_price = resolve_registry_price("mockllm/judge")
+    assert (registry_price.input_per_mtok, registry_price.output_per_mtok) == (0.0, 0.0)
+    assert registry_price.source == "zero:mock_or_placeholder"
+    # a real judge spec still expands by the registry's rule
+    assert registry_spec_to_inspect("claude-haiku-4-5") == "anthropic/claude-haiku-4-5"
+    assert registry_spec_to_inspect("openrouter:vendor/model") == "openrouter/vendor/model"

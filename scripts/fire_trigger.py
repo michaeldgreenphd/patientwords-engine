@@ -42,6 +42,7 @@ No medical vocabulary lives in this file.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -288,6 +289,33 @@ def petri_params_problems(params: dict, registry: dict | None = None) -> list:
             ok = False
         if not ok:
             problems.append(f"petri-audit judge_max_tokens must be a positive integer, got {params['judge_max_tokens']!r}")
+    # A paid run's `_nonce` is the ONLY join key between the journal entry that reserved its spend and the cost
+    # sidecar it lands (workflow -> run_params.json -> manifest spend.journal_nonce -> both sidecar writers).
+    # Without one, `cli reconcile-spend` reports the fire as unbooked and the sidecar as unaccounted, for good,
+    # and the omission is easy: any other changed key already makes the trigger file differ, so the fire is not
+    # refused as a no-op (Codex round 1 on PR #28). Free modes need none - the park default carries none.
+    if str(params.get("mode", "preflight")).strip().lower() == "run":
+        nonce = params.get("_nonce")
+        # The workflow resolves the trigger value as `str(cfg.get("_nonce") or "")`, so any FALSY scalar - 0,
+        # false, "" - reaches the run as an empty nonce while this entry journals "0" or "False" and the two
+        # records can never be joined (Codex round 3 on PR #28). A boolean is refused whichever way it falls.
+        # Padding is refused too, not trimmed: the journal records the value as given, so a padded nonce would
+        # be stored padded while the uniqueness check compared a stripped one, and re-firing the same padded
+        # value would slip past it (Codex round 4 on PR #28).
+        if (isinstance(nonce, bool) or not isinstance(nonce, (str, int)) or not nonce
+                or not str(nonce).strip() or str(nonce) != str(nonce).strip()):
+            problems.append(
+                "petri-audit mode run must carry a non-empty _nonce: it is the only join key between the "
+                "journal entry that reserves the spend and the cost sidecar the run lands, so a paid fire "
+                f"without one can never be reconciled, got {nonce!r}")
+        # A mock/test sentinel prices at zero in the engine's table, so naming one as a paid run's TARGET buys a
+        # free pre-flight bound and commits mock output through the production path. The workflow refuses these
+        # too; this refuses them before the fire (Codex round 5 on PR #28).
+        target = str(params.get("target") or "").strip()
+        if target.split("/")[0] in ("mockllm", "none"):
+            problems.append(f"petri-audit mode run must not target the test sentinel {target!r}: it prices at "
+                            "zero, so the paid pre-flight bound admits it for free and the run commits mock "
+                            "output as a measurement; use mode dry_run for mockllm")
     target_channel, judge_channel = petri_channels(params, registry)
     if judge_channel is not None and judge_channel != target_channel:
         problems.append(
@@ -578,9 +606,54 @@ def validate_params(trigger, params):
             "the workflow's push-path default is false, which measures and then discards "
             "every output when the runner is reclaimed"
         )
+    bad = control_char_values(params)
+    if bad:
+        raise ValueError(
+            f"{trigger} param value(s) {bad} carry a control character (newline, carriage return, tab): "
+            "every workflow's params job writes its resolved values into $GITHUB_OUTPUT as `key=value` "
+            "lines, so an embedded newline writes further key=value lines of its own and a duplicate key "
+            "read later wins - a value could silently rewrite mode, target or a spend ceiling after the "
+            "job's own checks passed. No legitimate value carries one"
+        )
     problems = lane_params_problems(trigger, params)
     if problems:
         raise ValueError("; ".join(problems))
+
+
+def reused_nonce(trigger, params, entries):
+    """The refusal message when this paid fire's `_nonce` is one an existing
+    journal entry of the same trigger already carries, else "". Only a paid
+    fire is checked: a free fire's nonce exists to make the trigger file
+    differ, and the parks deliberately reuse none at all."""
+    if not is_paid_fire(trigger, params):
+        return ""
+    nonce = str(params.get("_nonce") or "").strip()
+    if not nonce:
+        return ""
+    for entry in entries:
+        # both sides normalised: validate_params refuses a padded nonce, but an entry journaled before that
+        # rule, or by hand, may carry one (Codex round 4 on PR #28)
+        if entry.get("trigger") == trigger and str(entry.get("nonce") or "").strip() == nonce:
+            return (f"_nonce {nonce!r} is already on the {trigger} journal entry fired at "
+                    f"{entry.get('fired_utc', '?')}: a nonce binds one journal entry to one landed cost "
+                    "sidecar, so reusing it would book one cost against two commitments. Use a new nonce")
+    return ""
+
+
+def control_char_values(params):
+    """Sorted keys whose value (or, for a list, some element) carries a control
+    character. Underscore metadata is included: `_nonce` reaches $GITHUB_OUTPUT
+    like any resolved value, and it is written last, where an injected line
+    overrides every key before it (PR B, 2026-09-18)."""
+    def dirty(value):
+        return any(ord(ch) < 32 or ord(ch) == 127 for ch in str(value))
+
+    bad = []
+    for key, value in params.items():
+        values = value if isinstance(value, (list, tuple)) else [value]
+        if any(dirty(v) for v in values):
+            bad.append(str(key))
+    return sorted(bad)
 
 
 def parse_max_spend(value):
@@ -1131,6 +1204,14 @@ def cmd_fire(args):
                 print(f"  resolved {e.get('resolved_utc', '?')}  note={e.get('note', '')!r}", file=sys.stderr)
             return 6
 
+    # 3c. A paid fire's nonce must also be NEW. validate_params has already refused a paid petri fire without
+    # one; a repeat of a nonce some earlier entry carries would bind two journal entries to one sidecar, and
+    # reconcile-spend would book that single landed cost against both commitments (Codex round 1 on PR #28).
+    reused = reused_nonce(args.trigger, params, entries)
+    if reused:
+        print(f"refused: {reused}", file=sys.stderr)
+        return 3
+
     # 4. Budget guard for the paid triggers: committed = landed + in-flight max_spend.
     # Mitigation circuit-trace fires are paid too (Anthropic translation calls);
     # they carry no max_spend param, so a flat imputed commitment is used.
@@ -1198,6 +1279,18 @@ def cmd_fire(args):
         "note": args.note,
         "resolved": False,
         "evicted": False,
+        # the fire's `_nonce` is the join key between this entry and what the run leaves behind: the petri-audit
+        # workflow passes it into the run, the manifest records it as spend.journal_nonce and both cost-sidecar
+        # writers copy it, so `scripts.petri_audit.cli reconcile-spend` can match every paid fire to its landed cost
+        # (PR B, 2026-09-18); None when the fire carried no nonce
+        "nonce": str(params["_nonce"]) if params.get("_nonce") not in (None, "") else None,
+        # the digest of the trigger file this fire writes: the gate compares it with the file CI actually ran, so a
+        # replay of the same nonce with different bytes - a formatting-only edit, a hand edit, a merge that changes
+        # the content - cannot claim this reservation (Codex round 9 on PR #28)
+        "params_sha256": params_digest(content),
+        # and the branch it is made on: the same commit reaching a second ref by merge or cherry-pick is a second
+        # workflow run, on a ref whose previous tip never carried this nonce (Codex round 11 on PR #28)
+        "ref": fire_ref(repo),
     }
     if max_spend is not None:
         entry["max_spend"] = max_spend  # in-flight commitment budget_check will count
@@ -1325,6 +1418,122 @@ def journal_at(repo: Path, ref: str) -> tuple[list[dict] | None, list[str]]:
             continue
         entries.append(entry)
     return entries, problems
+
+
+def fire_ref(repo):
+    """The branch this fire is being made on, or None when git cannot say (a detached HEAD, `--no-git` against a
+    directory that is not a repository).
+
+    Recorded on the journal entry because a reservation is for one REF as well as one push. Every lane's workflow
+    fires on any branch that changes its trigger file, and this repo's own merge rule says a merge carrying a
+    trigger change re-fires it - so a paid fire made on a feature branch and then merged or cherry-picked to
+    `main` appears on `main` for the first time there. The push binding alone reads that as a fresh reservation,
+    and both refs spend concurrently under one nonce (Codex round 11 on PR #28).
+    """
+    proc = _git(repo, "rev-parse", "--abbrev-ref", "HEAD")
+    branch = proc.stdout.strip() if proc.returncode == 0 else ""
+    if not branch or branch == "HEAD":      # no repo, or a detached HEAD, which no fire pushes from
+        return None
+    return branch
+
+
+def journal_nonces_at(repo, ref, trigger):
+    """The nonces `trigger`'s journal entries carry at `ref`, or None when git cannot answer.
+
+    None is "unreadable", never "empty": `_git_show` cannot tell a ref this clone does not have from a ref whose
+    tree carries no journal, and reading the second as the first would turn a shallow checkout into a pass. So the
+    commit is confirmed to exist first, and only then is a missing journal read as no reservations.
+    """
+    if not isinstance(ref, str) or not ref.strip():
+        return None
+    ref = ref.strip()
+    if set(ref) == {"0"}:
+        return None                       # the all-zero sha a ref creation reports: there is no "before" to read
+    if _git(repo, "cat-file", "-e", f"{ref}^{{commit}}").returncode != 0:
+        return None
+    entries, _ = journal_at(repo, ref)
+    if entries is None:
+        return set()
+    return {e["nonce"] for e in entries
+            if e.get("trigger") == trigger and isinstance(e.get("nonce"), str) and e["nonce"]}
+
+
+def ref_reservation_problems(trigger, params, entries, ref, required):
+    """Why this paid petri-audit run's reservation was not taken on the ref CI is running.
+
+    The push binding asks whether the nonce was already on THIS ref before THIS push, which is the right question
+    for a replay onto the same branch and the wrong one across branches: a paid fire made on a feature branch and
+    then merged or cherry-picked to `main` appears on `main`'s new tip for the first time, so its previous tip
+    lacks the nonce and the binding passes while the feature branch's run is still spending. Both refs then land
+    sidecars carrying one nonce (Codex round 11 on PR #28). `cmd_fire` records the branch it fired on, and this
+    requires CI's ref to be that one.
+    """
+    if trigger != "petri-audit" or not is_paid_fire(trigger, params):
+        return []
+    mine = reservation_entries(trigger, params, entries) or []
+    if len(mine) != 1:
+        return []                         # already refused by journal_reservation_problems, which names it better
+    entry, nonce = mine[0], str(params.get("_nonce"))
+    recorded = entry.get("ref")
+    if not isinstance(recorded, str) or not recorded:
+        return [f"the {trigger} journal entry for _nonce {nonce!r} records no ref, so it cannot be shown to have "
+                "reserved a run on the branch CI is running; re-fire through scripts/fire_trigger.py, which "
+                "records the branch it fires on"]
+    if ref is None or not str(ref).strip():
+        if not required:
+            return []
+        return [f"the {trigger} gate was not told which ref it is running on, so the reservation for _nonce "
+                f"{nonce!r} cannot be shown to belong to this branch rather than the one it was fired on "
+                f"({recorded!r}). The workflow passes the ref name as --ref"]
+    if str(ref).strip() != recorded:
+        return [f"the {trigger} reservation for _nonce {nonce!r} was taken on ref {recorded!r} but CI is running "
+                f"on {str(ref).strip()!r}: the fire commit reached this branch by a merge, a cherry-pick or a "
+                "rebase, and the run it reserved is the one on the ref it was fired from. Two refs cannot spend "
+                "one reservation; re-fire through scripts/fire_trigger.py from this branch if a run is wanted "
+                "here"]
+    return []
+
+
+def push_reservation_problems(repo, trigger, params, before, required):
+    """Why this paid petri-audit run's reservation was not taken BY the push CI is running.
+
+    The digest binds a reservation to one trigger CONTENT (Codex round 9); it does not bind it to one PUSH, and
+    the residual I stated there turned out to be reachable rather than theoretical. A paid config running, the
+    resting-state park pushed behind it as the PENDING run, and then a merge that restores the paid content
+    byte-for-byte: the merge is a third push, it evicts the pending park, the digest matches because the bytes
+    match, and the same reservation admits a second irreversible run. My round-9 reasoning that the park prevented
+    this was wrong - the park can itself be the pending run the merge evicts (Codex round 10 on PR #28).
+
+    `cmd_fire` writes the journal entry and the trigger file in ONE commit, so a reservation already on the branch
+    before this push was taken by an earlier fire, and this push is a replay of it.
+
+    `required` is for the one environment where not knowing is itself a refusal: inside GitHub Actions the gate is
+    always running a push (a paid run is push-only, attempt 1 only, enforced in the params job), so a missing
+    `--push-before` there is a workflow that stopped passing it, not a caller who had nothing to pass.
+    """
+    if trigger != "petri-audit" or not is_paid_fire(trigger, params):
+        return []
+    nonce = params.get("_nonce")
+    if isinstance(nonce, bool) or nonce in (None, "") or not str(nonce).strip():
+        return []                         # lane_params_problems has already refused this
+    nonce = str(nonce)
+    if before is None or not str(before).strip():
+        if not required:
+            return []
+        return [f"the {trigger} gate cannot tell a fire from a replay: it was not told which commit the branch "
+                f"pointed at before this push, so the reservation for _nonce {nonce!r} cannot be shown to have "
+                "been taken BY this push. The workflow passes the push event's previous tip as --push-before"]
+    earlier = journal_nonces_at(repo, before, trigger)
+    if earlier is None:
+        return [f"the {trigger} journal at {str(before).strip()!r} could not be read, so whether an earlier push "
+                f"already took the reservation for _nonce {nonce!r} cannot be established; the gate needs the "
+                "ref's history (check out with fetch-depth: 0), and a paid run is refused rather than guessed"]
+    if nonce in earlier:
+        return [f"the {trigger} reservation for _nonce {nonce!r} was already on this ref before this push: "
+                "fire_trigger.py writes the entry and the trigger file in one commit, so this content was put "
+                "here by something else (a merge, a revert or a hand edit) and would spend a reservation an "
+                "earlier fire already took. Re-fire through scripts/fire_trigger.py, which takes a fresh one"]
+    return []
 
 
 def journal_entries_added(repo: Path, branch: str, ref: str | None = None) -> list[dict]:
@@ -1685,6 +1894,15 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
     fire = mine[0]
     key = (fire.get("trigger"), fire.get("fired_utc"))
     others = [e for e in entries if (e.get("trigger"), e.get("fired_utc")) != key]
+    # The rebase also integrated journal entries another session pushed while this fire sat unpushed, so a nonce
+    # that was unique when `fire` checked it may not be now; publishing the duplicate would leave reconciliation
+    # unable to attribute either fire's sidecar (Codex round 5 on PR #28). It is checked here, against `others`,
+    # because this is where the fire's own entry is identified exactly: every entry this script writes carries
+    # `commit: ""`, so a coarser filter would drop the other session's fresh entry - the very one to compare with.
+    reused = reused_nonce(trigger, params, others)
+    if reused:
+        print(f"refused: {reused}", file=sys.stderr)
+        return 3, head
     paid = is_paid_fire(trigger, params)
     budget_params = None
     if paid:
@@ -1723,6 +1941,30 @@ def _revalidate_fire(repo: Path, branch: str, trigger: str, args: argparse.Names
         corrections.append("max_spend/lane removed: not a paid fire")
         fire.pop("max_spend", None)
         fire.pop("lane", None)
+    # The nonce is the join key between this entry and the cost sidecar the run lands, and the run takes it from
+    # the TRIGGER FILE, not from here. The supported recovery for a nonce another session took is to re-nonce the
+    # trigger file and publish again - which left the entry on the old value, so the sidecar carried one nonce and
+    # the journal another and reconciliation could never join them (Codex round 7 on PR #28). Written exactly as
+    # cmd_fire writes it, so the two paths cannot diverge.
+    published_nonce = str(params["_nonce"]) if params.get("_nonce") not in (None, "") else None
+    if fire.get("nonce") != published_nonce:
+        corrections.append(f"nonce {fire.get('nonce')!r} -> {published_nonce!r} (the published trigger file's)")
+        fire["nonce"] = published_nonce
+    # ...and the digest of what is actually being published, for the same reason: a re-nonced or hand-corrected
+    # trigger file is different bytes, and the gate compares bytes (Codex round 9 on PR #28)
+    published_digest = params_digest(text)
+    # only when the entry HAS a digest and it is now wrong. Backfilling one onto an entry that never carried it is
+    # not a correction, and it would force a journal-correction commit in states where `publish` is inspecting a
+    # captured commit that is not the branch tip - where the guard below rightly refuses to make one.
+    # ...and the ref it is being published to, on the same terms: `publish` pushes the current branch, so an entry
+    # naming another one would be a reservation the gate refuses on arrival (Codex round 11 on PR #28)
+    if fire.get("ref") and fire["ref"] != branch:
+        corrections.append(f"ref {fire.get('ref')!r} -> {branch!r} (the branch being published to)")
+        fire["ref"] = branch
+    if fire.get("params_sha256") and fire["params_sha256"] != published_digest:
+        corrections.append(f"params_sha256 {str(fire.get('params_sha256'))[:12]} -> {str(published_digest)[:12]} "
+                           "(the published trigger file's)")
+        fire["params_sha256"] = published_digest
     if corrections:
         save_journal(repo / JOURNAL_RELPATH, entries)
         proc = _git(repo, "add", "--", JOURNAL_RELPATH.as_posix())
@@ -1870,6 +2112,134 @@ def cmd_status(args):
     return 0
 
 
+def params_digest(text):
+    """The digest of a trigger file's exact bytes, which is what CI runs.
+
+    `cmd_fire` records it on the journal entry, so the server-side gate can ask
+    whether the reservation it found was taken for THIS content or for an
+    earlier fire whose run is already in flight (Codex round 9 on PR #28).
+    """
+    return hashlib.sha256(text.encode("utf-8")).hexdigest() if isinstance(text, str) else None
+
+
+def reservation_entries(trigger, params, entries):
+    """The journal entries that claim to reserve THIS fire, or None when the
+    lane has no join key to look one up by.
+
+    Only petri-audit's params must carry a `_nonce`, and that nonce is what
+    binds a fire to its landed cost; the other paid lanes have nothing to match
+    on, so they get None and every caller leaves them alone.
+    """
+    if trigger != "petri-audit" or not is_paid_fire(trigger, params):
+        return None
+    nonce = params.get("_nonce")
+    if isinstance(nonce, bool) or nonce in (None, "") or not str(nonce).strip():
+        return []
+    # EXACT string equality against the form `cmd_fire` journals (`str(params["_nonce"])`), deliberately unlike
+    # `reused_nonce`, which normalises. That one is liberal about what it REFUSES, so coercing is safe there; this
+    # one AUTHORISES irreversible spend, and `reconcile` joins the journal's `nonce` to the sidecar's
+    # `journal_nonce` with `==`. Coercing here meant a journal entry carrying " n " or 123 satisfied the gate for
+    # params "n"/"123" and could then never be joined to the sidecar the run landed: the spend was admitted
+    # against a reservation reconciliation can never close (Codex round 10 on PR #28).
+    nonce = str(nonce)
+    return [e for e in entries
+            if e.get("trigger") == trigger and isinstance(e.get("nonce"), str) and e["nonce"] == nonce]
+
+
+def journal_reservation_problems(trigger, params, entries, now=None, expire_hours=None, digest=None):
+    """Why a paid petri-audit run has no journal reservation behind it, as a
+    list of refusals; empty when exactly one entry accounts for it.
+
+    `budget-gate` exists because a trigger file can reach a pushed ref without
+    passing through `cmd_fire` at all - a merge, a rebase, a hand edit - and it
+    already re-runs the lane invariants and the daily ceiling server-side. What
+    it did NOT check is the one thing this lane's `_nonce` contract is for: that
+    a paid journal entry actually reserved this spend. Without it a pushed
+    `mode: run` config with any syntactically valid nonce made irreversible
+    provider calls against a reservation that was never taken, and the landed
+    sidecar could never be joined to anything (Codex round 7 on PR #28).
+
+    Scoped to petri-audit because it is the lane whose params must carry a
+    `_nonce`; the other paid lanes have no join key to check.
+    """
+    problems = []
+    mine = reservation_entries(trigger, params, entries)
+    if mine is None:
+        return problems
+    nonce = str(params.get("_nonce") or "").strip()
+    if not nonce:
+        # lane_params_problems has already refused this; kept so the function is safe on its own
+        return [f"{trigger} mode run carries no usable _nonce, so no journal entry can account for it"]
+    if not mine:
+        return [f"no {trigger} journal entry carries _nonce {nonce!r}: this trigger file reached the branch "
+                "without a reservation (a merge, a rebase or a hand edit), so its spend was never counted "
+                "against the daily ceiling and its cost sidecar could never be joined to a fire. Fire through "
+                "scripts/fire_trigger.py, which writes the entry and the trigger file in one commit"]
+    if len(mine) > 1:
+        when = ", ".join(str(e.get("fired_utc")) for e in mine)
+        return [f"{len(mine)} {trigger} journal entries carry _nonce {nonce!r} ({when}); a nonce binds one fire "
+                "to one landed cost, so this run's spend cannot be attributed"]
+    entry = mine[0]
+    # ACTIVE, not merely unresolved. `entry_is_active` also releases an entry whose `fired_utc` does not parse and
+    # one older than the expiry window, and `inflight_max_spend` stops counting it at the same moment - so a stale
+    # entry is a reservation that no longer holds anything, and accepting it (then excluding it from the aggregate,
+    # where it was no longer counted anyway) let a merge or re-push start a second irreversible run under a dead
+    # hold. This is the gap my own round-7 check left by testing only two of the three conditions (Codex round 8).
+    now = now or utc_now()
+    expire_hours = expire_hours if expire_hours is not None else expire_hours_from_env()
+    if entry.get("resolved"):
+        problems.append(f"the {trigger} journal entry for _nonce {nonce!r} is already resolved, which released "
+                        "its in-flight commitment: this run would spend outside any reservation")
+    elif entry.get("evicted"):
+        problems.append(f"the {trigger} journal entry for _nonce {nonce!r} is marked evicted, so the queue "
+                        "released its commitment and nothing reserves this run's spend")
+    elif not entry_is_active(entry, now, expire_hours):
+        fired = entry.get("fired_utc")
+        why = ("its fired_utc does not parse" if parse_utc(fired) is None
+               else f"it was fired at {fired}, more than {expire_hours:g}h ago")
+        problems.append(f"the {trigger} journal entry for _nonce {nonce!r} is no longer active ({why}): the queue "
+                        "and the daily guard both stopped counting it, so nothing reserves this run's spend")
+    expected, error = fire_commitment(paid_budget_params(trigger, params))
+    if error:
+        problems.append(f"the params carry no usable commitment to check against the journal: {error}")
+    elif parse_max_spend(entry.get("max_spend")) is None or abs(parse_max_spend(entry["max_spend"]) - expected) > 1e-9:
+        # `parse_max_spend`, not a hand-rolled isinstance test: it is what `inflight_max_spend` uses to decide
+        # whether the entry holds anything, so anything IT rejects reserves nothing. NaN was the live hole - every
+        # comparison with NaN is False, so `abs(nan - expected) > 1e-9` passed the entry here while
+        # `inflight_max_spend` skipped it, and `json.loads` accepts a bare NaN in a journal line (Codex round 10).
+        problems.append(f"the {trigger} journal entry for _nonce {nonce!r} reserved "
+                        f"{entry.get('max_spend')!r} but these params commit {expected!r}; the daily ceiling "
+                        "counted the reservation, not what this run would spend")
+    # The reservation must have been taken for THIS trigger content. A formatting-only edit, a hand edit or a merge
+    # can push the same paid parameters again while the original entry is still active; the run is a push on
+    # attempt 1, so it passes the params guard, and matching on the nonce alone let it claim a reservation an
+    # earlier run is already spending (Codex round 9 on PR #28). Both runs would then land sidecars carrying one
+    # nonce and reconciliation could attribute neither. NOTE the residual: content restored byte-for-byte by a
+    # merge while the first run is in flight still matches, which is what the resting-state rule and the park
+    # exist to prevent - a paid config must never be the trigger file at rest.
+    if digest is None:
+        # never skipped: a paid run is gated on bytes, and not being able to read them is a refusal, not a pass
+        # (AGENTS.md, no silent failures). In CI the file is always there - it is what fired the workflow.
+        problems.append(f"the {trigger} trigger file could not be read, so the reservation for _nonce {nonce!r} "
+                        "cannot be checked against the content CI is running")
+    else:
+        recorded = entry.get("params_sha256")
+        if not isinstance(recorded, str) or not recorded:
+            problems.append(f"the {trigger} journal entry for _nonce {nonce!r} records no params_sha256, so it "
+                            "cannot be shown to have reserved the trigger file CI is running; re-fire through "
+                            "scripts/fire_trigger.py")
+        elif recorded != digest:
+            problems.append(f"the {trigger} journal entry for _nonce {nonce!r} reserved trigger content "
+                            f"{recorded[:12]} but CI is running {digest[:12]}: this is a replay of a nonce whose "
+                            "reservation belongs to a different fire, so two runs would land one nonce")
+    expected_lane = fire_lane(trigger, params)
+    if entry.get("lane") != expected_lane:
+        problems.append(f"the {trigger} journal entry for _nonce {nonce!r} reserved on lane "
+                        f"{entry.get('lane')!r} but these params bill {expected_lane!r}; the wrong account's "
+                        "ceiling was counted")
+    return problems
+
+
 def cmd_budget_gate(args):
     """CI-side twin of cmd_fire's paid-path budget check (audit S2, owner-approved
     2026-08-19). fire_trigger's ceiling is client-side only: a direct push of a
@@ -1901,6 +2271,39 @@ def cmd_budget_gate(args):
     budget_params = paid_budget_params(args.trigger, params)
     now = utc_now()
     entries = load_journal(repo / JOURNAL_RELPATH)
+    # the reservation itself, before the aggregate: a ceiling that holds in total says nothing about whether THIS
+    # run was ever reserved (Codex round 7 on PR #28)
+    # the digest is taken from the TRIGGER FILE in the checkout, not from --params-file: the workflow passes the
+    # resolved params job outputs there, while what fired CI is the file itself
+    trigger_on_disk = repo / TRIGGER_DIR_RELPATH / f"{args.trigger}.json"
+    try:
+        digest = params_digest(trigger_on_disk.read_text(encoding="utf-8"))
+    except OSError:
+        digest = None
+    unreserved = journal_reservation_problems(args.trigger, params, entries, now=now,
+                                              expire_hours=expire_hours_from_env(), digest=digest)
+    # ...and the reservation must have been taken by THIS push, not merely for this content: identical bytes can
+    # be restored by a merge while the first run is still spending them (Codex round 10 on PR #28)
+    in_ci = os.environ.get("GITHUB_ACTIONS") == "true"
+    unreserved += push_reservation_problems(repo, args.trigger, params, getattr(args, "push_before", None), in_ci)
+    # ...and on THIS ref: "first appearance on this branch" is a fresh reservation to the push binding, which a
+    # merge or cherry-pick of the fire commit onto another branch produces for free (Codex round 11 on PR #28)
+    unreserved += ref_reservation_problems(args.trigger, params, entries, getattr(args, "ref", None), in_ci)
+    if unreserved:
+        for problem in unreserved:
+            print(f"budget-gate: REFUSED - {problem}", file=sys.stderr)
+        return 6
+    # ...and once the reservation is found, it must not be counted TWICE. `cmd_fire` runs this check before it
+    # writes the journal entry; by the time CI runs it the entry is on the branch, so `inflight_max_spend` already
+    # holds this fire's commitment and adding the params' commitment on top double-counts it. The pilot's $1.50
+    # came to $3.00 against the $2.00 ceiling and would have been refused server-side - the first paid fire, by the
+    # guard meant to protect it (found writing the round-7 reservation test, 2026-09-18). Only the entry this fire
+    # is bound to by nonce is removed, so nothing else's in-flight hold is lost.
+    mine = reservation_entries(args.trigger, params, entries)
+    if mine and len(mine) == 1 and entry_is_active(mine[0], now, expire_hours_from_env()):
+        # only an ACTIVE entry is counted in the in-flight sum, so only an active one may be removed from it
+        held = mine[0]
+        entries = [e for e in entries if e is not held]
     dashboard = load_dashboard(repo / DASHBOARD_RELPATH)
     overrides = load_budget_overrides(repo / OVERRIDES_RELPATH)
     kind, reason = budget_check(budget_params, dashboard, now.strftime("%Y-%m-%d"),
@@ -1993,6 +2396,17 @@ def build_parser():
                       help="params JSON path (default: this checkout's trigger file - "
                            "correct for push-fired runs; workflow_dispatch should pass "
                            "its resolved params explicitly)")
+    gate.add_argument("--ref",
+                      help="the ref CI is running on (GitHub's github.ref_name). A paid petri-audit fire is "
+                           "refused when its journal entry was fired on a different branch: the same fire commit "
+                           "reaching a second ref by merge or cherry-pick is a second run, and one reservation "
+                           "cannot cover both. Required when GITHUB_ACTIONS is set.")
+    gate.add_argument("--push-before",
+                      help="the commit this ref pointed at before the push CI is running (GitHub's "
+                           "github.event.before). A paid petri-audit fire is refused when its reservation was "
+                           "already on the branch at that commit: fire_trigger writes the entry and the trigger "
+                           "file in one commit, so an older reservation means this push replays it. Required "
+                           "when GITHUB_ACTIONS is set.")
     gate.set_defaults(func=cmd_budget_gate)
     return parser
 

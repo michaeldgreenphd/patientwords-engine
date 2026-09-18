@@ -20,7 +20,7 @@ from .framework import ROOT, load_json, sha256_text
 
 PROVIDERS_PATH = ROOT / "data" / "advice_providers.json"
 FALLBACK_PRICING = (10.0, 50.0)          # scripts/advice_eval.py _FALLBACK_PRICING, USD per million tokens
-ZERO_PRICE_MODELS = ("mockllm/model", "none/none")
+ZERO_PRICE_MODELS = ("mockllm/model", "mockllm/judge", "none/none")      # mockllm/judge: the local tests' judge (PR B)
 
 
 @dataclass(frozen=True)
@@ -69,6 +69,11 @@ def registry_spec_to_inspect(spec: str, registry: dict | None = None) -> str:
     `openai` used to price as `anthropic/openai`, the fallback rate), and a
     provider without one is refused, as the resolver refuses it."""
     spec = spec.strip()
+    if spec in ZERO_PRICE_MODELS:
+        # already an Inspect name, and the only one a judge takes that no registry knows: expanding it to
+        # `anthropic/mockllm/judge` priced the local mock judge at the 10/50 fallback and labelled its rows
+        # provider-measured (Codex round 1 on PR #28)
+        return spec
     if ":" in spec:
         provider, model = spec.split(":", 1)
         return f"{provider}/{model}"
