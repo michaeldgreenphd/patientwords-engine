@@ -32,9 +32,10 @@ from scripts.petri_audit import (  # noqa: E402
 from scripts.petri_audit import manifest as manifest_mod  # noqa: E402
 
 
-# Tests that are not about the context-role gate pass this: turn 1 precedes every assistant turn, so no dimension
-# is withheld and the plan set is the one those tests were written against.
-_ALL_GATES = {"pressure": {1}, "assertion": {1}}
+# Tests that are not about the context-role gate pass this: every user turn in these fixtures is marked, so no
+# dimension is withheld under either gate shape - cumulative (any marked turn before this reply) or immediate (the
+# marked turn is the one this reply answers) - and the plan set is the one those tests were written against.
+_ALL_GATES = {role: set(range(1, 64, 2)) for role in ("pressure", "assertion")}
 
 @pytest.fixture(scope="module")
 def seed_set() -> seeds.SeedSet:
@@ -789,7 +790,7 @@ def test_judge_plans_skip_shared_prefix_supply_context_from_data_and_record_not_
     # two reasons are true here and the gate's is the structural one: on the root there is no pressure turn at all,
     # so the dimension is undefined before the absence of a prior reply even arises (Codex round 3 on PR #29)
     assert root_persistence.prompt is None
-    assert root_persistence.not_applicable_reason == "no pressure turn supplied before this turn"
+    assert root_persistence.not_applicable_reason == "this reply does not answer a pressure turn"
     assert not any(p.key == "contextual" and p.turn_id == 2 for p in root_plans)   # contextual starts at the second reply
     # an empty reply is not applicable on every dimension, with the reason recorded
     empty = _record([{"role": "user", "text": seeds.text_of(h4, "stimulus_clinical"), "id": "m1"},
@@ -1312,13 +1313,15 @@ def test_persistence_is_judged_only_after_a_pressure_turn(seed_set, outcomes, ru
     rows = [p for p in plans if p.key == "safety_netting_persistence"]
     assert len(rows) == 10, "a plan per assistant turn either way"
     judged = [p.exchange_index for p in rows if p.prompt is not None]
-    assert judged == [8, 9, 10], "only replies after the pressure turn describe a pressure transition"
+    assert judged == [8], "only the reply ANSWERING the pressure turn has a pre-pressure reply as its context"
     assert {p.not_applicable_reason for p in rows if p.prompt is None} == {
-        "no pressure turn supplied before this turn"}
-    # the gate is what stops the other seven being labelled pressure transitions that did not happen
-    ungated = judge_runner.plan_record(record, seed, outcomes=outcomes, rubric=rubric, branched_from_turn_id=None,
-                                       gated_turn_ids={"pressure": {1}, "assertion": {1}})
-    assert len([p for p in ungated if p.key == "safety_netting_persistence" and p.prompt is not None]) == 9
+        "this reply does not answer a pressure turn"}
+    # a cumulative gate would leave 9 and 10 eligible, where _prior_assistant_text supplies a POST-pressure reply
+    # and the prompt's "before the pressure turn" is false (Codex round 4 on PR #29)
+    assert 9 not in judged and 10 not in judged
+    # the assertion gate stays cumulative: its context is the proposition, which holds once asserted
+    assert judge_runner.CONTEXT_ROLE_GATED["assertion_handling"][1] == "cumulative"
+    assert judge_runner.CONTEXT_ROLE_GATED["safety_netting_persistence"][1] == "immediate"
 
 
 def test_a_seed_that_judges_an_assertion_without_marking_one_is_refused(seed_set):
@@ -1336,6 +1339,17 @@ def test_a_seed_that_judges_an_assertion_without_marking_one_is_refused(seed_set
     assert len(problems) == 1, problems
     assert "no turn anywhere in the seed is marked context_role 'assertion'" in problems[0]
     assert "measure nothing for that dimension" in problems[0]
+
+    # ...and arms that mark it at DIFFERENT positions are refused too: both sides would carry rows, at different
+    # exchanges, so the comparison would pair replies to different stimuli (Codex round 4 on PR #29)
+    shifted = json.loads(json.dumps(seed_set.seeds["pw-petri-w2-referral-specificity"]))
+    coll = next(a for a in shifted["protocol"]["arms"] if a["id"] == "colloquial")
+    marked = next(i for i, t in enumerate(coll["turns"]) if t.get("context_role") == "assertion")
+    coll["turns"][marked]["context_role"] = None
+    coll["turns"][marked - 1]["context_role"] = "assertion"
+    problems = seeds.seed_problems(shifted, seed_set.framing, seed_set.outcomes)
+    assert any("at different user turns per arm" in p for p in problems), problems
+    assert any("pair different stimuli" in p for p in problems)
     # dropping the dimension instead of the marking is a coherent seed again
     seed["judge"]["outcome_dimensions"] = [d for d in seed["judge"]["outcome_dimensions"] if d != "assertion_handling"]
     seed["judge"]["supplied_contexts"] = [c for c in seed["judge"]["supplied_contexts"]

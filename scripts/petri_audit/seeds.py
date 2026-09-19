@@ -357,16 +357,18 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
     if "assertion_handling" in judged and "assertion_handling" not in supplied:
         problems.append("assertion_handling is judged but no proposition is supplied as context")
     # A dimension the planner gates on a marked context role measures nothing in a trajectory that marks none.
-    # Two things can go wrong and they are different (Codex rounds 2 and 3 on PR #29):
+    # Three things can go wrong and they are different (Codex rounds 2-4 on PR #29):
     #   * the seed marks the role NOWHERE - every reply is not_applicable, so the run clears preflight, spends the
     #     target budget and finishes with no measurement for its declared outcome;
     #   * the arms are not parallel - one arm marks it in a branch and its counterpart does not, so one side of the
-    #     register contrast has rows and the other has none, which is worse than having neither.
-    # Requiring EVERY trajectory to mark it, as the round-2 fix did, is wrong: pw-petri-example-h4-persistence
-    # marks `pressure` on its pressure branch and deliberately not on its neutral control, which is the design.
+    #     register contrast has rows and the other has none;
+    #   * the arms mark it at DIFFERENT POSITIONS - both sides have rows, but at different exchanges, so the
+    #     cross-arm comparison pairs replies to different stimuli. Presence alone does not catch this.
+    # Requiring every trajectory to mark it is wrong: pw-petri-example-h4-persistence marks `pressure` on its
+    # pressure branch and deliberately not on its neutral control, which is the design.
     from .judge_runner import CONTEXT_ROLE_GATED
 
-    gated = {d: role for d, role in CONTEXT_ROLE_GATED.items() if d in judged}
+    gated = {d: role for d, (role, _shape) in CONTEXT_ROLE_GATED.items() if d in judged}
     if gated:
         by_branch: dict[str, dict[str, list[dict]]] = {ROOT_BRANCH: {a["id"]: a["turns"] for a in proto["arms"]}}
         if anchor is not None:
@@ -374,20 +376,30 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
                 by_branch[branch["id"]] = {
                     arm: spec["turns"][: anchor["after_arm_turn"]] + branch["turns"] for arm, spec in arms.items()}
         for dim_id, role in sorted(gated.items()):
-            marked = {branch: {arm for arm, turns in per_arm.items()
-                               if any(t.get("context_role") == role for t in turns)}
-                      for branch, per_arm in by_branch.items()}
-            if not any(marked.values()):
+            # the 1-based positions of the marked turns in each trajectory, which is what the planner keys on
+            positions = {branch: {arm: tuple(i for i, t in enumerate(turns, 1) if t.get("context_role") == role)
+                                  for arm, turns in per_arm.items()}
+                         for branch, per_arm in by_branch.items()}
+            if not any(any(p) for per_arm in positions.values() for p in per_arm.values()):
                 problems.append(f"{dim_id} is judged but no turn anywhere in the seed is marked context_role "
                                 f"{role!r}: every reply would be recorded not_applicable, so the run would spend "
                                 f"the target budget and measure nothing for that dimension")
                 continue
-            for branch, armed in sorted(marked.items()):
-                if armed and armed != set(by_branch[branch]):
-                    missing = sorted(set(by_branch[branch]) - armed)
+            for branch, per_arm in sorted(positions.items()):
+                distinct = sorted({p for p in per_arm.values()})
+                if len(distinct) == 1:
+                    continue                                  # every arm marks it in the same places, or none does
+                bare = sorted(arm for arm, p in per_arm.items() if not p)
+                if bare:
                     problems.append(f"{dim_id} is judged and branch {branch!r} marks context_role {role!r} on "
-                                    f"{sorted(armed)} but not on {missing}: the arms are not parallel, so one side "
-                                    f"of the contrast would carry rows the other cannot")
+                                    f"{sorted(arm for arm, p in per_arm.items() if p)} but not on {bare}: the arms "
+                                    f"are not parallel, so one side of the contrast would carry rows the other "
+                                    f"cannot")
+                else:
+                    problems.append(f"{dim_id} is judged and branch {branch!r} marks context_role {role!r} at "
+                                    f"different user turns per arm ({dict(sorted(per_arm.items()))}): the planner "
+                                    f"keys eligibility on position, so the arms would be judged at different "
+                                    f"exchanges and the comparison would pair different stimuli")
     if seed["judge"]["advice_tier"]["contextual"] and exposure == "single_turn":
         problems.append("the contextual tier instrument applies to turns after the first; a single_turn seed has none")
     if seed["mode"] == "autonomous":

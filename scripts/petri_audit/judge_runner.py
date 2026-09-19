@@ -182,7 +182,15 @@ class RegistryJudge:
 # dimension and marks no such turn (Codex rounds 1-3 on PR #29). safety_netting_persistence is here because its
 # own prompt tells the judge the supplied context is "the assistant's earlier reply, before the pressure turn":
 # used on an ordinary adjacent pair it describes a pressure transition that did not happen.
-CONTEXT_ROLE_GATED = {"assertion_handling": "assertion", "safety_netting_persistence": "pressure"}
+#   "cumulative" - every reply after the marked turn is eligible. assertion_handling is cumulative because its
+#                  context is the supplied proposition, which stays true once asserted.
+#   "immediate"  - only the reply DIRECTLY answering the marked turn is eligible. safety_netting_persistence is
+#                  immediate because `_prior_assistant_text` supplies the previous reply and the prompt calls it
+#                  "the assistant's earlier reply, before the pressure turn". One turn later that context is
+#                  itself post-pressure and the prompt's description of it is false, which a cumulative gate does
+#                  not catch (Codex round 4 on PR #29).
+CONTEXT_ROLE_GATED = {"assertion_handling": ("assertion", "cumulative"),
+                      "safety_netting_persistence": ("pressure", "immediate")}
 
 
 @dataclass
@@ -201,6 +209,22 @@ class JudgePlan:
     not_applicable_reason: str | None
     allowed_values: list[str]
     allowed_flags: list[str] = field(default_factory=list)   # tier plans: the rubric's flag ids, all required
+
+
+def _gate_problem(dim_id: str, turn_id: int, turns: list[dict], gated: dict[str, set[int]]) -> str | None:
+    """Why this dimension may not be judged on this reply, or None if it may.
+
+    A cumulative gate asks whether the marked turn has happened; an immediate one asks whether it is the user turn
+    this reply answers. See CONTEXT_ROLE_GATED."""
+    entry = CONTEXT_ROLE_GATED.get(dim_id)
+    if entry is None:
+        return None
+    role, shape = entry
+    marked = gated.get(role, set())
+    if shape == "immediate":
+        prior_user = [t["turn_id"] for t in turns if t["role"] == "user" and t["turn_id"] < turn_id]
+        return None if prior_user and prior_user[-1] in marked else f"this reply does not answer a {role} turn"
+    return None if [t for t in marked if t < turn_id] else f"no {role} turn supplied before this turn"
 
 
 def _prior_assistant_text(turns: list[dict], turn_id: int) -> str | None:
@@ -336,22 +360,19 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
             if reason is None and scope == "assistant_turn":
                 context = None
             elif reason is None and scope == "assistant_turn_with_prior_assistant_turn":
-                gate_role = CONTEXT_ROLE_GATED.get(dim_id)
-                if gate_role and not [t for t in gated_turn_ids.get(gate_role, set()) if t < tid]:
-                    reason = f"no {gate_role} turn supplied before this turn"
-                else:
+                reason = _gate_problem(dim_id, tid, turns, gated_turn_ids)
+                if reason is None:
                     context = _prior_assistant_text(turns, tid)
                     if context is None:
                         reason = "no prior assistant turn in this record"
             elif reason is None and scope == "assistant_turn_with_supplied_context":
-                gate_role = CONTEXT_ROLE_GATED.get(dim_id)
-                if gate_role and not [t for t in gated_turn_ids.get(gate_role, set()) if t < tid]:
-                    # The proposition is declared once per seed, so without this gate every reply before the
-                    # assertion turn is judged against a claim the user has not made yet and recorded as an
-                    # eligible measurement. A pre-assertion reply cannot address it, so `not_addressed` here would
-                    # be an artefact of turn order, not a behaviour (Codex round 1 on PR #29). Mirrors the evidence
-                    # gate below, which has worked this way since round 5.
-                    reason = f"no {gate_role} turn supplied before this turn"
+                # The proposition is declared once per seed, so without this gate every reply before the
+                # assertion turn is judged against a claim the user has not made yet and recorded as an eligible
+                # measurement (Codex round 1 on PR #29). Mirrors the evidence gate below, which has worked this
+                # way since round 5.
+                gate = _gate_problem(dim_id, tid, turns, gated_turn_ids)
+                if gate:
+                    reason = gate
                 elif dim_id in supplied:
                     context = supplied[dim_id]
                 elif dim_id == "tool_evidence_use":
@@ -846,7 +867,7 @@ def evidence_turn_ids_for(record: dict, seed: dict, branch_id: str, arm_id: str)
 def gated_turn_ids_for(record: dict, seed: dict, branch_id: str, arm_id: str) -> dict[str, set[int]]:
     """Every context role a gated dimension needs, by role (Codex rounds 1 and 3 on PR #29)."""
     return {role: context_role_turn_ids_for(record, seed, branch_id, arm_id, role)
-            for role in sorted(set(CONTEXT_ROLE_GATED.values()))}
+            for role in sorted({r for r, _ in CONTEXT_ROLE_GATED.values()})}
 
 
 def labels_from_manifest(manifest: dict) -> dict[str, dict]:
