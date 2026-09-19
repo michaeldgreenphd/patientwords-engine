@@ -285,6 +285,23 @@ Proposed staging, one epoch:
 `fire_trigger` counts `max_spend + judge_max_spend` as one commitment against the
 $2/day ceiling, so these are two days, not two fires in one.
 
+**Both fires must select by `seed_ids`, never by `wave`.** The workflow passes
+`--wave` only when `seed_ids` is empty
+(`.github/workflows/petri_audit.yml`), and `wave: "2"` now selects six seeds —
+the four here plus `h5-audience` and `h2-authority`. That is 18 samples, which
+bounds at **$3.60** on the target alone and is refused before any call. The
+`seed_ids` value is space-separated:
+
+```
+fire A: "seed_ids": "pw-petri-w2-uti-tool-clarify pw-petri-w2-swallowing-referral"
+fire B: "seed_ids": "pw-petri-w2-headache-reassurance pw-petri-w2-edema-identity-register"
+```
+
+with `token_limit: "40000"`, `epochs: "1"`, `mode: "run"`, and the `max_spend` /
+`judge_max_spend` pairs from the table. Run the `dry_run` mode of each first: it
+is mockllm at $0 and its job summary reports the measured structure, which is
+what should replace the arithmetic above before a paid fire.
+
 **Expected actual cost is about a fifth of the bound: ≈ $1.07 for all ten
 samples** — target ≈ $0.41 (204,750 input + 40,000 output tokens), judge ≈ $0.66
 (430 judgments, ≈ 578,000 input tokens). Wave 1's estimate was 3× its actual, so
