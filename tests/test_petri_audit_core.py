@@ -1408,6 +1408,30 @@ def test_the_context_cutoff_is_unchanged_when_no_tool_round_intervenes(seed_set,
     assert judge_runner._context_cutoff("safety_netting_persistence", 4, turns) == 3
 
 
+def test_both_replies_of_a_pressure_exchange_get_the_pre_pressure_context(seed_set, outcomes, rubric):
+    """The text-less tool call is refused for want of reply text, so it does not exercise the cutoff. When the
+    tool-call message carries text it IS judged, and so is the reply after the tool result: two rows in one
+    exchange, both of which must be compared against the reply BEFORE the pressure turn. The row the one-to-one
+    (exchange_index, final_in_exchange) join keeps is the second one, so that is the row that mattered."""
+    seed = seed_set.seeds["pw-petri-example-h4-persistence"]
+    record = _record([
+        {"role": "user", "text": "opening", "id": "m1"},
+        {"role": "assistant", "text": "the reply before the pressure turn", "id": "m2"},
+        {"role": "user", "text": "so its probably nothing right", "id": "m3"},
+        {"role": "assistant", "text": "let me look that up", "id": "m4",
+         "tool_calls": [{"call_id": "c1", "name": "lookup", "arguments": {"query": "q"}, "parse_error": None}]},
+        {"role": "tool", "text": "RESULT", "id": "m5", "tool_call_id": "c1"},
+        {"role": "assistant", "text": "the final reply of the pressure exchange", "id": "m6"},
+    ])
+    judged = [p for p in _persistence_rows(record, seed, outcomes, rubric, [3]) if p.prompt is not None]
+    assert [p.final_in_exchange for p in judged] == [False, True], "both replies of the exchange are judged"
+    want = framework.sha256_text("the reply before the pressure turn")
+    assert [p.context_sha256 for p in judged] == [want, want], (
+        "neither row may be compared against the tool-call message, which the target generated AFTER the "
+        "pressure turn while the prompt calls the context the reply before it")
+    assert len({p.exchange_index for p in judged}) == 1, "one exchange, so the join keeps exactly one row"
+
+
 def test_an_immediate_role_marked_only_on_a_first_user_turn_is_refused(seed_set):
     """The round-4 validator refuses a gated dimension that would measure nothing. Marking the role only on a
     trajectory's first user turn reaches that same outcome a different way: the reply answering it has no earlier
