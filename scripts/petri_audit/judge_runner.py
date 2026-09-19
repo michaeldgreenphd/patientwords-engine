@@ -183,6 +183,7 @@ class JudgePlan:
     conversation_id: str
     turn_id: int
     assistant_turn_index: int
+    exchange_index: int             # the scripted user turn this reply answers; see plan_record
     kind: str                       # "outcome" | "tier"
     key: str                        # dimension id, or the tier instrument name
     prompt_ref: str | None          # outcome prompt file, or the rubric path
@@ -275,7 +276,15 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
     defined_tools = {d["name"] for d in (seed.get("tools") or {}).get("definitions", [])}
     plans: list[JudgePlan] = []
     assistant_index = 0
+    exchange_index = 0
     for t in turns:
+        if t["role"] == "user":
+            # The SCRIPTED exchange ordinal, which is what two arms have in common. `assistant_turn_index` counts
+            # every assistant message including the intermediate tool-call ones, so the moment one arm calls a tool
+            # and the other does not, the same index names replies to different user turns: in wave 1's h3-tools
+            # pair, clinical index 2 answers user turn 2 while colloquial index 2 answers user turn 1. Any cross-arm
+            # comparison keyed on the assistant index silently pairs different stimuli (Codex round 2 on PR #29).
+            exchange_index += 1
         if t["role"] != "assistant":
             continue
         assistant_index += 1
@@ -289,11 +298,11 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
         tier_values = [x["id"] for x in rubric["tiers"]]
         flag_ids = [f["id"] for f in rubric.get("flags", [])]
         if seed["judge"]["advice_tier"]["response_only"]:
-            plans.append(JudgePlan(cid, tid, assistant_index, "tier", "response_only", ADVICE_RUBRIC_REF,
+            plans.append(JudgePlan(cid, tid, assistant_index, exchange_index, "tier", "response_only", ADVICE_RUBRIC_REF,
                                    None if text_unavailable else rubric_prompt(rubric, text), rd, None,
                                    "reply text unavailable" if text_unavailable else None, tier_values, flag_ids))
         if seed["judge"]["advice_tier"]["contextual"] and assistant_index >= 2:
-            plans.append(JudgePlan(cid, tid, assistant_index, "tier", "contextual", ADVICE_RUBRIC_REF,
+            plans.append(JudgePlan(cid, tid, assistant_index, exchange_index, "tier", "contextual", ADVICE_RUBRIC_REF,
                                    None if text_unavailable else contextual_tier_prompt(rubric, turns, tid), rd,
                                    sha256_text(rendered_context(turns, tid)),
                                    "reply text unavailable" if text_unavailable else None, tier_values, flag_ids))
@@ -344,7 +353,8 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
             elif reason is None:
                 reason = f"unknown scope {scope}"
             rendered = None if reason else render_prompt(prompt, text, context)
-            plans.append(JudgePlan(cid, tid, assistant_index, "outcome", dim_id, dim["detection"]["judge_prompt_ref"],
+            plans.append(JudgePlan(cid, tid, assistant_index, exchange_index, "outcome", dim_id,
+                                   dim["detection"]["judge_prompt_ref"],
                                    rendered, digest, sha256_text(context) if context is not None else None, reason, values))
     return plans
 
@@ -559,6 +569,7 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
     with open(out_path, "a", encoding="utf-8") as fh:
         for p in plans:
             base = {"conversation_id": p.conversation_id, "turn_id": p.turn_id, "assistant_turn_index": p.assistant_turn_index,
+                    "exchange_index": p.exchange_index,
                     "kind": p.kind, "key": p.key, "prompt_ref": p.prompt_ref, "prompt_file_digest": p.prompt_file_digest,
                     "judge_model": client.model_spec, **labels.get(p.conversation_id, {})}
             if dedupe_key(base) in done:
@@ -678,7 +689,11 @@ def analysis_rows(judgments: list[dict], manifest: dict, seeds: dict[str, dict])
             "protocol": seed["protocol"]["register_exposure"], "tree_id": info["tree_id"], "epoch": info["epoch"],
             "arm": info["arm"], "system_prompt_variant": info["system_prompt_variant"], "branch_id": info["branch_id"],
             "condition_id": info["condition_id"], "conversation_id": j["conversation_id"], "turn_id": j["turn_id"],
-            "assistant_turn_index": j["assistant_turn_index"], "kind": j["kind"], "key": j["key"], "value": j["value"],
+            "assistant_turn_index": j["assistant_turn_index"],
+            # older judgment files predate the exchange ordinal; a row without one is recorded as null, never
+            # back-filled from the assistant index, which is the very thing it exists to correct
+            "exchange_index": j.get("exchange_index"),
+            "kind": j["kind"], "key": j["key"], "value": j["value"],
             "flags": j.get("flags"), "not_applicable_reason": j.get("not_applicable_reason"),
             "judge_error": j.get("judge_error"), "judge_model": j["judge_model"], "shared_prefix": shared,
             "row_eligible": row_ok, "run_claim_grade_eligible": run_eligible,

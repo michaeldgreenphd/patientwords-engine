@@ -60,10 +60,10 @@ def test_every_example_seed_validates_and_expands_to_its_conditions(seed_set):
     with pytest.raises(ValueError):
         seeds.select_seeds(seed_set, ["pw-petri-nope"])
     assert [s["seed_id"] for s in seeds.select_seeds(seed_set, wave=2)] == [
-        "pw-petri-example-h5-audience", "pw-petri-example-h2-authority", "pw-petri-w2-uti-tool-clarify",
-        "pw-petri-w2-swallowing-referral", "pw-petri-w2-headache-reassurance", "pw-petri-w2-edema-identity-register"]
+        "pw-petri-example-h5-audience", "pw-petri-example-h2-authority", "pw-petri-w2-tool-clarify",
+        "pw-petri-w2-referral-specificity", "pw-petri-w2-reassurance-decay", "pw-petri-w2-identity-register"]
     # the 2x2 of speaker identity by register expands to four root conditions, one per cell
-    assert len(seeds.conditions(seed_set.seeds["pw-petri-w2-edema-identity-register"])) == 4
+    assert len(seeds.conditions(seed_set.seeds["pw-petri-w2-identity-register"])) == 4
 
 
 def test_an_empty_seed_selection_is_refused_not_reported_clear(seed_set):
@@ -1163,7 +1163,7 @@ def test_assertion_handling_is_not_judged_before_the_assertion_turn(seed_set, ou
     On the wave-2 seeds that was 36 rows; `not_addressed` there is an artefact
     of turn order, not a behaviour. Gated the same way evidence has been since
     round 5."""
-    seed = seed_set.seeds["pw-petri-w2-swallowing-referral"]
+    seed = seed_set.seeds["pw-petri-w2-referral-specificity"]
     texts = {t["key"]: t["text"] for t in seed["texts"]}
     arm = next(a for a in seed["protocol"]["arms"] if a["id"] == "clinical")
     msgs = []
@@ -1215,6 +1215,73 @@ def test_the_wave_one_authority_seed_is_gated_the_same_way(seed_set, outcomes, r
                                      branched_from_turn_id=None, assertion_turn_ids=ids)
     rows = [p for p in plans if p.key == "assertion_handling"]
     assert [p.assistant_turn_index for p in rows if p.prompt is not None] == [2]
+
+
+def test_a_tool_call_does_not_shift_the_exchange_index(seed_set, outcomes, rubric):
+    """Codex round 2 on PR #29: `assistant_turn_index` counts every assistant
+    message, intermediate tool-call ones included, so the moment one arm calls a
+    tool and the other does not the same index names replies to different user
+    turns. Wave 1's h3-tools pair did exactly that: clinical index 2 answers user
+    turn 2 while colloquial index 2 answers user turn 1, so a cross-arm
+    comparison keyed on the assistant index paired different stimuli. The
+    exchange index is the scripted ordinal the two arms share."""
+    seed = seed_set.seeds["pw-petri-example-h3-tools"]
+    stim_c, stim_q = seeds.text_of(seed, "stimulus_clinical"), seeds.text_of(seed, "stimulus_colloquial")
+    follow = seeds.text_of(seed, "followup_neutral")
+
+    def plans_for(msgs):
+        return judge_runner.plan_record(_record(msgs), seed, outcomes=outcomes, rubric=rubric,
+                                        branched_from_turn_id=None)
+
+    # the clinical arm as it ran: one reply per user turn
+    clinical = plans_for([{"role": "user", "text": stim_c, "id": "m1"},
+                          {"role": "assistant", "text": "asks which antibiotic", "id": "m2"},
+                          {"role": "user", "text": follow, "id": "m3"},
+                          {"role": "assistant", "text": "asks again", "id": "m4"}])
+    # the colloquial arm as it ran: a tool call, its result, then the answer - two assistant messages per exchange
+    colloquial = plans_for([{"role": "user", "text": stim_q, "id": "m1"},
+                            {"role": "assistant", "text": "", "id": "m2"},
+                            {"role": "tool", "text": "INTERACTION LOOKUP ...", "id": "m3"},
+                            {"role": "assistant", "text": "good news", "id": "m4"},
+                            {"role": "user", "text": follow, "id": "m5"},
+                            {"role": "assistant", "text": "", "id": "m6"},
+                            {"role": "tool", "text": "GUIDELINE SEARCH ...", "id": "m7"},
+                            {"role": "assistant", "text": "a few tips", "id": "m8"}])
+
+    def pairs(plans):
+        return [(p.assistant_turn_index, p.exchange_index)
+                for p in plans if p.kind == "tier" and p.key == "response_only"]
+
+    assert pairs(clinical) == [(1, 1), (2, 2)]
+    assert pairs(colloquial) == [(1, 1), (2, 1), (3, 2), (4, 2)], "the tool round does not open a new exchange"
+    # the defect this exists to stop: index 2 names different user turns in the two arms
+    assert dict(pairs(clinical))[2] != dict(pairs(colloquial))[2]
+    # while the exchange ordinal groups each arm's replies under the stimulus that produced them
+    assert {e for _, e in pairs(clinical)} == {e for _, e in pairs(colloquial)} == {1, 2}
+    # every plan carries it, not only the tier ones
+    assert all(isinstance(p.exchange_index, int) and p.exchange_index >= 1 for p in clinical + colloquial)
+
+
+def test_a_seed_that_judges_an_assertion_without_marking_one_is_refused(seed_set):
+    """Codex round 2 on PR #29: with the planner gating on a marked assertion
+    turn, a seed that declares the dimension and marks no turn produces nothing
+    but not_applicable - a run that clears preflight, spends the target budget
+    and measures nothing for its declared outcome. Refused where it is free."""
+    seed = json.loads(json.dumps(seed_set.seeds["pw-petri-w2-referral-specificity"]))
+    assert seeds.seed_problems(seed, seed_set.framing, seed_set.outcomes) == []
+    for arm in seed["protocol"]["arms"]:
+        for turn in arm["turns"]:
+            if turn.get("context_role") == "assertion":
+                turn["context_role"] = None
+    problems = seeds.seed_problems(seed, seed_set.framing, seed_set.outcomes)
+    assert len(problems) == 2, problems                      # one per arm, each named
+    assert all("marks no turn context_role 'assertion'" in p for p in problems)
+    assert all("measure nothing for that dimension" in p for p in problems)
+    # dropping the dimension instead of the marking is a coherent seed again
+    seed["judge"]["outcome_dimensions"] = [d for d in seed["judge"]["outcome_dimensions"] if d != "assertion_handling"]
+    seed["judge"]["supplied_contexts"] = [c for c in seed["judge"]["supplied_contexts"]
+                                          if c["dimension_id"] != "assertion_handling"]
+    assert seeds.seed_problems(seed, seed_set.framing, seed_set.outcomes) == []
 
 
 def test_seed_validation_checks_the_warning_signs_reference(seed_set):

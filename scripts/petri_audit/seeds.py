@@ -356,6 +356,22 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
         ref(warning_ref, "scenario.reference.warning_signs_text_ref")
     if "assertion_handling" in judged and "assertion_handling" not in supplied:
         problems.append("assertion_handling is judged but no proposition is supplied as context")
+    if "assertion_handling" in judged:
+        # The planner gates the dimension on a preceding turn marked `assertion`, so a seed that judges it without
+        # marking one produces nothing but not_applicable rows - a run that passes preflight, spends the target
+        # budget and finishes with zero measurements for its declared outcome. Refuse it here, where it costs
+        # nothing (Codex round 2 on PR #29).
+        trajectories = [(f"arm {a['id']!r}", a["turns"]) for a in proto["arms"]]
+        if anchor is not None:
+            for arm, spec in arms.items():
+                prefix = spec["turns"][: anchor["after_arm_turn"]]
+                trajectories += [(f"arm {arm!r} branch {b['id']!r}", prefix + b["turns"]) for b in proto["branches"]]
+        bare = [where for where, turns in trajectories
+                if not any(t.get("context_role") == "assertion" for t in turns)]
+        for where in bare:
+            problems.append(f"assertion_handling is judged but {where} marks no turn context_role 'assertion': "
+                            f"every reply in it would be recorded not_applicable, so the run would spend the target "
+                            f"budget and measure nothing for that dimension")
     if seed["judge"]["advice_tier"]["contextual"] and exposure == "single_turn":
         problems.append("the contextual tier instrument applies to turns after the first; a single_turn seed has none")
     if seed["mode"] == "autonomous":

@@ -355,7 +355,7 @@ def test_register_never_changes_who_is_speaking(seeds_doc, framing, outcomes):
     flat["speaker_identity"] = {"policy": "factor", "note": "declared, but every arm is the same speaker"}
     assert any("a factor that does not vary is not a factor" in p for p in seed_problems(flat, framing, outcomes))
     # the seed that is genuinely crossed passes, and every cell of its 2x2 is occupied
-    crossed = _seed(seeds_doc, "pw-petri-w2-edema-identity-register")
+    crossed = _seed(seeds_doc, "pw-petri-w2-identity-register")
     assert crossed["speaker_identity"]["policy"] == "factor" and crossed["speaker_identity"]["note"]
     assert not [p for p in seed_problems(crossed, framing, outcomes) if "speak" in p or "crossed" in p]
     texts = {t["key"]: t for t in crossed["texts"]}

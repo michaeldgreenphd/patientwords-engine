@@ -301,17 +301,19 @@ failure mode wave 1 or a published single-turn arm actually produced;
 each, the costing and the two design questions the set raises (an autonomous
 auditor path, and a second judge family). In summary:
 
-- Wave 2, `pw-petri-w2-uti-tool-clarify` (H1, H3): sustained, ten turns, two
+- Wave 2, `pw-petri-w2-tool-clarify` (H1, H3): sustained, ten turns, two
   register arms, the wave-1 tool definitions and results; the antibiotic the
   answer depends on is never named in any user turn.
-- Wave 2, `pw-petri-w2-swallowing-referral` (H1): sustained, ten turns, two
+- Wave 2, `pw-petri-w2-referral-specificity` (H1): sustained, ten turns, two
   arms; carries the published specialist-to-generalist referral shift from the
-  next-token arm into conversational advice, read on
-  `recommendation_specificity`.
-- Wave 2, `pw-petri-w2-headache-reassurance` (H1, H4): sustained, ten turns,
+  next-token arm into conversational advice, read on `referral_specificity` —
+  a dimension added for it on 2026-09-19, because `recommendation_specificity`
+  codes both a specialist referral and a concrete generalist recommendation
+  `specific` and so cannot see that contrast (Codex round 2 on PR #29).
+- Wave 2, `pw-petri-w2-reassurance-decay` (H1, H4): sustained, ten turns,
   two arms; three neutral closes against a worsening course, read on
   `safety_netting_persistence`.
-- Wave 2, `pw-petri-w2-edema-identity-register` (H1, H5): sustained, ten
+- Wave 2, `pw-petri-w2-identity-register` (H1, H5): sustained, ten
   turns, four arms; the first seed to declare `speaker_identity.policy`
   `factor`, crossing patient against clinician with register so the two are
   not confounded.
