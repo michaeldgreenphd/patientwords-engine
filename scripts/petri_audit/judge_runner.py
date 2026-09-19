@@ -177,6 +177,13 @@ class RegistryJudge:
 
 # --------------------------------------------------------------- planning
 
+# A dimension whose registered instrument is defined only after a particular kind of user turn. The planner
+# refuses to judge it before that turn appears, and `seeds.seed_problems` refuses a seed that declares the
+# dimension and marks no such turn (Codex rounds 1-3 on PR #29). safety_netting_persistence is here because its
+# own prompt tells the judge the supplied context is "the assistant's earlier reply, before the pressure turn":
+# used on an ordinary adjacent pair it describes a pressure transition that did not happen.
+CONTEXT_ROLE_GATED = {"assertion_handling": "assertion", "safety_netting_persistence": "pressure"}
+
 
 @dataclass
 class JudgePlan:
@@ -184,6 +191,7 @@ class JudgePlan:
     turn_id: int
     assistant_turn_index: int
     exchange_index: int             # the scripted user turn this reply answers; see plan_record
+    final_in_exchange: bool         # the last assistant message of that exchange, so a join on it is one-to-one
     kind: str                       # "outcome" | "tier"
     key: str                        # dimension id, or the tier instrument name
     prompt_ref: str | None          # outcome prompt file, or the rubric path
@@ -261,7 +269,7 @@ def rubric_digest(rubric: dict) -> str:
 
 def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branched_from_turn_id: int | None,
                 evidence_turn_ids: set[int] | None = None,
-                assertion_turn_ids: set[int] | None = None) -> list[JudgePlan]:
+                gated_turn_ids: dict[str, set[int]] | None = None) -> list[JudgePlan]:
     """Every judgment a record needs: one per (assistant turn, dimension or
     instrument), with shared-prefix turns (turn_id up to the anchor) left to
     the root record."""
@@ -272,7 +280,17 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
     reference = seed["scenario"]["reference"]
     warning_signs = text_of(seed, reference["warning_signs_text_ref"]) if reference.get("warning_signs_text_ref") else None
     evidence_turn_ids = evidence_turn_ids or set()
-    assertion_turn_ids = assertion_turn_ids or set()
+    gated_turn_ids = gated_turn_ids or {}
+    # the last assistant message of each exchange. A tool-call reply that carries text is judged too, so without
+    # this a join on exchange_index alone is one-to-many and a future interim/final disagreement would silently
+    # change which row a cross-arm comparison picks up (Codex round 3 on PR #29)
+    last_of_exchange: dict[int, int] = {}
+    _e = 0
+    for t in turns:
+        if t["role"] == "user":
+            _e += 1
+        elif t["role"] == "assistant":
+            last_of_exchange[_e] = t["turn_id"]
     defined_tools = {d["name"] for d in (seed.get("tools") or {}).get("definitions", [])}
     plans: list[JudgePlan] = []
     assistant_index = 0
@@ -288,6 +306,7 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
         if t["role"] != "assistant":
             continue
         assistant_index += 1
+        final_in_exchange = last_of_exchange.get(exchange_index) == t["turn_id"]
         if branched_from_turn_id is not None and t["turn_id"] <= branched_from_turn_id:
             continue                                   # shared prefix: judged once, on the root record
         cid, tid = record["conversation_id"], t["turn_id"]
@@ -298,11 +317,11 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
         tier_values = [x["id"] for x in rubric["tiers"]]
         flag_ids = [f["id"] for f in rubric.get("flags", [])]
         if seed["judge"]["advice_tier"]["response_only"]:
-            plans.append(JudgePlan(cid, tid, assistant_index, exchange_index, "tier", "response_only", ADVICE_RUBRIC_REF,
+            plans.append(JudgePlan(cid, tid, assistant_index, exchange_index, final_in_exchange, "tier", "response_only", ADVICE_RUBRIC_REF,
                                    None if text_unavailable else rubric_prompt(rubric, text), rd, None,
                                    "reply text unavailable" if text_unavailable else None, tier_values, flag_ids))
         if seed["judge"]["advice_tier"]["contextual"] and assistant_index >= 2:
-            plans.append(JudgePlan(cid, tid, assistant_index, exchange_index, "tier", "contextual", ADVICE_RUBRIC_REF,
+            plans.append(JudgePlan(cid, tid, assistant_index, exchange_index, final_in_exchange, "tier", "contextual", ADVICE_RUBRIC_REF,
                                    None if text_unavailable else contextual_tier_prompt(rubric, turns, tid), rd,
                                    sha256_text(rendered_context(turns, tid)),
                                    "reply text unavailable" if text_unavailable else None, tier_values, flag_ids))
@@ -317,17 +336,22 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
             if reason is None and scope == "assistant_turn":
                 context = None
             elif reason is None and scope == "assistant_turn_with_prior_assistant_turn":
-                context = _prior_assistant_text(turns, tid)
-                if context is None:
-                    reason = "no prior assistant turn in this record"
+                gate_role = CONTEXT_ROLE_GATED.get(dim_id)
+                if gate_role and not [t for t in gated_turn_ids.get(gate_role, set()) if t < tid]:
+                    reason = f"no {gate_role} turn supplied before this turn"
+                else:
+                    context = _prior_assistant_text(turns, tid)
+                    if context is None:
+                        reason = "no prior assistant turn in this record"
             elif reason is None and scope == "assistant_turn_with_supplied_context":
-                if dim_id == "assertion_handling" and not [t for t in assertion_turn_ids if t < tid]:
+                gate_role = CONTEXT_ROLE_GATED.get(dim_id)
+                if gate_role and not [t for t in gated_turn_ids.get(gate_role, set()) if t < tid]:
                     # The proposition is declared once per seed, so without this gate every reply before the
                     # assertion turn is judged against a claim the user has not made yet and recorded as an
                     # eligible measurement. A pre-assertion reply cannot address it, so `not_addressed` here would
                     # be an artefact of turn order, not a behaviour (Codex round 1 on PR #29). Mirrors the evidence
                     # gate below, which has worked this way since round 5.
-                    reason = "no assertion turn supplied before this turn"
+                    reason = f"no {gate_role} turn supplied before this turn"
                 elif dim_id in supplied:
                     context = supplied[dim_id]
                 elif dim_id == "tool_evidence_use":
@@ -353,7 +377,7 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
             elif reason is None:
                 reason = f"unknown scope {scope}"
             rendered = None if reason else render_prompt(prompt, text, context)
-            plans.append(JudgePlan(cid, tid, assistant_index, exchange_index, "outcome", dim_id,
+            plans.append(JudgePlan(cid, tid, assistant_index, exchange_index, final_in_exchange, "outcome", dim_id,
                                    dim["detection"]["judge_prompt_ref"],
                                    rendered, digest, sha256_text(context) if context is not None else None, reason, values))
     return plans
@@ -569,7 +593,7 @@ def _judge_loop(plans: list[JudgePlan], client: JudgeClient, ceiling: SpendCeili
     with open(out_path, "a", encoding="utf-8") as fh:
         for p in plans:
             base = {"conversation_id": p.conversation_id, "turn_id": p.turn_id, "assistant_turn_index": p.assistant_turn_index,
-                    "exchange_index": p.exchange_index,
+                    "exchange_index": p.exchange_index, "final_in_exchange": p.final_in_exchange,
                     "kind": p.kind, "key": p.key, "prompt_ref": p.prompt_ref, "prompt_file_digest": p.prompt_file_digest,
                     "judge_model": client.model_spec, **labels.get(p.conversation_id, {})}
             if dedupe_key(base) in done:
@@ -692,7 +716,7 @@ def analysis_rows(judgments: list[dict], manifest: dict, seeds: dict[str, dict])
             "assistant_turn_index": j["assistant_turn_index"],
             # older judgment files predate the exchange ordinal; a row without one is recorded as null, never
             # back-filled from the assistant index, which is the very thing it exists to correct
-            "exchange_index": j.get("exchange_index"),
+            "exchange_index": j.get("exchange_index"), "final_in_exchange": j.get("final_in_exchange"),
             "kind": j["kind"], "key": j["key"], "value": j["value"],
             "flags": j.get("flags"), "not_applicable_reason": j.get("not_applicable_reason"),
             "judge_error": j.get("judge_error"), "judge_model": j["judge_model"], "shared_prefix": shared,
@@ -819,9 +843,10 @@ def evidence_turn_ids_for(record: dict, seed: dict, branch_id: str, arm_id: str)
     return context_role_turn_ids_for(record, seed, branch_id, arm_id, "evidence")
 
 
-def assertion_turn_ids_for(record: dict, seed: dict, branch_id: str, arm_id: str) -> set[int]:
-    """The `assertion` turns, for `assertion_handling` (Codex round 1 on PR #29)."""
-    return context_role_turn_ids_for(record, seed, branch_id, arm_id, "assertion")
+def gated_turn_ids_for(record: dict, seed: dict, branch_id: str, arm_id: str) -> dict[str, set[int]]:
+    """Every context role a gated dimension needs, by role (Codex rounds 1 and 3 on PR #29)."""
+    return {role: context_role_turn_ids_for(record, seed, branch_id, arm_id, role)
+            for role in sorted(set(CONTEXT_ROLE_GATED.values()))}
 
 
 def labels_from_manifest(manifest: dict) -> dict[str, dict]:
@@ -846,10 +871,10 @@ def plan_run(records: list[dict], manifest: dict, seeds: dict[str, dict], *, out
         tree, branch = by_conv[record["conversation_id"]]
         seed = seeds[tree["seed_id"]]
         evidence_ids = evidence_turn_ids_for(record, seed, branch["branch_id"], tree["arm"])
-        assertion_ids = assertion_turn_ids_for(record, seed, branch["branch_id"], tree["arm"])
+        gated_ids = gated_turn_ids_for(record, seed, branch["branch_id"], tree["arm"])
         plans.extend(plan_record(record, seed, outcomes=outcomes, rubric=rubric,
                                  branched_from_turn_id=branch["branched_from_turn_id"],
-                                 evidence_turn_ids=evidence_ids, assertion_turn_ids=assertion_ids))
+                                 evidence_turn_ids=evidence_ids, gated_turn_ids=gated_ids))
     return plans
 
 

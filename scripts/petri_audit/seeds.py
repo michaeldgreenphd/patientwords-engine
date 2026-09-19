@@ -356,22 +356,38 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
         ref(warning_ref, "scenario.reference.warning_signs_text_ref")
     if "assertion_handling" in judged and "assertion_handling" not in supplied:
         problems.append("assertion_handling is judged but no proposition is supplied as context")
-    if "assertion_handling" in judged:
-        # The planner gates the dimension on a preceding turn marked `assertion`, so a seed that judges it without
-        # marking one produces nothing but not_applicable rows - a run that passes preflight, spends the target
-        # budget and finishes with zero measurements for its declared outcome. Refuse it here, where it costs
-        # nothing (Codex round 2 on PR #29).
-        trajectories = [(f"arm {a['id']!r}", a["turns"]) for a in proto["arms"]]
+    # A dimension the planner gates on a marked context role measures nothing in a trajectory that marks none.
+    # Two things can go wrong and they are different (Codex rounds 2 and 3 on PR #29):
+    #   * the seed marks the role NOWHERE - every reply is not_applicable, so the run clears preflight, spends the
+    #     target budget and finishes with no measurement for its declared outcome;
+    #   * the arms are not parallel - one arm marks it in a branch and its counterpart does not, so one side of the
+    #     register contrast has rows and the other has none, which is worse than having neither.
+    # Requiring EVERY trajectory to mark it, as the round-2 fix did, is wrong: pw-petri-example-h4-persistence
+    # marks `pressure` on its pressure branch and deliberately not on its neutral control, which is the design.
+    from .judge_runner import CONTEXT_ROLE_GATED
+
+    gated = {d: role for d, role in CONTEXT_ROLE_GATED.items() if d in judged}
+    if gated:
+        by_branch: dict[str, dict[str, list[dict]]] = {ROOT_BRANCH: {a["id"]: a["turns"] for a in proto["arms"]}}
         if anchor is not None:
-            for arm, spec in arms.items():
-                prefix = spec["turns"][: anchor["after_arm_turn"]]
-                trajectories += [(f"arm {arm!r} branch {b['id']!r}", prefix + b["turns"]) for b in proto["branches"]]
-        bare = [where for where, turns in trajectories
-                if not any(t.get("context_role") == "assertion" for t in turns)]
-        for where in bare:
-            problems.append(f"assertion_handling is judged but {where} marks no turn context_role 'assertion': "
-                            f"every reply in it would be recorded not_applicable, so the run would spend the target "
-                            f"budget and measure nothing for that dimension")
+            for branch in proto["branches"]:
+                by_branch[branch["id"]] = {
+                    arm: spec["turns"][: anchor["after_arm_turn"]] + branch["turns"] for arm, spec in arms.items()}
+        for dim_id, role in sorted(gated.items()):
+            marked = {branch: {arm for arm, turns in per_arm.items()
+                               if any(t.get("context_role") == role for t in turns)}
+                      for branch, per_arm in by_branch.items()}
+            if not any(marked.values()):
+                problems.append(f"{dim_id} is judged but no turn anywhere in the seed is marked context_role "
+                                f"{role!r}: every reply would be recorded not_applicable, so the run would spend "
+                                f"the target budget and measure nothing for that dimension")
+                continue
+            for branch, armed in sorted(marked.items()):
+                if armed and armed != set(by_branch[branch]):
+                    missing = sorted(set(by_branch[branch]) - armed)
+                    problems.append(f"{dim_id} is judged and branch {branch!r} marks context_role {role!r} on "
+                                    f"{sorted(armed)} but not on {missing}: the arms are not parallel, so one side "
+                                    f"of the contrast would carry rows the other cannot")
     if seed["judge"]["advice_tier"]["contextual"] and exposure == "single_turn":
         problems.append("the contextual tier instrument applies to turns after the first; a single_turn seed has none")
     if seed["mode"] == "autonomous":

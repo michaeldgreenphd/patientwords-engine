@@ -32,6 +32,10 @@ from scripts.petri_audit import (  # noqa: E402
 from scripts.petri_audit import manifest as manifest_mod  # noqa: E402
 
 
+# Tests that are not about the context-role gate pass this: turn 1 precedes every assistant turn, so no dimension
+# is withheld and the plan set is the one those tests were written against.
+_ALL_GATES = {"pressure": {1}, "assertion": {1}}
+
 @pytest.fixture(scope="module")
 def seed_set() -> seeds.SeedSet:
     return seeds.load_seed_file()
@@ -762,7 +766,12 @@ def _branch_record(seed_set) -> tuple[dict, dict]:
 
 def test_judge_plans_skip_shared_prefix_supply_context_from_data_and_record_not_applicable(seed_set, outcomes, rubric):
     h4, record = _branch_record(seed_set)
-    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2)
+    # plan_run supplies the context-role gate; a bare plan_record would record every gated dimension
+    # not_applicable, which is the planner working and the fixture being thinner than the writer
+    gated = judge_runner.gated_turn_ids_for(record, h4, "pressure_minimize", "colloquial")
+    assert gated["pressure"] == {3}, "the pressure turn is the branch's own user turn, read by declared position"
+    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2,
+                                     gated_turn_ids=gated)
     assert {p.turn_id for p in plans} == {4}, "the shared prefix (turns 1-2) is judged on the root record only"
     keys = sorted((p.kind, p.key) for p in plans)
     assert ("tier", "response_only") in keys and ("tier", "contextual") in keys
@@ -774,20 +783,26 @@ def test_judge_plans_skip_shared_prefix_supply_context_from_data_and_record_not_
     assert contextual.prompt.startswith(judge_runner.CONTEXT_HEADER) and "USER:" in contextual.prompt
     assert contextual.prompt.endswith(judge_runner.rubric_prompt(rubric, record["turns"][3]["text"]))
     # the root record: turn 2 gets no persistence context (no prior assistant turn) and says so
-    root_plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=None)
+    root_plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=None,
+                                         gated_turn_ids=gated)
     root_persistence = next(p for p in root_plans if p.key == "safety_netting_persistence" and p.turn_id == 2)
-    assert root_persistence.prompt is None and "no prior assistant turn" in root_persistence.not_applicable_reason
+    # two reasons are true here and the gate's is the structural one: on the root there is no pressure turn at all,
+    # so the dimension is undefined before the absence of a prior reply even arises (Codex round 3 on PR #29)
+    assert root_persistence.prompt is None
+    assert root_persistence.not_applicable_reason == "no pressure turn supplied before this turn"
     assert not any(p.key == "contextual" and p.turn_id == 2 for p in root_plans)   # contextual starts at the second reply
     # an empty reply is not applicable on every dimension, with the reason recorded
     empty = _record([{"role": "user", "text": seeds.text_of(h4, "stimulus_clinical"), "id": "m1"},
                      {"role": "assistant", "text": "", "id": "m2"}])
-    for p in judge_runner.plan_record(empty, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=None):
+    for p in judge_runner.plan_record(empty, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=None,
+                                      gated_turn_ids=gated):
         assert p.prompt is None and p.not_applicable_reason == "reply text unavailable"
 
 
 def test_judge_runner_records_every_answer_dedupes_and_stops_at_the_ceiling(tmp_path, seed_set, outcomes, rubric):
     h4, record = _branch_record(seed_set)
-    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2)
+    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2,
+                                     gated_turn_ids=_ALL_GATES)
 
     def answer(prompt: str) -> str:
         if "tier id" in prompt:
@@ -864,7 +879,8 @@ def test_judge_ceiling_bounds_each_call_from_its_own_prompt(tmp_path, seed_set, 
     ceiling.record(input_tokens=20_000, output_tokens=300)
     assert ceiling.overrun_usd == pytest.approx(0.0115)                # an overrun, if one happened, is reported
     h4, record = _branch_record(seed_set)
-    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2)
+    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2,
+                                     gated_turn_ids=_ALL_GATES)
     client = judge_runner.MockJudge(lambda prompt: "absent")
     side = judge_runner.run_judgments(plans, client, out_path=tmp_path / "j.jsonl", ceiling=judge_runner.SpendCeiling(1.0, 1.0, 5.0, 300),
                                       judge_max_tokens=300, labels={}, now_fn=lambda: "2026-09-16T00:00:00Z",
@@ -895,7 +911,8 @@ def test_judge_calls_without_usage_are_charged_their_worst_case_and_counted(tmp_
     assert cost == pytest.approx((250 + judge_runner.REQUEST_FRAMING_TOKENS) * 1.0 / 1e6 + 300 * 5.0 / 1e6)
     assert ceiling.calls_without_usage == 1
     h4, record = _branch_record(seed_set)
-    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2)
+    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2,
+                                     gated_turn_ids=_ALL_GATES)
     report = tmp_path / "run_x.judge.report.json"
     side = judge_runner.run_judgments(plans, _NoUsageJudge(lambda p: "absent"), out_path=tmp_path / "judgments.jsonl",
                                       ceiling=judge_runner.SpendCeiling(1.0, 1.0, 5.0, 300), judge_max_tokens=300, labels={},
@@ -931,7 +948,8 @@ def test_a_judge_client_that_raises_mid_run_still_leaves_a_sidecar_and_the_rows(
     """Codex round 4: the sidecar was written only after the loop, so a client
     exception after charged calls left nothing for the ledger."""
     h4, record = _branch_record(seed_set)
-    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2)
+    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2,
+                                     gated_turn_ids=_ALL_GATES)
     out, report = tmp_path / "judgments.jsonl", tmp_path / "run_x.judge.report.json"
     with pytest.raises(judge_runner.JudgeAborted, match="provider failure") as info:
         judge_runner.run_judgments(plans, _RaisingJudge(lambda p: "absent", fail_at=2), out_path=out,
@@ -1172,8 +1190,8 @@ def test_assertion_handling_is_not_judged_before_the_assertion_turn(seed_set, ou
         msgs.append({"role": "assistant", "text": f"reply {i}", "id": f"a{i}"})
     record = _record(msgs)
 
-    ids = judge_runner.assertion_turn_ids_for(record, seed, checks.ROOT_BRANCH, "clinical")
-    assert ids == {13}, "the seed marks exactly one assertion turn, the seventh user turn"
+    gated = judge_runner.gated_turn_ids_for(record, seed, checks.ROOT_BRANCH, "clinical")
+    assert gated["assertion"] == {13}, "the seed marks exactly one assertion turn, the seventh user turn"
 
     def coded(**kw):
         plans = judge_runner.plan_record(record, seed, outcomes=outcomes, rubric=rubric,
@@ -1183,7 +1201,7 @@ def test_assertion_handling_is_not_judged_before_the_assertion_turn(seed_set, ou
         return ([p.assistant_turn_index for p in rows if p.prompt is not None],
                 {p.not_applicable_reason for p in rows if p.prompt is None})
 
-    judged, reasons = coded(assertion_turn_ids=ids)
+    judged, reasons = coded(gated_turn_ids=gated)
     assert judged == [7, 8, 9, 10], "only replies after the assertion may be judged against it"
     assert reasons == {"no assertion turn supplied before this turn"}
 
@@ -1193,7 +1211,7 @@ def test_assertion_handling_is_not_judged_before_the_assertion_turn(seed_set, ou
 
     # and the proposition still reaches the judge on the turns that may be judged
     plans = judge_runner.plan_record(record, seed, outcomes=outcomes, rubric=rubric,
-                                     branched_from_turn_id=None, assertion_turn_ids=ids)
+                                     branched_from_turn_id=None, gated_turn_ids=gated)
     after = next(p for p in plans if p.key == "assertion_handling" and p.assistant_turn_index == 7)
     assert seeds.text_of(seed, "proposition") in after.prompt
 
@@ -1209,10 +1227,10 @@ def test_the_wave_one_authority_seed_is_gated_the_same_way(seed_set, outcomes, r
         msgs.append({"role": "user", "text": texts[turn["text_ref"]], "id": f"u{i}"})
         msgs.append({"role": "assistant", "text": f"reply {i}", "id": f"a{i}"})
     record = _record(msgs)
-    ids = judge_runner.assertion_turn_ids_for(record, seed, checks.ROOT_BRANCH, "clinical_claimed")
-    assert ids == {3}
+    gated = judge_runner.gated_turn_ids_for(record, seed, checks.ROOT_BRANCH, "clinical_claimed")
+    assert gated["assertion"] == {3}
     plans = judge_runner.plan_record(record, seed, outcomes=outcomes, rubric=rubric,
-                                     branched_from_turn_id=None, assertion_turn_ids=ids)
+                                     branched_from_turn_id=None, gated_turn_ids=gated)
     rows = [p for p in plans if p.key == "assertion_handling"]
     assert [p.assistant_turn_index for p in rows if p.prompt is not None] == [2]
 
@@ -1261,6 +1279,47 @@ def test_a_tool_call_does_not_shift_the_exchange_index(seed_set, outcomes, rubri
     # every plan carries it, not only the tier ones
     assert all(isinstance(p.exchange_index, int) and p.exchange_index >= 1 for p in clinical + colloquial)
 
+    # ...and the exchange alone is a one-to-many join, because an assistant message that carries text AND a tool
+    # call is judged like any other. Wave 1's colloquial arm shows this at exchange 2 (Codex round 3 on PR #29).
+    def finals(plans):
+        return [(p.exchange_index, p.final_in_exchange)
+                for p in plans if p.kind == "tier" and p.key == "response_only"]
+
+    assert finals(clinical) == [(1, True), (2, True)]
+    assert finals(colloquial) == [(1, False), (1, True), (2, False), (2, True)]
+    # joining on both keys is one-to-one again
+    assert len([1 for e, f in finals(colloquial) if f]) == len([1 for e, f in finals(clinical) if f]) == 2
+
+
+def test_persistence_is_judged_only_after_a_pressure_turn(seed_set, outcomes, rubric):
+    """Codex round 3 on PR #29: the dimension's own prompt tells the judge the
+    supplied context is 'the assistant's earlier reply, before the pressure
+    turn'. Applied to an ordinary adjacent pair it describes a pressure
+    transition that never happened, so it is gated like the assertion."""
+    seed = seed_set.seeds["pw-petri-w2-reassurance-decay"]
+    texts = {t["key"]: t["text"] for t in seed["texts"]}
+    arm = next(a for a in seed["protocol"]["arms"] if a["id"] == "clinical")
+    msgs = []
+    for i, turn in enumerate(arm["turns"], 1):
+        msgs.append({"role": "user", "text": texts[turn["text_ref"]], "id": f"u{i}"})
+        msgs.append({"role": "assistant", "text": f"reply {i}", "id": f"a{i}"})
+    record = _record(msgs)
+    gated = judge_runner.gated_turn_ids_for(record, seed, checks.ROOT_BRANCH, "clinical")
+    assert gated["pressure"] == {15}, "the seed marks one pressure turn, its eighth user turn"
+
+    plans = judge_runner.plan_record(record, seed, outcomes=outcomes, rubric=rubric,
+                                     branched_from_turn_id=None, gated_turn_ids=gated)
+    rows = [p for p in plans if p.key == "safety_netting_persistence"]
+    assert len(rows) == 10, "a plan per assistant turn either way"
+    judged = [p.exchange_index for p in rows if p.prompt is not None]
+    assert judged == [8, 9, 10], "only replies after the pressure turn describe a pressure transition"
+    assert {p.not_applicable_reason for p in rows if p.prompt is None} == {
+        "no pressure turn supplied before this turn"}
+    # the gate is what stops the other seven being labelled pressure transitions that did not happen
+    ungated = judge_runner.plan_record(record, seed, outcomes=outcomes, rubric=rubric, branched_from_turn_id=None,
+                                       gated_turn_ids={"pressure": {1}, "assertion": {1}})
+    assert len([p for p in ungated if p.key == "safety_netting_persistence" and p.prompt is not None]) == 9
+
 
 def test_a_seed_that_judges_an_assertion_without_marking_one_is_refused(seed_set):
     """Codex round 2 on PR #29: with the planner gating on a marked assertion
@@ -1274,9 +1333,9 @@ def test_a_seed_that_judges_an_assertion_without_marking_one_is_refused(seed_set
             if turn.get("context_role") == "assertion":
                 turn["context_role"] = None
     problems = seeds.seed_problems(seed, seed_set.framing, seed_set.outcomes)
-    assert len(problems) == 2, problems                      # one per arm, each named
-    assert all("marks no turn context_role 'assertion'" in p for p in problems)
-    assert all("measure nothing for that dimension" in p for p in problems)
+    assert len(problems) == 1, problems
+    assert "no turn anywhere in the seed is marked context_role 'assertion'" in problems[0]
+    assert "measure nothing for that dimension" in problems[0]
     # dropping the dimension instead of the marking is a coherent seed again
     seed["judge"]["outcome_dimensions"] = [d for d in seed["judge"]["outcome_dimensions"] if d != "assertion_handling"]
     seed["judge"]["supplied_contexts"] = [c for c in seed["judge"]["supplied_contexts"]
@@ -1335,7 +1394,8 @@ def test_contextual_tier_digest_covers_the_rendered_context_the_judge_receives(s
     """Codex round 6: `context_sha256` hashed a lower-case, unescaped rendering
     while the prompt sent an upper-case, escaped one."""
     h4, record = _branch_record(seed_set)
-    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2)
+    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2,
+                                     gated_turn_ids=_ALL_GATES)
     contextual = next(p for p in plans if p.key == "contextual")
     rendered = judge_runner.rendered_context(record["turns"], contextual.turn_id)
     assert rendered.startswith("USER: ") and "\nASSISTANT: " in rendered
@@ -1363,7 +1423,8 @@ def test_a_judge_returned_not_applicable_is_counted_as_not_applicable_everywhere
     assert cum["not_applicable"] == 2 and cum["null"] == 1 and cum["judged"] == 1
     assert judge_runner.judged_value_counts(rows)["k"] == {"judged": 1, "null": 1, "not_applicable": 2}
     h4, record = _branch_record(seed_set)
-    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2)
+    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2,
+                                     gated_turn_ids=_ALL_GATES)
     side = judge_runner.run_judgments(plans, judge_runner.MockJudge(lambda p: judge_runner.NA), out_path=tmp_path / "j.jsonl",
                                       ceiling=judge_runner.SpendCeiling(1.0, 1.0, 5.0, 300), judge_max_tokens=300, labels={},
                                       now_fn=lambda: "2026-09-16T00:00:00Z", report_path=tmp_path / "r.json")
@@ -1515,7 +1576,8 @@ def test_every_provider_retry_is_charged_against_the_judge_ceiling(tmp_path, see
     """Codex round 8: one judge call could make up to six provider requests
     while the ceiling reserved one and charged only the final response."""
     h4, record = _branch_record(seed_set)
-    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2)
+    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2,
+                                     gated_turn_ids=_ALL_GATES)
     side = judge_runner.run_judgments(plans, _FlakyJudge(lambda p: "absent"), out_path=tmp_path / "j.jsonl",
                                       ceiling=judge_runner.SpendCeiling(1.0, 1.0, 5.0, 300), judge_max_tokens=300, labels={},
                                       now_fn=lambda: "2026-09-17T00:00:00Z", report_path=tmp_path / "r.json")
@@ -1673,7 +1735,8 @@ def test_tier_plans_record_the_rubric_by_repository_relative_path(seed_set, outc
     """Codex round 9: `str(ADVICE_RUBRIC)` wrote a runner-specific absolute
     path into every tier judgment's prompt_ref."""
     h4, record = _branch_record(seed_set)
-    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2)
+    plans = judge_runner.plan_record(record, h4, outcomes=outcomes, rubric=rubric, branched_from_turn_id=2,
+                                     gated_turn_ids=_ALL_GATES)
     refs = {p.prompt_ref for p in plans if p.kind == "tier"}
     assert refs == {"data/advice_rubric.draft.json"} == {framework.ADVICE_RUBRIC_REF}
     assert (framework.ROOT / framework.ADVICE_RUBRIC_REF).is_file()
