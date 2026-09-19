@@ -307,12 +307,34 @@ samples** — target ≈ $0.41 (204,750 input + 40,000 output tokens), judge ≈
 treat this as an upper-ish bound too, and replace it with the `dry_run` lane's
 measured structure before firing.
 
-The 430 is a count of *planned* judgments; fewer calls are made. `plan_record`
-emits a plan per dimension per assistant turn and then records
-`not_applicable` without calling when the dimension has nothing to read — a
-persistence dimension on the first turn, `tool_evidence_use` before any tool
-result. Wave 1 recorded 11 of 92 that way, 12%. The judge estimate is therefore
-conservative by roughly that much.
+### The counts are measured, not estimated
+
+A local `mockllm` run of all four seeds, adapted and judgment-planned without a
+judge call, cost $0 and gives the structure directly:
+
+- **10 samples, 10 trees, 100 target calls** — ten arms times ten turns, no
+  branching, as designed.
+- **430 planned judgments**: 98 for `uti-tool-clarify`, 78 for
+  `swallowing-referral`, 98 for `headache-reassurance`, 156 for the 2×2. That
+  matches the arithmetic above exactly.
+- **22 of the 430 planned as `not_applicable`**, so 408 calls. `plan_record`
+  emits a plan per dimension per assistant turn and then records
+  `not_applicable` without calling when the dimension has nothing to read — a
+  persistence dimension on the first turn, `tool_evidence_use` before any tool
+  result. Under a mock target that never calls a tool this is a floor; wave 1's
+  real rate was 11 of 92, 12%. The judge cost estimate is conservative by
+  roughly that much.
+
+Only the counts transfer. A mock reply is not a real reply, so the run says
+nothing about token volume, and the token figures above stay arithmetic on
+labelled assumptions until the `dry_run` lane measures them.
+
+Two things the mock run does **not** show a problem with, despite appearances:
+it reports `generation_config_pinned: fail` (`max_tokens: not_sent; temperature:
+not_sent`) and therefore `claim_grade_eligible=False`. That is the mock provider
+not sending sampling settings, a known artifact the suite already asserts
+(`tests/petri/test_zero_cost_e2e.py::test_contract_verdicts_are_honest_under_a_mock_provider`).
+Wave 1's real run passed all seven checks.
 
 Two things in that arithmetic are worth seeing:
 
