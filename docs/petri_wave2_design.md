@@ -362,7 +362,13 @@ weeks" against "its been a few weeks now" at turn 1 — and it is split by regis
 rather than by identity, so the identity contrast is unaffected either way.
 Everything else — age 62, bilateral, evening-worse, resolving by morning,
 breathless on stairs, two months, two pillows, standing at work, the next routine
-review — is word-for-word identical across all four cells.
+review — is the same FACT in all four cells. The wording is not, and cannot be:
+register is the manipulation, so the clinical cells say "peripheral oedema in both
+ankles" where the colloquial cells say "both my ankles swell up". What is
+word-for-word identical is each register's *pair* of identity cells, which differ
+only in the person reference (I/my → they/their). That is the invariance a 2×2
+needs. A fact that varied with a factor would be a confound; wording that varies
+with register is the treatment.
 
 The two clinician cells originally referred to the patient as "she"/"her". That
 is a third attribute varying with identity: the patient cells carry no gender

@@ -385,6 +385,17 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
                                 f"{role!r}: every reply would be recorded not_applicable, so the run would spend "
                                 f"the target budget and measure nothing for that dimension")
                 continue
+            # An immediate gate judges the reply that ANSWERS the marked turn, against the reply before it. Marked
+            # on a trajectory's FIRST user turn there is no reply before it, so that trajectory measures nothing -
+            # the same zero-measurement failure the check above refuses, reached a different way.
+            if CONTEXT_ROLE_GATED[dim_id][1] == "immediate":
+                for branch, per_arm in sorted(positions.items()):
+                    barren = sorted(arm for arm, p in per_arm.items() if p and set(p) == {1})
+                    if barren:
+                        problems.append(f"{dim_id} is judged and branch {branch!r} marks context_role {role!r} only "
+                                        f"on the first user turn of {barren}: an immediate gate compares the reply "
+                                        f"answering that turn against the reply before it, and there is none, so "
+                                        f"those arms would measure nothing for that dimension")
             for branch, per_arm in sorted(positions.items()):
                 distinct = sorted({p for p in per_arm.values()})
                 if len(distinct) == 1:

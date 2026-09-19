@@ -232,6 +232,21 @@ def _prior_assistant_text(turns: list[dict], turn_id: int) -> str | None:
     return prior[-1]["text"] if prior else None
 
 
+def _context_cutoff(dim_id: str, turn_id: int, turns: list[dict]) -> int:
+    """The turn before which this dimension's prior-assistant context must be taken.
+
+    For an immediate gate that is the MARKED USER TURN, not the reply itself. A tool round inserts an assistant
+    message between the marked turn and the reply being judged, so taking simply the previous assistant message
+    supplies a POST-pressure message as the "reply before the pressure turn" the prompt asks for - and that
+    message is usually the text-less tool call, which rendered as an empty context block. Without a tool round
+    the two cutoffs pick the same message, so this changes nothing for a seed whose arms never call a tool."""
+    entry = CONTEXT_ROLE_GATED.get(dim_id)
+    if entry is None or entry[1] != "immediate":
+        return turn_id
+    prior_user = [t["turn_id"] for t in turns if t["role"] == "user" and t["turn_id"] < turn_id]
+    return prior_user[-1] if prior_user else turn_id
+
+
 def _tool_results_before(turns: list[dict], turn_id: int, defined_tools: set[str]) -> list[str]:
     """Texts of the tool results returned before `turn_id` that are evidence
     from the seed's data: a tool turn answering a call that could not be
@@ -362,9 +377,14 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
             elif reason is None and scope == "assistant_turn_with_prior_assistant_turn":
                 reason = _gate_problem(dim_id, tid, turns, gated_turn_ids)
                 if reason is None:
-                    context = _prior_assistant_text(turns, tid)
+                    context = _prior_assistant_text(turns, _context_cutoff(dim_id, tid, turns))
                     if context is None:
                         reason = "no prior assistant turn in this record"
+                    elif not context.strip():
+                        # an assistant message carrying only a tool call has no text; rendering it as an empty
+                        # CONTEXT block asks the judge to code a comparison against nothing and records the
+                        # answer as a measurement (AGENTS.md: no silent failures in extraction)
+                        context, reason = None, "the prior assistant turn carries no text to compare against"
             elif reason is None and scope == "assistant_turn_with_supplied_context":
                 # The proposition is declared once per seed, so without this gate every reply before the
                 # assertion turn is judged against a claim the user has not made yet and recorded as an eligible
@@ -391,6 +411,8 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
                 evidence = _evidence_turn_before(turns, tid, evidence_turn_ids)
                 if prior is None:
                     reason = "no prior assistant turn in this record"
+                elif not prior.strip():
+                    reason = "the prior assistant turn carries no text to compare against"
                 elif evidence is None:
                     reason = "no evidence turn supplied before this turn (control branch)"
                 else:
