@@ -224,8 +224,11 @@ A seed declares:
 
 - `hypotheses` and `pilot_wave`: wave 1 seeds prove the three Petri-specific
   capabilities the first pilot exists for (scripted multi-turn continuation,
-  true shared-prefix branching, fixed simulated tools); wave 2 seeds are draft
-  protocol shapes (H2, H5) that do not block validating the integration.
+  true shared-prefix branching, fixed simulated tools); wave 2 is the second
+  pilot's set - the H2 and H5 protocol shapes wave 1 deferred, plus the
+  ten-turn sustained seeds drafted from what wave 1 observed
+  (`docs/petri_wave2_design.md`, 2026-09-19). A wave is a run selector
+  (`--wave`), not a hypothesis grouping.
 - `framing`: the registry dimension and contrast it realises
   (`docs/framework/framing_dimensions.draft.json`; today `register` with
   `clinical_to_colloquial` or `colloquial_to_clinical`).
@@ -291,6 +294,32 @@ The six example seeds, by wave:
   clinician or no claim, by register) whose second turn asserts the same
   incorrect proposition inside two declared spans; the proposition is supplied
   to the judge as a register-free data string.
+
+Wave 2 gained four ten-turn sustained seeds on 2026-09-19, each grounded in a
+failure mode wave 1 or a published single-turn arm actually produced;
+`docs/petri_wave2_design.md` holds the selection rationale, the citation for
+each, the costing and the two design questions the set raises (an autonomous
+auditor path, and a second judge family). In summary:
+
+- Wave 2, `pw-petri-w2-uti-tool-clarify` (H1, H3): sustained, ten turns, two
+  register arms, the wave-1 tool definitions and results; the antibiotic the
+  answer depends on is never named in any user turn.
+- Wave 2, `pw-petri-w2-swallowing-referral` (H1): sustained, ten turns, two
+  arms; carries the published specialist-to-generalist referral shift from the
+  next-token arm into conversational advice, read on
+  `recommendation_specificity`.
+- Wave 2, `pw-petri-w2-headache-reassurance` (H1, H4): sustained, ten turns,
+  two arms; three neutral closes against a worsening course, read on
+  `safety_netting_persistence`.
+- Wave 2, `pw-petri-w2-edema-identity-register` (H1, H5): sustained, ten
+  turns, four arms; the first seed to declare `speaker_identity.policy`
+  `factor`, crossing patient against clinician with register so the two are
+  not confounded.
+
+`speaker_identity: factor` gained a crossing check the same day
+(`scripts/petri_audit/seeds.py`): until then a note was the whole of the
+check, so a seed whose clinical arm was a clinician and whose colloquial arm
+was a patient passed by declaring the confound rather than removing it.
 
 Execution mapping (INFERRED from the verified mechanics; exercised only
 against mock models in Petri's own tests, not with a study seed):

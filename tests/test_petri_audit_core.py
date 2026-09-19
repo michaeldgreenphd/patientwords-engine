@@ -59,8 +59,11 @@ def test_every_example_seed_validates_and_expands_to_its_conditions(seed_set):
     assert cond["condition_id"] == "clinical__clinician_facing" and cond["system_text_ref"] == "sysprompt_clinician_facing"
     with pytest.raises(ValueError):
         seeds.select_seeds(seed_set, ["pw-petri-nope"])
-    assert [s["seed_id"] for s in seeds.select_seeds(seed_set, wave=2)] == ["pw-petri-example-h5-audience",
-                                                                            "pw-petri-example-h2-authority"]
+    assert [s["seed_id"] for s in seeds.select_seeds(seed_set, wave=2)] == [
+        "pw-petri-example-h5-audience", "pw-petri-example-h2-authority", "pw-petri-w2-uti-tool-clarify",
+        "pw-petri-w2-swallowing-referral", "pw-petri-w2-headache-reassurance", "pw-petri-w2-edema-identity-register"]
+    # the 2x2 of speaker identity by register expands to four root conditions, one per cell
+    assert len(seeds.conditions(seed_set.seeds["pw-petri-w2-edema-identity-register"])) == 4
 
 
 def test_an_empty_seed_selection_is_refused_not_reported_clear(seed_set):

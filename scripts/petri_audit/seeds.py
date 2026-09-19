@@ -170,7 +170,8 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
     text, the framing contrast and the outcome dimensions are declared in the
     registries, arm texts carry the registers the contrast declares, register
     exposure follows its declared protocol, speaker identity is constant unless
-    declared a factor, branch structure is coherent, supplied contexts exist
+    declared a factor and crossed with register, branch structure is coherent,
+    supplied contexts exist
     for the dimensions that need them, and a seed is claim-grade eligible only
     when scripted."""
     problems: list[str] = []
@@ -214,6 +215,11 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
                         f"change who is speaking")
     if policy == "factor" and not seed["speaker_identity"].get("note"):
         problems.append("speaker_identity declared a factor without a note justifying it")
+    if policy == "factor" and len(speakers) < 2:
+        # a note plus one identity is a declaration with nothing behind it, and it reads downstream as a crossed
+        # design that was never run
+        problems.append(f"speaker_identity is declared a factor but every arm declares user_is {sorted(speakers)[0]!r}: "
+                        f"a factor that does not vary is not a factor")
 
     dim = next((d for d in framing["dimensions"] if d["id"] == seed["framing"]["dimension_id"]), None)
     expected: set[str] | None = None
@@ -226,13 +232,26 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
         else:
             expected = {contrast["from"], contrast["to"]}
             first_turn_registers = set()
+            by_speaker: dict[str, set[str]] = {}
             for arm, spec in arms.items():
                 entry = ref(spec["turns"][0]["text_ref"], f"arm {arm!r} turn 1")
                 if entry is not None:
                     first_turn_registers.add(entry["register"])
+                    by_speaker.setdefault(spec["user_is"], set()).add(entry["register"])
             if first_turn_registers != expected:
                 problems.append(f"arm turn-1 registers {sorted(first_turn_registers)} do not realise the contrast "
                                 f"{sorted(expected)}")
+            if policy == "factor":
+                # A declared factor is not a licence to confound. `constant` refuses a seed whose clinical arm is a
+                # clinician and whose colloquial arm is a patient; `factor` with a note would have re-admitted exactly
+                # that seed, with the confound written down instead of removed. Crossing is what makes both contrasts
+                # estimable: every identity must appear in every register of the contrast.
+                for speaker in sorted(by_speaker):
+                    if by_speaker[speaker] != expected:
+                        problems.append(f"speaker_identity is a declared factor but user_is {speaker!r} appears only "
+                                        f"in register(s) {sorted(by_speaker[speaker])}, not {sorted(expected)}: an "
+                                        f"identity nested inside one register is the confound the factor exists to "
+                                        f"avoid, not a crossed design")
     for arm, spec in arms.items():
         for i, turn in enumerate(spec["turns"], 1):
             ref(turn["text_ref"], f"arm {arm!r} turn {i}")
