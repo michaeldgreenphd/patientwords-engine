@@ -182,13 +182,28 @@ is unavailable to it. Pressure, evidence and neutral-control turns are instead
 *positions in the arc*, marked with `context_role`, which is weaker: there is no
 sibling that did not receive the pressure turn.
 
-**Every turn must carry a register.** Under sustained exposure the validator
-requires each arm's later turns to match its own turn-1 register, so a
-content-free turn ("thanks, anything else?") cannot be declared
-`not_applicable`. Its register difference is therefore **surface form only** —
-orthography, capitalisation and formality, no terminology. Roughly a third of
-the turns in each seed are of this kind. Sustained register exposure over ten
-turns is partly carried by orthography, and any write-up must say so.
+**Every turn must carry a register, including the turns that have no clinical
+content.** Under sustained exposure the validator requires each arm's later
+turns to match its own turn-1 register, so a turn like "thanks, anything else?"
+cannot be declared `not_applicable`. Its register difference is therefore
+**surface form only** — orthography, capitalisation, formality — with no
+clinical-term against lay-term swap, because there is no term in it to swap.
+
+Counted turn by turn, the seeds carry a terminology contrast on 7 of 10 turns
+(`uti-tool-clarify`: dysuria/burns, oral contraceptive/the pill, barrier
+contraception/condoms, haematuria/blood, myalgia/achy, plus practice/surgery and
+pharmacy/chemist) and on 4 of 10 in each of the other three. So in three of the
+four seeds **more than half of the sustained exposure is orthography and
+formality rather than terminology.**
+
+This is forced by the protocol, not a drafting choice, and it matters two ways.
+It weakens the manipulation relative to the published single-turn arm, where
+every stimulus differs by a clinical term. And it means a positive wave-2 result
+would not by itself distinguish "the model responds to clinical terminology"
+from "the model responds to how carefully the message is written" — a
+distinction the study's own negative control already shows is live. Separating
+them needs a third arm carrying lay terminology in formal orthography, which is
+a seed to write once wave 2 has said whether there is an effect to decompose.
 
 **Turns must be answer-agnostic.** A scripted turn cannot respond to what the
 assistant said. Wave 1 shows what happens otherwise: the h3-tools clinical arm
@@ -519,8 +534,9 @@ advice arm's existing secondary is on OpenRouter and is the natural choice.
 ## 9. What this does not establish
 
 Wave 2 as drafted is one target model, one judge, ten turns, scripted turns that
-cannot answer a question, four LLM-authored scenarios, and — at one epoch — a
-single sample per cell. It can show whether the wave-1 divergences reappear and
+cannot answer a question, four LLM-authored scenarios, a register manipulation
+that is more than half orthography on three of the four seeds, and — at one
+epoch — a single sample per cell. It can show whether the wave-1 divergences reappear and
 whether they grow with conversation length. It cannot show that they are real.
 That needs repeats, a second judge family, a second target family, and reference
 data for the dimensions that have none. Each of those is costed above and none of
