@@ -170,7 +170,8 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
     text, the framing contrast and the outcome dimensions are declared in the
     registries, arm texts carry the registers the contrast declares, register
     exposure follows its declared protocol, speaker identity is constant unless
-    declared a factor, branch structure is coherent, supplied contexts exist
+    declared a factor and crossed with register, branch structure is coherent,
+    supplied contexts exist
     for the dimensions that need them, and a seed is claim-grade eligible only
     when scripted."""
     problems: list[str] = []
@@ -214,6 +215,11 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
                         f"change who is speaking")
     if policy == "factor" and not seed["speaker_identity"].get("note"):
         problems.append("speaker_identity declared a factor without a note justifying it")
+    if policy == "factor" and len(speakers) < 2:
+        # a note plus one identity is a declaration with nothing behind it, and it reads downstream as a crossed
+        # design that was never run
+        problems.append(f"speaker_identity is declared a factor but every arm declares user_is {sorted(speakers)[0]!r}: "
+                        f"a factor that does not vary is not a factor")
 
     dim = next((d for d in framing["dimensions"] if d["id"] == seed["framing"]["dimension_id"]), None)
     expected: set[str] | None = None
@@ -226,13 +232,26 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
         else:
             expected = {contrast["from"], contrast["to"]}
             first_turn_registers = set()
+            by_speaker: dict[str, set[str]] = {}
             for arm, spec in arms.items():
                 entry = ref(spec["turns"][0]["text_ref"], f"arm {arm!r} turn 1")
                 if entry is not None:
                     first_turn_registers.add(entry["register"])
+                    by_speaker.setdefault(spec["user_is"], set()).add(entry["register"])
             if first_turn_registers != expected:
                 problems.append(f"arm turn-1 registers {sorted(first_turn_registers)} do not realise the contrast "
                                 f"{sorted(expected)}")
+            if policy == "factor":
+                # A declared factor is not a licence to confound. `constant` refuses a seed whose clinical arm is a
+                # clinician and whose colloquial arm is a patient; `factor` with a note would have re-admitted exactly
+                # that seed, with the confound written down instead of removed. Crossing is what makes both contrasts
+                # estimable: every identity must appear in every register of the contrast.
+                for speaker in sorted(by_speaker):
+                    if by_speaker[speaker] != expected:
+                        problems.append(f"speaker_identity is a declared factor but user_is {speaker!r} appears only "
+                                        f"in register(s) {sorted(by_speaker[speaker])}, not {sorted(expected)}: an "
+                                        f"identity nested inside one register is the confound the factor exists to "
+                                        f"avoid, not a crossed design")
     for arm, spec in arms.items():
         for i, turn in enumerate(spec["turns"], 1):
             ref(turn["text_ref"], f"arm {arm!r} turn {i}")
@@ -337,6 +356,61 @@ def seed_problems(seed: dict, framing: dict, outcomes: dict) -> list[str]:
         ref(warning_ref, "scenario.reference.warning_signs_text_ref")
     if "assertion_handling" in judged and "assertion_handling" not in supplied:
         problems.append("assertion_handling is judged but no proposition is supplied as context")
+    # A dimension the planner gates on a marked context role measures nothing in a trajectory that marks none.
+    # Three things can go wrong and they are different (Codex rounds 2-4 on PR #29):
+    #   * the seed marks the role NOWHERE - every reply is not_applicable, so the run clears preflight, spends the
+    #     target budget and finishes with no measurement for its declared outcome;
+    #   * the arms are not parallel - one arm marks it in a branch and its counterpart does not, so one side of the
+    #     register contrast has rows and the other has none;
+    #   * the arms mark it at DIFFERENT POSITIONS - both sides have rows, but at different exchanges, so the
+    #     cross-arm comparison pairs replies to different stimuli. Presence alone does not catch this.
+    # Requiring every trajectory to mark it is wrong: pw-petri-example-h4-persistence marks `pressure` on its
+    # pressure branch and deliberately not on its neutral control, which is the design.
+    from .judge_runner import CONTEXT_ROLE_GATED
+
+    gated = {d: role for d, (role, _shape) in CONTEXT_ROLE_GATED.items() if d in judged}
+    if gated:
+        by_branch: dict[str, dict[str, list[dict]]] = {ROOT_BRANCH: {a["id"]: a["turns"] for a in proto["arms"]}}
+        if anchor is not None:
+            for branch in proto["branches"]:
+                by_branch[branch["id"]] = {
+                    arm: spec["turns"][: anchor["after_arm_turn"]] + branch["turns"] for arm, spec in arms.items()}
+        for dim_id, role in sorted(gated.items()):
+            # the 1-based positions of the marked turns in each trajectory, which is what the planner keys on
+            positions = {branch: {arm: tuple(i for i, t in enumerate(turns, 1) if t.get("context_role") == role)
+                                  for arm, turns in per_arm.items()}
+                         for branch, per_arm in by_branch.items()}
+            if not any(any(p) for per_arm in positions.values() for p in per_arm.values()):
+                problems.append(f"{dim_id} is judged but no turn anywhere in the seed is marked context_role "
+                                f"{role!r}: every reply would be recorded not_applicable, so the run would spend "
+                                f"the target budget and measure nothing for that dimension")
+                continue
+            # An immediate gate judges the reply that ANSWERS the marked turn, against the reply before it. Marked
+            # on a trajectory's FIRST user turn there is no reply before it, so that trajectory measures nothing -
+            # the same zero-measurement failure the check above refuses, reached a different way.
+            if CONTEXT_ROLE_GATED[dim_id][1] == "immediate":
+                for branch, per_arm in sorted(positions.items()):
+                    barren = sorted(arm for arm, p in per_arm.items() if p and set(p) == {1})
+                    if barren:
+                        problems.append(f"{dim_id} is judged and branch {branch!r} marks context_role {role!r} only "
+                                        f"on the first user turn of {barren}: an immediate gate compares the reply "
+                                        f"answering that turn against the reply before it, and there is none, so "
+                                        f"those arms would measure nothing for that dimension")
+            for branch, per_arm in sorted(positions.items()):
+                distinct = sorted({p for p in per_arm.values()})
+                if len(distinct) == 1:
+                    continue                                  # every arm marks it in the same places, or none does
+                bare = sorted(arm for arm, p in per_arm.items() if not p)
+                if bare:
+                    problems.append(f"{dim_id} is judged and branch {branch!r} marks context_role {role!r} on "
+                                    f"{sorted(arm for arm, p in per_arm.items() if p)} but not on {bare}: the arms "
+                                    f"are not parallel, so one side of the contrast would carry rows the other "
+                                    f"cannot")
+                else:
+                    problems.append(f"{dim_id} is judged and branch {branch!r} marks context_role {role!r} at "
+                                    f"different user turns per arm ({dict(sorted(per_arm.items()))}): the planner "
+                                    f"keys eligibility on position, so the arms would be judged at different "
+                                    f"exchanges and the comparison would pair different stimuli")
     if seed["judge"]["advice_tier"]["contextual"] and exposure == "single_turn":
         problems.append("the contextual tier instrument applies to turns after the first; a single_turn seed has none")
     if seed["mode"] == "autonomous":

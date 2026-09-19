@@ -28,7 +28,13 @@ ENV_LOCK = FRAMEWORK / "petri_environment.lock.json"
 MEMO = ROOT / "docs" / "petri_integration_design.md"
 
 WAVE_ONE_HYPOTHESES = {"H1", "H3", "H4", "H6"}     # the three Petri-specific capabilities the first pilot proves
-WAVE_TWO_HYPOTHESES = {"H2", "H5"}                 # draft protocol shapes that do not block the integration
+WAVE_TWO_HYPOTHESES = {"H2", "H5"}                 # the protocol shapes wave 1 deferred; wave 2 must still cover them
+ALL_HYPOTHESES = {"H1", "H2", "H3", "H4", "H5", "H6"}
+# The six seeds that were in the file before the second pilot's set was drafted. A hard count of the whole file
+# would now break on every seed added; these ids are what the count was really guarding (2026-09-19).
+ORIGINAL_EXAMPLE_SEED_IDS = {"pw-petri-example-h4-persistence", "pw-petri-example-h1-sustained",
+                             "pw-petri-example-h6-evidence", "pw-petri-example-h3-tools",
+                             "pw-petri-example-h5-audience", "pw-petri-example-h2-authority"}
 
 
 def _load_module(name: str):
@@ -233,7 +239,7 @@ def test_seed_schema_is_closed_and_examples_validate(seeds_doc):
     schema = seeds_doc["seed_schema"]
     assert schema["additionalProperties"] is False
     assert seeds_doc["seeds"], "the file must hold at least one example seed"
-    assert len(seeds_doc["seeds"]) == 6
+    assert ORIGINAL_EXAMPLE_SEED_IDS <= {s["seed_id"] for s in seeds_doc["seeds"]}
     for seed in seeds_doc["seeds"]:
         assert validate(seed, schema) == [], seed["seed_id"]
     ids = [s["seed_id"] for s in seeds_doc["seeds"]]
@@ -337,10 +343,30 @@ def test_register_never_changes_who_is_speaking(seeds_doc, framing, outcomes):
     declared = json.loads(json.dumps(confounded))
     declared["speaker_identity"] = {"policy": "factor", "note": None}
     assert any("without a note" in p for p in seed_problems(declared, framing, outcomes))
+    # A note is not a licence to confound. Until 2026-09-19 a note was the whole of the factor check, so this exact
+    # seed - clinician only in the clinical arm, caregiver only in the colloquial one - passed with the confound
+    # written down rather than removed. Each identity sits inside one register, so neither contrast is estimable.
     declared["speaker_identity"]["note"] = "speaker identity is crossed with register by design in this seed"
-    assert not [p for p in seed_problems(declared, framing, outcomes) if "speak" in p]
+    problems = seed_problems(declared, framing, outcomes)
+    assert any("not a crossed design" in p and "'clinician'" in p for p in problems), problems
+    assert any("not a crossed design" in p and "'caregiver'" in p for p in problems), problems
+    # ...and a factor with only one level is a declaration with nothing behind it
+    flat = json.loads(json.dumps(h5))
+    flat["speaker_identity"] = {"policy": "factor", "note": "declared, but every arm is the same speaker"}
+    assert any("a factor that does not vary is not a factor" in p for p in seed_problems(flat, framing, outcomes))
+    # the seed that is genuinely crossed passes, and every cell of its 2x2 is occupied
+    crossed = _seed(seeds_doc, "pw-petri-w2-identity-register")
+    assert crossed["speaker_identity"]["policy"] == "factor" and crossed["speaker_identity"]["note"]
+    assert not [p for p in seed_problems(crossed, framing, outcomes) if "speak" in p or "crossed" in p]
+    texts = {t["key"]: t for t in crossed["texts"]}
+    cells = {(a["user_is"], texts[a["turns"][0]["text_ref"]]["register"]) for a in crossed["protocol"]["arms"]}
+    assert cells == {("patient", "clinical"), ("patient", "colloquial"),
+                     ("clinician", "clinical"), ("clinician", "colloquial")}
     for seed in seeds_doc["seeds"]:
-        assert seed["speaker_identity"]["policy"] == "constant", seed["seed_id"]
+        if seed["speaker_identity"]["policy"] == "constant":
+            assert len({a["user_is"] for a in seed["protocol"]["arms"]}) == 1, seed["seed_id"]
+        else:
+            assert seed["speaker_identity"]["note"], seed["seed_id"]
 
 
 def test_register_exposure_protocols_are_kept_apart(seeds_doc, framing, outcomes):
@@ -396,7 +422,10 @@ def test_pilot_waves_cover_the_three_petri_capabilities(seeds_doc):
     wave2 = [s for s in seeds_doc["seeds"] if s["pilot_wave"] == 2]
     assert wave1 and wave2 and len(wave1) + len(wave2) == len(seeds_doc["seeds"])
     assert all(set(s["hypotheses"]) <= WAVE_ONE_HYPOTHESES for s in wave1)
-    assert all(set(s["hypotheses"]) <= WAVE_TWO_HYPOTHESES for s in wave2)
+    # Wave 2 is the second pilot's whole set, not only the two shapes wave 1 deferred (2026-09-19), so the
+    # invariant is coverage: it must still carry H2 and H5, and the two waves together must cover every hypothesis.
+    assert WAVE_TWO_HYPOTHESES <= {h for s in wave2 for h in s["hypotheses"]}
+    assert {h for s in seeds_doc["seeds"] for h in s["hypotheses"]} == ALL_HYPOTHESES
     exposures = {s["protocol"]["register_exposure"] for s in wave1}
     assert {"initial_only", "sustained"} <= exposures, "scripted continuation under both protocols"
     assert any(s["protocol"]["branch_anchor"] for s in wave1), "true shared-prefix branching"

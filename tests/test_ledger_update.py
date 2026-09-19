@@ -35,22 +35,25 @@ def tree(tmp_path):
     adv.mkdir()
     pab = tmp_path / "data" / "pab"
     pab.mkdir()
+    petri = tmp_path / "data" / "petri" / "runs"
+    petri.mkdir(parents=True)
     docs = tmp_path / "docs"
     docs.mkdir()
     ledger = docs / "overnight_ledger_20260708.md"
     ledger.write_text("# Overnight session ledger\n\nProse the script must not touch.\n", encoding="utf-8")
     trace = tmp_path / "trace_out"
     trace.mkdir()
-    return {"sim": sim, "adv": adv, "pab": pab, "trace": trace,
+    return {"sim": sim, "adv": adv, "pab": pab, "petri": petri, "trace": trace,
             "dash": tmp_path / "ops" / "dashboard.json", "ledger": ledger}
 
 
 def run(tree, *extra):
-    # --advice-dir and --pab-dir always pinned to the fixture so a real sidecar
-    # landing in the repo's data/advice/ or data/pab/ can never leak into these
-    # hermetic tests
+    # Every scan directory is pinned to the fixture so a real sidecar landing in the repo's data/ can never leak
+    # into these hermetic tests. --petri-dir was added to the script on 2026-09-16 and not to this list, so when the
+    # first paid petri run landed its two sidecars on main (2026-09-18, data/petri/runs/run_35351739969_1/) eight of
+    # these tests started reading the real pilot's spend out of the repository.
     argv = ["--simulated-dir", str(tree["sim"]), "--advice-dir", str(tree["adv"]),
-            "--pab-dir", str(tree["pab"]),
+            "--pab-dir", str(tree["pab"]), "--petri-dir", str(tree["petri"]),
             "--trace-dir", str(tree["trace"]),
             "--dashboard", str(tree["dash"]),
             "--ledger", str(tree["ledger"]), "--date", TODAY, *extra]
