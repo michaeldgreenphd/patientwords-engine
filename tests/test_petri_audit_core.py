@@ -1156,6 +1156,67 @@ def test_evidence_turns_are_identified_by_declared_position_not_by_text(seed_set
         judge_runner.evidence_turn_ids_for(record, h6, "contradicting_evidence", "nope")
 
 
+def test_assertion_handling_is_not_judged_before_the_assertion_turn(seed_set, outcomes, rubric):
+    """Codex round 1 on PR #29: the proposition is declared once per seed, so
+    without a gate every reply BEFORE the assertion turn was judged against a
+    claim the user had not made yet and recorded as an eligible measurement.
+    On the wave-2 seeds that was 36 rows; `not_addressed` there is an artefact
+    of turn order, not a behaviour. Gated the same way evidence has been since
+    round 5."""
+    seed = seed_set.seeds["pw-petri-w2-swallowing-referral"]
+    texts = {t["key"]: t["text"] for t in seed["texts"]}
+    arm = next(a for a in seed["protocol"]["arms"] if a["id"] == "clinical")
+    msgs = []
+    for i, turn in enumerate(arm["turns"], 1):
+        msgs.append({"role": "user", "text": texts[turn["text_ref"]], "id": f"u{i}"})
+        msgs.append({"role": "assistant", "text": f"reply {i}", "id": f"a{i}"})
+    record = _record(msgs)
+
+    ids = judge_runner.assertion_turn_ids_for(record, seed, checks.ROOT_BRANCH, "clinical")
+    assert ids == {13}, "the seed marks exactly one assertion turn, the seventh user turn"
+
+    def coded(**kw):
+        plans = judge_runner.plan_record(record, seed, outcomes=outcomes, rubric=rubric,
+                                         branched_from_turn_id=None, **kw)
+        rows = [p for p in plans if p.key == "assertion_handling"]
+        assert len(rows) == 10, "a plan per assistant turn either way; the gate changes applicability, not the plan"
+        return ([p.assistant_turn_index for p in rows if p.prompt is not None],
+                {p.not_applicable_reason for p in rows if p.prompt is None})
+
+    judged, reasons = coded(assertion_turn_ids=ids)
+    assert judged == [7, 8, 9, 10], "only replies after the assertion may be judged against it"
+    assert reasons == {"no assertion turn supplied before this turn"}
+
+    # the ungated call is what the planner did before this fix: every turn judged, six of them meaninglessly
+    judged_all, _ = coded()
+    assert judged_all == [], "with no assertion turn declared, none is judged rather than all"
+
+    # and the proposition still reaches the judge on the turns that may be judged
+    plans = judge_runner.plan_record(record, seed, outcomes=outcomes, rubric=rubric,
+                                     branched_from_turn_id=None, assertion_turn_ids=ids)
+    after = next(p for p in plans if p.key == "assertion_handling" and p.assistant_turn_index == 7)
+    assert seeds.text_of(seed, "proposition") in after.prompt
+
+
+def test_the_wave_one_authority_seed_is_gated_the_same_way(seed_set, outcomes, rubric):
+    """The gate is not wave-2-specific: h2-authority asserts at its second user
+    turn, so its first reply was judged against the proposition too."""
+    seed = seed_set.seeds["pw-petri-example-h2-authority"]
+    texts = {t["key"]: t["text"] for t in seed["texts"]}
+    arm = next(a for a in seed["protocol"]["arms"] if a["id"] == "clinical_claimed")
+    msgs = []
+    for i, turn in enumerate(arm["turns"], 1):
+        msgs.append({"role": "user", "text": texts[turn["text_ref"]], "id": f"u{i}"})
+        msgs.append({"role": "assistant", "text": f"reply {i}", "id": f"a{i}"})
+    record = _record(msgs)
+    ids = judge_runner.assertion_turn_ids_for(record, seed, checks.ROOT_BRANCH, "clinical_claimed")
+    assert ids == {3}
+    plans = judge_runner.plan_record(record, seed, outcomes=outcomes, rubric=rubric,
+                                     branched_from_turn_id=None, assertion_turn_ids=ids)
+    rows = [p for p in plans if p.key == "assertion_handling"]
+    assert [p.assistant_turn_index for p in rows if p.prompt is not None] == [2]
+
+
 def test_seed_validation_checks_the_warning_signs_reference(seed_set):
     """Codex round 5: `scenario.reference.warning_signs_text_ref` was never
     checked to resolve, so a seed passed preflight, spent the target budget,

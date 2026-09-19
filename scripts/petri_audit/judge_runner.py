@@ -259,7 +259,8 @@ def rubric_digest(rubric: dict) -> str:
 
 
 def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branched_from_turn_id: int | None,
-                evidence_turn_ids: set[int] | None = None) -> list[JudgePlan]:
+                evidence_turn_ids: set[int] | None = None,
+                assertion_turn_ids: set[int] | None = None) -> list[JudgePlan]:
     """Every judgment a record needs: one per (assistant turn, dimension or
     instrument), with shared-prefix turns (turn_id up to the anchor) left to
     the root record."""
@@ -270,6 +271,7 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
     reference = seed["scenario"]["reference"]
     warning_signs = text_of(seed, reference["warning_signs_text_ref"]) if reference.get("warning_signs_text_ref") else None
     evidence_turn_ids = evidence_turn_ids or set()
+    assertion_turn_ids = assertion_turn_ids or set()
     defined_tools = {d["name"] for d in (seed.get("tools") or {}).get("definitions", [])}
     plans: list[JudgePlan] = []
     assistant_index = 0
@@ -310,7 +312,14 @@ def plan_record(record: dict, seed: dict, *, outcomes: dict, rubric: dict, branc
                 if context is None:
                     reason = "no prior assistant turn in this record"
             elif reason is None and scope == "assistant_turn_with_supplied_context":
-                if dim_id in supplied:
+                if dim_id == "assertion_handling" and not [t for t in assertion_turn_ids if t < tid]:
+                    # The proposition is declared once per seed, so without this gate every reply before the
+                    # assertion turn is judged against a claim the user has not made yet and recorded as an
+                    # eligible measurement. A pre-assertion reply cannot address it, so `not_addressed` here would
+                    # be an artefact of turn order, not a behaviour (Codex round 1 on PR #29). Mirrors the evidence
+                    # gate below, which has worked this way since round 5.
+                    reason = "no assertion turn supplied before this turn"
+                elif dim_id in supplied:
                     context = supplied[dim_id]
                 elif dim_id == "tool_evidence_use":
                     results = _tool_results_before(turns, tid, defined_tools)
@@ -767,14 +776,14 @@ def declared_user_turns(seed: dict, arm_id: str, branch_id: str) -> list[dict]:
     return list(arm["turns"][: anchor["after_arm_turn"]]) + list(branch["turns"])
 
 
-def evidence_turn_ids_for(record: dict, seed: dict, branch_id: str, arm_id: str) -> set[int]:
-    """turn_ids of the record's user turns the seed declares as `evidence`
-    context, by position in the declared arm-and-branch sequence the record
-    realises (Codex round 5: matching by text pooled every arm's evidence
-    texts and marked any user turn carrying one, so a control turn sharing an
-    evidence turn's text was supplied to the judge as evidence). The record's
-    user turns must match the declared sequence in number and text; a
-    mismatch is refused, never guessed over."""
+def context_role_turn_ids_for(record: dict, seed: dict, branch_id: str, arm_id: str, role: str) -> set[int]:
+    """turn_ids of the record's user turns the seed declares with the given
+    `context_role`, by position in the declared arm-and-branch sequence the
+    record realises (Codex round 5: matching by text pooled every arm's
+    evidence texts and marked any user turn carrying one, so a control turn
+    sharing an evidence turn's text was supplied to the judge as evidence).
+    The record's user turns must match the declared sequence in number and
+    text; a mismatch is refused, never guessed over."""
     declared = declared_user_turns(seed, arm_id, branch_id)
     user_turns = [t for t in record["turns"] if t["role"] == "user"]
     if len(user_turns) != len(declared):
@@ -785,9 +794,19 @@ def evidence_turn_ids_for(record: dict, seed: dict, branch_id: str, arm_id: str)
         if turn["text"] != text_of(seed, entry["text_ref"]):
             raise ValueError(f"{record['conversation_id']}: user turn {turn['turn_id']} does not carry the declared text "
                              f"{entry['text_ref']!r}")
-        if entry.get("context_role") == "evidence":
+        if entry.get("context_role") == role:
             out.add(turn["turn_id"])
     return out
+
+
+def evidence_turn_ids_for(record: dict, seed: dict, branch_id: str, arm_id: str) -> set[int]:
+    """The `evidence` turns, for `evidence_update`."""
+    return context_role_turn_ids_for(record, seed, branch_id, arm_id, "evidence")
+
+
+def assertion_turn_ids_for(record: dict, seed: dict, branch_id: str, arm_id: str) -> set[int]:
+    """The `assertion` turns, for `assertion_handling` (Codex round 1 on PR #29)."""
+    return context_role_turn_ids_for(record, seed, branch_id, arm_id, "assertion")
 
 
 def labels_from_manifest(manifest: dict) -> dict[str, dict]:
@@ -812,8 +831,10 @@ def plan_run(records: list[dict], manifest: dict, seeds: dict[str, dict], *, out
         tree, branch = by_conv[record["conversation_id"]]
         seed = seeds[tree["seed_id"]]
         evidence_ids = evidence_turn_ids_for(record, seed, branch["branch_id"], tree["arm"])
+        assertion_ids = assertion_turn_ids_for(record, seed, branch["branch_id"], tree["arm"])
         plans.extend(plan_record(record, seed, outcomes=outcomes, rubric=rubric,
-                                 branched_from_turn_id=branch["branched_from_turn_id"], evidence_turn_ids=evidence_ids))
+                                 branched_from_turn_id=branch["branched_from_turn_id"],
+                                 evidence_turn_ids=evidence_ids, assertion_turn_ids=assertion_ids))
     return plans
 
 
